@@ -171,6 +171,7 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
                 mon_config->reports[s]->r_filter.report_log_source = REPORT_SOURCE_JSON;
             }
             else {
+                minfo("Using 'alerts.log' as default value for report_log_source.");
                 mon_config->reports[s]->r_filter.report_log_source = REPORT_SOURCE_LOG;
             }
         }
