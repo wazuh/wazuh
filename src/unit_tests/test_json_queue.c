@@ -17,6 +17,8 @@
 
 #include "../headers/shared.h"
 
+int Handle_JQueue(file_queue *fileq, int flags) __attribute__((nonnull));
+
 int __wrap__minfo()
 {
     return 0;
@@ -66,7 +68,7 @@ void __wrap_clearerr()
     return;
 }
 
-char * __wrap_fgets (char *__restrict __s, int __n, FILE *__restrict __stream)
+char * __wrap_fgets(char *__restrict __s, int __n, FILE *__restrict __stream)
 {
     check_expected(__n);
     check_expected_ptr(__stream);
@@ -291,13 +293,373 @@ void test_jqueue_flags(void **state)
     free(fileq);
 }
 
+void test_handle_jqueue(void **state)
+{
+    (void) state;
+
+    file_queue *fileq;
+    FILE *fp;
+
+    os_calloc(1, sizeof(file_queue), fileq);
+    os_calloc(1, sizeof(FILE), fp);
+
+    /* flag 0, fopen fail */
+
+    jqueue_init(fileq);
+
+    will_return(__wrap_fopen, NULL);
+
+    int ret = Handle_JQueue(fileq, 0);
+
+    assert_int_equal(ret, 0);
+    assert_null(fileq->fp);
+
+    /* flag 0, fseek fail */
+
+    jqueue_init(fileq);
+
+    will_return(__wrap_fopen, fp);
+    will_return(__wrap_fseek, -1);
+    expect_string(__wrap__merror, formatted_msg, "(1116): Could not set position in file '' due to [(0)-(Success)].");
+    expect_memory(__wrap_fclose, __stream, fp, sizeof(fp));
+
+    ret = Handle_JQueue(fileq, 0);
+
+    assert_int_equal(ret, -1);
+    assert_null(fileq->fp);
+
+    /* flag 0, fstat fail */
+
+    jqueue_init(fileq);
+
+    will_return(__wrap_fopen, fp);
+    will_return(__wrap_fseek, 1);
+    will_return(__wrap_fstat, -1);
+    expect_string(__wrap__merror, formatted_msg, "(1117): Could not retrieve informations of file '' due to [(0)-(Success)].");
+    expect_memory(__wrap_fclose, __stream, fp, sizeof(fp));
+
+    ret = Handle_JQueue(fileq, 0);
+
+    assert_int_equal(ret, -1);
+    assert_null(fileq->fp);
+
+    /* flag 0, success */
+
+    jqueue_init(fileq);
+
+    will_return(__wrap_fopen, fp);
+    will_return(__wrap_fseek, 1);
+    will_return(__wrap_fstat, 1);
+
+    ret = Handle_JQueue(fileq, 0);
+
+    assert_int_equal(ret, 1);
+    assert_ptr_equal(fileq->fp, fp);
+
+    /* flag CRALERT_FP_SET, fail */
+
+    jqueue_init(fileq);
+
+    ret = Handle_JQueue(fileq, CRALERT_FP_SET);
+
+    assert_int_equal(ret, 0);
+    assert_null(fileq->fp);
+
+    /* flag CRALERT_READ_ALL, success */
+
+    jqueue_init(fileq);
+
+    will_return(__wrap_fopen, fp);
+    will_return(__wrap_fstat, 1);
+
+    ret = Handle_JQueue(fileq, CRALERT_READ_ALL);
+
+    assert_int_equal(ret, 1);
+    assert_ptr_equal(fileq->fp, fp);
+
+    free(fp);
+    free(fileq);
+}
+
+void test_get_alert_json_data(void **state)
+{
+    (void) state;
+
+    file_queue *fileq;
+    FILE *fp;
+    alert_data *alert;
+
+    os_calloc(1, sizeof(file_queue), fileq);
+    os_calloc(1, sizeof(FILE), fp);
+
+    /* jqueue_next fail */
+
+    jqueue_init(fileq);
+
+    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file '/var/ossec/logs/alerts/alerts.json' due to [(0)-(Success)].");
+
+    alert = GetAlertJSONData(fileq);
+
+    assert_null(alert);
+    assert_string_equal(fileq->file_name, "/var/ossec/logs/alerts/alerts.json");
+    assert_null(fileq->fp);
+
+    /* jqueue_next success, no rule */
+
+    jqueue_init(fileq);
+
+    will_return(__wrap_fopen, fp);
+    will_return(__wrap_fseek, 1);
+    will_return(__wrap_fstat, 1);
+
+    expect_value(__wrap_fgets, __n, OS_MAXSTR + 1);
+    expect_memory(__wrap_fgets, __stream, fp, sizeof(fp));
+    will_return(__wrap_fgets, "{\"timestamp\":\"16/01/2020 12:46Z\","
+                               "\"syscheck\":{\"path\":\"/foo/bar\","
+                                             "\"uname_after\":\"root\"},"
+                               "\"srcip\":\"10.0.0.1\","
+                               "\"location\":\"test\","
+                               "\"full_log\":\"Test full log\"}\n");
+    will_return(__wrap_fgets, "ok");
+
+    alert = GetAlertJSONData(fileq);
+
+    assert_null(alert);
+    assert_string_equal(fileq->file_name, "/var/ossec/logs/alerts/alerts.json");
+    assert_ptr_equal(fileq->fp, fp);
+
+    /* jqueue_next success, all data */
+
+    jqueue_init(fileq);
+
+    will_return(__wrap_fopen, fp);
+    will_return(__wrap_fseek, 1);
+    will_return(__wrap_fstat, 1);
+
+    expect_value(__wrap_fgets, __n, OS_MAXSTR + 1);
+    expect_memory(__wrap_fgets, __stream, fp, sizeof(fp));
+    will_return(__wrap_fgets, "{\"timestamp\":\"16/01/2020 12:46Z\","
+                               "\"rule\":{\"id\":\"1900\","
+                                         "\"description\":\"rule description\","
+                                         "\"groups\":[\"group1\",\"group2\"],"
+                                         "\"level\":10},"
+                               "\"syscheck\":{\"path\":\"/foo/bar\","
+                                             "\"uname_after\":\"root\"},"
+                               "\"srcip\":\"10.0.0.1\","
+                               "\"location\":\"test\","
+                               "\"full_log\":\"Test full log\"}\n");
+    will_return(__wrap_fgets, "ok");
+
+    alert = GetAlertJSONData(fileq);
+
+    assert_non_null(alert);
+    assert_string_equal(alert->date, "16/01/2020 12:46Z");
+    assert_int_equal(alert->rule, 1900);
+    assert_string_equal(alert->comment, "rule description");
+    assert_string_equal(alert->group, "group1,group2");
+    assert_int_equal(alert->level, 10);
+    assert_string_equal(alert->filename, "/foo/bar");
+    assert_string_equal(alert->user, "root");
+    assert_string_equal(alert->srcip, "10.0.0.1");
+    assert_string_equal(alert->location, "test");
+    assert_string_equal(alert->log[0], "Test full log");
+    assert_null(alert->log[1]);
+    assert_string_equal(fileq->file_name, "/var/ossec/logs/alerts/alerts.json");
+    assert_ptr_equal(fileq->fp, fp);
+
+    FreeAlertData(alert);
+
+    free(fp);
+    free(fileq);
+}
+
+void test_read_json_mon(void **state)
+{
+    (void) state;
+
+    file_queue *fileq;
+    FILE *fp;
+    alert_data *alert;
+
+    time_t tm;
+    struct tm tm_result = { .tm_sec = 0 };
+
+    tm = time(NULL);
+    localtime_r(&tm, &tm_result);
+
+    os_calloc(1, sizeof(file_queue), fileq);
+    os_calloc(1, sizeof(FILE), fp);
+
+    /* Handle_JQueue fail */
+
+    jqueue_init(fileq);
+
+    will_return(__wrap_fopen, NULL);
+
+    alert = Read_JSON_Mon(fileq, 0, 0);
+
+    assert_null(alert);
+    assert_null(fileq->fp);
+
+    /* Handle_JQueue success, jqueue_next no alert, Handle_JQueue fail */
+
+    jqueue_init(fileq);
+
+    will_return(__wrap_fopen, fp);
+    will_return(__wrap_fseek, 1);
+    will_return(__wrap_fstat, 1);
+
+    expect_value(__wrap_fgets, __n, OS_MAXSTR + 1);
+    expect_memory(__wrap_fgets, __stream, fp, sizeof(fp));
+    will_return(__wrap_fgets, "{\"Test\":\"Hello World 1\"}\n");
+    will_return(__wrap_fgets, "ok");
+
+    expect_memory(__wrap_fclose, __stream, fp, sizeof(fp));
+    will_return(__wrap_fopen, NULL);
+
+    alert = Read_JSON_Mon(fileq, &tm_result, 0);
+
+    assert_null(alert);
+    assert_null(fileq->fp);
+
+    /* Handle_JQueue success, jqueue_next no alert, Handle_JQueue success, jqueue_next no alert, timeout */
+
+    jqueue_init(fileq);
+
+    will_return(__wrap_fopen, fp);
+    will_return(__wrap_fseek, 1);
+    will_return(__wrap_fstat, 1);
+
+    expect_value(__wrap_fgets, __n, OS_MAXSTR + 1);
+    expect_memory(__wrap_fgets, __stream, fp, sizeof(fp));
+    will_return(__wrap_fgets, "{\"Test\":\"Hello World 1\"}\n");
+    will_return(__wrap_fgets, "ok");
+
+    expect_memory(__wrap_fclose, __stream, fp, sizeof(fp));
+    will_return(__wrap_fopen, fp);
+    will_return(__wrap_fseek, 1);
+    will_return(__wrap_fstat, 1);
+
+    expect_value(__wrap_fgets, __n, OS_MAXSTR + 1);
+    expect_memory(__wrap_fgets, __stream, fp, sizeof(fp));
+    will_return(__wrap_fgets, "{\"Test\":\"Hello World 1\"}\n");
+    will_return(__wrap_fgets, "ok");
+
+    expect_value(__wrap_fgets, __n, OS_MAXSTR + 1);
+    expect_memory(__wrap_fgets, __stream, fp, sizeof(fp));
+    will_return(__wrap_fgets, "{\"Test\":\"Hello World 1\"}\n");
+    will_return(__wrap_fgets, "ok");
+
+    alert = Read_JSON_Mon(fileq, &tm_result, 2);
+
+    assert_null(alert);
+    assert_ptr_equal(fileq->fp, fp);
+
+    /* Handle_JQueue success, jqueue_next no alert, Handle_JQueue success, jqueue_next success */
+
+    jqueue_init(fileq);
+
+    will_return(__wrap_fopen, fp);
+    will_return(__wrap_fseek, 1);
+    will_return(__wrap_fstat, 1);
+
+    expect_value(__wrap_fgets, __n, OS_MAXSTR + 1);
+    expect_memory(__wrap_fgets, __stream, fp, sizeof(fp));
+    will_return(__wrap_fgets, "{\"Test\":\"Hello World 1\"}\n");
+    will_return(__wrap_fgets, "ok");
+
+    expect_memory(__wrap_fclose, __stream, fp, sizeof(fp));
+    will_return(__wrap_fopen, fp);
+    will_return(__wrap_fseek, 1);
+    will_return(__wrap_fstat, 1);
+
+    expect_value(__wrap_fgets, __n, OS_MAXSTR + 1);
+    expect_memory(__wrap_fgets, __stream, fp, sizeof(fp));
+    will_return(__wrap_fgets, "{\"timestamp\":\"16/01/2020 12:46Z\","
+                               "\"rule\":{\"id\":\"1900\","
+                                         "\"description\":\"rule description\","
+                                         "\"groups\":[\"group1\",\"group2\"],"
+                                         "\"level\":10},"
+                               "\"syscheck\":{\"path\":\"/foo/bar\","
+                                             "\"uname_after\":\"root\"},"
+                               "\"srcip\":\"10.0.0.1\","
+                               "\"location\":\"test\","
+                               "\"full_log\":\"Test full log\"}\n");
+    will_return(__wrap_fgets, "ok");
+
+    alert = Read_JSON_Mon(fileq, &tm_result, 2);
+
+    assert_non_null(alert);
+    assert_string_equal(alert->date, "16/01/2020 12:46Z");
+    assert_int_equal(alert->rule, 1900);
+    assert_string_equal(alert->comment, "rule description");
+    assert_string_equal(alert->group, "group1,group2");
+    assert_int_equal(alert->level, 10);
+    assert_string_equal(alert->filename, "/foo/bar");
+    assert_string_equal(alert->user, "root");
+    assert_string_equal(alert->srcip, "10.0.0.1");
+    assert_string_equal(alert->location, "test");
+    assert_string_equal(alert->log[0], "Test full log");
+    assert_null(alert->log[1]);
+    assert_ptr_equal(fileq->fp, fp);
+
+    FreeAlertData(alert);
+
+    /* Handle_JQueue success, jqueue_next success */
+
+    jqueue_init(fileq);
+
+    will_return(__wrap_fopen, fp);
+    will_return(__wrap_fseek, 1);
+    will_return(__wrap_fstat, 1);
+
+    expect_value(__wrap_fgets, __n, OS_MAXSTR + 1);
+    expect_memory(__wrap_fgets, __stream, fp, sizeof(fp));
+    will_return(__wrap_fgets, "{\"timestamp\":\"16/01/2020 12:46Z\","
+                               "\"rule\":{\"id\":\"1900\","
+                                         "\"description\":\"rule description\","
+                                         "\"groups\":[\"group1\",\"group2\"],"
+                                         "\"level\":10},"
+                               "\"syscheck\":{\"path\":\"/foo/bar\","
+                                             "\"uname_after\":\"root\"},"
+                               "\"srcip\":\"10.0.0.1\","
+                               "\"location\":\"test\","
+                               "\"full_log\":\"Test full log\"}\n");
+    will_return(__wrap_fgets, "ok");
+
+    alert = Read_JSON_Mon(fileq, &tm_result, 2);
+
+    assert_non_null(alert);
+    assert_string_equal(alert->date, "16/01/2020 12:46Z");
+    assert_int_equal(alert->rule, 1900);
+    assert_string_equal(alert->comment, "rule description");
+    assert_string_equal(alert->group, "group1,group2");
+    assert_int_equal(alert->level, 10);
+    assert_string_equal(alert->filename, "/foo/bar");
+    assert_string_equal(alert->user, "root");
+    assert_string_equal(alert->srcip, "10.0.0.1");
+    assert_string_equal(alert->location, "test");
+    assert_string_equal(alert->log[0], "Test full log");
+    assert_null(alert->log[1]);
+    assert_ptr_equal(fileq->fp, fp);
+
+    FreeAlertData(alert);
+
+    free(fp);
+    free(fileq);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_jqueue_init),
         cmocka_unit_test(test_jqueue_open),
         cmocka_unit_test(test_jqueue_next),
         cmocka_unit_test(test_jqueue_close),
-        cmocka_unit_test(test_jqueue_flags)
+        cmocka_unit_test(test_jqueue_flags),
+        cmocka_unit_test(test_handle_jqueue),
+        cmocka_unit_test(test_get_alert_json_data),
+        cmocka_unit_test(test_read_json_mon)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
