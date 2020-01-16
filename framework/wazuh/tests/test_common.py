@@ -2,7 +2,7 @@ from unittest.mock import patch
 import pytest
 from os import path, remove
 import os
-from wazuh.common import find_wazuh_path, ossec_uid, ossec_gid
+from wazuh.common import find_wazuh_path, ossec_uid, ossec_gid, context_cached, reset_context_cache
 from grp import getgrnam
 from pwd import getpwnam
 from sys import modules
@@ -31,3 +31,16 @@ def test_ossec_uid():
 def test_ossec_gid():
     with patch('wazuh.common.getgrnam', return_value=getgrnam("root")):
         ossec_gid()
+
+
+def test_context_cached():
+    """Verify that context_cached decorator correctly saves and returns saved value when called again"""
+    @context_cached('foobar')
+    def foo(arg='bar'):
+        return arg
+
+    assert foo() == 'bar', '"bar" should be returned.'
+    assert foo('other_arg') != 'other_arg', '"bar" should be returned.'
+    reset_context_cache()
+    assert foo('other_arg_2') == 'other_arg_2', '"other_arg_2" should be returned.'
+    assert foo() == 'other_arg_2', '"other_arg_2" should be returned.'
