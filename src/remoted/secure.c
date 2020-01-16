@@ -447,14 +447,38 @@ int _close_sock(keystore * keys, int sock) {
 
 int key_request_connect() {
 #ifndef WIN32
-    return OS_ConnectUnixDomain(isChroot() ? WM_KEY_REQUEST_SOCK : WM_KEY_REQUEST_SOCK_PATH, SOCK_DGRAM, OS_MAXSTR);
+    if(logr.key_polling_enabled == true){
+        if(logr.mode == KEYPOLL_MODE_MASTER)
+            return OS_ConnectUnixDomain(WM_KEY_REQUEST_CLUSTER_SOCK, SOCK_STREAM, OS_MAXSTR); //SOCK_STREAM (caso cluster)
+        else
+            return OS_ConnectUnixDomain(WM_KEY_REQUEST_SOCK, SOCK_DGRAM, OS_MAXSTR);
+    }
+    else
+        return OS_ConnectUnixDomain(WM_KEY_REQUEST_SOCK, SOCK_DGRAM, OS_MAXSTR);
+     
 #else
     return -1;
 #endif
 }
 
 static int send_key_request(int socket,const char *msg) {
-    return OS_SendUnix(socket,msg,strlen(msg));
+    
+    if(logr.key_polling_enabled == true){
+        if(logr.mode == KEYPOLL_MODE_MASTER){
+            char * message = "{\"message\":\"";
+            char * payload = malloc(strlen(message)+strlen(msg)+2);
+            strcpy(payload, message);
+            strcat(payload, msg);
+            strcat(payload,"\"}");
+            return 1;//OS_SendSecureTCPCluster(socket, run_keypoll, payload,strlen(payload));
+
+            os_free(payload);
+        }
+        else
+            return OS_SendUnix(socket,msg,strlen(msg));
+    }
+    else
+        return OS_SendUnix(socket,msg,strlen(msg));
 }
 
 static void _push_request(const char *request,const char *type) {
