@@ -10,7 +10,7 @@ from wazuh.decoder import Decoder
 import wazuh.cluster as cluster
 import wazuh.core.cluster.control as cluster_control
 import wazuh.configuration as configuration
-import wazuh.security_configuration_assessment as sca
+import wazuh.sca as sca
 import wazuh.manager as manager
 import wazuh.rootcheck as rootcheck
 import wazuh.stats as stats
