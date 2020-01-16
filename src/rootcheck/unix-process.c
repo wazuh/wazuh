@@ -94,7 +94,7 @@ OSList *os_get_process_list()
         /* Check if the pid is present */
         if ((!((getsid(i) == -1) && (errno == ESRCH))) &&
                 (!((getpgid(i) == -1) && (errno == ESRCH)))) {
-            Proc_Info *p_info;
+            W_Proc_Info *p_info;
             char *p_name;
 
             p_name = _os_get_runps(ps, (int)i);
@@ -102,7 +102,7 @@ OSList *os_get_process_list()
                 continue;
             }
 
-            os_calloc(1, sizeof(Proc_Info), p_info);
+            os_calloc(1, sizeof(W_Proc_Info), p_info);
             p_info->p_path = p_name;
             p_info->p_name = NULL;
             OSList_AddData(p_list, p_info);

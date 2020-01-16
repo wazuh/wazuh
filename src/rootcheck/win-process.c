@@ -149,7 +149,7 @@ OSList *os_get_process_list()
     while (Process32Next( hsnap, &p_entry)) {
         char *p_name;
         char *p_path;
-        Proc_Info *p_info;
+        W_Proc_Info *p_info;
 
         /* Set process name */
         os_strdup(p_entry.szExeFile, p_name);
@@ -181,7 +181,7 @@ OSList *os_get_process_list()
             }
         }
 
-        os_calloc(1, sizeof(Proc_Info), p_info);
+        os_calloc(1, sizeof(W_Proc_Info), p_info);
         p_info->p_name = p_name;
         p_info->p_path = p_path;
         OSList_AddData(p_list, p_info);

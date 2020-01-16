@@ -544,53 +544,6 @@ int is_file(char *file_name)
     return (1);
 }
 
-/* Delete the process list */
-int del_plist(OSList *p_list)
-{
-    OSListNode *l_node;
-    OSListNode *p_node = NULL;
-
-    if (p_list == NULL) {
-        return (0);
-    }
-
-    l_node = OSList_GetFirstNode(p_list);
-    while (l_node) {
-        Proc_Info *pinfo;
-
-        pinfo = (Proc_Info *)l_node->data;
-
-        if (pinfo->p_name) {
-            free(pinfo->p_name);
-        }
-
-        if (pinfo->p_path) {
-            free(pinfo->p_path);
-        }
-
-        free(l_node->data);
-
-        if (p_node) {
-            free(p_node);
-            p_node = NULL;
-        }
-        p_node = l_node;
-
-        l_node = OSList_GetNextNode(p_list);
-    }
-
-    if (p_node) {
-        free(p_node);
-        p_node = NULL;
-    }
-
-    pthread_mutex_destroy(&(p_list->mutex));
-    pthread_rwlock_destroy(&(p_list->wr_mutex));
-
-    free(p_list);
-
-    return (1);
-}
 
 /* Check if a process is running */
 int is_process(char *value, OSList *p_list)
@@ -605,9 +558,9 @@ int is_process(char *value, OSList *p_list)
 
     l_node = OSList_GetFirstNode(p_list);
     while (l_node) {
-        Proc_Info *pinfo;
+        W_Proc_Info *pinfo;
 
-        pinfo = (Proc_Info *)l_node->data;
+        pinfo = (W_Proc_Info *)l_node->data;
 
         /* Check if value matches */
         if (pt_matches(pinfo->p_path, value)) {

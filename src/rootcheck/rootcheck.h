@@ -88,9 +88,6 @@ OSList *os_get_process_list(void);
 /* Check if a process is running */
 int is_process(char *value, OSList *p_list);
 
-/*  Delete the process list */
-int del_plist(OSList *p_list);
-
 /* Used to report messages */
 int notify_rk(int rk_type, const char *msg);
 
@@ -139,11 +136,5 @@ extern int rk_sys_count;
 /* All the ports */
 extern char total_ports_udp[65535 + 1];
 extern char total_ports_tcp[65535 + 1];
-
-/* Process struct */
-typedef struct _Proc_Info {
-    char *p_name;
-    char *p_path;
-} Proc_Info;
 
 #endif /* ROOTCHECK_H */
