@@ -40,27 +40,6 @@ list(APPEND tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,fopen -
                          -Wl,--wrap,fileno -Wl,--wrap,fclose -Wl,--wrap,clearerr -Wl,--wrap,fgets")
 
 
-# Generate modulesd library
-file(GLOB reportd_files ../reportd/*.o)
-
-add_library(REPORTD_O STATIC ${reportd_files})
-
-set_source_files_properties(
-  ${reportd_files}
-  PROPERTIES
-  EXTERNAL_OBJECT true
-  GENERATED true
-  )
-
-set_target_properties(
-  REPORTD_O
-  PROPERTIES
-  LINKER_LANGUAGE C
-  )
-
-target_link_libraries(REPORTD_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
-
-
 # Compiling tests
 list(LENGTH tests_names count)
 math(EXPR count "${count} - 1")
@@ -74,7 +53,6 @@ foreach(counter RANGE ${count})
         ${test_name}
         ${WAZUHLIB}
         ${WAZUHEXT}
-        REPORTD_O
         -lcmocka
         -fprofile-arcs
         -ftest-coverage
