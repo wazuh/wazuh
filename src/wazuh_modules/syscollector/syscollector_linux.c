@@ -275,9 +275,7 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all){
 
     char *protocol;
     int random_id = os_random();
-    char *timestamp;
-
-    timestamp = w_get_timestamp(time(NULL));
+    char *timestamp = w_get_timestamp(time(NULL));
 
     if (random_id < 0)
         random_id = -random_id;
@@ -372,7 +370,7 @@ void sys_packages_linux(int queue_fd, const char* LOCATION) {
 char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
 
     char *format = "rpm";
-    char *timestamp;
+    char *timestamp = w_get_timestamp(time(NULL));
     cJSON *object = NULL;
     cJSON *package = NULL;
 
@@ -394,10 +392,6 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
-
-    // Set timestamp
-
-    timestamp = w_get_timestamp(time(NULL));
 
     if ((ret = db_create(&dbp, NULL, 0)) != 0) {
         mterror(WM_SYS_LOGTAG, "Failed to initialize the DB handler: %s", db_strerror(ret));
@@ -589,16 +583,12 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
     FILE *fp;
     size_t length;
     int i, installed = 1;
-    char *timestamp;
+    char *timestamp = w_get_timestamp(time(NULL));
     cJSON *object = NULL;
     cJSON *package = NULL;
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
-
-    // Set timestamp
-
-    timestamp = w_get_timestamp(time(NULL));
 
     memset(read_buff, 0, OS_MAXSTR);
 
@@ -797,9 +787,7 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
 
     char *string;
     int random_id = os_random();
-    char *timestamp;
-
-    timestamp = w_get_timestamp(time(NULL));
+    char *timestamp = w_get_timestamp(time(NULL));
 
     if (random_id < 0)
         random_id = -random_id;
@@ -854,9 +842,7 @@ void sys_os_unix(int queue_fd, const char* LOCATION){
 
     char *string;
     int random_id = os_random();
-    char *timestamp;
-
-    timestamp = w_get_timestamp(time(NULL));
+    char *timestamp = w_get_timestamp(time(NULL));
 
     if (random_id < 0)
         random_id = -random_id;
@@ -911,13 +897,10 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     int i = 0, size_ifaces = 0;
     struct ifaddrs *ifaddr = NULL, *ifa;
     int random_id = os_random();
-    char *timestamp;
+    char *timestamp = w_get_timestamp(time(NULL));
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
-
-    timestamp = w_get_timestamp(time(NULL));
-
 
     if (random_id < 0)
         random_id = -random_id;
@@ -1443,7 +1426,7 @@ char* get_default_gateway(char *ifa_name){
 
 void sys_proc_linux(int queue_fd, const char* LOCATION) {
 
-    char *timestamp;
+    char *timestamp = w_get_timestamp(time(NULL));
     int random_id = os_random();
 
     if (random_id < 0)
@@ -1451,8 +1434,6 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
-
-    timestamp = w_get_timestamp(time(NULL));
 
     PROCTAB* proc = openproc(PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV);
 

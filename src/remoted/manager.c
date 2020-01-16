@@ -474,6 +474,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
 void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
     DIR *dp;
     char *group;
+    char *save_ptr = NULL;
     const char delim[2] = ",";
     char path[PATH_MAX + 1];
     char ** files;
@@ -486,7 +487,7 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
 
     if (!logr.nocmerged) {
         /* Get each group of the multi-group */
-        group = strtok(multi_group, delim);
+        group = strtok_r(multi_group, delim, &save_ptr);
 
         /* Delete agent.conf from multi group before appending to it */
         snprintf(agent_conf_multi_path,PATH_MAX + 1,"%s/%s/%s",MULTIGROUPS_DIR,hash_multigroup,"agent.conf");
@@ -552,7 +553,7 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
 
             }
 next:
-            group = strtok(NULL, delim);
+            group = strtok_r(NULL, delim, &save_ptr);
             free_strarray(files);
             closedir(dp);
 
@@ -593,7 +594,7 @@ static void c_files()
 {
     DIR *dp;
     char ** subdir;
-    struct dirent *entry;
+    struct dirent *entry = NULL;
     unsigned int p_size = 0;
     char path[PATH_MAX + 1];
     int oldmask;
@@ -616,7 +617,7 @@ static void c_files()
         int j;
         file_sum **f_sum;
         DIR *dp;
-        struct dirent *entry;
+        struct dirent *entry = NULL;
 
         if (groups) {
             for (i = 0; groups[i]; i++) {
@@ -1259,7 +1260,7 @@ int purge_group(char *group){
 
     DIR *dp;
     char path[PATH_MAX + 1];
-    struct dirent *entry;
+    struct dirent *entry = NULL;
     FILE *fp = NULL;
     char groups_info[OS_SIZE_65536 + 1] = {0};
     char **groups;

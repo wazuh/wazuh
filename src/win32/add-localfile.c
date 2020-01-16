@@ -73,12 +73,12 @@ int config_file(char *name, char *file, int quiet)
     /* Check if the file has a variable format */
     if (strchr(file, '%') != NULL) {
         time_t tm;
-        struct tm *p;
+        struct tm tm_result = { .tm_sec = 0 };
 
         tm = time(NULL);
-        p = localtime(&tm);
+        localtime_r(&tm, &tm_result);
 
-        if (strftime(ffile, 255, file, p) == 0) {
+        if (strftime(ffile, 255, file, &tm_result) == 0) {
             return (-1);
         }
     } else {

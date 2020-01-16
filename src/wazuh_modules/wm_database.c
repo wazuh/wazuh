@@ -438,7 +438,7 @@ void wm_clean_dangling_db() {
     char path[PATH_MAX + 1];
     char * end;
     char * name;
-    struct dirent * dirent;
+    struct dirent * dirent = NULL;
     DIR * dir;
 
     snprintf(dirname, sizeof(dirname), "%s%s/agents", isChroot() ? "/" : "", WDB_DIR);
@@ -449,7 +449,7 @@ void wm_clean_dangling_db() {
         return;
     }
 
-    while ((dirent = readdir(dir))) {
+    while ((dirent = readdir(dir)) != NULL) {
         if (dirent->d_name[0] != '.') {
             if (end = strchr(dirent->d_name, '-'), end) {
                 *end = 0;
@@ -756,7 +756,7 @@ int wm_sync_shared_group(const char *fname) {
 
 void wm_scan_directory(const char *dirname) {
     char path[PATH_MAX];
-    struct dirent *dirent;
+    struct dirent *dirent = NULL;
     DIR *dir;
 
     mtdebug1(WM_DATABASE_LOGTAG, "Scanning directory '%s'.", dirname);
@@ -767,7 +767,7 @@ void wm_scan_directory(const char *dirname) {
         return;
     }
 
-    while ((dirent = readdir(dir)))
+    while ((dirent = readdir(dir)) != NULL)
         if (dirent->d_name[0] != '.')
             wm_sync_file(dirname, dirent->d_name);
 

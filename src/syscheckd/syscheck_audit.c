@@ -707,7 +707,7 @@ void audit_parse(char *buffer) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 os_malloc(match_size + 1, w_evt->group_id);
                 snprintf (w_evt->group_id, match_size + 1, "%.*s", match_size, buffer + match[1].rm_so);
-                w_evt->group_name = strdup(get_group(atoi(w_evt->group_id)));
+                w_evt->group_name = (char*)get_group(atoi(w_evt->group_id));
             }
             // process_id
             if(regexec(&regexCompiled_pid, buffer, 2, match, 0) == 0) {

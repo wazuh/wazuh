@@ -87,7 +87,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
         while ((de = readdir(dr)) != NULL) {
 
             // Skip not intereset files
-            if (strncmp(de->d_name, ".", 1) == 0 || strncmp(de->d_name, "..", 2) == 0) {
+            if (!strncmp(de->d_name, ".", 1)) {
                 continue;
             } else if (strstr(de->d_name, ".app")) {
                 snprintf(path, PATH_LENGTH - 1, "%s/%s", MAC_APPS, de->d_name);
@@ -114,7 +114,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
         while ((de = readdir(dr)) != NULL) {
 
             // Skip not intereset files
-            if (strncmp(de->d_name, ".", 1) == 0 || strncmp(de->d_name, "..", 2) == 0) {
+            if (!strncmp(de->d_name, ".", 1)) {
                 continue;
             } else if (strstr(de->d_name, ".app")) {
                 snprintf(path, PATH_LENGTH - 1, "%s/%s", UTILITIES, de->d_name);
@@ -141,11 +141,11 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     } else {
 
         DIR *dir;
-        struct dirent *version;
+        struct dirent *version = NULL;
 
         while ((de = readdir(dr)) != NULL) {
 
-            if (strncmp(de->d_name, ".", 1) == 0 || strncmp(de->d_name, "..", 2) == 0) {
+            if (strncmp(de->d_name, ".", 1) == 0) {
                 continue;
             }
 
