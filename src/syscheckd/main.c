@@ -119,12 +119,12 @@ int main(int argc, char **argv)
             }
         }
 
-        syscheck.dir[0] = NULL;
+        os_free(syscheck.dir[0]);
 
         if (!syscheck.ignore) {
             os_calloc(1, sizeof(char *), syscheck.ignore);
         } else {
-            syscheck.ignore[0] = NULL;
+            os_free(syscheck.ignore[0]);
         }
 
         if (!test_config) {
