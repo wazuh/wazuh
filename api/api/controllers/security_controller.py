@@ -131,13 +131,13 @@ def update_user(username):
 
 @exception_handler
 def delete_users(usernames=None):
-    """Delete an existent user
+    """Delete an existent list of users
 
-    :param usernames: Name of the user to be removed
+    :param usernames: Names of the users to be removed
     :return: Result of the operation
     """
     f_kwargs = {'username_list': usernames}
-    dapi = DistributedAPI(f=security.delete_user,
+    dapi = DistributedAPI(f=security.remove_users,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,

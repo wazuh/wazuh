@@ -40,5 +40,7 @@ def RBAC_bypasser(**kwargs):
         @wraps(f)
         def wrapper(*args, **kwargs):
             return f(*args, **kwargs)
+
         return wrapper
+
     return decorator

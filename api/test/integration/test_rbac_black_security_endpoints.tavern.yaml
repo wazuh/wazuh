@@ -685,7 +685,7 @@ stages:
                 message: !anystr
                 remediation: !anything
               id:
-                - 1
+                - '1'
           total_affected_items: 0
           total_failed_items: 1
         message: Role could not be updated
@@ -781,7 +781,9 @@ stages:
       body:
         data:
           affected_items:
-            - '2'
+            - roles:
+                - 2
+              username: python
           failed_items:
             - error:
                 code: 4000
@@ -812,7 +814,10 @@ stages:
       body:
         data:
           affected_items:
-            - '1'
+            - roles:
+                - 1
+                - 2
+              username: python
           failed_items:
             - error:
                 code: 4017
@@ -841,8 +846,8 @@ stages:
       body:
         data:
           affected_items:
-            - '1'
-            - '2'
+            - roles: []
+              username: python
           failed_items:
             - error:
                 code: 4016
@@ -874,8 +879,58 @@ stages:
       body:
         data:
           affected_items:
-            - '6'
-            - '7'
+            - id: 5
+              name: normalUserModified
+              policies:
+                - id: 2
+                  name: wazuh-wuiPolicy
+                  policy:
+                    actions:
+                      - agent:create
+                    effect: allow
+                    resources:
+                      - agent:id:001
+                      - agent:id:002
+                      - agent:id:003
+                - id: 3
+                  name: technicalPolicy
+                  policy:
+                    actions:
+                      - agent:create
+                    effect: allow
+                    resources:
+                      - "*:*:*"
+                - id: 6
+                  name: ossecPolicy
+                  policy:
+                    actions:
+                      - role:read
+                    effect: allow
+                    resources:
+                      - role:id:*
+                - id: 7
+                  name: policy1
+                  policy:
+                    actions:
+                      - role:read
+                    effect: deny
+                    resources:
+                      - role:id:*
+                - id: 10
+                  name: policy4
+                  policy:
+                    actions:
+                      - policy:delete
+                    effect: deny
+                    resources:
+                      - policy:id:*
+              rule:
+                FIND$:
+                  definition: normalUserRuleModified
+              users:
+                - normal
+                - ossec
+                - rbac
           failed_items:
             - error:
                 code: 4000
@@ -906,8 +961,42 @@ stages:
       body:
         data:
           affected_items:
-            - '6'
-            - '7'
+            - id: 5
+              name: normalUserModified
+              policies:
+                - id: 2
+                  name: wazuh-wuiPolicy
+                  policy:
+                    actions:
+                      - agent:create
+                    effect: allow
+                    resources:
+                      - agent:id:001
+                      - agent:id:002
+                      - agent:id:003
+                - id: 3
+                  name: technicalPolicy
+                  policy:
+                    actions:
+                      - agent:create
+                    effect: allow
+                    resources:
+                      - "*:*:*"
+                - id: 10
+                  name: policy4
+                  policy:
+                    actions:
+                      - policy:delete
+                    effect: deny
+                    resources:
+                      - policy:id:*
+              rule:
+                FIND$:
+                  definition: normalUserRuleModified
+              users:
+                - normal
+                - ossec
+                - rbac
           failed_items:
             - error:
                 code: 4010
@@ -1033,7 +1122,26 @@ stages:
           affected_items:
             - id: 4
               name: administrator
-              policies: []
+              policies:
+                - id: 4
+                  name: administratorPolicyModified
+                  policy:
+                    actions:
+                      - agent:read
+                    effect: deny
+                    resources:
+                      - agent:id:097
+                      - agent:id:002
+                      - agent:id:003
+                - id: 5
+                  name: normalPolicy
+                  policy:
+                    actions:
+                      - agent:update
+                      - agent:delete
+                    effect: deny
+                    resources:
+                      - agent:id:*
               rule:
                 MATCH:
                   definition: administratorRule
