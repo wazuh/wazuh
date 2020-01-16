@@ -203,7 +203,7 @@ void test_read_scheduling_weekday_configuration() {
         "   <aws_profile>default</aws_profile>\n"
         "</bucket>\n"
     ;
-    wmodule *module = calloc(1, sizeof(wmodule));;
+    wmodule *module = calloc(1, sizeof(wmodule));
     OS_XML xml;
     XML_NODE nodes = string_to_xml_node(string, &xml);
     assert_int_equal(wm_aws_read(&xml, nodes, module), 0);
