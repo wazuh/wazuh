@@ -32,7 +32,7 @@ int rk_check_dir(const char *dir, const char *file, char *pattern)
 {
     int ret_code = 0;
     char f_name[PATH_MAX + 2];
-    struct dirent *entry;
+    struct dirent *entry = NULL;
     struct stat statbuf_local;
     DIR *dp = NULL;
 
@@ -422,7 +422,7 @@ char *normalize_string(char *str)
 int isfile_ondir(const char *file, const char *dir)
 {
     DIR *dp = NULL;
-    struct dirent *entry;
+    struct dirent *entry = NULL;
     dp = opendir(dir);
 
     if (!dp) {

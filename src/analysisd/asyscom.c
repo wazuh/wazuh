@@ -28,14 +28,14 @@ size_t asyscom_dispatch(char * command, char ** output) {
         // getconfig section
         if (!rcv_args){
             mdebug1("ASYSCOM getconfig needs arguments.");
-            *output = strdup("err ASYSCOM getconfig needs arguments");
+            os_strdup("err ASYSCOM getconfig needs arguments", *output);
             return strlen(*output);
         }
         return asyscom_getconfig(rcv_args, output);
 
     } else {
         mdebug1("ASYSCOM Unrecognized command '%s'.", rcv_comm);
-        *output = strdup("err Unrecognized command");
+        os_strdup("err Unrecognized command", *output);
         return strlen(*output);
     }
 }
@@ -47,7 +47,7 @@ size_t asyscom_getconfig(const char * section, char ** output) {
 
     if (strcmp(section, "global") == 0){
         if (cfg = getGlobalConfig(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -59,7 +59,7 @@ size_t asyscom_getconfig(const char * section, char ** output) {
     }
     else if (strcmp(section, "active_response") == 0){
         if (cfg = getARManagerConfig(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -71,7 +71,7 @@ size_t asyscom_getconfig(const char * section, char ** output) {
     }
     else if (strcmp(section, "alerts") == 0){
         if (cfg = getAlertsConfig(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -83,7 +83,7 @@ size_t asyscom_getconfig(const char * section, char ** output) {
     }
     else if (strcmp(section, "decoders") == 0){
         if (cfg = getDecodersConfig(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -95,7 +95,7 @@ size_t asyscom_getconfig(const char * section, char ** output) {
     }
     else if (strcmp(section, "rules") == 0){
         if (cfg = getRulesConfig(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -107,7 +107,7 @@ size_t asyscom_getconfig(const char * section, char ** output) {
     }
     else if (strcmp(section, "internal") == 0){
         if (cfg = getAnalysisInternalOptions(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -119,7 +119,7 @@ size_t asyscom_getconfig(const char * section, char ** output) {
     }
     else if (strcmp(section, "command") == 0){
         if (cfg = getARCommandsConfig(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -131,7 +131,7 @@ size_t asyscom_getconfig(const char * section, char ** output) {
     }
     else if (strcmp(section, "labels") == 0){
         if (cfg = getManagerLabelsConfig(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -145,7 +145,7 @@ size_t asyscom_getconfig(const char * section, char ** output) {
     }
 error:
     mdebug1("At ASYSCOM getconfig: Could not get '%s' section", section);
-    *output = strdup("err Could not get requested section");
+    os_strdup("err Could not get requested section", *output);
     return strlen(*output);
 }
 

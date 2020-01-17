@@ -27,7 +27,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 {
     size_t loglen;
     char *pieces;
-    struct tm p;
+    struct tm p = { .tm_sec = 0 };
     struct timespec local_c_timespec;
 
     /* The message is formated in the following way:
@@ -554,7 +554,6 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     }
 
     /* Set up the event data */
-    localtime(&c_time);
     gettime(&local_c_timespec);
     time(&lf->generate_time);
     lf->time = local_c_timespec;

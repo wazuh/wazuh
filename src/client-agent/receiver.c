@@ -150,7 +150,7 @@ int receive_msg()
                         merror("Error communicating with Security configuration assessment");
                         close(agt->cfgadq);
 
-                        if ((agt->cfgadq = StartMQ(CFGAQUEUE, WRITE)) < 0) {
+                        if ((agt->cfgadq = StartMQ(CFGASSESSMENTQUEUEPATH, WRITE)) < 0) {
                             merror("Unable to connect to the Security configuration assessment "
                                     "queue (disabled).");
                             agt->cfgadq = -1;
@@ -161,7 +161,7 @@ int receive_msg()
                         }
                     }
                 } else {
-                    if ((agt->cfgadq = StartMQ(CFGAQUEUE, WRITE)) < 0) {
+                    if ((agt->cfgadq = StartMQ(CFGASSESSMENTQUEUEPATH, WRITE)) < 0) {
                         merror("Unable to connect to the Security configuration assessment "
                             "queue (disabled).");
                         agt->cfgadq = -1;
@@ -220,7 +220,7 @@ int receive_msg()
                 }
 
                 snprintf(file, OS_SIZE_1024, "%s/%s",
-                         SHAREDCFG_DIR,
+                         SHAREDCFG_DIRPATH,
                          tmp_msg);
 
                 fp = fopen(file, "w");
@@ -260,11 +260,11 @@ int receive_msg()
                         final_file = strrchr(file, '/');
                         if (final_file) {
                             if (strcmp(final_file + 1, SHAREDCFG_FILENAME) == 0) {
-                                if (cldir_ex_ignore(SHAREDCFG_DIR, IGNORE_LIST)) {
+                                if (cldir_ex_ignore(SHAREDCFG_DIRPATH, IGNORE_LIST)) {
                                     mwarn("Could not clean up shared directory.");
                                 }
 
-                                if(!UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT)){
+                                if(!UnmergeFiles(file, SHAREDCFG_DIRPATH, OS_TEXT)){
                                     char msg_output[OS_MAXSTR];
 
                                     snprintf(msg_output, OS_MAXSTR, "%c:%s:%s",  LOCALFILE_MQ, "ossec-agent", AG_IN_UNMERGE);

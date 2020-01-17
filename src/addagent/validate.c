@@ -593,7 +593,7 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
     if (!active_only && print_status) {
         const char *aip = NULL;
         DIR *dirp;
-        struct dirent *dp;
+        struct dirent *dp = NULL;
 
         if (!csv_output && !json_output) {
             printf("\nList of agentless devices:\n");
@@ -696,6 +696,7 @@ void OS_BackupAgentInfo(const char *id, const char *name, const char *ip)
 char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_t now) {
     char path[OS_FLSIZE + 1];
     char timestamp[40];
+    struct tm tm_result = { .tm_sec = 0 };
 
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
         merror("Unspecified uid or gid.");
@@ -704,7 +705,7 @@ char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_
 
     /* Directory for year ^*/
 
-    strftime(timestamp, 40, "%Y", localtime(&now));
+    strftime(timestamp, 40, "%Y", localtime_r(&now, &tm_result));
     snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, timestamp);
 
     if (IsDir(path) != 0) {
@@ -715,7 +716,7 @@ char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_
 
     /* Directory for month */
 
-    strftime(timestamp, 40, "%Y/%b", localtime(&now));
+    strftime(timestamp, 40, "%Y/%b", localtime_r(&now, &tm_result));
     snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, timestamp);
 
     if (IsDir(path) != 0) {
@@ -726,7 +727,7 @@ char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_
 
     /* Directory for day */
 
-    strftime(timestamp, 40, "%Y/%b/%d", localtime(&now));
+    strftime(timestamp, 40, "%Y/%b/%d", localtime_r(&now, &tm_result));
     snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, timestamp);
 
     if (IsDir(path) != 0) {
@@ -767,13 +768,14 @@ void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time
 {
     File file;
     char timestamp[40];
+    struct tm tm_result = { .tm_sec = 0 };
 
     if (TempFile(&file, TIMESTAMP_FILE, 1) < 0) {
         merror("Couldn't open timestamp file.");
         return;
     }
 
-    strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime(&now));
+    strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime_r(&now, &tm_result));
     fprintf(file.fp, "%s %s %s %s\n", id, name, ip, timestamp);
     fclose(file.fp);
     OS_MoveFile(file.name, TIMESTAMP_FILE);

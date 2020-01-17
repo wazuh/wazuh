@@ -51,10 +51,12 @@ exclusive.add_argument("--custom_flags", metavar = 'flags', type = str, required
 exclusive.add_argument("--enable_realtime", action='store_true', required = False, help="Enable Realtime protection. Example of use: Kaspersky.py --enable_realtime")
 exclusive.add_argument("--disable_realtime", action='store_true', required = False, help="Disable Realtime protection. Example of use: Kaspersky.py --disable_realtime")
 
-
-
 args, unknown = parser.parse_known_args()
 
+# If "delete" setting comes in first position. AR timeout happened. Disable KESL realtime.
+if len(sys.argv) > 1 and args.enable_realtime and str(sys.argv[1]) == "delete":
+    args.enable_realtime = False
+    args.disable_realtime = True
 
 ##################################################################################################################
 # Kaspersky endpoint CLI settings

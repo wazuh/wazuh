@@ -99,7 +99,7 @@ static int os_setdecoderids(const char *p_name)
 
                 /* Set parent name */
                 free(nnode->name);
-                nnode->name = strdup(tmp_name);
+                os_strdup(tmp_name, nnode->name);
             }
 
             /* Id cannot be 0 */
@@ -280,7 +280,7 @@ int ReadDecodeXML(const char *file)
         /* Default values to the list */
         pi->parent = NULL;
         pi->id = 0;
-        pi->name = strdup(node[i]->values[0]);
+        os_strdup(node[i]->values[0], pi->name);
         pi->order = NULL;
         pi->plugindecoder = NULL;
         pi->fts = 0;
@@ -475,7 +475,7 @@ int ReadDecodeXML(const char *file)
 
                 norder = OS_StrBreak(',', elements[j]->content, Config.decoder_order_size);
                 s_norder = norder;
-                os_calloc(Config.decoder_order_size, sizeof(void *), pi->order);
+                os_calloc(Config.decoder_order_size, sizeof(void *(*)(struct _Eventinfo *, char *, const char *)), pi->order);
                 os_calloc(Config.decoder_order_size, sizeof(char *), pi->fields);
 
                 /* Check the values from the order */
@@ -522,7 +522,7 @@ int ReadDecodeXML(const char *file)
                         pi->order[order_int] = SystemName_FP;
                     } else {
                         pi->order[order_int] = DynamicField_FP;
-                        pi->fields[order_int] = strdup(word);
+                        os_strdup(word, pi->fields[order_int]);
                     }
 
                     free(*norder);

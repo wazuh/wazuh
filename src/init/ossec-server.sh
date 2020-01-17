@@ -37,14 +37,17 @@ AUTHOR="Wazuh Inc."
 USE_JSON=false
 INITCONF="/etc/ossec-init.conf"
 DAEMONS="wazuh-modulesd ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-db ossec-authd ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd"
+OP_DAEMONS="ossec-maild ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd"
 
 if ! is_rhel_le_5
 then
     DAEMONS="wazuh-clusterd $DAEMONS"
+    OP_DAEMONS="wazuh-clusterd $OP_DAEMONS"
 fi
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
+OP_SDAEMONS=$(echo $OP_DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
 
 [ -f ${INITCONF} ] && . ${INITCONF}  || echo "ERROR: No such file ${INITCONF}"
 
@@ -328,6 +331,31 @@ start()
                 continue
              fi
         fi
+        ## If ossec-authd is disabled, don't try to start it.
+        if [ X"$i" = "Xossec-authd" ]; then
+             start_config="$(grep -n "<auth>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
+             end_config="$(grep -n "</auth>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
+             if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
+                sed -n "${start_config},${end_config}p" ${DIR}/etc/ossec.conf | grep "<disabled>yes" >/dev/null 2>&1
+                if [ $? = 0 ]; then
+                    continue
+                fi
+             else
+                continue
+             fi
+             # If it is a worker node, don't try to start authd.
+             start_config="$(grep -n "<cluster>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
+             end_config="$(grep -n "</cluster>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
+             if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
+                sed -n "${start_config},${end_config}p" ${DIR}/etc/ossec.conf | grep "<disabled>yes" >/dev/null 2>&1
+                if [ $? != 0 ]; then
+                    sed -n "${start_config},${end_config}p" ${DIR}/etc/ossec.conf | grep "<node_type>worker" >/dev/null 2>&1
+                    if [ $? = 0 ]; then
+                        continue
+                    fi
+                fi
+             fi
+        fi
         if [ $USE_JSON = true ] && [ $first = false ]; then
             echo -n ','
         else
@@ -337,6 +365,7 @@ start()
         pstatus ${i};
         if [ $? = 0 ]; then
             ## Create starting flag
+            failed=false
             rm -f ${DIR}/var/run/${i}.failed
             touch ${DIR}/var/run/${i}.start
             if [ $USE_JSON = true ]; then
@@ -345,6 +374,25 @@ start()
                 ${DIR}/bin/${i} ${DEBUG_CLI};
             fi
             if [ $? != 0 ]; then
+                failed=true
+            else
+                is_optional ${i};
+                if [ $? = 0 ]; then
+                    j=0;
+                    while [ $failed = false ]; do
+                        pstatus ${i};
+                        if [ $? = 1 ]; then
+                            break;
+                        fi
+                        sleep 0.5;
+                        j=`expr $j + 1`;
+                        if [ "$j" = "${MAX_ITERATION}" ]; then
+                            failed=true
+                        fi
+                    done
+                fi
+            fi
+            if [ $failed = true ]; then
                 if [ $USE_JSON = true ]; then
                     echo -n '{"daemon":"'${i}'","status":"error"}'
                 else
@@ -384,6 +432,18 @@ start()
         echo "Completed."
     fi
     rm -f ${DIR}/var/run/*.start
+}
+
+is_optional()
+{
+    daemon=$1
+    for op in ${OP_SDAEMONS}; do
+        # If the daemon is optional, don't check if it is running in background.
+        if [ X"$op" = X"$daemon" ]; then
+            return 1;
+        fi
+    done
+    return 0;
 }
 
 pstatus()

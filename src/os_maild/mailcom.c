@@ -27,14 +27,14 @@ size_t mailcom_dispatch(char * command, char ** output) {
         // getconfig section
         if (!rcv_args){
             mdebug1("MAILCOM getconfig needs arguments.");
-            *output = strdup("err MAILCOM getconfig needs arguments");
+            os_strdup("err MAILCOM getconfig needs arguments", *output);
             return strlen(*output);
         }
         return mailcom_getconfig(rcv_args, output);
 
     } else {
         mdebug1("MAILCOM Unrecognized command '%s'.", rcv_comm);
-        *output = strdup("err Unrecognized command");
+        os_strdup("err Unrecognized command", *output);
         return strlen(*output);
     }
 }
@@ -46,7 +46,7 @@ size_t mailcom_getconfig(const char * section, char ** output) {
 
     if (strcmp(section, "global") == 0){
         if (cfg = getMailConfig(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -57,7 +57,7 @@ size_t mailcom_getconfig(const char * section, char ** output) {
         }
     } else if (strcmp(section, "alerts") == 0){
         if (cfg = getMailAlertsConfig(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -68,7 +68,7 @@ size_t mailcom_getconfig(const char * section, char ** output) {
         }
     } else if (strcmp(section, "internal") == 0){
         if (cfg = getMailInternalOptions(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -83,7 +83,7 @@ size_t mailcom_getconfig(const char * section, char ** output) {
     }
 error:
     mdebug1("At MAILCOM getconfig: Could not get '%s' section", section);
-    *output = strdup("err Could not get requested section");
+    os_strdup("err Could not get requested section", *output);
     return strlen(*output);
 }
 

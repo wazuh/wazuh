@@ -47,81 +47,17 @@ void WinevtInit(){
     mdebug1("WinevtInit completed.");
 }
 
-char *replace_formatting_bytes(const char * string, const char * search, const char * replace) {
-    char * result;
-    const char * scur;
-    const char * snext;
-    const char * prev_char;
-    const char * snext_search;
-    size_t wi = 0;
-    size_t zcur;
-    size_t znext_search;
-
-    if (!(string && search && replace)) {
-        return NULL;
-    }
-
-    const size_t ZSEARCH = strlen(search);
-    const size_t ZREPLACE = strlen(replace);
-
-    os_malloc(sizeof(char), result);
-
-    scur = string;
-
-    while (snext = strstr(scur, search), snext) {
-        // Check if the previous character is not a backslash, which would mean it is not a formatting character
-        prev_char = snext - 1;
-
-        if (*prev_char != '\\') {
-            zcur = snext - scur;
-            os_realloc(result, wi + zcur + ZREPLACE + 1, result);
-            memcpy(result + wi, scur, zcur);
-            wi += zcur;
-            memcpy(result + wi, replace, ZREPLACE);
-            wi += ZREPLACE;
-            scur = snext + ZSEARCH;
-        } else {
-            if (snext_search = strstr(snext + ZSEARCH, search), snext_search) {
-                znext_search = snext_search - scur;
-                os_realloc(result, wi + znext_search + 1, result);
-                memcpy(result + wi, scur, znext_search);
-                wi += znext_search;
-                scur = snext_search;
-            }
-        }
-    }
-
-    zcur = strlen(scur);
-    os_realloc(result, wi + zcur + 1, result);
-    memcpy(result + wi, scur, zcur);
-    wi += zcur;
-    result[wi] = '\0';
-
-    return result;
-}
-
 char *replace_win_format(char *str, int message){
-    char *ret1 = NULL;
-    char *ret2 = NULL;
     char *result = NULL;
     char *end = NULL;
     int spaces = 0;
 
     // Remove undesired characters from the string
     if (message) {
-        ret1 = replace_formatting_bytes(str, "\\n", "\n");
-        ret2 = replace_formatting_bytes(ret1, "\\r", "\r");
-        result = replace_formatting_bytes(ret2, "\\t", "\t");
-        os_free(ret1);
-        os_free(ret2);
+        result = wstr_unescape_json(str);
     } else {
         os_strdup(str, result);
     }
-
-    ret1 = wstr_replace(result, "\\\"", "\"");
-    os_free(result);
-    result = wstr_replace(ret1, "\\\\", "\\");
-    os_free(ret1);
 
     // Remove trailing spaces at the end of the string
     end = result + strlen(result) - 1;

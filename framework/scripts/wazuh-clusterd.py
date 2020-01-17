@@ -179,5 +179,8 @@ if __name__ == '__main__':
         asyncio.run(main_function(args, cluster_configuration, cluster_items, main_logger))
     except KeyboardInterrupt:
         main_logger.info("SIGINT received. Bye!")
+    except MemoryError:
+        main_logger.error("Directory '/tmp' needs read, write & execution "
+                          "permission for 'ossec' user")
     except Exception as e:
         main_logger.error(f"Unhandled exception: {e}")
