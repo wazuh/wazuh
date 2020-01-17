@@ -83,7 +83,6 @@ def test_failed_get_item_agent(mock_agent_attr, mock_basic_info, mock_agents_inf
     expected_exception : int
         Expected error code when triggering the exception.
     """
-    """Test if get_item_agent method handle exceptions properly."""
     with patch('wazuh.utils.WazuhDBConnection') as mock_wdb:
         mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_syscollector_000.sql')
         results = syscollector.get_item_agent(agent_list=agent_list, offset=0, limit=500, nested=False)
