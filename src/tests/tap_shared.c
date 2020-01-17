@@ -123,6 +123,53 @@ int test_log_builder() {
     return retval;
 }
 
+int test_get_file_content() {
+    int max_size = 100;
+    const char * expected = "{\n"
+                            "    \"test\":[\n"
+                            "        {\n"
+                            "            \"test_name\":\"Test1\",\n"
+                            "            \"test_number\":1\n"
+                            "        }, {\n"
+                            "            \"test_name\":\"Test2\",\n"
+                            "            \"test_number\":2\n"
+                            "        }, {\n"
+                            "            \"test_name\":\"Test3\",\n"
+                            "            \"test_number\":3\n"
+                            "        }\n"
+                            "    ]\n"
+                            "}\n";
+
+    char * content;
+
+    // Test NULL path
+    if (content = w_get_file_content(NULL, max_size), content != NULL) {
+        return 0;
+    }
+
+    // Test invalid path
+    if (content = w_get_file_content("./tests/invalid_path", max_size), content != NULL) {
+        return 0;
+    }
+
+    // Test file size exceeds max size allowed
+    if (content = w_get_file_content("./tests/test_file.json", max_size), content != NULL) {
+        return 0;
+    }
+
+    max_size = 300;
+
+    // Test file content
+    if (content = w_get_file_content("./tests/test_file.json", max_size), content == NULL) {
+        return 0;
+    }
+
+    w_assert_str_eq(content, expected);
+    free(content);
+
+    return 1;
+}
+
 int main(void) {
     printf("\n\n   STARTING TEST - OS_SHARED   \n\n");
 
@@ -146,6 +193,9 @@ int main(void) {
 
     /* Test log builder */
     TAP_TEST_MSG(test_log_builder(), "Test log builder.");
+
+    /* Test get_file_content function */
+    TAP_TEST_MSG(test_get_file_content(), "Get the content of a file.");
 
     TAP_PLAN;
     TAP_SUMMARY;

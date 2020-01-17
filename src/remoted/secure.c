@@ -167,7 +167,15 @@ void HandleSecure()
                 if (fd == logr.sock) {
                     sock_client = accept(logr.sock, (struct sockaddr *)&peer_info, &logr.peer_size);
                     if (sock_client < 0) {
-                        merror_exit(ACCEPT_ERROR, strerror(errno), errno);
+                        switch (errno) {
+                        case ECONNABORTED:
+                            mdebug1(ACCEPT_ERROR, strerror(errno), errno);
+                            break;
+                        default:
+                            merror(ACCEPT_ERROR, strerror(errno), errno);
+                        }
+
+                        continue;
                     }
 
                     nb_open(&netbuffer, sock_client, &peer_info);
