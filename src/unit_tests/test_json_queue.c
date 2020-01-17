@@ -17,6 +17,8 @@
 
 #include "../headers/shared.h"
 
+static int test_mode = 0;
+
 int Handle_JQueue(file_queue *fileq, int flags) __attribute__((nonnull));
 
 int __wrap__minfo()
@@ -36,19 +38,49 @@ void __wrap__merror(const char * file, int line, const char * func, const char *
     check_expected(formatted_msg);
 }
 
-FILE * __wrap_fopen(const char *__restrict __filename, const char *__restrict __modes) __wur
+extern FILE * __real_fopen(const char * __filename, const char * __modes);
+FILE * __wrap_fopen(const char * __filename, const char * __modes)
 {
-    return mock_type(FILE *);
+    if (test_mode) {
+        check_expected(__filename);
+        check_expected(__modes);
+
+        return mock_type(FILE *);
+    } else {
+        return __real_fopen(__filename, __modes);
+    }
 }
 
-int __wrap_fseek()
+extern int __real_fclose (FILE *__stream);
+int __wrap_fclose(FILE *__stream)
 {
-    return mock();
+    if (test_mode) {
+        check_expected_ptr(__stream);
+
+        return 0;
+    } else {
+        return __real_fclose(__stream);
+    }
 }
 
-int __wrap_fstat()
+extern int __real_fseek(FILE *__stream, long int __off, int __whence);
+int __wrap_fseek(FILE *__stream, long int __off, int __whence)
 {
-    return mock();
+    if (test_mode) {
+        return mock();
+    } else {
+        return __real_fseek(__stream, __off, __whence);
+    }
+}
+
+extern int __real_fstat (int __fd, struct stat *__buf);
+int __wrap_fstat(int __fd, struct stat *__buf)
+{
+    if (test_mode) {
+        return mock();
+    } else {
+        return __real_fstat(__fd, __buf);
+    }
 }
 
 void __wrap_fileno()
@@ -56,19 +88,12 @@ void __wrap_fileno()
     return;
 }
 
-int __wrap_fclose(FILE *__stream)
-{
-    check_expected_ptr(__stream);
-
-    return 0;
-}
-
 void __wrap_clearerr()
 {
     return;
 }
 
-char * __wrap_fgets(char *__restrict __s, int __n, FILE *__restrict __stream)
+char * __wrap_fgets(char * __s, int __n, FILE * __stream)
 {
     check_expected(__n);
     check_expected_ptr(__stream);
@@ -76,6 +101,24 @@ char * __wrap_fgets(char *__restrict __s, int __n, FILE *__restrict __stream)
     strcpy(__s, mock_type(char *));
 
     return mock_type(char *);
+}
+
+static int init_test_mode(void **state)
+{
+    (void) state;
+
+    test_mode = 1;
+
+    return 0;
+}
+
+static int end_test_mode(void **state)
+{
+    (void) state;
+
+    test_mode = 0;
+
+    return 0;
 }
 
 void test_jqueue_init(void **state)
@@ -111,6 +154,8 @@ void test_jqueue_open_fail_fopen(void **state)
 
     jqueue_init(fileq);
 
+    expect_string(__wrap_fopen, __filename, "/var/ossec/logs/alerts/alerts.json");
+    expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, NULL);
     expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file '/var/ossec/logs/alerts/alerts.json' due to [(0)-(Success)].");
 
@@ -137,6 +182,8 @@ void test_jqueue_open_fail_fseek(void **state)
 
     jqueue_init(fileq);
 
+    expect_string(__wrap_fopen, __filename, "/var/ossec/logs/alerts/alerts.json");
+    expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, fp);
     will_return(__wrap_fseek, -1);
     expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file '/var/ossec/logs/alerts/alerts.json' due to [(0)-(Success)].");
@@ -166,6 +213,8 @@ void test_jqueue_open_fail_fstat(void **state)
 
     jqueue_init(fileq);
 
+    expect_string(__wrap_fopen, __filename, "/var/ossec/logs/alerts/alerts.json");
+    expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, fp);
     will_return(__wrap_fseek, 1);
     will_return(__wrap_fstat, -1);
@@ -196,6 +245,8 @@ void test_jqueue_open_success(void **state)
 
     jqueue_init(fileq);
 
+    expect_string(__wrap_fopen, __filename, "/var/ossec/logs/alerts/alerts.json");
+    expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, fp);
     will_return(__wrap_fseek, 1);
     will_return(__wrap_fstat, 1);
@@ -223,6 +274,8 @@ void test_jqueue_next_fail(void **state)
 
     jqueue_init(fileq);
 
+    expect_string(__wrap_fopen, __filename, "/var/ossec/logs/alerts/alerts.json");
+    expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, NULL);
     expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file '/var/ossec/logs/alerts/alerts.json' due to [(0)-(Success)].");
 
@@ -250,6 +303,8 @@ void test_jqueue_next_success_newline(void **state)
 
     jqueue_init(fileq);
 
+    expect_string(__wrap_fopen, __filename, "/var/ossec/logs/alerts/alerts.json");
+    expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, fp);
     will_return(__wrap_fseek, 1);
     will_return(__wrap_fstat, 1);
@@ -286,6 +341,8 @@ void test_jqueue_next_success_no_newline(void **state)
 
     jqueue_init(fileq);
 
+    expect_string(__wrap_fopen, __filename, "/var/ossec/logs/alerts/alerts.json");
+    expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, fp);
     will_return(__wrap_fseek, 1);
     will_return(__wrap_fstat, 1);
@@ -319,6 +376,8 @@ void test_jqueue_close(void **state)
 
     jqueue_init(fileq);
 
+    expect_string(__wrap_fopen, __filename, "/var/ossec/logs/alerts/alerts.json");
+    expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, fp);
     will_return(__wrap_fseek, 1);
     will_return(__wrap_fstat, 1);
@@ -371,6 +430,8 @@ void test_handle_jqueue_fail_fopen(void **state)
 
     jqueue_init(fileq);
 
+    expect_string(__wrap_fopen, __filename, "");
+    expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, NULL);
 
     int ret = Handle_JQueue(fileq, 0);
@@ -395,6 +456,8 @@ void test_handle_jqueue_fail_fseek(void **state)
 
     jqueue_init(fileq);
 
+    expect_string(__wrap_fopen, __filename, "");
+    expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, fp);
     will_return(__wrap_fseek, -1);
     expect_string(__wrap__merror, formatted_msg, "(1116): Could not set position in file '' due to [(0)-(Success)].");
@@ -423,6 +486,8 @@ void test_handle_jqueue_fail_fstat(void **state)
 
     jqueue_init(fileq);
 
+    expect_string(__wrap_fopen, __filename, "");
+    expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, fp);
     will_return(__wrap_fseek, 1);
     will_return(__wrap_fstat, -1);
@@ -452,6 +517,8 @@ void test_handle_jqueue_success(void **state)
 
     jqueue_init(fileq);
 
+    expect_string(__wrap_fopen, __filename, "");
+    expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, fp);
     will_return(__wrap_fseek, 1);
     will_return(__wrap_fstat, 1);
@@ -499,6 +566,8 @@ void test_handle_jqueue_flag_read_all(void **state)
 
     jqueue_init(fileq);
 
+    expect_string(__wrap_fopen, __filename, "");
+    expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, fp);
     will_return(__wrap_fstat, 1);
 
@@ -524,6 +593,8 @@ void test_get_alert_json_data_fail(void **state)
 
     jqueue_init(fileq);
 
+    expect_string(__wrap_fopen, __filename, "/var/ossec/logs/alerts/alerts.json");
+    expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, NULL);
     expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file '/var/ossec/logs/alerts/alerts.json' due to [(0)-(Success)].");
 
@@ -551,6 +622,8 @@ void test_get_alert_json_data_no_rule(void **state)
 
     jqueue_init(fileq);
 
+    expect_string(__wrap_fopen, __filename, "/var/ossec/logs/alerts/alerts.json");
+    expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, fp);
     will_return(__wrap_fseek, 1);
     will_return(__wrap_fstat, 1);
@@ -590,6 +663,8 @@ void test_get_alert_json_data_no_full_log(void **state)
 
     jqueue_init(fileq);
 
+    expect_string(__wrap_fopen, __filename, "/var/ossec/logs/alerts/alerts.json");
+    expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, fp);
     will_return(__wrap_fseek, 1);
     will_return(__wrap_fstat, 1);
@@ -653,6 +728,8 @@ void test_get_alert_json_data_all_data(void **state)
 
     jqueue_init(fileq);
 
+    expect_string(__wrap_fopen, __filename, "/var/ossec/logs/alerts/alerts.json");
+    expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, fp);
     will_return(__wrap_fseek, 1);
     will_return(__wrap_fstat, 1);
@@ -707,6 +784,8 @@ void test_read_json_mon_fail(void **state)
 
     jqueue_init(fileq);
 
+    expect_string(__wrap_fopen, __filename, "");
+    expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, NULL);
 
     alert = Read_JSON_Mon(fileq, 0, 0);
@@ -738,6 +817,8 @@ void test_read_json_mon_no_alert_fail(void **state)
 
     jqueue_init(fileq);
 
+    expect_string(__wrap_fopen, __filename, "");
+    expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, fp);
     will_return(__wrap_fseek, 1);
     will_return(__wrap_fstat, 1);
@@ -748,6 +829,8 @@ void test_read_json_mon_no_alert_fail(void **state)
     will_return(__wrap_fgets, "ok");
 
     expect_memory(__wrap_fclose, __stream, fp, sizeof(fp));
+    expect_string(__wrap_fopen, __filename, "");
+    expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, NULL);
 
     alert = Read_JSON_Mon(fileq, &tm_result, 0);
@@ -780,6 +863,8 @@ void test_read_json_mon_no_alert_retry_timeout(void **state)
 
     jqueue_init(fileq);
 
+    expect_string(__wrap_fopen, __filename, "");
+    expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, fp);
     will_return(__wrap_fseek, 1);
     will_return(__wrap_fstat, 1);
@@ -790,6 +875,8 @@ void test_read_json_mon_no_alert_retry_timeout(void **state)
     will_return(__wrap_fgets, "ok");
 
     expect_memory(__wrap_fclose, __stream, fp, sizeof(fp));
+    expect_string(__wrap_fopen, __filename, "");
+    expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, fp);
     will_return(__wrap_fseek, 1);
     will_return(__wrap_fstat, 1);
@@ -834,6 +921,8 @@ void test_read_json_mon_no_alert_retry_success(void **state)
 
     jqueue_init(fileq);
 
+    expect_string(__wrap_fopen, __filename, "");
+    expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, fp);
     will_return(__wrap_fseek, 1);
     will_return(__wrap_fstat, 1);
@@ -844,6 +933,8 @@ void test_read_json_mon_no_alert_retry_success(void **state)
     will_return(__wrap_fgets, "ok");
 
     expect_memory(__wrap_fclose, __stream, fp, sizeof(fp));
+    expect_string(__wrap_fopen, __filename, "");
+    expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, fp);
     will_return(__wrap_fseek, 1);
     will_return(__wrap_fstat, 1);
@@ -905,6 +996,8 @@ void test_read_json_mon_success(void **state)
 
     jqueue_init(fileq);
 
+    expect_string(__wrap_fopen, __filename, "");
+    expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, fp);
     will_return(__wrap_fseek, 1);
     will_return(__wrap_fstat, 1);
@@ -973,5 +1066,5 @@ int main(void) {
         cmocka_unit_test(test_read_json_mon_no_alert_retry_success),
         cmocka_unit_test(test_read_json_mon_success)
     };
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, init_test_mode, end_test_mode);
 }
