@@ -590,9 +590,9 @@ def _goes_before_than(a, b, ascending=None, casters=None):
     :param b: tuple or list
     :param ascending: tuple or list of booleans with a length equal to the minimum length between a and b. True if
     ascending, False otherwise.
-    :param casters: tuple or list of strings with a length equal to the minimum length between a and b. The string must
-    fit any class in builtins module (int, str, float, ...). The class will be applied to each value of the respective
-    position in a and b before comparing.
+    :param casters: iterable of callables with a length equal to the minimum length between a and b. The callable
+    must fit any class in builtins module (int, str, float, ...). The class will be applied to each value of the
+    respective position in a and b before comparing.
     :return: True if a should be placed before b, False otherwise
     """
     if ascending is None:
