@@ -49,7 +49,15 @@ static int _xml_fgetc(FILE *fp, OS_XML *_lxml)
 int _xml_sgetc(OS_XML *_lxml){
     int c;
 
-    c = (_lxml->stash_i > 0) ? _lxml->stash[--_lxml->stash_i] : *(_lxml->string++);
+    if (_lxml->stash_i > 0) {
+        c = _lxml->stash[--_lxml->stash_i];
+    }
+    else if (_lxml->string) {
+        c = *(_lxml->string++);
+    }
+    else {
+        c = -1;
+    }
 
     if (c == '\n') { /* add newline */
         _lxml->line++;

@@ -73,17 +73,22 @@ void labels_free(wlabel_t *labels) {
 /* Format label array into string. Return 0 on success or -1 on error. */
 int labels_format(const wlabel_t *labels, char *str, size_t size) {
     int i;
-    size_t z = 0;
+    size_t z = 0, l = 0;
 
     for (i = 0; labels[i].key != NULL; i++) {
-        z += (size_t)snprintf(str + z, size - z, "%s%s\"%s\":%s\n",
+        l = (size_t)snprintf(str + z, size - z, "%s%s\"%s\":%s\n",
             labels[i].flags.system ? "#" : "",
             labels[i].flags.hidden ? "!" : "",
             labels[i].key,
             labels[i].value);
 
-        if (z >= size)
+        if (z + l >= size) {
+            snprintf(str + z, 50, "%s\n", "Not all labels are being shown in this message");
             return -1;
+        }
+
+        z += l;
+        l = 0;
     }
 
     return 0;

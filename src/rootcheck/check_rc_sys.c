@@ -131,7 +131,7 @@ static int read_sys_dir(const char *dir_name, int depth)
     unsigned int entry_count = 0;
     int did_changed = 0;
     DIR *dp;
-    struct dirent *entry;
+    struct dirent *entry = NULL;
     struct stat statbuf;
     short is_nfs;
     short skip_fs;

@@ -511,6 +511,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
     int changes = 0;
     int comment_buf = 0;
     char msg_type[OS_FLSIZE];
+    char buf_ptr[26];
 
     switch (lf->event_type) {
         case FIM_DELETED:
@@ -662,10 +663,10 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
 
             /* Modification time message */
             if (oldsum->mtime && newsum->mtime && oldsum->mtime != newsum->mtime) {
-                changes = 1;
+                changes = 1; 
                 wm_strcat(&lf->fields[SK_CHFIELDS].value, "mtime", ',');
-                char *old_ctime = strdup(ctime(&oldsum->mtime));
-                char *new_ctime = strdup(ctime(&newsum->mtime));
+                char *old_ctime = strdup(ctime_r(&oldsum->mtime, buf_ptr));
+                char *new_ctime = strdup(ctime_r(&newsum->mtime, buf_ptr));
                 old_ctime[strlen(old_ctime) - 1] = '\0';
                 new_ctime[strlen(new_ctime) - 1] = '\0';
 

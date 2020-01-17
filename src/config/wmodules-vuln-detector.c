@@ -283,13 +283,13 @@ int wm_vuldet_get_interval(char *source, time_t *interval) {
 
 int wm_vuldet_is_valid_year(char *source, int *date, int max) {
     time_t n_date;
-    struct tm *t_date;
+    struct tm tm_result = { .tm_sec = 0 };
 
     *date = strtol(source, NULL, 10);
     n_date = time (NULL);
-    t_date = gmtime(&n_date);
+    gmtime_r(&n_date, &tm_result);
 
-    if ((!*date) || *date <  max || *date > (t_date->tm_year + 1900)) {
+    if ((!*date) || *date <  max || *date > (tm_result.tm_year + 1900)) {
         return 0;
     }
 

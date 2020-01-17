@@ -139,18 +139,18 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
             } else {
                 /* We will add a proper syslog header */
                 time_t djbtime;
-                struct tm *pt;
+                struct tm tm_result = { .tm_sec = 0 };
 
                 djbtime = time(NULL);
-                pt = localtime(&djbtime);
+                localtime_r(&djbtime, &tm_result);
 
                 /* Syslog time: Apr 27 14:50:32  */
                 snprintf(buffer, OS_MAXSTR, "%s %02d %02d:%02d:%02d %s %s: %s",
-                         djb_month[pt->tm_mon],
-                         pt->tm_mday,
-                         pt->tm_hour,
-                         pt->tm_min,
-                         pt->tm_sec,
+                         djb_month[tm_result.tm_mon],
+                         tm_result.tm_mday,
+                         tm_result.tm_hour,
+                         tm_result.tm_min,
+                         tm_result.tm_sec,
                          djb_host,
                          lf->djb_program_name,
                          p);
