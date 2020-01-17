@@ -324,6 +324,7 @@
 #define VU_REPORT_ERROR             "(5436): The agent %s vulnerabilities could not be reported. Error: %s."
 #define VU_UPDATE_RETRY             "(5437): Failed when updating '%s %s' database. Retrying in %lu seconds."
 #define VU_API_REQ_INV              "(5489): There was no valid response to '%s' after %d attempts."
+#define VU_CONTENT_FEED_ERROR       "(5490): Couldn't get the content of the %s feed from '%s' file."
 #define VU_PARSED_FEED_ERROR        "(5491): The %s feed couldn't be parsed from '%s' file."
 #define VU_VER_EXTRACT_ERROR        "(5493): The version of '%s' could not be extracted."
 #define VU_GLOBALDB_ERROR           "(5496): Could not connect to global DB."

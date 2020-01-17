@@ -94,7 +94,11 @@ OSList *os_get_process_list()
     /* Enable debug privilege */
     if (!os_win32_setdebugpriv(hpriv, 1)) {
         mterror(ARGV0, "os_win32_setdebugpriv");
-        CloseHandle(hpriv);
+
+        if(CloseHandle(hpriv) == 0) {
+            mdebug2("Can't close handle");
+        }
+
         return (NULL);
     }
 
@@ -102,20 +106,41 @@ OSList *os_get_process_list()
     hsnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (hsnap == INVALID_HANDLE_VALUE) {
         mterror(ARGV0, "CreateToolhelp32Snapshot");
+
+        if (CloseHandle(hpriv) == 0) {
+            mdebug2("Can't close handle");
+        }
+
         return (NULL);
     }
 
     /* Get first and second processes -- system entries */
     if (!Process32First(hsnap, &p_entry) && !Process32Next(hsnap, &p_entry )) {
         mterror(ARGV0, "Process32First");
-        CloseHandle(hsnap);
+
+        if (CloseHandle(hsnap) == 0) {
+            mdebug2("Can't close handle");
+        }
+
+        if (CloseHandle(hpriv) == 0) {
+            mdebug2("Can't close handle");
+        }
+
         return (NULL);
     }
 
     /* Create process list */
     p_list = OSList_Create();
     if (!p_list) {
-        CloseHandle(hsnap);
+
+        if (CloseHandle(hsnap) == 0) {
+            mdebug2("Can't close handle");
+        }
+
+        if (CloseHandle(hpriv) == 0) {
+            mdebug2("Can't close handle");
+        }
+
         mterror(ARGV0, LIST_ERROR);
         return (0);
     }
@@ -141,11 +166,19 @@ OSList *os_get_process_list()
             os_strdup(p_name, p_path);
         } else if (!Module32First(hmod, &m_entry)) {
             /* Get executable path (first entry in the module list) */
-            CloseHandle(hmod);
+
+            if (CloseHandle(hmod) == 0){
+                mdebug2("Can't close handle");
+            }
+
             os_strdup(p_name, p_path);
-        } else {
+        }
+        else {
             os_strdup(m_entry.szExePath, p_path);
-            CloseHandle(hmod);
+
+            if (CloseHandle(hmod) == 0) {
+                mdebug2("Can't close handle");
+            }
         }
 
         os_calloc(1, sizeof(Proc_Info), p_info);
@@ -157,7 +190,14 @@ OSList *os_get_process_list()
     /* Remove debug privileges */
     os_win32_setdebugpriv(hpriv, 0);
 
-    CloseHandle(hsnap);
+    if (CloseHandle(hsnap) == 0) {
+        mdebug2("Can't close handle");
+    }
+
+    if (CloseHandle(hpriv) == 0) {
+        mdebug2("Can't close handle");
+    }
+
     return (p_list);
 }
 
