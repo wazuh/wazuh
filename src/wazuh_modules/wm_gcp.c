@@ -15,6 +15,10 @@
 #include "os_crypto/sha256/sha256_op.h"
 #include "shared.h"
 
+#ifdef UNIT_TESTING
+#define static
+#endif
+
 static void* wm_gcp_main(const wm_gcp *gcp_config);                        // Module main function. It won't return
 static void wm_gcp_run(const wm_gcp *data);                                // Running python script
 static void wm_gcp_destroy(wm_gcp *gcp_config);                      // Destroy data
