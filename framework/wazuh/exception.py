@@ -200,8 +200,9 @@ class WazuhException(Exception):
         3020: 'Timeout sending request',
         3021: 'Timeout executing API request',
         3022: 'Unknown node ID',
-        3023: 'Worker node is not connected to master'
-
+        3023: 'Worker node is not connected to master',
+        3024: 'krequest socket is not present, ensure agent-key-polling wodle is running in the master node',
+        3025: 'Permission denied, ensure /WAZUH-HOME/queue/ossec/krequest socket has right permissions'
         # > 9000: Authd
     }
 
