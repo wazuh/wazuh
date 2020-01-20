@@ -1514,7 +1514,7 @@ install_framework: install_python
 #### test ##########
 ####################
 
-CFLAGS_TEST = -g -O0 --coverage
+CFLAGS_TEST = -g -O0 --coverage -DUNIT_TESTING
 
 # LIBS_TEST = -lcheck -lm -lrt -lsubunit
 

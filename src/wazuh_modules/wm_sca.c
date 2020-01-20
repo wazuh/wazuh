@@ -15,7 +15,6 @@
 #include "os_crypto/sha256/sha256_op.h"
 #include "shared.h"
 
-
 #undef minfo
 #undef mwarn
 #undef merror
@@ -28,15 +27,10 @@
 #define mdebug1(msg, ...) _mtdebug1(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mdebug2(msg, ...) _mtdebug2(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 
-typedef struct cis_db_info_t {
-    char *result;
-    cJSON *event;
-    int id;
-} cis_db_info_t;
-
-typedef struct cis_db_hash_info_t {
-    cis_db_info_t **elem;
-} cis_db_hash_info_t;
+#ifdef UNIT_TESTING
+/* Remove static qualifier when testing */
+#define static
+#endif
 
 typedef struct request_dump_t {
     int policy_index;
@@ -118,9 +112,9 @@ static unsigned int summary_passed = 0;
 static unsigned int summary_failed = 0;
 static unsigned int summary_invalid = 0;
 
-OSHash **cis_db;
-char **last_sha256;
-cis_db_hash_info_t *cis_db_for_hash;
+static OSHash **cis_db;
+static char **last_sha256;
+static cis_db_hash_info_t *cis_db_for_hash;
 
 static w_queue_t * request_queue;
 static wm_sca_t * data_win;
@@ -275,6 +269,9 @@ static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert)
     return (0);
 }
 
+#ifdef UNIT_TESTING
+__attribute__((weak))
+#endif
 static void wm_sca_send_policies_scanned(wm_sca_t * data) {
     cJSON *policies_obj = cJSON_CreateObject();
     cJSON *policies = cJSON_CreateArray();

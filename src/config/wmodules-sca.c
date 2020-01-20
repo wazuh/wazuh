@@ -17,6 +17,12 @@ static const char *XML_SCAN_ON_START= "scan_on_start";
 static const char *XML_POLICIES = "policies";
 static const char *XML_POLICY = "policy";
 static const char *XML_SKIP_NFS = "skip_nfs";
+
+#ifdef UNIT_TESTING
+/* Remove static qualifier when testing */
+#define static
+#endif
+
 static unsigned int policies_count = 0;
 
 

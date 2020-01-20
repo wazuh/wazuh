@@ -41,9 +41,9 @@ typedef struct wm_sca_policy_t {
 } wm_sca_policy_t;
 
 typedef struct wm_sca_t {
-    int enabled:1;
-    int scan_on_start:1;
-    int skip_nfs:1;
+    int enabled;
+    int scan_on_start;
+    int skip_nfs;
     int msg_delay;
     unsigned int summary_delay;
     unsigned int request_db_interval;
@@ -56,6 +56,16 @@ typedef struct wm_sca_t {
     sched_scan_config scan_config;
 } wm_sca_t;
 
+typedef struct cis_db_info_t {
+    char *result;
+    cJSON *event;
+    int id;
+} cis_db_info_t;
+
+typedef struct cis_db_hash_info_t {
+    cis_db_info_t **elem;
+} cis_db_hash_info_t;
+
 extern const wm_context WM_SCA_CONTEXT;
 
 // Read configuration and return a module (if enabled) or NULL (if disabled)
@@ -64,5 +74,6 @@ char *wm_sca_hash_integrity_file(const char *file);
 #ifdef WIN32
 void wm_sca_push_request_win(char *msg);
 #endif
+
 
 #endif // WM_KEY_REQUEST_H
