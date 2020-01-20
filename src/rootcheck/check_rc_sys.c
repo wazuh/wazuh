@@ -237,12 +237,12 @@ static int read_sys_dir(const char *dir_name, int depth)
             * /dev/fd5, /dev/fd6, etc.. weird
             */
             if (strstr(f_name, "/dev/fd") != NULL) {
-                return (0);
+                continue;
             }
 #ifndef WIN32
             /* Ignore the /proc directory (it has size 0) */
             if (statbuf_local.st_size == 0) {
-                return (0);
+                continue;
             }
 #endif
             if(rootcheck.readall) {
@@ -273,7 +273,7 @@ static int read_sys_dir(const char *dir_name, int depth)
 
         }
 
-        
+
     }
 
     /* skip further test because the FS cant deliver the stats (btrfs link count always is 1) */
