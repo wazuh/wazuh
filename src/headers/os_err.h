@@ -26,7 +26,7 @@
 #define OS_MEMERR       -10 /* Memory Error             */
 #define OS_SOCKBUSY     -11 /* Socket busy -- try again */
 #define OS_MAXLEN       -12 /* Max length               */
-#define OS_SOCKCONNERR  -13 /* socket connection error  */
+#define OS_SOCKDISCN    -13 /* socket disconnect        */
 
 #define OS_ENDFILE      -20 /* End of file              */
 #define OS_FINISH       -21 /* Finished this task       */
