@@ -9,6 +9,9 @@
 
 #include "shared.h"
 
+#ifdef UNIT_TESTING
+    #define static
+#endif
 static void file_sleep(void);
 static int Handle_JQueue(file_queue *fileq, int flags) __attribute__((nonnull));
 

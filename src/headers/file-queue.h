@@ -12,7 +12,12 @@
 #define CFQUEUE_H
 
 #define MAX_FQUEUE  256
-#define FQ_TIMEOUT  5
+
+#ifdef UNIT_TESTING
+    #define FQ_TIMEOUT  1
+#else
+    #define FQ_TIMEOUT  5
+#endif
 
 /* File queue */
 typedef struct _file_queue {
