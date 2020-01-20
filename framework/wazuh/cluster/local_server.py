@@ -14,6 +14,7 @@ from wazuh import common, exception
 from wazuh.cluster import server, common as c_common, client
 from wazuh.cluster.dapi import dapi
 from wazuh.exception import WazuhException
+import os
 
 
 class LocalServerHandler(server.AbstractServerHandler):
@@ -138,7 +139,7 @@ class LocalServer(server.AbstractServer):
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         loop = asyncio.get_running_loop()
         loop.set_exception_handler(c_common.asyncio_exception_handler)
-
+        socket_path = '{}/queue/cluster/c-internal.sock'.format(common.ossec_path)
         try:
             local_server = await loop.create_unix_server(
                 protocol_factory=lambda: self.handler_class(server=self,
@@ -146,7 +147,8 @@ class LocalServer(server.AbstractServer):
                                                             fernet_key='',
                                                             logger=self.logger,
                                                             cluster_items=self.cluster_items),
-                path='{}/queue/cluster/c-internal.sock'.format(common.ossec_path))
+                path=socket_path)
+            os.chmod(socket_path, 0o660)
         except OSError as e:
             self.logger.error("Could not create server: {}".format(e))
             raise KeyboardInterrupt

@@ -14,7 +14,8 @@ import uvloop
 
 from wazuh import common, exception, utils
 from wazuh.cluster import common as c_common, cluster
-from wazuh.ossec_socket import OssecSocket
+import socket
+import errno
 
 
 class AbstractServerHandler(c_common.Handler):
@@ -240,13 +241,18 @@ class AbstractServer:
             Ok message
         """
         self.logger.info(f"Agent key polling requested for {message}")
-        s = OssecSocket(common.MODULESD_SOCKET)
-        s.send(message.encode())
 
-        # FINISH COMMUNICATION PROTOCOL ONCE KREQUEST OR KPOLLING SOCKET IS READY AND MODULESD COMMUNICATION FINISHED
-        # data = s.receive().decode()
-        # if not data.startswith('ok'):
-        #     raise exception.WazuhException(1014, data.replace("err ", ""))
+        # UDP socket to send key polling request to modulesd
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+        try:
+            s.sendto(message.encode(), common.MODULESD_SOCKET)
+        except OSError as e:
+            if e.errno == 2:
+                raise exception.WazuhException(3024)
+            elif e.errno == 13:
+                raise exception.WazuhException(3025)
+            else:
+                raise e
 
         return f"Key polling for {message} requested to modulesd"
 
