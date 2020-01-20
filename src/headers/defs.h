@@ -157,7 +157,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WM_DOWNLOAD_SOCK_PATH DEFAULTDIR WM_DOWNLOAD_SOCK
 
 #define WM_KEY_REQUEST_SOCK "/queue/ossec/krequest"
-#define WM_KEY_REQUEST_CLUSTER_SOCK "/var/ossec/queue/cluster/c-internal.sock"
+#define WM_KEY_REQUEST_CLUSTER_SOCK "/queue/cluster/c-internal.sock"
 #define WM_KEY_REQUEST_SOCK_PATH DEFAULTDIR WM_KEY_REQUEST_SOCK
 
 /* Active Response files */

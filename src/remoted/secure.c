@@ -471,6 +471,14 @@ static int send_key_request(int socket,const char *msg) {
             strcat(payload, msg);
             strcat(payload,"\"}");
             int rc = OS_SendSecureTCPCluster(socket, "run_keypoll", payload, strlen(payload));
+            char buffer[OS_MAXSTR + 1];
+            int recv_msg = OS_RecvSecureClusterTCP(socket, buffer,OS_MAXSTR + 1);
+            if(recv_msg > 0)
+                mdebug2("%s",buffer);
+            else if(recv_msg == -1)
+                merror("No message received from the master.");
+            else if (recv_msg == 0)
+                rc = OS_SOCKDISCN;
             os_free(payload);
             return rc;
         }
@@ -531,7 +539,13 @@ void * w_key_request_thread(__attribute__((unused)) void * args) {
                 if (rc == OS_SOCKBUSY) {
                     mdebug1("Key request socket busy.");
                     sleep(1);
-                } else {
+                }else if(rc == OS_SOCKDISCN){
+                    mdebug1("Socket disconnected.");
+                    if (socket >= 0) {
+                        close(socket);
+                        socket = -1;
+                    }
+                }else {
                     merror("Could not communicate with key request queue (%d). Is the module running?", rc);
                     if (socket >= 0) {
                         key_request_available = 0;
