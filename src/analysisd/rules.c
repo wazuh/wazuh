@@ -657,7 +657,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                             loadmemory(protocol,
                                        rule_opt[k]->content);
                     } else if (strcasecmp(rule_opt[k]->element, xml_location) == 0) {
-                            location = loadmemory(location, rule_opt[k]->content);
+                        location = loadmemory(location, rule_opt[k]->content);
                     } else if (strcasecmp(rule_opt[k]->element, xml_field) == 0) {
                         if (rule_opt[k]->attributes && rule_opt[k]->attributes[0]) {
                             os_calloc(1, sizeof(FieldInfo), config_ruleinfo->fields[ifield]);
@@ -1153,7 +1153,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_different_location) == 0) {
                         config_ruleinfo->context_opts.different_location = 1;
-                        
+
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         } 
@@ -1184,7 +1184,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_notsame_field) == 0) {
 
-                        if (config_ruleinfo->context_opts.different_field) {
+                        if (config_ruleinfo->context_opts.not_same_field) {
                             int size;
                             for (size = 0; config_ruleinfo->not_same_fields[size] != NULL; size++);
 
@@ -1194,7 +1194,7 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                         } else {
 
-                            config_ruleinfo->context_opts.different_field = 1;
+                            config_ruleinfo->context_opts.not_same_field = 1;
                             os_calloc(2, sizeof(char *), config_ruleinfo->not_same_fields);
                             os_strdup(rule_opt[k]->content, config_ruleinfo->not_same_fields[0]);
                             config_ruleinfo->not_same_fields[1] = NULL;

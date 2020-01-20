@@ -56,7 +56,7 @@ typedef struct _StaticFilters
     unsigned int same_location:1;
     unsigned int different_location:1;
     unsigned int same_field:1;
-    unsigned int different_field:1;
+    unsigned int not_same_field:1;
     unsigned int same_agent:1;
     unsigned int different_agent:1;
 } StaticFilters;

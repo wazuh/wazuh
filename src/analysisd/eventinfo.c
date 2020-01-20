@@ -129,7 +129,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         }
 
         /* Check for differences from dynamic fields values (not_same_field) */
-        if (rule->context_opts.different_field) {
+        if (rule->context_opts.not_same_field) {
             if (my_lf->nfields == 0 && lf->nfields == 0)
                 continue;
 
@@ -208,7 +208,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
 
             /* Check for same location */
             if (rule->context_opts.same_location) {
-                if (strcmp(lf->hostname, my_lf->hostname) != 0) {
+                if (strcmp(lf->location, my_lf->location) != 0) {
                     continue;
                 }
             }
@@ -391,7 +391,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
 
             /* Check for different location */
             if (rule->context_opts.different_location) {
-                if (strcmp(lf->hostname, my_lf->hostname) == 0) {
+                if (strcmp(lf->location, my_lf->location) == 0) {
                     continue;
                 }
             }
@@ -654,7 +654,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         }
 
         /* Check for differences from dynamic fields values (not_same_field) */
-        if (rule->context_opts.different_field) {
+        if (rule->context_opts.not_same_field) {
             if (my_lf->nfields == 0 && lf->nfields == 0) {
                 continue;
             }
@@ -723,7 +723,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
 
             /* Check for same location */
             if (rule->context_opts.same_location) {
-                if (strcmp(lf->hostname, my_lf->hostname) != 0) {
+                if (strcmp(lf->location, my_lf->location) != 0) {
                     continue;
                 }
             }
@@ -906,7 +906,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
 
             /* Check for different location */
             if (rule->context_opts.different_location) {
-                if (strcmp(lf->hostname, my_lf->hostname) == 0) {
+                if (strcmp(lf->location, my_lf->location) == 0) {
                     continue;
                 }
             }
@@ -1195,7 +1195,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
         }
 
         /* Check for differences from dynamic fields values (not_same_field) */
-        if (rule->context_opts.different_field) {
+        if (rule->context_opts.not_same_field) {
             if (my_lf->nfields == 0 && lf->nfields == 0)
                 goto next_it;
 
@@ -1250,7 +1250,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
 
         /* Check for same location */
         if (rule->context_opts.same_location) {
-            if (strcmp(lf->hostname, my_lf->hostname) != 0) {
+            if (strcmp(lf->location, my_lf->location) != 0) {
                 goto next_it;
             }
         }
@@ -1433,7 +1433,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
 
         /* Check for different location */
         if (rule->context_opts.different_location) {
-            if (strcmp(lf->hostname, my_lf->hostname) == 0) {
+            if (strcmp(lf->location, my_lf->location) == 0) {
                 goto next_it;
             }
         }
