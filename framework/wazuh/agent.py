@@ -325,9 +325,6 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort_by=None, sort_a
     # Group names
     for group_id in group_list:
         try:
-            # Check if the group exists
-            if group_id not in group_list:
-                raise WazuhError(1710)
             full_entry = path.join(common.shared_path, group_id)
 
             # Get the id of the group
@@ -402,19 +399,13 @@ def get_group_files(group_list=None, offset=0, limit=None, search_text=None, sea
         data = []
         for entry in listdir(group_path):
             item = dict()
-            try:
-                item['filename'] = entry
-                item['hash'] = get_hash(path.join(group_path, entry), hash_algorithm)
-                data.append(item)
-            except (OSError, IOError):
-                pass
+            item['filename'] = entry
+            item['hash'] = get_hash(path.join(group_path, entry), hash_algorithm)
+            data.append(item)
 
-        try:
-            # ar.conf
-            ar_path = path.join(common.shared_path, 'ar.conf')
-            data.append({'filename': "ar.conf", 'hash': get_hash(ar_path, hash_algorithm)})
-        except (OSError, IOError):
-            pass
+        # ar.conf
+        ar_path = path.join(common.shared_path, 'ar.conf')
+        data.append({'filename': "ar.conf", 'hash': get_hash(ar_path, hash_algorithm)})
 
         return WazuhResult(process_array(data, search_text=search_text, search_in_fields=search_in_fields,
                                          complementary_search=complementary_search, sort_by=sort_by,
