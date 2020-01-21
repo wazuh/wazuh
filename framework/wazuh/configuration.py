@@ -3,10 +3,13 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import json
+import logging
 import random
 import re
 import subprocess
 import time
+from configparser import RawConfigParser, NoOptionError
+from io import StringIO
 from os import remove, path as os_path
 from xml.dom.minidom import parseString
 
@@ -16,24 +19,16 @@ from wazuh.ossec_socket import OssecSocket
 from wazuh.results import WazuhResult
 from wazuh.utils import cut_array, load_wazuh_xml, safe_move
 
-# Python 2/3 compability
-try:
-    from ConfigParser import RawConfigParser, NoOptionError
-    from StringIO import StringIO
-except ImportError:
-    from configparser import RawConfigParser, NoOptionError
-    from io import StringIO
-
-import logging
-
 logger = logging.getLogger('wazuh')
 
 # Aux functions
 
 # Type of configuration sections:
 #   * Duplicate -> there can be multiple independent sections. Must be returned as multiple json entries.
-#   * Merge -> there can be multiple sections but all are dependent with each other. Must be returned as a single json entry.
-#   * Last -> there can be multiple sections in the configuration but only the last one will be returned. The rest are ignored.
+#   * Merge -> there can be multiple sections but all are dependent with each other. Must be returned as a single json
+#   entry.
+#   * Last -> there can be multiple sections in the configuration but only the last one will be returned.
+#   The rest are ignored.
 conf_sections = {
     'active-response': {'type': 'duplicate', 'list_options': []},
     'command': {'type': 'duplicate', 'list_options': []},
@@ -182,7 +177,6 @@ def _read_option(section_name, opt):
             json_attribs[a] = opt.attrib[a]
 
         for path in opt.text.split(','):
-            json_path = {}
             json_path = json_attribs.copy()
             json_path['path'] = path.strip()
             opt_value.append(json_path)
@@ -283,10 +277,10 @@ def _rcl2json(filepath):
 
     data = {'vars': {}, 'controls': []}
     # [Application name] [any or all] [reference]
-    # type:<entry name>;
+    # type: '<entry name>;'
     regex_comment = re.compile(r"^\s*#")
     regex_title = re.compile(r"^\s*\[(.*)\]\s*\[(.*)\]\s*\[(.*)\]\s*")
-    regex_name_groups = re.compile(r"(\{\w+:\s+\S+\s*\S*\})")
+    regex_name_groups = re.compile(r"({\w+:\s+\S+\s*\S*\})")
     regex_check = re.compile(r"^\s*(\w:.+)")
     regex_var = re.compile(r"^\s*\$(\w+)=(.+)")
 
@@ -533,7 +527,7 @@ def get_agent_conf_multigroup(multigroup_id=None, offset=0, limit=common.databas
 
         # Parse XML to JSON
         data = _agentconf2json(xml_data)
-    except Exception as e:
+    except Exception:
         raise WazuhError(1101)
 
     return {'totalItems': len(data), 'items': cut_array(data, offset=offset, limit=limit)}
@@ -589,7 +583,7 @@ def parse_internal_options(high_name, low_name):
             str_config = StringIO('[root]\n' + f.read())
 
         config = RawConfigParser()
-        config.readfp(str_config)
+        config.read_file(str_config)
 
         return config
 
@@ -611,14 +605,14 @@ def parse_internal_options(high_name, low_name):
         raise WazuhInternalError(1108, e.args[0])
 
 
-def get_internal_options_value(high_name, low_name, max, min):
+def get_internal_options_value(high_name, low_name, max_, min_):
     option = parse_internal_options(high_name, low_name)
     if not option.isdigit():
         raise WazuhError(1109, 'Option: {}.{}. Value: {}'.format(high_name, low_name, option))
 
     option = int(option)
-    if option < min or option > max:
-        raise WazuhError(1110, 'Max value: {}. Min value: {}. Found: {}.'.format(max, min, option))
+    if option < min_ or option > max_:
+        raise WazuhError(1110, 'Max value: {}. Min value: {}. Found: {}.'.format(max_, min_, option))
 
     return option
 
@@ -644,7 +638,7 @@ def upload_group_configuration(group_id, file_content):
             # remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
             pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[2:-2])) + '\n'
             # revert xml.dom replacings
-            # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
+            # github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305
             pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"", ) \
                 .replace("&gt;", ">")
             tmp_file.write(pretty_xml)
@@ -660,9 +654,13 @@ def upload_group_configuration(group_id, file_content):
         except subprocess.CalledProcessError as e:
             # extract error message from output.
             # Example of raw output
-            # 2019/01/08 14:51:09 verify-agent-conf: ERROR: (1230): Invalid element in the configuration: 'agent_conf'.\n2019/01/08 14:51:09 verify-agent-conf: ERROR: (1207): Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.\n\n
+            # 2019/01/08 14:51:09 verify-agent-conf: ERROR: (1230):
+            # Invalid element in the configuration: 'agent_conf'.\n2019/01/08 14:51:09 verify-agent-conf: ERROR: (1207):
+            # Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
+            # \n\n
             # Example of desired output:
-            # Invalid element in the configuration: 'agent_conf'. Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
+            # Invalid element in the configuration: 'agent_conf'.
+            # Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
             output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: "
                                               r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output.decode())
             if output_regex:
