@@ -7,141 +7,257 @@ from unittest.mock import patch
 
 import pytest
 
-from wazuh import WazuhException, WazuhInternalError, WazuhError
+from wazuh import WazuhException, WazuhError
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
-        from wazuh.results import WazuhResult, AffectedItemsWazuhResult, _goes_before_than, nested_itemgetter
+        from wazuh.results import WazuhResult, AffectedItemsWazuhResult, _goes_before_than, nested_itemgetter, merge
+
+param_name = ['affected_items', 'total_affected_items', 'sort_fields', 'sort_casting', 'sort_ascending',
+              'all_msg', 'some_msg', 'none_msg']
+WAZUH_EXCEPTION_CODE = 1725
+FAILED_AGENT_ID = '999'
+
+
+@pytest.fixture(scope='function')
+def get_wazuh_result():
+    return WazuhResult(dct={"data": {"items": [{"item1": "data1"}, {"item2": "OK"}], "message": "Everything ok"}},
+                       str_priority=['KO', 'OK'])
+
+
+@pytest.fixture(scope='function')
+def get_wazuh_affected_item():
+    def _get_affected(params=None):
+        kwargs = {p_name: param for p_name, param in zip(param_name, params)}
+        return AffectedItemsWazuhResult(**kwargs)
+
+    return _get_affected
+
+
+@pytest.fixture(scope='function')
+def get_wazuh_failed_item():
+    item = AffectedItemsWazuhResult()
+    item.add_failed_item(id_=FAILED_AGENT_ID, error=WazuhException(WAZUH_EXCEPTION_CODE))
+    return item
 
 
 @pytest.mark.parametrize('dikt, priority', [
     ({"data": {"items": [{"item1": "data1"}, {"item2": "OK"}], "message": "Everything ok"}}, ['KO', 'OK']),
     ({"data": {"items": [{"item1": "data1"}, {"item2": "data2"}], "message": "Everything ok"}}, None),
 ])
-def test_results_WazuhResult(dikt, priority):
-    """Test class `WazuhResult` from results module.
+def test_results_WazuhResult__merge_str(dikt, priority, get_wazuh_affected_item):
+    """Test method `_merge_str` from `WazuhResult`.
 
-    Parameters
-    ----------
-    dikt : dict
-        Dict with basic information for the class declaration.
-    priority : list
-        Used to set the WazuhResult priority.
-    """
+        Parameters
+        ----------
+        dikt : dict
+            Dict with basic information for the class declaration.
+        priority : list
+            Used to set the WazuhResult priority.
+        """
     wazuh_result = WazuhResult(deepcopy(dikt), str_priority=priority)
     assert isinstance(wazuh_result, WazuhResult)
     item2 = wazuh_result.dikt['data']['items'][1]['item2']
     merge_result = wazuh_result._merge_str(item2, 'KO')
     assert merge_result == priority[0] if priority else '{}|{}'.format(item2, 'KO')
-    assert wazuh_result.to_dict() == {'str_priority': priority, 'result': dikt}
-    assert wazuh_result.render() == dikt
-    decode_result = wazuh_result.decode_json({'result': {'resultado': 1}, 'str_priority': ['prioridad']})
-    assert (key in decode_result.dikt for key in ['dikt', 'priority'])
-    assert isinstance(decode_result, WazuhResult)
 
 
-param_name = ['affected_items', 'total_affected_items', 'sort_fields', 'sort_casting', 'sort_ascending',
-                  'all_msg', 'some_msg', 'none_msg']
+def test_results_WazuhResult_to_dict(get_wazuh_result):
+    """Test method `to_dict` from `WazuhResult`."""
+    dict_result = get_wazuh_result.to_dict()
+    assert isinstance(dict_result, dict)
+    assert (key == result_key for key, result_key in zip(['str_priority', 'result'], dict_result.keys()))
+
+
+def test_results_WazuhResult_render(get_wazuh_result):
+    """Test method `render` from `WazuhResult`."""
+    render_result = get_wazuh_result.render()
+    assert isinstance(render_result, dict)
+    assert render_result == get_wazuh_result.dikt
+
+
+def test_results_WazuhResult_decode_json(get_wazuh_result):
+    """Test class method `decode_json` from `WazuhResult`."""
+    wazuh_result = get_wazuh_result
+    decoded_result = WazuhResult.decode_json(wazuh_result.to_dict())
+    assert decoded_result == wazuh_result
 
 
 @pytest.mark.parametrize('param_value', [
     # affected_items,total_affected_items, sort_fields, sort_casting, sort_ascending,
     # all_msg, some_msg, none_msg
-    [['001', '002'], 2, param_name, ['int'], [True, True], 'Sample message', 'Sample message', 'Sample message'],
-    [['001', '003'], None, param_name, ['int'], [True, False], 'Sample message', 'Sample message', 'Sample message'],
-    [[], 0, None, ['int'], None, 'Sample message', 'Sample message', 'Sample message'],
-    [['001'], None, param_name, ['str'], None, 'Sample message', 'Sample message', 'Sample message']
+    [['001', '002'], 2, None, ['int'], [True, True], 'Sample message', 'Sample message', 'Sample message'],
+    [['001', '003'], None, None, ['int'], [True, False], 'Sample message', 'Sample message', 'Sample message'],
+    [[], 0, None, None, ['int'], None, 'Sample message', 'Sample message', 'Sample message'],
+    [['001'], None, None, ['str'], None, 'Sample message', 'Sample message', 'Sample message']
 ])
-def test_results_AffectedItemsWazuhResult(param_value):
-    """Test class `AffectedItemsWazuhResult` from results module.
+def test_results_AffectedItemsWazuhResult(get_wazuh_affected_item, param_value):
+    """Test class `AffectedItemsWazuhResult`.
 
     Parameters
     ----------
     param_value : list
-        List with all the values to be applied to the class declaration.
+        List with param values for _init_.
     """
-    kwargs = {p_name: param for p_name, param in zip(param_name, param_value)}
-    failed_result = AffectedItemsWazuhResult(affected_items=['005'], total_affected_items=1)
-    failed_items = ['009', '010']
-    exception_code = 1000
-
-    for failed_id in failed_items:
-        failed_result.add_failed_item(id_=failed_id, error=WazuhException(exception_code))
-    affected_result = AffectedItemsWazuhResult()
-    for key, value in kwargs.items():
-        setattr(affected_result, key, value)
-        assert kwargs[key] == getattr(affected_result, key)
+    affected_result = get_wazuh_affected_item(param_value)
     assert isinstance(affected_result, AffectedItemsWazuhResult)
-    assert affected_result.affected_items == kwargs['affected_items']
-    affected_result.total_affected_items = len(kwargs['affected_items'])
-    assert affected_result.total_affected_items == len(kwargs['affected_items'])
-    assert affected_result.total_failed_items == 0
-    affected_result.add_failed_items_from(failed_result)
-    if affected_result.message:
-        assert affected_result.message == 'Sample message'
-    with pytest.raises(WazuhException):
-        affected_result.add_failed_items_from('This is not a valid object')
-    assert affected_result.total_failed_items == len(failed_items)
-    assert next(iter(affected_result.failed_items.values())) == set(failed_items)
-    for key in kwargs.keys():
-        assert key in affected_result.to_dict().keys()
-    failed_result.remove_failed_items({exception_code})
-    assert not failed_result.failed_items
-    or_result = affected_result | failed_result
-    assert isinstance(or_result, AffectedItemsWazuhResult)
-    assert (agent_id in set(affected_result.affected_items + failed_result.affected_items)
-            for agent_id in or_result.affected_items)
-    assert or_result.total_affected_items == len(or_result.affected_items)
-    assert (fail_item in set(affected_result.failed_items + failed_result.failed_items)
-            for fail_item in or_result.failed_items)
-    assert affected_result._merge_str('sample one', 'sample two', 'older_than') == 'sample one'
-    assert affected_result._merge_str('sample one', 'sample two') == 'sample one|sample two'
-    assert affected_result == affected_result.decode_json(affected_result.encode_json())
-    rendered_result = affected_result.render()
-    assert (field in rendered_result['data'] for field in
-            ['affected_items', 'total_affected_items', 'total_failed_items', 'failed_items'])
+    for value, dikt_value in zip(param_value, affected_result.dikt.values()):
+        assert value == dikt_value
 
 
-@pytest.mark.parametrize('or_type, expected_result', [
-    (WazuhError(code=1000), WazuhException),
-    (WazuhError(code=1000, ids={'001', '002'}), AffectedItemsWazuhResult),
-    (WazuhException(code=1000), WazuhException),
-    ('Invalid type', None),
-    ({}, None)
-])
-def test_results_exceptions(or_type, expected_result):
-    """Test exceptions from `AffectedItemsWazuhResult.__or__`
-
-    Parameters
-    ----------
-    or_type : WazuhException or WazuhError or set or str
-        Object type that will be passed to the or operator.
-    expected_result : WazuhException or AffectedItemsWazuhResult or None
-        Expected result after the `or` operation. It depends on the exception.
-    """
+def test_results_AffectedItemsWazuhResult_add_failed_item():
+    """Test method `add_failed_item` from class `AffectedItemsWazuhResult`."""
     affected_result = AffectedItemsWazuhResult()
-    or_exception = None
-    if isinstance(or_type, (WazuhException, AffectedItemsWazuhResult)):
-        or_exception = affected_result | or_type
-    else:
-        with pytest.raises(WazuhInternalError):
-            or_exception = affected_result | or_type
-        return
-
-    assert isinstance(or_exception, expected_result)
-
-
-def test_results_render_exception():
-    """Test exception from `render` method.
-
-    This will expect a sorted list by ids without `key=int`.
-    """
-    except_render_result = AffectedItemsWazuhResult()
-    id_list = ['a', 'c', 'b']
+    id_list = ['001', '002']
+    # Add two failed items with different id but same exception
     for agent_id in id_list:
-        except_render_result.add_failed_item(agent_id, WazuhException(1000))
-    rended = except_render_result.render()
-    assert rended['data']['failed_items'][0]['id'] == sorted(id_list)
+        affected_result.add_failed_item(id_=agent_id, error=WazuhException(WAZUH_EXCEPTION_CODE))
+
+    assert affected_result.failed_items
+    assert set(id_list) == next(iter(affected_result.failed_items.values()))
+
+
+def test_results_AffectedItemsWazuhResult_add_failed_items_from(get_wazuh_failed_item):
+    """Test method `add_failed_items_from` from class `AffectedItemsWazuhResult`."""
+    affected_result = AffectedItemsWazuhResult()
+    failed_result = get_wazuh_failed_item
+    affected_result.add_failed_items_from(failed_result)
+    assert affected_result.failed_items == failed_result.failed_items
+
+
+def test_results_AffectedItemsWazuhResult_add_failed_items_from_exception():
+    """Test raised exception from method `add_failed_items_from` from class `AffectedItemsWazuhResult`."""
+    affected_result = AffectedItemsWazuhResult()
+    with pytest.raises(WazuhException, match='.* 1000 .*'):
+        affected_result.add_failed_items_from('Invalid type')
+
+
+def test_results_AffectedItemsWazuhResult_remove_failed_items(get_wazuh_failed_item):
+    """Test method `remove_failed_items` from class `AffectedItemsWazuhResult`."""
+    failed_result = get_wazuh_failed_item
+    failed_result.remove_failed_items(code={WAZUH_EXCEPTION_CODE})
+    assert not failed_result.failed_items
+
+
+def test_results_AffectedItemsWazuhResult___or__(get_wazuh_failed_item):
+    """Test method `__or__` from class `AffectedItemsWazuhResult`."""
+    agent_list_1 = ['001', '002']
+    agent_list_2 = ['004', '003']
+    affected_item_1 = AffectedItemsWazuhResult(affected_items=deepcopy(agent_list_1))
+    affected_item_2 = AffectedItemsWazuhResult(affected_items=deepcopy(agent_list_2))
+    failed_item = get_wazuh_failed_item
+
+    # Expect 'affected_items': ['001', '002', '003']
+    or_result_1 = affected_item_1 | affected_item_2
+    assert set(agent_list_1 + agent_list_2) == set(or_result_1.affected_items)
+    assert not or_result_1.failed_items
+
+    # Expect new failed_item
+    or_result_2 = or_result_1 | failed_item
+    assert or_result_2.failed_items == failed_item.failed_items
+
+
+@pytest.mark.parametrize('or_item, expected_result', [
+    (WazuhError(WAZUH_EXCEPTION_CODE, ids=['001']), AffectedItemsWazuhResult),
+    (WazuhError(WAZUH_EXCEPTION_CODE), WazuhException),
+    (WazuhException(WAZUH_EXCEPTION_CODE), WazuhException),
+    ({'Invalid type': None}, None)
+])
+def test_results_AffectedItemsWazuhResult___or___exceptions(or_item, expected_result):
+    """Test raised exceptions from method `__or__` from class `AffectedItemsWazuhResult`."""
+    affected_result = AffectedItemsWazuhResult()
+    # Force an exception trying to use __or__ with an invalid type
+    try:
+        or_result = affected_result | or_item
+        assert isinstance(or_result, expected_result)
+    except WazuhException as e:
+        if e.code != 1000:
+            raise e
+
+
+def test_results_AffectedItemsWazuhResult_to_dict():
+    """Test method `to_dict` from class `AffectedItemsWazuhResult`."""
+    affected_result = AffectedItemsWazuhResult()
+    dict_item = affected_result.to_dict()
+    assert isinstance(dict_item, dict)
+    assert dict_item
+    assert (field == dict_field for field, dict_field in zip(affected_result, dict_item))
+
+
+def test_results_AffectedItemsWazuhResult_properties():
+    """Test getters and setters from class `AffectedItemsWazuhResult`."""
+    affected_result = AffectedItemsWazuhResult()
+    # Lacks 'failed_items', 'total_failed_items' and 'message'
+    property_list = ['affected_items', 'sort_fields', 'sort_casting', 'sort_ascending', 'total_affected_items',
+                     'all_msg', 'some_msg', 'none_msg']
+    values_list = [['001', '002'], 2, param_name, ['int'], [True, True], 'Sample message', 'Sample message',
+                   'Sample message']
+
+    assert len(property_list) == len(values_list)
+    # Check getters and setters dynamically
+    for key, value in zip(property_list, values_list):
+        setattr(affected_result, key, value)
+        assert value == getattr(affected_result, key)
+
+
+def test_results_AffectedItemsWazuhResult_failed_items_properties(get_wazuh_failed_item):
+    """Test `failed_items` properties from class `AffectedItemsWazuhResult`."""
+    fail_items = get_wazuh_failed_item.failed_items
+    total_fail_items = get_wazuh_failed_item.total_failed_items
+    assert isinstance(fail_items, dict)
+    assert total_fail_items == 1
+
+
+def test_results_AffectedItemsWazuhResult_message_property():
+    """Test `message` property from class `AffectedItemsWazuhResult`."""
+    messages = {'none_msg': 'none_msg', 'all_msg': 'all_msg', 'some_msg': 'some_msg'}
+    # Force every possible case since this property returns a different value depending on affected_items
+    none_msg_result = AffectedItemsWazuhResult(**messages).message
+    all_msg_result = AffectedItemsWazuhResult(**messages, affected_items=['001']).message
+    aux_result = AffectedItemsWazuhResult(**messages, affected_items=['001'])
+    aux_result.add_failed_item(WazuhException(WAZUH_EXCEPTION_CODE))
+    some_msg_result = aux_result.message
+    assert messages
+    assert len(messages) == 3
+    assert (msg == item_msg for msg, item_msg in zip(messages, [none_msg_result, all_msg_result, some_msg_result]))
+
+
+@pytest.mark.parametrize('self_field, other_field, key, expected_result', [
+    ('Sample1', 'Sample2', 'older_than', 'Sample1'),
+    ('Sample1', 'Sample2', None, 'Sample1|Sample2')
+])
+def test_results_AffectedItemsWazuhResult__merge_str(self_field, other_field, key, expected_result):
+    """Test method `_merge_str` from class `AffectedItemsWazuhResult`."""
+    affected_result = AffectedItemsWazuhResult()
+    merge_result = affected_result._merge_str(self_field, other_field, key=key)
+    assert merge_result == expected_result
+
+
+def test_results_AffectedItemsWazuhResult_encode_decode_json(get_wazuh_affected_item):
+    """Test methods `encode_json` and `decode_json` from class `AffectedItemsWazuhResult`."""
+    param_list = [['001', '002'], 2, None, ['int'], [True, True], 'Sample message', 'Sample message', 'Sample message']
+    affected_result = get_wazuh_affected_item(param_list)
+    affected_result.add_failed_item(id_=FAILED_AGENT_ID, error=WazuhException(WAZUH_EXCEPTION_CODE))
+    # Use a complete AffectedIemsWazuhResult to encode a json and then decode it
+    json_item = affected_result.encode_json()
+    decoded_json = AffectedItemsWazuhResult.decode_json(json_item)
+    assert affected_result == decoded_json
+
+
+def test_results_AffectedItemsWazuhResult_render(get_wazuh_affected_item):
+    """Test method `render` from class `AffectedItemsWazuhResult`."""
+    param_list = [['001', '002'], 2, None, ['int'], [True, True], 'Sample message', 'Sample message', 'Sample message']
+    affected_result = get_wazuh_affected_item(param_list)
+    for agent_id in [FAILED_AGENT_ID, 'Invalid ID']:
+        affected_result.add_failed_item(id_=agent_id, error=WazuhException(WAZUH_EXCEPTION_CODE))
+    # Render a valid AffectedItemsWazuhResult and check it has all the expected fields
+    render_result = affected_result.render()
+    assert isinstance(render_result, dict)
+    assert render_result
+    assert (field in ['data', 'message'] for field in render_result)
+    assert render_result['data']
+    assert (field in ['affected_items', 'total_affected_items', 'total_failed_items', 'failed_items']
+            for field in render_result['data'])
 
 
 @pytest.mark.parametrize('item, expressions, expected_result', [
@@ -150,7 +266,7 @@ def test_results_render_exception():
     ([{'a': {'b': 3}, 'c.1': 5}], ['c\\.1'], [{'a': {'b': 3}, 'c.1': 5}])
 ])
 def test_results_nested_itemgetter(item, expressions, expected_result):
-    """Test function `nested_itemgetter` from results module.
+    """Test function `nested_itemgetter` from module results
 
     Parameters
     ----------
@@ -175,7 +291,7 @@ def test_results_nested_itemgetter(item, expressions, expected_result):
     (['equal'], ['equal'], None, [str], False)
 ])
 def test_results__goes_before_than(a, b, ascending, casters, expected_result):
-    """Test function `_goes_before_than` from results module.
+    """Test function `_goes_before_than` from module results.
 
     Parameters
     ----------
@@ -192,4 +308,28 @@ def test_results__goes_before_than(a, b, ascending, casters, expected_result):
     expected_result : bool
         Expected result after the method call.
     """
-    assert _goes_before_than(a, b, ascending=ascending, casters=casters) is expected_result
+    assert _goes_before_than(a, b, ascending=ascending, casters=casters) == expected_result
+
+
+@pytest.mark.parametrize('iterables, criteria, ascending, types, expected_result', [
+    ((['001', '002'], ['003', '004']), None, [True], ['int'], ['001', '002', '003', '004']),
+    ((['001', '002'], ['003', '004']), None, [False], ['int'], ['003', '004', '001', '002']),
+    ((['001', '002'], ['003', '004']), ['1'], [True], ['int'], ['001', '002', '003', '004']),
+])
+def test_results_merge(iterables, criteria, ascending, types, expected_result):
+    """Test function `merge` from module results.
+
+    Parameters
+    ----------
+    iterables : list(list) or tuple(list)
+        List of lists to be merged.
+    criteria : list(str) or tuple(str)
+        Expressions accepted by the `nested_itemgetter` function.
+    ascending : list(bool) or tuple(bool)
+        True for ascending, False otherwise.
+    types : list(str) or tuple(str)
+        Must fit a class in builtins.
+    expected_result : list(str)
+        Expected results after merge.
+    """
+    assert merge(*iterables, criteria=criteria, ascending=ascending, types=types) == expected_result
