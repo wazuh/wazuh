@@ -26,7 +26,7 @@ void sched_scan_init(sched_scan_config *scan_config){
     scan_config->scan_wday = -1;
     scan_config->scan_day = 0;
     scan_config->scan_time = NULL;
-    scan_config->interval = WM_DEF_INTERVAL / 2;
+    scan_config->interval = WM_DEF_INTERVAL;
     scan_config->month_interval = false;
     scan_config->time_start = 0;
     scan_config->last_scan_time = 0;
