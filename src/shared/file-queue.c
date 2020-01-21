@@ -24,7 +24,6 @@ static const char *(s_month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 
 static void file_sleep()
 {
-#ifndef WIN32
     struct timeval fp_timeout;
 
     fp_timeout.tv_sec = FQ_TIMEOUT;
@@ -32,11 +31,6 @@ static void file_sleep()
 
     /* Wait for the select timeout */
     select(0, NULL, NULL, NULL, &fp_timeout);
-
-#else
-    /* Windows does not like select that way */
-    Sleep((FQ_TIMEOUT + 2) * 1000);
-#endif
 
     return;
 }
@@ -139,7 +133,6 @@ alert_data *Read_FileMon(file_queue *fileq, const struct tm *p, unsigned int tim
     /* If the file queue is not available, try to access it */
     if (!fileq->fp) {
         if (Handle_Queue(fileq, 0) != 1) {
-            file_sleep();
             return (NULL);
         }
     }
@@ -160,7 +153,6 @@ alert_data *Read_FileMon(file_queue *fileq, const struct tm *p, unsigned int tim
     GetFile_Queue(fileq);
 
     if (Handle_Queue(fileq, 0) != 1) {
-        file_sleep();
         return (NULL);
     }
 

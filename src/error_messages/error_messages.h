@@ -110,6 +110,8 @@
 #define CHLDWAIT_ERROR  "(1261): Waiting for child process. (status: %d)."
 #define TOOMANY_WAIT_ERROR "(1262): Too many errors waiting for child process(es)."
 
+#define MALFORMED_JSON  "(1263): Couldn't find '%s' field in '%s' json."
+
 /* rootcheck */
 #define MAX_RK_MSG        "(1250): Maximum number of global files reached: %d"
 #define INVALID_RKCL_NAME  "(1251): Invalid rk configuration name: '%s'."

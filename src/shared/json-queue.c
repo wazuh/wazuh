@@ -22,7 +22,6 @@ static const char *(s_month[]) = {
 };
 
 static void file_sleep() {
-#ifndef WIN32
     struct timeval fp_timeout;
 
     fp_timeout.tv_sec = FQ_TIMEOUT;
@@ -31,10 +30,6 @@ static void file_sleep() {
     /* Wait for the select timeout */
     select(0, NULL, NULL, NULL, &fp_timeout);
 
-#else
-    /* Windows does not like select that way */
-    Sleep((FQ_TIMEOUT + 2) * 1000);
-#endif
     return;
 }
 
@@ -149,6 +144,7 @@ static int Handle_JQueue(file_queue *fileq, int flags) {
         fileq->fp = fopen(fileq->file_name, "r");
         if (!fileq->fp) {
             /* Queue not available */
+            merror(FOPEN_ERROR, fileq->file_name, errno, strerror(errno));
             return 0;
         }
     }
@@ -156,6 +152,7 @@ static int Handle_JQueue(file_queue *fileq, int flags) {
     /* Seek to the end of the file */
     if (!(flags & CRALERT_READ_ALL)) {
         if (!fileq->fp) {
+            merror(FOPEN_ERROR, fileq->file_name, errno, strerror(errno));
             return 0;
         }
 
@@ -224,12 +221,18 @@ alert_data *GetAlertJSONData(file_queue *fileq) {
 
     if (timestamp) {
         os_strdup(timestamp->valuestring, al_data->date);
+    } else {
+        merror(MALFORMED_JSON, "timestamp", "alert");
+        cJSON_Delete(al_json);
+        FreeAlertData(al_data);
+        return NULL;
     }
 
     /* Rule */
     rule = cJSON_GetObjectItem(al_json, "rule");
 
     if (!rule) {
+        merror(MALFORMED_JSON, "rule", "alert");
         cJSON_Delete(al_json);
         FreeAlertData(al_data);
         return NULL;
@@ -240,6 +243,11 @@ alert_data *GetAlertJSONData(file_queue *fileq) {
 
     if (json_object) {
         al_data->rule = atoi(json_object->valuestring);
+    } else {
+        merror(MALFORMED_JSON, "id", "alert");
+        cJSON_Delete(al_json);
+        FreeAlertData(al_data);
+        return NULL;
     }
 
     // Rule description
@@ -277,6 +285,11 @@ alert_data *GetAlertJSONData(file_queue *fileq) {
 
     if (json_object) {
         al_data->level = json_object->valueint;
+    } else {
+        merror(MALFORMED_JSON, "level", "alert");
+        cJSON_Delete(al_json);
+        FreeAlertData(al_data);
+        return NULL;
     }
 
     /* Syscheck */
@@ -351,7 +364,6 @@ alert_data *Read_JSON_Mon(file_queue *fileq, const struct tm *p, unsigned int ti
     /* If the file queue is not available, try to access it */
     if (!fileq->fp) {
         if (Handle_JQueue(fileq, 0) != 1) {
-            file_sleep();
             return NULL;
         }
     }
@@ -371,7 +383,6 @@ alert_data *Read_JSON_Mon(file_queue *fileq, const struct tm *p, unsigned int ti
     strncpy(fileq->mon, s_month[p->tm_mon], 3);
 
     if (Handle_JQueue(fileq, 0) != 1) {
-        file_sleep();
         return NULL;
     }
 

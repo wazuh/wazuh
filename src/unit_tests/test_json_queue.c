@@ -419,6 +419,7 @@ void test_handle_jqueue_fail_fopen(void **state)
     expect_string(__wrap_fopen, __filename, "");
     expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, NULL);
+    expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file '' due to [(0)-(Success)].");
 
     int ret = Handle_JQueue(fileq, 0);
 
@@ -500,6 +501,8 @@ void test_handle_jqueue_flag_fp_set(void **state)
 
     /* flag CRALERT_FP_SET, fail */
 
+    expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file '' due to [(0)-(Success)].");
+
     int ret = Handle_JQueue(fileq, CRALERT_FP_SET);
 
     assert_int_equal(ret, 0);
@@ -546,6 +549,42 @@ void test_get_alert_json_data_fail(void **state)
     assert_null(fileq->fp);
 }
 
+void test_get_alert_json_data_no_timestamp(void **state)
+{
+    struct aux_struct *aux = *state;
+
+    file_queue *fileq = aux->fileq;
+    FILE *fp = aux->fp;
+
+    /* jqueue_next success, no rule */
+
+    expect_string(__wrap_fopen, __filename, "/var/ossec/logs/alerts/alerts.json");
+    expect_string(__wrap_fopen, __modes, "r");
+    will_return(__wrap_fopen, fp);
+    will_return(__wrap_fseek, 1);
+    will_return(__wrap_fstat, 1);
+
+    expect_value(__wrap_fgets, __n, OS_MAXSTR + 1);
+    expect_memory(__wrap_fgets, __stream, fp, sizeof(fp));
+    will_return(__wrap_fgets, "{\"rule\":{\"id\":\"1900\","
+                                         "\"description\":\"rule description\","
+                                         "\"groups\":[\"group1\",\"group2\"],"
+                                         "\"level\":10},"
+                               "\"syscheck\":{\"path\":\"/foo/bar\","
+                                             "\"uname_after\":\"root\"},"
+                               "\"srcip\":\"10.0.0.1\","
+                               "\"location\":\"test\"}\n");
+    will_return(__wrap_fgets, "ok");
+
+    expect_string(__wrap__merror, formatted_msg, "(1263): Couldn't find 'timestamp' field in 'alert' json.");
+
+    aux->alert = GetAlertJSONData(fileq);
+
+    assert_null(aux->alert);
+    assert_string_equal(fileq->file_name, "/var/ossec/logs/alerts/alerts.json");
+    assert_ptr_equal(fileq->fp, fp);
+}
+
 void test_get_alert_json_data_no_rule(void **state)
 {
     struct aux_struct *aux = *state;
@@ -570,6 +609,80 @@ void test_get_alert_json_data_no_rule(void **state)
                                "\"location\":\"test\","
                                "\"full_log\":\"Test full log\"}\n");
     will_return(__wrap_fgets, "ok");
+
+    expect_string(__wrap__merror, formatted_msg, "(1263): Couldn't find 'rule' field in 'alert' json.");
+
+    aux->alert = GetAlertJSONData(fileq);
+
+    assert_null(aux->alert);
+    assert_string_equal(fileq->file_name, "/var/ossec/logs/alerts/alerts.json");
+    assert_ptr_equal(fileq->fp, fp);
+}
+
+void test_get_alert_json_data_no_rule_id(void **state)
+{
+    struct aux_struct *aux = *state;
+
+    file_queue *fileq = aux->fileq;
+    FILE *fp = aux->fp;
+
+    /* jqueue_next success, no rule */
+
+    expect_string(__wrap_fopen, __filename, "/var/ossec/logs/alerts/alerts.json");
+    expect_string(__wrap_fopen, __modes, "r");
+    will_return(__wrap_fopen, fp);
+    will_return(__wrap_fseek, 1);
+    will_return(__wrap_fstat, 1);
+
+    expect_value(__wrap_fgets, __n, OS_MAXSTR + 1);
+    expect_memory(__wrap_fgets, __stream, fp, sizeof(fp));
+    will_return(__wrap_fgets, "{\"timestamp\":\"16/01/2020 12:46Z\","
+                               "\"rule\":{\"description\":\"rule description\","
+                                         "\"groups\":[\"group1\",\"group2\"],"
+                                         "\"level\":10},"
+                               "\"syscheck\":{\"path\":\"/foo/bar\","
+                                             "\"uname_after\":\"root\"},"
+                               "\"srcip\":\"10.0.0.1\","
+                               "\"location\":\"test\"}\n");
+    will_return(__wrap_fgets, "ok");
+
+    expect_string(__wrap__merror, formatted_msg, "(1263): Couldn't find 'id' field in 'alert' json.");
+
+    aux->alert = GetAlertJSONData(fileq);
+
+    assert_null(aux->alert);
+    assert_string_equal(fileq->file_name, "/var/ossec/logs/alerts/alerts.json");
+    assert_ptr_equal(fileq->fp, fp);
+}
+
+void test_get_alert_json_data_no_rule_level(void **state)
+{
+    struct aux_struct *aux = *state;
+
+    file_queue *fileq = aux->fileq;
+    FILE *fp = aux->fp;
+
+    /* jqueue_next success, no rule */
+
+    expect_string(__wrap_fopen, __filename, "/var/ossec/logs/alerts/alerts.json");
+    expect_string(__wrap_fopen, __modes, "r");
+    will_return(__wrap_fopen, fp);
+    will_return(__wrap_fseek, 1);
+    will_return(__wrap_fstat, 1);
+
+    expect_value(__wrap_fgets, __n, OS_MAXSTR + 1);
+    expect_memory(__wrap_fgets, __stream, fp, sizeof(fp));
+    will_return(__wrap_fgets, "{\"timestamp\":\"16/01/2020 12:46Z\","
+                               "\"rule\":{\"id\":\"1900\","
+                                         "\"description\":\"rule description\","
+                                         "\"groups\":[\"group1\",\"group2\"]},"
+                               "\"syscheck\":{\"path\":\"/foo/bar\","
+                                             "\"uname_after\":\"root\"},"
+                               "\"srcip\":\"10.0.0.1\","
+                               "\"location\":\"test\"}\n");
+    will_return(__wrap_fgets, "ok");
+
+    expect_string(__wrap__merror, formatted_msg, "(1263): Couldn't find 'level' field in 'alert' json.");
 
     aux->alert = GetAlertJSONData(fileq);
 
@@ -691,6 +804,8 @@ void test_read_json_mon_fail(void **state)
     expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, NULL);
 
+    expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file '' due to [(0)-(Success)].");
+
     aux->alert = Read_JSON_Mon(fileq, 0, 0);
 
     assert_null(aux->alert);
@@ -723,10 +838,14 @@ void test_read_json_mon_no_alert_fail(void **state)
     will_return(__wrap_fgets, "{\"Test\":\"Hello World 1\"}\n");
     will_return(__wrap_fgets, "ok");
 
+    expect_string(__wrap__merror, formatted_msg, "(1263): Couldn't find 'timestamp' field in 'alert' json.");
+
     expect_memory(__wrap_fclose, __stream, fp, sizeof(fp));
     expect_string(__wrap_fopen, __filename, "");
     expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file '' due to [(0)-(Success)].");
 
     aux->alert = Read_JSON_Mon(fileq, &tm_result, 0);
 
@@ -760,6 +879,8 @@ void test_read_json_mon_no_alert_retry_timeout(void **state)
     will_return(__wrap_fgets, "{\"Test\":\"Hello World 1\"}\n");
     will_return(__wrap_fgets, "ok");
 
+    expect_string(__wrap__merror, formatted_msg, "(1263): Couldn't find 'timestamp' field in 'alert' json.");
+
     expect_memory(__wrap_fclose, __stream, fp, sizeof(fp));
     expect_string(__wrap_fopen, __filename, "");
     expect_string(__wrap_fopen, __modes, "r");
@@ -772,10 +893,14 @@ void test_read_json_mon_no_alert_retry_timeout(void **state)
     will_return(__wrap_fgets, "{\"Test\":\"Hello World 1\"}\n");
     will_return(__wrap_fgets, "ok");
 
+    expect_string(__wrap__merror, formatted_msg, "(1263): Couldn't find 'timestamp' field in 'alert' json.");
+
     expect_value(__wrap_fgets, __n, OS_MAXSTR + 1);
     expect_memory(__wrap_fgets, __stream, fp, sizeof(fp));
     will_return(__wrap_fgets, "{\"Test\":\"Hello World 1\"}\n");
     will_return(__wrap_fgets, "ok");
+
+    expect_string(__wrap__merror, formatted_msg, "(1263): Couldn't find 'timestamp' field in 'alert' json.");
 
     aux->alert = Read_JSON_Mon(fileq, &tm_result, 2);
 
@@ -808,6 +933,8 @@ void test_read_json_mon_no_alert_retry_success(void **state)
     expect_memory(__wrap_fgets, __stream, fp, sizeof(fp));
     will_return(__wrap_fgets, "{\"Test\":\"Hello World 1\"}\n");
     will_return(__wrap_fgets, "ok");
+
+    expect_string(__wrap__merror, formatted_msg, "(1263): Couldn't find 'timestamp' field in 'alert' json.");
 
     expect_memory(__wrap_fclose, __stream, fp, sizeof(fp));
     expect_string(__wrap_fopen, __filename, "");
@@ -918,7 +1045,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_handle_jqueue_flag_fp_set, allocate_and_init_aux_struct, free_aux_struct),
         cmocka_unit_test_setup_teardown(test_handle_jqueue_flag_read_all, allocate_and_init_aux_struct, free_aux_struct),
         cmocka_unit_test_setup_teardown(test_get_alert_json_data_fail, allocate_and_init_aux_struct, free_aux_struct),
+        cmocka_unit_test_setup_teardown(test_get_alert_json_data_no_timestamp, allocate_and_init_aux_struct, free_aux_struct),
         cmocka_unit_test_setup_teardown(test_get_alert_json_data_no_rule, allocate_and_init_aux_struct, free_aux_struct),
+        cmocka_unit_test_setup_teardown(test_get_alert_json_data_no_rule_id, allocate_and_init_aux_struct, free_aux_struct),
+        cmocka_unit_test_setup_teardown(test_get_alert_json_data_no_rule_level, allocate_and_init_aux_struct, free_aux_struct),
         cmocka_unit_test_setup_teardown(test_get_alert_json_data_no_full_log, allocate_and_init_aux_struct, free_aux_struct),
         cmocka_unit_test_setup_teardown(test_get_alert_json_data_all_data, allocate_and_init_aux_struct, free_aux_struct),
         cmocka_unit_test_setup_teardown(test_read_json_mon_fail, allocate_and_init_aux_struct, free_aux_struct),
