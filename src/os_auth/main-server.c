@@ -922,7 +922,6 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
             /* Check for IP when client uses -i option */
             int use_client_ip = 0;
-            int src_ip_override = 0;
             char client_source_ip[IPSIZE + 1] = {0};
             char client_source_ip_token[3] = "IP:";
 
@@ -947,21 +946,19 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     }
 
                     memcpy(srcip,client_source_ip,IPSIZE);
-                    src_ip_override = 1;
                 }
 
                 use_client_ip = 1;
             } else if(!config.flags.use_source_ip) {
                 // use_source-ip = 0 and no -I argument in agent
                 memcpy(srcip,"any",IPSIZE);
-                src_ip_override = 1;
             }
             // else -> agent IP is already on srcip
 
             w_mutex_lock(&mutex_keys);
 
             /* Check for duplicated IP */
-            if (strcmp(srcip, "any") != 0 && (config.flags.use_source_ip || (!config.flags.use_source_ip && !src_ip_override)) ) {
+            if (strcmp(srcip, "any") != 0 ) {
                 if (index = OS_IsAllowedIP(&keys, srcip), index >= 0) {
                     if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
                         id_exist = keys.keyentries[index]->id;
