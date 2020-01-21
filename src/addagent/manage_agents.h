@@ -120,7 +120,7 @@ extern char shost[];
 /* Remove agent */
 #define REMOVE_ID       "Provide the ID of the agent to be removed (or '\\q' to quit): "
 #define REMOVE_CONFIRM  "Confirm deleting it?(y/n): "
-#define REMOVE_DONE     "Agent '%s' removed.\n"
+#define REMOVE_DONE     "Agent '%s' - '%s' removed.\n"
 #define REMOVE_NOT      "Not removing.\n"
 
 /* Import agent */

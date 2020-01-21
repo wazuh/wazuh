@@ -493,9 +493,9 @@ int remove_agent(int json_output)
 
         /* If user confirms */
         if (user_input[0] == 'y' || user_input[0] == 'Y') {
+            char *full_name = getFullnameById(u_id);
             if (!authd_running) {
                 /* Get full agent name */
-                char *full_name = getFullnameById(u_id);
                 if (!full_name) {
                     if (json_output) {
                         char buffer[1024];
@@ -513,7 +513,6 @@ int remove_agent(int json_output)
 
                 if (!OS_RemoveAgent(u_id)) {
                     free(full_name);
-
                     if (json_output) {
                         char buffer[1024];
                         cJSON *json_root = cJSON_CreateObject();
@@ -526,8 +525,6 @@ int remove_agent(int json_output)
                         merror_exit(FOPEN_ERROR, AUTH_FILE, errno, strerror(errno));
                 }
 
-                free(full_name);
-                full_name = NULL;
             } else {
                 if (sock = auth_connect(), sock < 0) {
                     if (json_output) {
@@ -535,11 +532,18 @@ int remove_agent(int json_output)
                         cJSON_AddNumberToObject(json_root, "error", 80);
                         cJSON_AddStringToObject(json_root, "message", "Lost authd socket connection.");
                         printf("%s", cJSON_PrintUnformatted(json_root));
+                        free(full_name);
+                        full_name = NULL;
                         exit(1);
-                    } else
+                    } else {
+                        free(full_name);
+                        full_name = NULL;
                         merror_exit("Lost authd socket connection.");
+                    }
                 }
                 if (auth_remove_agent(sock, u_id, json_output) < 0) {
+                    free(full_name);
+                    full_name = NULL;
                     break;
                 }
             }
@@ -550,9 +554,14 @@ int remove_agent(int json_output)
                 cJSON_AddStringToObject(json_root, "data", "Agent removed");
                 printf("%s", cJSON_PrintUnformatted(json_root));
             } else {
-                printf(REMOVE_DONE, u_id);
+                char *ptr = strrchr(full_name, '-');
+                if (ptr) {
+                    *ptr = '\0';
+                }
+                printf(REMOVE_DONE, u_id, full_name);
             }
-
+            free(full_name);
+            full_name = NULL;
             break;
         } else { /* if(user_input[0] == 'n' || user_input[0] == 'N') */
             printf(REMOVE_NOT);
