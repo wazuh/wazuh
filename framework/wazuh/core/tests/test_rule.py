@@ -26,6 +26,9 @@ with patch('wazuh.common.ossec_uid'):
         from wazuh.core import rule
 
 # variables
+parent_directory = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+data_path = 'core/tests/data/rules'
+
 ruleset_conf = {
     'decoder_dir': ['ruleset/decoders', 'etc/decoders'],
     'rule_dir': ['ruleset/rules', 'etc/rules'], 'rule_exclude': ['0215-policy_rules.xml'],
@@ -85,8 +88,8 @@ def test_check_status(status, expected_result):
     ('0350-amazon_rules.xml', 'tests/data/rules', 'enabled', None),
     ('noexists.xml', 'tests/data/rules', 'enabled', WazuhError(1201))
 ])
-@patch("wazuh.common.ossec_path", new=os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-@patch("wazuh.common.ruleset_rules_path", new='core/tests/data/rules')
+@patch("wazuh.common.ossec_path", new=parent_directory)
+@patch("wazuh.common.ruleset_rules_path", new=data_path)
 def test_load_rules_from_file(rule_file, rule_path, rule_status, exception):
     """Test set_groups rule core function."""
     try:

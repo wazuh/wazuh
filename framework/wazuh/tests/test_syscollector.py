@@ -3,257 +3,133 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from unittest.mock import patch
+import sys
+from functools import wraps
+from unittest.mock import patch, MagicMock
+from wazuh.tests.util import InitWDBSocketMock
+
 import pytest
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
-        from wazuh import common
+        sys.modules['wazuh.rbac.orm'] = MagicMock()
+        sys.modules['api'] = MagicMock()
+        import wazuh.rbac.decorators
+        del sys.modules['wazuh.rbac.orm']
+        del sys.modules['api']
+
+        def RBAC_bypasser(**kwargs_decorator):
+            def decorator(f):
+                @wraps(f)
+                def wrapper(*args, **kwargs):
+                    return f(*args, **kwargs)
+                return wrapper
+            return decorator
+        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh import syscollector
-        from wazuh.exception import WazuhException
-
-# MOCK DATA
-item_agent_response = [{'scan_id': 421876105, 'mac': '02:42:ac:14:00:02', 'rx_bytes': 1156817, 'name': 'eth0', 'rx_packets': 3888, 'tx_packets': 1773, 'mtu': 1500, 'rx_dropped': 0, 'tx_bytes': 592450, 'tx_errors': 0, 'scan_time': '2019/07/02 07:14:50', 'tx_dropped': 0, 'type': 'ethernet', 'state': 'up', 'rx_errors': 0}]
-
-dict_agent_response = {
-    "rx_bytes": 519287,
-    "rx_dropped": 0,
-    "rx_errors": 0,
-    "rx_packets": 1040,
-    "scan_id": 463920853,
-    "scan_time": "2019/04/26 09:31:17",
-    "tx_bytes": 61245,
-    "tx_dropped": 0,
-    "tx_errors": 0,
-    "tx_packets": 573,
-    "state": "up",
-    "mac": "02:be:86:f1:79:d5",
-    "type": "ethernet",
-    "name": "enp0s3",
-    "mtu": 1500
- }
+        from wazuh.results import AffectedItemsWazuhResult
+        from wazuh.core.syscollector import Type, get_valid_fields
 
 
-@pytest.mark.parametrize("select, valid_select_fields, search, array, response, total", [
-    ({'fields': ['rx_bytes', 'mac']}, {'rx_bytes': 'rx_bytes', 'tx_bytes': 'tx_bytes', 'scan_id': 'scan_id', 'mac': 'mac'}, {}, True, item_agent_response, '1'),
-    ({}, {'rx_bytes': 'rx_bytes', 'tx_bytes': 'tx_bytes', 'scan_id': 'scan_id', 'mac': 'mac'}, {}, False, {}, '0'),
-    ({}, {'rx_bytes': 'rx_bytes', 'tx_bytes': 'tx_bytes', 'scan_id': 'scan_id', 'mac': 'mac'}, {'negation': False, 'value': ['rx_bytes']}, False, item_agent_response, '1')
+# Tests
+
+@pytest.mark.parametrize("select, search", [
+    (None, None),
+    (['hostname', 'os.name'], None),
+    (None, {'negation': False, 'value': 'Centos'}),
 ])
-@patch("wazuh.syscollector.Agent.get_basic_information", return_value=None)
-@patch('socket.socket.connect')
-def test_get_item_agent(mock_socket_connect, mock_agent_info, select,
-                        valid_select_fields, search, array, response, total):
-    """Test get_item_agent method."""
-    with patch("wazuh.syscheck.WazuhDBBackend.execute", return_value=[response, total]):
-        results = syscollector.get_item_agent(agent_id='001', offset=0,
-                                              limit=None, select=select,
-                                              search=search, sort={},
-                                              filters={}, query='',
-                                              valid_select_fields=valid_select_fields,
-                                              table='sys_osinfo',
-                                              nested=False, array=array)
-    if array or not response:
-        assert isinstance(results, dict)
-    else:
-        assert isinstance(results, list)
+@patch("wazuh.syscollector.get_agents_info", return_value=['000', '001'])
+@patch("wazuh.core.core_agent.Agent.get_basic_information", return_value=None)
+@patch('wazuh.core.core_agent.Agent.get_agent_attr', return_value='Linux')
+def test_get_item_agent(mock_agent_attr, mock_basic_info, mock_agents_info, select, search):
+    """Test get_item_agent method.
+
+    Verify that the get_item method returns an appropriate
+    and expected result after searching in the database.
+
+    Parameters
+    ----------
+    select : list
+        Fields to be returned when searching in DB
+    search : dict
+        Looks for items with the specified string in DB.
+    """
+    with patch('wazuh.utils.WazuhDBConnection') as mock_wdb:
+        mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_syscollector_000.sql')
+        results = syscollector.get_item_agent(agent_list=['000'], offset=0, select=select, search=search)
+
+        assert isinstance(results, AffectedItemsWazuhResult)
+        assert results.render()['data']['failed_items'] == [], 'No failed_items should be returned'
+        for result in results.render()['data']['affected_items']:
+            if select:
+                assert len(result.keys()) == len(select) + 1, f'"Select" not returning {len(select)} +1 elements.'
+            if search:
+                assert search['value'] in result['os']['name'], f'{search["value"]} not in result.'
 
 
-@pytest.mark.parametrize("select, valid_select_fields, sort, expected_exception", [
-    ({'fields': ['hostname']}, {'hostname': 'hostname'}, {'fields': ['error']}, 1403),
-    ({'fields': ['error']}, {'hostname': 'hostname', 'os_version': 'os_version', 'os_name': 'os_name', 'architecture': 'architecture'}, {'fields': [], 'order': 'asc'}, 1724),
-    ({'fields': []}, {'hostname': 'hostname', 'os_version': 'os_version', 'os_name': 'os_name', 'architecture': 'architecture'}, {'fields': [], 'order': 'asc'}, 1724)
+@pytest.mark.parametrize("agent_list, expected_exception", [
+    (['010'], 1701),
 ])
-@patch("wazuh.syscollector.Agent.get_basic_information", return_value=None)
-@patch('socket.socket.connect')
-@patch("wazuh.syscheck.WazuhDBBackend.execute")
-def test_failed_get_item_agent(mock_execute, mock_socket_connect,
-                               mock_agent_info, select, valid_select_fields,
-                               sort, expected_exception):
-    """Test if get_item_agent method handle exceptions properly."""
-    with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
-        syscollector.get_item_agent(agent_id='001', offset=0, limit=500,
-                                    select=select, search={}, sort=sort,
-                                    filters={}, query='', 
-                                    valid_select_fields=valid_select_fields,
-                                    table='sys_osinfo', nested=False)
+@patch("wazuh.syscollector.get_agents_info", return_value=['000', '001'])
+@patch("wazuh.core.core_agent.Agent.get_basic_information", return_value=None)
+@patch('wazuh.core.core_agent.Agent.get_agent_attr', return_value='Linux')
+def test_failed_get_item_agent(mock_agent_attr, mock_basic_info, mock_agents_info, agent_list, expected_exception):
+    """Test if get_item_agent method handle exceptions properly.
+
+    Parameters
+    ----------
+    agent_list : list
+        List of agents IDs to search
+    expected_exception : int
+        Expected error code when triggering the exception.
+    """
+    with patch('wazuh.utils.WazuhDBConnection') as mock_wdb:
+        mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_syscollector_000.sql')
+        results = syscollector.get_item_agent(agent_list=agent_list, offset=0, limit=500, nested=False)
+
+        assert expected_exception == results.render()['data']['failed_items'][0]['error']['code'], \
+            'Error code not expected'
 
 
-@pytest.mark.parametrize("sort, limit, response", [
-    ({'fields' :['rx_bytes', 'mac'], 'order': 'asc'}, common.database_limit, dict_agent_response),
-    ({}, common.database_limit, {}),
-    ({}, 1, dict_agent_response)
+@pytest.mark.parametrize("element_type", [
+    'hardware',
+    'packages',
+    'processes',
+    'ports',
+    'netaddr',
+    'netproto',
+    'netiface',
+    'hotfixes'
 ])
-@patch("wazuh.syscollector.Agent.get_agents_overview", return_value={'items':[{'id': '000'}, {'id': '001'}, {'id': '002'}, {'id': '003'}]})
-@patch("wazuh.syscollector.sorted", return_value=[dict_agent_response])
-@patch("wazuh.syscollector.get_fields_to_nest", return_value=[None, None])
-@patch("wazuh.syscollector.plain_dict_to_nested_dict", return_value=dict_agent_response)
-def test_get_agent_items_private(mock_plain_dict, mock_fields_nest, mock_sort, mock_agent_overview, sort, limit, response):
-    """Test _get_agent_items private method."""
-    with patch("wazuh.syscollector.get_item_agent", return_value=response):
-        results = syscollector._get_agent_items(func=syscollector.get_packages_agent, offset=0, limit=limit, select={},
-                                      filters={}, search={}, sort=sort)
+@patch("wazuh.syscollector.get_agents_info", return_value=['000', '001'])
+@patch("wazuh.core.core_agent.Agent.get_basic_information", return_value=None)
+@patch('wazuh.core.core_agent.Agent.get_agent_attr', return_value='Linux')
+def test_agent_elements(mock_agent_attr, mock_basic_info, mock_agents_info, element_type):
+    """Tests every possible type of agent element
 
-        assert isinstance(results, dict)
+    Iterate over each element type, call the get_item_agent function with that
+    parameter and verify that the response obtained contains all the expected
+    fields (found in core.get_valid_fields ()).
 
-
-@patch("wazuh.syscollector.Agent.get_basic_information", return_value=None)
-@patch("wazuh.syscollector.Agent.get_agent_attr", return_value='Ubuntu')
-@patch("wazuh.syscollector.get_item_agent", return_value={})
-def test_get_os_agent(mock_response, mock_os_name, mock_agent_info):
+    Parameters
+    ----------
+    element_type : string
+        Type of element to get syscollector information from
     """
-        Tests get_os_agent method
-    """
-    results = syscollector.get_os_agent('001')
+    def valid_fields_asserter(rendered_result):
+        """Check that all expected keys and subkeys are in the result."""
+        fields = get_valid_fields(Type(element_type))[1]
+        for field in fields.keys():
+            if field.__contains__('.'):
+                key, subkey = field.split('.')
+                results_subdict = rendered_result['data']['affected_items'][0][key]
+                assert subkey in results_subdict.keys(), f'Subkey "{subkey}" not found in result'
+            else:
+                assert field in rendered_result['data']['affected_items'][0].keys(), f'Key "{field}" not found in result'
 
-    assert isinstance(results, dict)
+    with patch('wazuh.utils.WazuhDBConnection') as mock_wdb:
+        mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_syscollector_000.sql')
+        results = syscollector.get_item_agent(agent_list=['000'], element_type=element_type)
 
-
-@patch("wazuh.syscollector.get_item_agent", return_value={})
-def test_get_hardware_agent(mock_response):
-    """
-        Tests get_hardware_agent method
-    """
-    results = syscollector.get_hardware_agent('001')
-
-    assert isinstance(results, dict)
-
-
-@patch("wazuh.syscollector.get_item_agent", return_value={})
-def test_get_packages_agent(mock_response):
-    """
-        Tests get_packages_agent method
-    """
-    results = syscollector.get_packages_agent('001')
-
-    assert isinstance(results, dict)
-
-
-@patch("wazuh.syscollector.get_item_agent", return_value={})
-def test_get_processes_agent(mock_response):
-    """
-        Tests get_processes_agent method
-    """
-    results = syscollector.get_processes_agent('001')
-
-    assert isinstance(results, dict)
-
-
-
-@patch("wazuh.syscollector.get_item_agent", return_value={})
-def test_get_ports_agent(mock_response):
-    """
-        Tests get_ports_agent method
-    """
-    results = syscollector.get_ports_agent('001')
-
-    assert isinstance(results, dict)
-
-
-@patch("wazuh.syscollector.get_item_agent", return_value={})
-def test_get_netaddr_agent(mock_response):
-    """
-        Tests get_netaddr_agent method
-    """
-    results = syscollector.get_netaddr_agent('001')
-
-    assert isinstance(results, dict)
-
-
-@patch("wazuh.syscollector.get_item_agent", return_value={})
-def test_get_netproto_agent(mock_response):
-    """
-        Tests get_netproto_agent method
-    """
-    results = syscollector.get_netproto_agent('001')
-
-    assert isinstance(results, dict)
-
-
-@patch("wazuh.syscollector.get_item_agent", return_value={})
-def test_get_netiface_agent(mock_response):
-    """
-        Tests get_netiface_agent method
-    """
-    results = syscollector.get_netiface_agent('001')
-
-    assert isinstance(results, dict)
-
-
-@patch("wazuh.syscollector._get_agent_items", return_value={})
-def test_get_packages(mock_response):
-    """
-        Tests get_packages method
-    """
-    results = syscollector.get_packages()
-
-    assert isinstance(results, dict)
-
-
-@patch("wazuh.syscollector._get_agent_items", return_value={})
-def test_get_os(mock_response):
-    """
-        Tests get_hardware_agent method
-    """
-    results = syscollector.get_os()
-
-    assert isinstance(results, dict)
-
-
-@patch("wazuh.syscollector._get_agent_items", return_value={})
-def test_get_hardware(mock_response):
-    """
-        Tests get_hardware method
-    """
-    results = syscollector.get_hardware()
-
-    assert isinstance(results, dict)
-
-
-@patch("wazuh.syscollector._get_agent_items", return_value={})
-def test_get_processes(mock_response):
-    """
-        Tests get_processes method
-    """
-    results = syscollector.get_processes()
-
-    assert isinstance(results, dict)
-
-
-@patch("wazuh.syscollector._get_agent_items", return_value={})
-def test_get_ports(mock_response):
-    """
-        Tests get_ports method
-    """
-    results = syscollector.get_ports()
-
-    assert isinstance(results, dict)
-
-
-@patch("wazuh.syscollector._get_agent_items", return_value={})
-def test_get_netaddr(mock_response):
-    """
-        Tests get_netaddr method
-    """
-    results = syscollector.get_netaddr()
-
-    assert isinstance(results, dict)
-
-
-@patch("wazuh.syscollector._get_agent_items", return_value={})
-def test_get_netproto(mock_response):
-    """
-        Tests get_netproto method
-    """
-    results = syscollector.get_netproto()
-
-    assert isinstance(results, dict)
-
-
-@patch("wazuh.syscollector._get_agent_items", return_value={})
-def test_get_netiface(mock_response):
-    """
-        Tests get_netiface method
-    """
-    results = syscollector.get_netiface()
-
-    assert isinstance(results, dict)
+        assert isinstance(results, AffectedItemsWazuhResult)
+        valid_fields_asserter(results.render())

@@ -24,13 +24,13 @@ with patch('wazuh.common.ossec_uid'):
 
 
 # Variables
-# test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../core/tests/data')
-
+parent_directory = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+data_path = 'core/tests/data/rules'
 
 rule_ossec_conf = {
   "ruleset": {
     "rule_dir": [
-      "core/tests/data/rules",
+      "core/tests/data/rules"
     ],
     "rule_exclude": ["0010-rules_config.xml"]
   }
@@ -62,16 +62,17 @@ rule_contents = '''
 </group>
     '''
 
-mocked_items = {'items': [], 'totalItems': 0}
+
+@pytest.fixture(scope='module', autouse=True)
+def mock_ossec_path():
+    with patch('wazuh.common.ossec_path', new=parent_directory):
+        yield
 
 
-def rules_files(file_path):
-    """
-    Returns a list of rules names
-    :param file_path: A glob file path containing *.xml in the end.
-    :return: A generator
-    """
-    return map(lambda x: file_path.replace('*.xml', f'rules{x}.xml'), range(2))
+@pytest.fixture(scope='module', autouse=True)
+def mock_rules_path():
+    with patch('wazuh.common.ruleset_rules_path', new=data_path):
+        yield
 
 
 @pytest.mark.parametrize('func', [
@@ -85,8 +86,6 @@ def rules_files(file_path):
     'disabled',
     'random'
 ])
-@patch("wazuh.common.ossec_path", new=os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-@patch("wazuh.common.ruleset_rules_path", new='core/tests/data/rules')
 @patch("wazuh.rule.configuration.get_ossec_conf", return_value=rule_ossec_conf)
 def test_get_rules_file_status_include(mock_ossec, status, func):
     """Test getting rules using status filter."""
@@ -115,11 +114,9 @@ def test_get_rules_file_status_include(mock_ossec, status, func):
     ['0010-rules_config.xml'],
     ['0015-ossec_rules.xml']
 ])
-@patch("wazuh.common.ossec_path", new=os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-@patch("wazuh.common.ruleset_rules_path", new='core/tests/data/rules')
 @patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
 def test_get_rules_file_file_param(mock_config, file_, func):
-    """Test getting rules using status filter."""
+    """Test getting rules using param filter."""
     d_files = func(file=file_)
     assert [d_files.affected_items[0]['file']] == file_
     if func == rule.get_rules_files:
@@ -180,10 +177,9 @@ def test_failed_get_rules():
     {'search_text': None},
     {'search_text': "firewall", "complementary_search": False}
 ])
-@patch("wazuh.common.ossec_path", new=os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-@patch("wazuh.common.ruleset_rules_path", new='core/tests/data/rules')
 @patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
 def test_get_groups(mock_config, arg):
+    """Test get_groups function."""
     result = rule.get_groups(**arg)
 
     assert isinstance(result, AffectedItemsWazuhResult)
@@ -194,10 +190,9 @@ def test_get_groups(mock_config, arg):
 @pytest.mark.parametrize('requirement', [
     'pci', 'gdpr', 'hipaa', 'nist_800_53', 'gpg13'
 ])
-@patch("wazuh.common.ossec_path", new=os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-@patch("wazuh.common.ruleset_rules_path", new='core/tests/data/rules')
 @patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
 def test_get_requirement(mocked_config, requirement):
+    """Test get_requirement function."""
     result = rule.get_requirement(requirement=requirement)
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_failed_items == 0
@@ -209,6 +204,7 @@ def test_get_requirement(mocked_config, requirement):
 ])
 @patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
 def test_get_requirement_invalid(mocked_config, requirement):
+    """Test get_requirement (invalid) function."""
     result = rule.get_requirement(requirement=requirement)
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_failed_items == 1
@@ -220,11 +216,9 @@ def test_get_requirement_invalid(mocked_config, requirement):
     {'0015-ossec_rules.xml': str},
     {'no_exists.xml': 1415}
 ])
-@patch("wazuh.common.ossec_path", new=os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-@patch("wazuh.common.ruleset_rules_path", new='core/tests/data/rules')
 @patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
 def test_get_rules_file_download(mock_config, file_):
-    """Test getting rules using status filter."""
+    """Test download a specified rule filter."""
     try:
         d_files = rule.get_file(list(file_.keys())[0])
         assert isinstance(d_files, str)
@@ -238,7 +232,7 @@ def test_get_rules_file_download(mock_config, file_):
 ])
 @patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
 def test_get_rules_file_download_failed(mock_config, file_):
-    """Test getting rules using status filter."""
+    """Test download a specified rule filter."""
     with patch('wazuh.rule.get_rules_files', return_value=AffectedItemsWazuhResult(
             all_msg='test', affected_items=[{'path': list(file_.keys())[0]}])):
         try:
