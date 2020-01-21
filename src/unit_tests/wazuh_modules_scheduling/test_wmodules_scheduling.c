@@ -71,6 +71,8 @@ static void test_day_of_the_month_consecutive(void **state){
         "<time>0:00</time>"
     ;
     sched_scan_config scan_config = init_config_from_string(string);
+    // Set to 2 months
+    scan_config.interval = 2;
 
     time_t time_sleep = sched_scan_get_next_time(&scan_config, "TEST_DAY_MONTH_MODE", 0); 
     time_t first_time = time(NULL) + time_sleep;
@@ -89,7 +91,7 @@ static void test_day_of_the_month_consecutive(void **state){
 
     assert_int_equal(second_date.tm_mday, scan_config.scan_day);
     // Check it is following month
-    assert_int_equal((first_date.tm_mon + 1) % 12, second_date.tm_mon);
+    assert_int_equal((first_date.tm_mon + scan_config.interval) % 12, second_date.tm_mon);
     free(scan_config.scan_time);
 }
 
