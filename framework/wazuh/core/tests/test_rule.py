@@ -83,8 +83,7 @@ def test_check_status(status, expected_result):
     ('0015-ossec_rules.xml', 'tests/data/rules', 'enabled', None),
     ('0260-nginx_rules.xml', 'tests/data/rules', 'enabled', None),
     ('0350-amazon_rules.xml', 'tests/data/rules', 'enabled', None),
-    ('noexists.xml', 'tests/data/rules', 'enabled', WazuhError(1201)),
-    ('no_permissions.xml', 'tests/data/rules', 'enabled', WazuhError(1207))
+    ('noexists.xml', 'tests/data/rules', 'enabled', WazuhError(1201))
 ])
 @patch("wazuh.common.ossec_path", new=os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 @patch("wazuh.common.ruleset_rules_path", new='core/tests/data/rules')
@@ -98,6 +97,20 @@ def test_load_rules_from_file(rule_file, rule_path, rule_status, exception):
             assert r['status'] == rule_status
     except WazuhError as e:
         assert e.code == exception.code
+
+
+@patch("wazuh.core.rule.load_wazuh_xml", side_effect=OSError(13, 'Error', 'Permissions'))
+def test_load_rules_from_file_permissions(mock_load):
+    """Test set_groups rule core function."""
+    with pytest.raises(WazuhError, match='.* 1207 .*'):
+        rule.load_rules_from_file('nopermissions.xml', 'tests/data/rules', 'disabled')
+
+
+@patch("wazuh.core.rule.load_wazuh_xml", side_effect=OSError(8, 'Error', 'Unknown'))
+def test_load_rules_from_file_unknown(mock_load):
+    """Test set_groups rule core function."""
+    with pytest.raises(OSError, match='.*[Errno 8].*'):
+        rule.load_rules_from_file('unknown.xml', 'tests/data/rules', 'disabled')
 
 
 @pytest.mark.parametrize('tmp_data, parameters, expected_result', [
