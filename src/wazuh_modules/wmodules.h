@@ -101,6 +101,10 @@ extern int wm_max_eps;          // Maximum events per second sent by OpenScap Wa
 extern int wm_kill_timeout;     // Time for a process to quit before killing it
 extern int wm_debug_level;
 
+// Wrappable function to determine infinite loop
+int FOREVER();
+
+
 // Read XML configuration and internal options
 int wm_config();
 cJSON *getModulesConfig(void);

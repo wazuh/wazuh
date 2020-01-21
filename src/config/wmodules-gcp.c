@@ -14,13 +14,9 @@ static const char *XML_ENABLED = "enabled";
 static const char *XML_PROJECT_ID = "project_id";
 static const char *XML_SUBSCRIPTION_NAME = "subscription_name";
 static const char *XML_CREDENTIALS_FILE = "credentials_file";
-static const char *XML_INTERVAL = "interval";
 static const char *XML_MAX_MESSAGES = "max_messages";
 static const char *XML_PULL_ON_START = "pull_on_start";
 static const char *XML_LOGGING = "logging";
-static const char *XML_SCAN_DAY = "day";
-static const char *XML_WEEK_DAY = "wday";
-static const char *XML_TIME = "time";
 
 static short eval_bool(const char *str) {
     return !str ? OS_INVALID : !strcmp(str, "yes") ? 1 : !strcmp(str, "no") ? 0 : OS_INVALID;
@@ -30,7 +26,6 @@ static short eval_bool(const char *str) {
 
 int wm_gcp_read(xml_node **nodes, wmodule *module) {
     unsigned int i;
-    int month_interval = 0;
     wm_gcp *gcp;
 
     if (!module->data) {
@@ -38,14 +33,12 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
         gcp->enabled = 1;
         gcp->max_messages = 100;
         gcp->project_id = NULL;
-        gcp->scan_wday = -1;
-        gcp->scan_day = 0;
-        gcp->scan_time = NULL;
+        sched_scan_init(&(gcp->scan_config));
+        gcp->scan_config.interval = WM_GCP_DEF_INTERVAL;
         gcp->subscription_name = NULL;
         gcp->credentials_file = NULL;
         gcp->pull_on_start = 1;
         gcp->logging = 2;
-        gcp->interval = WM_DEF_INTERVAL / 2;
         module->context = &WM_GCP_CONTEXT;
         module->tag = strdup(module->context->name);
         module->data = gcp;
@@ -115,40 +108,6 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
 
             os_strdup(realpath_buffer, gcp->credentials_file);
         }
-        else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
-            char *endptr;
-            gcp->interval = strtoul(nodes[i]->content, &endptr, 0);
-
-            if (gcp->interval <= 0 || gcp->interval >= UINT_MAX) {
-                merror("Invalid interval value at module '%s'", WM_GCP_CONTEXT.name);
-                return OS_INVALID;
-            }
-
-            switch (*endptr) {
-                case 'M':
-                    month_interval = 1;
-                    gcp->interval *= 60; // We can`t calculate seconds of a month
-                    break;
-                case 'w':
-                    gcp->interval *= 604800;
-                    break;
-                case 'd':
-                    gcp->interval *= 86400;
-                    break;
-                case 'h':
-                    gcp->interval *= 3600;
-                    break;
-                case 'm':
-                    gcp->interval *= 60;
-                    break;
-                case 's':
-                case '\0':
-                    break;
-                default:
-                    merror("Invalid interval value at module '%s'", WM_GCP_CONTEXT.name);
-                    return OS_INVALID;
-            }
-        }
         else if (!strcmp(nodes[i]->element, XML_MAX_MESSAGES)) {
             if (!nodes[i]->content) {
                 merror("Empty content for tag '%s'", XML_MAX_MESSAGES);
@@ -193,63 +152,19 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
                 merror("Invalid content for tag '%s'", XML_LOGGING);
                 return OS_INVALID;
             }
-        } else if (!strcmp(nodes[i]->element, XML_WEEK_DAY)) {
-            gcp->scan_wday = w_validate_wday(nodes[i]->content);
-            if (gcp->scan_wday < 0 || gcp->scan_wday > 6) {
-                merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
-                return (OS_INVALID);
-            }
-        }
-        else if (!strcmp(nodes[i]->element, XML_SCAN_DAY)) {
-            if (!OS_StrIsNum(nodes[i]->content)) {
-                merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
-                return (OS_INVALID);
-            } else {
-                gcp->scan_day = atoi(nodes[i]->content);
-                if (gcp->scan_day < 1 || gcp->scan_day > 31) {
-                    merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
-                    return (OS_INVALID);
-                }
-            }
-        }
-        else if (!strcmp(nodes[i]->element, XML_TIME))
-        {
-            gcp->scan_time = w_validate_time(nodes[i]->content);
-            if (!gcp->scan_time) {
-                merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
-                return (OS_INVALID);
-            }
+        } 
+        else if (is_sched_tag(nodes[i]->element)) {
+            // Do nothing
         } else {
-            mwarn("No such tag <%s>", nodes[i]->element);
+            merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_GCP_CONTEXT.name);	
+            return OS_INVALID;
         }
+        
     }
 
-    // Validate scheduled scan parameters and interval value
-
-    if (gcp->scan_day && (gcp->scan_wday >= 0)) {
-        merror("Options 'day' and 'wday' are not compatible.");
+    const int sched_read = sched_scan_read(&(gcp->scan_config), nodes, module->context->name);
+    if ( sched_read != 0 ) {
         return OS_INVALID;
-    } else if (gcp->scan_day) {
-        if (!month_interval) {
-            mwarn("Interval must be a multiple of one month. New interval value: 1M");
-            gcp->interval = 60; // 1 month
-        }
-        if (!gcp->scan_time)
-            gcp->scan_time = strdup("00:00");
-    } else if (gcp->scan_wday >= 0) {
-        if (w_validate_interval(gcp->interval, 1) != 0) {
-            gcp->interval = 604800;  // 1 week
-            mwarn("Interval must be a multiple of one week. New interval value: 1w");
-        }
-        if (gcp->interval == 0)
-            gcp->interval = 604800;
-        if (!gcp->scan_time)
-            gcp->scan_time = strdup("00:00");
-    } else if (gcp->scan_time) {
-        if (w_validate_interval(gcp->interval, 0) != 0) {
-            gcp->interval = WM_DEF_INTERVAL;  // 1 day
-            mwarn("Interval must be a multiple of one day. New interval value: 1d");
-        }
     }
 
     if (!gcp->project_id) {

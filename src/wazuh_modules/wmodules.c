@@ -20,6 +20,10 @@ int wm_max_eps;             // Maximum events per second sent by OpenScap and CI
 int wm_kill_timeout;        // Time for a process to quit before killing it
 int wm_debug_level;
 
+int FOREVER() {
+    return 1;
+}
+
 // Read XML configuration and internal options
 
 int wm_config() {
@@ -437,6 +441,8 @@ int get_time_to_day(int wday, const char * hour) {
         }
     }
 
+    free(parts[0]);
+    free(parts[1]);
     free(parts);
 
     return (int)diff;
