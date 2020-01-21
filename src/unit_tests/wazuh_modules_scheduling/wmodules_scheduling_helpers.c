@@ -3,7 +3,7 @@
 
 static time_t current_time = 0;
 static int FOREVER_LOOP = 1;
-
+extern time_t __real_time(time_t *_time);
 /**************** Mocked functions *************/
 /**     Mocked functions       **/
 

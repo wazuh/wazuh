@@ -72,7 +72,7 @@ list(APPEND tests_flags "-Wl,--wrap=time,--wrap=wm_delay,--wrap=_mwarn,--wrap=_m
 list(APPEND use_shared_libs 1)
 
 list(APPEND tests_names "test_schedule_scan")
-list(APPEND tests_flags "-Wl,--wrap=OS_StrIsNum,--wrap=_merror")
+list(APPEND tests_flags "-Wl,--wrap=OS_StrIsNum,--wrap=_merror,--wrap=check_day_to_scan,--wrap=get_time_to_hour,--wrap=get_time_to_day,--wrap=wm_delay,--wrap=time")
 list(APPEND use_shared_libs 0)
 
 list(APPEND shared_libs "global_helpers.c")
