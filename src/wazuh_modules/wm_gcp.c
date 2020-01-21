@@ -78,7 +78,7 @@ time_t wm_gcp_get_next_run_time(const wm_gcp *data){
     if (data->scan_day) {
         // Option 1: Day of the month
         int status = -1;
-        
+
         while (status < 0) {
             status = check_day_to_scan(data->scan_day, data->scan_time);
             if (status == 0) {
@@ -87,7 +87,7 @@ time_t wm_gcp_get_next_run_time(const wm_gcp *data){
             } else {
                 // Sleep until next day and re-evaluate
                 wm_delay(1000); // Sleep one second to avoid an infinite loop
-                const time_t sleep_until_tomorrow = get_time_to_hour("00:00"); 
+                const time_t sleep_until_tomorrow = get_time_to_hour("00:00");
 
                 mtdebug2(WM_GCP_LOGTAG, "Sleeping for %d seconds.", (int)sleep_until_tomorrow);
                 wm_delay(1000 * sleep_until_tomorrow);
@@ -102,7 +102,7 @@ time_t wm_gcp_get_next_run_time(const wm_gcp *data){
         return (time_t) get_time_to_hour(data->scan_time);
     } else if (data->interval) {
         // Option 4: Interval of time
-        
+
         if(!time_start){
             // First time
             return 0;
@@ -118,11 +118,15 @@ time_t wm_gcp_get_next_run_time(const wm_gcp *data){
     } else {
         mtinfo(WM_GCP_LOGTAG, "Invalid Scheduling option. Exiting.");
         pthread_exit(NULL);
-        
+
     }
     return 0;
 }
 
+#ifdef UNIT_TESTING
+// Replace pthread_exit for testing purposes
+#define pthread_exit(a) return
+#endif
 void wm_gcp_run(const wm_gcp *data) {
     int status;
     char *output = NULL;
