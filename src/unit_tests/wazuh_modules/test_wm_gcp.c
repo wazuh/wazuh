@@ -1206,6 +1206,10 @@ static void test_wm_gcp_dump_error_allocating_wm_wd(void **state) {
     snprintf(gcp_dump_data->config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
     snprintf(gcp_dump_data->config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
 
+    // Since we won't use wm_wd, we can just free it to prevent memory leaks.
+    free(gcp_dump_data->wm_wd);
+    gcp_dump_data->wm_wd = NULL;
+
     will_return(__wrap_cJSON_CreateObject, gcp_dump_data->root);
     will_return(__wrap_cJSON_CreateObject, NULL);
 
@@ -1230,6 +1234,13 @@ static void test_wm_gcp_dump_error_allocating_root(void **state) {
     snprintf(gcp_dump_data->config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
     snprintf(gcp_dump_data->config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
     snprintf(gcp_dump_data->config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+
+    // Since we won't use wm_wd or root, we can just free them to prevent memory leaks.
+    free(gcp_dump_data->wm_wd);
+    gcp_dump_data->wm_wd = NULL;
+
+    free(gcp_dump_data->root);
+    gcp_dump_data->root = NULL;
 
     will_return(__wrap_cJSON_CreateObject, NULL);
     will_return(__wrap_cJSON_CreateObject, NULL);   // If we cannot alloc root, wm_wd won't be alloced either.
