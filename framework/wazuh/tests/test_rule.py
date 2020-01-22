@@ -39,7 +39,7 @@ rule_ossec_conf = {
 other_rule_ossec_conf = {
     'ruleset': {
         'decoder_dir': ['ruleset/decoders', 'etc/decoders'],
-        'rule_dir': ['ruleset/rules', 'etc/rules'],
+        'rule_dir': [data_path],
         'rule_exclude': ['0010-rules_config.xml'],
         'list': ['etc/lists/audit-keys', 'etc/lists/amazon/aws-eventnames', 'etc/lists/security-eventchannel']
     }
@@ -141,7 +141,10 @@ def test_failed_get_rules_file(mock_config):
     {'gdpr': 'IV_35.7.a'},
     {'hipaa': '164.312.a'},
     {'nist_800_53': 'AU.1'},
-    {'rule_ids': ['510']},
+    {'rule_ids': [510], 'status': 'all'},
+    {'rule_ids': [1, 1]},
+    {'rule_ids': [510, 1], 'file': ['noexists.xml']},
+    {'rule_ids': [510, 999999], 'status': 'disabled'},
     {'level': '2'},
     {'level': '2-2'},
     {'rule_ids': ['1', '2', '4', '8']},
@@ -155,7 +158,10 @@ def test_get_rules(mock_config, arg):
     assert isinstance(result, AffectedItemsWazuhResult)
     for rule_ in result.to_dict()['affected_items']:
         if list(arg.keys())[0] != 'level':
-            assert arg[list(arg.keys())[0]] in rule_[list(arg.keys())[0]]
+            key = list(arg.keys())[0] if list(arg.keys())[0] != 'rule_ids' else 'id'
+            print(rule_[key])
+            for rule_id in arg[list(arg.keys())[0]]:
+                assert rule_id in [rule_[key]]
         else:
             try:
                 found = arg[list(arg.keys())[0]] in str(rule_[list(arg.keys())[0]])
