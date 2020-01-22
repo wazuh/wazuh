@@ -17,49 +17,28 @@
 #include "active-response.h"
 #include "lists.h"
 
-typedef struct _StaticFilters
-{
-    unsigned int same_dodiff:1;
-    unsigned int global_frequency:1;
-    unsigned int same_srcuser:1;
-    unsigned int different_srcuser:1;
-    unsigned int same_dstuser:1;
-    unsigned int different_dstuser:1;
-    unsigned int same_srcip:1;
-    unsigned int different_srcip:1;
-    unsigned int same_dstip:1;
-    unsigned int different_dstip:1;
-    unsigned int same_srcport:1;
-    unsigned int different_srcport:1;
-    unsigned int same_dstport:1;
-    unsigned int different_dstport:1;
-    unsigned int same_protocol:1;
-    unsigned int different_protocol:1;
-    unsigned int same_action:1;
-    unsigned int different_action:1;
-    unsigned int same_id:1;
-    unsigned int different_id:1;
-    unsigned int same_url:1;
-    unsigned int different_url:1;
-    unsigned int same_data:1;
-    unsigned int different_data:1;
-    unsigned int same_extra_data:1;
-    unsigned int different_extra_data:1;
-    unsigned int same_status:1;
-    unsigned int different_status:1;
-    unsigned int same_system_name:1;
-    unsigned int different_system_name:1;
-    unsigned int same_srcgeoip:1;
-    unsigned int different_srcgeoip:1;
-    unsigned int same_dstgeoip:1;
-    unsigned int different_dstgeoip:1;
-    unsigned int same_location:1;
-    unsigned int different_location:1;
-    unsigned int same_field:1;
-    unsigned int not_same_field:1;
-    unsigned int same_agent:1;
-    unsigned int different_agent:1;
-} StaticFilters;
+#define FIELD_SRCIP      0x01
+#define FIELD_ID         0x02
+#define FIELD_DSTIP      0x04
+#define FIELD_SRCPORT    0x08
+#define FIELD_DSTPORT    0x10
+#define FIELD_SRCUSER    0x20
+#define FIELD_USER       0x40
+#define FIELD_PROTOCOL   0x80
+#define FIELD_ACTION     0x100
+#define FIELD_URL        0x200
+#define FIELD_DATA       0x400
+#define FIELD_EXTRADATA  0x800
+#define FIELD_STATUS     0x1000
+#define FIELD_SYSTEMNAME 0x2000
+#define FIELD_SRCGEOIP   0x4000
+#define FIELD_DSTGEOIP   0x8000
+#define FIELD_LOCATION   0x10000
+#define FIELD_FIELDS     0x20000
+#define FIELD_AGENT      0x40000
+#define FIELD_DODIFF     0x80000
+#define FIELD_GFREQUENCY 0x100000
+#define N_FIELDS         17
 
 /* Alert options  - store on a uint16 */
 #define DO_FTS          0x0001
@@ -133,7 +112,9 @@ typedef struct _RuleInfo {
     u_int16_t alert_opts;
 
     /* Context options */
-    StaticFilters context_opts;
+    u_int32_t same_field;
+    u_int32_t different_field;
+    u_int32_t context_opts;
 
     /* Category */
     u_int8_t category;
@@ -217,6 +198,45 @@ typedef struct _RuleInfo {
     char ** not_same_fields;
 } RuleInfo;
 
+size_t same_offset[] = { 
+    offsetof(Eventinfo, srcip),
+    offsetof(Eventinfo, id),
+    offsetof(Eventinfo, dstip),
+    offsetof(Eventinfo, srcport),
+    offsetof(Eventinfo, dstport),
+    offsetof(Eventinfo, srcuser),
+    offsetof(Eventinfo, dstuser),
+    offsetof(Eventinfo, protocol),
+    offsetof(Eventinfo, action),
+    offsetof(Eventinfo, url),
+    offsetof(Eventinfo, data),
+    offsetof(Eventinfo, extra_data),
+    offsetof(Eventinfo, status),
+    offsetof(Eventinfo, systemname),
+    offsetof(Eventinfo, srcgeoip),
+    offsetof(Eventinfo, dstgeoip),
+    offsetof(Eventinfo, location)
+};
+
+size_t different_offset[] = { 
+    offsetof(Eventinfo, srcip),
+    offsetof(Eventinfo, id),
+    offsetof(Eventinfo, dstip),
+    offsetof(Eventinfo, srcport),
+    offsetof(Eventinfo, dstport),
+    offsetof(Eventinfo, srcuser),
+    offsetof(Eventinfo, dstuser),
+    offsetof(Eventinfo, protocol),
+    offsetof(Eventinfo, action),
+    offsetof(Eventinfo, url),
+    offsetof(Eventinfo, data),
+    offsetof(Eventinfo, extra_data),
+    offsetof(Eventinfo, status),
+    offsetof(Eventinfo, systemname),
+    offsetof(Eventinfo, srcgeoip),
+    offsetof(Eventinfo, dstgeoip),
+    offsetof(Eventinfo, location)
+};
 
 typedef struct _RuleNode {
     RuleInfo *ruleinfo;

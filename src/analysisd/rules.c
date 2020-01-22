@@ -912,116 +912,117 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_source_ip) == 0) {
-                        config_ruleinfo->context_opts.same_srcip = 1;
+                        config_ruleinfo->same_field |= FIELD_SRCIP;
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_destination_ip) == 0) {
-                        config_ruleinfo->context_opts.same_dstip = 1;
+                        config_ruleinfo->same_field |= FIELD_DSTIP;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_src_port) == 0) {
-                        config_ruleinfo->context_opts.same_srcport = 1;
+                        config_ruleinfo->same_field |= FIELD_SRCPORT;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_dst_port) == 0) {
-                        config_ruleinfo->context_opts.same_dstport = 1;
+                        config_ruleinfo->same_field |= FIELD_DSTPORT;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_protocol) == 0) {
-                        config_ruleinfo->context_opts.same_protocol = 1;
+                        config_ruleinfo->same_field |= FIELD_PROTOCOL;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_action) == 0) {
-                        config_ruleinfo->context_opts.same_action = 1;
+                        config_ruleinfo->same_field |= FIELD_ACTION;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcmp(rule_opt[k]->element, xml_same_id) == 0) {
-                        config_ruleinfo->context_opts.same_id = 1;
+                        config_ruleinfo->same_field |= FIELD_ID;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcmp(rule_opt[k]->element,
                                           xml_same_url) == 0) {
-                        config_ruleinfo->context_opts.same_url = 1;
+                        config_ruleinfo->same_field |= FIELD_URL;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcmp(rule_opt[k]->element,
                                           xml_same_data) == 0) {
-                        config_ruleinfo->context_opts.same_data = 1;
+                        config_ruleinfo->same_field |= FIELD_DATA;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcmp(rule_opt[k]->element,
                                           xml_same_extra_data) == 0) {
-                        config_ruleinfo->context_opts.same_extra_data = 1;
+                        config_ruleinfo->same_field |= FIELD_EXTRADATA;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcmp(rule_opt[k]->element,
                                           xml_same_status) == 0) {
-                        config_ruleinfo->context_opts.same_status = 1;
+                        config_ruleinfo->same_field |= FIELD_STATUS;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcmp(rule_opt[k]->element,
                                           xml_same_system_name) == 0) {
-                        config_ruleinfo->context_opts.same_system_name = 1;
+                        config_ruleinfo->same_field |= FIELD_SYSTEMNAME;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if(strcmp(rule_opt[k]->element,
                                    xml_same_srcgeoip) == 0) {
-                        config_ruleinfo->context_opts.same_srcgeoip = 1;
+                        config_ruleinfo->same_field |= FIELD_SRCGEOIP;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if(strcmp(rule_opt[k]->element,
                                    xml_same_dstgeoip) == 0) {
-                        config_ruleinfo->context_opts.same_dstgeoip = 1;
+                        config_ruleinfo->same_field |= FIELD_DSTGEOIP;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_location) == 0) {
-                        config_ruleinfo->context_opts.same_location = 1;
+                        config_ruleinfo->same_field |= FIELD_LOCATION;
+
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_agent) == 0) {
-                        config_ruleinfo->context_opts.same_agent = 1;
+                        config_ruleinfo->same_field |= FIELD_AGENT;
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_srcuser) == 0) {
-                        config_ruleinfo->context_opts.same_srcuser = 1;
+                        config_ruleinfo->same_field |= FIELD_SRCUSER;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_user) == 0) {
-                        config_ruleinfo->context_opts.same_dstuser = 1;
+                        config_ruleinfo->same_field |= FIELD_USER;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
@@ -1029,103 +1030,103 @@ int Rules_OP_ReadRules(const char *rulefile)
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_dodiff) == 0) {
                         config_ruleinfo->context = 1;
-                        config_ruleinfo->context_opts.same_dodiff = 1;
+                        config_ruleinfo->context_opts |= FIELD_DODIFF;
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                         }
                     } else if(strcmp(rule_opt[k]->element,
                                    xml_different_srcip) == 0) {
-                        config_ruleinfo->context_opts.different_srcip = 1;
+                        config_ruleinfo->different_field |= FIELD_SRCIP;
 
                         if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_different_destination_ip) == 0) {
-                        config_ruleinfo->context_opts.different_dstip = 1;
+                        config_ruleinfo->different_field |= FIELD_DSTIP;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_different_src_port) == 0) {
-                        config_ruleinfo->context_opts.different_srcport = 1;
+                        config_ruleinfo->different_field |= FIELD_SRCPORT;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_different_dst_port) == 0) {
-                        config_ruleinfo->context_opts.different_dstport = 1;
+                        config_ruleinfo->different_field |= FIELD_DSTPORT;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcmp(rule_opt[k]->element,
                                       xml_different_protocol) == 0) {
-                        config_ruleinfo->context_opts.different_protocol = 1;
+                        config_ruleinfo->different_field |= FIELD_PROTOCOL;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcmp(rule_opt[k]->element,
                                       xml_different_action) == 0) {
-                        config_ruleinfo->context_opts.different_action = 1;
+                        config_ruleinfo->different_field |= FIELD_ACTION;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcmp(rule_opt[k]->element, xml_different_id) == 0) {
-                        config_ruleinfo->context_opts.different_id = 1;
+                        config_ruleinfo->different_field |= FIELD_ID;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcmp(rule_opt[k]->element,
                                       xml_different_url) == 0) {
-                        config_ruleinfo->context_opts.different_url = 1;
+                        config_ruleinfo->different_field |= FIELD_URL;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcmp(rule_opt[k]->element,
                                       xml_different_data) == 0) {
-                        config_ruleinfo->context_opts.different_data = 1;
+                        config_ruleinfo->different_field |= FIELD_DATA;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcmp(rule_opt[k]->element,
                                       xml_different_extra_data) == 0) {
-                        config_ruleinfo->context_opts.different_extra_data = 1;
+                        config_ruleinfo->different_field |= FIELD_EXTRADATA;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcmp(rule_opt[k]->element,
                                       xml_different_status) == 0) {
-                        config_ruleinfo->context_opts.different_status = 1;
+                        config_ruleinfo->different_field |= FIELD_STATUS;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcmp(rule_opt[k]->element,
                                       xml_different_system_name) == 0) {
-                        config_ruleinfo->context_opts.different_system_name = 1;
+                        config_ruleinfo->different_field |= FIELD_SYSTEMNAME;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if(strcmp(rule_opt[k]->element,
                                    xml_different_srcgeoip) == 0) {
-                        config_ruleinfo->context_opts.different_srcgeoip = 1;
+                        config_ruleinfo->different_field |= FIELD_SRCGEOIP;
 
                         if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcmp(rule_opt[k]->element,
                                       xml_different_dstgeoip) == 0) {
-                        config_ruleinfo->context_opts.different_dstgeoip = 1;
+                        config_ruleinfo->different_field |= FIELD_DSTGEOIP;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
@@ -1135,35 +1136,35 @@ int Rules_OP_ReadRules(const char *rulefile)
                         config_ruleinfo->alert_opts |= DO_FTS;
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_different_srcuser) == 0) {
-                        config_ruleinfo->context_opts.different_srcuser = 1;
+                        config_ruleinfo->different_field |= FIELD_SRCUSER;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_different_user) == 0) {
-                        config_ruleinfo->context_opts.different_dstuser = 1;
+                        config_ruleinfo->different_field |= FIELD_USER;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_different_agent) == 0) {
-                        config_ruleinfo->context_opts.different_agent = 1;
+                        config_ruleinfo->different_field |= FIELD_AGENT;
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_different_location) == 0) {
-                        config_ruleinfo->context_opts.different_location = 1;
+                        config_ruleinfo->different_field |= FIELD_LOCATION;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         } 
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_global_frequency) == 0) {
-                        config_ruleinfo->context_opts.global_frequency = 1;
+                        config_ruleinfo->context_opts |= FIELD_GFREQUENCY;
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_field) == 0) {
 
-                        if (config_ruleinfo->context_opts.same_field) {
+                        if (config_ruleinfo->same_field & FIELD_FIELDS) {
 
                             int size;
                             for (size = 0; config_ruleinfo->same_fields[size] != NULL; size++);
@@ -1174,7 +1175,7 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                         } else {
 
-                            config_ruleinfo->context_opts.same_field = 1;
+                            config_ruleinfo->same_field |= FIELD_FIELDS;
                             os_calloc(2, sizeof(char *), config_ruleinfo->same_fields);
                             os_strdup(rule_opt[k]->content, config_ruleinfo->same_fields[0]);
                             config_ruleinfo->same_fields[1] = NULL;
@@ -1184,7 +1185,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_notsame_field) == 0) {
 
-                        if (config_ruleinfo->context_opts.not_same_field) {
+                        if (config_ruleinfo->different_field & FIELD_FIELDS) {
                             int size;
                             for (size = 0; config_ruleinfo->not_same_fields[size] != NULL; size++);
 
@@ -1194,7 +1195,7 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                         } else {
 
-                            config_ruleinfo->context_opts.not_same_field = 1;
+                            config_ruleinfo->different_field |= FIELD_FIELDS;
                             os_calloc(2, sizeof(char *), config_ruleinfo->not_same_fields);
                             os_strdup(rule_opt[k]->content, config_ruleinfo->not_same_fields[0]);
                             config_ruleinfo->not_same_fields[1] = NULL;
@@ -1351,7 +1352,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                 }
 
                 /* Check for valid use of frequency */
-                if ((config_ruleinfo->frequency) &&
+                if ((config_ruleinfo->context_opts ||
+                        config_ruleinfo->frequency) &&
                         !config_ruleinfo->context) {
                     merror("Invalid use of frequency/context options. "
                            "Missing if_matched on rule '%d'.",
@@ -1670,7 +1672,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                     Search_LastGroups;
             } else if (config_ruleinfo->context) {
                 if (config_ruleinfo->context == 1 &&
-                        (config_ruleinfo->context_opts.same_dodiff)) {
+                        (config_ruleinfo->context_opts & FIELD_DODIFF)) {
                     config_ruleinfo->context = 0;
                 } else {
                     config_ruleinfo->event_search = (void *(*)(void *, void *, void *))
@@ -1837,7 +1839,10 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->ignore_time = ignore_time;
     ruleinfo_pt->timeframe = timeframe;
     ruleinfo_pt->time_ignored = 0;
-
+    
+    ruleinfo_pt->same_field = 0;
+    ruleinfo_pt->different_field = 0;
+    ruleinfo_pt->context_opts = 0;
     ruleinfo_pt->alert_opts = 0;
     ruleinfo_pt->ignore = 0;
     ruleinfo_pt->ckignore = 0;
