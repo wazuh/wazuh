@@ -37,7 +37,8 @@ enable_testing()
 # Tests list and flags
 list(APPEND tests_names "test_wm_gcp")
 list(APPEND tests_flags "-Wl,--wrap,wm_exec,--wrap,_mtdebug1,--wrap,_mtinfo,--wrap,_mtwarn,--wrap,_mterror \
-                         -Wl,--wrap,sched_scan_dump,--wrap,cJSON_CreateObject")
+                         -Wl,--wrap,sched_scan_dump,--wrap,sched_scan_get_next_time,--wrap,cJSON_CreateObject \
+                         -Wl,--wrap,FOREVER,--wrap,wm_delay")
 
 
 # Config files

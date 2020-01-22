@@ -21,6 +21,7 @@
 void wm_gcp_run(const wm_gcp *data);
 cJSON *wm_gcp_dump(const wm_gcp *data);
 void wm_gcp_destroy(wm_gcp * data);
+void* wm_gcp_main(wm_gcp *data);
 
 /* Auxiliar structs */
 typedef struct __gcp_dump_s {
@@ -42,9 +43,21 @@ int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const 
     return mock();
 }
 
+void __wrap_wm_delay(unsigned int ms) {
+    check_expected(ms);
+}
+
 void __wrap_sched_scan_dump(const sched_scan_config* scan_config, cJSON *cjson_object) {
     check_expected_ptr(scan_config);
     check_expected_ptr(cjson_object);
+}
+
+time_t __wrap_sched_scan_get_next_time(sched_scan_config *config, const char *MODULE_TAG,  const int run_on_start) {
+    check_expected_ptr(config);
+    check_expected(MODULE_TAG);
+    check_expected(run_on_start);
+
+    return mock_type(time_t);
 }
 
 extern CJSON_PUBLIC(cJSON *) __real_cJSON_CreateObject(void);
@@ -102,6 +115,10 @@ void __wrap__mterror(const char *tag, const char * file, int line, const char * 
     va_end(args);
 
     check_expected(formatted_msg);
+}
+
+int __wrap_FOREVER() {
+    return mock();
 }
 
 /* setup/teardown */
@@ -1304,6 +1321,128 @@ static void test_wm_gcp_destroy(void **state) {
     // No assertions are possible on this test, it's meant to be used along valgrind to check memory leaks.
 }
 
+/* wm_gcp_main */
+static void test_wm_gcp_main_disabled(void **state) {
+    wm_gcp *gcp_config = *state;
+
+    gcp_config->enabled = 0;
+
+    expect_string(__wrap__mtinfo, tag, WM_GCP_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Module disabled. Exiting.");
+
+    wm_gcp_main(gcp_config);
+}
+
+static void test_wm_gcp_main_pull_on_start(void **state) {
+    wm_gcp *gcp_config = *state;
+    void *ret;
+
+    gcp_config->enabled = 1;
+    gcp_config->pull_on_start = 1;
+
+    snprintf(gcp_config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(gcp_config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
+    snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+
+    gcp_config->max_messages = 10;
+    gcp_config->logging = 0;    // disabled
+
+    expect_string(__wrap__mtinfo, tag, WM_GCP_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Module started.");
+
+    expect_value(__wrap_sched_scan_get_next_time, config, &gcp_config->scan_config);
+    expect_string(__wrap_sched_scan_get_next_time, MODULE_TAG, WM_GCP_LOGTAG);
+    expect_value(__wrap_sched_scan_get_next_time, run_on_start, 1);
+    will_return(__wrap_sched_scan_get_next_time, 0);
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Starting fetching of logs.");
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
+        "/var/ossec/wodles/gcloud/gcloud.py --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10");
+
+    expect_string(__wrap_wm_exec, command,
+        "/var/ossec/wodles/gcloud/gcloud.py --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10");
+    expect_value(__wrap_wm_exec, secs, 0);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    will_return(__wrap_wm_exec, strdup("Test output"));
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_string(__wrap__mtinfo, tag, WM_GCP_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Logging disabled.");
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Fetching logs finished.");
+
+    will_return(__wrap_FOREVER, 0);
+
+    ret = wm_gcp_main(gcp_config);
+
+    assert_null(ret);
+}
+
+static void test_wm_gcp_main_wait_before_pull(void **state) {
+    wm_gcp *gcp_config = *state;
+    void *ret;
+
+    gcp_config->enabled = 1;
+    gcp_config->pull_on_start = 0;
+
+    snprintf(gcp_config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(gcp_config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
+    snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+
+    gcp_config->max_messages = 10;
+    gcp_config->logging = 0;    // disabled
+
+    expect_string(__wrap__mtinfo, tag, WM_GCP_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Module started.");
+
+    expect_value(__wrap_sched_scan_get_next_time, config, &gcp_config->scan_config);
+    expect_string(__wrap_sched_scan_get_next_time, MODULE_TAG, WM_GCP_LOGTAG);
+    expect_value(__wrap_sched_scan_get_next_time, run_on_start, 0);
+    will_return(__wrap_sched_scan_get_next_time, 100);
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Sleeping for 100 seconds");
+
+    expect_value(__wrap_wm_delay, ms, 100000);
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Starting fetching of logs.");
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
+        "/var/ossec/wodles/gcloud/gcloud.py --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10");
+
+    expect_string(__wrap_wm_exec, command,
+        "/var/ossec/wodles/gcloud/gcloud.py --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10");
+    expect_value(__wrap_wm_exec, secs, 0);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    will_return(__wrap_wm_exec, strdup("Test output"));
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_string(__wrap__mtinfo, tag, WM_GCP_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Logging disabled.");
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Fetching logs finished.");
+
+    will_return(__wrap_FOREVER, 0);
+
+    ret = wm_gcp_main(gcp_config);
+
+    assert_null(ret);
+}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -1342,7 +1481,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_gcp_dump_error_allocating_root, setup_gcp_dump, teardown_gcp_dump),
 
         /* wm_gcp_destroy */
-        cmocka_unit_test_setup_teardown(test_wm_gcp_destroy, setup_gcp_destroy, teardown_gcp_destroy)
+        cmocka_unit_test_setup_teardown(test_wm_gcp_destroy, setup_gcp_destroy, teardown_gcp_destroy),
+
+        /* wm_gcp_main */
+        cmocka_unit_test(test_wm_gcp_main_disabled),
+        cmocka_unit_test(test_wm_gcp_main_pull_on_start),
+        cmocka_unit_test(test_wm_gcp_main_wait_before_pull),
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

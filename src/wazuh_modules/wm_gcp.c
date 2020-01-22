@@ -16,6 +16,7 @@
 #include "shared.h"
 
 #ifdef UNIT_TESTING
+// Remove static qualifier for testing purposes
 #define static
 #endif
 
@@ -33,6 +34,10 @@ const wm_context WM_GCP_CONTEXT = {
     (cJSON * (*)(const void *))wm_gcp_dump
 };
 
+#ifdef UNIT_TESTING
+// Replace pthread_exit for testing purposes
+#define pthread_exit(a) return a
+#endif
 // Module main function. It won't return
 void* wm_gcp_main(wm_gcp *data) {
     // If module is disabled, exit
@@ -62,6 +67,7 @@ void* wm_gcp_main(wm_gcp *data) {
 
 #ifdef UNIT_TESTING
 // Replace pthread_exit for testing purposes
+#undef pthread_exit
 #define pthread_exit(a) return
 #endif
 void wm_gcp_run(const wm_gcp *data) {
