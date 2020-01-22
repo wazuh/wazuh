@@ -237,6 +237,7 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             chld_node = OS_GetElementsbyNode(xml, node[i]);
             if (!chld_node) {
                 mwarn(XML_INVELEM, node[i]->element);
+                OS_ClearNode(chld_node);
                 return OS_INVALID;
             }
 
@@ -251,7 +252,9 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                     logr->mode = KEYPOLL_MODE_MASTER;
                 else
                     mwarn("Invalid value for option '<%s>'", xml_mode);
-            }      
+            }
+            OS_ClearNode(chld_node);
+
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

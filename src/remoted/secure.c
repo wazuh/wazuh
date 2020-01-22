@@ -12,6 +12,11 @@
 #include "os_net/os_net.h"
 #include "remoted.h"
 
+#ifdef UNIT_TESTING
+/* Remove static qualifier when unit testing */
+#define static
+#endif
+
 /* Global variables */
 int sender_pool;
 
@@ -473,11 +478,10 @@ static int send_key_request(int socket,const char *msg) {
     
     if(logr.key_polling_enabled == true){
         if(logr.mode == KEYPOLL_MODE_MASTER){
-            char * message = "{\"message\":\"";
-            char * payload = malloc(strlen(message)+strlen(msg)+2);
-            strcpy(payload, message);
-            strcat(payload, msg);
-            strcat(payload,"\"}");
+            const char * message = "{\"message\":\"";
+            int size_payload = strlen(message)+strlen(msg)+3;
+            char * payload = malloc(size_payload);
+            snprintf(payload, size_payload, "{\"message\":\"%s\"}", msg);
             int rc = OS_SendSecureTCPCluster(socket, "run_keypoll", payload, strlen(payload));
             char buffer[OS_MAXSTR + 1];
             int recv_msg = OS_RecvSecureClusterTCP(socket, buffer,OS_MAXSTR + 1);
