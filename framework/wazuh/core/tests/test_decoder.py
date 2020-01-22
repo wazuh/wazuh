@@ -31,7 +31,7 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
     ("order", "level", {}, {'order': 'level'})
 ])
 def test_add_detail(detail, value, details, expected_result):
-    #UUT call
+    # UUT call
     decoder.add_detail(detail, value, details)
     assert details == expected_result
 
