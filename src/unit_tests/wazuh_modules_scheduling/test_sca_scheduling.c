@@ -106,9 +106,9 @@ static int setup_module() {
         "</policies>\n";
     lxml = malloc(sizeof(OS_XML));
     XML_NODE nodes = string_to_xml_node(string, lxml);
-    assert_int_equal(wm_sca_read(lxml, nodes, sca_module), 0);
+    int ret = wm_sca_read(lxml, nodes, sca_module);
     OS_ClearNode(nodes);
-    return 0;
+    return ret;
 }
 
 static int teardown_module(){
@@ -118,8 +118,9 @@ static int teardown_module(){
     return 0;
 }
 
-static int cleanup_test_start_only() {
+static int teardown_test_executions(void **state) {
     wm_sca_t* module_data = (wm_sca_t *)sca_module->data;
+    sched_scan_free(&(module_data->scan_config));
     int i;
     for(i = 0; module_data->policies[i]; i++) {
         os_free(last_sha256[i]);
@@ -134,12 +135,23 @@ static int cleanup_test_start_only() {
     return 0;
 }
 
-static int cleanup_test_read_only(void **state) {
-    wmodule *module = (wmodule *) *state;
+static int setup_test_read(void **state) {
+    test_structure *test = calloc(1, sizeof(test_structure));
+    test->module =  calloc(1, sizeof(wmodule));
+    *state = test;   
+    return 0;
+}
+
+static int teardown_test_read(void **state) {
+    test_structure *test = *state;
+    OS_ClearNode(test->nodes);
+    OS_ClearXML(&(test->xml));
+    wmodule *module = test->module;
     wm_sca_t* module_data = (wm_sca_t *)module->data;
     //free(module_data->alert_msg);
-    free(module_data->scan_config.scan_time);
+    sched_scan_free(&(module_data->scan_config));
     wmodule_cleanup(module);
+    os_free(test);
     return 0;
 }
 
@@ -147,7 +159,7 @@ static int cleanup_test_read_only(void **state) {
 
 
 /** Tests **/
-void test_interval_execution() {
+void test_interval_execution(void **state) {
     set_up_test(check_time_interval);
     wm_sca_t* module_data = (wm_sca_t *)sca_module->data;
     module_data->scan_config.last_scan_time = 0;
@@ -156,9 +168,10 @@ void test_interval_execution() {
     module_data->scan_config.interval = 60; // 1min
     module_data->scan_config.month_interval = false;
     sca_module->context->start(module_data);
+    *state = module_data;
 }
 
-void test_day_of_month() {
+void test_day_of_month(void **state) {
     set_up_test(check_day_of_month);
     wm_sca_t* module_data = (wm_sca_t *)sca_module->data;
     module_data->scan_config.last_scan_time = 0;
@@ -168,10 +181,10 @@ void test_day_of_month() {
     module_data->scan_config.interval = 1; // 1 month
     module_data->scan_config.month_interval = true;
     sca_module->context->start(module_data);
-    free(module_data->scan_config.scan_time);
+    *state = module_data;
 }
 
-void test_day_of_week() {
+void test_day_of_week(void **state) {
     set_up_test(check_day_of_week);
     wm_sca_t* module_data = (wm_sca_t *)sca_module->data;
     module_data->scan_config.last_scan_time = 0;
@@ -181,10 +194,10 @@ void test_day_of_week() {
     module_data->scan_config.interval = 604800;  // 1 week
     module_data->scan_config.month_interval = false;
     sca_module->context->start(module_data);
-    free(module_data->scan_config.scan_time);
+    *state = module_data;
 }
 
-void test_time_of_day() {
+void test_time_of_day(void **state) {
     set_up_test(check_time_of_day);
     wm_sca_t* module_data = (wm_sca_t *)sca_module->data;
     module_data->scan_config.last_scan_time = 0;
@@ -194,7 +207,7 @@ void test_time_of_day() {
     module_data->scan_config.interval = WM_DEF_INTERVAL;  // 1 day
     module_data->scan_config.month_interval = false;
     sca_module->context->start(module_data);
-    free(module_data->scan_config.scan_time);
+    *state = module_data;
 }
 
 void test_fake_tag(void **state) {
@@ -206,13 +219,9 @@ void test_fake_tag(void **state) {
         "    <policy>/var/ossec/etc/shared/your_policy_file.yml</policy>\n"
         "</policies>\n"
         "<fake>invalid</fake>";
-    wmodule *module = calloc(1, sizeof(wmodule));
-    OS_XML xml;
-    XML_NODE nodes = string_to_xml_node(string, &xml);
-    assert_int_equal(wm_sca_read(&xml, nodes, module),-1);
-    OS_ClearNode(nodes);
-    OS_ClearXML(&xml);
-    *state = module;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_sca_read(&(test->xml), test->nodes, test->module),-1);
 }
 
 void test_read_scheduling_monthday_configuration(void **state) {
@@ -224,19 +233,15 @@ void test_read_scheduling_monthday_configuration(void **state) {
         "<policies>\n"
         "    <policy>/var/ossec/etc/shared/your_policy_file.yml</policy>\n"
         "</policies>\n";
-    wmodule *module = calloc(1, sizeof(wmodule));;
-    OS_XML xml;
-    XML_NODE nodes = string_to_xml_node(string, &xml);
-    assert_int_equal(wm_sca_read(&xml, nodes, module),0);
-    wm_sca_t* module_data = (wm_sca_t *)module->data;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_sca_read(&(test->xml), test->nodes, test->module),0);
+    wm_sca_t* module_data = (wm_sca_t *)test->module->data;
     assert_int_equal(module_data->scan_config.scan_day, 7);
     assert_int_equal(module_data->scan_config.interval, 1);
     assert_int_equal(module_data->scan_config.month_interval, true);
     assert_int_equal(module_data->scan_config.scan_wday, -1);
     assert_string_equal(module_data->scan_config.scan_time, "03:30");
-    OS_ClearNode(nodes);
-    OS_ClearXML(&xml);
-    *state = module;
 }
 
 void test_read_scheduling_weekday_configuration(void **state) {
@@ -248,19 +253,15 @@ void test_read_scheduling_weekday_configuration(void **state) {
         "<policies>\n"
         "    <policy>/var/ossec/etc/shared/your_policy_file.yml</policy>\n"
         "</policies>\n";
-    wmodule *module = calloc(1, sizeof(wmodule));
-    OS_XML xml;
-    XML_NODE nodes = string_to_xml_node(string, &xml);
-    assert_int_equal(wm_sca_read(&xml, nodes, module),0);
-    wm_sca_t* module_data = (wm_sca_t *)module->data;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_sca_read(&(test->xml), test->nodes, test->module),0);
+    wm_sca_t* module_data = (wm_sca_t *)test->module->data;
     assert_int_equal(module_data->scan_config.scan_day, 0);
     assert_int_equal(module_data->scan_config.interval, 604800);
     assert_int_equal(module_data->scan_config.month_interval, false);
     assert_int_equal(module_data->scan_config.scan_wday, 1);
     assert_string_equal(module_data->scan_config.scan_time, "04:30");
-    OS_ClearNode(nodes);
-    OS_ClearXML(&xml);
-    *state = module;
 }
 
 void test_read_scheduling_daytime_configuration(void **state) {
@@ -271,19 +272,15 @@ void test_read_scheduling_daytime_configuration(void **state) {
         "<policies>\n"
         "    <policy>/var/ossec/etc/shared/your_policy_file.yml</policy>\n"
         "</policies>\n";
-    wmodule *module = calloc(1, sizeof(wmodule));;
-    OS_XML xml;
-    XML_NODE nodes = string_to_xml_node(string, &xml);
-    assert_int_equal(wm_sca_read(&xml, nodes, module),0);
-    wm_sca_t* module_data = (wm_sca_t *)module->data;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_sca_read(&(test->xml), test->nodes, test->module),0);
+    wm_sca_t* module_data = (wm_sca_t *)test->module->data;
     assert_int_equal(module_data->scan_config.scan_day, 0);
     assert_int_equal(module_data->scan_config.interval, WM_DEF_INTERVAL);
     assert_int_equal(module_data->scan_config.month_interval, false);
     assert_int_equal(module_data->scan_config.scan_wday, -1);
     assert_string_equal(module_data->scan_config.scan_time, "05:30");
-    OS_ClearNode(nodes);
-    OS_ClearXML(&xml);
-    *state = module;
 }
 
 void test_read_scheduling_interval_configuration(void **state) {
@@ -294,37 +291,33 @@ void test_read_scheduling_interval_configuration(void **state) {
         "<policies>\n"
         "    <policy>/var/ossec/etc/shared/your_policy_file.yml</policy>\n"
         "</policies>\n";
-    wmodule *module = calloc(1, sizeof(wmodule));;
-    OS_XML xml;
-    XML_NODE nodes = string_to_xml_node(string, &xml);
-    assert_int_equal(wm_sca_read(&xml, nodes, module),0);
-    wm_sca_t* module_data = (wm_sca_t *)module->data;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_sca_read(&(test->xml), test->nodes, test->module),0);
+    wm_sca_t* module_data = (wm_sca_t *)test->module->data;
     assert_int_equal(module_data->scan_config.scan_day, 0);
     assert_int_equal(module_data->scan_config.interval, 7200);
     assert_int_equal(module_data->scan_config.month_interval, false);
     assert_int_equal(module_data->scan_config.scan_wday, -1);
-    OS_ClearNode(nodes);
-    OS_ClearXML(&xml);
-    *state = module;
 }
 
 
 int main(void) {
     const struct CMUnitTest tests_with_startup[] = {
-        cmocka_unit_test_setup_teardown(test_interval_execution, NULL, cleanup_test_start_only),
-        cmocka_unit_test_setup_teardown(test_day_of_month, NULL, cleanup_test_start_only),
-        cmocka_unit_test_setup_teardown(test_day_of_week, NULL, cleanup_test_start_only),
-        cmocka_unit_test_setup_teardown(test_time_of_day, NULL, cleanup_test_start_only)
+        cmocka_unit_test_setup_teardown(test_interval_execution, NULL, teardown_test_executions),
+        cmocka_unit_test_setup_teardown(test_day_of_month, NULL, teardown_test_executions),
+        cmocka_unit_test_setup_teardown(test_day_of_week, NULL, teardown_test_executions),
+        cmocka_unit_test_setup_teardown(test_time_of_day, NULL, teardown_test_executions)
     };
     const struct CMUnitTest tests_without_startup[] = {
-        cmocka_unit_test_setup_teardown(test_fake_tag, NULL, cleanup_test_read_only),
-        cmocka_unit_test_setup_teardown(test_read_scheduling_monthday_configuration, NULL, cleanup_test_read_only),
-        cmocka_unit_test_setup_teardown(test_read_scheduling_weekday_configuration, NULL, cleanup_test_read_only),
-        cmocka_unit_test_setup_teardown(test_read_scheduling_daytime_configuration, NULL, cleanup_test_read_only),
-        cmocka_unit_test_setup_teardown(test_read_scheduling_interval_configuration, NULL, cleanup_test_read_only)
+        cmocka_unit_test_setup_teardown(test_fake_tag, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_scheduling_monthday_configuration, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_scheduling_weekday_configuration, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_scheduling_daytime_configuration, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_scheduling_interval_configuration, setup_test_read, teardown_test_read)
     };
     int result;
     result = cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module);
-    result &= cmocka_run_group_tests(tests_without_startup, NULL, NULL);
+    result += cmocka_run_group_tests(tests_without_startup, NULL, NULL);
     return result;
 }

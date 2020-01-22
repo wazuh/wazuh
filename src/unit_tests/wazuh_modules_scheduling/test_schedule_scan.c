@@ -44,6 +44,11 @@ void __wrap__merror(const char * file, int line, const char * func, const char *
     check_expected(formatted_msg);
 }
 
+void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...)
+{
+    return;
+}
+
 int __wrap_check_day_to_scan(int day, const char *hour) {
     check_expected(day);
     check_expected(hour);

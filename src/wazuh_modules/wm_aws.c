@@ -13,6 +13,11 @@
 
 #include "wmodules.h"
 
+#ifdef UNIT_TESTING
+/* Remove static qualifier when testing */
+#define static
+#endif
+
 static wm_aws *aws_config;                              // Pointer to aws_configuration
 static int queue_fd;                                    // Output queue file descriptor
 
@@ -289,7 +294,9 @@ void wm_aws_cleanup() {
 }
 
 // Run a bucket parsing
-
+#ifdef UNIT_TESTING
+__attribute__((weak))
+#endif
 void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
     int status;
     char *output = NULL;

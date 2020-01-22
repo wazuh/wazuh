@@ -40,7 +40,7 @@ list(APPEND tests_flags "-Wl,--wrap=time,--wrap=wm_delay,--wrap=_mwarn,--wrap=_m
 list(APPEND use_shared_libs 1)
 
 list(APPEND tests_names "test_aws_scheduling")
-list(APPEND tests_flags "-Wl,--wrap=time,--wrap=wm_delay,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=wm_exec,--wrap=StartMQ,--wrap=FOREVER")
+list(APPEND tests_flags "-Wl,--wrap=time,--wrap=wm_delay,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=wm_aws_run_s3,--wrap=StartMQ,--wrap=FOREVER")
 list(APPEND use_shared_libs 1)
 
 list(APPEND tests_names "test_azure_scheduling")
@@ -60,7 +60,7 @@ list(APPEND tests_flags "-Wl,--wrap=time,--wrap=wm_delay,--wrap=_mwarn,--wrap=_m
 list(APPEND use_shared_libs 1)
 
 list(APPEND tests_names "test_gcp_scheduling")
-list(APPEND tests_flags "-Wl,--wrap=time,--wrap=wm_delay,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=wm_exec,--wrap=FOREVER")
+list(APPEND tests_flags "-Wl,--wrap=time,--wrap=wm_delay,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=FOREVER,--wrap=realpath,--wrap=IsFile")
 list(APPEND use_shared_libs 1)
 
 list(APPEND tests_names "test_oscap_scheduling")
@@ -72,7 +72,7 @@ list(APPEND tests_flags "-Wl,--wrap=time,--wrap=wm_delay,--wrap=_mwarn,--wrap=_m
 list(APPEND use_shared_libs 1)
 
 list(APPEND tests_names "test_schedule_scan")
-list(APPEND tests_flags "-Wl,--wrap=OS_StrIsNum,--wrap=_merror,--wrap=check_day_to_scan,--wrap=get_time_to_hour,--wrap=get_time_to_day,--wrap=wm_delay,--wrap=time")
+list(APPEND tests_flags "-Wl,--wrap=OS_StrIsNum,--wrap=_merror,--wrap=check_day_to_scan,--wrap=get_time_to_hour,--wrap=get_time_to_day,--wrap=wm_delay,--wrap=time,--wrap=_mwarn")
 list(APPEND use_shared_libs 0)
 
 list(APPEND shared_libs "global_helpers.c")
