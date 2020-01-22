@@ -20,6 +20,7 @@
 
 void wm_gcp_run(const wm_gcp *data);
 cJSON *wm_gcp_dump(const wm_gcp *data);
+void wm_gcp_destroy(wm_gcp * data);
 
 /* Auxiliar structs */
 typedef struct __gcp_dump_s {
@@ -164,6 +165,46 @@ static int teardown_gcp_dump(void **state) {
     // Free/delete everything else
     cJSON_Delete(dump_data->dump);
     free(dump_data);
+
+    return 0;
+}
+
+static int setup_gcp_destroy(void **state) {
+    wm_gcp **gcp_config;
+
+    if(gcp_config = calloc(2, sizeof(wm_gcp*)), gcp_config == NULL)
+        return -1;
+
+    // Save the globally used gcp_config
+    gcp_config[1] = *state;
+
+    // And create a new one to be destroyed by tests
+    if(gcp_config[0] = calloc(1, sizeof(wm_gcp)), gcp_config[0] == NULL)
+        return -1;
+
+    if(gcp_config[0]->project_id = calloc(OS_SIZE_1024, sizeof(char)), gcp_config[0]->project_id == NULL)
+        return -1;
+
+    if(gcp_config[0]->subscription_name = calloc(OS_SIZE_1024, sizeof(char)), gcp_config[0]->subscription_name == NULL)
+        return -1;
+
+    if(gcp_config[0]->credentials_file = calloc(OS_SIZE_1024, sizeof(char)), gcp_config[0]->credentials_file == NULL)
+        return -1;
+
+    *state = gcp_config;
+
+    return 0;
+}
+
+static int teardown_gcp_destroy(void **state) {
+    wm_gcp **gcp_config;
+
+    gcp_config = *state;
+
+    // gcp_config[0] was destroyed by the test, restore the original into state
+    *state = gcp_config[1];
+
+    free(gcp_config);
 
     return 0;
 }
@@ -1253,6 +1294,17 @@ static void test_wm_gcp_dump_error_allocating_root(void **state) {
     assert_null(gcp_dump_data->dump);
 }
 
+/* wm_gcp_destroy */
+static void test_wm_gcp_destroy(void **state) {
+    wm_gcp **gcp_config = *state;
+
+    // gcp_config[0] is to be destroyed by the test
+    wm_gcp_destroy(gcp_config[0]);
+
+    // No assertions are possible on this test, it's meant to be used along valgrind to check memory leaks.
+}
+
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* wm_gcp_run */
@@ -1288,6 +1340,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_gcp_dump_success_logging_default, setup_gcp_dump, teardown_gcp_dump),
         cmocka_unit_test_setup_teardown(test_wm_gcp_dump_error_allocating_wm_wd, setup_gcp_dump, teardown_gcp_dump),
         cmocka_unit_test_setup_teardown(test_wm_gcp_dump_error_allocating_root, setup_gcp_dump, teardown_gcp_dump),
+
+        /* wm_gcp_destroy */
+        cmocka_unit_test_setup_teardown(test_wm_gcp_destroy, setup_gcp_destroy, teardown_gcp_destroy)
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
