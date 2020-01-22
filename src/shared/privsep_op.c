@@ -90,7 +90,6 @@ gid_t Privsep_GetGroup(const char *name)
     if (result = w_getgrnam(name, &grp, buffer, len), result) {
         gr_gid = result->gr_gid;
     } else {
-        merror("Could not get group name.");
         gr_gid = (gid_t) OS_INVALID;
     }
     os_free(buffer);
