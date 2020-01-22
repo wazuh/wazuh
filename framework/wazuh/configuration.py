@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -295,8 +295,7 @@ def _rcl2json(filepath):
                 match_title = re.search(regex_title, line)
                 if match_title:
                     # Previous
-                    if item:
-                        data['controls'].append(item)
+                    data['controls'].append(item)
 
                     # New
                     name = match_title.group(1)
@@ -310,24 +309,21 @@ def _rcl2json(filepath):
                     item['name'] = name[:end_name].strip()
 
                     # Extract PCI and CIS from name
-                    name_groups = re.findall(regex_name_groups, name)
+                    name_groups = list()
+                    name_groups.extend(re.findall(regex_name_groups, name))
 
-                    cis = []
-                    pci = []
-                    if name_groups:
+                    cis, pci = list(), list()
 
-                        for group in name_groups:
-                            # {CIS: 1.1.2 RHEL7}
-                            g_value = group.split(':')[-1][:-1].strip()
-                            if 'CIS' in group:
-                                cis.append(g_value)
-                            elif 'PCI' in group:
-                                pci.append(g_value)
+                    for group in name_groups:
+                        # {CIS: 1.1.2 RHEL7}
+                        g_value = group.split(':')[-1][:-1].strip()
+                        if 'CIS' in group:
+                            cis.append(g_value)
+                        elif 'PCI' in group:
+                            pci.append(g_value)
 
-                    if cis:
-                        item['cis'] = cis
-                    if pci:
-                        item['pci'] = pci
+                    item['cis'] = cis
+                    item['pci'] = pci
 
                     # Conditions
                     if condition:
@@ -500,7 +496,7 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
 
             data = _agentconf2json(xml_data)
     except Exception as e:
-        raise WazuhInternalError(1101, str(e))
+        raise WazuhError(1101, str(e))
 
     return {'totalItems': len(data), 'items': cut_array(data, offset=offset, limit=limit)}
 
@@ -637,7 +633,7 @@ def upload_group_configuration(group_id, file_content):
             xml = parseString('<root>' + file_content + '</root>')
             # remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
             pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[2:-2])) + '\n'
-            # revert xml.dom replacings
+            # revert xml.dom replacements
             # github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305
             pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"", ) \
                 .replace("&gt;", ">")
