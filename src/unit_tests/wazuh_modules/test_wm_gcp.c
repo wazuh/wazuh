@@ -18,14 +18,18 @@
 #include "../../wazuh_modules/wm_gcp.h"
 #include "../../headers/defs.h"
 
-#undef assert
-#define assert(expression) \
-    mock_assert((int)(expression), #expression, __FILE__, __LINE__);
-
 void wm_gcp_run(const wm_gcp *data);
+cJSON *wm_gcp_dump(const wm_gcp *data);
+
+/* Auxiliar structs */
+typedef struct __gcp_dump_s {
+    wm_gcp *config;
+    cJSON *dump;
+    cJSON *root;
+    cJSON *wm_wd;
+}gcp_dump_t;
 
 /* wrappers */
-
 int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path) {
     check_expected(command);
     check_expected(secs);
@@ -35,6 +39,16 @@ int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const 
     *exitcode = mock();
 
     return mock();
+}
+
+void __wrap_sched_scan_dump(const sched_scan_config* scan_config, cJSON *cjson_object) {
+    check_expected_ptr(scan_config);
+    check_expected_ptr(cjson_object);
+}
+
+extern CJSON_PUBLIC(cJSON *) __real_cJSON_CreateObject(void);
+CJSON_PUBLIC(cJSON *) __wrap_cJSON_CreateObject(void) {
+    return mock_type(cJSON*);
 }
 
 void __wrap__mtdebug1(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
@@ -118,6 +132,38 @@ static int teardown_group(void **state) {
     free(gcp_config->credentials_file);
 
     free(gcp_config);
+
+    return 0;
+}
+
+static int setup_gcp_dump(void **state) {
+    gcp_dump_t *dump_data = calloc(1, sizeof(gcp_dump_t));
+
+    if(dump_data == NULL)
+        return -1;
+
+    if(dump_data->root = __real_cJSON_CreateObject(), dump_data->root == NULL)
+        return -1;
+
+    if(dump_data->wm_wd = __real_cJSON_CreateObject(), dump_data->wm_wd == NULL)
+        return -1;
+
+    // Move some pointers around in order to add some info for these tests
+    dump_data->config = *state;
+    *state = dump_data;
+
+    return 0;
+}
+
+static int teardown_gcp_dump(void **state) {
+    gcp_dump_t *dump_data = *state;
+
+    // Make sure to keep the group information.
+    *state = dump_data->config;
+
+    // Free/delete everything else
+    cJSON_Delete(dump_data->dump);
+    free(dump_data);
 
     return 0;
 }
@@ -831,8 +877,374 @@ static void test_wm_gcp_run_logging_critical_message_debug(void **state) {
     wm_gcp_run(gcp_config);
 }
 
+/* wm_gcp_dump */
+static void test_wm_gcp_dump_success_logging_disabled(void **state) {
+    gcp_dump_t *gcp_dump_data = *state;
+
+    gcp_dump_data->config->enabled = 1;
+    gcp_dump_data->config->pull_on_start = 1;
+    gcp_dump_data->config->logging = 0;    // disabled
+    gcp_dump_data->config->max_messages = 10;
+
+    snprintf(gcp_dump_data->config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(gcp_dump_data->config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
+    snprintf(gcp_dump_data->config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+
+    will_return(__wrap_cJSON_CreateObject, gcp_dump_data->root);
+    will_return(__wrap_cJSON_CreateObject, gcp_dump_data->wm_wd);
+
+    expect_value(__wrap_sched_scan_dump, scan_config, &gcp_dump_data->config->scan_config);
+    expect_value(__wrap_sched_scan_dump, cjson_object, gcp_dump_data->wm_wd);
+
+    gcp_dump_data->dump = wm_gcp_dump(gcp_dump_data->config);
+
+    assert_non_null(gcp_dump_data->dump);
+    assert_ptr_equal(gcp_dump_data->dump, gcp_dump_data->root);
+    assert_int_equal(cJSON_GetArraySize(gcp_dump_data->dump), 1);
+
+    cJSON *gcp_pubsub = cJSON_GetObjectItem(gcp_dump_data->dump, "gcp-pubsub");
+    assert_non_null(gcp_pubsub);
+    assert_int_equal(cJSON_GetArraySize(gcp_pubsub), 7);
+
+    cJSON *enabled = cJSON_GetObjectItem(gcp_pubsub, "enabled");
+    assert_string_equal(cJSON_GetStringValue(enabled), "yes");
+    cJSON *pull_on_start = cJSON_GetObjectItem(gcp_pubsub, "pull_on_start");
+    assert_string_equal(cJSON_GetStringValue(pull_on_start), "yes");
+    cJSON *max_messages = cJSON_GetObjectItem(gcp_pubsub, "max_messages");
+    assert_non_null(max_messages);
+    assert_int_equal(max_messages->valueint, 10);
+    cJSON *project_id = cJSON_GetObjectItem(gcp_pubsub, "project_id");
+    assert_string_equal(cJSON_GetStringValue(project_id), "wazuh-gcp-test");
+    cJSON *subscription_name = cJSON_GetObjectItem(gcp_pubsub, "subscription_name");
+    assert_string_equal(cJSON_GetStringValue(subscription_name), "wazuh-subscription-test");
+    cJSON *credentials_file = cJSON_GetObjectItem(gcp_pubsub, "credentials_file");
+    assert_string_equal(cJSON_GetStringValue(credentials_file), "/wazuh/credentials/test.json");
+    cJSON *logging = cJSON_GetObjectItem(gcp_pubsub, "logging");
+    assert_string_equal(cJSON_GetStringValue(logging), "disabled");
+}
+
+static void test_wm_gcp_dump_success_logging_debug(void **state) {
+    gcp_dump_t *gcp_dump_data = *state;
+
+    gcp_dump_data->config->enabled = 0;
+    gcp_dump_data->config->pull_on_start = 0;
+    gcp_dump_data->config->logging = 1;    // debug
+    gcp_dump_data->config->max_messages = 100;
+
+    snprintf(gcp_dump_data->config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(gcp_dump_data->config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
+    snprintf(gcp_dump_data->config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+
+    will_return(__wrap_cJSON_CreateObject, gcp_dump_data->root);
+    will_return(__wrap_cJSON_CreateObject, gcp_dump_data->wm_wd);
+
+    expect_value(__wrap_sched_scan_dump, scan_config, &gcp_dump_data->config->scan_config);
+    expect_value(__wrap_sched_scan_dump, cjson_object, gcp_dump_data->wm_wd);
+
+    gcp_dump_data->dump = wm_gcp_dump(gcp_dump_data->config);
+
+    assert_non_null(gcp_dump_data->dump);
+    assert_ptr_equal(gcp_dump_data->dump, gcp_dump_data->root);
+    assert_int_equal(cJSON_GetArraySize(gcp_dump_data->dump), 1);
+
+    cJSON *gcp_pubsub = cJSON_GetObjectItem(gcp_dump_data->dump, "gcp-pubsub");
+    assert_non_null(gcp_pubsub);
+    assert_int_equal(cJSON_GetArraySize(gcp_pubsub), 7);
+
+    cJSON *enabled = cJSON_GetObjectItem(gcp_pubsub, "enabled");
+    assert_string_equal(cJSON_GetStringValue(enabled), "no");
+    cJSON *pull_on_start = cJSON_GetObjectItem(gcp_pubsub, "pull_on_start");
+    assert_string_equal(cJSON_GetStringValue(pull_on_start), "no");
+    cJSON *max_messages = cJSON_GetObjectItem(gcp_pubsub, "max_messages");
+    assert_non_null(max_messages);
+    assert_int_equal(max_messages->valueint, 100);
+    cJSON *project_id = cJSON_GetObjectItem(gcp_pubsub, "project_id");
+    assert_string_equal(cJSON_GetStringValue(project_id), "wazuh-gcp-test");
+    cJSON *subscription_name = cJSON_GetObjectItem(gcp_pubsub, "subscription_name");
+    assert_string_equal(cJSON_GetStringValue(subscription_name), "wazuh-subscription-test");
+    cJSON *credentials_file = cJSON_GetObjectItem(gcp_pubsub, "credentials_file");
+    assert_string_equal(cJSON_GetStringValue(credentials_file), "/wazuh/credentials/test.json");
+    cJSON *logging = cJSON_GetObjectItem(gcp_pubsub, "logging");
+    assert_string_equal(cJSON_GetStringValue(logging), "debug");
+}
+
+
+static void test_wm_gcp_dump_success_logging_info(void **state) {
+    gcp_dump_t *gcp_dump_data = *state;
+
+    gcp_dump_data->config->enabled = 1;
+    gcp_dump_data->config->pull_on_start = 0;
+    gcp_dump_data->config->logging = 2;    // info
+    gcp_dump_data->config->max_messages = 100;
+
+    snprintf(gcp_dump_data->config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(gcp_dump_data->config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
+    snprintf(gcp_dump_data->config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+
+    will_return(__wrap_cJSON_CreateObject, gcp_dump_data->root);
+    will_return(__wrap_cJSON_CreateObject, gcp_dump_data->wm_wd);
+
+    expect_value(__wrap_sched_scan_dump, scan_config, &gcp_dump_data->config->scan_config);
+    expect_value(__wrap_sched_scan_dump, cjson_object, gcp_dump_data->wm_wd);
+
+    gcp_dump_data->dump = wm_gcp_dump(gcp_dump_data->config);
+
+    assert_non_null(gcp_dump_data->dump);
+    assert_ptr_equal(gcp_dump_data->dump, gcp_dump_data->root);
+    assert_int_equal(cJSON_GetArraySize(gcp_dump_data->dump), 1);
+
+    cJSON *gcp_pubsub = cJSON_GetObjectItem(gcp_dump_data->dump, "gcp-pubsub");
+    assert_non_null(gcp_pubsub);
+    assert_int_equal(cJSON_GetArraySize(gcp_pubsub), 7);
+
+    cJSON *enabled = cJSON_GetObjectItem(gcp_pubsub, "enabled");
+    assert_string_equal(cJSON_GetStringValue(enabled), "yes");
+    cJSON *pull_on_start = cJSON_GetObjectItem(gcp_pubsub, "pull_on_start");
+    assert_string_equal(cJSON_GetStringValue(pull_on_start), "no");
+    cJSON *max_messages = cJSON_GetObjectItem(gcp_pubsub, "max_messages");
+    assert_non_null(max_messages);
+    assert_int_equal(max_messages->valueint, 100);
+    cJSON *project_id = cJSON_GetObjectItem(gcp_pubsub, "project_id");
+    assert_string_equal(cJSON_GetStringValue(project_id), "wazuh-gcp-test");
+    cJSON *subscription_name = cJSON_GetObjectItem(gcp_pubsub, "subscription_name");
+    assert_string_equal(cJSON_GetStringValue(subscription_name), "wazuh-subscription-test");
+    cJSON *credentials_file = cJSON_GetObjectItem(gcp_pubsub, "credentials_file");
+    assert_string_equal(cJSON_GetStringValue(credentials_file), "/wazuh/credentials/test.json");
+    cJSON *logging = cJSON_GetObjectItem(gcp_pubsub, "logging");
+    assert_string_equal(cJSON_GetStringValue(logging), "info");
+}
+
+static void test_wm_gcp_dump_success_logging_warning(void **state) {
+    gcp_dump_t *gcp_dump_data = *state;
+
+    gcp_dump_data->config->enabled = 0;
+    gcp_dump_data->config->pull_on_start = 1;
+    gcp_dump_data->config->logging = 3;    // warning
+    gcp_dump_data->config->max_messages = 100;
+
+    snprintf(gcp_dump_data->config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(gcp_dump_data->config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
+    snprintf(gcp_dump_data->config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+
+    will_return(__wrap_cJSON_CreateObject, gcp_dump_data->root);
+    will_return(__wrap_cJSON_CreateObject, gcp_dump_data->wm_wd);
+
+    expect_value(__wrap_sched_scan_dump, scan_config, &gcp_dump_data->config->scan_config);
+    expect_value(__wrap_sched_scan_dump, cjson_object, gcp_dump_data->wm_wd);
+
+    gcp_dump_data->dump = wm_gcp_dump(gcp_dump_data->config);
+
+    assert_non_null(gcp_dump_data->dump);
+    assert_ptr_equal(gcp_dump_data->dump, gcp_dump_data->root);
+    assert_int_equal(cJSON_GetArraySize(gcp_dump_data->dump), 1);
+
+    cJSON *gcp_pubsub = cJSON_GetObjectItem(gcp_dump_data->dump, "gcp-pubsub");
+    assert_non_null(gcp_pubsub);
+    assert_int_equal(cJSON_GetArraySize(gcp_pubsub), 7);
+
+    cJSON *enabled = cJSON_GetObjectItem(gcp_pubsub, "enabled");
+    assert_string_equal(cJSON_GetStringValue(enabled), "no");
+    cJSON *pull_on_start = cJSON_GetObjectItem(gcp_pubsub, "pull_on_start");
+    assert_string_equal(cJSON_GetStringValue(pull_on_start), "yes");
+    cJSON *max_messages = cJSON_GetObjectItem(gcp_pubsub, "max_messages");
+    assert_non_null(max_messages);
+    assert_int_equal(max_messages->valueint, 100);
+    cJSON *project_id = cJSON_GetObjectItem(gcp_pubsub, "project_id");
+    assert_string_equal(cJSON_GetStringValue(project_id), "wazuh-gcp-test");
+    cJSON *subscription_name = cJSON_GetObjectItem(gcp_pubsub, "subscription_name");
+    assert_string_equal(cJSON_GetStringValue(subscription_name), "wazuh-subscription-test");
+    cJSON *credentials_file = cJSON_GetObjectItem(gcp_pubsub, "credentials_file");
+    assert_string_equal(cJSON_GetStringValue(credentials_file), "/wazuh/credentials/test.json");
+    cJSON *logging = cJSON_GetObjectItem(gcp_pubsub, "logging");
+    assert_string_equal(cJSON_GetStringValue(logging), "warning");
+}
+
+static void test_wm_gcp_dump_success_logging_error(void **state) {
+    gcp_dump_t *gcp_dump_data = *state;
+
+    gcp_dump_data->config->enabled = 0;
+    gcp_dump_data->config->pull_on_start = 0;
+    gcp_dump_data->config->logging = 4;    // error
+    gcp_dump_data->config->max_messages = 100;
+
+    snprintf(gcp_dump_data->config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(gcp_dump_data->config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
+    snprintf(gcp_dump_data->config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+
+    will_return(__wrap_cJSON_CreateObject, gcp_dump_data->root);
+    will_return(__wrap_cJSON_CreateObject, gcp_dump_data->wm_wd);
+
+    expect_value(__wrap_sched_scan_dump, scan_config, &gcp_dump_data->config->scan_config);
+    expect_value(__wrap_sched_scan_dump, cjson_object, gcp_dump_data->wm_wd);
+
+    gcp_dump_data->dump = wm_gcp_dump(gcp_dump_data->config);
+
+    assert_non_null(gcp_dump_data->dump);
+    assert_ptr_equal(gcp_dump_data->dump, gcp_dump_data->root);
+    assert_int_equal(cJSON_GetArraySize(gcp_dump_data->dump), 1);
+
+    cJSON *gcp_pubsub = cJSON_GetObjectItem(gcp_dump_data->dump, "gcp-pubsub");
+    assert_non_null(gcp_pubsub);
+    assert_int_equal(cJSON_GetArraySize(gcp_pubsub), 7);
+
+    cJSON *enabled = cJSON_GetObjectItem(gcp_pubsub, "enabled");
+    assert_string_equal(cJSON_GetStringValue(enabled), "no");
+    cJSON *pull_on_start = cJSON_GetObjectItem(gcp_pubsub, "pull_on_start");
+    assert_string_equal(cJSON_GetStringValue(pull_on_start), "no");
+    cJSON *max_messages = cJSON_GetObjectItem(gcp_pubsub, "max_messages");
+    assert_non_null(max_messages);
+    assert_int_equal(max_messages->valueint, 100);
+    cJSON *project_id = cJSON_GetObjectItem(gcp_pubsub, "project_id");
+    assert_string_equal(cJSON_GetStringValue(project_id), "wazuh-gcp-test");
+    cJSON *subscription_name = cJSON_GetObjectItem(gcp_pubsub, "subscription_name");
+    assert_string_equal(cJSON_GetStringValue(subscription_name), "wazuh-subscription-test");
+    cJSON *credentials_file = cJSON_GetObjectItem(gcp_pubsub, "credentials_file");
+    assert_string_equal(cJSON_GetStringValue(credentials_file), "/wazuh/credentials/test.json");
+    cJSON *logging = cJSON_GetObjectItem(gcp_pubsub, "logging");
+    assert_string_equal(cJSON_GetStringValue(logging), "error");
+}
+
+static void test_wm_gcp_dump_success_logging_critical(void **state) {
+    gcp_dump_t *gcp_dump_data = *state;
+
+    gcp_dump_data->config->enabled = 0;
+    gcp_dump_data->config->pull_on_start = 0;
+    gcp_dump_data->config->logging = 5;    // critical
+    gcp_dump_data->config->max_messages = 100;
+
+    snprintf(gcp_dump_data->config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(gcp_dump_data->config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
+    snprintf(gcp_dump_data->config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+
+    will_return(__wrap_cJSON_CreateObject, gcp_dump_data->root);
+    will_return(__wrap_cJSON_CreateObject, gcp_dump_data->wm_wd);
+
+    expect_value(__wrap_sched_scan_dump, scan_config, &gcp_dump_data->config->scan_config);
+    expect_value(__wrap_sched_scan_dump, cjson_object, gcp_dump_data->wm_wd);
+
+    gcp_dump_data->dump = wm_gcp_dump(gcp_dump_data->config);
+
+    assert_non_null(gcp_dump_data->dump);
+    assert_ptr_equal(gcp_dump_data->dump, gcp_dump_data->root);
+    assert_int_equal(cJSON_GetArraySize(gcp_dump_data->dump), 1);
+
+    cJSON *gcp_pubsub = cJSON_GetObjectItem(gcp_dump_data->dump, "gcp-pubsub");
+    assert_non_null(gcp_pubsub);
+    assert_int_equal(cJSON_GetArraySize(gcp_pubsub), 7);
+
+    cJSON *enabled = cJSON_GetObjectItem(gcp_pubsub, "enabled");
+    assert_string_equal(cJSON_GetStringValue(enabled), "no");
+    cJSON *pull_on_start = cJSON_GetObjectItem(gcp_pubsub, "pull_on_start");
+    assert_string_equal(cJSON_GetStringValue(pull_on_start), "no");
+    cJSON *max_messages = cJSON_GetObjectItem(gcp_pubsub, "max_messages");
+    assert_non_null(max_messages);
+    assert_int_equal(max_messages->valueint, 100);
+    cJSON *project_id = cJSON_GetObjectItem(gcp_pubsub, "project_id");
+    assert_string_equal(cJSON_GetStringValue(project_id), "wazuh-gcp-test");
+    cJSON *subscription_name = cJSON_GetObjectItem(gcp_pubsub, "subscription_name");
+    assert_string_equal(cJSON_GetStringValue(subscription_name), "wazuh-subscription-test");
+    cJSON *credentials_file = cJSON_GetObjectItem(gcp_pubsub, "credentials_file");
+    assert_string_equal(cJSON_GetStringValue(credentials_file), "/wazuh/credentials/test.json");
+    cJSON *logging = cJSON_GetObjectItem(gcp_pubsub, "logging");
+    assert_string_equal(cJSON_GetStringValue(logging), "critical");
+}
+
+static void test_wm_gcp_dump_success_logging_default(void **state) {
+    gcp_dump_t *gcp_dump_data = *state;
+
+    gcp_dump_data->config->enabled = 0;
+    gcp_dump_data->config->pull_on_start = 0;
+    gcp_dump_data->config->logging = 256;    // default
+    gcp_dump_data->config->max_messages = 100;
+
+    snprintf(gcp_dump_data->config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(gcp_dump_data->config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
+    snprintf(gcp_dump_data->config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+
+    will_return(__wrap_cJSON_CreateObject, gcp_dump_data->root);
+    will_return(__wrap_cJSON_CreateObject, gcp_dump_data->wm_wd);
+
+    expect_value(__wrap_sched_scan_dump, scan_config, &gcp_dump_data->config->scan_config);
+    expect_value(__wrap_sched_scan_dump, cjson_object, gcp_dump_data->wm_wd);
+
+    gcp_dump_data->dump = wm_gcp_dump(gcp_dump_data->config);
+
+    assert_non_null(gcp_dump_data->dump);
+    assert_ptr_equal(gcp_dump_data->dump, gcp_dump_data->root);
+    assert_int_equal(cJSON_GetArraySize(gcp_dump_data->dump), 1);
+
+    cJSON *gcp_pubsub = cJSON_GetObjectItem(gcp_dump_data->dump, "gcp-pubsub");
+    assert_non_null(gcp_pubsub);
+    assert_int_equal(cJSON_GetArraySize(gcp_pubsub), 7);
+
+    cJSON *enabled = cJSON_GetObjectItem(gcp_pubsub, "enabled");
+    assert_string_equal(cJSON_GetStringValue(enabled), "no");
+    cJSON *pull_on_start = cJSON_GetObjectItem(gcp_pubsub, "pull_on_start");
+    assert_string_equal(cJSON_GetStringValue(pull_on_start), "no");
+    cJSON *max_messages = cJSON_GetObjectItem(gcp_pubsub, "max_messages");
+    assert_non_null(max_messages);
+    assert_int_equal(max_messages->valueint, 100);
+    cJSON *project_id = cJSON_GetObjectItem(gcp_pubsub, "project_id");
+    assert_string_equal(cJSON_GetStringValue(project_id), "wazuh-gcp-test");
+    cJSON *subscription_name = cJSON_GetObjectItem(gcp_pubsub, "subscription_name");
+    assert_string_equal(cJSON_GetStringValue(subscription_name), "wazuh-subscription-test");
+    cJSON *credentials_file = cJSON_GetObjectItem(gcp_pubsub, "credentials_file");
+    assert_string_equal(cJSON_GetStringValue(credentials_file), "/wazuh/credentials/test.json");
+    cJSON *logging = cJSON_GetObjectItem(gcp_pubsub, "logging");
+    assert_string_equal(cJSON_GetStringValue(logging), "info");
+}
+
+static void test_wm_gcp_dump_error_allocating_wm_wd(void **state) {
+    gcp_dump_t *gcp_dump_data = *state;
+
+    gcp_dump_data->config->enabled = 0;
+    gcp_dump_data->config->pull_on_start = 0;
+    gcp_dump_data->config->logging = 256;    // default
+    gcp_dump_data->config->max_messages = 100;
+
+    snprintf(gcp_dump_data->config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(gcp_dump_data->config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
+    snprintf(gcp_dump_data->config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+
+    will_return(__wrap_cJSON_CreateObject, gcp_dump_data->root);
+    will_return(__wrap_cJSON_CreateObject, NULL);
+
+    expect_value(__wrap_sched_scan_dump, scan_config, &gcp_dump_data->config->scan_config);
+    expect_value(__wrap_sched_scan_dump, cjson_object, NULL);
+
+    gcp_dump_data->dump = wm_gcp_dump(gcp_dump_data->config);
+
+    assert_non_null(gcp_dump_data->dump);
+    assert_ptr_equal(gcp_dump_data->dump, gcp_dump_data->root);
+    assert_int_equal(cJSON_GetArraySize(gcp_dump_data->dump), 0);
+}
+
+static void test_wm_gcp_dump_error_allocating_root(void **state) {
+    gcp_dump_t *gcp_dump_data = *state;
+
+    gcp_dump_data->config->enabled = 0;
+    gcp_dump_data->config->pull_on_start = 0;
+    gcp_dump_data->config->logging = 256;    // default
+    gcp_dump_data->config->max_messages = 100;
+
+    snprintf(gcp_dump_data->config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(gcp_dump_data->config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
+    snprintf(gcp_dump_data->config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+
+    will_return(__wrap_cJSON_CreateObject, NULL);
+    will_return(__wrap_cJSON_CreateObject, NULL);   // If we cannot alloc root, wm_wd won't be alloced either.
+
+    expect_value(__wrap_sched_scan_dump, scan_config, &gcp_dump_data->config->scan_config);
+    expect_value(__wrap_sched_scan_dump, cjson_object, NULL);
+
+    gcp_dump_data->dump = wm_gcp_dump(gcp_dump_data->config);
+
+    assert_null(gcp_dump_data->dump);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
+        /* wm_gcp_run */
         cmocka_unit_test(test_wm_gcp_run_success_log_disabled),
         cmocka_unit_test(test_wm_gcp_run_error_running_command),
         cmocka_unit_test(test_wm_gcp_run_unknown_error),
@@ -854,6 +1266,17 @@ int main(void) {
         cmocka_unit_test(test_wm_gcp_run_logging_error_message_critical),
         cmocka_unit_test(test_wm_gcp_run_logging_critical_message_critical),
         cmocka_unit_test(test_wm_gcp_run_logging_critical_message_debug),
+
+        /* wm_gcp_dump */
+        cmocka_unit_test_setup_teardown(test_wm_gcp_dump_success_logging_disabled, setup_gcp_dump, teardown_gcp_dump),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_dump_success_logging_debug, setup_gcp_dump, teardown_gcp_dump),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_dump_success_logging_info, setup_gcp_dump, teardown_gcp_dump),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_dump_success_logging_warning, setup_gcp_dump, teardown_gcp_dump),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_dump_success_logging_error, setup_gcp_dump, teardown_gcp_dump),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_dump_success_logging_critical, setup_gcp_dump, teardown_gcp_dump),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_dump_success_logging_default, setup_gcp_dump, teardown_gcp_dump),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_dump_error_allocating_wm_wd, setup_gcp_dump, teardown_gcp_dump),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_dump_error_allocating_root, setup_gcp_dump, teardown_gcp_dump),
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
