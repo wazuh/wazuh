@@ -240,6 +240,7 @@ extern const char *__local_name;
 #include "notify_op.h"
 #include "version_op.h"
 #include "utf8_op.h"
+#include "log_builder.h"
 
 #include "os_xml/os_xml.h"
 #include "os_regex/os_regex.h"

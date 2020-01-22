@@ -162,6 +162,7 @@ void LogCollectorStart()
             /* Mutexes are not previously initialized under Windows*/
             w_mutex_init(&current->mutex, &win_el_mutex_attr);
 #endif
+            free(current->file);
             current->file = NULL;
             current->command = NULL;
             current->fp = NULL;
@@ -178,7 +179,10 @@ void LogCollectorStart()
             /* Mutexes are not previously initialized under Windows*/
             w_mutex_init(&current->mutex, &win_el_mutex_attr);
 #endif
-
+            free(current->file);
+            current->file = NULL;
+            current->command = NULL;
+            current->fp = NULL;
         } else if (strcmp(current->logformat, "command") == 0) {
             current->file = NULL;
             current->fp = NULL;
@@ -275,6 +279,9 @@ void LogCollectorStart()
             }
         }
     }
+
+    // Initialize message queue's log builder
+    mq_log_builder_init();
 
     /* Create the output threads */
     w_create_output_threads();
@@ -714,6 +721,10 @@ void LogCollectorStart()
             }
 
             f_check = 0;
+        }
+
+        if (mq_log_builder_update() == -1) {
+            mdebug1("Output log pattern data could not be updated.");
         }
 
         sleep(1);
@@ -1790,10 +1801,37 @@ void * w_output_thread(void * args){
         message = w_msg_queue_pop(msg_queue);
 
         if (SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) < 0) {
-            merror(QUEUE_SEND);
+            if (strcmp(message->log_target->log_socket->name, "agent") == 0) {
+                // When dealing with this type of messages we don't want any of them to be lost
+                // Continuously attempt to reconnect to the queue and send the message.
+                int sleep_time = 5;
 
-            if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                merror_exit(QUEUE_FATAL, DEFAULTQPATH);
+                #ifdef CLIENT
+                merror("Unable to send message to '%s' (ossec-agentd might be down). Attempting to reconnect.", DEFAULTQPATH);
+                #else
+                merror("Unable to send message to '%s' (ossec-analysisd might be down). Attempting to reconnect.", DEFAULTQPATH);
+                #endif
+
+                while(1) {
+                    if(logr_queue = StartMQ(DEFAULTQPATH, WRITE), logr_queue > 0) {
+                        if (SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) == 0) {
+                            minfo("Successfully reconnected to '%s'", DEFAULTQPATH);
+                            break;  //  We sent the message successfully, we can go on.
+                        }
+                    }
+
+                    sleep(sleep_time);
+
+                    // If we failed, we will wait longer before reattempting to connect
+                    if(sleep_time < 300)
+                        sleep_time += 5;
+                }
+            } else {
+                merror(QUEUE_SEND);
+
+                if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
+                    merror_exit(QUEUE_FATAL, DEFAULTQPATH);
+                }
             }
         }
 

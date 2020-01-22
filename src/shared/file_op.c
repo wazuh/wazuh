@@ -2940,3 +2940,54 @@ void w_descriptor_cloexec(__attribute__((unused)) int fd){
     }
 #endif
 }
+
+/* Return the content of a file from a given path */
+char * w_get_file_content(const char * path, int max_size) {
+    FILE * fp = NULL;
+    char * buffer = NULL;
+    long size;
+    size_t read;
+
+    // Check if path is NULL
+    if (path == NULL) {
+        mdebug1("Cannot open NULL path");
+        goto end;
+    }
+
+    // Load file
+    if (fp = fopen(path, "r"), !fp) {
+        mdebug1(FOPEN_ERROR, path, errno, strerror(errno));
+        goto end;
+    }
+
+    // Get file size
+    if (size = get_fp_size(fp), size < 0) {
+        mdebug1(FSEEK_ERROR, path, errno, strerror(errno));
+        goto end;
+    }
+
+    // Check file size limit
+    if (size > max_size) {
+        mdebug1("Cannot load file '%s': it exceeds %i MiB", path, (max_size / (1024 * 1024)));
+        goto end;
+    }
+
+    // Allocate memory
+    os_malloc(size + 1, buffer);
+
+    // Get file content
+    if (read = fread(buffer, 1, size, fp), read != (size_t)size && !feof(fp)) {
+        mdebug1(FREAD_ERROR, path, errno, strerror(errno));
+        os_free(buffer);
+        goto end;
+    }
+
+    buffer[size] = '\0';
+
+end:
+    if (fp) {
+        fclose(fp);
+    }
+
+    return buffer;
+}

@@ -85,17 +85,18 @@ int OS_SetRecvTimeout(int socket, long seconds, long useconds);
  */
 int OS_SetKeepalive(int socket);
 
-/*
- * Enable SO_KEEPALIVE options for TCP
+/**
+ * @brief Set keepalive parameters for a socket
+ *
+ * Options with a value 0 will not be changed.
+ *
+ * @param socket Socket descriptor.
+ * @param idle Idle time, in seconds, to start sending probes.
+ * @param intvl Interval between probes, in seconds.
+ * @param cnt Number of probes sent before closing the connection.
  */
-#ifndef CLIENT
-
-#ifdef __MACH__
-#define TCP_KEEPIDLE TCP_KEEPALIVE
-#endif
-
 void OS_SetKeepalive_Options(int socket, int idle, int intvl, int cnt);
-#endif
+
 /* Set the delivery timeout for a socket
  * Returns 0 on success, else -1
  */
