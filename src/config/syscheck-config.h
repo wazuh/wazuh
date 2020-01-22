@@ -22,6 +22,34 @@ typedef enum fim_entry_type {
     FIM_TYPE_REGISTRY
 } fim_entry_type;
 
+typedef enum fdb_stmt {
+    FIMDB_STMT_INSERT_DATA,
+    FIMDB_STMT_INSERT_PATH,
+    FIMDB_STMT_GET_PATH,
+    FIMDB_STMT_GET_INODE,
+    FIMDB_STMT_UPDATE_DATA,
+    FIMDB_STMT_UPDATE_PATH,
+    FIMDB_STMT_GET_LAST_PATH,
+    FIMDB_STMT_GET_FIRST_PATH,
+    FIMDB_STMT_GET_ALL_ENTRIES,
+    FIMDB_STMT_GET_NOT_SCANNED,
+    FIMDB_STMT_SET_ALL_UNSCANNED,
+    FIMDB_STMT_DELETE_UNSCANNED,
+    FIMDB_STMT_GET_PATH_COUNT,
+    FIMDB_STMT_GET_DATA_ROW,
+    FIMDB_STMT_GET_HARDLINK_COUNT,
+    FIMDB_STMT_GET_COUNT_RANGE,
+    FIMDB_STMT_GET_PATH_RANGE,
+    FIMDB_STMT_DELETE_PATH,
+    FIMDB_STMT_DELETE_DATA,
+    FIMDB_STMT_DISABLE_SCANNED,
+    FIMDB_STMT_GET_UNIQUE_FILE,
+    FIMDB_MAX_DATA_ROWID,
+    FIMDB_STMT_GET_PATHS_INODE,
+    FIMDB_STMT_GET_PATHS_INODE_COUNT,
+    FIMDB_STMT_SIZE
+} fdb_stmt;
+
 /*
 static const char *FIM_ENTRY_TYPE[] = {
     "file",
@@ -227,6 +255,19 @@ typedef struct fim_inode_data {
     char ** paths;
 } fim_inode_data;
 
+typedef struct fdb_transaction_t
+{
+    time_t last_commit;
+    time_t interval;
+} fdb_transaction_t;
+
+typedef struct fdb_t
+{
+    sqlite3 *db;
+    sqlite3_stmt *stmt[FIMDB_STMT_SIZE];
+    fdb_transaction_t transaction;
+} fdb_t;
+
 typedef struct _config {
     unsigned int tsleep;            /* sleep for sometime for daemon to settle */
     int sleep_after;
@@ -283,12 +324,13 @@ typedef struct _config {
     char **audit_key;               // Listen audit keys
     int audit_healthcheck;          // Startup health-check for whodata
     int sym_checker_interval;
-    
+
     pthread_mutex_t fim_entry_mutex;
     pthread_mutex_t fim_scan_mutex;
     pthread_mutex_t fim_realtime_mutex;
 
     rtfim *realtime;
+    fdb_t *database;
 
     char *prefilter_cmd;
     int process_priority; // Adjusts the priority of the process (or threads in Windows)

@@ -71,15 +71,15 @@ void * fim_run_integrity(void * args) {
 // LCOV_EXCL_STOP
 
 void fim_sync_checksum() {
-    char * start, *top;
+    char *start, *top;
     EVP_MD_CTX * ctx = EVP_MD_CTX_create();
     EVP_DigestInit(ctx, EVP_sha1());
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
-    start = fim_db_get_row_path(FIM_FIRST_ROW);
-    top = fim_db_get_row_path(FIM_LAST_ROW);
-    fim_db_get_data_checksum((void*) ctx);
+    fim_db_get_row_path(syscheck.database, FIM_FIRST_ROW, &start);
+    fim_db_get_row_path(syscheck.database, FIM_LAST_ROW, &top);
+    fim_db_get_data_checksum(syscheck.database, (void*) ctx);
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
     fim_sync_cur_id = time(NULL);
@@ -116,23 +116,22 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
     switch (n) {
-        case 0:
-            break;
+    case 0:
+        break;
 
-        case 1:
-            entry = fim_db_get_path(start);
-            entry_data = fim_entry_json(start, entry->data);
-            free_entry(entry);
-            char * plain = dbsync_state_msg("syscheck", entry_data);
-            fim_send_sync_msg(plain);
-            free(plain);
-            cJSON_Delete(entry_data);
-            break;
+    case 1:
+        entry = fim_db_get_path(syscheck.database, start);
+        entry_data = fim_entry_json(start, entry->data);
+        free_entry(entry);
+        char * plain = dbsync_state_msg("syscheck", entry_data);
+        fim_send_sync_msg(plain);
+        free(plain);
+        cJSON_Delete(entry_data);
+        break;
 
-        default:
-            fim_db_data_checksum_range(start, top, id, n);
-            break;
-        }
+    default:
+        fim_db_data_checksum_range(syscheck.database, start, top, id, n);
+        break;
     }
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);

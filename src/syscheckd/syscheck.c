@@ -83,9 +83,9 @@ void read_internal(int debug_level)
 
 void fim_initialize() {
     // Create store data
-    int db_status = fim_db_init();
+    syscheck.database = fim_db_init(1);
 
-    if (!db_status) {
+    if (!syscheck.database) {
         merror_exit(FIM_CRITICAL_DATA_CREATE, "sqlite3 db"); // LCOV_EXCL_LINE
     }
 
