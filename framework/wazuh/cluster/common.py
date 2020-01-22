@@ -176,7 +176,7 @@ class Handler(asyncio.Protocol):
         """
         Increases the message ID counter
         """
-        self.counter = (self.counter + 1) % (2 ** 32)
+        self.counter = (self.counter + 1) % (2**32)
         return self.counter
 
     def msg_build(self, command: bytes, counter: int, data: bytes) -> bytes:
@@ -265,7 +265,9 @@ class Handler(asyncio.Protocol):
             return "Error sending request: {}".format(e).encode()
         try:
             response_data = await asyncio.wait_for(response.read(), timeout=self.cluster_items['intervals']['communication']['timeout_cluster_request'])
+            del self.box[msg_counter]
         except asyncio.TimeoutError:
+            self.box[msg_counter] = None
             return b'Error sending request: timeout expired.'
         return response_data
 
@@ -365,7 +367,11 @@ class Handler(asyncio.Protocol):
         self.in_buffer = message
         for command, counter, payload in self.get_messages():
             if counter in self.box:
-                self.box[counter].write(self.process_response(command, payload))
+                if self.box[counter] is None:
+                    # Delete entry for previously expired request, just in case is received too late
+                    del self.box[counter]
+                else:
+                    self.box[counter].write(self.process_response(command, payload))
             else:
                 self.dispatch(command, counter, payload)
 
