@@ -241,7 +241,7 @@ void test_jqueue_open_fail_fseek(void **state)
     expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file '/var/ossec/logs/alerts/alerts.json' due to [(0)-(Success)].");
     expect_memory(__wrap_fclose, __stream, fp, sizeof(fp));
 
-    int ret = jqueue_open(fileq, -1);
+    int ret = jqueue_open(fileq, 1);
 
     assert_int_equal(ret, -1);
     assert_string_equal(fileq->file_name, "/var/ossec/logs/alerts/alerts.json");
@@ -265,7 +265,7 @@ void test_jqueue_open_fail_fstat(void **state)
     expect_string(__wrap__merror, formatted_msg, "(1117): Could not retrieve informations of file '/var/ossec/logs/alerts/alerts.json' due to [(0)-(Success)].");
     expect_memory(__wrap_fclose, __stream, fp, sizeof(fp));
 
-    int ret = jqueue_open(fileq, -1);
+    int ret = jqueue_open(fileq, 1);
 
     assert_int_equal(ret, -1);
     assert_string_equal(fileq->file_name, "/var/ossec/logs/alerts/alerts.json");
@@ -287,7 +287,7 @@ void test_jqueue_open_success(void **state)
     will_return(__wrap_fseek, 1);
     will_return(__wrap_fstat, 1);
 
-    int ret = jqueue_open(fileq, -1);
+    int ret = jqueue_open(fileq, 1);
 
     assert_int_equal(ret, 0);
     assert_string_equal(fileq->file_name, "/var/ossec/logs/alerts/alerts.json");
@@ -373,25 +373,13 @@ void test_jqueue_close(void **state)
     struct aux_struct *aux = *state;
 
     file_queue *fileq = aux->fileq;
-    FILE *fp = aux->fp;
+    fileq->fp = aux->fp;
 
-    expect_string(__wrap_fopen, __filename, "/var/ossec/logs/alerts/alerts.json");
-    expect_string(__wrap_fopen, __modes, "r");
-    will_return(__wrap_fopen, fp);
-    will_return(__wrap_fseek, 1);
-    will_return(__wrap_fstat, 1);
-
-    int ret = jqueue_open(fileq, -1);
-
-    assert_int_equal(ret, 0);
-    assert_string_equal(fileq->file_name, "/var/ossec/logs/alerts/alerts.json");
-    assert_ptr_equal(fileq->fp, fp);
-
-    expect_memory(__wrap_fclose, __stream, fp, sizeof(fp));
+    expect_memory(__wrap_fclose, __stream, aux->fp, sizeof(aux->fp));
 
     jqueue_close(fileq);
 
-    assert_string_equal(fileq->file_name, "/var/ossec/logs/alerts/alerts.json");
+    assert_string_equal(fileq->file_name, "");
     assert_null(fileq->fp);
 }
 
@@ -527,6 +515,23 @@ void test_handle_jqueue_flag_read_all(void **state)
 
     assert_int_equal(ret, 1);
     assert_ptr_equal(fileq->fp, fp);
+}
+
+void test_handle_jqueue_flag_fp_set_read_all(void **state)
+{
+    struct aux_struct *aux = *state;
+
+    file_queue *fileq = aux->fileq;
+    fileq->fp = aux->fp;
+
+    /* flag CRALERT_READ_ALL, success */
+
+    will_return(__wrap_fstat, 1);
+
+    int ret = Handle_JQueue(fileq, CRALERT_FP_SET | CRALERT_READ_ALL);
+
+    assert_int_equal(ret, 1);
+    assert_ptr_equal(fileq->fp, aux->fp);
 }
 
 void test_get_alert_json_data_fail(void **state)
@@ -1044,6 +1049,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_handle_jqueue_success, allocate_and_init_aux_struct, free_aux_struct),
         cmocka_unit_test_setup_teardown(test_handle_jqueue_flag_fp_set, allocate_and_init_aux_struct, free_aux_struct),
         cmocka_unit_test_setup_teardown(test_handle_jqueue_flag_read_all, allocate_and_init_aux_struct, free_aux_struct),
+        cmocka_unit_test_setup_teardown(test_handle_jqueue_flag_fp_set_read_all, allocate_and_init_aux_struct, free_aux_struct),
         cmocka_unit_test_setup_teardown(test_get_alert_json_data_fail, allocate_and_init_aux_struct, free_aux_struct),
         cmocka_unit_test_setup_teardown(test_get_alert_json_data_no_timestamp, allocate_and_init_aux_struct, free_aux_struct),
         cmocka_unit_test_setup_teardown(test_get_alert_json_data_no_rule, allocate_and_init_aux_struct, free_aux_struct),
