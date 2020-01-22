@@ -114,7 +114,7 @@ void start_daemon()
     time_t curr_time = 0;
     time_t prev_time_sk = 0;
     char curr_hour[12];
-    struct tm *p;
+    struct tm tm_result = { .tm_sec = 0 };
 
     // Some time to settle
     memset(curr_hour, '\0', 12);
@@ -193,19 +193,19 @@ void start_daemon()
     // If the scan_time or scan_day is set, we need to handle the current day/time on the loop.
     if (syscheck.scan_time || syscheck.scan_day) {
         curr_time = time(0);
-        p = localtime(&curr_time);
+        localtime_r(&curr_time, &tm_result);
 
         // Assign hour/min/sec values
         snprintf(curr_hour, 9, "%02d:%02d:%02d",
-                 p->tm_hour,
-                 p->tm_min,
-                 p->tm_sec);
+                 tm_result.tm_hour,
+                 tm_result.tm_min,
+                 tm_result.tm_sec);
 
-        curr_day = p->tm_mday;
+        curr_day = tm_result.tm_mday;
 
         if (syscheck.scan_time && syscheck.scan_day) {
             if ((OS_IsAfterTime(curr_hour, syscheck.scan_time)) &&
-                    (OS_IsonDay(p->tm_wday, syscheck.scan_day))) {
+                    (OS_IsonDay(tm_result.tm_wday, syscheck.scan_day))) {
                 day_scanned = 1;
             }
         } else if (syscheck.scan_time) {
@@ -213,7 +213,7 @@ void start_daemon()
                 day_scanned = 1;
             }
         } else if (syscheck.scan_day) {
-            if (OS_IsonDay(p->tm_wday, syscheck.scan_day)) {
+            if (OS_IsonDay(tm_result.tm_wday, syscheck.scan_day)) {
                 day_scanned = 1;
             }
         }
@@ -231,29 +231,29 @@ void start_daemon()
 
         // Check if a day_time or scan_time is set
         if (syscheck.scan_time || syscheck.scan_day) {
-            p = localtime(&curr_time);
+            localtime_r(&curr_time, &tm_result);
 
             // Day changed
-            if (curr_day != p->tm_mday) {
+            if (curr_day != tm_result.tm_mday) {
                 day_scanned = 0;
-                curr_day = p->tm_mday;
+                curr_day = tm_result.tm_mday;
             }
 
             // Check for the time of the scan
             if (!day_scanned && syscheck.scan_time && syscheck.scan_day) {
                 // Assign hour/min/sec values
                 snprintf(curr_hour, 9, "%02d:%02d:%02d",
-                         p->tm_hour, p->tm_min, p->tm_sec);
+                         tm_result.tm_hour, tm_result.tm_min, tm_result.tm_sec);
 
                 if ((OS_IsAfterTime(curr_hour, syscheck.scan_time)) &&
-                        (OS_IsonDay(p->tm_wday, syscheck.scan_day))) {
+                        (OS_IsonDay(tm_result.tm_wday, syscheck.scan_day))) {
                     day_scanned = 1;
                     run_now = 1;
                 }
             } else if (!day_scanned && syscheck.scan_time) {
                 // Assign hour/min/sec values
                 snprintf(curr_hour, 9, "%02d:%02d:%02d",
-                         p->tm_hour, p->tm_min, p->tm_sec);
+                         tm_result.tm_hour, tm_result.tm_min, tm_result.tm_sec);
 
                 if (OS_IsAfterTime(curr_hour, syscheck.scan_time)) {
                     run_now = 1;
@@ -261,7 +261,7 @@ void start_daemon()
                 }
             } else if (!day_scanned && syscheck.scan_day) {
                 // Check for the day of the scan
-                if (OS_IsonDay(p->tm_wday, syscheck.scan_day)) {
+                if (OS_IsonDay(tm_result.tm_wday, syscheck.scan_day)) {
                     run_now = 1;
                     day_scanned = 1;
                 }

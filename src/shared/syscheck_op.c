@@ -1118,6 +1118,7 @@ cJSON *win_perm_to_json(char *perms) {
         char **perms_array = NULL;
         wstr_split(permissions, "|", NULL, 1, &perms_array);
         if (!perms_array) {
+            cJSON_Delete(specific_perms);
             goto error;
         }
 

@@ -16,6 +16,8 @@
 #define SENDSTRING "Hello World!\n"
 #define BUFFERSIZE 1024
 
+char * getPrimaryIP();
+
 int test_tcpv4_local() {
     int server_root_socket, server_client_socket, client_socket;
     char buffer[BUFFERSIZE];
@@ -280,6 +282,13 @@ int test_gethost_not_exists() {
     return 1;
 }
 
+int test_get_ip() {
+    char * ip = getPrimaryIP();
+    int retval = OS_IsValidIP(ip, NULL);
+    free(ip);
+    return retval == 1;
+}
+
 int main(void) {
     printf("\n\n    STARTING TEST - OS_NET   \n\n");
 
@@ -318,6 +327,9 @@ int main(void) {
 
     // Try to get host by name with non-existent host name
     TAP_TEST_MSG(test_gethost_not_exists(), "Get host by name: non-existent host test.");
+
+    // Get IP address
+    TAP_TEST_MSG(test_get_ip(), "Get primary IP address collection.");
 
     TAP_PLAN;
     TAP_SUMMARY;

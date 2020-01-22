@@ -107,6 +107,8 @@ void fim_sync_checksum() {
 }
 
 void fim_sync_checksum_split(const char * start, const char * top, long id) {
+    fim_entry *entry = NULL;
+    cJSON *entry_data = NULL;
     int n = 0;
 
     //n = fim_db_get_count_range(start, top); returns number of rows between start and top
@@ -118,16 +120,18 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
             break;
 
         case 1:
-            fim_entry *entry = fim_db_get_path(start);
-            cJSON * entry_data = fim_entry_json(start, entry->data);
+            entry = fim_db_get_path(start);
+            entry_data = fim_entry_json(start, entry->data);
             free_entry(entry);
             char * plain = dbsync_state_msg("syscheck", entry_data);
             fim_send_sync_msg(plain);
             free(plain);
+            cJSON_Delete(entry_data);
             break;
 
         default:
-            //fim_db_data_checksum_range(start, top, id, n);
+            fim_db_data_checksum_range(start, top, id, n);
+            break;
         }
     }
 

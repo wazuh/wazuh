@@ -29,7 +29,7 @@ size_t syscom_dispatch(char * command, char ** output){
         // getconfig section
         if (!rcv_args){
             mdebug1(FIM_SYSCOM_ARGUMENTS, "getconfig");
-            *output = strdup("err SYSCOM getconfig needs arguments");
+            os_strdup("err SYSCOM getconfig needs arguments", *output);
             return strlen(*output);
         }
         return syscom_getconfig(rcv_args, output);
@@ -46,7 +46,7 @@ size_t syscom_dispatch(char * command, char ** output){
         return 0;
     } else {
         mdebug1(FIM_SYSCOM_UNRECOGNIZED_COMMAND, rcv_comm);
-        *output = strdup("err Unrecognized command");
+        os_strdup("err Unrecognized command", *output);
         return strlen(*output);
     }
 }
@@ -58,7 +58,7 @@ size_t syscom_getconfig(const char * section, char ** output) {
 
     if (strcmp(section, "syscheck") == 0){
         if (cfg = getSyscheckConfig(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -69,7 +69,7 @@ size_t syscom_getconfig(const char * section, char ** output) {
         }
     } else if (strcmp(section, "rootcheck") == 0){
         if (cfg = getRootcheckConfig(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -80,7 +80,7 @@ size_t syscom_getconfig(const char * section, char ** output) {
         }
     } else if (strcmp(section, "internal") == 0){
         if (cfg = getSyscheckInternalOptions(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -94,7 +94,7 @@ size_t syscom_getconfig(const char * section, char ** output) {
     }
 error:
     mdebug1(FIM_SYSCOM_FAIL_GETCONFIG, section);
-    *output = strdup("err Could not get requested section");
+    os_strdup("err Could not get requested section", *output);
     return strlen(*output);
 }
 

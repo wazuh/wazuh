@@ -124,18 +124,18 @@ int Start_win32_Syscheck()
             minfo(FIM_DIRECTORY_NOPROVIDED);
         }
 
-        syscheck.dir[0] = NULL;
+        os_free(syscheck.dir[0]);
 
         if (!syscheck.ignore) {
             os_calloc(1, sizeof(char *), syscheck.ignore);
         } else {
-            syscheck.ignore[0] = NULL;
+            os_free(syscheck.ignore[0]);
         }
 
         if (!syscheck.registry) {
             dump_syscheck_entry(&syscheck, "", 0, 1, NULL, 0, NULL, NULL);
         }
-        syscheck.registry[0].entry = NULL;
+        os_free(syscheck.registry[0].entry);
 
         minfo(FIM_DISABLED);
     }

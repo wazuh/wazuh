@@ -54,7 +54,7 @@ static int read_dev_dir(const char *dir_name)
 {
     int i;
     DIR *dp;
-    struct dirent *entry;
+    struct dirent *entry = NULL;
     char f_name[PATH_MAX + 2];
     char f_dir[PATH_MAX + 2];
 

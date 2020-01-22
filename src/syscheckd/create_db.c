@@ -1163,6 +1163,11 @@ int fim_check_ignore (const char *file_name) {
 
 // LCOV_EXCL_START
 int fim_check_restrict (const char *file_name, OSMatch *restriction) {
+    if (file_name == NULL) {
+        merror(NULL_ERROR);
+        return 1;
+    }
+
     // Restrict file types
     if (restriction) {
         if (!OSMatch_Execute(file_name, strlen(file_name), restriction)) {

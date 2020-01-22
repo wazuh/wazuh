@@ -276,6 +276,7 @@ char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__(
  */
 const char *get_group(int gid);
 
+
 #else
 
 /**

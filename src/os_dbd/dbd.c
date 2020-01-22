@@ -22,17 +22,17 @@
 void OS_DBD(DBConfig *db_config)
 {
     time_t tm;
-    struct tm *p;
     file_queue *fileq;
     alert_data *al_data;
+    struct tm tm_result = { .tm_sec = 0 };
 
     /* Get current time before starting */
     tm = time(NULL);
-    p = localtime(&tm);
+    localtime_r(&tm, &tm_result);
 
     /* Initialize file queue to read the alerts */
     os_calloc(1, sizeof(file_queue), fileq);
-    Init_FileQueue(fileq, p, 0);
+    Init_FileQueue(fileq, &tm_result, 0);
 
     /* Get maximum ID */
     db_config->alert_id = OS_SelectMaxID(db_config);
@@ -41,10 +41,10 @@ void OS_DBD(DBConfig *db_config)
     /* Infinite loop reading the alerts and inserting them */
     while (1) {
         tm = time(NULL);
-        p = localtime(&tm);
+        localtime_r(&tm, &tm_result);
 
         /* Get message if available (timeout of 5 seconds) */
-        al_data = Read_FileMon(fileq, p, 5);
+        al_data = Read_FileMon(fileq, &tm_result, 5);
         if (!al_data) {
             continue;
         }

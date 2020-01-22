@@ -467,19 +467,19 @@ void LastMsg_Change(const char *log, int t_id)
 }
 
 void Start_Time(){
-    struct tm *p;
+    struct tm tm_result = { .tm_sec = 0 };
 
     /* Current time */
-    p = localtime(&c_time);
+    localtime_r(&c_time, &tm_result);
 
     /* Other global variables */
     _fired = 0;
     _cignorehour = 0;
 
-    today = p->tm_mday;
-    thishour = p->tm_hour;
-    prev_year = p->tm_year + 1900;
-    strncpy(prev_month, l_month[p->tm_mon], 3);
+    today = tm_result.tm_mday;
+    thishour = tm_result.tm_hour;
+    prev_year = tm_result.tm_year + 1900;
+    strncpy(prev_month, l_month[tm_result.tm_mon], 3);
     prev_month[3] = '\0';
 
 }
