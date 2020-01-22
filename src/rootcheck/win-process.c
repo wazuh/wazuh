@@ -198,6 +198,8 @@ OSList *os_get_process_list()
         mdebug2("Can't close handle");
     }
 
+    OSList_SetFreeDataPointer(p_list, w_delete_w_proc_info);
+
     return (p_list);
 }
 

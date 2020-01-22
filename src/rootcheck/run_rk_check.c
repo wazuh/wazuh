@@ -194,7 +194,7 @@ void run_rk_check()
     }
 
     /* Free the process list */
-    w_del_plist((void *)plist);
+    OSList_Delete((void *)plist);
 
 #else
     size_t i;
@@ -221,7 +221,7 @@ void run_rk_check()
             }
 
             /* Free list */
-            w_del_plist(plist);
+            OSList_Delete(plist);
         }
     }
 

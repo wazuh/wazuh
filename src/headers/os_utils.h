@@ -27,7 +27,7 @@ char *w_os_get_runps(const char *ps, int mpid);
 OSList *w_os_get_process_list();
 /* Check if a file exists */
 int w_is_file(const char * const file);
-/* Delete the process list */
-int w_del_plist(OSList *p_list);
+/* Delete W_Proc_Info */
+void w_delete_w_proc_info(W_Proc_Info *process);
 
 #endif /* OS_UTILS_OP_H */

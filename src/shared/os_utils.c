@@ -113,6 +113,8 @@ OSList *w_os_get_process_list()
         }
     }
 
+    OSList_SetFreeDataPointer(p_list, w_delete_w_proc_info);
+
     return (p_list);
 }
 
@@ -129,52 +131,16 @@ int w_is_file(const char * const file)
     return (0);
 }
 
-/* Delete the process list */
-int w_del_plist(OSList *p_list)
+/* Delete W_Process_Info */
+void w_delete_w_proc_info(W_Proc_Info *pinfo)
 {
-    OSListNode *l_node;
-    OSListNode *p_node = NULL;
-
-    if (p_list == NULL) {
-        return (0);
+    if (pinfo->p_name) {
+        free(pinfo->p_name);
     }
 
-    l_node = OSList_GetFirstNode(p_list);
-    while (l_node) {
-        W_Proc_Info *pinfo;
-
-        pinfo = (W_Proc_Info *)l_node->data;
-
-        if (pinfo->p_name) {
-            free(pinfo->p_name);
-        }
-
-        if (pinfo->p_path) {
-            free(pinfo->p_path);
-        }
-
-        free(l_node->data);
-
-        if (p_node) {
-            free(p_node);
-            p_node = NULL;
-        }
-        p_node = l_node;
-
-        l_node = OSList_GetNextNode(p_list);
+    if (pinfo->p_path) {
+        free(pinfo->p_path);
     }
-
-    if (p_node) {
-        free(p_node);
-        p_node = NULL;
-    }
-
-    pthread_mutex_destroy(&(p_list->mutex));
-    pthread_rwlock_destroy(&(p_list->wr_mutex));
-
-    free(p_list);
-
-    return (1);
 }
 
 #ifdef WIN32
@@ -321,6 +287,9 @@ OSList *w_os_get_process_list()
     w_os_win32_setdebugpriv(hpriv, 0);
 
     CloseHandle(hsnap);
+
+    OSList_SetFreeDataPointer(p_list, w_delete_w_proc_info);
+
     return (p_list);
 }
 #endif

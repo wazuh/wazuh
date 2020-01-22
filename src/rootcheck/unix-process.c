@@ -109,6 +109,8 @@ OSList *os_get_process_list()
         }
     }
 
+    OSList_SetFreeDataPointer(p_list, w_delete_w_proc_info);
+
     return (p_list);
 }
 
