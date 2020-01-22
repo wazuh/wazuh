@@ -160,9 +160,22 @@ CREATE TABLE IF NOT EXISTS sys_netaddr (
 
 CREATE INDEX IF NOT EXISTS netaddr_id ON sys_netaddr (scan_id);
 
+CREATE TABLE IF NOT EXISTS sys_hotfixes (
+    scan_id INTEGER,
+    scan_time TEXT,
+    hotfix TEXT,
+    PRIMARY KEY (scan_id)
+);
+
+CREATE INDEX IF NOT EXISTS hotfixes_id ON sys_hotfixes (scan_id);
+
 
 INSERT INTO sys_osinfo VALUES (2011369005, '2019/03/21 10:25:00', 'master', 'x86_64', 'Ubuntu',
                                '18.04.2 LTS (Bionic Beaver)', 'Bionic Beaver', '18', '04', null, 'ubuntu', 'Linux',
+                               '4.15.0-46-generic', '#49-Ubuntu SMP Wed Feb 6 09:33:07 UTC 2019');
+
+INSERT INTO sys_osinfo VALUES (2011369001, '2019/03/21 10:25:00', 'agent', 'x86_64', 'Centos',
+                               '18.04.2 LTS (Bionic Beaver)', 'Bionic Beaver', '18', '04', null, 'Centos', 'Linux',
                                '4.15.0-46-generic', '#49-Ubuntu SMP Wed Feb 6 09:33:07 UTC 2019');
 
 INSERT INTO sys_hwinfo VALUES (2089525312, '2019/03/21 11:25:00', '0', 'Intel(R) Core(TM) i7-8550U CPU @ 1.80GHz', 2,
@@ -223,3 +236,5 @@ INSERT INTO sys_netaddr VALUES (1068672241, 'enp0s3', 'ipv4', '10.0.2.15', '255.
 INSERT INTO sys_netaddr VALUES (1068672241, 'enp0s3', 'ipv6', 'fe80::27:c3ff:fed8:5ac8', 'ffff:ffff:ffff:ffff::', null);
 INSERT INTO sys_netaddr VALUES (1068672241, 'enp0s8', 'ipv4', '172.17.0.100', '255.255.255.0', '172.17.0.255');
 INSERT INTO sys_netaddr VALUES (1068672241, 'enp0s8', 'ipv6', 'fe80::a00:27ff:fe52:24b6', 'ffff:ffff:ffff:ffff::', null);
+
+INSERT INTO sys_hotfixes VALUES (1068372250, '2019/03/21 14:18:35', 'Hotfix mocked');
