@@ -299,10 +299,11 @@ CREATE INDEX IF NOT EXISTS comp_id_check_index ON sca_check_compliance (id_check
 
 CREATE TABLE IF NOT EXISTS vuln_metadata (
     LAST_SCAN INTEGER,
-    WAZUH_VERSION TEXT
+    WAZUH_VERSION TEXT,
+    HOTFIX_SCAN_ID TEXT
 );
-INSERT INTO vuln_metadata (LAST_SCAN, WAZUH_VERSION)
-    SELECT '0', '0' WHERE NOT EXISTS (
+INSERT INTO vuln_metadata (LAST_SCAN, WAZUH_VERSION, WAZUH_VERSION)
+    SELECT '0', '0', '0' WHERE NOT EXISTS (
         SELECT * FROM vuln_metadata
     );
 

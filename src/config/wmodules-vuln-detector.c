@@ -165,7 +165,12 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
         }
         upd->dist_ref = FEED_UBUNTU;
     } else  if (strcasestr(feed, vu_feed_tag[FEED_DEBIAN]) && version) {
-        if (!strcmp(version, "9") || strcasestr(version, vu_feed_tag[FEED_STRETCH])) {
+        if (!strcmp(version, "10") || strcasestr(version, vu_feed_tag[FEED_BUSTER])) {
+            os_index = CVE_BUSTER;
+            os_strdup(vu_feed_tag[FEED_BUSTER], upd->version);
+            upd->dist_tag_ref = FEED_BUSTER;
+            upd->dist_ext = vu_feed_ext[FEED_BUSTER];
+        } else if (!strcmp(version, "9") || strcasestr(version, vu_feed_tag[FEED_STRETCH])) {
             os_index = CVE_STRETCH;
             os_strdup(vu_feed_tag[FEED_STRETCH], upd->version);
             upd->dist_tag_ref = FEED_STRETCH;
@@ -1007,6 +1012,11 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
             }
         } else if (!strcmp(node[i]->element, XML_ALLOW)) {
             if (multi_provider) {
+                if (!node[i]->attributes || !*node[i]->attributes || strcmp(*node[i]->attributes, XML_REPLACED_OS) ||
+                    !node[i]->values || !*node[i]->values || !**node[i]->values) {
+                    merror("Invalid '%s' value.", XML_REPLACED_OS);
+                    return OS_INVALID;
+                }
                 for (elements = 0; options->multi_allowed_os_name && options->multi_allowed_os_name[elements]; elements++);
                 os_realloc(options->multi_allowed_os_name, (elements + 2) * sizeof(char *), options->multi_allowed_os_name);
                 os_realloc(options->multi_allowed_os_ver, (elements + 2) * sizeof(char *), options->multi_allowed_os_ver);
@@ -1014,11 +1024,6 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
                 os_strdup(*node[i]->values, options->multi_allowed_os_ver[elements]);
                 options->multi_allowed_os_name[elements + 1] = NULL;
                 options->multi_allowed_os_ver[elements + 1] = NULL;
-
-                if (!node[i]->attributes || !*node[i]->attributes || strcmp(*node[i]->attributes, XML_REPLACED_OS)) {
-                    merror("Invalid use of '%s' option: it need to be used with the %s attribute.", node[i]->element, XML_REPLACED_OS);
-                    return OS_INVALID;
-                }
             } else {
                 mwarn("'%s' option can only be used in a multi-provider.", node[i]->element);
             }

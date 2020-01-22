@@ -154,4 +154,14 @@ void w_file_cloexec(FILE * fp);
 /* Prevent children processes from inheriting a file descriptor */
 void w_descriptor_cloexec(int fd);
 
+/**
+ * @brief Get the content of a given file
+ *
+ * @param path File location
+ * @param max_size Maximum allowed file size
+ * @return The content of the file
+ * @retval NULL The file doesn't exist or its size exceeds the maximum allowed
+ */
+char * w_get_file_content(const char * path, int max_size);
+
 #endif /* FILE_OP_H */
