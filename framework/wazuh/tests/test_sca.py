@@ -6,7 +6,8 @@
 import os
 import re
 import sqlite3
-from unittest.mock import patch
+import sys
+from unittest.mock import patch, MagicMock
 
 import pytest
 
@@ -15,6 +16,8 @@ from wazuh.tests.util import InitWDBSocketMock
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
+        sys.modules['wazuh.rbac.orm'] = MagicMock()
+        sys.modules['api'] = MagicMock()
         import wazuh.rbac.decorators
         from wazuh.tests.util import RBAC_bypasser
 
@@ -23,6 +26,9 @@ with patch('wazuh.common.ossec_uid'):
             get_sca_checks, fields_translation_sca_check, fields_translation_sca_check_compliance
         from wazuh.results import AffectedItemsWazuhResult
         from wazuh.exception import WazuhError
+
+        del sys.modules['wazuh.rbac.orm']
+
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 

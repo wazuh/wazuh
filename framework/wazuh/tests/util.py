@@ -35,7 +35,7 @@ class InitWDBSocketMock:
         return rows
 
 
-def RBAC_bypasser(**kwargs):
+def RBAC_bypasser(**kwargs_decorator):
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
