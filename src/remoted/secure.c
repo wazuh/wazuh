@@ -485,13 +485,13 @@ static int send_key_request(int socket,const char *msg) {
             int rc = OS_SendSecureTCPCluster(socket, "run_keypoll", payload, strlen(payload));
             char buffer[OS_MAXSTR + 1];
             int recv_msg = OS_RecvSecureClusterTCP(socket, buffer,OS_MAXSTR + 1);
-            if(recv_msg > 0)
+            if (recv_msg > 0) {
                 mdebug2("Key request message from the master: %s",buffer);
-            else if(recv_msg == -1)
+            } else if (recv_msg == -1) {
                 merror("No message received from the master.");
-            else if (recv_msg == 0)
+            } else if (recv_msg == 0) {
                 rc = OS_SOCKDISCN;
-            close(socket);
+            }
             os_free(payload);
             return rc;
         }
@@ -541,9 +541,8 @@ void * w_key_request_thread(__attribute__((unused)) void * args) {
     int socket = -1;
 
     while (1) {
-        if (socket < 0) {
-            socket = key_request_reconnect();
-        }
+
+        socket = key_request_reconnect();
 
         if (msg || (msg = queue_pop_ex(key_request_queue))) {
             int rc;
@@ -552,22 +551,20 @@ void * w_key_request_thread(__attribute__((unused)) void * args) {
                 if (rc == OS_SOCKBUSY) {
                     mdebug1("Key request socket busy.");
                     sleep(1);
-                }else if(rc == OS_SOCKDISCN){
+                } else if(rc == OS_SOCKDISCN){
                     mdebug1("Socket disconnected.");
-                    if (socket >= 0) {
-                        socket = -1;
-                    }
-                }else {
+
+                } else {
                     merror("Could not communicate with key request queue (%d). Is the module running?", rc);
                     if (socket >= 0) {
                         key_request_available = 0;
-                        close(socket);
-                        socket = -1;
                     }
                 }
             } else {
                 os_free(msg);
             }
+            close(socket);
+            socket = -1;
         }
     }
 }
