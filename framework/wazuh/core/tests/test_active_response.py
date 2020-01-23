@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -9,14 +9,16 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..', '..', '..', 'api'))
-
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
+        sys.modules['api'] = MagicMock()
         from wazuh.exception import WazuhError
         from wazuh.core import active_response
-        del sys.modules['wazuh.rbac.orm']
+        del sys.modules['api']
+
+
+# Variables
+test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
 
 # Functions
@@ -47,7 +49,7 @@ def agent_config(expected_exception):
     (None, 'restart-ossec0', [], True),
     (None, 'restart-ossec0', ["arg1", "arg2"], False)
 ])
-@patch('wazuh.common.ossec_path', new='wazuh/core/tests/data')
+@patch('wazuh.common.ossec_path', new=test_data_path)
 def test_create_message(expected_exception, command, arguments, custom):
     """Checks message returned is correct
 
@@ -77,7 +79,7 @@ def test_create_message(expected_exception, command, arguments, custom):
             assert '!' in ret, f'! symbol not being added when custom command'
 
 
-@patch('wazuh.common.ossec_path', new='wazuh/core/tests/data')
+@patch('wazuh.common.ossec_path', new=test_data_path)
 def test_get_commands():
     """
     Checks if get_commands method returns a list

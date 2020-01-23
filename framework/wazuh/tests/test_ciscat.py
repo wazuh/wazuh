@@ -1,9 +1,10 @@
+#!/usr/bin/env python
 # Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import os
 import sys
-from functools import wraps
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -15,20 +16,11 @@ with patch('wazuh.common.ossec_uid'):
         sys.modules['api'] = MagicMock()
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-
         del sys.modules['wazuh.rbac.orm']
         del sys.modules['api']
-
-        def RBAC_bypasser(**kwargs):
-            def decorator(f):
-                @wraps(f)
-                def wrapper(*args, **kwargs):
-                    return f(*args, **kwargs)
-
-                return wrapper
-            return decorator
-
+        from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+
         from wazuh.ciscat import get_ciscat_results
         from wazuh.results import AffectedItemsWazuhResult
 

@@ -38,16 +38,17 @@ def get_decoders(names=None, status=None, file=None, path=None, parents=False, o
     result = AffectedItemsWazuhResult(none_msg='No decoder was shown',
                                       some_msg='Some decoders could not be shown',
                                       all_msg='All selected decoders were shown')
-    status = check_status(status)
     all_decoders = list()
     if names is None:
         names = list()
 
-    for decoder_file in get_decoders_files(status=status, limit=None).affected_items:
+    for decoder_file in get_decoders_files(limit=None).affected_items:
         all_decoders.extend(load_decoders_from_file(decoder_file['file'], decoder_file['path'],
                                                     decoder_file['status']))
 
-    parameters = {'path': path, 'file': file, 'name': names, 'parents': parents}
+    status = check_status(status)
+    status = ['enabled', 'disabled'] if status == 'all' else [status]
+    parameters = {'path': path, 'file': file, 'name': names, 'parents': parents, 'status': status}
     decoders = list(all_decoders)
     no_existent_files = names[:]
     for d in all_decoders:
@@ -58,12 +59,15 @@ def get_decoders(names=None, status=None, file=None, path=None, parents=False, o
                         decoders.remove(d)
                     elif d[key] in no_existent_files:
                         no_existent_files.remove(d[key])
+                elif key == 'status' and d[key] not in value and d in decoders:
+                    decoders.remove(d)
                 elif key == 'file' and d[key] not in file and d in decoders:
                     decoders.remove(d)
                 elif key == 'path' and d[key] != path and d in decoders:
                     decoders.remove(d)
                 elif 'parent' in d['details'] and parents and d in decoders:
                     decoders.remove(d)
+
     for decoder_name in no_existent_files:
         result.add_failed_item(id_=decoder_name, error=WazuhError(1504))
 
@@ -93,9 +97,9 @@ def get_decoders_files(status=None, path=None, file=None, offset=0, limit=common
     :param search_in_fields: Fields to search in
     :return: AffectedItemsWazuhResult
     """
-    result = AffectedItemsWazuhResult(none_msg='No rules files were shown',
-                                      some_msg='Some rules files were shown',
-                                      all_msg='All rules files were shown')
+    result = AffectedItemsWazuhResult(none_msg='No decoder files were shown',
+                                      some_msg='Some decoder files were shown',
+                                      all_msg='All decoder files were shown')
     status = check_status(status)
     ruleset_conf = configuration.get_ossec_conf(section='ruleset')['ruleset']
     if not ruleset_conf:
