@@ -55,7 +55,6 @@ src/win32/*.exe
 src/win32/LICENSE.txt
 src/win32/default-local_internal_options.conf
 src/win32/default-ossec.conf
-src/win32/default-ossec-pre6.conf
 src/win32/help_win.txt
 src/win32/internal_options.conf
 src/win32/restart-ossec.cmd
@@ -65,6 +64,24 @@ src/win32/route-null-2012.cmd
 src/win32/netsh.cmd
 src/win32/VERSION
 src/win32/REVISION
+
+# Windows zip files
+etc/sca/windows/10/10.zip
+etc/sca/windows/2012R2/domain/2012R2_domain.zip
+etc/sca/windows/2012R2/member/2012R2_member.zip
+etc/templates/config/windows/10.zip
+etc/templates/config/windows/2003.zip
+etc/templates/config/windows/2008.zip
+etc/templates/config/windows/2008R2.zip
+etc/templates/config/windows/2012.zip
+etc/templates/config/windows/2012R2.zip
+etc/templates/config/windows/2016.zip
+etc/templates/config/windows/2019.zip
+etc/templates/config/windows/7.zip
+etc/templates/config/windows/8.1.zip
+etc/templates/config/windows/8.zip
+etc/templates/config/windows/Vista.zip
+etc/templates/config/windows/xp.zip
 
 # Eclipse files
 .cproject
