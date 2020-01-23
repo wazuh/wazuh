@@ -1,20 +1,20 @@
+#!/usr/bin/env python
 # Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import os
 import sys
 from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../'))
-from cdb_list import check_path, get_list_from_file, get_relative_path, iterate_lists
+from wazuh.core.cdb_list import check_path, get_list_from_file, get_relative_path, iterate_lists
+from wazuh.exception import WazuhError
 
 sys.modules['api'] = MagicMock()
 from wazuh import common
 del sys.modules['api']
-
-from wazuh.exception import WazuhError
 
 
 # Variables
