@@ -248,49 +248,41 @@ int fim_directory (char *dir, fim_element *item, whodata_evt *w_evt, int report)
 
 
 int fim_file (char *file, fim_element *item, whodata_evt *w_evt, int report) {
+    fim_entry * saved = NULL;
+    fim_entry_data * new = NULL;
     cJSON * json_event = NULL;
-    // SQLite Development
-    //fim_entry_data * entry_data = NULL;
-    //fim_entry_data * saved_data = NULL;
     char * json_formated;
+    int alert_type;
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
     //Get file attributes
-    /* SQLite Development
-    if (entry_data = fim_get_data(file, item), !entry_data) {
+    if (new = fim_get_data(file, item), !new) {
         mdebug1(FIM_GET_ATTRIBUTES, file);
         w_mutex_unlock(&syscheck.fim_entry_mutex);
         return 0;
     }
 
-    if (saved_data = (fim_entry_data *) rbtree_get(syscheck.fim_entry, file), !saved_data) {
+    if (saved = fim_db_get_path(syscheck.database, file), !saved) {
         // New entry. Insert into hash table
-        if (fim_insert(file, entry_data, &item->statbuf) == -1) {
-            free_entry_data(entry_data);
-            w_mutex_unlock(&syscheck.fim_entry_mutex);
-            return OS_INVALID;
-        }
-
-        if (_base_line && report) {
-            json_event = fim_json_event(file, NULL, entry_data, item->index, FIM_ADD, item->mode, w_evt);
-        }
+        alert_type = FIM_ADD;
     } else {
         // Checking for changes
-        saved_data->scanned = 1;
-        if (json_event = fim_json_event(file, saved_data, entry_data, item->index, FIM_MODIFICATION, item->mode, w_evt), json_event) {
-            if (fim_update(file, entry_data, saved_data) == -1) {
-                free_entry_data(entry_data);
-                w_mutex_unlock(&syscheck.fim_entry_mutex);
-                return OS_INVALID;
-            }
-        } else {
-            free_entry_data(entry_data);
-        }
+        alert_type = FIM_MODIFICATION;
     }
-    */
+
+    if (fim_db_insert_data(syscheck.database, file, new) == -1) {
+        free_entry_data(new);
+        free_entry(saved);
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
+        return OS_INVALID;
+    }
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    if (_base_line && report) {
+        json_event = fim_json_event(file, saved->data, new, item->index, alert_type, item->mode, w_evt), json_event);
+    }
 
     if (!_base_line && item->configuration & CHECK_SEECHANGES) {
         // The first backup is created. It should return NULL.
@@ -302,7 +294,10 @@ int fim_file (char *file, fim_element *item, whodata_evt *w_evt, int report) {
         send_syscheck_msg(json_formated);
         os_free(json_formated);
     }
+
     cJSON_Delete(json_event);
+    free_entry_data(new);
+    free_entry(saved);
 
     return 0;
 }
@@ -1239,7 +1234,7 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
     mdebug1(FIM_RUNNING_SCAN,
             time_diff(&start, &end),
             (double)(clock() - cputime_start) / CLOCKS_PER_SEC);
-    // SQLite Development 
+    // SQLite Development
     //mdebug1(FIM_ENTRIES_INFO, rbtree_size(syscheck.fim_entry));
 
 #ifndef WIN32
