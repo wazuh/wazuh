@@ -476,7 +476,7 @@ def main():
     else:
         # version temporary backup
 
-        copy(ossec_ruleset_version_path, ossec_ruleset_version_path+'-old', 0o750)
+        copy(ossec_ruleset_version_path, ossec_ruleset_version_path+'-old')
         try:
             copy(ossec_update_script, ossec_update_script+'-old', 0o750)
         except:
@@ -487,7 +487,7 @@ def main():
         #Compare major
         old_version = ossec_version.replace('"','')
         if not same_major_minor(old_version, status['new_version']):
-            copy(ossec_ruleset_version_path+'-old', ossec_ruleset_version_path, 0o750)
+            copy(ossec_ruleset_version_path+'-old', ossec_ruleset_version_path)
             copy(ossec_update_script+'-old', ossec_update_script, 0o750)
             os.remove(ossec_update_script+'-old')
             os.remove(ossec_ruleset_version_path+'-old')

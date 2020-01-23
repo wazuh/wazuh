@@ -1,14 +1,31 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.11.1]
+## [v3.11.2]
+
+### Changed
+
+- Optimized memory usage in Vulnerability Detector when fetching the NVD feed. ([#4427](https://github.com/wazuh/wazuh/pull/4427))
+
+### Fixed
+
+- Rootcheck scan produced a 100% CPU peak in Syscheckd because it applied `<readall>` option even when disabled. ([#4415](https://github.com/wazuh/wazuh/pull/4415))
+- Fixed a handler leak in Rootcheck and SCA on Windows agents. ([#4456](https://github.com/wazuh/wazuh/pull/4456))
+- Prevent Remoted from exiting when a client closes a connection prematurely. ([#4390](https://github.com/wazuh/wazuh/pull/4390))
+- Fixed crash in Slack integration when handling an alert with no description. ([#4426](https://github.com/wazuh/wazuh/pull/4426))
+- Fixed Makefile to allow running scan-build for Windows agents. ([#4314](https://github.com/wazuh/wazuh/pull/4314))
+- Fixed a memory leak in Clusterd. ([#4448](https://github.com/wazuh/wazuh/pull/4448))
+- Disable TCP keepalive options at os_net library to allow building Wazuh on OpenBSD. ([#4462](https://github.com/wazuh/wazuh/pull/4462))
+
+
+## [v3.11.1] - 2020-01-03
 
 ### Fixed
 
 - The Windows Eventchannel log decoder in Analysisd maxed out CPU usage due to an infinite loop. ([#4412](https://github.com/wazuh/wazuh/pull/4412))
 
 
-## [v3.11.0]
+## [v3.11.0] - 2019-12-23
 
 ### Added
 
