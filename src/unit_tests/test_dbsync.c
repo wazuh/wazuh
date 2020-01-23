@@ -84,7 +84,7 @@ int __wrap_wdbc_query_ex(int *sock, const char *query, char *response, const int
     check_expected(query);
     check_expected(len);
 
-    snprintf(response, len, mock_type(const char*));
+    snprintf(response, len, "%s", mock_ptr_type(char*));
 
     return mock();
 }

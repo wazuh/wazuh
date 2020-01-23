@@ -73,7 +73,7 @@ int __wrap_wdbc_query_ex(int *sock, const char *query, char *response, const int
 
     if(*sock <= 0) fail(); // Invalid socket
 
-    snprintf(response, len, mock_type(char*));
+    snprintf(response, len, "%s", mock_ptr_type(char*));
     return mock();
 }
 
