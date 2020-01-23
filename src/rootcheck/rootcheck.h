@@ -82,9 +82,6 @@ int os_string(char *file, char *regex);
 /* Check for NTFS ADS (Windows only) */
 int os_check_ads(const char *full_path);
 
-/* Get list of processes */
-OSList *os_get_process_list(void);
-
 /* Check if a process is running */
 int is_process(char *value, OSList *p_list);
 

@@ -275,7 +275,10 @@ void OSList_Delete(OSList *list)
     l_node = OSList_GetFirstNode(list);
     while (l_node) {
 
-        list->free_data_function;
+        if (list->free_data_function) {
+            list->free_data_function(l_node->data);
+        }
+
         os_free(l_node->data);
 
         if (p_node) {
