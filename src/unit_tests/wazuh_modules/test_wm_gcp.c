@@ -509,6 +509,9 @@ static void test_wm_gcp_run_generic_error_no_description(void **state) {
     expect_string(__wrap__mtwarn, formatted_msg, "Command returned exit code 3");
     expect_string(__wrap__mtwarn, formatted_msg, "A specific error message.");
 
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "OUTPUT: A specific error message.");
+
     expect_string(__wrap__mtinfo, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "Logging disabled.");
 
@@ -1454,6 +1457,7 @@ int main(void) {
         cmocka_unit_test(test_wm_gcp_run_error_parsing_args),
         cmocka_unit_test(test_wm_gcp_run_error_parsing_args_no_description),
         cmocka_unit_test(test_wm_gcp_run_generic_error),
+        cmocka_unit_test(test_wm_gcp_run_generic_error_no_description),
         cmocka_unit_test(test_wm_gcp_run_logging_debug_message_debug),
         cmocka_unit_test(test_wm_gcp_run_logging_debug_message_not_debug),
         cmocka_unit_test(test_wm_gcp_run_logging_debug_message_not_debug_discarded),
