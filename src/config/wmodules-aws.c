@@ -39,7 +39,9 @@ static const char *CONFIG_BUCKET_TYPE = "config";
 static const char *VPCFLOW_BUCKET_TYPE = "vpcflow";
 static const char *CUSTOM_BUCKET_TYPE = "custom";
 static const char *GUARDDUTY_BUCKET_TYPE = "guardduty";
+static const char *WAF_BUCKET_TYPE = "waf";
 static const char *INSPECTOR_SERVICE_TYPE = "inspector";
+static const char *CISCO_UMBRELLA_BUCKET_TYPE = "cisco_umbrella";
 
 // Parse XML
 
@@ -179,11 +181,13 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 if (!strcmp(*nodes[i]->attributes, XML_BUCKET_TYPE)) {
                     if (!strcmp(*nodes[i]->values, CLOUDTRAIL_BUCKET_TYPE) || !strcmp(*nodes[i]->values, CONFIG_BUCKET_TYPE)
                         || !strcmp(*nodes[i]->values, CUSTOM_BUCKET_TYPE) || !strcmp(*nodes[i]->values, GUARDDUTY_BUCKET_TYPE)
-                        || !strcmp(*nodes[i]->values, VPCFLOW_BUCKET_TYPE)) {
+                        || !strcmp(*nodes[i]->values, VPCFLOW_BUCKET_TYPE) || !strcmp(*nodes[i]->values, CISCO_UMBRELLA_BUCKET_TYPE)
+                        || !strcmp(*nodes[i]->values, WAF_BUCKET_TYPE)) {
                         os_strdup(*nodes[i]->values, cur_bucket->type);
                     } else {
-                        mterror(WM_AWS_LOGTAG, "Invalid bucket type '%s'. Valid ones are '%s', '%s', '%s', '%s' or '%s'", *nodes[i]->values, CLOUDTRAIL_BUCKET_TYPE,
-                            CONFIG_BUCKET_TYPE, CUSTOM_BUCKET_TYPE, GUARDDUTY_BUCKET_TYPE, VPCFLOW_BUCKET_TYPE);
+                        mterror(WM_AWS_LOGTAG, "Invalid bucket type '%s'. Valid ones are '%s', '%s', '%s', '%s', '%s', '%s' or '%s'",
+                            *nodes[i]->values, CLOUDTRAIL_BUCKET_TYPE, CONFIG_BUCKET_TYPE, GUARDDUTY_BUCKET_TYPE, VPCFLOW_BUCKET_TYPE,
+                            WAF_BUCKET_TYPE, CISCO_UMBRELLA_BUCKET_TYPE, CUSTOM_BUCKET_TYPE);
                         OS_ClearNode(children);
                         return OS_INVALID;
                     }

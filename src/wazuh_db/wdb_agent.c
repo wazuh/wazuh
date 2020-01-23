@@ -620,13 +620,14 @@ int wdb_update_agent_multi_group(int id, char *group) {
     const char delim[2] = ",";
     if (group) {
         char *multi_group;
+        char *save_ptr = NULL;
 
         multi_group = strchr(group, MULTIGROUP_SEPARATOR);
 
         if (multi_group) {
 
             /* Get the first group */
-            multi_group = strtok(group, delim);
+            multi_group = strtok_r(group, delim, &save_ptr);
 
             while( multi_group != NULL ) {
 
@@ -641,7 +642,7 @@ int wdb_update_agent_multi_group(int id, char *group) {
                     return -1;
                 }
 
-                multi_group = strtok(NULL, delim);
+                multi_group = strtok_r(NULL, delim, &save_ptr);
             }
         } else {
 
@@ -824,7 +825,7 @@ int wdb_update_groups(const char *dirname) {
 
     /* Add new groups from the folder /etc/shared if they dont exists on database */
     DIR *dir;
-    struct dirent *dirent;
+    struct dirent *dirent = NULL;
 
     if (!(dir = opendir(dirname))) {
         merror("Couldn't open directory '%s': %s.", dirname, strerror(errno));

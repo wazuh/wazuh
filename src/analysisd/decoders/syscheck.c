@@ -472,6 +472,7 @@ exit_fail:
 int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, _sdb *localsdb) {
     int changes = 0;
     char msg_type[OS_FLSIZE];
+    char buf_ptr[26];
 
     switch (lf->event_type) {
         case FIM_DELETED:
@@ -623,8 +624,8 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             if (oldsum->mtime && newsum->mtime && oldsum->mtime != newsum->mtime) {
                 changes = 1;
                 wm_strcat(&lf->fields[FIM_CHFIELDS].value, "mtime", ',');
-                char *old_ctime = strdup(ctime(&oldsum->mtime));
-                char *new_ctime = strdup(ctime(&newsum->mtime));
+                char *old_ctime = strdup(ctime_r(&oldsum->mtime, buf_ptr));
+                char *new_ctime = strdup(ctime_r(&newsum->mtime, buf_ptr));
                 old_ctime[strlen(old_ctime) - 1] = '\0';
                 new_ctime[strlen(new_ctime) - 1] = '\0';
 

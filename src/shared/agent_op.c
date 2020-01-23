@@ -224,9 +224,9 @@ int os_write_agent_info(const char *agent_name, __attribute__((unused)) const ch
 {
     FILE *fp;
 
-    fp = fopen(AGENT_INFO_FILE, "w");
+    fp = fopen(isChroot() ? AGENT_INFO_FILE : AGENT_INFO_FILEP, "w");
     if (!fp) {
-        merror(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
+        merror(FOPEN_ERROR, isChroot() ? AGENT_INFO_FILE : AGENT_INFO_FILEP, errno, strerror(errno));
         return (0);
     }
 
@@ -464,6 +464,7 @@ int w_validate_group_name(const char *group){
     int valid_chars_length = strlen(valid_chars);
     char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
     char *multi_group_cpy = NULL;
+    char *save_ptr = NULL;
 
     os_calloc(OS_SIZE_65536,sizeof(char),multi_group_cpy);
     snprintf(multi_group_cpy,OS_SIZE_65536,"%s",group);
@@ -496,7 +497,7 @@ int w_validate_group_name(const char *group){
     if(multigroup){
 
         const char delim[2] = ",";
-        char *individual_group = strtok(multi_group_cpy, delim);
+        char *individual_group = strtok_r(multi_group_cpy, delim, &save_ptr);
 
         while( individual_group != NULL ) {
 
@@ -507,7 +508,7 @@ int w_validate_group_name(const char *group){
                 return -4;
             }
 
-            individual_group = strtok(NULL, delim);
+            individual_group = strtok_r(NULL, delim, &save_ptr);
         }
 
         /* Look for consecutive ',' */
@@ -763,9 +764,9 @@ char * get_agent_id_from_name(const char *agent_name) {
 }
 
 /* Connect to the control socket if available */
-#if defined (__linux__) || defined (__MACH__)
+#if defined (__linux__) || defined (__MACH__) || defined(sun)
 int control_check_connection() {
-    int sock = OS_ConnectUnixDomain(CONTROL_SOCK, SOCK_STREAM, OS_SIZE_128);
+    int sock = OS_ConnectUnixDomain(isChroot() ? CONTROL_SOCK : CONTROL_SOCK_PATH, SOCK_STREAM, OS_SIZE_128);
 
     if (sock < 0) {
         return -1;

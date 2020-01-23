@@ -21,27 +21,80 @@
 #include "privsep_op.h"
 #include "headers/os_err.h"
 
+struct passwd *w_getpwnam(const char *name, struct passwd *pwd, char *buf, size_t buflen) {
+#ifdef SOLARIS
+    return getpwnam_r(name, pwd, buf, buflen);
+#else
+    struct passwd *result = NULL;
+    return (getpwnam_r(name, pwd, buf, buflen, &result) == 0 && result != NULL) ? result : NULL;
+#endif
+}
+
+struct passwd *w_getpwuid(uid_t uid, struct  passwd  *pwd, char *buf, int  buflen) {
+#ifdef SOLARIS
+    return getpwuid_r(uid, pwd, buf, buflen);
+#else
+    struct passwd *result = NULL;
+    return (getpwuid_r(uid, pwd, buf, buflen, &result) == 0 && result != NULL) ? result : NULL;
+#endif
+}
+
+struct group *w_getgrnam(const  char  *name,  struct group *grp, char *buf, int buflen) {
+#ifdef SOLARIS
+    return getgrnam_r(name, grp, buf, buflen);
+#else
+    struct group *result = NULL;
+    return (getgrnam_r(name, grp, buf, buflen, &result) == 0 && result != NULL) ? result : NULL;
+#endif
+}
+
+struct group *w_getgrgid(gid_t gid, struct group *grp,  char *buf, int buflen) {
+#ifdef SOLARIS
+    return getgrgid_r(gid, grp, buf, buflen);
+#else
+    struct group *result = NULL;
+    return (getgrgid_r(gid, grp, buf, buflen, &result) == 0 && result != NULL) ? result : NULL;
+#endif
+}
 
 uid_t Privsep_GetUser(const char *name)
 {
-    struct passwd *pw;
-    pw = getpwnam(name);
-    if (pw == NULL) {
-        return ((uid_t)OS_INVALID);
-    }
+    long int len =  sysconf(_SC_GETGR_R_SIZE_MAX);
+    len = len > 0 ? len : 1024;
+    struct passwd pw = { .pw_name = NULL };
+    char *buffer;
+    os_malloc(len, buffer);
+    struct passwd *result = NULL;
+    uid_t pw_uid;
 
-    return (pw->pw_uid);
+    if (result = w_getpwnam(name, &pw, buffer, len), result) {
+        pw_uid = result->pw_uid;
+    } else {
+        pw_uid = (uid_t) OS_INVALID;
+    }
+    os_free(buffer);
+
+    return pw_uid;
 }
 
 gid_t Privsep_GetGroup(const char *name)
 {
-    struct group *grp;
-    grp = getgrnam(name);
-    if (grp == NULL) {
-        return ((gid_t)OS_INVALID);
-    }
+    struct group grp = { .gr_name = NULL };
+    long int len = sysconf(_SC_GETGR_R_SIZE_MAX);
+    len = len > 0 ? len : 1024;
+    struct group *result = NULL;
+    char *buffer;
+    os_malloc(len, buffer);
+    gid_t gr_gid;
 
-    return (grp->gr_gid);
+    if (result = w_getgrnam(name, &grp, buffer, len), result) {
+        gr_gid = result->gr_gid;
+    } else {
+        gr_gid = (gid_t) OS_INVALID;
+    }
+    os_free(buffer);
+
+    return gr_gid;
 }
 
 int Privsep_SetUser(uid_t uid)
