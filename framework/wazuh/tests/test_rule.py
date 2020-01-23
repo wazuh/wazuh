@@ -91,10 +91,12 @@ def test_get_rules_file_status_include(mock_ossec, status, func):
     """Test getting rules using status filter."""
     m = mock_open(read_data=rule_contents)
     if status == 'random':
+        # Check the error raised when using an invalid rule status
         with pytest.raises(WazuhError, match='.* 1202 .*'):
             func(status=status)
     else:
         with patch('builtins.open', m):
+            # Check the result with a valid rule status (all, enabled, disabled)
             d_files = func(status=status).to_dict()
             assert d_files['total_affected_items'] == len(d_files['affected_items']) and \
                    len(d_files['affected_items']) != 0
@@ -159,7 +161,6 @@ def test_get_rules(mock_config, arg):
     for rule_ in result.to_dict()['affected_items']:
         if list(arg.keys())[0] != 'level':
             key = list(arg.keys())[0] if list(arg.keys())[0] != 'rule_ids' else 'id'
-            print(rule_[key])
             for rule_id in arg[list(arg.keys())[0]]:
                 assert rule_id in [rule_[key]]
         else:
@@ -169,6 +170,7 @@ def test_get_rules(mock_config, arg):
                     assert True
                 assert str(rule_[list(arg.keys())[0]]) in arg[list(arg.keys())[0]]
             except WazuhError as e:
+                # Check the error raised when using an nonexistent rule_id
                 assert 'rule_ids' in arg.keys()
                 assert e.code == 1208
 
