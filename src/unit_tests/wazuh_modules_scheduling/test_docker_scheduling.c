@@ -249,10 +249,10 @@ void test_read_scheduling_interval_configuration(void **state) {
 
 int main(void) {
     const struct CMUnitTest tests_with_startup[] = {
-        cmocka_unit_test_setup_teardown(test_interval_execution, NULL, teardown_test_executions),
-        cmocka_unit_test_setup_teardown(test_day_of_month, NULL, teardown_test_executions),
-        cmocka_unit_test_setup_teardown(test_day_of_week, NULL, teardown_test_executions),
-        cmocka_unit_test_setup_teardown(test_time_of_day, NULL, teardown_test_executions),
+        cmocka_unit_test_teardown(test_interval_execution, teardown_test_executions),
+        cmocka_unit_test_teardown(test_day_of_month, teardown_test_executions),
+        cmocka_unit_test_teardown(test_day_of_week, teardown_test_executions),
+        cmocka_unit_test_teardown(test_time_of_day, teardown_test_executions),
     };
     const struct CMUnitTest tests_without_startup[] = {
         cmocka_unit_test_setup_teardown(test_fake_tag, setup_test_read, teardown_test_read),

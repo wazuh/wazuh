@@ -21,7 +21,7 @@ static unsigned test_command_date_counter = 0;
 static struct tm test_command_date_storage[TEST_MAX_DATES];
 
 int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path) {
-    // Will wrap this funciont to check running times in order to check scheduling
+    // Will wrap this function to check running times in order to check scheduling
     time_t current_time = time(NULL);
     struct tm *date = localtime(&current_time);
     test_command_date_storage[test_command_date_counter++] = *date;
@@ -287,10 +287,10 @@ void test_read_scheduling_interval_configuration(void **state) {
 
 int main(void) {
     const struct CMUnitTest tests_with_startup[] = {
-        cmocka_unit_test_setup_teardown(test_interval_execution, NULL, teardown_test_executions),
-        cmocka_unit_test_setup_teardown(test_day_of_month, NULL, teardown_test_executions),
-        cmocka_unit_test_setup_teardown(test_day_of_week, NULL, teardown_test_executions),
-        cmocka_unit_test_setup_teardown(test_time_of_day, NULL, teardown_test_executions)
+        cmocka_unit_test_teardown(test_interval_execution, teardown_test_executions),
+        cmocka_unit_test_teardown(test_day_of_month, teardown_test_executions),
+        cmocka_unit_test_teardown(test_day_of_week, teardown_test_executions),
+        cmocka_unit_test_teardown(test_time_of_day, teardown_test_executions)
     };
     const struct CMUnitTest tests_without_startup[] = {
         cmocka_unit_test_setup_teardown(test_fake_tag, setup_test_read, teardown_test_read),

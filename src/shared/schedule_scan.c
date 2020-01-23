@@ -40,9 +40,7 @@ void sched_scan_init(sched_scan_config *scan_config){
  * Frees sched_scan_config internal variables
  * */
 void sched_scan_free(sched_scan_config *scan_config){
-    if (scan_config->scan_time) {
-        os_free(scan_config->scan_time);
-    }
+    os_free(scan_config->scan_time);
 }
 
 /**
