@@ -40,13 +40,16 @@ list(APPEND tests_flags "-Wl,--wrap,wm_exec,--wrap,_mtdebug1,--wrap,_mtinfo,--wr
                          -Wl,--wrap,sched_scan_dump,--wrap,sched_scan_get_next_time,--wrap,cJSON_CreateObject \
                          -Wl,--wrap,FOREVER,--wrap,wm_delay")
 
+list(APPEND tests_names "test_wmodules_gcp")
+list(APPEND tests_flags "-Wl,--wrap,sched_scan_read,--wrap,realpath,--wrap,IsFile,--wrap,_mwarn,--wrap,_merror")
+
 
 # Config files
 # configure_file("test_syscheck.conf" "test_syscheck.conf" COPYONLY)
 
 
 # Generate wazuh modules library
-file(GLOB wazuh_modules ../../wazuh_modules/*.o)
+file(GLOB wazuh_modules ../../wazuh_modules/*.o ../../config/*.o)
 list(REMOVE_ITEM wazuh_modules ../../wazuh_modules/main.o)
 
 add_library(WAZUH_MODULES_O STATIC ${wazuh_modules})
