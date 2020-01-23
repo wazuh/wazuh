@@ -486,11 +486,12 @@ static int send_key_request(int socket,const char *msg) {
             char buffer[OS_MAXSTR + 1];
             int recv_msg = OS_RecvSecureClusterTCP(socket, buffer,OS_MAXSTR + 1);
             if(recv_msg > 0)
-                mdebug2("%s",buffer);
+                mdebug2("Key request message from the master: %s",buffer);
             else if(recv_msg == -1)
                 merror("No message received from the master.");
             else if (recv_msg == 0)
                 rc = OS_SOCKDISCN;
+            close(socket);
             os_free(payload);
             return rc;
         }
@@ -554,7 +555,6 @@ void * w_key_request_thread(__attribute__((unused)) void * args) {
                 }else if(rc == OS_SOCKDISCN){
                     mdebug1("Socket disconnected.");
                     if (socket >= 0) {
-                        close(socket);
                         socket = -1;
                     }
                 }else {
