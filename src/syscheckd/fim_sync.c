@@ -77,60 +77,78 @@ void fim_sync_checksum() {
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
-    fim_db_get_row_path(syscheck.database, FIM_FIRST_ROW, &start);
-    fim_db_get_row_path(syscheck.database, FIM_LAST_ROW, &top);
+    if (fim_db_get_row_path(syscheck.database, FIM_FIRST_ROW,
+        &start) != FIMDB_OK) {
+        merror("fim_sync_checksum(): Couldn't get first row's path");
+        goto end;
+    }
+
+    if (fim_db_get_row_path(syscheck.database, FIM_LAST_ROW,
+        &top) != FIMDB_OK) {
+        merror("fim_sync_checksum(): Couldn't get last row's path");
+        goto end;
+    }
+
     fim_db_get_data_checksum(syscheck.database, (void*) ctx);
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
     fim_sync_cur_id = time(NULL);
 
     if (start && top) {
-        unsigned char digest[EVP_MAX_MD_SIZE];
+        unsigned char digest[EVP_MAX_MD_SIZE] = {0};
         unsigned int digest_size;
-        os_sha1 hexdigest;
+        os_sha1 hexdigest  = {0};
 
         EVP_DigestFinal_ex(ctx, digest, &digest_size);
         OS_SHA1_Hexdigest(digest, hexdigest);
 
         char * plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_GLOBAL, fim_sync_cur_id, start, top, NULL, hexdigest);
         fim_send_sync_msg(plain);
+
         free(start);
         free(top);
         free(plain);
-    } else {
+
+    } else { // If database is empty
         char * plain = dbsync_check_msg("syscheck", INTEGRITY_CLEAR, fim_sync_cur_id, NULL, NULL, NULL, NULL);
         fim_send_sync_msg(plain);
         free(plain);
     }
 
-    EVP_MD_CTX_destroy(ctx);
+    end:
+        EVP_MD_CTX_destroy(ctx);
 }
 
 void fim_sync_checksum_split(const char * start, const char * top, long id) {
-    fim_entry *entry = NULL;
-    cJSON *entry_data = NULL;
-    int n = 0;
+    fim_entry *entry    = NULL;
+    cJSON *entry_data   = NULL;
+    int range_size      = 0;
 
-    //n = fim_db_get_count_range(start, top); returns number of rows between start and top
+    if (fim_db_get_count_range(syscheck.database, start, top,
+        &range_size) != FIMDB_OK) {
+        merror("fim_db_get_count_range(): Couldn't get range size between %s and %s",
+                start, top);
+        return;
+    }
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
-    switch (n) {
+    switch (range_size) {
     case 0:
         break;
 
     case 1:
         entry = fim_db_get_path(syscheck.database, start);
         entry_data = fim_entry_json(start, entry->data);
-        free_entry(entry);
         char * plain = dbsync_state_msg("syscheck", entry_data);
         fim_send_sync_msg(plain);
         free(plain);
+        free_entry(entry);
         cJSON_Delete(entry_data);
         break;
 
     default:
-        fim_db_data_checksum_range(syscheck.database, start, top, id, n);
+        fim_db_data_checksum_range(syscheck.database, start, top, id, range_size);
         break;
     }
 

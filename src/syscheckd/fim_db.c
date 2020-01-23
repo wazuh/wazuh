@@ -196,8 +196,8 @@ void fim_db_close(fdb_t *fim_sql) {
 }
 
 int fim_db_clean(void) {
-    if (w_is_file(FIM_DB_PATH)) {
-        return remove(FIM_DB_PATH);
+    if (w_is_file(FIM_DB_DISK_PATH)) {
+        return remove(FIM_DB_DISK_PATH);
     }
     return FIMDB_OK;
 }
