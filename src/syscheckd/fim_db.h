@@ -13,9 +13,9 @@
 #include "external/sqlite/sqlite3.h"
 #include "config/syscheck-config.h"
 
-#define FIM_DB_MEM ":memory:"
-#define FIM_DB_PATH "fim.db"
-#define COMMIT_INTERVAL 2
+#define FIM_DB_MEMORY_PATH  ":memory:"
+#define FIM_DB_DISK_PATH    "fim.db"
+#define COMMIT_INTERVAL     2
 
 #define FIMDB_OK 0   // Successful result.
 #define FIMDB_ERR -1 // Generic error.

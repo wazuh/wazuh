@@ -149,7 +149,7 @@ static void fim_db_bind_row(fdb_t *fim_sql, int row);
 
 fdb_t *fim_db_init(int memory) {
     fdb_t *fim;
-    char *path = (memory == true) ? FIM_DB_MEM : FIM_DB_PATH;
+    char *path = (memory == 1) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
 
     os_calloc(1, sizeof(fdb_t), fim);
     memset(&(fim->db), 0, sizeof(fdb_t));

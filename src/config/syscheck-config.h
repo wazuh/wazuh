@@ -106,8 +106,11 @@ static const char *FIM_ENTRY_TYPE[] = {
 #define PATH_SEP '/'
 #endif
 
-#define SK_CONF_UNPARSED -2
-#define SK_CONF_UNDEFINED -1
+#define SK_CONF_UNPARSED    -2
+#define SK_CONF_UNDEFINED   -1
+
+#define FIM_DB_MEMORY       1
+#define FIM_DB_DISK         0
 
 //Max allowed value for recursion
 #define MAX_DEPTH_ALLOWED 320
@@ -331,6 +334,7 @@ typedef struct _config {
 
     rtfim *realtime;
     fdb_t *database;
+    int database_store;
 
     char *prefilter_cmd;
     int process_priority; // Adjusts the priority of the process (or threads in Windows)

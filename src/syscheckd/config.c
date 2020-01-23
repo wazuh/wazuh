@@ -26,6 +26,7 @@ int Read_Syscheck_Config(const char *cfgfile)
 
     syscheck.rootcheck      = 0;
     syscheck.disabled       = SK_CONF_UNPARSED;
+    syscheck.database       = FIM_DB_DISK;
     syscheck.skip_fs.nfs    = 1;
     syscheck.skip_fs.dev    = 1;
     syscheck.skip_fs.sys    = 1;
