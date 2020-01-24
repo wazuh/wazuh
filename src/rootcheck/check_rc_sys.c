@@ -12,8 +12,8 @@
 #include "rootcheck.h"
 
 /* Prototypes */
-static int read_sys_file(const char *file_name, int depth);
-static int read_sys_dir(const char *dir_name, int depth);
+static int read_sys_file(const char *file_name, int do_read, int depth);
+static int read_sys_dir(const char *dir_name, int do_read, int depth);
 
 /* Global variables */
 static int   _sys_errors;
@@ -24,10 +24,8 @@ static FILE *_ww;
 static FILE *_suid;
 
 
-static int read_sys_file(const char *file_name, int depth)
+static int read_sys_file(const char *file_name, int do_read, int depth)
 {
-    mtdebug2(ARGV0, "Reading file %s, with depth=%d", file_name, depth);
-
     struct stat statbuf;
 
     _sys_total++;
@@ -49,8 +47,26 @@ static int read_sys_file(const char *file_name, int depth)
         return (-1);
     }
 
+    /* If directory, read the directory */
+    else if (S_ISDIR(statbuf.st_mode)) {
+        /* Make Darwin happy. For some reason,
+         * when I read /dev/fd, it goes forever on
+         * /dev/fd5, /dev/fd6, etc.. weird
+         */
+        if (strstr(file_name, "/dev/fd") != NULL) {
+            return (0);
+        }
+
+        /* Ignore the /proc directory (it has size 0) */
+        if (statbuf.st_size == 0) {
+            return (0);
+        }
+
+        return (read_sys_dir(file_name, do_read, depth + 1));
+    }
+
     /* Check if the size from stats is the same as when we read the file */
-    if (S_ISREG(statbuf.st_mode)) {
+    if (S_ISREG(statbuf.st_mode) && do_read) {
         char buf[OS_SIZE_1024];
         int fd;
         ssize_t nr;
@@ -124,9 +140,8 @@ static int read_sys_file(const char *file_name, int depth)
     return (0);
 }
 
-static int read_sys_dir(const char *dir_name, int depth)
+static int read_sys_dir(const char *dir_name, int do_read, int depth)
 {
-
     int i = 0;
     unsigned int entry_count = 0;
     int did_changed = 0;
@@ -135,8 +150,6 @@ static int read_sys_dir(const char *dir_name, int depth)
     struct stat statbuf;
     short is_nfs;
     short skip_fs;
-
-    mtdebug2(ARGV0, "Reading dir %s, with depth=%d", dir_name, depth);
 
     if ((dir_name == NULL) || (strlen(dir_name) > PATH_MAX)) {
         mterror(ARGV0, "Invalid directory given.");
@@ -173,6 +186,15 @@ static int read_sys_dir(const char *dir_name, int depth)
     if (!S_ISDIR(statbuf.st_mode)) {
         return (-1);
     }
+
+#ifndef WIN32
+    /* Only the root files will be read */
+    if (!depth) {
+        do_read = 1;
+    }
+#else
+    do_read = 0;
+#endif
 
     /* Open the directory */
     dp = opendir(dir_name);
@@ -230,50 +252,25 @@ static int read_sys_dir(const char *dir_name, int depth)
             }
         }
 
-        /* If  directory, read the directory */
-        if (S_ISDIR(statbuf_local.st_mode)) {
-            /* Make Darwin happy. For some reason,
-            * when I read /dev/fd, it goes forever on
-            * /dev/fd5, /dev/fd6, etc.. weird
-            */
-            if (strstr(f_name, "/dev/fd") != NULL) {
-                return (0);
+        /* Check every file against the rootkit database */
+        for (i = 0; i <= rk_sys_count; i++) {
+            if (!rk_sys_file[i]) {
+                break;
             }
 
-            /* Ignore the /proc directory (it has size 0) */
-            if (statbuf_local.st_size == 0) {
-                return (0);
-            }
- 
-            if(rootcheck.readall) {
-                read_sys_dir(f_name, depth + 1);
+            if (strcmp(rk_sys_file[i], entry->d_name) == 0) {
+                char op_msg[OS_SIZE_1024 + 1];
+
+                _sys_errors++;
+                snprintf(op_msg, OS_SIZE_1024, "Rootkit '%s' detected "
+                         "by the presence of file '%s/%s'.",
+                         rk_sys_name[i], dir_name, rk_sys_file[i]);
+
+                notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
             }
         }
 
-        else {
-            /* Check every file against the rootkit database */
-            for (i = 0; i <= rk_sys_count; i++) {
-                if (!rk_sys_file[i]) {
-                    break;
-                }
-
-                if (strcmp(rk_sys_file[i], entry->d_name) == 0) {
-                    char op_msg[OS_SIZE_1024 + 1];
-
-                    _sys_errors++;
-                    snprintf(op_msg, OS_SIZE_1024, "Rootkit '%s' detected "
-                            "by the presence of file '%s/%s'.",
-                            rk_sys_name[i], dir_name, rk_sys_file[i]);
-
-                    notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
-                }
-            }
-
-            read_sys_file(f_name, depth);
-
-        }
-
-        
+        read_sys_file(f_name, do_read, depth);
     }
 
     /* skip further test because the FS cant deliver the stats (btrfs link count always is 1) */
@@ -360,7 +357,7 @@ void check_rc_sys(const char *basedir)
 #else
         snprintf(file_path, 5, "%s", "C:\\");
 #endif
-        read_sys_dir(file_path, 0);
+        read_sys_dir(file_path, rootcheck.readall, 0);
     } else {
         /* Scan only specific directories */
         int _i;
@@ -381,7 +378,7 @@ void check_rc_sys(const char *basedir)
         _i = 0;
         while (dirs_to_scan[_i] != NULL) {
             snprintf(dir_path, OS_SIZE_1024, "%s%c%s", basedir, PATH_SEP, dirs_to_scan[_i]);
-            read_sys_dir(dir_path, 0);
+            read_sys_dir(dir_path, rootcheck.readall, 0);
             _i++;
         }
     }
