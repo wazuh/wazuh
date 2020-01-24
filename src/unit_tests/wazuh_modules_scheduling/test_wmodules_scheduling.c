@@ -33,6 +33,7 @@ static void test_interval_mode(void **state){
     wm_delay(1000 * TEST_DELAY);
     next_time = sched_scan_get_next_time(&scan_config, "TEST_INTERVAL_MODE", 0);
     assert_int_equal((int) next_time, TEST_INTERVAL - TEST_DELAY);
+    free(scan_config.scan_time);
 }
 
 
@@ -58,7 +59,7 @@ static void test_day_of_the_month_mode(void **state){
         // Assert execution time is the expected month day
         assert_int_equal(date->tm_mday,  TEST_DAY_MONTHS[i]);
     }
-    
+    free(scan_config.scan_time);
 }
 
 /**
@@ -70,6 +71,8 @@ static void test_day_of_the_month_consecutive(void **state){
         "<time>0:00</time>"
     ;
     sched_scan_config scan_config = init_config_from_string(string);
+    // Set to 2 months
+    scan_config.interval = 2;
 
     time_t time_sleep = sched_scan_get_next_time(&scan_config, "TEST_DAY_MONTH_MODE", 0); 
     time_t first_time = time(NULL) + time_sleep;
@@ -88,8 +91,8 @@ static void test_day_of_the_month_consecutive(void **state){
 
     assert_int_equal(second_date.tm_mday, scan_config.scan_day);
     // Check it is following month
-    assert_int_equal((first_date.tm_mon + 1) % 12, second_date.tm_mon);
-
+    assert_int_equal((first_date.tm_mon + scan_config.interval) % 12, second_date.tm_mon);
+    free(scan_config.scan_time);
 }
 
 /**
@@ -118,6 +121,7 @@ static void test_day_of_the_week(void **state){
     assert_int_equal(second_date.tm_wday,  scan_config.scan_wday);
 
     assert_int_not_equal(first_date.tm_yday, second_date.tm_yday);
+    free(scan_config.scan_time);
 }
 
 /**
@@ -136,6 +140,7 @@ static void test_time_of_day(void **state){
 
     assert_int_equal(date.tm_hour, 5);
     assert_int_equal(date.tm_min, 18);
+    free(scan_config.scan_time);
 }
 
 /**
@@ -148,7 +153,11 @@ static void test_parse_xml_and_dump(void **state){
     sched_scan_config scan_config = init_config_from_string(string);
     cJSON *data = cJSON_CreateObject();
     sched_scan_dump(&scan_config, data);
-    assert_string_equal(cJSON_PrintUnformatted(data), "{\"interval\":604800,\"wday\":\"friday\",\"time\":\"13:14\"}");
+    char *result_str = cJSON_PrintUnformatted(data);
+    assert_string_equal(result_str, "{\"interval\":604800,\"wday\":\"friday\",\"time\":\"13:14\"}");
+    cJSON_Delete(data);
+    free(scan_config.scan_time);
+    free(result_str);
 }
 
 

@@ -79,9 +79,9 @@ static int setup_module() {
     ;
     lxml = malloc(sizeof(OS_XML));
     XML_NODE nodes = string_to_xml_node(string, lxml);
-    assert_int_equal(wm_ciscat_read(lxml, nodes, ciscat_module), 0);
+    int ret = wm_ciscat_read(lxml, nodes, ciscat_module);
     OS_ClearNode(nodes);
-    return 0;
+    return ret;
 }
 
 static int teardown_module(){
@@ -89,9 +89,33 @@ static int teardown_module(){
     OS_ClearXML(lxml);
     return 0;
 }
+
+static int teardown_test_executions(void **state){
+    wm_ciscat* module_data = (wm_ciscat *) *state;
+    sched_scan_free(&(module_data->scan_config));
+    return 0;
+}
+
+static int setup_test_read(void **state) {
+    test_structure *test = calloc(1, sizeof(test_structure));
+    test->module =  calloc(1, sizeof(wmodule));
+    *state = test;   
+    return 0;
+}
+
+static int teardown_test_read(void **state) {
+    test_structure *test = *state;
+    OS_ClearNode(test->nodes);
+    OS_ClearXML(&(test->xml));
+    wm_ciscat *module_data = (wm_ciscat*)test->module->data;
+    sched_scan_free(&(module_data->scan_config));
+    wmodule_cleanup(test->module);
+    os_free(test);
+    return 0;
+}
 /************************************/
 
-void test_interval_execution() {
+void test_interval_execution(void **state) {
     set_up_test(check_time_interval);
     wm_ciscat* module_data = (wm_ciscat *)ciscat_module->data;
     module_data->scan_config.last_scan_time = 0;
@@ -100,9 +124,10 @@ void test_interval_execution() {
     module_data->scan_config.interval = 120; // 2min
     module_data->scan_config.month_interval = false;
     ciscat_module->context->start(module_data);
+    *state = module_data;
 }
 
-void test_day_of_month() {
+void test_day_of_month(void **state) {
     set_up_test(check_day_of_month);
     wm_ciscat* module_data = (wm_ciscat *)ciscat_module->data;
     module_data->scan_config.last_scan_time = 0;
@@ -112,10 +137,10 @@ void test_day_of_month() {
     module_data->scan_config.interval = 1; // 1 month
     module_data->scan_config.month_interval = true;
     ciscat_module->context->start(module_data);
-    free(module_data->scan_config.scan_time);
+    *state = module_data;
 }
 
-void test_day_of_week() {
+void test_day_of_week(void **state) {
     set_up_test(check_day_of_week);
     wm_ciscat* module_data = (wm_ciscat *)ciscat_module->data;
     module_data->scan_config.last_scan_time = 0;
@@ -125,10 +150,10 @@ void test_day_of_week() {
     module_data->scan_config.interval = 604800;  // 1 week
     module_data->scan_config.month_interval = false;
     ciscat_module->context->start(module_data);
-    free(module_data->scan_config.scan_time);
+    *state = module_data;
 }
 
-void test_time_of_day() {
+void test_time_of_day(void **state) {
     set_up_test(check_time_of_day);
     wm_ciscat* module_data = (wm_ciscat *)ciscat_module->data;
     module_data->scan_config.last_scan_time = 0;
@@ -138,10 +163,10 @@ void test_time_of_day() {
     module_data->scan_config.interval = WM_DEF_INTERVAL;  // 1 day
     module_data->scan_config.month_interval = false;
     ciscat_module->context->start(module_data);
-    free(module_data->scan_config.scan_time);
+    *state = module_data;
 }
 
-void test_fake_tag() {
+void test_fake_tag(void **state) {
     set_up_test(check_time_of_day);
     const char *string = 
         "<disabled>no</disabled>\n"
@@ -155,18 +180,12 @@ void test_fake_tag() {
         "    <profile>xccdf_org.cisecurity.benchmarks_profile_Level_2_-_Server</profile>\n"
         "</content>\n" 
     ;
-    wmodule *module = calloc(1, sizeof(wmodule));
-    OS_XML xml;
-    XML_NODE nodes = string_to_xml_node(string, &xml);
-    assert_int_equal(wm_ciscat_read(&xml, nodes, module),-1);
-    OS_ClearNode(nodes);
-    OS_ClearXML(&xml);
-    wm_ciscat* module_data = (wm_ciscat *)module->data;
-    free(module_data->scan_config.scan_time);
-    wmodule_cleanup(module);
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_ciscat_read(&(test->xml), test->nodes, test->module),-1);
 }
 
-void test_read_scheduling_monthday_configuration() {
+void test_read_scheduling_monthday_configuration(void **state) {
     const char *string = 
         "<disabled>no</disabled>\n"
         "<timeout>1800</timeout>\n"
@@ -179,23 +198,18 @@ void test_read_scheduling_monthday_configuration() {
         "    <profile>xccdf_org.cisecurity.benchmarks_profile_Level_2_-_Server</profile>\n"
         "</content>\n" 
     ;
-    wmodule *module = calloc(1, sizeof(wmodule));;
-    OS_XML xml;
-    XML_NODE nodes = string_to_xml_node(string, &xml);
-    assert_int_equal(wm_ciscat_read(&xml, nodes, module), 0);
-    wm_ciscat* module_data = (wm_ciscat *)module->data;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_ciscat_read(&(test->xml), test->nodes, test->module),0);
+    wm_ciscat* module_data = (wm_ciscat *)test->module->data;
     assert_int_equal(module_data->scan_config.scan_day, 5);
     assert_int_equal(module_data->scan_config.interval, 1);
     assert_int_equal(module_data->scan_config.month_interval, true);
     assert_int_equal(module_data->scan_config.scan_wday, -1);
     assert_string_equal(module_data->scan_config.scan_time, "14:59");
-    OS_ClearNode(nodes);
-    OS_ClearXML(&xml);
-    free(module_data->scan_config.scan_time);
-    wmodule_cleanup(module);
 }
 
-void test_read_scheduling_weekday_configuration() {
+void test_read_scheduling_weekday_configuration(void** state) {
     const char *string = 
         "<disabled>no</disabled>\n"
         "<timeout>1800</timeout>\n"
@@ -208,23 +222,18 @@ void test_read_scheduling_weekday_configuration() {
         "    <profile>xccdf_org.cisecurity.benchmarks_profile_Level_2_-_Server</profile>\n"
         "</content>\n" 
     ;
-    wmodule *module = calloc(1, sizeof(wmodule));;
-    OS_XML xml;
-    XML_NODE nodes = string_to_xml_node(string, &xml);
-    assert_int_equal(wm_ciscat_read(&xml, nodes, module), 0);
-    wm_ciscat* module_data = (wm_ciscat *)module->data;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_ciscat_read(&(test->xml), test->nodes, test->module),0);
+    wm_ciscat* module_data = (wm_ciscat *)test->module->data;
     assert_int_equal(module_data->scan_config.scan_day, 0);
     assert_int_equal(module_data->scan_config.interval, 604800);
     assert_int_equal(module_data->scan_config.month_interval, false);
     assert_int_equal(module_data->scan_config.scan_wday, 3);
     assert_string_equal(module_data->scan_config.scan_time, "23:59");
-    OS_ClearNode(nodes);
-    OS_ClearXML(&xml);
-    free(module_data->scan_config.scan_time);
-    wmodule_cleanup(module);
 }
 
-void test_read_scheduling_daytime_configuration() {
+void test_read_scheduling_daytime_configuration(void **state) {
     const char *string = 
         "<disabled>no</disabled>\n"
         "<timeout>1800</timeout>\n"
@@ -236,23 +245,18 @@ void test_read_scheduling_daytime_configuration() {
         "    <profile>xccdf_org.cisecurity.benchmarks_profile_Level_2_-_Server</profile>\n"
         "</content>\n" 
     ;
-    wmodule *module = calloc(1, sizeof(wmodule));;
-    OS_XML xml;
-    XML_NODE nodes = string_to_xml_node(string, &xml);
-    assert_int_equal(wm_ciscat_read(&xml, nodes, module), 0);
-    wm_aws *module_data = (wm_aws*)module->data;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_ciscat_read(&(test->xml), test->nodes, test->module),0);
+    wm_ciscat* module_data = (wm_ciscat *)test->module->data;
     assert_int_equal(module_data->scan_config.scan_day, 0);
     assert_int_equal(module_data->scan_config.interval, WM_DEF_INTERVAL);
     assert_int_equal(module_data->scan_config.month_interval, false);
     assert_int_equal(module_data->scan_config.scan_wday, -1);
     assert_string_equal(module_data->scan_config.scan_time, "11:45");
-    OS_ClearNode(nodes);
-    OS_ClearXML(&xml);
-    free(module_data->scan_config.scan_time);
-    wmodule_cleanup(module);
 }
 
-void test_read_scheduling_interval_configuration() {
+void test_read_scheduling_interval_configuration(void **state) {
     const char *string = 
         "<disabled>no</disabled>\n"
         "<timeout>1800</timeout>\n"
@@ -264,34 +268,29 @@ void test_read_scheduling_interval_configuration() {
         "    <profile>xccdf_org.cisecurity.benchmarks_profile_Level_2_-_Server</profile>\n"
         "</content>\n" 
     ;
-    wmodule *module = calloc(1, sizeof(wmodule));;
-    OS_XML xml;
-    XML_NODE nodes = string_to_xml_node(string, &xml);
-    assert_int_equal(wm_ciscat_read(&xml, nodes, module), 0);
-    wm_aws *module_data = (wm_aws*)module->data;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_ciscat_read(&(test->xml), test->nodes, test->module),0);
+    wm_ciscat* module_data = (wm_ciscat *)test->module->data;
     assert_int_equal(module_data->scan_config.scan_day, 0);
     assert_int_equal(module_data->scan_config.interval, 3600);
     assert_int_equal(module_data->scan_config.month_interval, false);
     assert_int_equal(module_data->scan_config.scan_wday, -1);
-    OS_ClearNode(nodes);
-    OS_ClearXML(&xml);
-    free(module_data->scan_config.scan_time);
-    wmodule_cleanup(module);
 }
 
 int main(void) {
     const struct CMUnitTest tests_with_startup[] = {
-        cmocka_unit_test(test_interval_execution),
-        cmocka_unit_test(test_day_of_month),
-        cmocka_unit_test(test_day_of_week),
-        cmocka_unit_test(test_time_of_day)
+        cmocka_unit_test_setup_teardown(test_interval_execution, NULL, teardown_test_executions),
+        cmocka_unit_test_setup_teardown(test_day_of_month, NULL, teardown_test_executions),
+        cmocka_unit_test_setup_teardown(test_day_of_week, NULL, teardown_test_executions),
+        cmocka_unit_test_setup_teardown(test_time_of_day, NULL, teardown_test_executions)
     };
     const struct CMUnitTest tests_without_startup[] = {
-        cmocka_unit_test(test_fake_tag),
-        cmocka_unit_test(test_read_scheduling_monthday_configuration),
-        cmocka_unit_test(test_read_scheduling_weekday_configuration),
-        cmocka_unit_test(test_read_scheduling_daytime_configuration),
-        cmocka_unit_test(test_read_scheduling_interval_configuration)
+        cmocka_unit_test_setup_teardown(test_fake_tag, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_scheduling_monthday_configuration, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_scheduling_weekday_configuration, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_scheduling_daytime_configuration, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_scheduling_interval_configuration, setup_test_read, teardown_test_read)
     };
     int result;
     result = cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module);

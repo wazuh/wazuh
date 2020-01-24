@@ -20,7 +20,9 @@ static OS_XML *lxml;
 static unsigned test_aws_date_counter = 0;
 static struct tm test_aws_date_storage[TEST_MAX_DATES];
 
-int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path) {
+extern void wm_aws_run_s3(wm_aws_bucket *bucket);
+
+void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
     // Will wrap this funciont to check running times in order to check scheduling
     time_t current_time = time(NULL);
     struct tm *date = localtime(&current_time);
@@ -30,10 +32,7 @@ int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const 
         check_function_ptr( &ptr->scan_config, &test_aws_date_storage[0], TEST_MAX_DATES);
         // Break infinite loop
         disable_forever_loop();
-        int i;
     }
-    *exitcode = 0;
-    return 0;
 }
 /****************************************************************/
 
@@ -59,6 +58,7 @@ static void wmodule_cleanup(wmodule *module){
 
 /***  SETUPS/TEARDOWNS  ******/
 static int setup_module() {
+    int ret;
     aws_module = calloc(1, sizeof(wmodule));
     const char *string = 
         "<disabled>no</disabled>\n"
@@ -73,9 +73,9 @@ static int setup_module() {
     ;
     lxml = malloc(sizeof(OS_XML));
     XML_NODE nodes = string_to_xml_node(string, lxml);
-    assert_int_equal(wm_aws_read(lxml, nodes, aws_module), 0);
+    ret = wm_aws_read(lxml, nodes, aws_module);
     OS_ClearNode(nodes);
-    return 0;
+    return ret;
 }
 
 static int teardown_module(){
@@ -84,8 +84,32 @@ static int teardown_module(){
     return 0;
 }
 
+static int teardown_test_executions(void **state){
+    wm_aws* module_data = (wm_aws *) *state;
+    sched_scan_free(&(module_data->scan_config));
+    return 0;
+}
+
+static int setup_test_read(void **state) {
+    test_structure *test = calloc(1, sizeof(test_structure));
+    test->module =  calloc(1, sizeof(wmodule));
+    *state = test;   
+    return 0;
+}
+
+static int teardown_test_read(void **state) {
+    test_structure *test = *state;
+    OS_ClearNode(test->nodes);
+    OS_ClearXML(&(test->xml));
+    wm_aws *module_data = (wm_aws*)test->module->data;
+    sched_scan_free(&(module_data->scan_config));
+    wmodule_cleanup(test->module);
+    os_free(test);
+    return 0;
+}
+
 /** Tests **/
-void test_interval_execution() {
+void test_interval_execution(void **state) {
     set_config_test(check_time_interval);
     wm_aws* module_data = (wm_aws *)aws_module->data;
     module_data->scan_config.last_scan_time = 0;
@@ -94,9 +118,10 @@ void test_interval_execution() {
     module_data->scan_config.interval = 600; // 10min
     module_data->scan_config.month_interval = false;
     aws_module->context->start(module_data);
+    *state = module_data;
 }
 
-void test_day_of_month() {
+void test_day_of_month(void **state) {
     set_config_test(check_day_of_month);
     wm_aws* module_data = (wm_aws *)aws_module->data;
     module_data->scan_config.last_scan_time = 0;
@@ -106,10 +131,10 @@ void test_day_of_month() {
     module_data->scan_config.interval = 1; // 1 month
     module_data->scan_config.month_interval = true;
     aws_module->context->start(module_data);
-    free(module_data->scan_config.scan_time);
+    *state = module_data;
 }
 
-void test_day_of_week() {
+void test_day_of_week(void **state) {
     set_config_test(check_day_of_week);
     wm_aws* module_data = (wm_aws *)aws_module->data;
     module_data->scan_config.last_scan_time = 0;
@@ -119,10 +144,10 @@ void test_day_of_week() {
     module_data->scan_config.interval = 604800;  // 1 week
     module_data->scan_config.month_interval = false;
     aws_module->context->start(module_data);
-    free(module_data->scan_config.scan_time);
+    *state = module_data;
 }
 
-void test_time_of_day() {
+void test_time_of_day(void **state) {
     set_config_test(check_time_of_day);
     wm_aws* module_data = (wm_aws *)aws_module->data;
     module_data->scan_config.last_scan_time = 0;
@@ -132,11 +157,11 @@ void test_time_of_day() {
     module_data->scan_config.interval = WM_DEF_INTERVAL;  // 1 day
     module_data->scan_config.month_interval = false;
     aws_module->context->start(module_data);
-    free(module_data->scan_config.scan_time);
+    *state = module_data;
 }
 
 
-void test_fake_tag() {
+void test_fake_tag(void **state) {
     const char *string = 
         "<disabled>no</disabled>\n"
         "<time>15:05</time>\n"
@@ -149,19 +174,13 @@ void test_fake_tag() {
         "</bucket>\n"
         "<fake-tag>ASD</fake-tag>"
     ;
-    wmodule *module = calloc(1, sizeof(wmodule));
-    OS_XML xml;
-    XML_NODE nodes = string_to_xml_node(string, &xml);
-    assert_int_equal(wm_aws_read(&xml, nodes, module), -1);
-    OS_ClearNode(nodes);
-    OS_ClearXML(&xml);
-    wm_aws *module_data = (wm_aws*)module->data;
-    free(module_data->scan_config.scan_time);
-    wmodule_cleanup(module);
-    
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_aws_read(&(test->xml), test->nodes, test->module), -1);
+
 }
 
-void test_read_scheduling_monthday_configuration() {
+void test_read_scheduling_monthday_configuration(void **state) {
     const char *string = 
         "<disabled>no</disabled>\n"
         "<time>15:05</time>\n"
@@ -174,23 +193,18 @@ void test_read_scheduling_monthday_configuration() {
         "   <aws_profile>default</aws_profile>\n"
         "</bucket>\n"
     ;
-    wmodule *module = calloc(1, sizeof(wmodule));;
-    OS_XML xml;
-    XML_NODE nodes = string_to_xml_node(string, &xml);
-    assert_int_equal(wm_aws_read(&xml, nodes, module), 0);
-    wm_aws *module_data = (wm_aws*)module->data;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_aws_read(&(test->xml), test->nodes, test->module), 0);
+    wm_aws *module_data = (wm_aws*)test->module->data;
     assert_int_equal(module_data->scan_config.scan_day, 6);
     assert_int_equal(module_data->scan_config.interval, 1);
     assert_int_equal(module_data->scan_config.month_interval, true);
     assert_int_equal(module_data->scan_config.scan_wday, -1);
     assert_string_equal(module_data->scan_config.scan_time, "15:05");
-    OS_ClearNode(nodes);
-    OS_ClearXML(&xml);
-    free(module_data->scan_config.scan_time);
-    wmodule_cleanup(module);
 }
 
-void test_read_scheduling_weekday_configuration() {
+void test_read_scheduling_weekday_configuration(void **state) {
     const char *string = 
         "<disabled>no</disabled>\n"
         "<time>13:03</time>\n"
@@ -203,23 +217,18 @@ void test_read_scheduling_weekday_configuration() {
         "   <aws_profile>default</aws_profile>\n"
         "</bucket>\n"
     ;
-    wmodule *module = calloc(1, sizeof(wmodule));
-    OS_XML xml;
-    XML_NODE nodes = string_to_xml_node(string, &xml);
-    assert_int_equal(wm_aws_read(&xml, nodes, module), 0);
-    wm_aws *module_data = (wm_aws*)module->data;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_aws_read(&(test->xml), test->nodes, test->module), 0);
+    wm_aws *module_data = (wm_aws*)test->module->data;
     assert_int_equal(module_data->scan_config.scan_day, 0);
     assert_int_equal(module_data->scan_config.interval, 604800);
     assert_int_equal(module_data->scan_config.month_interval, false);
     assert_int_equal(module_data->scan_config.scan_wday, 1);
     assert_string_equal(module_data->scan_config.scan_time, "13:03");
-    OS_ClearNode(nodes);
-    OS_ClearXML(&xml);
-    free(module_data->scan_config.scan_time);
-    wmodule_cleanup(module);
 }
 
-void test_read_scheduling_daytime_configuration() {
+void test_read_scheduling_daytime_configuration(void **state) {
     const char *string = 
         "<disabled>no</disabled>\n"
         "<time>01:11</time>\n"
@@ -231,23 +240,18 @@ void test_read_scheduling_daytime_configuration() {
         "   <aws_profile>default</aws_profile>\n"
         "</bucket>\n"
     ;
-    wmodule *module = calloc(1, sizeof(wmodule));;
-    OS_XML xml;
-    XML_NODE nodes = string_to_xml_node(string, &xml);
-    assert_int_equal(wm_aws_read(&xml, nodes, module), 0);
-    wm_aws *module_data = (wm_aws*)module->data;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_aws_read(&(test->xml), test->nodes, test->module), 0);
+    wm_aws *module_data = (wm_aws*)test->module->data;
     assert_int_equal(module_data->scan_config.scan_day, 0);
     assert_int_equal(module_data->scan_config.interval, WM_DEF_INTERVAL);
     assert_int_equal(module_data->scan_config.month_interval, false);
     assert_int_equal(module_data->scan_config.scan_wday, -1);
     assert_string_equal(module_data->scan_config.scan_time, "01:11");
-    OS_ClearNode(nodes);
-    OS_ClearXML(&xml);
-    free(module_data->scan_config.scan_time);
-    wmodule_cleanup(module);
 }
 
-void test_read_scheduling_interval_configuration() {
+void test_read_scheduling_interval_configuration(void **state) {
     const char *string = 
         "<disabled>no</disabled>\n"
         "<interval>10m</interval>\n"
@@ -259,36 +263,32 @@ void test_read_scheduling_interval_configuration() {
         "   <aws_profile>default</aws_profile>\n"
         "</bucket>\n"
     ;
-    wmodule *module = calloc(1, sizeof(wmodule));;
-    OS_XML xml;
-    XML_NODE nodes = string_to_xml_node(string, &xml);
-    assert_int_equal(wm_aws_read(&xml, nodes, module), 0);
-    wm_aws *module_data = (wm_aws*)module->data;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_aws_read(&(test->xml), test->nodes, test->module), 0);
+    wm_aws *module_data = (wm_aws*)test->module->data;
     assert_int_equal(module_data->scan_config.scan_day, 0);
     assert_int_equal(module_data->scan_config.interval, 600);
     assert_int_equal(module_data->scan_config.month_interval, false);
     assert_int_equal(module_data->scan_config.scan_wday, -1);
-    OS_ClearNode(nodes);
-    OS_ClearXML(&xml);
-    wmodule_cleanup(module);
 }
 
 int main(void) {
     const struct CMUnitTest tests_with_startup[] = {
-        cmocka_unit_test(test_interval_execution),
-        cmocka_unit_test(test_day_of_month),
-        cmocka_unit_test(test_day_of_week),
-        cmocka_unit_test(test_time_of_day)
+        cmocka_unit_test_setup_teardown(test_interval_execution, NULL, teardown_test_executions),
+        cmocka_unit_test_setup_teardown(test_day_of_month, NULL, teardown_test_executions),
+        cmocka_unit_test_setup_teardown(test_day_of_week, NULL, teardown_test_executions),
+        cmocka_unit_test_setup_teardown(test_time_of_day, NULL, teardown_test_executions)
     };
     const struct CMUnitTest tests_without_startup[] = {
-        cmocka_unit_test(test_fake_tag),
-        cmocka_unit_test(test_read_scheduling_monthday_configuration),
-        cmocka_unit_test(test_read_scheduling_weekday_configuration),
-        cmocka_unit_test(test_read_scheduling_daytime_configuration),
-        cmocka_unit_test(test_read_scheduling_interval_configuration)
+        cmocka_unit_test_setup_teardown(test_fake_tag, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_scheduling_monthday_configuration, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_scheduling_weekday_configuration, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_scheduling_daytime_configuration, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_scheduling_interval_configuration, setup_test_read, teardown_test_read)
     };
     int result;
     result = cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module);
-    result &= cmocka_run_group_tests(tests_without_startup, NULL, NULL);
+    result += cmocka_run_group_tests(tests_without_startup, NULL, NULL);
     return result;
 }

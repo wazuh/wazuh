@@ -7,6 +7,10 @@ static const char *XML_SCAN_DAY = "day";
 static const char *XML_WEEK_DAY = "wday";
 static const char *XML_TIME = "time";
 
+#ifdef UNIT_TESTING
+// Remove static for unit testing
+#define static
+#endif
 
 static int _sched_scan_validate_parameters(sched_scan_config *scan_config);
 static time_t _get_next_time(const sched_scan_config *config, const char *MODULE_TAG,  const int run_on_start);
@@ -26,10 +30,19 @@ void sched_scan_init(sched_scan_config *scan_config){
     scan_config->scan_wday = -1;
     scan_config->scan_day = 0;
     scan_config->scan_time = NULL;
-    scan_config->interval = WM_DEF_INTERVAL / 2;
+    scan_config->interval = WM_DEF_INTERVAL;
     scan_config->month_interval = false;
     scan_config->time_start = 0;
     scan_config->last_scan_time = 0;
+}
+
+/**
+ * Frees sched_scan_config internal variables
+ * */
+void sched_scan_free(sched_scan_config *scan_config){
+    if (scan_config->scan_time) {
+        os_free(scan_config->scan_time);
+    }
 }
 
 /**
@@ -136,7 +149,7 @@ static time_t _get_next_time(const sched_scan_config *config, const char *MODULE
         int status = -1;
         int avoid_repeated_scan = 0;
         int month_counter = config->interval; // To check correct month
-        while (status < 0 || !avoid_repeated_scan) {
+        while (status < 0 || !avoid_repeated_scan || (month_counter > 0)) {
             status = check_day_to_scan(config->scan_day, config->scan_time);
             //At least a day from the last scan
             avoid_repeated_scan = (time(NULL) - config->last_scan_time) > 86400;
@@ -193,7 +206,7 @@ static time_t _get_next_time(const sched_scan_config *config, const char *MODULE
 }
 
 
-int _sched_scan_validate_parameters(sched_scan_config *scan_config) {
+static int _sched_scan_validate_parameters(sched_scan_config *scan_config) {
     // Validate scheduled scan parameters and interval value
     if (scan_config->scan_day && (scan_config->scan_wday >= 0)) {
         merror("Options 'day' and 'wday' are not compatible.");

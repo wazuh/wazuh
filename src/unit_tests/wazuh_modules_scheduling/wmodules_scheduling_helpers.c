@@ -3,7 +3,7 @@
 
 static time_t current_time = 0;
 static int FOREVER_LOOP = 1;
-
+extern time_t __real_time(time_t *_time);
 /**************** Mocked functions *************/
 /**     Mocked functions       **/
 
@@ -68,7 +68,8 @@ sched_scan_config init_config_from_string(const char* string){
     sched_scan_config scan_config;
     sched_scan_init(&scan_config);
     sched_scan_read(&scan_config, nodes, "");
-
+    OS_ClearNode(nodes);
+    OS_ClearXML(&_lxml);
     return scan_config;
 }
 

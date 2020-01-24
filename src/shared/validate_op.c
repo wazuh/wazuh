@@ -839,7 +839,8 @@ int w_validate_wday(const char * day_str) {
 // Acceptable format: hh:mm (24 hour format)
 char * w_validate_time(const char * time_str) {
 
-    int hour, min;
+    int hour = -1;
+    int min = -1;
     char * ret_time = NULL;
 
     if (!time_str) {

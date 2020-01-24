@@ -16,7 +16,7 @@
 #include "shared.h"
 
 #ifdef UNIT_TESTING
-// Remove static qualifier for testing purposes
+/* Remove static qualifier when testing */
 #define static
 #endif
 
@@ -66,9 +66,11 @@ void* wm_gcp_main(wm_gcp *data) {
 }
 
 #ifdef UNIT_TESTING
-// Replace pthread_exit for testing purposes
+/* Replace pthread_exit for testing purposes */
 #undef pthread_exit
 #define pthread_exit(a) return
+
+__attribute__((weak))
 #endif
 void wm_gcp_run(const wm_gcp *data) {
     int status;
