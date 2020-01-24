@@ -131,21 +131,6 @@ void __wrap__mdebug1(const char * file, int line, const char * func, const char 
 }
 
 /* tests */
-
-static void test_key_request_connect_enabled_false(void **state)
-{
-    (void) state; /* unused */
-    int ret;
-
-    logr.key_polling_enabled = false;
-
-    will_return(__wrap_OS_ConnectUnixDomain, -1);
-    
-    ret = key_request_connect();
-    
-    assert_int_equal(ret, -1);
-}
-
 static void test_key_request_connect_local(void **state)
 {
     (void) state; /* unused */
@@ -176,20 +161,6 @@ static void test_key_request_connect_master(void **state)
     assert_int_equal(ret, 0);
 }
 
-static void test_send_key_request_enabled_false(void **state)
-{
-    (void) state; /* unused */
-    int ret;
-
-    logr.key_polling_enabled = false;
-
-    will_return(__wrap_OS_SendUnix, -1);
-    
-    ret = send_key_request(12,"test_enabled_false");
-    
-    assert_int_equal(ret, -1);
-}
-
 static void test_send_key_request_local(void **state)
 {
     (void) state; /* unused */
@@ -216,7 +187,7 @@ static void test_send_key_request_master_success(void **state)
     will_return(__wrap_OS_SendSecureTCPCluster, 1);
     will_return(__wrap_OS_RecvSecureClusterTCP, 1);
     
-    expect_string(__wrap__mdebug2, msg, "%s");
+    expect_string(__wrap__mdebug2, msg, "Key request message from the master: %s");
     expect_string(__wrap__mdebug2, param1, "");
     
     ret = send_key_request(12,"test_master_success");
@@ -261,12 +232,10 @@ static void test_send_key_request_recv_msg_equal_zero(void **state)
 int main(void) {
     const struct CMUnitTest tests[] = {           
         //Test key_request_connect
-        cmocka_unit_test(test_key_request_connect_enabled_false),
         cmocka_unit_test(test_key_request_connect_local),
         cmocka_unit_test(test_key_request_connect_master),
 
         //Test send_key_request
-        cmocka_unit_test(test_send_key_request_enabled_false),
         cmocka_unit_test(test_send_key_request_local),
         cmocka_unit_test(test_send_key_request_master_success),
         cmocka_unit_test(test_send_key_request_recv_msg_less_zero),
