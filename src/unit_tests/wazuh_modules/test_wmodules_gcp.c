@@ -70,7 +70,7 @@ int __wrap_sched_scan_read(sched_scan_config *scan_config, xml_node **nodes, con
 char *__wrap_realpath(const char *path, char *resolved_path) {
     check_expected(path);
 
-    snprintf(resolved_path, PATH_MAX, mock_type(char*));
+    snprintf(resolved_path, PATH_MAX, "%s", mock_type(char*));
 
     return mock_type(char*);
 }
