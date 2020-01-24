@@ -9,6 +9,8 @@ from datetime import datetime
 from enum import Enum
 from shutil import chown
 
+import yaml
+from api.constants import SECURITY_PATH
 from sqlalchemy import create_engine, UniqueConstraint, Column, DateTime, String, Integer, ForeignKey, Boolean
 from sqlalchemy.dialects.sqlite import TEXT
 from sqlalchemy.exc import IntegrityError
@@ -16,8 +18,6 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, backref
 from sqlalchemy.orm.exc import UnmappedInstanceError
 from werkzeug.security import check_password_hash, generate_password_hash
-
-from api.constants import SECURITY_PATH
 
 # Start a session and set the default security elements
 _auth_db_file = os.path.join(SECURITY_PATH, 'rbac.db')
@@ -29,8 +29,8 @@ _Session = sessionmaker(bind=_engine)
 admin_usernames = ['wazuh', 'wazuh-wui']
 
 # IDs reserved for administrator roles and policies, these can not be modified or deleted
-admin_role_ids = [1, 2]
-admin_policy_ids = [1]
+admin_role_ids = [1, 2, 3, 4, 5, 6]
+admin_policy_ids = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 
 def json_validator(data):
@@ -112,7 +112,7 @@ class User(_Base):
 
     # Relations
     roles = relationship("Roles", secondary='user_roles',
-                         backref=backref("rolesu", cascade="all,delete", order_by=UserRoles.role_id), lazy='dynamic')
+                         backref=backref("rolesu", cascade="all, delete", order_by=UserRoles.role_id), lazy='dynamic')
 
     def __init__(self, username, password, auth_context=False):
         self.username = username
@@ -166,7 +166,7 @@ class Roles(_Base):
 
     # Relations
     policies = relationship("Policies", secondary='roles_policies',
-                            backref=backref("policiess", cascade="all,delete", order_by=id), lazy='dynamic')
+                            backref=backref("policiess", cascade="all, delete", order_by=id), lazy='dynamic')
     users = relationship("User", secondary='user_roles',
                          backref=backref("userss", cascade="all,delete", order_by=UserRoles.user_id), lazy='dynamic')
 
@@ -218,7 +218,7 @@ class Policies(_Base):
 
     # Relations
     roles = relationship("Roles", secondary='roles_policies',
-                         backref=backref("roless", cascade="all,delete", order_by=id), lazy='dynamic')
+                         backref=backref("roless", cascade="all, delete", order_by=id), lazy='dynamic')
 
     def __init__(self, name, policy):
         self.name = name
@@ -602,7 +602,7 @@ class PoliciesManager:
                     if isinstance(policy['actions'], list) and isinstance(policy['resources'], list) \
                             and isinstance(policy['effect'], str):
                         # Regular expression that prevents the creation of invalid policies
-                        regex = r'^[a-z*]+:[a-z0-9*]+(:[a-z0-9*]+)*$'
+                        regex = r'^[a-z_*]+:[a-z0-9_*]+([:|&]{0,1}[a-z0-9_*]+)*$'
                         for action in policy['actions']:
                             if not re.match(regex, action):
                                 return SecurityError.INVALID
@@ -1151,43 +1151,49 @@ class RolesPoliciesManager:
 # This is the actual sqlite database creation
 _Base.metadata.create_all(_engine)
 # Only if executing as root
-try:
-    chown(_auth_db_file, 'ossec', 'ossec')
-    os.chmod(_auth_db_file, 0o640)
-except PermissionError as e:
-    raise e
+chown(_auth_db_file, 'ossec', 'ossec')
+os.chmod(_auth_db_file, 0o640)
+
+default_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'default')
 
 # Create default users if they don't exist yet
-with AuthenticationManager() as auth:
-    auth.add_user(username='wazuh-wui', password='wazuh-wui', auth_context=True)
-    auth.add_user(username='wazuh', password='wazuh')
+with open(os.path.join(default_path, "users.yaml"), 'r') as stream:
+    default_users = yaml.safe_load(stream)
 
-# These examples are for RBAC development
-with PoliciesManager() as pm:
-    pm.add_policy(name='wazuhPolicy', policy={
-        'actions': ['*:*'],
-        'resources': ['*:*'],
-        'effect': 'allow'
-    })
+    with AuthenticationManager() as auth:
+        for d_username, payload in default_users[next(iter(default_users))].items():
+            auth.add_user(username=d_username, password=payload['password'],
+                          auth_context=payload['auth_context'])
 
-with RolesManager() as rm:
-    rm.add_role('wazuh', {
-        "FIND": {
-            "r'^auth[a-zA-Z]+$'": ["administrator"]
-        }
-    })
-    rm.add_role('wazuh-wui', {
-        "FIND": {
-            "r'^auth[a-zA-Z]+$'": ["administrator-app"]
-        }
-    })
+# Create default roles if they don't exist yet
+with open(os.path.join(default_path, "roles.yaml"), 'r') as stream:
+    default_roles = yaml.safe_load(stream)
 
-with UserRolesManager() as urm:
-    urm.add_role_to_user_admin(username=auth.get_user(username='wazuh')['username'],
-                               role_id=rm.get_role(name='wazuh')['id'])
+    with RolesManager() as rm:
+        for d_role_name, payload in default_roles[next(iter(default_roles))].items():
+            rm.add_role(name=d_role_name, rule=payload['rule'])
 
-with RolesPoliciesManager() as rpm:
-    rpm.add_policy_to_role_admin(role_id=rm.get_role(name='wazuh')['id'],
-                                 policy_id=pm.get_policy(name='wazuhPolicy')['id'])
-    rpm.add_policy_to_role_admin(
-        role_id=rm.get_role(name='wazuh-wui')['id'], policy_id=pm.get_policy(name='wazuhPolicy')['id'])
+# Create default policies if they don't exist yet
+with open(os.path.join(default_path, "policies.yaml"), 'r') as stream:
+    default_policies = yaml.safe_load(stream)
+
+    with PoliciesManager() as pm:
+        for d_policy_name, payload in default_policies[next(iter(default_policies))].items():
+            pm.add_policy(name=d_policy_name, policy=payload['policy'])
+
+# Create the relationships
+with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:
+    default_relationships = yaml.safe_load(stream)
+
+    # User-Roles relationships
+    with UserRolesManager() as urm:
+        for d_username, payload in default_relationships[next(iter(default_relationships))]['users'].items():
+            for d_role_id in payload['role_ids']:
+                urm.add_role_to_user_admin(username=d_username, role_id=d_role_id)
+
+    # Role-Policies relationships
+    with RolesPoliciesManager() as rpm:
+        for d_role_name, payload in default_relationships[next(iter(default_relationships))]['roles'].items():
+            for d_policy_name in payload['policy_ids']:
+                rpm.add_policy_to_role_admin(role_id=rm.get_role(name=d_role_name)['id'],
+                                             policy_id=pm.get_policy(name=d_policy_name)['id'])
