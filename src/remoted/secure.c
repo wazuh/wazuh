@@ -36,9 +36,6 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
 
-/* Status of keypolling wodle */
-static char key_request_available = 0;
-
 /* Decode hostinfo input queue */
 static w_queue_t * key_request_queue;
 
@@ -47,12 +44,11 @@ void * w_key_request_thread(__attribute__((unused)) void * args);
 
 /* Push key request */
 static void _push_request(const char *request,const char *type);
-#define push_request(x, y) if (key_request_available) _push_request(x, y);
+#define push_request(x, y) if (logr.key_polling_enabled == true) _push_request(x, y);
 
 /* Connect to key polling wodle*/
 #define KEY_RECONNECT_INTERVAL 300 // 5 minutes
 static int key_request_connect();
-static int key_request_reconnect();
 
 /* Handle secure connections */
 void HandleSecure()
@@ -92,8 +88,10 @@ void HandleSecure()
 
     key_request_queue = queue_init(1024);
 
-    // Create key request thread
-    w_create_thread(w_key_request_thread, NULL);
+    // Create key request thread if key_polling is enabled
+    if (logr.key_polling_enabled == true){
+        w_create_thread(w_key_request_thread, NULL);
+    }
 
     /* Create wait_for_msgs threads */
 
@@ -460,46 +458,38 @@ int _close_sock(keystore * keys, int sock) {
 
 int key_request_connect() {
 #ifndef WIN32
-    if(logr.key_polling_enabled == true){
-        if(logr.mode == KEYPOLL_MODE_MASTER)
-            return OS_ConnectUnixDomain(WM_KEY_REQUEST_CLUSTER_SOCK, SOCK_STREAM, OS_MAXSTR);
-        else
-            return OS_ConnectUnixDomain(WM_KEY_REQUEST_SOCK, SOCK_DGRAM, OS_MAXSTR);
-    }
+    if(logr.mode == KEYPOLL_MODE_MASTER)
+        return OS_ConnectUnixDomain(WM_KEY_REQUEST_CLUSTER_SOCK, SOCK_STREAM, OS_MAXSTR);
     else
         return OS_ConnectUnixDomain(WM_KEY_REQUEST_SOCK, SOCK_DGRAM, OS_MAXSTR);
-     
 #else
     return -1;
 #endif
 }
 
 static int send_key_request(int socket,const char *msg) {
-    
-    if(logr.key_polling_enabled == true){
-        if(logr.mode == KEYPOLL_MODE_MASTER){
-            const char * message = "{\"message\":\"";
-            int size_payload = strlen(message)+strlen(msg)+3;
-            char * payload = malloc(size_payload);
-            snprintf(payload, size_payload, "{\"message\":\"%s\"}", msg);
-            int rc = OS_SendSecureTCPCluster(socket, "run_keypoll", payload, strlen(payload));
-            char buffer[OS_MAXSTR + 1];
-            int recv_msg = OS_RecvSecureClusterTCP(socket, buffer,OS_MAXSTR + 1);
-            if (recv_msg > 0) {
-                mdebug2("Key request message from the master: %s",buffer);
-            } else if (recv_msg == -1) {
-                merror("No message received from the master.");
-            } else if (recv_msg == 0) {
-                rc = OS_SOCKDISCN;
-            }
-            os_free(payload);
-            return rc;
+
+    if(logr.mode == KEYPOLL_MODE_MASTER){
+        const char * message = "{\"message\":\"";
+        int size_payload = strlen(message)+strlen(msg)+3;
+        char * payload = malloc(size_payload);
+        snprintf(payload, size_payload, "{\"message\":\"%s\"}", msg);
+        int rc = OS_SendSecureTCPCluster(socket, "run_keypoll", payload, strlen(payload));
+        char buffer[OS_MAXSTR + 1];
+        int recv_msg = OS_RecvSecureClusterTCP(socket, buffer,OS_MAXSTR + 1);
+        if (recv_msg > 0) {
+            mdebug2("Key request message from the master: %s",buffer);
+        } else if (recv_msg == -1) {
+            merror("No message received from the master.");
+        } else if (recv_msg == 0) {
+            rc = OS_SOCKDISCN;
         }
-        else
-            return OS_SendUnix(socket,msg,strlen(msg));
+        os_free(payload);
+        return rc;
     }
-    else
+    else {
         return OS_SendUnix(socket,msg,strlen(msg));
+    }
 }
 
 static void _push_request(const char *request,const char *type) {
@@ -513,39 +503,16 @@ static void _push_request(const char *request,const char *type) {
     }
 }
 
-int key_request_reconnect() {
-    int socket;
-    static int max_attempts = 4;
-    int attempts;
-
-    while (1) {
-        for (attempts = 0; attempts < max_attempts; attempts++) {
-            if (socket = key_request_connect(), socket < 0) {
-                sleep(1);
-            } else {
-                if(OS_SetSendTimeout(socket, 5) < 0){
-                    close(socket);
-                    continue;
-                }
-                key_request_available = 1;
-                return socket;
-            }
-        }
-        mdebug1("Key-polling wodle is not available. Retrying connection in %d seconds.", KEY_RECONNECT_INTERVAL);
-        sleep(KEY_RECONNECT_INTERVAL);
-    }
-}
-
 void * w_key_request_thread(__attribute__((unused)) void * args) {
     char * msg = NULL;
-    int socket = -1;
+    int socket;
 
     while (1) {
-
-        socket = key_request_reconnect();
 
         if (msg || (msg = queue_pop_ex(key_request_queue))) {
             int rc;
+            
+            socket = key_request_connect();
 
             if ((rc = send_key_request(socket, msg)) < 0) {
                 if (rc == OS_SOCKBUSY) {
@@ -556,15 +523,11 @@ void * w_key_request_thread(__attribute__((unused)) void * args) {
 
                 } else {
                     merror("Could not communicate with key request queue (%d). Is the module running?", rc);
-                    if (socket >= 0) {
-                        key_request_available = 0;
-                    }
                 }
             } else {
                 os_free(msg);
             }
             close(socket);
-            socket = -1;
         }
     }
 }
