@@ -534,6 +534,116 @@ void test_handle_jqueue_flag_fp_set_read_all(void **state)
     assert_ptr_equal(fileq->fp, aux->fp);
 }
 
+void test_init_jsonqueue_read_all_fail(void **state)
+{
+    struct aux_struct *aux = *state;
+
+    file_queue *fileq = aux->fileq;
+    FILE *fp = aux->fp;
+
+    time_t tm;
+    struct tm tm_result = { .tm_sec = 0 };
+
+    tm = time(NULL);
+    localtime_r(&tm, &tm_result);
+
+    /* flag CRALERT_READ_ALL, fail */
+
+    expect_string(__wrap_fopen, __filename, "/var/ossec/logs/alerts/alerts.json");
+    expect_string(__wrap_fopen, __modes, "r");
+    will_return(__wrap_fopen, fp);
+    will_return(__wrap_fstat, -1);
+    expect_string(__wrap__merror, formatted_msg, "(1117): Could not retrieve informations of file '/var/ossec/logs/alerts/alerts.json' due to [(0)-(Success)].");
+    expect_memory(__wrap_fclose, __stream, fp, sizeof(fp));
+
+    int ret = Init_JsonQueue(fileq, &tm_result, CRALERT_READ_ALL);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(fileq->file_name, "/var/ossec/logs/alerts/alerts.json");
+    assert_int_equal(fileq->flags, CRALERT_READ_ALL);
+    assert_null(fileq->fp);
+}
+
+void test_init_jsonqueue_read_all_success(void **state)
+{
+    struct aux_struct *aux = *state;
+
+    file_queue *fileq = aux->fileq;
+    FILE *fp = aux->fp;
+
+    time_t tm;
+    struct tm tm_result = { .tm_sec = 0 };
+
+    tm = time(NULL);
+    localtime_r(&tm, &tm_result);
+
+    /* flag CRALERT_READ_ALL, fail */
+
+    expect_string(__wrap_fopen, __filename, "/var/ossec/logs/alerts/alerts.json");
+    expect_string(__wrap_fopen, __modes, "r");
+    will_return(__wrap_fopen, fp);
+    will_return(__wrap_fstat, 1);
+
+    int ret = Init_JsonQueue(fileq, &tm_result, CRALERT_READ_ALL);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(fileq->file_name, "/var/ossec/logs/alerts/alerts.json");
+    assert_int_equal(fileq->flags, CRALERT_READ_ALL);
+    assert_ptr_equal(fileq->fp, fp);
+}
+
+void test_init_jsonqueue_fp_set_read_all_fail(void **state)
+{
+    struct aux_struct *aux = *state;
+
+    file_queue *fileq = aux->fileq;
+    fileq->fp = aux->fp;
+
+    time_t tm;
+    struct tm tm_result = { .tm_sec = 0 };
+
+    tm = time(NULL);
+    localtime_r(&tm, &tm_result);
+
+    /* flag CRALERT_READ_ALL, fail */
+
+    will_return(__wrap_fstat, -1);
+    expect_string(__wrap__merror, formatted_msg, "(1117): Could not retrieve informations of file '/var/ossec/logs/alerts/alerts.json' due to [(0)-(Success)].");
+    expect_memory(__wrap_fclose, __stream, aux->fp, sizeof(aux->fp));
+
+    int ret = Init_JsonQueue(fileq, &tm_result, CRALERT_FP_SET | CRALERT_READ_ALL);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(fileq->file_name, "/var/ossec/logs/alerts/alerts.json");
+    assert_int_equal(fileq->flags, CRALERT_FP_SET | CRALERT_READ_ALL);
+    assert_null(fileq->fp);
+}
+
+void test_init_jsonqueue_fp_set_read_all_success(void **state)
+{
+    struct aux_struct *aux = *state;
+
+    file_queue *fileq = aux->fileq;
+    fileq->fp = aux->fp;
+
+    time_t tm;
+    struct tm tm_result = { .tm_sec = 0 };
+
+    tm = time(NULL);
+    localtime_r(&tm, &tm_result);
+
+    /* flag CRALERT_READ_ALL, fail */
+
+    will_return(__wrap_fstat, 1);
+
+    int ret = Init_JsonQueue(fileq, &tm_result, CRALERT_FP_SET | CRALERT_READ_ALL);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(fileq->file_name, "/var/ossec/logs/alerts/alerts.json");
+    assert_int_equal(fileq->flags, CRALERT_FP_SET | CRALERT_READ_ALL);
+    assert_ptr_equal(fileq->fp, aux->fp);
+}
+
 void test_get_alert_json_data_fail(void **state)
 {
     struct aux_struct *aux = *state;
@@ -1050,6 +1160,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_handle_jqueue_flag_fp_set, allocate_and_init_aux_struct, free_aux_struct),
         cmocka_unit_test_setup_teardown(test_handle_jqueue_flag_read_all, allocate_and_init_aux_struct, free_aux_struct),
         cmocka_unit_test_setup_teardown(test_handle_jqueue_flag_fp_set_read_all, allocate_and_init_aux_struct, free_aux_struct),
+        cmocka_unit_test_setup_teardown(test_init_jsonqueue_read_all_fail, allocate_and_init_aux_struct, free_aux_struct),
+        cmocka_unit_test_setup_teardown(test_init_jsonqueue_read_all_success, allocate_and_init_aux_struct, free_aux_struct),
+        cmocka_unit_test_setup_teardown(test_init_jsonqueue_fp_set_read_all_fail, allocate_and_init_aux_struct, free_aux_struct),
+        cmocka_unit_test_setup_teardown(test_init_jsonqueue_fp_set_read_all_success, allocate_and_init_aux_struct, free_aux_struct),
         cmocka_unit_test_setup_teardown(test_get_alert_json_data_fail, allocate_and_init_aux_struct, free_aux_struct),
         cmocka_unit_test_setup_teardown(test_get_alert_json_data_no_timestamp, allocate_and_init_aux_struct, free_aux_struct),
         cmocka_unit_test_setup_teardown(test_get_alert_json_data_no_rule, allocate_and_init_aux_struct, free_aux_struct),
