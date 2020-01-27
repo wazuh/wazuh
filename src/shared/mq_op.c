@@ -48,6 +48,30 @@ int StartMQ(const char *path, short int type)
     }
 }
 
+/* Continuously attempt to start a queue */
+int StartMQWithRetry(const char *path, short int type, short int retry_times)
+{
+    int socket;
+    int retries = 0;
+    int sleep_time = 5;
+
+    while(socket = StartMQ(path, type), socket < 0) {
+        if(retry_times <= 0 || retries < retry_times) {
+            retries++;
+
+            sleep(sleep_time);
+
+            // If we failed, we will wait longer before reattempting to connect
+            if(sleep_time < 300)
+                sleep_time += 5;
+        } else {
+            // We already failed more than retry_times, return the error to the caller.
+            break;
+        }
+    }
+    return socket;
+}
+
 /* Send a message to the queue */
 int SendMSG(int queue, const char *message, const char *locmsg, char loc)
 {
