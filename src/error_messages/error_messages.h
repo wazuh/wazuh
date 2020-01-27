@@ -18,7 +18,7 @@
 #define MEM_ERROR     "(1102): Could not acquire memory due to [(%d)-(%s)]."
 #define FOPEN_ERROR   "(1103): Could not open file '%s' due to [(%d)-(%s)]."
 #define SIZE_ERROR    "(1104): Maximum string size reached for: %s."
-#define NULL_ERROR    "(1105): Attempted to use null string. "
+#define NULL_ERROR    "(1105): Attempted to use null string."
 #define FORMAT_ERROR  "(1106): String not correctly formatted."
 #define MKDIR_ERROR   "(1107): Could not create directory '%s' due to [(%d)-(%s)]."
 //#define PERM_ERROR    "%s(1108): ERROR: Permission error. Operation not completed."

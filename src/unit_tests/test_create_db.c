@@ -660,7 +660,7 @@ void test_fim_check_restrict_null_filename(void **state)
     restriction = calloc(1, sizeof(OSMatch));
     OSMatch_Compile("test$", restriction, 0);
 
-    expect_string(__wrap__merror, formatted_msg, NULL_ERROR);
+    expect_string(__wrap__merror, formatted_msg, "(1105): Attempted to use null string.");
 
     ret = fim_check_restrict(NULL, restriction);
     OSMatch_FreePattern(restriction);
@@ -1344,7 +1344,7 @@ void test_fim_directory_nodir(void **state)
 {
     int ret;
 
-    expect_string(__wrap__merror, formatted_msg, NULL_ERROR);
+    expect_string(__wrap__merror, formatted_msg, "(1105): Attempted to use null string.");
 
     ret = fim_directory(NULL, NULL, NULL, 1);
 
