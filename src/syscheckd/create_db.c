@@ -247,21 +247,20 @@ int fim_directory (char *dir, fim_element *item, whodata_evt *w_evt, int report)
 }
 
 
-int fim_file (char *file, fim_element *item, whodata_evt *w_evt, int report) {
-    fim_entry * saved = NULL;
-    fim_entry_data * new = NULL;
-    cJSON * json_event = NULL;
-    char * json_formated;
+int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
+    fim_entry *saved = NULL;
+    fim_entry_data *new = NULL;
+    cJSON *json_event = NULL;
+    char *json_formated;
     int alert_type;
-
-    w_mutex_lock(&syscheck.fim_entry_mutex);
 
     //Get file attributes
     if (new = fim_get_data(file, item), !new) {
         mdebug1(FIM_GET_ATTRIBUTES, file);
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
         return 0;
     }
+
+    w_mutex_lock(&syscheck.fim_entry_mutex);
 
     if (saved = fim_db_get_path(syscheck.database, file), !saved) {
         // New entry. Insert into hash table
@@ -271,18 +270,18 @@ int fim_file (char *file, fim_element *item, whodata_evt *w_evt, int report) {
         alert_type = FIM_MODIFICATION;
     }
 
-    if (fim_db_insert_data(syscheck.database, file, new) == -1) {
-        free_entry_data(new);
-        free_entry(saved);
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
-        return OS_INVALID;
+    json_event = fim_json_event(file, saved, new, item->index, alert_type, item->mode, w_evt);
+
+    if (json_event) {
+        if (fim_db_insert_data(syscheck.database, file, new) == -1) {
+            free_entry_data(new);
+            free_entry(saved);
+            w_mutex_unlock(&syscheck.fim_entry_mutex);
+            return OS_INVALID;
+        }
     }
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-    if (_base_line && report) {
-        json_event = fim_json_event(file, saved->data, new, item->index, alert_type, item->mode, w_evt), json_event);
-    }
 
     if (!_base_line && item->configuration & CHECK_SEECHANGES) {
         // The first backup is created. It should return NULL.
@@ -393,37 +392,33 @@ void fim_audit_inode_event(char *file, const char *inode_key, fim_event_mode mod
 }
 
 #ifdef WIN32
-int fim_registry_event (char * key, fim_entry_data * data, int pos) {
-    cJSON * json_event = NULL;
-    fim_entry_data *saved_data;
-    char * json_formated;
-    int result = 0;
+int fim_registry_event(char *key, fim_entry_data *data, int pos) {
+    cJSON *json_event = NULL;
+    fim_entry_data *saved;
+    char *json_formated;
+    int result = 1;
+    int alert_type;
     struct stat file_stat;
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
-    if (saved_data = (fim_entry_data *) rbtree_get(syscheck.fim_entry, key), !saved_data) {
-        if (fim_insert (key, data, &file_stat) < 0) {
+    if (saved = fim_db_get_path(syscheck.database, key), !saved) {
+        alert_type = FIM_ADD;
+    } else {
+        alert_type = FIM_MODIFICATION;
+    }
+
+    json_event = fim_json_event(key, saved, data, pos,
+                                alert_type, 0, NULL);
+    if ((saved && strcmp(saved->hash_sha1, data->hash_sha1) != 0)
+        || alert_type == FIM_ADD) {
+        if (fim_db_insert_data(syscheck.database, key, data) == -1) {
             w_mutex_unlock(&syscheck.fim_entry_mutex);
             return OS_INVALID;
         }
-
-        if(_base_line) {
-            json_event = fim_json_event(key, NULL, data, pos, FIM_ADD, 0, NULL);
-        }
-        result = 1;
     } else {
-        if (strcmp(saved_data->hash_sha1, data->hash_sha1) != 0) {
-            json_event = fim_json_event(key, saved_data, data, pos, FIM_MODIFICATION, 0, NULL);
-            if (fim_update(key, data, saved_data) < 0) {
-                w_mutex_unlock(&syscheck.fim_entry_mutex);
-                return OS_INVALID;
-            }
-            result = 2;
-        } else {
-            saved_data->scanned = 1;
-            result = 0;
-        }
+        saved->scanned = 1;
+        result = 0;
     }
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
