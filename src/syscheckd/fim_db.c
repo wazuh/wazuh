@@ -173,7 +173,8 @@ fdb_t *fim_db_init(int memory) {
         return NULL;
     }
 
-    if (sqlite3_open_v2(path, &fim->db, SQLITE_OPEN_READWRITE, NULL)) {
+    if (!memory &&
+        sqlite3_open_v2(path, &fim->db, SQLITE_OPEN_READWRITE, NULL)) {
         return NULL;
     }
 

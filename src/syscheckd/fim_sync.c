@@ -79,17 +79,23 @@ void fim_sync_checksum() {
 
     if (fim_db_get_row_path(syscheck.database, FIM_FIRST_ROW,
         &start) != FIMDB_OK) {
-        merror("fim_sync_checksum(): Couldn't get first row's path");
+        merror(FIM_DB_ERROR_GET_ROW_PATH, "FIRST");
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
         goto end;
     }
 
     if (fim_db_get_row_path(syscheck.database, FIM_LAST_ROW,
         &top) != FIMDB_OK) {
-        merror("fim_sync_checksum(): Couldn't get last row's path");
+        merror(FIM_DB_ERROR_GET_ROW_PATH, "LAST");
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
         goto end;
     }
 
-    fim_db_get_data_checksum(syscheck.database, (void*) ctx);
+    if (fim_db_get_data_checksum(syscheck.database, (void*) ctx) != FIMDB_OK) {
+        merror(FIM_DB_ERROR_CALC_CHECKSUM);
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
+        goto end;
+    }
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
     fim_sync_cur_id = time(NULL);
@@ -124,21 +130,24 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
     cJSON *entry_data   = NULL;
     int range_size      = 0;
 
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+
     if (fim_db_get_count_range(syscheck.database, start, top,
         &range_size) != FIMDB_OK) {
-        merror("fim_db_get_count_range(): Couldn't get range size between %s and %s",
-                start, top);
-        return;
+        merror(FIM_DB_ERROR_COUNT_RANGE, start, top);
+        goto end;
     }
-
-    w_mutex_lock(&syscheck.fim_entry_mutex);
 
     switch (range_size) {
     case 0:
         break;
 
     case 1:
-        entry = fim_db_get_path(syscheck.database, start);
+        if ((entry = fim_db_get_path(syscheck.database, start)) == NULL){
+            merror(FIM_DB_ERROR_GET_PATH, start);
+            goto end;
+        }
+
         entry_data = fim_entry_json(start, entry->data);
         char * plain = dbsync_state_msg("syscheck", entry_data);
         fim_send_sync_msg(plain);
@@ -152,34 +161,16 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
         break;
     }
 
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
+    end:
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
 }
 
 void fim_sync_send_list(const char * start, const char * top) {
     w_mutex_lock(&syscheck.fim_entry_mutex);
-    // SQLite Development
-    //char ** keys = rbtree_range(syscheck.fim_entry, start, top);
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-/* SQLite Development
-    for (int i = 0; keys[i]; i++) {
-        w_mutex_lock(&syscheck.fim_entry_mutex);
-        fim_entry_data * data = rbtree_get(syscheck.fim_entry, keys[i]);
-
-        if (data == NULL) {
-            w_mutex_unlock(&syscheck.fim_entry_mutex);
-            continue;
-        }
-
-        cJSON * entry_data = fim_entry_json(keys[i], data);
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-        char * plain = dbsync_state_msg("syscheck", entry_data);
-        fim_send_sync_msg(plain);
-        free(plain);
+    if (fim_db_sync_path_range(syscheck.database, start, top) != FIMDB_OK) {
+        merror(FIM_DB_ERROR_SYNC_DB);
     }
-    free_strarray(keys);
-    */
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
 }
 
 void fim_sync_dispatch(char * payload) {

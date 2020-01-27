@@ -474,6 +474,12 @@
 #define FIM_UNKNOWN_ATTRIBUTE                       "(6701): Unknown attribute '%s' for directory option."
 #define FIM_ERROR_INSERT_INODE_HASH                 "(6702): Unable to add inode to db: '%s' => '%s'"
 
+#define FIM_DB_ERROR_COUNT_RANGE                    "(6703): Couldn't get range size between '%s' and '%s'"
+#define FIM_DB_ERROR_GET_PATH                       "(6704): Couldn't get path of '%s'"
+#define FIM_DB_ERROR_SYNC_DB                        "(6705): Failed to synchronize database"
+#define FIM_DB_ERROR_GET_ROW_PATH                   "(6706): Couldn't get %s row's path"
+#define FIM_DB_ERROR_CALC_CHECKSUM                  "(6707): Failed to calculate database checksum"
+
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
 #define PRIVSEP_MSG "Chrooted to directory: %s, using user: %s"
