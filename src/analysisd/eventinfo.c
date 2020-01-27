@@ -25,6 +25,62 @@ EventList *last_events_list;
 int num_rule_matching_threads;
 time_t current_time = 0;
 
+size_t field_offset[] = { 
+    offsetof(Eventinfo, dstip),
+    offsetof(Eventinfo, srcport),
+    offsetof(Eventinfo, dstport),
+    offsetof(Eventinfo, srcuser),
+    offsetof(Eventinfo, dstuser),
+    offsetof(Eventinfo, protocol),
+    offsetof(Eventinfo, action),
+    offsetof(Eventinfo, url),
+    offsetof(Eventinfo, data),
+    offsetof(Eventinfo, extra_data),
+    offsetof(Eventinfo, status),
+    offsetof(Eventinfo, systemname),
+    offsetof(Eventinfo, srcgeoip),
+    offsetof(Eventinfo, dstgeoip),
+    offsetof(Eventinfo, location),
+    offsetof(Eventinfo, srcip),
+    offsetof(Eventinfo, id)
+};
+
+bool same_loop(RuleInfo *rule, Eventinfo *lf, Eventinfo *my_lf) {
+    int i;
+    u_int32_t same = rule->same_field;
+
+    for (i = 0; i < N_FIELDS-2; i++) {
+        if ((same & 1) == 1) {
+            char * field1 = *(char **)((void *)lf + field_offset[i]);
+            char * field2 = *(char **)((void *)my_lf + field_offset[i]);
+
+            if (!(field1 && field2 && strcmp(field1, field2) == 0)) {
+                return FALSE;
+            }
+        }
+        same >>= 1;
+    }
+    return TRUE;
+}
+
+bool different_loop(RuleInfo *rule, Eventinfo *lf, Eventinfo *my_lf) {
+    int i;
+    u_int32_t different = rule->different_field;
+
+    for (i = 0; i < N_FIELDS; i++) {
+        if ((different & 1) == 1) {
+            char * field1 = *(char **)((void *)lf + field_offset[i]);
+            char * field2 = *(char **)((void *)my_lf + field_offset[i]);
+
+            if (field1 && field2 && strcmp(field1, field2) == 0) {
+                return FALSE;
+            }
+        }
+        different >>= 1;
+    }
+    return TRUE;
+}
+
 /* Search last times a signature fired
  * Will look for only that specific signature.
  */
@@ -85,7 +141,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         }
 
         /* Check for same ID */
-        if (rule->context_opts.same_id) {
+        if (rule->same_field & FIELD_ID) {
             if ((!lf->id) || (!my_lf->id)) {
                 continue;
             }
@@ -96,7 +152,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         }
 
         /* Check for repetitions from same src_ip */
-        if (rule->context_opts.same_srcip) {
+        if (rule->same_field & FIELD_SRCIP) {
             if ((!lf->srcip) || (!my_lf->srcip)) {
                 continue;
             }
@@ -107,7 +163,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         }
 
         /* Check for repetitions from same dynamic fields */
-        if (rule->context_opts.same_field) {
+        if (rule->same_field & FIELD_DYNAMICS) {
             if (my_lf->nfields == 0 || lf->nfields == 0)
                 continue;
 
@@ -129,7 +185,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         }
 
         /* Check for differences from dynamic fields values (not_same_field) */
-        if (rule->context_opts.not_same_field) {
+        if (rule->different_field & FIELD_DYNAMICS) {
             if (my_lf->nfields == 0 && lf->nfields == 0)
                 continue;
 
@@ -148,37 +204,18 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
                 continue;
             }
         }
-
         /* Grouping of additional data */
         if (rule->alert_opts & SAME_EXTRAINFO) {
-            /* same loop */
-            for (i = 2; i < N_FIELDS; i++) {
-                if (rule->same_field & 1 == 0) {
-                    const char * field1 = lf + same_offset[i];
-                    const char * field2 = my_lf + same_offset[i];
-
-                    if (!(field1 && field2 && strcmp(field1, field2) == 0)) {
-                        return FALSE;
-                    }
-                }
+            /* Searching same fields */
+            if(!same_loop(rule, lf, my_lf)) {
+                continue;
             }
-            return TRUE;
-
-            /* different loop */
-            for (i = 2; i < N_FIELDS; i++) {
-                if (rule->different_field & 1 == 0) {
-                    const char * field1 = lf + different_offset[i];
-                    const char * field2 = my_lf + different_offset[i];
-                    
-                    if (field1 && field2 && strcmp(field1, field2) == 0) {
-                        return FALSE;
-                    }
-                }
+            /* Searching different fields */
+            if(!different_loop(rule, lf, my_lf)) {
+                continue;
             }
-
-            return TRUE;
         }
-
+        
         /* We avoid multiple triggers for the same rule
          * or rules with a lower level.
          */
@@ -270,7 +307,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
             goto end;
         }
 
-        if (!(rule->context_opts.global_frequency)) {
+        if (!(rule->context_opts & FIELD_GFREQUENCY)) {
             if ((!lf->agent_id) || (!my_lf->agent_id)) {
                 continue;
             }
@@ -281,7 +318,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         }
 
         /* Check for same ID */
-        if (rule->context_opts.same_id) {
+        if (rule->same_field & FIELD_ID) {
             if ((!lf->id) || (!my_lf->id)) {
                 continue;
             }
@@ -292,7 +329,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         }
 
         /* Check for repetitions from same src_ip */
-        if (rule->context_opts.same_srcip) {
+        if (rule->same_field & FIELD_SRCIP) {
             if ((!lf->srcip) || (!my_lf->srcip)) {
                 continue;
             }
@@ -303,7 +340,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         }
 
         /* Check for repetitions from same dynamic fields */
-        if (rule->context_opts.same_field) {
+        if (rule->same_field & FIELD_DYNAMICS) {
             if (my_lf->nfields == 0 || lf->nfields == 0) {
                 continue;
             }
@@ -326,7 +363,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         }
 
         /* Check for differences from dynamic fields values (not_same_field) */
-        if (rule->context_opts.not_same_field) {
+        if (rule->different_field & FIELD_DYNAMICS) {
             if (my_lf->nfields == 0 && lf->nfields == 0) {
                 continue;
             }
@@ -349,348 +386,14 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
 
         /* Grouping of additional data */
         if (rule->alert_opts & SAME_EXTRAINFO) {
-            /* Check for repetitions from same destination ip */
-            if (rule->context_opts.same_dstip) {
-                if ((!lf->dstip) || (!my_lf->dstip)) {
-                    continue;
-                }
-
-                if (strcmp(lf->dstip, my_lf->dstip) != 0) {
-                    continue;
-                }
+            /* Searching same fields */
+            if(!same_loop(rule, lf, my_lf)) {
+                continue;
             }
 
-            /* Check for same source port */
-            if (rule->context_opts.same_srcport) {
-                if ((!lf->srcport) || (!my_lf->srcport)) {
-                    continue;
-                }
-
-                if (strcmp(lf->srcport, my_lf->srcport) != 0) {
-                    continue;
-                }
-            }
-
-            /* Check for same dst port */
-            if (rule->context_opts.same_dstport) {
-                if ((!lf->dstport) || (!my_lf->dstport)) {
-                    continue;
-                }
-
-                if (strcmp(lf->dstport, my_lf->dstport) != 0) {
-                    continue;
-                }
-            }
-
-            /* Check for repetitions on source user error */
-            if (rule->context_opts.same_srcuser) {
-                if ((!lf->srcuser) || (!my_lf->srcuser)) {
-                    continue;
-                }
-
-                if (strcmp(lf->srcuser, my_lf->srcuser) != 0) {
-                    continue;
-                }
-            }
-
-            /* Check for repetitions on destination user error */
-            if (rule->context_opts.same_dstuser) {
-                if ((!lf->dstuser) || (!my_lf->dstuser)) {
-                    continue;
-                }
-
-                if (strcmp(lf->dstuser, my_lf->dstuser) != 0) {
-                    continue;
-                }
-            }
-
-            /* Check for same location */
-            if (rule->context_opts.same_location) {
-                if (strcmp(lf->location, my_lf->location) != 0) {
-                    continue;
-                }
-            }
-
-            /* Check for same srcgeoip */
-            if (rule->context_opts.same_srcgeoip) {
-
-                if ((!lf->srcgeoip) || (!my_lf->srcgeoip)) {
-                    continue;
-                }
-                if (strcmp(lf->srcgeoip, my_lf->srcgeoip) != 0) {
-                    continue;
-                }
-            }
-
-            /* Check for same dstgeoip */
-            if (rule->context_opts.same_dstgeoip) {
-
-                if ((!lf->dstgeoip) || (!my_lf->dstgeoip)) {
-                    continue;
-                }
-                if (strcmp(lf->dstgeoip, my_lf->dstgeoip) != 0) {
-                    continue;
-                }
-            }
-
-            /* Check for same URLs */
-            if (rule->context_opts.same_url) {
-                if ((!lf->url) || (!my_lf->url)) {
-                    continue;
-                }
-
-                if (strcmp(lf->url, my_lf->url) != 0) {
-                    continue;
-                }
-            }
-
-            /* Check for same protocol */
-            if (rule->context_opts.same_protocol) {
-                if ((!lf->protocol) || (!my_lf->protocol)) {
-                    continue;
-                }
-
-                if (strcmp(lf->protocol, my_lf->protocol) != 0) {
-                    continue;
-                }
-            }
-
-            /* Check for same action */
-            if (rule->context_opts.same_action) {
-                if ((!lf->action) || (!my_lf->action)) {
-                    continue;
-                }
-
-                if (strcmp(lf->action, my_lf->action) != 0) {
-                    continue;
-                }
-            }
-
-            /* Check for same data */
-            if (rule->context_opts.same_data) {
-                if ((!lf->data) || (!my_lf->data)) {
-                    continue;
-                }
-
-                if (strcmp(lf->data, my_lf->data) != 0) {
-                    continue;
-                }
-            }
-
-            /* Check for same extra data */
-            if (rule->context_opts.same_extra_data) {
-                if ((!lf->extra_data) || (!my_lf->extra_data)) {
-                    continue;
-                }
-
-                if (strcmp(lf->extra_data, my_lf->extra_data) != 0) {
-                    continue;
-                }
-            }
-
-            /* Check for same status */
-            if (rule->context_opts.same_status) {
-                if ((!lf->status) || (!my_lf->status)) {
-                    continue;
-                }
-
-                if (strcmp(lf->status, my_lf->status) != 0) {
-                    continue;
-                }
-            }
-
-            /* Check for same system_name */
-            if (rule->context_opts.same_system_name) {
-                if ((!lf->systemname) || (!my_lf->systemname)) {
-                    continue;
-                }
-
-                if (strcmp(lf->systemname, my_lf->systemname) != 0) {
-                    continue;
-                }
-            }
-
-            /* Check for different ID */
-            if (rule->context_opts.different_id) {
-                if ((!lf->id) || (!my_lf->id)) {
-                    continue;
-                }
-
-                if (strcmp(lf->id, my_lf->id) == 0) {
-                    continue;
-                }
-            }
-
-            /* Check for repetitions from different src_ip */
-            if (rule->context_opts.different_srcip) {
-                if ((!lf->srcip) || (!my_lf->srcip)) {
-                    continue;
-                }
-
-                if (strcmp(lf->srcip, my_lf->srcip) == 0) {
-                    continue;
-                }
-            }
-
-            /* Check for repetitions from different destination ip */
-            if (rule->context_opts.different_dstip) {
-                if ((!lf->dstip) || (!my_lf->dstip)) {
-                    continue;
-                }
-
-                if (strcmp(lf->dstip, my_lf->dstip) == 0) {
-                    continue;
-                }
-            }
-
-            /* Check for different source port */
-            if (rule->context_opts.different_srcport) {
-                if ((!lf->srcport) || (!my_lf->srcport)) {
-                    continue;
-                }
-
-                if (strcmp(lf->srcport, my_lf->srcport) == 0) {
-                    continue;
-                }
-            }
-
-            /* Check for different dst port */
-            if (rule->context_opts.different_dstport) {
-                if ((!lf->dstport) || (!my_lf->dstport)) {
-                    continue;
-                }
-
-                if (strcmp(lf->dstport, my_lf->dstport) == 0) {
-                    continue;
-                }
-            }
-
-            /* Check for repetitions on source user error */
-            if (rule->context_opts.different_srcuser) {
-                if ((!lf->srcuser) || (!my_lf->srcuser)) {
-                    continue;
-                }
-
-                if (strcmp(lf->srcuser, my_lf->srcuser) == 0) {
-                    continue;
-                }
-            }
-
-            /* Check for repetitions on destination user error */
-            if (rule->context_opts.different_dstuser) {
-                if ((!lf->dstuser) || (!my_lf->dstuser)) {
-                    continue;
-                }
-
-                if (strcmp(lf->dstuser, my_lf->dstuser) == 0) {
-                    continue;
-                }
-            }
-
-            /* Check for different location */
-            if (rule->context_opts.different_location) {
-                if (strcmp(lf->location, my_lf->location) == 0) {
-                    continue;
-                }
-            }
-
-            /* Check for different srcgeoip */
-            if (rule->context_opts.different_srcgeoip) {
-
-                if ((!lf->srcgeoip) || (!my_lf->srcgeoip)) {
-                    continue;
-                }
-                if (strcmp(lf->srcgeoip, my_lf->srcgeoip) == 0) {
-                    continue;
-                }
-            }
-
-            /* Check for different dstgeoip */
-            if (rule->context_opts.different_dstgeoip) {
-
-                if ((!lf->dstgeoip) || (!my_lf->dstgeoip)) {
-                    continue;
-                }
-                if (strcmp(lf->dstgeoip, my_lf->dstgeoip) == 0) {
-                    continue;
-                }
-            }
-
-            /* Check for different URLs */
-            if (rule->context_opts.different_url) {
-                if ((!lf->url) || (!my_lf->url)) {
-                    continue;
-                }
-
-                if (strcmp(lf->url, my_lf->url) == 0) {
-                    continue;
-                }
-            }
-
-            /* Check for different protocol */
-            if (rule->context_opts.different_protocol) {
-                if ((!lf->protocol) || (!my_lf->protocol)) {
-                    continue;
-                }
-
-                if (strcmp(lf->protocol, my_lf->protocol) == 0) {
-                    continue;
-                }
-            }
-
-            /* Check for different action */
-            if (rule->context_opts.different_action) {
-                if ((!lf->action) || (!my_lf->action)) {
-                    continue;
-                }
-
-                if (strcmp(lf->action, my_lf->action) == 0) {
-                    continue;
-                }
-            }
-
-            /* Check for different data */
-            if (rule->context_opts.different_data) {
-                if ((!lf->data) || (!my_lf->data)) {
-                    continue;
-                }
-
-                if (strcmp(lf->data, my_lf->data) == 0) {
-                    continue;
-                }
-            }
-
-            /* Check for different extra data */
-            if (rule->context_opts.different_extra_data) {
-                if ((!lf->extra_data) || (!my_lf->extra_data)) {
-                    continue;
-                }
-
-                if (strcmp(lf->extra_data, my_lf->extra_data) == 0) {
-                    continue;
-                }
-            }
-
-            /* Check for different status */
-            if (rule->context_opts.different_status) {
-                if ((!lf->status) || (!my_lf->status)) {
-                    continue;
-                }
-
-                if (strcmp(lf->status, my_lf->status) == 0) {
-                    continue;
-                }
-            }
-
-            /* Check for different system_name */
-            if (rule->context_opts.different_system_name) {
-                if ((!lf->systemname) || (!my_lf->systemname)) {
-                    continue;
-                }
-
-                if (strcmp(lf->systemname, my_lf->systemname) == 0) {
-                    continue;
-                }
+            /* Searching different fields */
+            if(!different_loop(rule, lf, my_lf)) {
+                continue;
             }
         }
 
@@ -777,7 +480,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
             goto end;
         }
 
-        if (!(rule->context_opts.global_frequency)) {
+        if (!(rule->context_opts & FIELD_GFREQUENCY)) {
             if ((!lf->agent_id) || (!my_lf->agent_id)) {
                 continue;
             }
@@ -800,19 +503,8 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
             }
         }
 
-        /* Check for repetitions on user error */
-        if (rule->context_opts.same_dstuser) {
-            if ((!lf->dstuser) || (!my_lf->dstuser)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->dstuser, my_lf->dstuser) != 0) {
-                goto next_it;
-            }
-        }
-
         /* Check for same ID */
-        if (rule->context_opts.same_id) {
+        if (rule->same_field & FIELD_ID) {
             if ((!lf->id) || (!my_lf->id)) {
                 goto next_it;
             }
@@ -823,7 +515,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
         }
 
         /* Check for repetitions from same src_ip */
-        if (rule->context_opts.same_srcip) {
+        if (rule->same_field & FIELD_SRCIP) {
             if ((!lf->srcip) || (!my_lf->srcip)) {
                 goto next_it;
             }
@@ -833,30 +525,18 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
             }
         }
 
-        /* Check for repetitions from same destination ip */
-        if (rule->context_opts.same_dstip) {
-            if ((!lf->dstip) || (!my_lf->dstip)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->dstip, my_lf->dstip) != 0) {
-                goto next_it;
-            }
+        /* Searching same fields */
+        if(!same_loop(rule, lf, my_lf)) {
+            goto next_it;
         }
 
-        /* Check for same URLs */
-        if (rule->context_opts.same_url) {
-            if ((!lf->url) || (!my_lf->url)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->url, my_lf->url) != 0) {
-                goto next_it;
-            }
+        /* Searching different fields */
+        if(!different_loop(rule, lf, my_lf)) {
+            goto next_it;
         }
 
         /* Check for repetitions from same dynamic fields */
-        if (rule->context_opts.same_field) {
+        if (rule->same_field & FIELD_DYNAMICS) {
             if (my_lf->nfields == 0 || lf->nfields == 0)
                 goto next_it;
 
@@ -878,7 +558,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
         }
 
         /* Check for differences from dynamic fields values (not_same_field) */
-        if (rule->context_opts.not_same_field) {
+        if (rule->different_field & FIELD_DYNAMICS) {
             if (my_lf->nfields == 0 && lf->nfields == 0)
                 goto next_it;
 
@@ -894,328 +574,6 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
             }
 
             if (found) {
-                goto next_it;
-            }
-        }
-
-        /* Check for same source port */
-        if (rule->context_opts.same_srcport) {
-            if ((!lf->srcport) || (!my_lf->srcport)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->srcport, my_lf->srcport) != 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for same dst port */
-        if (rule->context_opts.same_dstport) {
-            if ((!lf->dstport) || (!my_lf->dstport)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->dstport, my_lf->dstport) != 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for repetitions on source user error */
-        if (rule->context_opts.same_srcuser) {
-            if ((!lf->srcuser) || (!my_lf->srcuser)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->srcuser, my_lf->srcuser) != 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for same location */
-        if (rule->context_opts.same_location) {
-            if (strcmp(lf->location, my_lf->location) != 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for same srcgeoip */
-        if (rule->context_opts.same_srcgeoip) {
-
-            if ((!lf->srcgeoip) || (!my_lf->srcgeoip)) {
-                goto next_it;
-            }
-            if (strcmp(lf->srcgeoip, my_lf->srcgeoip) != 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for same dstgeoip */
-        if (rule->context_opts.same_dstgeoip) {
-
-            if ((!lf->dstgeoip) || (!my_lf->dstgeoip)) {
-                goto next_it;
-            }
-            if (strcmp(lf->dstgeoip, my_lf->dstgeoip) != 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for same URLs */
-        if (rule->context_opts.same_url) {
-            if ((!lf->url) || (!my_lf->url)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->url, my_lf->url) != 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for same protocol */
-        if (rule->context_opts.same_protocol) {
-            if ((!lf->protocol) || (!my_lf->protocol)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->protocol, my_lf->protocol) != 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for same action */
-        if (rule->context_opts.same_action) {
-            if ((!lf->action) || (!my_lf->action)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->action, my_lf->action) != 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for same data */
-        if (rule->context_opts.same_data) {
-            if ((!lf->data) || (!my_lf->data)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->data, my_lf->data) != 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for same extra data */
-        if (rule->context_opts.same_extra_data) {
-            if ((!lf->extra_data) || (!my_lf->extra_data)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->extra_data, my_lf->extra_data) != 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for same status */
-        if (rule->context_opts.same_status) {
-            if ((!lf->status) || (!my_lf->status)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->status, my_lf->status) != 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for same system_name */
-        if (rule->context_opts.same_system_name) {
-            if ((!lf->systemname) || (!my_lf->systemname)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->systemname, my_lf->systemname) != 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for different ID */
-        if (rule->context_opts.different_id) {
-            if ((!lf->id) || (!my_lf->id)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->id, my_lf->id) == 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for repetitions from different src_ip */
-        if (rule->context_opts.different_srcip) {
-            if ((!lf->srcip) || (!my_lf->srcip)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->srcip, my_lf->srcip) == 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for repetitions from different destination ip */
-        if (rule->context_opts.different_dstip) {
-            if ((!lf->dstip) || (!my_lf->dstip)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->dstip, my_lf->dstip) == 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for different source port */
-        if (rule->context_opts.different_srcport) {
-            if ((!lf->srcport) || (!my_lf->srcport)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->srcport, my_lf->srcport) == 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for different dst port */
-        if (rule->context_opts.different_dstport) {
-            if ((!lf->dstport) || (!my_lf->dstport)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->dstport, my_lf->dstport) == 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for repetitions on source user error */
-        if (rule->context_opts.different_srcuser) {
-            if ((!lf->srcuser) || (!my_lf->srcuser)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->srcuser, my_lf->srcuser) == 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for repetitions on destination user error */
-        if (rule->context_opts.different_dstuser) {
-            if ((!lf->dstuser) || (!my_lf->dstuser)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->dstuser, my_lf->dstuser) == 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for different location */
-        if (rule->context_opts.different_location) {
-            if (strcmp(lf->location, my_lf->location) == 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for different srcgeoip */
-        if (rule->context_opts.different_srcgeoip) {
-
-            if ((!lf->srcgeoip) || (!my_lf->srcgeoip)) {
-                goto next_it;
-            }
-            if (strcmp(lf->srcgeoip, my_lf->srcgeoip) == 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for different dstgeoip */
-        if (rule->context_opts.different_dstgeoip) {
-
-            if ((!lf->dstgeoip) || (!my_lf->dstgeoip)) {
-                goto next_it;
-            }
-            if (strcmp(lf->dstgeoip, my_lf->dstgeoip) == 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for different URLs */
-        if (rule->context_opts.different_url) {
-            if ((!lf->url) || (!my_lf->url)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->url, my_lf->url) == 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for different protocol */
-        if (rule->context_opts.different_protocol) {
-            if ((!lf->protocol) || (!my_lf->protocol)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->protocol, my_lf->protocol) == 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for different action */
-        if (rule->context_opts.different_action) {
-            if ((!lf->action) || (!my_lf->action)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->action, my_lf->action) == 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for different data */
-        if (rule->context_opts.different_data) {
-            if ((!lf->data) || (!my_lf->data)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->data, my_lf->data) == 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for different extra data */
-        if (rule->context_opts.different_extra_data) {
-            if ((!lf->extra_data) || (!my_lf->extra_data)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->extra_data, my_lf->extra_data) == 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for different status */
-        if (rule->context_opts.different_status) {
-            if ((!lf->status) || (!my_lf->status)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->status, my_lf->status) == 0) {
-                goto next_it;
-            }
-        }
-
-        /* Check for different system_name */
-        if (rule->context_opts.different_system_name) {
-            if ((!lf->systemname) || (!my_lf->systemname)) {
-                goto next_it;
-            }
-
-            if (strcmp(lf->systemname, my_lf->systemname) == 0) {
                 goto next_it;
             }
         }

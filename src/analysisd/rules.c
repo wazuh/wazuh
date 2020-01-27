@@ -1164,7 +1164,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_field) == 0) {
 
-                        if (config_ruleinfo->same_field & FIELD_FIELDS) {
+                        if (config_ruleinfo->same_field & FIELD_DYNAMICS) {
 
                             int size;
                             for (size = 0; config_ruleinfo->same_fields[size] != NULL; size++);
@@ -1175,7 +1175,7 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                         } else {
 
-                            config_ruleinfo->same_field |= FIELD_FIELDS;
+                            config_ruleinfo->same_field |= FIELD_DYNAMICS;
                             os_calloc(2, sizeof(char *), config_ruleinfo->same_fields);
                             os_strdup(rule_opt[k]->content, config_ruleinfo->same_fields[0]);
                             config_ruleinfo->same_fields[1] = NULL;
@@ -1185,7 +1185,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_notsame_field) == 0) {
 
-                        if (config_ruleinfo->different_field & FIELD_FIELDS) {
+                        if (config_ruleinfo->different_field & FIELD_DYNAMICS) {
                             int size;
                             for (size = 0; config_ruleinfo->not_same_fields[size] != NULL; size++);
 
@@ -1195,7 +1195,7 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                         } else {
 
-                            config_ruleinfo->different_field |= FIELD_FIELDS;
+                            config_ruleinfo->different_field |= FIELD_DYNAMICS;
                             os_calloc(2, sizeof(char *), config_ruleinfo->not_same_fields);
                             os_strdup(rule_opt[k]->content, config_ruleinfo->not_same_fields[0]);
                             config_ruleinfo->not_same_fields[1] = NULL;
@@ -1352,7 +1352,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                 }
 
                 /* Check for valid use of frequency */
-                if ((config_ruleinfo->context_opts ||
+                if ((config_ruleinfo->context_opts || config_ruleinfo->same_field || 
+                        config_ruleinfo->different_field ||
                         config_ruleinfo->frequency) &&
                         !config_ruleinfo->context) {
                     merror("Invalid use of frequency/context options. "
