@@ -30,6 +30,7 @@ int __wrap__merror()
 
 int __wrap_wdb_scan_info_get(wdb_t *socket, const char *module, char *field, long *output)
 {
+    *output = 0;
     return mock();
 }
 
@@ -55,6 +56,7 @@ int __wrap_wdb_scan_info_fim_checks_control(wdb_t* socket,const char *last_check
 
 int __wrap_wdb_syscheck_load(wdb_t *wdb, const char *file, char *output, size_t size)
 {
+    snprintf(output, OS_MAXSTR + 1, "TEST STRING");
     return mock();
 }
 
@@ -84,679 +86,541 @@ int __wrap_wdbi_query_clear(wdb_t *wdb, wdb_component_t component, const char *p
 }
 
 
-void test_wdb_parse_syscheck_no_space(void **state)
-{
-    (void) state;
-    int ret;
-
+typedef struct test_struct {
     wdb_t *socket;
     char *output;
-    os_malloc(256, output);
-    ret = wdb_parse_syscheck(socket, "badquery_nospace", output);
+} test_struct_t;
+
+static int test_setup(void **state) {
+    test_struct_t *init_data;
+    init_data = malloc(sizeof(test_struct_t));
+    init_data->socket = malloc(sizeof(wdb_t));
+    init_data->socket->agent_id = strdup("000");
+    init_data->output = malloc(256*sizeof(char));
+    *state = init_data;
+    return 0;
+}
+
+static int test_teardown(void **state){
+    test_struct_t *data  = (test_struct_t *)*state;
+    free(data->output);
+    free(data->socket->agent_id);
+    free(data->socket);
+    free(data);
+    return 0;
+}
+
+void test_wdb_parse_syscheck_no_space(void **state)
+{
+    int ret;
+    test_struct_t *data  = (test_struct_t *)*state;
+    ret = wdb_parse_syscheck(data->socket, "badquery_nospace", data->output);
     
-    assert_string_equal(output, "err Invalid FIM query syntax, near \'badquery_nospace\'");
+    assert_string_equal(data->output, "err Invalid FIM query syntax, near \'badquery_nospace\'");
     assert_int_equal(ret, -1);
-
-    os_free(output);
-
 }
 
 void test_scan_info_error(void **state)
 {
-    (void) state;
     int ret;
-
-    wdb_t *socket;
-
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     will_return(__wrap_wdb_scan_info_get, -1);
     char *query = strdup("scan_info_get ");
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
     
-    assert_string_equal(output, "err Cannot get fim scan info.");
+    assert_string_equal(data->output, "err Cannot get fim scan info.");
     assert_int_equal(ret, -1);
-
     os_free(query);
-    os_free(output);
-
 }
 
 void test_scan_info_ok(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket;
-
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
+    
     will_return(__wrap_wdb_scan_info_get, 1);
     char *query = strdup("scan_info_get ");
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
     
-    assert_string_equal(output, "ok 0");
+    assert_string_equal(data->output, "ok 0");
     assert_int_equal(ret, 1);
 
     os_free(query);
-    os_free(output);
-
 }
 
 
 void test_update_info_error(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket;
+    test_struct_t *data  = (test_struct_t *)*state;
 
-    char *output;
-    os_malloc(256, output);
     will_return(__wrap_wdb_fim_update_date_entry, -1);
     char *query = strdup("updatedate ");
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
     
-    assert_string_equal(output, "err Cannot update fim date field.");
+    assert_string_equal(data->output, "err Cannot update fim date field.");
     assert_int_equal(ret, -1);
 
     os_free(query);
-    os_free(output);
-
 }
 
 void test_update_info_ok(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket;
+    test_struct_t *data  = (test_struct_t *)*state;
 
-    char *output;
-    os_malloc(256, output);
     will_return(__wrap_wdb_fim_update_date_entry, 1);
     char *query = strdup("updatedate ");
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
     
-    assert_string_equal(output, "ok");
+    assert_string_equal(data->output, "ok");
     assert_int_equal(ret, 1);
 
     os_free(query);
-    os_free(output);
-
 }
 
 
 void test_clean_old_entries_error(void **state)
 {
-    (void) state;
     int ret;
-
-    wdb_t *socket;
-
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     will_return(__wrap_wdb_fim_clean_old_entries, -1);
     char *query = strdup("cleandb ");
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
     
-    assert_string_equal(output, "err Cannot clean fim database.");
+    assert_string_equal(data->output, "err Cannot clean fim database.");
     assert_int_equal(ret, -1);
 
     os_free(query);
-    os_free(output);
-
 }
 
 void test_clean_old_entries_ok(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket;
+    test_struct_t *data  = (test_struct_t *)*state;
 
-    char *output;
-    os_malloc(256, output);
     will_return(__wrap_wdb_fim_clean_old_entries, 1);
     char *query = strdup("cleandb ");
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
     
-    assert_string_equal(output, "ok");
+    assert_string_equal(data->output, "ok");
     assert_int_equal(ret, 1);
 
     os_free(query);
-    os_free(output);
-
 }
 
 
 
 void test_scan_info_update_noarg(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket; 
-
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     char *query = strdup("scan_info_update ");
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
     
-    assert_string_equal(output, "err Invalid Syscheck query syntax, near \'\'");
+    assert_string_equal(data->output, "err Invalid Syscheck query syntax, near \'\'");
     assert_int_equal(ret, -1);
 
     os_free(query);
-    os_free(output);
-
 }
 
 void test_scan_info_update_error(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket; 
-
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     will_return(__wrap_wdb_scan_info_update, -1);
     char *query = strdup("scan_info_update \"191919\" ");
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
     
-    assert_string_equal(output, "err Cannot save fim control message");
+    assert_string_equal(data->output, "err Cannot save fim control message");
     assert_int_equal(ret, -1);
 
     os_free(query);
-    os_free(output);
-
 }
 
 void test_scan_info_update_ok(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket; 
-
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     will_return(__wrap_wdb_scan_info_update, 1);
     char *query = strdup("scan_info_update \"191919\" ");
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
     
-    assert_string_equal(output, "ok");
+    assert_string_equal(data->output, "ok");
     assert_int_equal(ret, 1);
 
     os_free(query);
-    os_free(output);
-
 }
 
 
 
 void test_scan_info_fim_check_control_error(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket;
-
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     will_return(__wrap_wdb_scan_info_fim_checks_control, -1);
     char *query = strdup("control ");
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
     
-    assert_string_equal(output, "err Cannot save fim control message");
+    assert_string_equal(data->output, "err Cannot save fim control message");
     assert_int_equal(ret, -1);
 
     os_free(query);
-    os_free(output);
-
 }
 
 void test_scan_info_fim_check_control_ok(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket;
-
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     will_return(__wrap_wdb_scan_info_fim_checks_control, 1);
     char *query = strdup("control ");
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
     
-    assert_string_equal(output, "ok");
+    assert_string_equal(data->output, "ok");
     assert_int_equal(ret, 1);
 
     os_free(query);
-    os_free(output);
-
 }
 
 void test_syscheck_load_error(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket;
-
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     will_return(__wrap_wdb_syscheck_load, -1);
     char *query = strdup("load ");
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
     
-    assert_string_equal(output, "err Cannot load Syscheck");
+    assert_string_equal(data->output, "err Cannot load Syscheck");
     assert_int_equal(ret, -1);
 
     os_free(query);
-    os_free(output);
-
 }
 
 void test_syscheck_load_ok(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket;
-
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     will_return(__wrap_wdb_syscheck_load, 1);
     char *query = strdup("load ");
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
     
-    assert_string_equal(output, "ok ");
+    assert_string_equal(data->output, "ok TEST STRING");
     assert_int_equal(ret, 1);
 
     os_free(query);
-    os_free(output);
-
 }
 
 void test_fim_delete_error(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket;
-
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     will_return(__wrap_wdb_fim_delete, -1);
     char *query = strdup("delete ");
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
     
-    assert_string_equal(output, "err Cannot delete Syscheck");
+    assert_string_equal(data->output, "err Cannot delete Syscheck");
     assert_int_equal(ret, -1);
 
     os_free(query);
-    os_free(output);
-
 }
 
 void test_fim_delete_ok(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket;
-
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     will_return(__wrap_wdb_fim_delete, 1);
     char *query = strdup("delete ");
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
     
-    assert_string_equal(output, "ok");
+    assert_string_equal(data->output, "ok");
     assert_int_equal(ret, 1);
 
     os_free(query);
-    os_free(output);
-
 }
 
 void test_syscheck_save_noarg(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket;
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     char *query = strdup("save ");
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
 
-    assert_string_equal(output, "err Invalid Syscheck query syntax, near \'\'");
+    assert_string_equal(data->output, "err Invalid Syscheck query syntax, near \'\'");
     assert_int_equal(ret, -1);
 
     os_free(query);
-    os_free(output);
 }
 
 void test_syscheck_save_invalid_type(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket;
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     char *query = strdup("save invalid_type ");
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
 
-    assert_string_equal(output, "err Invalid Syscheck query syntax, near \'invalid_type\'");
+    assert_string_equal(data->output, "err Invalid Syscheck query syntax, near \'invalid_type\'");
     assert_int_equal(ret, -1);
 
     os_free(query);
-    os_free(output);
 }
 
 void test_syscheck_save_file_type_error(void **state)
 {
-    (void) state;
     int ret;
-
-    wdb_t *socket;
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     char *query = strdup("save file 1212121 ");
     will_return(__wrap_wdb_syscheck_save, -1);
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
 
-    assert_string_equal(output, "err Cannot save Syscheck");
+    assert_string_equal(data->output, "err Cannot save Syscheck");
     assert_int_equal(ret, -1);
 
     os_free(query);
-    os_free(output);
 }
 
 void test_syscheck_save_file_nospace(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket;
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     char *query = strdup("save file ");
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
 
-    assert_string_equal(output, "err Invalid Syscheck query syntax, near \'\'");
+    assert_string_equal(data->output, "err Invalid Syscheck query syntax, near \'\'");
     assert_int_equal(ret, -1);
 
     os_free(query);
-    os_free(output);
 }
 
 void test_syscheck_save_file_type_ok(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket;
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     char *query = strdup("save file !1212121 ");
     will_return(__wrap_wdb_syscheck_save, 1);
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
 
-    assert_string_equal(output, "ok");
+    assert_string_equal(data->output, "ok");
     assert_int_equal(ret, 1);
 
     os_free(query);
-    os_free(output);
 }
 
 void test_syscheck_save_registry_type_error(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket;
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     char *query = strdup("save registry 1212121 ");
     will_return(__wrap_wdb_syscheck_save, -1);
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
 
-    assert_string_equal(output, "err Cannot save Syscheck");
+    assert_string_equal(data->output, "err Cannot save Syscheck");
     assert_int_equal(ret, -1);
 
     os_free(query);
-    os_free(output);
 }
 
 void test_syscheck_save_registry_type_ok(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket;
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     char *query = strdup("save registry !1212121 ");
     will_return(__wrap_wdb_syscheck_save, 1);
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
 
-    assert_string_equal(output, "ok");
+    assert_string_equal(data->output, "ok");
     assert_int_equal(ret, 1);
 
     os_free(query);
-    os_free(output);
 }
 
 void test_syscheck_save2_error(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket;
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     char *query = strdup("save2 ");
     will_return(__wrap_wdb_syscheck_save2, -1);
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
 
-    assert_string_equal(output, "err Cannot save Syscheck");
+    assert_string_equal(data->output, "err Cannot save Syscheck");
     assert_int_equal(ret, -1);
 
     os_free(query);
-    os_free(output);
 }
 
 void test_syscheck_save2_ok(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket;
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     char *query = strdup("save2 ");
     will_return(__wrap_wdb_syscheck_save2, 1);
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
 
-    assert_string_equal(output, "ok");
+    assert_string_equal(data->output, "ok");
     assert_int_equal(ret, 0);
 
     os_free(query);
-    os_free(output);
 }
 
 void test_integrity_check_error(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket;
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     char *query = strdup("integrity_check_ ");
     will_return(__wrap_wdbi_query_checksum, -1);
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
 
-    assert_string_equal(output, "err Cannot perform range checksum");
+    assert_string_equal(data->output, "err Cannot perform range checksum");
     assert_int_equal(ret, -1);
 
     os_free(query);
-    os_free(output);
 }
 
 void test_integrity_check_no_data(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket;
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     char *query = strdup("integrity_check_ ");
     will_return(__wrap_wdbi_query_checksum, 0);
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
 
-    assert_string_equal(output, "ok no_data");
+    assert_string_equal(data->output, "ok no_data");
     assert_int_equal(ret, 0);
 
     os_free(query);
-    os_free(output);
 }
 
 void test_integrity_check_checksum_fail(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket;
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     char *query = strdup("integrity_check_ ");
     will_return(__wrap_wdbi_query_checksum, 1);
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
 
-    assert_string_equal(output, "ok checksum_fail");
+    assert_string_equal(data->output, "ok checksum_fail");
     assert_int_equal(ret, 0);
 
     os_free(query);
-    os_free(output);
 }
 
 void test_integrity_check_ok(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket;
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     char *query = strdup("integrity_check_ ");
     will_return(__wrap_wdbi_query_checksum, 2);
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
 
-    assert_string_equal(output, "ok ");
+    assert_string_equal(data->output, "ok ");
     assert_int_equal(ret, 0);
 
     os_free(query);
-    os_free(output);
 }
 
 void test_integrity_clear_error(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket;
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     char *query = strdup("integrity_clear ");
     will_return(__wrap_wdbi_query_clear, -1);
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
 
-    assert_string_equal(output, "err Cannot perform range checksum");
+    assert_string_equal(data->output, "err Cannot perform range checksum");
     assert_int_equal(ret, -1);
 
     os_free(query);
-    os_free(output);
 }
 
 void test_integrity_clear_ok(void **state)
 {
-    (void) state;
     int ret;
 
-    wdb_t *socket;
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     char *query = strdup("integrity_clear ");
     will_return(__wrap_wdbi_query_clear, 2);
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
 
-    assert_string_equal(output, "ok ");
+    assert_string_equal(data->output, "ok ");
     assert_int_equal(ret, 0);
 
     os_free(query);
-    os_free(output);
 }
 
 
 void test_invalid_command(void **state){
-    (void) state;
     int ret;
-
-    wdb_t *socket;
-    char *output;
-    os_malloc(256, output);
+    test_struct_t *data  = (test_struct_t *)*state;
     char *query = strdup("wrong_command ");
-    ret = wdb_parse_syscheck(socket, query, output);
+    ret = wdb_parse_syscheck(data->socket, query, data->output);
 
-    assert_string_equal(output, "err Invalid Syscheck query syntax, near 'wrong_command'");
+    assert_string_equal(data->output, "err Invalid Syscheck query syntax, near 'wrong_command'");
     assert_int_equal(ret, -1);
 
     os_free(query);
-    os_free(output);
 }
 
 int main()
 {
     const struct CMUnitTest tests[] = 
     {
-        cmocka_unit_test(test_wdb_parse_syscheck_no_space),
-        cmocka_unit_test(test_scan_info_error),
-        cmocka_unit_test(test_scan_info_ok),
-        cmocka_unit_test(test_update_info_error),
-        cmocka_unit_test(test_update_info_ok),
-        cmocka_unit_test(test_clean_old_entries_error),
-        cmocka_unit_test(test_clean_old_entries_ok),
-        cmocka_unit_test(test_scan_info_update_noarg),
-        cmocka_unit_test(test_scan_info_update_error),
-        cmocka_unit_test(test_scan_info_update_ok),
-        cmocka_unit_test(test_scan_info_fim_check_control_error),
-        cmocka_unit_test(test_scan_info_fim_check_control_ok),
-        cmocka_unit_test(test_syscheck_load_error),
-        cmocka_unit_test(test_syscheck_load_ok),
-        cmocka_unit_test(test_fim_delete_error),
-        cmocka_unit_test(test_fim_delete_ok),
-        cmocka_unit_test(test_syscheck_save_noarg),
-        cmocka_unit_test(test_syscheck_save_invalid_type),
-        cmocka_unit_test(test_syscheck_save_file_type_error),
-        cmocka_unit_test(test_syscheck_save_file_nospace),
-        cmocka_unit_test(test_syscheck_save_file_type_ok),
-        cmocka_unit_test(test_syscheck_save_registry_type_error),
-        cmocka_unit_test(test_syscheck_save_registry_type_ok),
-        cmocka_unit_test(test_syscheck_save2_error),
-        cmocka_unit_test(test_syscheck_save2_ok),
-        cmocka_unit_test(test_integrity_check_error),
-        cmocka_unit_test(test_integrity_check_no_data),
-        cmocka_unit_test(test_integrity_check_checksum_fail	),
-        cmocka_unit_test(test_integrity_check_ok),
-        cmocka_unit_test(test_integrity_clear_error),
-        cmocka_unit_test(test_integrity_clear_ok),
-        cmocka_unit_test(test_invalid_command)
+        cmocka_unit_test_setup_teardown(test_wdb_parse_syscheck_no_space, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_scan_info_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_scan_info_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_update_info_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_update_info_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_clean_old_entries_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_clean_old_entries_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_scan_info_update_noarg, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_scan_info_update_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_scan_info_update_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_scan_info_fim_check_control_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_scan_info_fim_check_control_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_syscheck_load_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_syscheck_load_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_delete_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_delete_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_syscheck_save_noarg, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_syscheck_save_invalid_type, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_syscheck_save_file_type_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_syscheck_save_file_nospace, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_syscheck_save_file_type_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_syscheck_save_registry_type_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_syscheck_save_registry_type_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_syscheck_save2_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_syscheck_save2_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_integrity_check_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_integrity_check_no_data, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_integrity_check_checksum_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_integrity_check_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_integrity_clear_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_integrity_clear_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_invalid_command, test_setup, test_teardown)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

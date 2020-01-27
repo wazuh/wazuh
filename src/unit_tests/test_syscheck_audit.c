@@ -1021,7 +1021,7 @@ void test_audit_parse_mv(void **state)
     expect_string(__wrap__mdebug2, msg,
         "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg,
-        "(6247): audit_event: uid=user30, auid=user20, euid=user50, gid=, pid=52277, ppid=3210, inode=28, path=/root/test/folder/test, pname=/usr/bin/mv");
+        "(6247): audit_event: uid=user30, auid=user20, euid=user50, gid=src, pid=52277, ppid=3210, inode=28, path=/root/test/folder/test, pname=/usr/bin/mv");
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 52277);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "30");
@@ -1065,7 +1065,7 @@ void test_audit_parse_mv_hex(void **state)
     expect_string(__wrap__mdebug2, msg,
         "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg,
-        "(6247): audit_event: uid=user30, auid=user20, euid=user50, gid=, pid=52277, ppid=3210, inode=28, path=/root/test/folder/test, pname=/usr/bin/mv");
+        "(6247): audit_event: uid=user30, auid=user20, euid=user50, gid=src, pid=52277, ppid=3210, inode=28, path=/root/test/folder/test, pname=/usr/bin/mv");
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 52277);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "30");
