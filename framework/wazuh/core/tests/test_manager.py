@@ -13,23 +13,24 @@ with patch('wazuh.common.ossec_uid'):
         from wazuh.core.manager import *
         from wazuh.exception import WazuhException
 
-ossec_log_file = '''2019/03/26 20:14:37 wazuh-modulesd:database[27799] wm_database.c:501 at wm_get_os_arch(): DEBUG: Detected architecture from Linux |ip-10-0-1-141.us-west-1.compute.internal |3.10.0-957.1.3.el7.x86_64 |#1 SMP Thu Nov 29 14:49:43 UTC 2018 |x86_64: x86_64
-2019/02/26 20:14:37 wazuh-modulesd:database[27799] wm_database.c:695 at wm_sync_agentinfo(): DEBUG: wm_sync_agentinfo(4): 0.091 ms.
-2019/03/27 10:42:06 wazuh-modulesd:syscollector: INFO: Starting evaluation.
-2019/03/27 10:42:07 wazuh-modulesd:rootcheck: INFO: Starting evaluation.
-2019/03/26 13:03:11 ossec-csyslogd: INFO: Remote syslog server not configured. Clean exit.
-2019/03/26 19:49:15 ossec-execd: ERROR: (1210): Queue '/var/ossec/queue/alerts/execa' not accessible: 'No such file or directory'.
-2019/03/26 17:07:32 wazuh-modulesd:aws-s3[13155] wmodules-aws.c:186 at wm_aws_read(): ERROR: Invalid bucket type 'inspector'. Valid ones are 'cloudtrail', 'config', 'custom', 'guardduty' or 'vpcflow'
-2019/04/11 12:51:40 wazuh-modulesd:aws-s3: INFO: Executing Bucket Analysis: wazuh-aws-wodle
-2019/04/11 12:53:37 wazuh-modulesd:aws-s3: WARNING: Bucket:  -  Returned exit code 7
-2019/04/11 12:53:37 wazuh-modulesd:aws-s3: WARNING: Bucket:  -  Unexpected error querying/working with objects in S3: db_maintenance() got an unexpected keyword argument 'aws_account_id'
-
-2019/04/11 12:53:37 wazuh-modulesd:aws-s3: INFO: Executing Bucket Analysis: wazuh-aws-wodle
-2019/03/27 10:42:06 wazuh-modulesd:syscollector: INFO: This is a
-multiline log
-2019/03/26 13:03:11 ossec-csyslogd: INFO: Remote syslog server not configured. Clean exit.'''
+# ossec_log_file = '''2019/03/26 20:14:37 wazuh-modulesd:database[27799] wm_database.c:501 at wm_get_os_arch(): DEBUG: Detected architecture from Linux |ip-10-0-1-141.us-west-1.compute.internal |3.10.0-957.1.3.el7.x86_64 |#1 SMP Thu Nov 29 14:49:43 UTC 2018 |x86_64: x86_64
+# 2019/02/26 20:14:37 wazuh-modulesd:database[27799] wm_database.c:695 at wm_sync_agentinfo(): DEBUG: wm_sync_agentinfo(4): 0.091 ms.
+# 2019/03/27 10:42:06 wazuh-modulesd:syscollector: INFO: Starting evaluation.
+# 2019/03/27 10:42:07 wazuh-modulesd:rootcheck: INFO: Starting evaluation.
+# 2019/03/26 13:03:11 ossec-csyslogd: INFO: Remote syslog server not configured. Clean exit.
+# 2019/03/26 19:49:15 ossec-execd: ERROR: (1210): Queue '/var/ossec/queue/alerts/execa' not accessible: 'No such file or directory'.
+# 2019/03/26 17:07:32 wazuh-modulesd:aws-s3[13155] wmodules-aws.c:186 at wm_aws_read(): ERROR: Invalid bucket type 'inspector'. Valid ones are 'cloudtrail', 'config', 'custom', 'guardduty' or 'vpcflow'
+# 2019/04/11 12:51:40 wazuh-modulesd:aws-s3: INFO: Executing Bucket Analysis: wazuh-aws-wodle
+# 2019/04/11 12:53:37 wazuh-modulesd:aws-s3: WARNING: Bucket:  -  Returned exit code 7
+# 2019/04/11 12:53:37 wazuh-modulesd:aws-s3: WARNING: Bucket:  -  Unexpected error querying/working with objects in S3: db_maintenance() got an unexpected keyword argument 'aws_account_id'
+#
+# 2019/04/11 12:53:37 wazuh-modulesd:aws-s3: INFO: Executing Bucket Analysis: wazuh-aws-wodle
+# 2019/03/27 10:42:06 wazuh-modulesd:syscollector: INFO: This is a
+# multiline log
+# 2019/03/26 13:03:11 ossec-csyslogd: INFO: Remote syslog server not configured. Clean exit.'''
 ossec_cdb_list = "172.16.19.:\n172.16.19.:\n192.168.:"
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
+ossec_log_path = '{0}/ossec_log.log'.format(test_data_path)
 
 
 class InitManager:
@@ -54,6 +55,10 @@ def test_manager():
     test_manager = InitManager()
     return test_manager
 
+
+def get_ossec_log():
+    with open(ossec_log_path) as f:
+        return f.read()
 
 @pytest.mark.parametrize('process_status', [
     'running',
@@ -101,7 +106,9 @@ def test_get_status(manager_glob, manager_exists, test_manager, process_status):
 
 def test_get_ossec_log_fields():
     """Test get_ossec_log_fields() method returns a tuple"""
-    result = get_ossec_log_fields(ossec_log_file.splitlines()[0])
+    with open(ossec_log_path) as f:
+        ossec_log = f.readline()
+    result = get_ossec_log_fields(ossec_log)
     assert isinstance(result, tuple), 'The result is not a tuple'
 
 
@@ -197,6 +204,8 @@ def test_upload_list(mock_safe, mock_chmod, mock_random, mock_time, mock_validat
     """Tests upload_list function works and methods inside are called with expected parameters"""
     input_file, output_file = getattr(test_manager, 'input_rules_file'), getattr(test_manager, 'output_rules_file')
 
+    ossec_log_file = get_ossec_log()
+
     m = mock_open(read_data=ossec_log_file)
     with patch('builtins.open', m):
         result = upload_list(input_file, output_file)
@@ -239,6 +248,8 @@ def test_upload_list_open_ko(effect, expected_exception, test_manager):
 def test_upload_list_ko(mock_chmod, mock_random, mock_time, test_manager):
     """Tests upload_list function exception works and methods inside are called with expected parameters"""
     input_file, output_file = getattr(test_manager, 'input_rules_file'), getattr(test_manager, 'output_rules_file')
+
+    ossec_log_file = get_ossec_log()
 
     m = mock_open(read_data=ossec_log_file)
     with patch('builtins.open', m):
@@ -306,6 +317,9 @@ def test_validate_cdb_list():
 def test_validate_cdb_list_ko(mock_match):
     """Tests validate_cdb function exceptions works"""
     # Match error
+
+    ossec_log_file = get_ossec_log()
+
     m = mock_open(read_data=ossec_log_file)
     with patch('wazuh.core.manager.open', m):
         result = validate_cdb_list('path')

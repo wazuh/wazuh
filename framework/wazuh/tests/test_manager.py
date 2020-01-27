@@ -10,7 +10,7 @@ from unittest.mock import patch, MagicMock, mock_open
 
 import pytest
 
-from wazuh.core.tests.test_manager import ossec_log_file
+from wazuh.core.tests.test_manager import get_ossec_log
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
@@ -75,16 +75,6 @@ def test_get_status(mock_status):
     assert result.render()['data']['total_failed_items'] == 0
 
 
-@patch('wazuh.manager.status', side_effect=WazuhError(1000))
-def test_get_status_ko(mock_status):
-    """Tests get_status() function returns an error"""
-    result = get_status()
-
-    # Assert returned error and type
-    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-    assert result.render()['data']['total_failed_items'] == 1
-
-
 @pytest.mark.parametrize('category, type_log, total_items, sort_by, sort_ascending', [
     ('all', 'all', 12, None, None),
     ('wazuh-modulesd:database', 'all', 1, None, None),
@@ -119,6 +109,7 @@ def test_ossec_log(mock_month, type_log, category, total_items, sort_by, sort_as
     """
     with patch('wazuh.manager.tail') as tail_patch:
         # Return ossec_log_file when calling tail() method
+        ossec_log_file = get_ossec_log()
         tail_patch.return_value = ossec_log_file.splitlines()
 
         result = ossec_log(type_log=type_log, category=category, sort_by=sort_by, sort_ascending=sort_ascending)
@@ -133,8 +124,8 @@ def test_ossec_log(mock_month, type_log, category, total_items, sort_by, sort_as
 
 def test_ossec_log_ko():
     """Test reading ossec.log file contents."""
-    error_log = ("2019/04/11 12:53:37 wazuh-modulesd:aws-s3: ERROR: statfs('******') produced error: "
-                 "No such file or directory Unexpected error querying/working with objects in S3: "
+    error_log = ("2019/04/11 12:53:37 wazuh-modulesd:aws-s3: "
+                 "ERROR: statfs('******') produced error: No such file or directory"
                  "db_maintenance() got an unexpected keyword argument 'aws_account_id'")
 
     with patch('wazuh.manager.tail') as tail_patch:
@@ -153,16 +144,11 @@ def test_ossec_log_ko():
             assert 'ERROR: statfs(' in result.render()['data']['affected_items'][0], \
                 'Expected message not found in result'
 
-            # Assert WazuhError is returned
-            with patch("wazuh.manager.get_ossec_log_fields", side_effect=WazuhError(1000)):
-                result = ossec_log(category='all', type_log='error')
-                assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-                assert result.render()['data']['total_failed_items'] == 1
-
 
 @patch("wazuh.manager.previous_month", return_value=datetime.strptime('2019-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'))
 def test_ossec_log_summary(mock_month):
     """Tests ossec_log_summary function works and returned data match with expected"""
+    ossec_log_file = get_ossec_log()
     m = mock_open(read_data=ossec_log_file)
     with patch('builtins.open', m):
         result = ossec_log_summary()
@@ -181,6 +167,7 @@ def test_ossec_log_summary(mock_month):
 @patch("wazuh.manager.previous_month", return_value=datetime.strptime('2020-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'))
 def test_ossec_log_summary_ko(mock_month):
     """Tests ossec_log_summary function doesn't read logs older than a specific date"""
+    ossec_log_file = get_ossec_log()
     m = mock_open(read_data=ossec_log_file)
     with patch('builtins.open', m):
         result = ossec_log_summary()
@@ -454,12 +441,3 @@ def test_get_basic_info(mock_open):
 
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
     assert result.render()['data']['total_failed_items'] == 0
-
-
-@patch('wazuh.manager.Wazuh', side_effect=WazuhError(1005))
-def test_get_basic_info_ko(mock_wazuh):
-    """Tests get_basic_info() function returns an error"""
-    result = get_basic_info()
-
-    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-    assert result.render()['data']['failed_items'][0]['error']['code'] == 1005
