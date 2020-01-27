@@ -1125,7 +1125,7 @@ cJSON *win_perm_to_json(char *perms) {
             if (!strcmp(obj->valuestring, username)) {
                 user_obj = json_it;
                 if (obj = cJSON_GetObjectItem(json_it, perm_type), obj) {
-                    mdebug2("ACL [%s] fragmented. All permissions may not be displayed.", perms);
+                    mdebug1("ACL [%s] fragmented. All permissions may not be displayed.", perms);
                     next_it = 1;
                 }
                 break;
