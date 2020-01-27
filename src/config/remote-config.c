@@ -217,22 +217,23 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             logr->key_polling_enabled = true;
 
             int atr;
-
-            for(atr = 0; node[i]->attributes[atr]; atr++){
-                if(!strcmp(node[i]->attributes[atr], xml_enabled) == 0)
-                    mwarn("Invalid value for option '<%s>'", xml_key_polling);
-                else{
-                    if(strcmp(node[i]->values[atr], "yes") == 0 || strcmp(node[i]->values[0], "") == 0)
-                        logr->key_polling_enabled = true;
-                    else if(strcmp(node[i]->values[atr], "no") == 0)
-                        logr->key_polling_enabled = false; 
-                    else
-                        mwarn("Invalid value for option '<%s>'", xml_enabled);
+            if(node[i]->attributes){
+                for (atr = 0; node[i]->attributes[atr]; atr++) {
+                    if (strcmp(node[i]->attributes[atr], xml_enabled))
+                        mwarn(XML_VALUEERR, node[i]->element, node[i]->attributes[atr]);
+                    else{
+                        if (strcmp(node[i]->values[atr], "yes") == 0)
+                            logr->key_polling_enabled = true;
+                        else if (strcmp(node[i]->values[atr], "no") == 0)
+                            logr->key_polling_enabled = false; 
+                        else
+                            mwarn(XML_VALUEERR, node[i]->attributes[atr], node[i]->values[atr]);
+                    }
                 }
             }
-
-            logr->mode=KEYPOLL_MODE_LOCAL;
             
+            logr->mode=KEYPOLL_MODE_LOCAL;
+
             XML_NODE chld_node = NULL;
             chld_node = OS_GetElementsbyNode(xml, node[i]);
             if (!chld_node) {
@@ -243,15 +244,15 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
 
             int ct;
 
-            for(ct = 0;chld_node[ct];ct++){
-                if (!strcmp(chld_node[ct]->element, xml_mode) == 0)
-                    mwarn("Invalid element for option '<%s>'", xml_key_polling);    
-                else if (strcmp(chld_node[ct]->content, "local") == 0 || strcmp(chld_node[0]->content, "") == 0)
+            for (ct = 0;chld_node[ct];ct++) {
+                if (strcmp(chld_node[ct]->element, xml_mode))
+                    mwarn(XML_VALUEERR, xml_key_polling, chld_node[ct]->element);   
+                else if (strcmp(chld_node[ct]->content, "local") == 0)
                     logr->mode = KEYPOLL_MODE_LOCAL;
                 else if (strcmp(chld_node[ct]->content, "master") == 0)
                     logr->mode = KEYPOLL_MODE_MASTER;
                 else
-                    mwarn("Invalid value for option '<%s>'", xml_mode);
+                    mwarn(XML_VALUEERR, xml_mode, chld_node[ct]->content);
             }
             OS_ClearNode(chld_node);
 
