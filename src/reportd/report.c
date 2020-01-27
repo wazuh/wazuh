@@ -29,6 +29,8 @@ static void help_reportd()
     print_out("    -t          Test configuration");
     print_out("    -n          Create description for the report");
     print_out("    -s          Show the alert dump");
+    print_out("    -S <source> Set report source");
+    print_out("    Sources allowed: log, json");
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
     print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
@@ -75,7 +77,7 @@ int main(int argc, char **argv)
         mon_config->reports[s]->r_filter.report_type = 0;
     }
 
-    while ((c = getopt(argc, argv, "Vdhstu:g:D:f:v:n:r:")) != -1) {
+    while ((c = getopt(argc, argv, "Vdhstu:g:D:f:v:n:r:S:")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -141,6 +143,20 @@ int main(int argc, char **argv)
                 break;
             case 's':
                 mon_config->reports[s]->r_filter.show_alerts = 1;
+                break;
+            case 'S':
+                if (!optarg) {
+                    merror_exit("-S needs an argument");
+                }
+                if (strncmp(optarg, "log", 3) == 0) {
+                    mon_config->reports[s]->r_filter.report_log_source = REPORT_SOURCE_LOG;
+                }
+                else if (strncmp(optarg, "json", 4) == 0) {
+                    mon_config->reports[s]->r_filter.report_log_source = REPORT_SOURCE_JSON;
+                }
+                else {
+                    merror_exit("-S invalid argument. Options are 'log' or 'json'");
+                }
                 break;
             default:
                 help_reportd();
