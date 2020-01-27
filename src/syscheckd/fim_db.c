@@ -147,24 +147,33 @@ static void fim_db_bind_delete_data_id(fdb_t *fim_sql, int row);
  */
 static void fim_db_bind_row(fdb_t *fim_sql, int row);
 
+/**
+ * @brief Create a new database.
+ * @param path New database path.
+ * @param source SQlite3 schema file.
+ * @param memory Boolean value to choose between db stored in disk or in memory.
+ * @param fim_db Database pointer.
+ *
+ */
+static int fim_db_create_file(const char *path, const char *source, const int memory, sqlite3 **fim_db);
+
+
 fdb_t *fim_db_init(int memory) {
     fdb_t *fim;
     char *path = (memory == 1) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
 
     os_calloc(1, sizeof(fdb_t), fim);
-    memset(&(fim->db), 0, sizeof(fdb_t));
     fim->transaction.interval = COMMIT_INTERVAL;
 
     if (fim_db_clean() < 0) {
         return NULL;
     }
 
-    // SQLite Development
-    if (wdb_create_file(path, schema_fim_sql) < 0) {
+    if (fim_db_create_file(path, schema_fim_sql, memory, &fim->db) < 0) {
         return NULL;
     }
 
-    if (sqlite3_open_v2(path, &(fim->db), SQLITE_OPEN_READWRITE, NULL)) {
+    if (sqlite3_open_v2(path, &fim->db, SQLITE_OPEN_READWRITE, NULL)) {
         return NULL;
     }
 
@@ -174,7 +183,6 @@ fdb_t *fim_db_init(int memory) {
 
     char *error;
     sqlite3_exec(fim->db, "PRAGMA synchronous = OFF", NULL, NULL, &error);
-    //sqlite3_exec(fim->db, "PRAGMA journal_mode = MEMORY", NULL, NULL, &error);
 
     if (error) {
         merror("SQL ERROR: %s", error);
@@ -217,6 +225,89 @@ int fim_db_cache(fdb_t *fim_sql) {
     retval = FIMDB_OK;
 end:
     return retval;
+}
+
+int fim_db_create_file(const char *path, const char *source, const int memory, sqlite3 **fim_db) {
+    const char *ROOT = "root";
+    const char *GROUPGLOBAL = "root";
+    const char *sql;
+    const char *tail;
+
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int result;
+    uid_t uid;
+    gid_t gid;
+
+    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL)) {
+        printf("Couldn't create SQLite database '%s': %s", path, sqlite3_errmsg(db));
+        sqlite3_close_v2(db);
+        return -1;
+    }
+
+    for (sql = source; sql && *sql; sql = tail) {
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, &tail) != SQLITE_OK) {
+            printf("Preparing statement: %s", sqlite3_errmsg(db));
+            sqlite3_close_v2(db);
+            return -1;
+        }
+
+        result = sqlite3_step(stmt);
+
+        switch (result) {
+        case SQLITE_MISUSE:
+        case SQLITE_ROW:
+        case SQLITE_DONE:
+            break;
+        default:
+            printf("Stepping statement: %s", sqlite3_errmsg(db));
+            sqlite3_finalize(stmt);
+            sqlite3_close_v2(db);
+            return -1;
+        }
+
+        sqlite3_finalize(stmt);
+    }
+
+    if (memory == 1) {
+        *fim_db = db;
+        return 0;
+    }
+
+    sqlite3_close_v2(db);
+
+    switch (getuid()) {
+    case -1:
+        printf("getuid(): %s (%d)", strerror(errno), errno);
+        return -1;
+
+    case 0:
+        uid = Privsep_GetUser(ROOT);
+        gid = Privsep_GetGroup(GROUPGLOBAL);
+
+        if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
+            printf("USER_ERROR");
+            return -1;
+        }
+
+        if (chown(path, uid, gid) < 0) {
+            printf("CHOWN_ERROR");
+            return -1;
+        }
+
+        break;
+
+    default:
+        mdebug1("Ignoring chown when creating file from SQL.");
+        break;
+    }
+
+    if (chmod(path, 0660) < 0) {
+        printf("CHMOD_ERROR");
+        return -1;
+    }
+
+    return 0;
 }
 
 int fim_db_finalize_stmt(fdb_t *fim_sql) {
