@@ -23,6 +23,18 @@ static const char * COMPONENT_NAMES[] = {
     [WDB_FIM] = "fim"
 };
 
+#ifdef UNIT_TESTING
+/* Remove static qualifier when unit testing */
+#define static
+
+/* Replace assert with mock_assert */
+extern void mock_assert(const int result, const char* const expression,
+                        const char * const file, const int line);
+#undef assert
+#define assert(expression) \
+    mock_assert((int)(expression), #expression, __FILE__, __LINE__);
+#endif
+
 /**
  * @brief Run checksum of a data range
  *
@@ -36,6 +48,10 @@ static const char * COMPONENT_NAMES[] = {
  * @retval -1 On error.
  */
 int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest) {
+
+    assert(wdb != NULL);
+    assert(hexdigest != NULL);
+
     const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_SELECT_CHECKSUM_RANGE };
     assert(component < sizeof(INDEXES) / sizeof(int));
 
@@ -97,6 +113,9 @@ int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * beg
  * @retval -1 On error.
  */
 int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail) {
+
+    assert(wdb != NULL);
+
     const int INDEXES_AROUND[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_AROUND };
     const int INDEXES_RANGE[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_RANGE };
     assert(component < sizeof(INDEXES_AROUND) / sizeof(int));
@@ -138,6 +157,9 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
  */
 
 void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp) {
+
+    assert(wdb != NULL);
+
     if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_UPDATE_ATTEMPT) == -1) {
         return;
     }
@@ -164,6 +186,9 @@ void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp)
  */
 
 static void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp) {
+
+    assert(wdb != NULL);
+
     if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_UPDATE_COMPLETION) == -1) {
         return;
     }
