@@ -22,6 +22,7 @@
 #include "syscheck.h"
 #include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
 #include "rootcheck/rootcheck.h"
+#include "fim_db.h"
 
 // Prototypes
 void * fim_run_realtime(__attribute__((unused)) void * args);
@@ -592,28 +593,18 @@ static void fim_delete_realtime_watches(__attribute__((unused)) int pos) {
 
 // LCOV_EXCL_START
 static void fim_link_delete_range(int pos) {
-    char **paths;
-    char first_entry[PATH_MAX];
-    char last_entry[PATH_MAX];
-    int i;
+    char first_entry[PATH_MAX] = {0};
+    char last_entry[PATH_MAX]  = {0};
 
     snprintf(first_entry, PATH_MAX, "%s/", syscheck.dir[pos]);
     snprintf(last_entry, PATH_MAX, "%s0", syscheck.dir[pos]);
 
-    // SQLite Development
-    //paths = rbtree_range(syscheck.fim_entry, first_entry, last_entry);
-
     w_mutex_lock(&syscheck.fim_entry_mutex);
-    // If link pointing to a file
-    fim_delete(syscheck.dir[pos]);
 
-    for(i = 0; paths[i] != NULL; i++) {
-        int config = fim_configuration_directory(paths[i], "file");
-        if (config == pos) {
-            fim_delete (paths[i]);
-        }
+    if (fim_db_delete_range(syscheck.database, (char*)first_entry, (char*)last_entry) != FIMDB_OK) {
+        merror(FIM_DB_ERROR_RM_RANGE);
     }
-    free_strarray(paths);
+
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 }
 // LCOV_EXCL_STOP
