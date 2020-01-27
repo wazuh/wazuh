@@ -259,6 +259,7 @@ void test_check_auditd_enabled_success(void **state)
 
     ret = check_auditd_enabled();
     assert_return_code(ret, 0);
+    os_free(mock_proc);
 }
 
 void test_check_auditd_enabled_openproc_error(void **state)
