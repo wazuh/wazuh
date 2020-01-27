@@ -2,11 +2,12 @@
 # Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
-from functools import wraps
-from unittest.mock import patch, MagicMock
+
 import os
-import pytest
 import sys
+from unittest.mock import patch, MagicMock
+
+import pytest
 
 DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "test_cdb_list")
 
@@ -18,16 +19,9 @@ with patch('wazuh.common.getgrnam'):
             import wazuh.rbac.decorators
             del sys.modules['wazuh.rbac.orm']
             del sys.modules['api']
-
-            def RBAC_bypasser(**kwargs):
-                def decorator(f):
-                    @wraps(f)
-                    def wrapper(*args, **kwargs):
-                        return f(*args, **kwargs)
-                    return wrapper
-                return decorator
+            from wazuh.tests.util import RBAC_bypasser
             wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-            sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
+
             from wazuh.cdb_list import get_lists, get_path_lists
             from wazuh import common
             from wazuh.results import AffectedItemsWazuhResult
@@ -196,7 +190,7 @@ def test_get_path_lists_limit(limit):
         Maximum number of items to be returned by `get_path_lists`
     """
     common.reset_context_cache()
-    result = get_path_lists(path=PATHS_FILES, limit=limit)
+    result = get_path_lists(path=PATHS_FILES, limit=limit, sort_by=['path'])
 
     assert limit > 0
     assert isinstance(result, AffectedItemsWazuhResult)
@@ -214,7 +208,7 @@ def test_get_path_lists_offset(offset):
          Indicates the first item to return.
     """
     common.reset_context_cache()
-    result = get_path_lists(path=PATHS_FILES, offset=offset)
+    result = get_path_lists(path=PATHS_FILES, offset=offset, sort_by=['path'])
 
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == len(PATHS_FILES) - offset
@@ -263,7 +257,7 @@ def test_get_path_lists_search(search_text, complementary_search, search_in_fiel
     """
     common.reset_context_cache()
     result = get_path_lists(path=paths, search_text=search_text, complementary_search=complementary_search,
-                            search_in_fields=search_in_fields)
+                            search_in_fields=search_in_fields, sort_by=['path'])
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == len(expected_result)
     assert result.affected_items == expected_result
