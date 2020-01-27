@@ -183,6 +183,10 @@ int __wrap_fim_whodata_event(whodata_evt * w_evt)
     return 1;
 }
 
+const char *__wrap_get_group(int gid) {
+    return mock_ptr_type(const char *);
+}
+
 PROCTAB* __wrap_openproc(int flags, ...)
 {
     check_expected(flags);
@@ -840,6 +844,8 @@ void test_audit_parse(void **state)
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
 
+    will_return(__wrap_get_group, "root");
+
     expect_string(__wrap__mdebug2, msg,
         "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg,
@@ -882,6 +888,8 @@ void test_audit_parse_hex(void **state)
     will_return(__wrap_get_user, strdup("root"));
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
+
+    will_return(__wrap_get_group, "root");
 
     expect_string(__wrap__mdebug2, msg,
         "(6248): audit_event_1/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
@@ -1019,6 +1027,8 @@ void test_audit_parse_mv(void **state)
     expect_value(__wrap_get_user, uid, 50);
     will_return(__wrap_get_user, strdup("user50"));
 
+    will_return(__wrap_get_group, "src");
+
     expect_string(__wrap__mdebug2, msg,
         "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg,
@@ -1063,6 +1073,8 @@ void test_audit_parse_mv_hex(void **state)
     expect_value(__wrap_get_user, uid, 50);
     will_return(__wrap_get_user, strdup("user50"));
 
+    will_return(__wrap_get_group, "src");
+
     expect_string(__wrap__mdebug2, msg,
         "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg,
@@ -1105,6 +1117,8 @@ void test_audit_parse_rm(void **state)
     expect_value(__wrap_get_user, uid, 2);
     will_return(__wrap_get_user, strdup("daemon"));
 
+    will_return(__wrap_get_group, "tty");
+
     expect_string(__wrap__mdebug2, msg,
         "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg,
@@ -1144,6 +1158,8 @@ void test_audit_parse_chmod(void **state)
     will_return(__wrap_get_user, strdup("lp"));
     expect_value(__wrap_get_user, uid, 29);
     will_return(__wrap_get_user, strdup("user29"));
+
+    will_return(__wrap_get_group, "");
 
     expect_string(__wrap__mdebug2, msg,
         "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
@@ -1258,6 +1274,8 @@ void test_audit_parse_delete_folder(void **state)
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
 
+    will_return(__wrap_get_group, "root");
+
     expect_string(__wrap__mdebug2, msg, "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg, "(6247): audit_event: uid=root, auid=root, euid=root, gid=root, pid=62845, ppid=4340, inode=110, path=/root/test, pname=/usr/bin/rm");
 
@@ -1300,6 +1318,8 @@ void test_audit_parse_delete_folder_hex(void **state)
     will_return(__wrap_get_user, strdup("root"));
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
+
+    will_return(__wrap_get_group, "root");
 
     expect_string(__wrap__mdebug2, msg, "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg, "(6247): audit_event: uid=root, auid=root, euid=root, gid=root, pid=62845, ppid=4340, inode=110, path=/root/test, pname=/usr/bin/rm");
