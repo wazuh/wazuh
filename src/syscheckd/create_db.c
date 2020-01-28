@@ -688,62 +688,6 @@ int fim_insert(char *file, fim_entry_data *data, __attribute__((unused))struct s
     return 0;
 }
 
-int fim_update(char *file, fim_entry_data *data, __attribute__((unused)) fim_entry_data *old_data) {
-    if (!file || strcmp(file, "") == 0) {
-        merror(FIM_ERROR_UPDATE_ENTRY, "");
-        return -1;
-    }
-
-/* SQLite Development
-#ifndef WIN32
-    char old_inode_key[OS_SIZE_128];
-    char inode_key[OS_SIZE_128];
-
-    snprintf(inode_key, OS_SIZE_128, "%lu:%lu", (unsigned long)data->dev, (unsigned long)data->inode);
-    snprintf(old_inode_key, OS_SIZE_128, "%lu:%lu", (unsigned long)old_data->dev, (unsigned long)old_data->inode);
-
-    // If we detect a inode change, remove old entry from inode hash table
-    if (strcmp(inode_key, old_inode_key) != 0) {
-        delete_inode_item(old_inode_key, file);
-    }
-
-    if (fim_update_inode(file, inode_key) == -1) {
-        return -1;
-    }
-#endif
-
-    if (rbtree_replace(syscheck.fim_entry, file, data) == NULL) {
-        mdebug1(FIM_RBTREE_REPLACE, file);
-        return -1;
-    }
-*/
-    return 0;
-}
-
-int fim_update_inode(char *file, char inode_key[]) {
-    /* SQLite Development
-    fim_inode_data * inode_data;
-
-    if (inode_data = OSHash_Get(syscheck.fim_inode, inode_key), !inode_data) {
-        os_calloc(1, sizeof(fim_inode_data), inode_data);
-
-        inode_data->paths = os_AddStrArray(file, inode_data->paths);
-        inode_data->items = 1;
-
-        if (OSHash_Add(syscheck.fim_inode, inode_key, inode_data) != 2) {
-            merror(FIM_ERROR_INSERT_INODE_HASH, inode_key, file);
-            return -1;
-        }
-    } else {
-        if (!os_IsStrOnArray(file, inode_data->paths)) {
-            inode_data->paths = os_AddStrArray(file, inode_data->paths);
-            inode_data->items++;
-        }
-    }
-*/
-    return 0;
-}
-
 void check_deleted_files() {
     /*cJSON * json_event = NULL;
     char * json_formated;

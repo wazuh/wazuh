@@ -219,37 +219,6 @@ void init_fim_data_entry(fim_entry_data *data);
 void fim_get_checksum(fim_entry_data *data);
 
 /**
- * @brief Inserts a file in the syscheck hash table structure (inodes and paths)
- *
- * @param file_name Name of the file to insert in the hash table
- * @param data Entry data to insert in the hash table
- * @param file_stat Stat structure of the file to insert in the hash table
- * @return 0 on success, -1 on error
- */
-int fim_insert(char *file_name, fim_entry_data *data, struct stat *file_stat);
-
-/**
- * @brief Update an entry in the syscheck hash table structure (inodes and paths)
- *
- * @param file Name of the file to be updated in the hash table
- * @param data Entry data used to update the hash table
- * @param old_data Old entry data to be updated in the hash table
- * @return 0 on success, -1 on error
- */
-int fim_update(char *file, fim_entry_data *data, fim_entry_data *old_data);
-
-#ifndef WIN32
-/**
- * @brief Update an entry in the inode agent's database
- *
- * @param file Name of the file to be updated in the agent's database
- * @param inode_key Inode key to be updated
- * @return 0 on success, -1 on error
- */
-int fim_update_inode(char * file, char inode_key[]);
-#endif
-
-/**
  * @brief Prints the scan information
  *
  */
