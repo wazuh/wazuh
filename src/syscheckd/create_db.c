@@ -310,89 +310,64 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
 
 
 void fim_realtime_event(char *file) {
-    char inode_key[OS_SIZE_128];
-    struct stat file_stat;
-
-    if (w_stat(file, &file_stat) >= 0) {
-        // Add and modify events
-        snprintf(inode_key, OS_SIZE_128, "%ld:%ld", (unsigned long)file_stat.st_dev, (unsigned long)file_stat.st_ino);
-    } else {
-        // Deleted file need get inode and dev from saved data
-        w_mutex_lock(&syscheck.fim_entry_mutex);
-        /* SQLite Development
-        fim_entry_data * saved_data = NULL;
-
-        if (saved_data = (fim_entry_data *) rbtree_get(syscheck.fim_entry, file), saved_data) {
-            snprintf(inode_key, OS_SIZE_128, "%ld:%ld", (unsigned long)saved_data->dev, (unsigned long)saved_data->inode);
-        } else {
-            w_mutex_unlock(&syscheck.fim_entry_mutex);
-            return;
-        }
-        */
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
-    }
-    fim_audit_inode_event(file, inode_key, FIM_REALTIME, NULL);
+    fim_audit_inode_event(file, FIM_REALTIME, NULL);
 }
-
 
 // LCOV_EXCL_START
 void fim_whodata_event(whodata_evt * w_evt) {
-    char inode_key[OS_SIZE_128];
-
-    snprintf(inode_key, OS_SIZE_128, "%s:%s", w_evt->dev, w_evt->inode);
-    fim_audit_inode_event(w_evt->path, inode_key, FIM_WHODATA, w_evt);
+    fim_audit_inode_event(w_evt->path, FIM_WHODATA, w_evt);
 }
 // LCOV_EXCL_STOP
 
 
-void fim_audit_inode_event(char *file, const char *inode_key, fim_event_mode mode, whodata_evt * w_evt) {
+void fim_audit_inode_event(char *file, fim_event_mode mode, whodata_evt * w_evt) {
     struct fim_element *item;
-    // SQLite Development
-    // fim_inode_data * inode_data;
+    char **paths;
+
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+
+    if (mode == FIM_WHODATA) {
+        paths = fim_db_get_paths_from_inode(syscheck.database, atoi(w_evt->inode), atoi(w_evt->dev));
+    } else {
+        struct stat *file_stat;
+
+        if (w_stat(file, file_stat) >= 0) {
+            merror("Stat() failed on '%s'", file);
+        }
+
+        paths = fim_db_get_paths_from_inode(syscheck.database, file_stat->st_ino, file_stat->st_dev);
+    }
+
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     os_calloc(1, sizeof(fim_element), item);
     item->mode = mode;
 
-    w_mutex_lock(&syscheck.fim_entry_mutex);
-
-    /* SQLite Development
-    if (inode_data = OSHash_Get_ex(syscheck.fim_inode, inode_key), inode_data) {
-        // Modified and delete events
-        char **event_paths = NULL;
+    if (paths && paths[0]) {
         int i = 0;
 
-        os_calloc(inode_data->items + 1, sizeof(char*), event_paths);
-
-        while(inode_data->paths && inode_data->paths[i] && i < inode_data->items) {
-            os_strdup(inode_data->paths[i], event_paths[i]);
-            i++;
-        }
-        event_paths[i] = NULL;
-
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
-
         // For add events we don't have the path saved.
-        if (!w_is_str_in_array(event_paths, file)) {
+        if (!w_is_str_in_array(paths, file)) {
             fim_checker(file, item, w_evt, 1);
         }
 
         // An alert is generated for each path with the same inode
-        for(i = 0; event_paths[i]; i++) {
+        for(i = 0; paths[i]; i++) {
             struct fim_element *hard_link_items;
 
             os_calloc(1, sizeof(fim_element), hard_link_items);
             hard_link_items->mode = mode;
-            fim_checker(event_paths[i], hard_link_items, w_evt, 1);
-            os_free(event_paths[i]);
+            fim_checker(paths[i], hard_link_items, w_evt, 1);
+            os_free(paths[i]);
             os_free(hard_link_items);
         }
-        os_free(event_paths);
+        os_free(paths);
     } else {
         // Add events
         w_mutex_unlock(&syscheck.fim_entry_mutex);
         fim_checker(file, item, w_evt, 1);
     }
-    */
+
     os_free(item);
 
     return;

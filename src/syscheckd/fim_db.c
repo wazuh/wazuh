@@ -554,11 +554,13 @@ char **fim_db_get_paths_from_inode(fdb_t *fim_sql, const unsigned long int inode
     fim_db_bind_get_inode(fim_sql, FIMDB_STMT_GET_PATHS_INODE_COUNT, inode, dev);
 
     if(sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE_COUNT]) == SQLITE_ROW) {
-        int rows = sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE_COUNT], 0);
-        os_calloc(rows, sizeof(char *), paths);
-        fim_db_bind_get_inode(fim_sql, FIMDB_STMT_GET_PATHS_INODE, inode, dev);
         int result = 0;
         int i = 0;
+        int rows = sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE_COUNT], 0);
+
+        os_calloc(rows + 1, sizeof(char *), paths);
+        fim_db_bind_get_inode(fim_sql, FIMDB_STMT_GET_PATHS_INODE, inode, dev);
+
         while (result = sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE]), result == SQLITE_ROW) {
             if (i >= rows) {
                 printf("ERROR: The count returned is smaller than the actual elements. This shouldn't happen.\n");
@@ -566,8 +568,8 @@ char **fim_db_get_paths_from_inode(fdb_t *fim_sql, const unsigned long int inode
             }
             os_strdup((char *)sqlite3_column_text(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE], 0), paths[i]);
             i++;
-            //paths = os_AddStrArray((char *)sqlite3_column_text(fim_sql->stmt[index], 0), paths);
         }
+        paths[i] = NULL;
     }
 
 end:
