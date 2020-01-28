@@ -146,8 +146,9 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
         w_mutex_lock(&syscheck.fim_entry_mutex);
 
         if (saved_entry = fim_db_get_path(syscheck.database, path), saved_entry) {
+            int alert = FIM_DELETE;
             json_event = fim_json_event(path, NULL, saved_entry->data, item->index, FIM_DELETE, item->mode, w_evt);
-            fim_db_remove_path(syscheck.database, saved_entry, (void *) FIM_DELETE);
+            fim_db_remove_path(syscheck.database, saved_entry, (void *) &alert);
             free_entry(saved_entry);
             saved_entry = NULL;
         }
@@ -326,9 +327,9 @@ void fim_audit_inode_event(char *file, fim_event_mode mode, whodata_evt * w_evt)
     if (mode == FIM_WHODATA) {
         paths = fim_db_get_paths_from_inode(syscheck.database, atoi(w_evt->inode), atoi(w_evt->dev));
     } else {
-        struct stat *file_stat;
+        struct stat *file_stat = NULL;
 
-        if (w_stat(file, file_stat) >= 0) {
+        if (w_stat(file, file_stat) < 0) {
             merror("Stat() failed on '%s'", file);
         }
 
@@ -664,88 +665,12 @@ void fim_get_checksum (fim_entry_data * data) {
     free(checksum);
 }
 
-
-// Inserts a file in the syscheck hash table structure (inodes and paths)
-int fim_insert(char *file, fim_entry_data *data, __attribute__((unused))struct stat *file_stat) {
-    /* SQLite Development
-    if (rbtree_insert(syscheck.fim_entry, file, data) == NULL) {
-        mdebug1(FIM_RBTREE_DUPLICATE_INSERT, file);
-        return -1;
-    }
-    */
-
-#ifndef WIN32
-    char inode_key[OS_SIZE_128];
-    // Function OSHash_Add_ex doesn't alloc memory for the data of the hash table
-    snprintf(inode_key, OS_SIZE_128, "%lu:%lu", (unsigned long)file_stat->st_dev, (unsigned long)file_stat->st_ino);
-    /* SQLite Development
-    if (fim_update_inode(file, inode_key) == -1) {
-        return -1;
-    }
-    */
-#endif
-
-    return 0;
-}
-
 void check_deleted_files() {
-    /*cJSON * json_event = NULL;
-    char * json_formated;
-    char ** keys;
-    int i;
-    int pos;*/
-
     w_mutex_lock(&syscheck.fim_entry_mutex);
-    // SQLite Development
-    //keys = rbtree_keys(syscheck.fim_entry);
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
-/* SQLite Development
-    for (i = 0; keys[i] != NULL; i++) {
-
-        w_mutex_lock(&syscheck.fim_entry_mutex);
-
-        fim_entry_data * data = rbtree_get(syscheck.fim_entry, keys[i]);
-
-        if (!data) {
-            w_mutex_unlock(&syscheck.fim_entry_mutex);
-            continue;
-        }
-
-        // File doesn't exist so we have to delete it from the
-        // hash tables and send a deletion event.
-        if (!data->scanned) {
-            if (pos = fim_configuration_directory(keys[i], data->entry_type), pos < 0) {
-                w_mutex_unlock(&syscheck.fim_entry_mutex);
-                continue;
-            }
-
-            json_event = fim_json_event (keys[i], NULL, data, pos, FIM_DELETE, FIM_SCHEDULED, NULL);
-
-            if (!strcmp(data->entry_type, "file") && syscheck.opts[pos] & CHECK_SEECHANGES) {
-                delete_target_file(keys[i]);
-            }
-
-            fim_delete(keys[i]);
-
-            if (json_event && _base_line) {
-                mdebug2(FIM_FILE_MSG_DELETE, keys[i]);
-                json_formated = cJSON_PrintUnformatted(json_event);
-                send_syscheck_msg(json_formated);
-                os_free(json_formated);
-            }
-            cJSON_Delete(json_event);
-        } else {
-             // File still exists. We only need to reset the scanned flag.
-            data->scanned = 0;
-        }
-
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
-
+    if (fim_db_delete_not_scanned(syscheck.database) != FIMDB_OK) {
+        merror(FIM_DB_ERROR_RM_NOT_SCANNED);
     }
-*/
-    //free_strarray(keys);
-
-    return;
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
 }
 
 

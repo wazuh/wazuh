@@ -752,7 +752,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
 
 void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, __attribute__((unused))void *arg) {
 
-    //int alert = (int) arg;
+    //int alert = (int*) arg;
 
     // Clean and bind statements
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_COUNT);
@@ -786,8 +786,39 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, __attribute__((unused)
         }
     }
 
-end:
-    fim_db_check_transaction(fim_sql);
+    /*if (*alert) {
+        cJSON * json_event      = NULL;
+        char * json_formated    = NULL;
+        int pos = 0;
+
+        const char *FIM_ENTRY_TYPE[] = { "file", "registry"};
+
+        if (pos = fim_configuration_directory(entry->path,
+            FIM_ENTRY_TYPE[entry->data->entry_type]), pos < 0) {
+            goto end;
+        }
+
+        json_event = fim_json_event(entry->path, NULL, entry->data, pos,
+                                        FIM_DELETE, FIM_SCHEDULED, NULL);
+
+        if (!strcmp(FIM_ENTRY_TYPE[entry->data->entry_type], "file") &&
+            syscheck.opts[pos] & CHECK_SEECHANGES) {
+            delete_target_file(entry->path);
+        }
+
+        // && _base_line
+        if (json_event) {
+            mdebug2(FIM_FILE_MSG_DELETE, entry->path);
+            json_formated = cJSON_PrintUnformatted(json_event);
+            send_syscheck_msg(json_formated);
+
+            os_free(json_formated);
+            cJSON_Delete(json_event);
+        }
+    }*/
+
+   end:
+        fim_db_check_transaction(fim_sql);
 }
 
 int fim_db_get_row_path(fdb_t * fim_sql, int mode, char **path) {
