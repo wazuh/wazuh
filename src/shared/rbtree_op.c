@@ -17,6 +17,15 @@
 
 #include <shared.h>
 
+#ifdef UNIT_TESTING
+/* Replace assert with mock_assert */
+extern void mock_assert(const int result, const char* const expression,
+                        const char * const file, const int line);
+#undef assert
+#define assert(expression) \
+    mock_assert((int)(expression), #expression, __FILE__, __LINE__);
+#endif
+
 /* Private functions **********************************************************/
 
 #define grandparent parent->parent
@@ -465,6 +474,9 @@ void rbtree_set_dispose(rb_tree * tree, void (*dispose)(void *)) {
 // Insert a key-value in the tree
 
 void * rbtree_insert(rb_tree * tree, const char * key, void * value) {
+    assert(tree != NULL);
+    assert(key != NULL);
+
     rb_node * node = rb_init(key, value);
     rb_node * parent = NULL;
     int cmp;
@@ -497,6 +509,9 @@ void * rbtree_insert(rb_tree * tree, const char * key, void * value) {
 // Update the value of an existing key
 
 void * rbtree_replace(rb_tree * tree, const char * key, void * value) {
+    assert(tree != NULL);
+    assert(key != NULL);
+
     rb_node * node = rb_get(tree->root, key);
 
     if (node == NULL) {
@@ -515,6 +530,9 @@ void * rbtree_replace(rb_tree * tree, const char * key, void * value) {
 // Retrieve a value from the tree
 
 void * rbtree_get(const rb_tree * tree, const char * key) {
+    assert(tree != NULL);
+    assert(key != NULL);
+
     rb_node * node = rb_get(tree->root, key);
     return node ? node->value : NULL;
 }
@@ -522,6 +540,9 @@ void * rbtree_get(const rb_tree * tree, const char * key) {
 // Remove a value from the tree
 
 int rbtree_delete(rb_tree * tree, const char * key) {
+    assert(tree != NULL);
+    assert(key != NULL);
+
     rb_node * node = rb_get(tree->root, key);
 
     if (node == NULL) {
@@ -568,18 +589,22 @@ int rbtree_delete(rb_tree * tree, const char * key) {
 // Get the minimum key in the tree
 
 const char * rbtree_minimum(const rb_tree * tree) {
+    assert(tree != NULL);
     return tree->root ? rb_min(tree->root)->key : NULL;
 }
 
 // Get the maximum key in the tree
 
 const char * rbtree_maximum(const rb_tree * tree) {
+    assert(tree != NULL);
     return tree->root ? rb_max(tree->root)->key : NULL;
 }
 
 // Get all the keys in the tree
 
 char ** rbtree_keys(const rb_tree * tree) {
+    assert(tree != NULL);
+
     unsigned size = 0;
     char ** array;
 
@@ -596,6 +621,10 @@ char ** rbtree_keys(const rb_tree * tree) {
 // Get all the keys from the tree within a range
 
 char ** rbtree_range(const rb_tree * tree, const char * min, const char * max) {
+    assert(tree != NULL);
+    assert(min != NULL);
+    assert(max != NULL);
+
     unsigned size = 0;
     char ** array;
 
@@ -612,6 +641,8 @@ char ** rbtree_range(const rb_tree * tree, const char * min, const char * max) {
 // Get the black depth of a tree
 
 int rbtree_black_depth(const rb_tree * tree) {
+    assert(tree != NULL);
+
     if (tree->root == NULL) {
         return 0;
     }
@@ -629,11 +660,15 @@ int rbtree_black_depth(const rb_tree * tree) {
 // Get the size of the tree
 
 unsigned rbtree_size(const rb_tree * tree) {
+    assert(tree != NULL);
+
     return tree->root ? rb_size(tree->root) : 0;
 }
 
 // Check whether the tree is empty
 
 int rbtree_empty(const rb_tree * tree) {
+    assert(tree != NULL);
+
     return tree->root == NULL;
 }

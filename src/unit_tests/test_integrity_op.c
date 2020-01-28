@@ -69,6 +69,16 @@ void test_dbsync_check_msg_clear(void **state)
     assert_string_equal(json, ret);
 }
 
+void test_dbsync_check_msg_msg_out_of_bounds(void **state)
+{
+    expect_assert_failure(dbsync_check_msg("wazuh-testing", (dbsync_msg) 6, 1569926892, "start", "top", "tail", "51ABB9636078DEFBF888D8457A7C76F85C8F114C"));
+}
+
+void test_dbsync_check_msg_invalid_id(void **state)
+{
+    expect_assert_failure(dbsync_check_msg("wazuh-testing", INTEGRITY_CLEAR, -2, "start", "top", "tail", "51ABB9636078DEFBF888D8457A7C76F85C8F114C"));
+}
+
 void test_dbsync_state_msg(void **state)
 {
     (void) state; /* unused */
@@ -89,6 +99,8 @@ int main(void) {
         cmocka_unit_test_teardown(test_dbsync_check_msg_right, delete_array),
         cmocka_unit_test_teardown(test_dbsync_check_msg_global, delete_array),
         cmocka_unit_test_teardown(test_dbsync_check_msg_clear, delete_array),
+        cmocka_unit_test(test_dbsync_check_msg_msg_out_of_bounds),
+        cmocka_unit_test(test_dbsync_check_msg_invalid_id),
         cmocka_unit_test_teardown(test_dbsync_state_msg, delete_array),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -1414,17 +1414,17 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 /* Listen another audit keys */
                 if (strcmp(children[j]->element, xml_audit_key) == 0) {
                     int keyit = 0;
-                    char delim = ',';
+                    char *delim = ",";
                     char *key;
                     char *saveptr;
-                    key = strtok_r(children[j]->content, &delim, &saveptr);
+                    key = strtok_r(children[j]->content, delim, &saveptr);
 
                     while (key) {
                         if (*key) {
                             syscheck->audit_key[keyit] = check_ascci_hex(key);
                             os_realloc(syscheck->audit_key, (keyit + 2) * sizeof(char *), syscheck->audit_key);
                             syscheck->audit_key[keyit + 1] = NULL;
-                            key = strtok_r(NULL, &delim, &saveptr);
+                            key = strtok_r(NULL, delim, &saveptr);
                             keyit++;
                         }
                     }
