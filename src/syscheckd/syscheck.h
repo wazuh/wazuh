@@ -161,11 +161,10 @@ void fim_whodata_event(whodata_evt *w_evt);
  * @brief Process FIM audit event
  *
  * @param [in] file Path of the file to check
- * @param [in] inode_key Inode key of the file to check
  * @param [in] mode 1 means realtime, 2 means whodata
  * @param [in] w_evt Whodata event
  */
-void fim_audit_inode_event(char *file, const char *inode_key, fim_event_mode mode, whodata_evt *w_evt);
+void fim_audit_inode_event(char *file, fim_event_mode mode, whodata_evt *w_evt);
 
 /**
  * @brief Check file integrity monitoring on a specific registry
