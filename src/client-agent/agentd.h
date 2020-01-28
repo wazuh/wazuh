@@ -54,7 +54,7 @@ cJSON *getLabelsConfig(void);
 cJSON *getAgentInternalOptions(void);
 
 /* Agentd init function */
-void AgentdStart(const char *dir, int uid, int gid, const char *user, const char *group) __attribute__((noreturn));
+void AgentdStart(int uid, int gid, const char *user, const char *group) __attribute__((noreturn));
 
 /* Event Forwarder */
 void *EventForward(void);
