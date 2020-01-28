@@ -251,13 +251,6 @@ int fim_update_inode(char * file, char inode_key[]);
 #endif
 
 /**
- * @brief Deletes a path from the structure and sends a deletion event
- *
- * @param file_name Name of the file to be deleted in the agent's database
- */
-void fim_delete(char *file_name);
-
-/**
  * @brief Prints the scan information
  *
  */
@@ -287,8 +280,6 @@ void print_dirtb();
  */
 void check_deleted_files();
 
-//
-void delete_inode_item(char *inode, char *file_name);
 
 /**
  * @brief Produce a file change JSON event

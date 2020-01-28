@@ -13,6 +13,7 @@
 #include "syscheck_op.h"
 #include "integrity_op.h"
 #include "time_op.h"
+#include "fim_db.h"
 
 // Global variables
 static int _base_line = 0;
@@ -129,6 +130,7 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
 
     item->index = node;
     item->configuration = syscheck.opts[node];
+    fim_entry *saved_entry = NULL;
 
     // Deleted file. Sending alert.
     if (w_stat(path, &(item->statbuf)) == -1) {
@@ -142,12 +144,17 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
         }
 
         w_mutex_lock(&syscheck.fim_entry_mutex);
-        /* SQLite Development
-        if (saved_data = (fim_entry_data *) rbtree_get(syscheck.fim_entry, path), saved_data) {
-            json_event = fim_json_event(path, NULL, saved_data, item->index, FIM_DELETE, item->mode, w_evt);
-            fim_delete(path);
+
+        if (saved_entry = fim_db_get_path(syscheck.database, path), saved_entry) {
+            json_event = fim_json_event(path, NULL, saved_data->data, item->index, FIM_DELETE, item->mode, w_evt);
+            if (fim_db_remove_path(syscheck.database, saved_entry, (void *) FIM_DELETE) != FIMDB_OK){
+                merror(FIM_DB_ERROR_RM_PATH, path);
+            }
+
+            free_entry(saved_entry);
+            saved_entry = NULL;
         }
-        */
+
         w_mutex_unlock(&syscheck.fim_entry_mutex);
 
         if (json_event && report) {
@@ -254,13 +261,13 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
     char *json_formated;
     int alert_type;
 
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+
     //Get file attributes
     if (new = fim_get_data(file, item), !new) {
         mdebug1(FIM_GET_ATTRIBUTES, file);
         return 0;
     }
-
-    w_mutex_lock(&syscheck.fim_entry_mutex);
 
     if (saved = fim_db_get_path(syscheck.database, file), !saved) {
         // New entry. Insert into hash table
@@ -741,7 +748,6 @@ int fim_update(char *file, fim_entry_data *data, __attribute__((unused)) fim_ent
     return 0;
 }
 
-#ifndef WIN32
 int fim_update_inode(char *file, char inode_key[]) {
     /* SQLite Development
     fim_inode_data * inode_data;
@@ -764,23 +770,6 @@ int fim_update_inode(char *file, char inode_key[]) {
     }
 */
     return 0;
-}
-#endif
-
-void fim_delete (char * file_name) {
-    /* SQLite Development
-    fim_entry_data * data;
-
-    if (data = rbtree_get(syscheck.fim_entry, file_name), data) {
-#ifndef WIN32
-        char inode_key[OS_SIZE_128];
-
-        snprintf(inode_key, OS_SIZE_128, "%lu:%lu", (unsigned long)data->dev, (unsigned long)data->inode);
-        delete_inode_item(inode_key, file_name);
-#endif
-        rbtree_delete(syscheck.fim_entry, file_name);
-    }
-    */
 }
 
 void check_deleted_files() {
@@ -838,41 +827,11 @@ void check_deleted_files() {
 
     }
 */
-    free_strarray(keys);
+    //free_strarray(keys);
 
     return;
 }
 
-
-void delete_inode_item(char *inode_key, char *file_name) {
-    /* SQLite Development
-    fim_inode_data *inode_data;
-    char **new_paths;
-    int i = 0;
-
-    if (inode_data = OSHash_Get(syscheck.fim_inode, inode_key), inode_data) {
-        // If it's the last path we can delete safely the hash node
-        if(inode_data->items == 1) {
-            if(inode_data = OSHash_Delete(syscheck.fim_inode, inode_key), inode_data) {
-                free_inode_data(&inode_data);
-            }
-        }
-        // We must delete only file_name from paths
-        else {
-            os_calloc(inode_data->items - 1, sizeof(char*), new_paths);
-            for(i = 0; i < inode_data->items; i++) {
-                if(strcmp(inode_data->paths[i], file_name)) {
-                    new_paths = os_AddStrArray(inode_data->paths[i], new_paths);
-                }
-            }
-
-            free_strarray(inode_data->paths);
-            inode_data->paths = new_paths;
-            inode_data->items--;
-        }
-    }
-    */
-}
 
 cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, int pos, fim_event_type type, fim_event_mode mode, whodata_evt * w_evt) {
     cJSON * changed_attributes = NULL;

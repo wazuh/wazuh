@@ -705,7 +705,7 @@ void fim_db_callback_sync_path_range(__attribute__((unused)) fdb_t *fim_sql,
         cJSON * entry_data = fim_entry_json(entry->path, entry->data);
         char * plain = dbsync_state_msg("syscheck", entry_data);
         mdebug1("Sync Message for %s sent: %s", entry->path, plain);
-        //fim_send_sync_msg(plain);
+        fim_send_sync_msg(plain);
         free(plain);
 }
 
@@ -767,18 +767,16 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
     // Send message with checksum of first half
     EVP_DigestFinal_ex(ctx_left, digest, &digest_size);
     OS_SHA1_Hexdigest(digest, hexdigest);
-    mdebug1("Message1 - checksum %s sent", hexdigest);
-    //plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_LEFT, id, start, str_pathlh, str_pathuh, hexdigest);
-    //fim_send_sync_msg(plain);
-    //free(plain);
+    plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_LEFT, id, start, str_pathlh, str_pathuh, hexdigest);
+    fim_send_sync_msg(plain);
+    free(plain);
 
     // Send message with checksum of second half
     EVP_DigestFinal_ex(ctx_right, digest, &digest_size);
     OS_SHA1_Hexdigest(digest, hexdigest);
-    mdebug1("Message2 - checksum %s sent", hexdigest);
-    //plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_RIGHT, id, str_pathuh, top, "", hexdigest);
-    //fim_send_sync_msg(plain);
-    //free(plain);
+    plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_RIGHT, id, str_pathuh, top, "", hexdigest);
+    fim_send_sync_msg(plain);
+    free(plain);
 
     retval = FIMDB_OK;
 
