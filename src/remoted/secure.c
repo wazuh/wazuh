@@ -470,19 +470,22 @@ int key_request_connect() {
 static int send_key_request(int socket,const char *msg) {
 
     if(logr.mode == KEYPOLL_MODE_MASTER){
-        const char * message = "{\"message\":\"";
-        int size_payload = strlen(message)+strlen(msg)+3;
+        const char * const MESSAGE = "{\"message\":\"";
+        int size_payload = strlen(MESSAGE)+strlen(msg)+3;
         char * payload = malloc(size_payload);
-        snprintf(payload, size_payload, "{\"message\":\"%s\"}", msg);
+        snprintf(payload, size_payload, "%s%s\"}",MESSAGE, msg);
         int rc = OS_SendSecureTCPCluster(socket, "run_keypoll", payload, strlen(payload));
+        mdebug2("Sending message to cluster: %s", payload);
         char buffer[OS_MAXSTR + 1];
-        int recv_msg = OS_RecvSecureClusterTCP(socket, buffer,OS_MAXSTR + 1);
-        if (recv_msg > 0) {
-            mdebug2("Key request message from the master: %s",buffer);
-        } else if (recv_msg == -1) {
-            merror("No message received from the master.");
-        } else if (recv_msg == 0) {
-            rc = OS_SOCKDISCN;
+        if (rc == 0) {
+            int recv_msg = OS_RecvSecureClusterTCP(socket, buffer,OS_MAXSTR + 1);
+            if (recv_msg > 0) {
+                mdebug2("Key request message from the master: %s",buffer);
+            } else if (recv_msg == -1) {
+                merror("No message received from the master.");
+            } else if (recv_msg == 0) {
+                rc = OS_SOCKDISCN;
+            }
         }
         os_free(payload);
         return rc;
