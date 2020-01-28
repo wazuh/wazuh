@@ -275,7 +275,7 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
         alert_type = FIM_MODIFICATION;
     }
 
-    json_event = fim_json_event(file, saved->data, new, item->index, alert_type, item->mode, w_evt);
+    json_event = fim_json_event(file, saved ? saved->data : NULL, new, item->index, alert_type, item->mode, w_evt);
 
     if (json_event) {
         if (fim_db_insert_data(syscheck.database, file, new) == -1) {
@@ -388,7 +388,7 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
         alert_type = FIM_MODIFICATION;
     }
 
-    json_event = fim_json_event(key, saved, data, pos,
+    json_event = fim_json_event(key, saved ? saved->data : NULL, data, pos,
                                 alert_type, 0, NULL);
     if ((saved && strcmp(saved->hash_sha1, data->hash_sha1) != 0)
         || alert_type == FIM_ADD) {
@@ -603,7 +603,7 @@ fim_entry_data * fim_get_data(const char *file, fim_element *item) {
     data->scanned = 1;
     // Set file entry type, registry or file
     // SQLite Development
-    //data->entry_type = fim_entry_type[0];
+    data->entry_type = FIM_TYPE_FILE;
     fim_get_checksum(data);
 
     return data;
@@ -707,8 +707,7 @@ cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_da
     }
 
     char * tags = NULL;
-    /* SQLite Development
-    if (strcmp(new_data->entry_type, "file") == 0) {
+    if (new_data->entry_type == FIM_TYPE_FILE) {
         if (w_evt) {
             cJSON_AddItemToObject(data, "audit", fim_audit_json(w_evt));
         }
@@ -729,7 +728,6 @@ cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_da
         tags = syscheck.registry[pos].tag;
     }
 #endif
-*/
 
     if (tags != NULL) {
         cJSON_AddStringToObject(data, "tags", tags);
