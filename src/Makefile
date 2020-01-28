@@ -1275,7 +1275,7 @@ rootcheck.a: ${rootcheck_o_lib}
 #### syscheck ######
 
 
-syscheck_sql := $(wildcard syscheckd/schema_fim_db.sql)
+syscheck_sql := syscheckd/schema_fim_db.sql
 syscheck_c := $(wildcard syscheckd/*.c)
 syschecklib_o := $(syschecklib_c:.c=.o) $(syscheck_sql:.sql=.o)
 syscheck_o := $(syschecklib_o:.c=.o) $(syscheck_c:.c=.o) $(syscheck_sql:.sql=.o)
