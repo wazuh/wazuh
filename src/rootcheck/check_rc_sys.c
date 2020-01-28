@@ -11,6 +11,10 @@
 #include "shared.h"
 #include "rootcheck.h"
 
+#ifdef UNIT_TESTING
+#define static
+#endif
+
 /* Prototypes */
 static int read_sys_file(const char *file_name, int do_read);
 static int read_sys_dir(const char *dir_name, int do_read);
