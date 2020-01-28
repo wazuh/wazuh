@@ -229,8 +229,6 @@ end:
 }
 
 int fim_db_create_file(const char *path, const char *source, const int memory, sqlite3 **fim_db) {
-    const char *ROOT = "root";
-    const char *GROUPGLOBAL = "root";
     const char *sql;
     const char *tail;
 
@@ -276,32 +274,6 @@ int fim_db_create_file(const char *path, const char *source, const int memory, s
     }
 
     sqlite3_close_v2(db);
-
-    switch (getuid()) {
-    case -1:
-        printf("getuid(): %s (%d)", strerror(errno), errno);
-        return -1;
-
-    case 0:
-        uid = Privsep_GetUser(ROOT);
-        gid = Privsep_GetGroup(GROUPGLOBAL);
-
-        if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-            printf("USER_ERROR");
-            return -1;
-        }
-
-        if (chown(path, uid, gid) < 0) {
-            printf("CHOWN_ERROR");
-            return -1;
-        }
-
-        break;
-
-    default:
-        mdebug1("Ignoring chown when creating file from SQL.");
-        break;
-    }
 
     if (chmod(path, 0660) < 0) {
         printf("CHMOD_ERROR");

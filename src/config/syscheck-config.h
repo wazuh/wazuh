@@ -34,17 +34,12 @@ typedef enum fdb_stmt {
     FIMDB_STMT_GET_ALL_ENTRIES,
     FIMDB_STMT_GET_NOT_SCANNED,
     FIMDB_STMT_SET_ALL_UNSCANNED,
-    FIMDB_STMT_DELETE_UNSCANNED,
     FIMDB_STMT_GET_PATH_COUNT,
     FIMDB_STMT_GET_DATA_ROW,
-    FIMDB_STMT_GET_HARDLINK_COUNT,
     FIMDB_STMT_GET_COUNT_RANGE,
     FIMDB_STMT_GET_PATH_RANGE,
     FIMDB_STMT_DELETE_PATH,
     FIMDB_STMT_DELETE_DATA,
-    FIMDB_STMT_DISABLE_SCANNED,
-    FIMDB_STMT_GET_UNIQUE_FILE,
-    FIMDB_MAX_DATA_ROWID,
     FIMDB_STMT_GET_PATHS_INODE,
     FIMDB_STMT_GET_PATHS_INODE_COUNT,
     FIMDB_STMT_SIZE
@@ -117,6 +112,7 @@ static const char *FIM_ENTRY_TYPE[] = {
 
 #include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
 #include "headers/integrity_op.h"
+#include "external/sqlite/sqlite3.h"
 
 #ifdef WIN32
 typedef struct whodata_event_node whodata_event_node;
