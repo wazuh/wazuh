@@ -102,8 +102,14 @@ void HandleSyslog()
         if (SendMSG(logr.m_queue, buffer_pt, srcip, SYSLOG_MQ) < 0) {
             merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
-            if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
-                merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
+            // Try to reconnect infinitely
+            logr.m_queue = StartMQWithRetry(DEFAULTQUEUE, WRITE, 0);
+
+            minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
+
+            if (SendMSG(logr.m_queue, buffer_pt, srcip, SYSLOG_MQ) < 0) {
+                // Something went wrong sending a message after an immediate reconnection...
+                merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
             }
         }
     }
