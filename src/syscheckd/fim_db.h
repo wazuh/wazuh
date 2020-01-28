@@ -15,7 +15,12 @@
 #include "config/syscheck-config.h"
 
 #define FIM_DB_MEMORY_PATH  ":memory:"
+
+#ifndef WIN32
 #define FIM_DB_DISK_PATH    DEFAULTDIR "/queue/db/fim.db"
+#else
+#define FIM_DB_DISK_PATH    "syscheck/fim.db"
+#endif
 #define COMMIT_INTERVAL     2
 
 #define FIMDB_OK 0   // Successful result.
