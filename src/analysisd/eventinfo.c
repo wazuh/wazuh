@@ -49,7 +49,7 @@ bool same_loop(RuleInfo *rule, Eventinfo *lf, Eventinfo *my_lf) {
     int i;
     u_int32_t same = rule->same_field;
 
-    for (i = 0; i < N_FIELDS-2; i++) {
+    for (i = 0; i < N_FIELDS-2 || same != 0; i++) {
         if ((same & 1) == 1) {
             char * field1 = *(char **)((void *)lf + field_offset[i]);
             char * field2 = *(char **)((void *)my_lf + field_offset[i]);
@@ -67,7 +67,7 @@ bool different_loop(RuleInfo *rule, Eventinfo *lf, Eventinfo *my_lf) {
     int i;
     u_int32_t different = rule->different_field;
 
-    for (i = 0; i < N_FIELDS; i++) {
+    for (i = 0; i < N_FIELDS || different != 0; i++) {
         if ((different & 1) == 1) {
             char * field1 = *(char **)((void *)lf + field_offset[i]);
             char * field2 = *(char **)((void *)my_lf + field_offset[i]);

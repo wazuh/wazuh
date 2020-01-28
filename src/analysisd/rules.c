@@ -1012,7 +1012,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                         }
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_agent) == 0) {
-                        config_ruleinfo->same_field |= FIELD_AGENT;
+                        mwarn("Detected a deprecated field option for rule, %s is not longer available.", xml_same_agent);
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_srcuser) == 0) {
                         config_ruleinfo->same_field |= FIELD_SRCUSER;
@@ -1150,7 +1150,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                         }
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_different_agent) == 0) {
-                        config_ruleinfo->different_field |= FIELD_AGENT;
+                        mwarn("Detected a deprecated field option for rule, %s is not longer available.", xml_different_agent);
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_different_location) == 0) {
                         config_ruleinfo->different_field |= FIELD_LOCATION;
