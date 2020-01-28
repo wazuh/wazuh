@@ -390,7 +390,7 @@ fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt) {
     os_calloc(1, sizeof(fim_entry_data), entry->data);
     entry->data->mode = (unsigned int)sqlite3_column_int(stmt, 2);
     entry->data->last_event = (time_t)sqlite3_column_int(stmt, 3);
-    entry->data->entry_type = (fim_entry_type)sqlite3_column_int(stmt, 4);
+    entry->data->entry_type = sqlite3_column_int(stmt, 4);
     entry->data->scanned = (time_t)sqlite3_column_int(stmt, 5);
     entry->data->options = (time_t)sqlite3_column_int(stmt, 6);
     strncpy(entry->data->checksum, (char *)sqlite3_column_text(stmt, 7), sizeof(os_sha1) - 1);

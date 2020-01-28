@@ -14,6 +14,7 @@
 
 #include <shared.h>
 #include <pthread.h>
+#include <openssl/evp.h>
 #include "external/sqlite/sqlite3.h"
 #include "syscheck_op.h"
 #include "rootcheck_op.h"
@@ -557,6 +558,12 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output);
 int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_sca(wdb_t * wdb, char * input, char * output);
+
+int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest);
+
+int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail);
+
+void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp);
 
 // Functions to manage scan_info table, this table contains the timestamp of every scan of syscheck ¿and syscollector?
 

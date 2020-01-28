@@ -127,7 +127,6 @@ void free_whodata_event(whodata_evt *w_evt) {
     if (w_evt->audit_uid) free(w_evt->audit_uid);
     if (w_evt->effective_name) free(w_evt->effective_name);
     if (w_evt->effective_uid) free(w_evt->effective_uid);
-    if (w_evt->group_name) free(w_evt->group_name);
     if (w_evt->group_id) free(w_evt->group_id);
     if (w_evt->path) free(w_evt->path);
     if (w_evt->process_name) free(w_evt->process_name);

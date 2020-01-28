@@ -17,11 +17,6 @@ typedef enum fim_event_mode {
     FIM_WHODATA
 } fim_event_mode;
 
-typedef enum fim_entry_type {
-    FIM_TYPE_FILE,
-    FIM_TYPE_REGISTRY
-} fim_entry_type;
-
 typedef enum fdb_stmt {
     FIMDB_STMT_INSERT_DATA,
     FIMDB_STMT_INSERT_PATH,
@@ -106,6 +101,9 @@ static const char *FIM_ENTRY_TYPE[] = {
 
 #define FIM_DB_MEMORY       1
 #define FIM_DB_DISK         0
+
+#define FIM_TYPE_FILE       0
+#define FIM_TYPE_REGISTRY   1
 
 //Max allowed value for recursion
 #define MAX_DEPTH_ALLOWED 320
@@ -235,7 +233,7 @@ typedef struct fim_entry_data {
     // Options
     fim_event_mode mode;
     time_t last_event;
-    fim_entry_type entry_type;
+    unsigned int entry_type;
     unsigned long int dev;
     unsigned int scanned;
     int options;
