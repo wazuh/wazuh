@@ -137,7 +137,7 @@ static void wraps_fim_db_exec_simple_wquery() {
     will_return(__wrap_sqlite3_exec, SQLITE_OK);
 }
 /*-----------------------------------------*/
-
+/*---------------fim_db_init------------------*/
 static int test_teardown_fim_db_init(void **state) {
     fdb_t *fim_db = (fdb_t *) *state;
     os_free(fim_db);
@@ -238,7 +238,23 @@ void test_fim_db_init_success(void **state) {
     assert_non_null(fim_db);
     *state = fim_db;
 }
+/*-----------------------------------------*/
+/*---------------fim_db_clean------------------*/
+void test_fim_db_clean_success() {
+    wraps_fim_db_clean();
+    int ret = fim_db_clean();
+    assert_int_equal(ret, FIMDB_OK);
+}
 
+void test_fim_db_clean_failed() {
+    expect_string(__wrap_w_is_file, file, FIM_DB_DISK_PATH);
+    will_return(__wrap_w_is_file, 1);
+    expect_string(__wrap_remove, filename, FIM_DB_DISK_PATH);
+    will_return(__wrap_remove, FIMDB_ERR);
+    int ret = fim_db_clean();
+    assert_int_equal(ret, FIMDB_ERR);
+}
+/*-----------------------------------------*/
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -249,6 +265,8 @@ int main(void) {
         cmocka_unit_test(test_fim_db_init_failed_execution),
         cmocka_unit_test(test_fim_db_init_failed_simple_query),
         cmocka_unit_test_teardown(test_fim_db_init_success, test_teardown_fim_db_init),
+        cmocka_unit_test(test_fim_db_clean_success),
+        cmocka_unit_test(test_fim_db_clean_failed)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
