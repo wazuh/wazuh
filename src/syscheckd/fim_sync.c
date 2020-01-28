@@ -132,7 +132,7 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
-    if (fim_db_get_count_range(syscheck.database, start, top,
+    if (fim_db_get_count_range(syscheck.database, (char*)start, (char*)top,
         &range_size) != FIMDB_OK) {
         merror(FIM_DB_ERROR_COUNT_RANGE, start, top);
         goto end;
@@ -167,7 +167,7 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
 
 void fim_sync_send_list(const char * start, const char * top) {
     w_mutex_lock(&syscheck.fim_entry_mutex);
-    if (fim_db_sync_path_range(syscheck.database, start, top) != FIMDB_OK) {
+    if (fim_db_sync_path_range(syscheck.database, (char*)start, (char*)top) != FIMDB_OK) {
         merror(FIM_DB_ERROR_SYNC_DB);
     }
     w_mutex_unlock(&syscheck.fim_entry_mutex);

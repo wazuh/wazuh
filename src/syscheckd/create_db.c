@@ -146,11 +146,8 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
         w_mutex_lock(&syscheck.fim_entry_mutex);
 
         if (saved_entry = fim_db_get_path(syscheck.database, path), saved_entry) {
-            json_event = fim_json_event(path, NULL, saved_data->data, item->index, FIM_DELETE, item->mode, w_evt);
-            if (fim_db_remove_path(syscheck.database, saved_entry, (void *) FIM_DELETE) != FIMDB_OK){
-                merror(FIM_DB_ERROR_RM_PATH, path);
-            }
-
+            json_event = fim_json_event(path, NULL, saved_entry->data, item->index, FIM_DELETE, item->mode, w_evt);
+            fim_db_remove_path(syscheck.database, saved_entry, (void *) FIM_DELETE);
             free_entry(saved_entry);
             saved_entry = NULL;
         }
@@ -277,7 +274,7 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
         alert_type = FIM_MODIFICATION;
     }
 
-    json_event = fim_json_event(file, saved, new, item->index, alert_type, item->mode, w_evt);
+    json_event = fim_json_event(file, saved->data, new, item->index, alert_type, item->mode, w_evt);
 
     if (json_event) {
         if (fim_db_insert_data(syscheck.database, file, new) == -1) {
@@ -773,11 +770,11 @@ int fim_update_inode(char *file, char inode_key[]) {
 }
 
 void check_deleted_files() {
-    cJSON * json_event = NULL;
+    /*cJSON * json_event = NULL;
     char * json_formated;
     char ** keys;
     int i;
-    int pos;
+    int pos;*/
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
     // SQLite Development
@@ -1162,7 +1159,7 @@ void free_entry_data(fim_entry_data * data) {
 
 void free_entry(fim_entry * entry) {
     if (entry) {
-        w_FreeArray(entry->path);
+        os_free(entry->path);
         free_entry_data(entry->data);
         free(entry);
     }
@@ -1192,8 +1189,6 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
     //mdebug1(FIM_ENTRIES_INFO, rbtree_size(syscheck.fim_entry));
 
 #ifndef WIN32
-    OSHashNode * hash_node;
-    unsigned int inode_it = 0;
     unsigned inode_items = 0;
     unsigned inode_paths = 0;
 

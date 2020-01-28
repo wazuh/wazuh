@@ -139,13 +139,6 @@ static void fim_db_bind_update_path(fdb_t *fim_sql,
  */
 static void fim_db_bind_delete_data_id(fdb_t *fim_sql, int row);
 
-/**
- * @brief Binds an integer into a statement.
- *
- * @param fim_sql FIM database structure.
- * @param row Integer to be bound to the statement.
- */
-static void fim_db_bind_row(fdb_t *fim_sql, int row);
 
 /**
  * @brief Create a new database.
@@ -235,8 +228,6 @@ int fim_db_create_file(const char *path, const char *source, const int memory, s
     sqlite3 *db;
     sqlite3_stmt *stmt;
     int result;
-    uid_t uid;
-    gid_t gid;
 
     if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL)) {
         printf("Couldn't create SQLite database '%s': %s", path, sqlite3_errmsg(db));
@@ -332,6 +323,8 @@ int fim_db_clean_stmt(fdb_t *fim_sql, int index) {
             return FIMDB_ERR;
         }
     }
+
+    return FIMDB_OK;
 }
 
 /** Wrapper functions **/
@@ -500,11 +493,6 @@ void fim_db_bind_delete_data_id(fdb_t *fim_sql, int row) {
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_DELETE_DATA], 1, row);
 }
 
-/* FIMDB_STMT_DELETE_DATA*/
-void fim_db_bind_row(fdb_t *fim_sql, int row) {
-    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_DELETE_DATA], 1, row);
-}
-
 void fim_db_bind_range(fdb_t *fim_sql, int index, const char *start, const char *top) {
     if (index == FIMDB_STMT_GET_PATH_RANGE ||
         index == FIMDB_STMT_GET_COUNT_RANGE ) {
@@ -528,7 +516,7 @@ fim_entry *fim_db_get_path(fdb_t *fim_sql, const char *file_path) {
 }
 
 int fim_db_get_inode(fdb_t *fim_sql, const unsigned long int inode, const unsigned long int dev) {
-    int ret = 0;
+    int ret = FIMDB_OK;
 
     // Clean statements
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_INODE);
@@ -536,10 +524,9 @@ int fim_db_get_inode(fdb_t *fim_sql, const unsigned long int inode, const unsign
     fim_db_bind_get_inode(fim_sql, FIMDB_STMT_GET_INODE, inode, dev);
 
     if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_INODE]) == SQLITE_ROW) {
-        ret = 1;
+        ret = FIMDB_ERR;
     }
 
-end:
     fim_db_check_transaction(fim_sql);
     return ret;
 }
@@ -566,11 +553,9 @@ char **fim_db_get_paths_from_inode(fdb_t *fim_sql, const unsigned long int inode
             }
             os_strdup((char *)sqlite3_column_text(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE], 0), paths[i]);
             i++;
-            //paths = os_AddStrArray((char *)sqlite3_column_text(fim_sql->stmt[index], 0), paths);
         }
     }
 
-end:
     fim_db_check_transaction(fim_sql);
     return paths;
 }
@@ -591,9 +576,8 @@ int fim_db_get_count_range(fdb_t *fim_sql, char *start, char *top, int *count) {
 }
 
 int fim_db_insert_data(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) {
-    long long row_id;
     int res;
-    int retval = FIMDB_ERR;
+    int retval;
 
     // Clean and bind statements
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_INSERT_DATA);
@@ -604,9 +588,7 @@ int fim_db_insert_data(fdb_t *fim_sql, const char *file_path, fim_entry_data *en
 
     switch (res) {
     case SQLITE_DONE:
-        // Get rowid
-        row_id = sqlite3_last_insert_rowid(fim_sql->db);
-        break;
+        break; //Insert succesfull
 
     case SQLITE_CONSTRAINT:
         // Update entry_data
@@ -626,7 +608,6 @@ int fim_db_insert_data(fdb_t *fim_sql, const char *file_path, fim_entry_data *en
 
     retval = fim_db_insert_path(fim_sql, file_path, entry);
     fim_db_check_transaction(fim_sql);
-end:
     return retval;
 }
 
@@ -673,7 +654,7 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_entry_data *en
 }
 
 void fim_db_callback_sync_path_range(__attribute__((unused)) fdb_t *fim_sql,
-                                     fim_entry *entry, void *arg) {
+                                     fim_entry *entry, __attribute__((unused))void *arg) {
         cJSON * entry_data = fim_entry_json(entry->path, entry->data);
         char * plain = dbsync_state_msg("syscheck", entry_data);
         mdebug1("Sync Message for %s sent: %s", entry->path, plain);
@@ -695,7 +676,9 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
     unsigned char digest[EVP_MAX_MD_SIZE] = {0};
     unsigned int digest_size = 0;
     os_sha1 hexdigest;
-    char *str_pathlh, *str_pathuh, *plain;
+    char *str_pathlh = NULL;
+    char *str_pathuh = NULL;
+    char *plain      = NULL;
 
     // Clean statements
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_RANGE);
@@ -736,6 +719,11 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
         free_entry(entry);
     }
 
+    if (!str_pathlh || !str_pathuh) {
+        merror("Failed to obtain required paths in order to form message");
+        goto end1;
+    }
+
     // Send message with checksum of first half
     EVP_DigestFinal_ex(ctx_left, digest, &digest_size);
     OS_SHA1_Hexdigest(digest, hexdigest);
@@ -759,8 +747,9 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
         return retval;
 }
 
-void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, void *arg) {
-    int retval = FIMDB_ERR;
+void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, __attribute__((unused))void *arg) {
+
+    //int alert = (int) arg;
 
     // Clean and bind statements
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_COUNT);
@@ -794,7 +783,6 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, void *arg) {
         }
     }
 
-    retval = FIMDB_OK;
 end:
     fim_db_check_transaction(fim_sql);
 }

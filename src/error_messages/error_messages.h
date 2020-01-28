@@ -479,7 +479,7 @@
 #define FIM_DB_ERROR_SYNC_DB                        "(6705): Failed to synchronize database"
 #define FIM_DB_ERROR_GET_ROW_PATH                   "(6706): Couldn't get %s row's path"
 #define FIM_DB_ERROR_CALC_CHECKSUM                  "(6707): Failed to calculate database checksum"
-#define FIM_DB_ERROR_RM_PATH                        "(6707): Failed to delete path '%s'"
+#define FIM_DB_ERROR_RM_RANGE                       "(6708): Failed to delete a range of paths between '%s' and '%s'"
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."

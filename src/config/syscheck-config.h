@@ -244,7 +244,7 @@ typedef struct fim_entry_data {
 
 
 typedef struct fim_entry {
-    char ** path;
+    char *path;
     fim_entry_data *data;
 } fim_entry;
 

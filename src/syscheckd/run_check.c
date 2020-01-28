@@ -602,7 +602,7 @@ static void fim_link_delete_range(int pos) {
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
     if (fim_db_delete_range(syscheck.database, (char*)first_entry, (char*)last_entry) != FIMDB_OK) {
-        merror(FIM_DB_ERROR_RM_RANGE);
+        merror(FIM_DB_ERROR_RM_RANGE, first_entry, last_entry);
     }
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
