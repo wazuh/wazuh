@@ -377,7 +377,7 @@ void fim_audit_inode_event(char *file, fim_event_mode mode, whodata_evt * w_evt)
 #ifdef WIN32
 int fim_registry_event(char *key, fim_entry_data *data, int pos) {
     cJSON *json_event = NULL;
-    fim_entry_data *saved;
+    fim_entry *saved;
     char *json_formated;
     int result = 1;
     int alert_type;
@@ -392,14 +392,14 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
 
     json_event = fim_json_event(key, saved ? saved->data : NULL, data, pos,
                                 alert_type, 0, NULL);
-    if ((saved && strcmp(saved->hash_sha1, data->hash_sha1) != 0)
+    if ((saved && strcmp(saved->data->hash_sha1, data->hash_sha1) != 0)
         || alert_type == FIM_ADD) {
         if (fim_db_insert_data(syscheck.database, key, data) == -1) {
             w_mutex_unlock(&syscheck.fim_entry_mutex);
             return OS_INVALID;
         }
     } else {
-        saved->scanned = 1;
+        saved->data->scanned = 1;
         result = 0;
     }
 
