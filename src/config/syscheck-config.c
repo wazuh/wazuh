@@ -764,7 +764,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     dump_syscheck_entry(syscheck, resolved_path, opts, 0, restrictfile, recursion_limit, clean_tag, real_path);
                 }
             } else {
-                mdebug1("Could not check the real path of '%s' due to [(%d)-(%s)].", real_path, errno, strerror(errno));
+                dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL);
             }
             os_free(resolved_path);
         }
