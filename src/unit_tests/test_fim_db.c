@@ -371,6 +371,29 @@ void test_fim_db_insert_data_insert_path_error(void **state) {
     assert_int_equal(last_commit, test_data->fim_sql->transaction.last_commit);
 }
 
+void test_fim_db_insert_data_success(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_bind_int, 0);
+    will_return_always(__wrap_sqlite3_bind_text, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    expect_string(__wrap_sqlite3_exec, sql, "END;");
+    will_return(__wrap_sqlite3_exec, NULL);
+    will_return(__wrap_sqlite3_exec, SQLITE_OK);
+    expect_string(__wrap_sqlite3_exec, sql, "BEGIN;");
+    will_return(__wrap_sqlite3_exec, NULL);
+    will_return(__wrap_sqlite3_exec, SQLITE_OK);
+    int ret;
+    time_t last_commit =  test_data->fim_sql->transaction.last_commit;
+    ret = fim_db_insert_data(test_data->fim_sql, test_data->filepath, test_data->entry_data);
+    assert_int_equal(ret, FIMDB_OK);
+    // Last commit time should not change
+    assert_int_not_equal(last_commit, test_data->fim_sql->transaction.last_commit);
+}
+
 /*-----------------------------------------*/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -390,6 +413,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_insert_data_insert_error, test_fim_db_insert_data_setup, test_fim_db_insert_data_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_insert_data_update_error, test_fim_db_insert_data_setup, test_fim_db_insert_data_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_insert_data_insert_path_error, test_fim_db_insert_data_setup, test_fim_db_insert_data_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_insert_data_success, test_fim_db_insert_data_setup, test_fim_db_insert_data_teardown),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
