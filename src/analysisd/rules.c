@@ -137,7 +137,7 @@ int Rules_OP_ReadRules(const char *rulefile)
     const char *xml_same_dstgeoip = "same_dstgeoip";
 
     const char *xml_different_url = "different_url";
-    const char *xml_different_srcip = "different_source_ip";
+    const char *xml_different_srcip = "different_srcip";
     const char *xml_different_srcgeoip = "different_srcgeoip";
     const char *xml_different_destination_ip = "different_destination_ip";
     const char *xml_different_src_port = "different_src_port";
@@ -155,6 +155,10 @@ int Rules_OP_ReadRules(const char *rulefile)
     const char *xml_different_dstgeoip = "different_dstgeoip";
     const char *xml_different_agent = "different_agent";
 
+    const char *xml_notsame_source_ip = "not_same_source_ip";
+    const char *xml_notsame_user = "not_same_user";
+    const char *xml_notsame_agent = "not_same_agent";
+    const char *xml_notsame_id = "not_same_id";
     const char *xml_notsame_field = "not_same_field";
     const char *xml_global_frequency = "global_frequency";
 
@@ -1034,8 +1038,10 @@ int Rules_OP_ReadRules(const char *rulefile)
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                         }
-                    } else if(strcmp(rule_opt[k]->element,
-                                   xml_different_srcip) == 0) {
+                    } else if (strcmp(rule_opt[k]->element,
+                                   xml_different_srcip) == 0 ||
+                               strcmp(rule_opt[k]->element, 
+                                   xml_notsame_source_ip) == 0) {
                         config_ruleinfo->different_field |= FIELD_SRCIP;
 
                         if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
@@ -1076,7 +1082,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
-                    } else if (strcmp(rule_opt[k]->element, xml_different_id) == 0) {
+                    } else if (strcmp(rule_opt[k]->element, xml_different_id) == 0 || 
+                               strcmp(rule_opt[k]->element, xml_notsame_id) == 0) {
                         config_ruleinfo->different_field |= FIELD_ID;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
@@ -1142,7 +1149,9 @@ int Rules_OP_ReadRules(const char *rulefile)
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcasecmp(rule_opt[k]->element,
-                                          xml_different_user) == 0) {
+                                          xml_different_user) == 0 ||
+                               strcasecmp(rule_opt[k]->element, 
+                                          xml_notsame_user) == 0) {
                         config_ruleinfo->different_field |= FIELD_USER;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
@@ -1151,6 +1160,9 @@ int Rules_OP_ReadRules(const char *rulefile)
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_different_agent) == 0) {
                         mwarn("Detected a deprecated field option for rule, %s is not longer available.", xml_different_agent);
+                    } else if (strcasecmp(rule_opt[k]->element, 
+                                          xml_notsame_agent) == 0) {
+                        mwarn("Detected a deprecated field option for rule, %s is not longer available.", xml_notsame_agent);
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_different_location) == 0) {
                         config_ruleinfo->different_field |= FIELD_LOCATION;
@@ -1672,7 +1684,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                 config_ruleinfo->event_search = (void *(*)(void *, void *, void *))
                     Search_LastGroups;
             } else if (config_ruleinfo->context) {
-                if (config_ruleinfo->context == 1 &&
+                if ((config_ruleinfo->context == 1) &&
                         (config_ruleinfo->context_opts & FIELD_DODIFF)) {
                     config_ruleinfo->context = 0;
                 } else {
