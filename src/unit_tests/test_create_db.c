@@ -174,6 +174,13 @@ char ** __wrap_rbtree_keys() {
     return mock_type(char **);
 }
 
+fim_entry *__wrap_fim_db_get_path(fdb_t *fim_sql, const char *file_path) {
+    check_expected_ptr(fim_sql);
+    check_expected(file_path);
+
+    return mock_type(fim_entry*);
+}
+
 /* setup/teardowns */
 static int setup_group(void **state)
 {
@@ -225,7 +232,7 @@ static int setup_group(void **state)
     strcpy(fim_data->old_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
     fim_data->old_data->mode = FIM_REALTIME;
     fim_data->old_data->last_event = 1570184220;
-    fim_data->old_data->entry_type = "file";
+    fim_data->old_data->entry_type = FIM_TYPE_FILE;
     fim_data->old_data->dev = 12345678;
     fim_data->old_data->scanned = 123456;
     fim_data->old_data->options = 511;
@@ -246,7 +253,7 @@ static int setup_group(void **state)
     strcpy(fim_data->new_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e9959643c6262667b61fbe57694df224d40");
     fim_data->new_data->mode = FIM_REALTIME;
     fim_data->new_data->last_event = 1570184221;
-    fim_data->new_data->entry_type = "file";
+    fim_data->new_data->entry_type = FIM_TYPE_FILE;
     fim_data->new_data->dev = 12345678;
     fim_data->new_data->scanned = 123456;
     fim_data->new_data->options = 511;
@@ -732,7 +739,7 @@ void test_fim_get_checksum(void **state)
     strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
     fim_data->local_data->mode = FIM_REALTIME;
     fim_data->local_data->last_event = 1570184220;
-    fim_data->local_data->entry_type = "file";
+    fim_data->local_data->entry_type = FIM_TYPE_FILE;
     fim_data->local_data->dev = 12345678;
     fim_data->local_data->scanned = 123456;
     fim_data->local_data->options = 511;
@@ -761,7 +768,7 @@ void test_fim_get_checksum_wrong_size(void **state)
     strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
     fim_data->local_data->mode = FIM_REALTIME;
     fim_data->local_data->last_event = 1570184220;
-    fim_data->local_data->entry_type = "file";
+    fim_data->local_data->entry_type = FIM_TYPE_FILE;
     fim_data->local_data->dev = 12345678;
     fim_data->local_data->scanned = 123456;
     fim_data->local_data->options = 511;
@@ -810,266 +817,6 @@ void test_fim_check_depth_failure_null_directory(void **state)
     assert_int_equal(ret, -1);
 
 }
-
-
-void test_fim_insert_success_new(void **state)
-{
-    fim_data_t *fim_data = *state;
-    int ret;
-
-    char * file = "test-file.tst";
-    struct stat file_stat;
-    file_stat.st_dev = 2050;
-    file_stat.st_ino = 922287;
-
-    // Not duplicated
-    will_return(__wrap_rbtree_insert, 1);
-    // Not in hash table
-    will_return(__wrap_OSHash_Get, NULL);
-    // Added
-    expect_string(__wrap_OSHash_Add, key, "2050:922287");
-    will_return(__wrap_OSHash_Add, 2);
-
-    ret = fim_insert(file, fim_data->old_data, &file_stat);
-
-    assert_int_equal(ret, 0);
-}
-
-
-void test_fim_insert_success_add(void **state)
-{
-    fim_data_t *fim_data = *state;
-    int ret;
-
-    char * file = "test-file.tst";
-    struct stat file_stat;
-    file_stat.st_dev = 2050;
-    file_stat.st_ino = 922287;
-
-    // Not duplicated
-    will_return(__wrap_rbtree_insert, 1);
-    // Already in hash table
-    fim_data->inode_data->items = 1;
-    fim_data->inode_data->paths = os_AddStrArray(file, fim_data->inode_data->paths);
-    will_return(__wrap_OSHash_Get, fim_data->inode_data);
-
-    ret = fim_insert(file, fim_data->old_data, &file_stat);
-
-    assert_int_equal(ret, 0);
-}
-
-
-void test_fim_insert_failure_new(void **state)
-{
-    fim_data_t *fim_data = *state;
-    int ret;
-
-    char * file = "test-file.tst";
-    struct stat file_stat;
-    file_stat.st_dev = 2050;
-    file_stat.st_ino = 922287;
-
-    // Not duplicated
-    will_return(__wrap_rbtree_insert, 1);
-    // Not in hash table
-    will_return(__wrap_OSHash_Get, NULL);
-    // Errod adding
-    expect_string(__wrap_OSHash_Add, key, "2050:922287");
-    will_return(__wrap_OSHash_Add, 1);
-
-    expect_string(__wrap__merror, formatted_msg,
-        "(6702): Unable to add inode to db: '2050:922287' => 'test-file.tst'");
-
-    ret = fim_insert(file, fim_data->old_data, &file_stat);
-
-    assert_int_equal(ret, -1);
-}
-
-
-void test_fim_insert_failure_duplicated(void **state)
-{
-    fim_data_t *fim_data = *state;
-    int ret;
-
-    char * file = "test-file.tst";
-    struct stat file_stat;
-    file_stat.st_dev = 2050;
-    file_stat.st_ino = 922287;
-
-    // Duplicated
-    will_return(__wrap_rbtree_insert, 0);
-
-    ret = fim_insert(file, fim_data->old_data, &file_stat);
-
-    assert_int_equal(ret, -1);
-}
-
-
-void test_fim_update_success(void **state)
-{
-    fim_data_t *fim_data = *state;
-    int ret;
-
-    char * file = "test-file.tst";
-
-    // (fim_update_inode) In hash table
-    fim_data->inode_data->items = 1;
-    fim_data->inode_data->paths = os_AddStrArray("test.file", fim_data->inode_data->paths);
-    will_return(__wrap_OSHash_Get, fim_data->inode_data);
-
-    will_return(__wrap_rbtree_replace, 1);
-
-    ret = fim_update(file, fim_data->old_data, fim_data->old_data);
-
-    assert_int_equal(ret, 0);
-}
-
-
-void test_fim_update_failure_nofile(void **state)
-{
-    fim_data_t *fim_data = *state;
-    int ret;
-
-    expect_string(__wrap__merror, formatted_msg, "(6615): Can't update entry invalid file ''.");
-
-    ret = fim_update(NULL, fim_data->old_data, fim_data->old_data);
-
-    assert_int_equal(ret, -1);
-}
-
-
-void test_fim_update_failure_rbtree(void **state)
-{
-    fim_data_t *fim_data = *state;
-    int ret;
-
-    char * file = "test-file.tst";
-
-    // (fim_update_inode) In hash table
-    fim_data->inode_data->items = 1;
-    fim_data->inode_data->paths = os_AddStrArray("test.file", fim_data->inode_data->paths);
-    will_return(__wrap_OSHash_Get, fim_data->inode_data);
-
-    will_return(__wrap_rbtree_replace, 0);
-
-    ret = fim_update(file, fim_data->old_data, fim_data->old_data);
-
-    assert_int_equal(ret, -1);
-}
-
-
-void test_fim_update_failure_update_inode(void **state)
-{
-    fim_data_t *fim_data = *state;
-    int ret;
-
-    char * file = "test-file.tst";
-
-    // (fim_update_inode) In hash table
-    // Not in hash table
-    will_return(__wrap_OSHash_Get, NULL);
-    // Errod adding
-    expect_string(__wrap_OSHash_Add, key, "12345678:606060");
-    will_return(__wrap_OSHash_Add, 1);
-
-    expect_string(__wrap__merror, formatted_msg,
-        "(6702): Unable to add inode to db: '12345678:606060' => 'test-file.tst'");
-
-    ret = fim_update(file, fim_data->old_data, fim_data->old_data);
-
-    assert_int_equal(ret, -1);
-}
-
-
-void test_fim_delete(void **state)
-{
-    fim_data_t *data = *state;
-
-    expect_value(__wrap_rbtree_get, tree, syscheck.fim_entry);
-    expect_string(__wrap_rbtree_get, key, "test");
-    will_return(__wrap_rbtree_get, data->new_data);
-
-    // inside delete_inode_item
-    will_return(__wrap_OSHash_Get, NULL);
-
-    expect_value(__wrap_rbtree_delete, tree, syscheck.fim_entry);
-    expect_string(__wrap_rbtree_delete, key, "test");
-    will_return(__wrap_rbtree_delete, 1);
-
-    // Assertions for this test are done through wrappers.
-    fim_delete("test");
-}
-
-void test_fim_delete_no_data(void **state)
-{
-    char * file_name = "test-file.tst";
-
-    expect_value(__wrap_rbtree_get, tree, syscheck.fim_entry);
-    expect_string(__wrap_rbtree_get, key, "test-file.tst");
-    will_return(__wrap_rbtree_get, NULL);
-
-    fim_delete(file_name);
-}
-
-
-void test_fim_update_inode_in_hash(void **state)
-{
-    fim_data_t *fim_data = *state;
-    int ret;
-
-    char * file = "test-file.tst";
-    char * inode_key = "1212:9090";
-
-    fim_data->inode_data->items = 1;
-    fim_data->inode_data->paths = os_AddStrArray("test.file", fim_data->inode_data->paths);
-    will_return(__wrap_OSHash_Get, fim_data->inode_data);
-
-    ret = fim_update_inode(file, inode_key);
-
-    assert_int_equal(os_IsStrOnArray("test-file.tst", fim_data->inode_data->paths), 1);
-
-    assert_int_equal(ret, 0);
-}
-
-
-void test_fim_update_inode_not_in_hash(void **state)
-{
-    int ret;
-
-    char * file = "test-file.tst";
-    char * inode_key = "1212:9090";
-
-    will_return(__wrap_OSHash_Get, NULL);
-
-    expect_string(__wrap_OSHash_Add, key, "1212:9090");
-    will_return(__wrap_OSHash_Add, 2);
-
-    ret = fim_update_inode(file, inode_key);
-
-    assert_int_equal(ret, 0);
-}
-
-
-void test_fim_update_inode_not_in_hash_not_added(void **state)
-{
-    int ret;
-
-    char * file = "test-file.tst";
-    char * inode_key = "1212:9090";
-
-    will_return(__wrap_OSHash_Get, NULL);
-
-    expect_string(__wrap_OSHash_Add, key, "1212:9090");
-    will_return(__wrap_OSHash_Add, 1);
-
-    expect_string(__wrap__merror, formatted_msg,
-        "(6702): Unable to add inode to db: '1212:9090' => 'test-file.tst'");
-
-    ret = fim_update_inode(file, inode_key);
-
-    assert_int_equal(ret, -1);
-}
-
 
 void test_fim_configuration_directory_no_path(void **state)
 {
@@ -1147,7 +894,7 @@ void test_fim_audit_inode_event_modify(void **state)
     // Inside fim_checker
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test/test.file2'");
 
-    fim_audit_inode_event(file, inode_key, FIM_WHODATA, data->w_evt);
+    fim_audit_inode_event(file, FIM_WHODATA, data->w_evt);
 }
 
 
@@ -1163,7 +910,7 @@ void test_fim_audit_inode_event_add(void **state)
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test/test.file2'");
 
-    fim_audit_inode_event(file, inode_key, FIM_WHODATA, fim_data->w_evt);
+    fim_audit_inode_event(file, FIM_WHODATA, fim_data->w_evt);
 }
 
 
@@ -1180,10 +927,6 @@ void test_fim_checker_file(void **state)
 
     expect_string(__wrap_HasFilesystem, path, "/media/test.file");
     will_return(__wrap_HasFilesystem, 0);
-
-    expect_value(__wrap_rbtree_get, tree, syscheck.fim_entry);
-    expect_string(__wrap_rbtree_get, key, "/media/test.file");
-    will_return(__wrap_rbtree_get, fim_data->old_data);
 
     will_return_count(__wrap_OSHash_Get, NULL, 2);
     will_return(__wrap_rbtree_replace, 1);
@@ -1244,10 +987,6 @@ void test_fim_checker_link(void **state)
     expect_string(__wrap_HasFilesystem, path, "/media/test.file");
     will_return(__wrap_HasFilesystem, 0);
 
-    expect_value(__wrap_rbtree_get, tree, syscheck.fim_entry);
-    expect_string(__wrap_rbtree_get, key, "/media/test.file");
-    will_return(__wrap_rbtree_get, fim_data->old_data);
-
     will_return_count(__wrap_OSHash_Get, NULL, 2);
     will_return(__wrap_rbtree_replace, 1);
 
@@ -1288,14 +1027,6 @@ void test_fim_checker_deleted_enoent(void **state)
 
     will_return(__wrap_lstat, -1);
     errno = ENOENT;
-
-    expect_value(__wrap_rbtree_get, tree, syscheck.fim_entry);
-    expect_string(__wrap_rbtree_get, key, "/media/test.file");
-    will_return(__wrap_rbtree_get, fim_data->old_data);
-
-    expect_value(__wrap_rbtree_get, tree, syscheck.fim_entry);
-    expect_string(__wrap_rbtree_get, key, "/media/test.file");
-    will_return(__wrap_rbtree_get, NULL);
 
     fim_checker(path, item, NULL, 1);
 
@@ -1413,10 +1144,6 @@ void test_fim_realtime_event_deleted(void **state)
 {
     will_return(__wrap_lstat, -1);
 
-    expect_value(__wrap_rbtree_get, tree, syscheck.fim_entry);
-    expect_string(__wrap_rbtree_get, key, "test");
-    will_return(__wrap_rbtree_get, NULL);
-
     fim_realtime_event("test");
 }
 
@@ -1426,10 +1153,6 @@ void test_fim_realtime_event_deleted_saved(void **state)
     fim_data_t *fim_data = *state;
 
     will_return(__wrap_lstat, -1);
-
-    expect_value(__wrap_rbtree_get, tree, syscheck.fim_entry);
-    expect_string(__wrap_rbtree_get, key, "test");
-    will_return(__wrap_rbtree_get, fim_data->old_data);
 
     will_return(__wrap_OSHash_Get_ex, NULL);
 
@@ -1449,10 +1172,6 @@ void test_check_deleted_files(void **state)
 
     will_return(__wrap_rbtree_keys, keys);
 
-    expect_value(__wrap_rbtree_get, tree, syscheck.fim_entry);
-    expect_string(__wrap_rbtree_get, key, "test");
-    will_return(__wrap_rbtree_get, fim_data->old_data);
-
     check_deleted_files();
 }
 
@@ -1464,10 +1183,6 @@ void test_check_deleted_files_scanned(void **state)
     keys = os_AddStrArray("test", keys);
 
     will_return(__wrap_rbtree_keys, keys);
-
-    expect_value(__wrap_rbtree_get, tree, syscheck.fim_entry);
-    expect_string(__wrap_rbtree_get, key, "test");
-    will_return(__wrap_rbtree_get, fim_data->old_data);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'test'");
 
@@ -1481,10 +1196,6 @@ void test_fim_file_new(void **state)
     int ret;
 
     fim_data->item->index = 1;
-
-    expect_value(__wrap_rbtree_get, tree, syscheck.fim_entry);
-    expect_string(__wrap_rbtree_get, key, "file");
-    will_return(__wrap_rbtree_get, NULL);
 
     will_return(__wrap_rbtree_insert, 1);
     will_return(__wrap_OSHash_Get, NULL);
@@ -1506,9 +1217,9 @@ void test_fim_file_check(void **state)
     fim_data->item->index = 1;
     fim_data->item->configuration = 511;
 
-    expect_value(__wrap_rbtree_get, tree, syscheck.fim_entry);
-    expect_string(__wrap_rbtree_get, key, "file");
-    will_return(__wrap_rbtree_get, fim_data->old_data);
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "file");
+    will_return(__wrap_fim_db_get_path, fim_data->old_data);
 
     will_return_count(__wrap_OSHash_Get, NULL, 2);
     will_return(__wrap_rbtree_replace, 1);
@@ -1533,49 +1244,6 @@ void test_free_inode_data(void **state)
     free_inode_data(&inode_data);
 
     assert_null(inode_data);
-}
-
-
-// TODO: Find a way to properly test this condition.
-void test_delete_inode_item(void **state)
-{
-    fim_data_t *fim_data = *state;
-
-    char * file = strdup("test-file.tst");
-    char * inode_key = "1212:9090";
-
-    fim_data->inode_data->items = 1;
-    fim_data->inode_data->paths = os_AddStrArray(file, fim_data->inode_data->paths);
-    will_return(__wrap_OSHash_Get, fim_data->inode_data);
-
-    will_return(__wrap_OSHash_Delete, NULL);
-
-    delete_inode_item(inode_key, file);
-
-    free(file);
-}
-
-
-void test_delete_inode_item_paths(void **state)
-{
-    fim_data_t *fim_data = *state;
-
-    char * file1 = strdup("test-file1.tst");
-    char * file2 = strdup("test-file2.tst");
-    char * inode_key = "1212:9090";
-
-    fim_data->inode_data->items = 2;
-    fim_data->inode_data->paths = os_AddStrArray(file1, fim_data->inode_data->paths);
-    fim_data->inode_data->paths = os_AddStrArray(file2, fim_data->inode_data->paths);
-    will_return(__wrap_OSHash_Get, fim_data->inode_data);
-
-    delete_inode_item(inode_key, file1);
-
-    free(file1);
-    free(file2);
-
-    assert_int_equal(fim_data->inode_data->items, 1);
-    assert_string_equal(fim_data->inode_data->paths[0], "test-file2.tst");
 }
 
 
@@ -1622,27 +1290,6 @@ int main(void) {
         cmocka_unit_test(test_fim_check_depth_failure_strlen),
         cmocka_unit_test(test_fim_check_depth_failure_null_directory),
 
-        /* fim_insert */
-        cmocka_unit_test(test_fim_insert_success_new),
-        cmocka_unit_test_setup_teardown(test_fim_insert_success_add, setup_inode_data, teardown_inode_data),
-        cmocka_unit_test(test_fim_insert_failure_duplicated),
-        cmocka_unit_test(test_fim_insert_failure_new),
-
-        /* fim_update */
-        cmocka_unit_test_setup_teardown(test_fim_update_success, setup_inode_data, teardown_inode_data),
-        cmocka_unit_test(test_fim_update_failure_nofile),
-        cmocka_unit_test_setup_teardown(test_fim_update_failure_rbtree, setup_inode_data, teardown_inode_data),
-        cmocka_unit_test(test_fim_update_failure_update_inode),
-
-        /* fim_delete */
-        cmocka_unit_test(test_fim_delete),
-        cmocka_unit_test(test_fim_delete_no_data),
-
-        /* fim_update_inode */
-        cmocka_unit_test_setup_teardown(test_fim_update_inode_in_hash, setup_inode_data, teardown_inode_data),
-        cmocka_unit_test(test_fim_update_inode_not_in_hash),
-        cmocka_unit_test(test_fim_update_inode_not_in_hash_not_added),
-
         /* fim_configuration_directory */
         cmocka_unit_test(test_fim_configuration_directory_no_path),
         cmocka_unit_test(test_fim_configuration_directory_file),
@@ -1687,10 +1334,6 @@ int main(void) {
 
         /* free_inode */
         cmocka_unit_test(test_free_inode_data),
-
-        /* delete_inode */
-        cmocka_unit_test_setup_teardown(test_delete_inode_item, setup_inode_data, teardown_inode_data),
-        cmocka_unit_test_setup_teardown(test_delete_inode_item_paths, setup_inode_data, teardown_inode_data),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
