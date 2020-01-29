@@ -18,23 +18,23 @@
 #include "lists.h"
 
 /* Event fields - stored on a u_int32_t */
-#define FIELD_DSTIP      0x01
-#define FIELD_SRCPORT    0x02
-#define FIELD_DSTPORT    0x04
-#define FIELD_SRCUSER    0x08
-#define FIELD_USER       0x10
-#define FIELD_PROTOCOL   0x20
-#define FIELD_ACTION     0x40
-#define FIELD_URL        0x80
-#define FIELD_DATA       0x100
-#define FIELD_EXTRADATA  0x200
-#define FIELD_STATUS     0x400
-#define FIELD_SYSTEMNAME 0x800
-#define FIELD_SRCGEOIP   0x1000
-#define FIELD_DSTGEOIP   0x2000
-#define FIELD_LOCATION   0x4000
-#define FIELD_SRCIP      0x8000
-#define FIELD_ID         0x10000
+#define FIELD_SRCIP      0x01
+#define FIELD_ID         0x02
+#define FIELD_DSTIP      0x04
+#define FIELD_SRCPORT    0x08
+#define FIELD_DSTPORT    0x10
+#define FIELD_SRCUSER    0x20
+#define FIELD_USER       0x40
+#define FIELD_PROTOCOL   0x80
+#define FIELD_ACTION     0x100
+#define FIELD_URL        0x200
+#define FIELD_DATA       0x400
+#define FIELD_EXTRADATA  0x800
+#define FIELD_STATUS     0x1000
+#define FIELD_SYSTEMNAME 0x2000
+#define FIELD_SRCGEOIP   0x4000
+#define FIELD_DSTGEOIP   0x8000
+#define FIELD_LOCATION   0x10000
 #define N_FIELDS         17
 
 #define FIELD_DYNAMICS   0x20000

@@ -25,7 +25,9 @@ EventList *last_events_list;
 int num_rule_matching_threads;
 time_t current_time = 0;
 
-size_t field_offset[] = { 
+size_t field_offset[] = {
+    offsetof(Eventinfo, srcip),
+    offsetof(Eventinfo, id),
     offsetof(Eventinfo, dstip),
     offsetof(Eventinfo, srcport),
     offsetof(Eventinfo, dstport),
@@ -40,16 +42,16 @@ size_t field_offset[] = {
     offsetof(Eventinfo, systemname),
     offsetof(Eventinfo, srcgeoip),
     offsetof(Eventinfo, dstgeoip),
-    offsetof(Eventinfo, location),
-    offsetof(Eventinfo, srcip),
-    offsetof(Eventinfo, id)
+    offsetof(Eventinfo, location)
 };
+
+// Function to check for repetitions from same fields 
 
 bool same_loop(RuleInfo *rule, Eventinfo *lf, Eventinfo *my_lf) {
     int i;
-    u_int32_t same = rule->same_field;
+    u_int32_t same = rule->same_field >> 2;
 
-    for (i = 0; i < N_FIELDS-2 || same != 0; i++) {
+    for (i = 2; same != 0; i++) {
         if ((same & 1) == 1) {
             char * field1 = *(char **)((void *)lf + field_offset[i]);
             char * field2 = *(char **)((void *)my_lf + field_offset[i]);
@@ -63,11 +65,13 @@ bool same_loop(RuleInfo *rule, Eventinfo *lf, Eventinfo *my_lf) {
     return TRUE;
 }
 
+// Function to check for repetitions from different fields 
+
 bool different_loop(RuleInfo *rule, Eventinfo *lf, Eventinfo *my_lf) {
     int i;
     u_int32_t different = rule->different_field;
 
-    for (i = 0; i < N_FIELDS || different != 0; i++) {
+    for (i = 0; different != 0; i++) {
         if ((different & 1) == 1) {
             char * field1 = *(char **)((void *)lf + field_offset[i]);
             char * field2 = *(char **)((void *)my_lf + field_offset[i]);
