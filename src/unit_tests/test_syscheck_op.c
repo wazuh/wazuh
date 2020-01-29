@@ -16,8 +16,6 @@
 #include "../headers/syscheck_op.h"
 #include "../analysisd/eventinfo.h"
 
-extern int example_main(int argc, char *argv[]);
-
 /* Auxiliar structs */
 
 typedef struct __sk_decode_data_s {
@@ -27,8 +25,8 @@ typedef struct __sk_decode_data_s {
 }sk_decode_data_t;
 
 typedef struct __sk_fill_event_s {
-    sk_sum_t sum;
-    Eventinfo lf;
+    sk_sum_t *sum;
+    Eventinfo *lf;
     char *f_name;
 }sk_fill_event_t;
 
@@ -84,7 +82,7 @@ void __wrap__mdebug2(const char * file, int line, const char * func, const char 
 
     va_start(args, msg);
 
-    while(aux = strchr(aux, '%')) {
+    while(aux = strchr(aux, '%'), aux) {
         i++;
         aux++;
     }
@@ -198,21 +196,6 @@ static int teardown_string(void **state) {
     return 0;
 }
 
-static int teardown_strarray(void **state) {
-    free_strarray(*state);
-    return 0;
-}
-
-static int teardown_free_array(void **state) {
-    int i;
-
-    for(i = 0; state[i]; i++) {
-        free(state[i]);
-    }
-
-    return 0;
-}
-
 static int setup_sk_decode(void **state) {
     sk_decode_data_t *data = calloc(1, sizeof(sk_decode_data_t));
 
@@ -228,10 +211,13 @@ static int teardown_sk_decode(void **state) {
     sk_decode_data_t *data = *state;
 
     if(data) {
-        // sk_sum_clean(&data->sum);
+        sk_sum_clean(&data->sum);
 
-        os_free(data->c_sum);
-        os_free(data->w_sum);
+        if(data->c_sum)
+            free(data->c_sum);
+
+        if(data->w_sum)
+            free(data->w_sum);
 
         free(data);
     }
@@ -245,7 +231,18 @@ static int setup_sk_fill_event(void **state) {
         return -1;
     }
 
-    os_calloc(FIM_NFIELDS, sizeof(DynamicField), data->lf.fields);
+    if(data->lf = calloc(1, sizeof(Eventinfo)), data->lf == NULL) {
+        return -1;
+    }
+
+    if(data->lf->fields = calloc(FIM_NFIELDS, sizeof(DynamicField)), !data->lf->fields)
+        return -1;
+
+    data->lf->nfields = FIM_NFIELDS;
+
+    if(data->sum = calloc(1, sizeof(sk_sum_t)), data->sum == NULL) {
+        return -1;
+    }
 
     *state = data;
     return 0;
@@ -255,11 +252,12 @@ static int teardown_sk_fill_event(void **state) {
     sk_fill_event_t* data = *state;
 
     if(data){
-        os_free(data->f_name);
+        free(data->f_name);
 
-        os_free(data->lf.fields);
+        free(data->sum);
         // sk_sum_clean(&data->sum);
-        // Free_Eventinfo(&data->lf);
+        Free_Eventinfo(data->lf);
+        free(data);
     }
     return 0;
 }
@@ -271,7 +269,8 @@ static int setup_sk_build_sum(void **state) {
         return -1;
     }
 
-    os_calloc(OS_MAXSTR, sizeof(char), data->output);
+    if(data->output = calloc(OS_MAXSTR, sizeof(char)), !data->output)
+        return -1;
 
     *state = data;
     return 0;
@@ -281,8 +280,10 @@ static int teardown_sk_build_sum(void **state) {
     sk_build_sum_t* data = *state;
 
     if(data){
-        os_free(data->output);
+        free(data->output);
         // sk_sum_clean(&data->sum);
+
+        free(data);
     }
     return 0;
 }
@@ -300,8 +301,8 @@ static int teardown_unescape_syscheck_field(void **state) {
     unescape_syscheck_field_data_t *data = *state;
 
     if(data) {
-        os_free(data->input);
-        os_free(data->output);
+        free(data->input);
+        free(data->output);
         free(data);
     }
     return 0;
@@ -374,8 +375,13 @@ static void test_normalize_path_success(void **state) {
 }
 
 static void test_normalize_path_linux_dir(void **state) {
-    char *test_string = *state;
-    test_string = strdup("/var/ossec/unchanged/path");
+    char *test_string = strdup("/var/ossec/unchanged/path");
+
+    if(test_string != NULL) {
+        *state = test_string;
+    } else {
+        fail();
+    }
 
     normalize_path(test_string);
 
@@ -385,9 +391,7 @@ static void test_normalize_path_linux_dir(void **state) {
 static void test_normalize_path_null_input(void **state) {
     char *test_string = NULL;
 
-    normalize_path(test_string);
-
-    assert_null(test_string);
+    expect_assert_failure(normalize_path(test_string));
 }
 
 /* remove_empty_folders tests */
@@ -439,11 +443,7 @@ static void test_remove_empty_folders_recursive_success(void **state) {
 }
 
 static void test_remove_empty_folders_null_input(void **state) {
-    int ret = -1;
-
-    ret = remove_empty_folders(NULL);
-
-    assert_int_equal(ret, 0);
+    expect_assert_failure(remove_empty_folders(NULL));
 }
 
 // TODO: Validate this condition is required to be tested
@@ -501,7 +501,8 @@ static void test_remove_empty_folders_non_empty_dir(void **state) {
     int ret = -1;
     char **subdir;
 
-    os_calloc(2, sizeof(char*), subdir);
+    if(subdir = calloc(2, sizeof(char*)), !subdir)
+        fail();
 
     subdir[0] = strdup("some-file.tmp");
     subdir[1] = NULL;
@@ -538,7 +539,9 @@ static void test_remove_empty_folders_error_removing_dir(void **state) {
 
 /* sk_decode_sum tests */
 static void test_sk_decode_sum_no_decode(void **state) {
-    int ret = sk_decode_sum(NULL, "-1", NULL);
+    sk_decode_data_t *data = *state;
+
+    int ret = sk_decode_sum(&data->sum, "-1", NULL);
 
     assert_int_equal(ret, 1);
 }
@@ -549,7 +552,7 @@ static void test_sk_decode_sum_deleted_file(void **state) {
 
     data->c_sum = strdup("-1");
 
-    ret = sk_decode_sum(NULL, data->c_sum, NULL);
+    ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
 
     assert_int_equal(ret, 1);
 }
@@ -968,7 +971,7 @@ static void test_sk_decode_sum_extra_data_no_group_id(void **state) {
     assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
     assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
     assert_string_equal(data->sum.wdata.user_id, "user_id");
-    assert_string_equal(data->sum.wdata.user_name, "user_name");
+    assert_null(data->sum.wdata.user_name);
 }
 
 static void test_sk_decode_sum_extra_data_no_group_name(void **state) {
@@ -990,7 +993,7 @@ static void test_sk_decode_sum_extra_data_no_group_name(void **state) {
     assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
     assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
     assert_string_equal(data->sum.wdata.user_id, "user_id");
-    assert_string_equal(data->sum.wdata.user_name, "user_name");
+    assert_null(data->sum.wdata.user_name);
     assert_string_equal(data->sum.wdata.group_id, "group_id");
 }
 
@@ -1013,7 +1016,7 @@ static void test_sk_decode_sum_extra_data_no_process_name(void **state) {
     assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
     assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
     assert_string_equal(data->sum.wdata.user_id, "user_id");
-    assert_string_equal(data->sum.wdata.user_name, "user_name");
+    assert_null(data->sum.wdata.user_name);
     assert_string_equal(data->sum.wdata.group_id, "group_id");
     assert_string_equal(data->sum.wdata.group_name, "group_name");
 }
@@ -1037,10 +1040,10 @@ static void test_sk_decode_sum_extra_data_no_audit_uid(void **state) {
     assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
     assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
     assert_string_equal(data->sum.wdata.user_id, "user_id");
-    assert_string_equal(data->sum.wdata.user_name, "user_name");
+    assert_null(data->sum.wdata.user_name);
     assert_string_equal(data->sum.wdata.group_id, "group_id");
     assert_string_equal(data->sum.wdata.group_name, "group_name");
-    assert_string_equal(data->sum.wdata.process_name, "process_name");
+    assert_null(data->sum.wdata.process_name);
 }
 
 static void test_sk_decode_sum_extra_data_no_audit_name(void **state) {
@@ -1063,10 +1066,10 @@ static void test_sk_decode_sum_extra_data_no_audit_name(void **state) {
     assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
     assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
     assert_string_equal(data->sum.wdata.user_id, "user_id");
-    assert_string_equal(data->sum.wdata.user_name, "user_name");
+    assert_null(data->sum.wdata.user_name);
     assert_string_equal(data->sum.wdata.group_id, "group_id");
     assert_string_equal(data->sum.wdata.group_name, "group_name");
-    assert_string_equal(data->sum.wdata.process_name, "process_name");
+    assert_null(data->sum.wdata.process_name);
     assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
 }
 
@@ -1090,10 +1093,10 @@ static void test_sk_decode_sum_extra_data_no_effective_uid(void **state) {
     assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
     assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
     assert_string_equal(data->sum.wdata.user_id, "user_id");
-    assert_string_equal(data->sum.wdata.user_name, "user_name");
+    assert_null(data->sum.wdata.user_name);
     assert_string_equal(data->sum.wdata.group_id, "group_id");
     assert_string_equal(data->sum.wdata.group_name, "group_name");
-    assert_string_equal(data->sum.wdata.process_name, "process_name");
+    assert_null(data->sum.wdata.process_name);
     assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
     assert_string_equal(data->sum.wdata.audit_name, "audit_name");
 }
@@ -1118,10 +1121,10 @@ static void test_sk_decode_sum_extra_data_no_effective_name(void **state) {
     assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
     assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
     assert_string_equal(data->sum.wdata.user_id, "user_id");
-    assert_string_equal(data->sum.wdata.user_name, "user_name");
+    assert_null(data->sum.wdata.user_name);
     assert_string_equal(data->sum.wdata.group_id, "group_id");
     assert_string_equal(data->sum.wdata.group_name, "group_name");
-    assert_string_equal(data->sum.wdata.process_name, "process_name");
+    assert_null(data->sum.wdata.process_name);
     assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
     assert_string_equal(data->sum.wdata.audit_name, "audit_name");
     assert_string_equal(data->sum.wdata.effective_uid, "effective_uid");
@@ -1147,10 +1150,10 @@ static void test_sk_decode_sum_extra_data_no_ppid(void **state) {
     assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
     assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
     assert_string_equal(data->sum.wdata.user_id, "user_id");
-    assert_string_equal(data->sum.wdata.user_name, "user_name");
+    assert_null(data->sum.wdata.user_name);
     assert_string_equal(data->sum.wdata.group_id, "group_id");
     assert_string_equal(data->sum.wdata.group_name, "group_name");
-    assert_string_equal(data->sum.wdata.process_name, "process_name");
+    assert_null(data->sum.wdata.process_name);
     assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
     assert_string_equal(data->sum.wdata.audit_name, "audit_name");
     assert_string_equal(data->sum.wdata.effective_uid, "effective_uid");
@@ -1177,10 +1180,10 @@ static void test_sk_decode_sum_extra_data_no_process_id(void **state) {
     assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
     assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
     assert_string_equal(data->sum.wdata.user_id, "user_id");
-    assert_string_equal(data->sum.wdata.user_name, "user_name");
+    assert_null(data->sum.wdata.user_name);
     assert_string_equal(data->sum.wdata.group_id, "group_id");
     assert_string_equal(data->sum.wdata.group_name, "group_name");
-    assert_string_equal(data->sum.wdata.process_name, "process_name");
+    assert_null(data->sum.wdata.process_name);
     assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
     assert_string_equal(data->sum.wdata.audit_name, "audit_name");
     assert_string_equal(data->sum.wdata.effective_uid, "effective_uid");
@@ -1412,30 +1415,28 @@ static void test_sk_decode_sum_extra_data_null_sum(void **state) {
                          "3691689a513ace7e508297b583d7050d:"
                          "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
 
-    int ret = 123456789;
-
-    ret = sk_decode_sum(NULL, data->c_sum, NULL);
-
+    expect_assert_failure(sk_decode_sum(NULL, data->c_sum, NULL));
 }
 
 // TODO: Validate this condition is required to be tested
 static void test_sk_decode_sum_extra_data_null_c_sum(void **state) {
     sk_decode_data_t *data = *state;
-    int ret = 123456789;
 
-    ret = sk_decode_sum(&data->sum, NULL, NULL);
-
+    expect_assert_failure(sk_decode_sum(&data->sum, NULL, NULL));
 }
 
 /* sk_decode_extradata tests */
-// TODO: Validate this condition is required to be tested
+static void test_sk_decode_extradata_null_sum(void **state) {
+    sk_decode_data_t *data = *state;
+    data->c_sum = strdup("some string");
+
+    expect_assert_failure(sk_decode_extradata(NULL, data->c_sum));
+}
+
 static void test_sk_decode_extradata_null_c_sum(void **state) {
     sk_decode_data_t *data = *state;
-    int ret = 12345;
 
-    ret = sk_decode_extradata(&data->sum, NULL);
-
-    assert_int_equal(ret, 0);
+    expect_assert_failure(sk_decode_extradata(&data->sum, NULL));
 }
 
 static void test_sk_decode_extradata_no_changes(void **state) {
@@ -1507,89 +1508,89 @@ static void test_sk_fill_event_full_event(void **state) {
 
     data->f_name = strdup("f_name");
 
-    data->sum.size = "size";
-    data->sum.perm = 123456; // 361100 in octal
-    data->sum.uid = "uid";
-    data->sum.gid = "gid";
-    data->sum.md5 = "md5";
-    data->sum.sha1 = "sha1";
-    data->sum.uname = "uname";
-    data->sum.gname = "gname";
-    data->sum.mtime = 2345678;
-    data->sum.inode = 3456789;
-    data->sum.sha256 = "sha256";
-    data->sum.attributes = "attributes";
-    data->sum.wdata.user_id = "user_id";
-    data->sum.wdata.user_name = "user_name";
-    data->sum.wdata.group_id = "group_id";
-    data->sum.wdata.group_name = "group_name";
-    data->sum.wdata.process_name = "process_name";
-    data->sum.wdata.audit_uid = "audit_uid";
-    data->sum.wdata.audit_name = "audit_name";
-    data->sum.wdata.effective_uid = "effective_uid";
-    data->sum.wdata.effective_name = "effective_name";
-    data->sum.wdata.ppid = "ppid";
-    data->sum.wdata.process_id = "process_id";
-    data->sum.tag = "tag";
-    data->sum.symbolic_path = "symbolic_path";
+    data->sum->size = "size";
+    data->sum->perm = 123456; // 361100 in octal
+    data->sum->uid = "uid";
+    data->sum->gid = "gid";
+    data->sum->md5 = "md5";
+    data->sum->sha1 = "sha1";
+    data->sum->uname = "uname";
+    data->sum->gname = "gname";
+    data->sum->mtime = 2345678;
+    data->sum->inode = 3456789;
+    data->sum->sha256 = "sha256";
+    data->sum->attributes = "attributes";
+    data->sum->wdata.user_id = "user_id";
+    data->sum->wdata.user_name = "user_name";
+    data->sum->wdata.group_id = "group_id";
+    data->sum->wdata.group_name = "group_name";
+    data->sum->wdata.process_name = "process_name";
+    data->sum->wdata.audit_uid = "audit_uid";
+    data->sum->wdata.audit_name = "audit_name";
+    data->sum->wdata.effective_uid = "effective_uid";
+    data->sum->wdata.effective_name = "effective_name";
+    data->sum->wdata.ppid = "ppid";
+    data->sum->wdata.process_id = "process_id";
+    data->sum->tag = "tag";
+    data->sum->symbolic_path = "symbolic_path";
 
-    sk_fill_event(&data->lf, data->f_name, &data->sum);
+    sk_fill_event(data->lf, data->f_name, data->sum);
 
-    assert_string_equal(data->lf.filename, "f_name");
-    assert_string_equal(data->lf.fields[FIM_FILE].value, "f_name");
-    assert_string_equal(data->lf.fields[FIM_SIZE].value, "size");
-    assert_string_equal(data->lf.fields[FIM_PERM].value, "361100");
-    assert_string_equal(data->lf.fields[FIM_UID].value, "uid");
-    assert_string_equal(data->lf.fields[FIM_GID].value, "gid");
-    assert_string_equal(data->lf.fields[FIM_MD5].value, "md5");
-    assert_string_equal(data->lf.fields[FIM_SHA1].value, "sha1");
-    assert_string_equal(data->lf.fields[FIM_UNAME].value, "uname");
-    assert_string_equal(data->lf.fields[FIM_GNAME].value, "gname");
-    assert_int_equal(data->lf.mtime_after, data->sum.mtime);
-    assert_string_equal(data->lf.fields[FIM_MTIME].value, "2345678");
-    assert_int_equal(data->lf.inode_after, data->sum.inode);
-    assert_string_equal(data->lf.fields[FIM_INODE].value, "3456789");
-    assert_string_equal(data->lf.fields[FIM_SHA256].value, "sha256");
-    assert_string_equal(data->lf.fields[FIM_ATTRS].value, "attributes");
+    assert_string_equal(data->lf->filename, "f_name");
+    assert_string_equal(data->lf->fields[FIM_FILE].value, "f_name");
+    assert_string_equal(data->lf->fields[FIM_SIZE].value, "size");
+    assert_string_equal(data->lf->fields[FIM_PERM].value, "361100");
+    assert_string_equal(data->lf->fields[FIM_UID].value, "uid");
+    assert_string_equal(data->lf->fields[FIM_GID].value, "gid");
+    assert_string_equal(data->lf->fields[FIM_MD5].value, "md5");
+    assert_string_equal(data->lf->fields[FIM_SHA1].value, "sha1");
+    assert_string_equal(data->lf->fields[FIM_UNAME].value, "uname");
+    assert_string_equal(data->lf->fields[FIM_GNAME].value, "gname");
+    assert_int_equal(data->lf->mtime_after, data->sum->mtime);
+    assert_string_equal(data->lf->fields[FIM_MTIME].value, "2345678");
+    assert_int_equal(data->lf->inode_after, data->sum->inode);
+    assert_string_equal(data->lf->fields[FIM_INODE].value, "3456789");
+    assert_string_equal(data->lf->fields[FIM_SHA256].value, "sha256");
+    assert_string_equal(data->lf->fields[FIM_ATTRS].value, "attributes");
 
-    assert_string_equal(data->lf.user_id, "user_id");
-    assert_string_equal(data->lf.fields[FIM_USER_ID].value, "user_id");
+    assert_string_equal(data->lf->user_id, "user_id");
+    assert_string_equal(data->lf->fields[FIM_USER_ID].value, "user_id");
 
-    assert_string_equal(data->lf.user_name, "user_name");
-    assert_string_equal(data->lf.fields[FIM_USER_NAME].value, "user_name");
+    assert_string_equal(data->lf->user_name, "user_name");
+    assert_string_equal(data->lf->fields[FIM_USER_NAME].value, "user_name");
 
-    assert_string_equal(data->lf.group_id, "group_id");
-    assert_string_equal(data->lf.fields[FIM_GROUP_ID].value, "group_id");
+    assert_string_equal(data->lf->group_id, "group_id");
+    assert_string_equal(data->lf->fields[FIM_GROUP_ID].value, "group_id");
 
-    assert_string_equal(data->lf.group_name, "group_name");
-    assert_string_equal(data->lf.fields[FIM_GROUP_NAME].value, "group_name");
+    assert_string_equal(data->lf->group_name, "group_name");
+    assert_string_equal(data->lf->fields[FIM_GROUP_NAME].value, "group_name");
 
-    assert_string_equal(data->lf.process_name, "process_name");
-    assert_string_equal(data->lf.fields[FIM_PROC_NAME].value, "process_name");
+    assert_string_equal(data->lf->process_name, "process_name");
+    assert_string_equal(data->lf->fields[FIM_PROC_NAME].value, "process_name");
 
-    assert_string_equal(data->lf.audit_uid, "audit_uid");
-    assert_string_equal(data->lf.fields[FIM_AUDIT_ID].value, "audit_uid");
+    assert_string_equal(data->lf->audit_uid, "audit_uid");
+    assert_string_equal(data->lf->fields[FIM_AUDIT_ID].value, "audit_uid");
 
-    assert_string_equal(data->lf.audit_name, "audit_name");
-    assert_string_equal(data->lf.fields[FIM_AUDIT_NAME].value, "audit_name");
+    assert_string_equal(data->lf->audit_name, "audit_name");
+    assert_string_equal(data->lf->fields[FIM_AUDIT_NAME].value, "audit_name");
 
-    assert_string_equal(data->lf.effective_uid, "effective_uid");
-    assert_string_equal(data->lf.fields[FIM_EFFECTIVE_UID].value, "effective_uid");
+    assert_string_equal(data->lf->effective_uid, "effective_uid");
+    assert_string_equal(data->lf->fields[FIM_EFFECTIVE_UID].value, "effective_uid");
 
-    assert_string_equal(data->lf.effective_name, "effective_name");
-    assert_string_equal(data->lf.fields[FIM_EFFECTIVE_NAME].value, "effective_name");
+    assert_string_equal(data->lf->effective_name, "effective_name");
+    assert_string_equal(data->lf->fields[FIM_EFFECTIVE_NAME].value, "effective_name");
 
-    assert_string_equal(data->lf.ppid, "ppid");
-    assert_string_equal(data->lf.fields[FIM_PPID].value, "ppid");
+    assert_string_equal(data->lf->ppid, "ppid");
+    assert_string_equal(data->lf->fields[FIM_PPID].value, "ppid");
 
-    assert_string_equal(data->lf.process_id, "process_id");
-    assert_string_equal(data->lf.fields[FIM_PROC_ID].value, "process_id");
+    assert_string_equal(data->lf->process_id, "process_id");
+    assert_string_equal(data->lf->fields[FIM_PROC_ID].value, "process_id");
 
-    assert_string_equal(data->lf.sk_tag, "tag");
-    assert_string_equal(data->lf.fields[FIM_TAG].value, "tag");
+    assert_string_equal(data->lf->sk_tag, "tag");
+    assert_string_equal(data->lf->fields[FIM_TAG].value, "tag");
 
-    assert_string_equal(data->lf.sym_path, "symbolic_path");
-    assert_string_equal(data->lf.fields[FIM_SYM_PATH].value, "symbolic_path");
+    assert_string_equal(data->lf->sym_path, "symbolic_path");
+    assert_string_equal(data->lf->fields[FIM_SYM_PATH].value, "symbolic_path");
 }
 
 static void test_sk_fill_event_empty_event(void **state) {
@@ -1597,63 +1598,63 @@ static void test_sk_fill_event_empty_event(void **state) {
 
     data->f_name = strdup("f_name");
 
-    sk_fill_event(&data->lf, data->f_name, &data->sum);
+    sk_fill_event(data->lf, data->f_name, data->sum);
 
-    assert_string_equal(data->lf.filename, "f_name");
-    assert_string_equal(data->lf.fields[FIM_FILE].value, "f_name");
-    assert_null(data->lf.fields[FIM_SIZE].value);
-    assert_null(data->lf.fields[FIM_PERM].value);
-    assert_null(data->lf.fields[FIM_UID].value);
-    assert_null(data->lf.fields[FIM_GID].value);
-    assert_null(data->lf.fields[FIM_MD5].value);
-    assert_null(data->lf.fields[FIM_SHA1].value);
-    assert_null(data->lf.fields[FIM_UNAME].value);
-    assert_null(data->lf.fields[FIM_GNAME].value);
-    assert_int_equal(data->lf.mtime_after, data->sum.mtime);
-    assert_null(data->lf.fields[FIM_MTIME].value);
-    assert_int_equal(data->lf.inode_after, data->sum.inode);
-    assert_null(data->lf.fields[FIM_INODE].value);
-    assert_null(data->lf.fields[FIM_SHA256].value);
-    assert_null(data->lf.fields[FIM_ATTRS].value);
+    assert_string_equal(data->lf->filename, "f_name");
+    assert_string_equal(data->lf->fields[FIM_FILE].value, "f_name");
+    assert_null(data->lf->fields[FIM_SIZE].value);
+    assert_null(data->lf->fields[FIM_PERM].value);
+    assert_null(data->lf->fields[FIM_UID].value);
+    assert_null(data->lf->fields[FIM_GID].value);
+    assert_null(data->lf->fields[FIM_MD5].value);
+    assert_null(data->lf->fields[FIM_SHA1].value);
+    assert_null(data->lf->fields[FIM_UNAME].value);
+    assert_null(data->lf->fields[FIM_GNAME].value);
+    assert_int_equal(data->lf->mtime_after, data->sum->mtime);
+    assert_null(data->lf->fields[FIM_MTIME].value);
+    assert_int_equal(data->lf->inode_after, data->sum->inode);
+    assert_null(data->lf->fields[FIM_INODE].value);
+    assert_null(data->lf->fields[FIM_SHA256].value);
+    assert_null(data->lf->fields[FIM_ATTRS].value);
 
-    assert_null(data->lf.user_id);
-    assert_null(data->lf.fields[FIM_USER_ID].value);
+    assert_null(data->lf->user_id);
+    assert_null(data->lf->fields[FIM_USER_ID].value);
 
-    assert_null(data->lf.user_name);
-    assert_null(data->lf.fields[FIM_USER_NAME].value);
+    assert_null(data->lf->user_name);
+    assert_null(data->lf->fields[FIM_USER_NAME].value);
 
-    assert_null(data->lf.group_id);
-    assert_null(data->lf.fields[FIM_GROUP_ID].value);
+    assert_null(data->lf->group_id);
+    assert_null(data->lf->fields[FIM_GROUP_ID].value);
 
-    assert_null(data->lf.group_name);
-    assert_null(data->lf.fields[FIM_GROUP_NAME].value);
+    assert_null(data->lf->group_name);
+    assert_null(data->lf->fields[FIM_GROUP_NAME].value);
 
-    assert_null(data->lf.process_name);
-    assert_null(data->lf.fields[FIM_PROC_NAME].value);
+    assert_null(data->lf->process_name);
+    assert_null(data->lf->fields[FIM_PROC_NAME].value);
 
-    assert_null(data->lf.audit_uid);
-    assert_null(data->lf.fields[FIM_AUDIT_ID].value);
+    assert_null(data->lf->audit_uid);
+    assert_null(data->lf->fields[FIM_AUDIT_ID].value);
 
-    assert_null(data->lf.audit_name);
-    assert_null(data->lf.fields[FIM_AUDIT_NAME].value);
+    assert_null(data->lf->audit_name);
+    assert_null(data->lf->fields[FIM_AUDIT_NAME].value);
 
-    assert_null(data->lf.effective_uid);
-    assert_null(data->lf.fields[FIM_EFFECTIVE_UID].value);
+    assert_null(data->lf->effective_uid);
+    assert_null(data->lf->fields[FIM_EFFECTIVE_UID].value);
 
-    assert_null(data->lf.effective_name);
-    assert_null(data->lf.fields[FIM_EFFECTIVE_NAME].value);
+    assert_null(data->lf->effective_name);
+    assert_null(data->lf->fields[FIM_EFFECTIVE_NAME].value);
 
-    assert_null(data->lf.ppid);
-    assert_null(data->lf.fields[FIM_PPID].value);
+    assert_null(data->lf->ppid);
+    assert_null(data->lf->fields[FIM_PPID].value);
 
-    assert_null(data->lf.process_id);
-    assert_null(data->lf.fields[FIM_PROC_ID].value);
+    assert_null(data->lf->process_id);
+    assert_null(data->lf->fields[FIM_PROC_ID].value);
 
-    assert_null(data->lf.sk_tag);
-    assert_null(data->lf.fields[FIM_TAG].value);
+    assert_null(data->lf->sk_tag);
+    assert_null(data->lf->fields[FIM_TAG].value);
 
-    assert_null(data->lf.sym_path);
-    assert_null(data->lf.fields[FIM_SYM_PATH].value);
+    assert_null(data->lf->sym_path);
+    assert_null(data->lf->fields[FIM_SYM_PATH].value);
 }
 
 static void test_sk_fill_event_win_perm(void **state) {
@@ -1661,87 +1662,83 @@ static void test_sk_fill_event_win_perm(void **state) {
 
     data->f_name = strdup("f_name");
 
-    data->sum.win_perm = "win_perm";
+    data->sum->win_perm = "win_perm";
 
-    sk_fill_event(&data->lf, data->f_name, &data->sum);
+    sk_fill_event(data->lf, data->f_name, data->sum);
 
-    assert_string_equal(data->lf.filename, "f_name");
-    assert_string_equal(data->lf.fields[FIM_FILE].value, "f_name");
-    assert_null(data->lf.fields[FIM_SIZE].value);
-    assert_string_equal(data->lf.fields[FIM_PERM].value, "win_perm");
-    assert_null(data->lf.fields[FIM_UID].value);
-    assert_null(data->lf.fields[FIM_GID].value);
-    assert_null(data->lf.fields[FIM_MD5].value);
-    assert_null(data->lf.fields[FIM_SHA1].value);
-    assert_null(data->lf.fields[FIM_UNAME].value);
-    assert_null(data->lf.fields[FIM_GNAME].value);
-    assert_int_equal(data->lf.mtime_after, data->sum.mtime);
-    assert_null(data->lf.fields[FIM_MTIME].value);
-    assert_int_equal(data->lf.inode_after, data->sum.inode);
-    assert_null(data->lf.fields[FIM_INODE].value);
-    assert_null(data->lf.fields[FIM_SHA256].value);
-    assert_null(data->lf.fields[FIM_ATTRS].value);
+    assert_string_equal(data->lf->filename, "f_name");
+    assert_string_equal(data->lf->fields[FIM_FILE].value, "f_name");
+    assert_null(data->lf->fields[FIM_SIZE].value);
+    assert_string_equal(data->lf->fields[FIM_PERM].value, "win_perm");
+    assert_null(data->lf->fields[FIM_UID].value);
+    assert_null(data->lf->fields[FIM_GID].value);
+    assert_null(data->lf->fields[FIM_MD5].value);
+    assert_null(data->lf->fields[FIM_SHA1].value);
+    assert_null(data->lf->fields[FIM_UNAME].value);
+    assert_null(data->lf->fields[FIM_GNAME].value);
+    assert_int_equal(data->lf->mtime_after, data->sum->mtime);
+    assert_null(data->lf->fields[FIM_MTIME].value);
+    assert_int_equal(data->lf->inode_after, data->sum->inode);
+    assert_null(data->lf->fields[FIM_INODE].value);
+    assert_null(data->lf->fields[FIM_SHA256].value);
+    assert_null(data->lf->fields[FIM_ATTRS].value);
 
-    assert_null(data->lf.user_id);
-    assert_null(data->lf.fields[FIM_USER_ID].value);
+    assert_null(data->lf->user_id);
+    assert_null(data->lf->fields[FIM_USER_ID].value);
 
-    assert_null(data->lf.user_name);
-    assert_null(data->lf.fields[FIM_USER_NAME].value);
+    assert_null(data->lf->user_name);
+    assert_null(data->lf->fields[FIM_USER_NAME].value);
 
-    assert_null(data->lf.group_id);
-    assert_null(data->lf.fields[FIM_GROUP_ID].value);
+    assert_null(data->lf->group_id);
+    assert_null(data->lf->fields[FIM_GROUP_ID].value);
 
-    assert_null(data->lf.group_name);
-    assert_null(data->lf.fields[FIM_GROUP_NAME].value);
+    assert_null(data->lf->group_name);
+    assert_null(data->lf->fields[FIM_GROUP_NAME].value);
 
-    assert_null(data->lf.process_name);
-    assert_null(data->lf.fields[FIM_PROC_NAME].value);
+    assert_null(data->lf->process_name);
+    assert_null(data->lf->fields[FIM_PROC_NAME].value);
 
-    assert_null(data->lf.audit_uid);
-    assert_null(data->lf.fields[FIM_AUDIT_ID].value);
+    assert_null(data->lf->audit_uid);
+    assert_null(data->lf->fields[FIM_AUDIT_ID].value);
 
-    assert_null(data->lf.audit_name);
-    assert_null(data->lf.fields[FIM_AUDIT_NAME].value);
+    assert_null(data->lf->audit_name);
+    assert_null(data->lf->fields[FIM_AUDIT_NAME].value);
 
-    assert_null(data->lf.effective_uid);
-    assert_null(data->lf.fields[FIM_EFFECTIVE_UID].value);
+    assert_null(data->lf->effective_uid);
+    assert_null(data->lf->fields[FIM_EFFECTIVE_UID].value);
 
-    assert_null(data->lf.effective_name);
-    assert_null(data->lf.fields[FIM_EFFECTIVE_NAME].value);
+    assert_null(data->lf->effective_name);
+    assert_null(data->lf->fields[FIM_EFFECTIVE_NAME].value);
 
-    assert_null(data->lf.ppid);
-    assert_null(data->lf.fields[FIM_PPID].value);
+    assert_null(data->lf->ppid);
+    assert_null(data->lf->fields[FIM_PPID].value);
 
-    assert_null(data->lf.process_id);
-    assert_null(data->lf.fields[FIM_PROC_ID].value);
+    assert_null(data->lf->process_id);
+    assert_null(data->lf->fields[FIM_PROC_ID].value);
 
-    assert_null(data->lf.sk_tag);
-    assert_null(data->lf.fields[FIM_TAG].value);
+    assert_null(data->lf->sk_tag);
+    assert_null(data->lf->fields[FIM_TAG].value);
 
-    assert_null(data->lf.sym_path);
-    assert_null(data->lf.fields[FIM_SYM_PATH].value);
+    assert_null(data->lf->sym_path);
+    assert_null(data->lf->fields[FIM_SYM_PATH].value);
 }
 
-// TODO: Validate this condition is required to be tested
 static void test_sk_fill_event_null_eventinfo(void **state) {
     sk_fill_event_t *data = *state;
 
     data->f_name = strdup("f_name");
 
-    data->sum.win_perm = "win_perm";
+    data->sum->win_perm = "win_perm";
 
-    sk_fill_event(NULL, data->f_name, &data->sum);
+    expect_assert_failure(sk_fill_event(NULL, data->f_name, data->sum));
 }
 
-// TODO: Validate this condition is required to be tested
 static void test_sk_fill_event_null_f_name(void **state) {
     sk_fill_event_t *data = *state;
 
-    data->f_name = strdup("f_name");
+    data->sum->win_perm = "win_perm";
 
-    data->sum.win_perm = "win_perm";
-
-    sk_fill_event(&data->lf, NULL, &data->sum);
+    expect_assert_failure(sk_fill_event(data->lf, NULL, data->sum));
 }
 
 // TODO: Validate this condition is required to be tested
@@ -1750,9 +1747,7 @@ static void test_sk_fill_event_null_sum(void **state) {
 
     data->f_name = strdup("f_name");
 
-    data->sum.win_perm = "win_perm";
-
-    sk_fill_event(&data->lf, data->f_name, NULL);
+    expect_assert_failure(sk_fill_event(data->lf, data->f_name, NULL));
 }
 
 /* sk_build_sum tests */
@@ -1861,20 +1856,16 @@ static void test_sk_build_sum_insufficient_buffer_size(void **state) {
     assert_string_equal(data->output, "size:win_");
 }
 
-// TODO: Validate this condition is required to be tested
 static void test_sk_build_sum_null_sum(void **state) {
     sk_build_sum_t *data = *state;
-    int ret;
 
-    ret = sk_build_sum(NULL, data->output, OS_MAXSTR);
+    expect_assert_failure(sk_build_sum(NULL, data->output, OS_MAXSTR));
 }
 
-// TODO: Validate this condition is required to be tested
 static void test_sk_build_sum_null_output(void **state) {
     sk_build_sum_t *data = *state;
-    int ret;
 
-    ret = sk_build_sum(&data->sum, NULL, OS_MAXSTR);
+    expect_assert_failure(sk_build_sum(&data->sum, NULL, OS_MAXSTR));
 }
 
 /* sk_sum_clean tests */
@@ -1894,6 +1885,7 @@ static void test_sk_sum_clean_full_message(void **state) {
 
     // Fill sum with as many info as possible
     ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
+    assert_int_equal(ret, 0);
 
     // And free it
     sk_sum_clean(&data->sum);
@@ -1910,13 +1902,14 @@ static void test_sk_sum_clean_shortest_valid_message(void **state) {
     sk_decode_data_t *data = *state;
     int ret;
 
-    char *c_sum = strdup("size:1234:uid:gid:"
+    data->c_sum = strdup("size:1234:uid:gid:"
                          "3691689a513ace7e508297b583d7050d:"
                          "07f05add1049244e7e71ad0f54f24d8094cd8f8b:"
                          "uname:gname:2345:3456");
 
     // Fill sum with as many info as possible
     ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
+    assert_int_equal(ret, 0);
 
     // And free it
     sk_sum_clean(&data->sum);
@@ -1933,10 +1926,11 @@ static void test_sk_sum_clean_invalid_message(void **state) {
     sk_decode_data_t *data = *state;
     int ret;
 
-    char *c_sum = strdup("This is not a valid syscheck message");
+    data->c_sum = strdup("This is not a valid syscheck message");
 
     // Fill sum with as many info as possible
     ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
+    assert_int_equal(ret, -1);
 
     // And free it
     sk_sum_clean(&data->sum);
@@ -1951,7 +1945,7 @@ static void test_sk_sum_clean_invalid_message(void **state) {
 
 // TODO: Validate this condition is required to be tested
 static void test_sk_sum_clean_null_sum(void **state) {
-    sk_sum_clean(NULL);
+    expect_assert_failure(sk_sum_clean(NULL));
 }
 
 /* unescape_syscheck_field tests */
@@ -2079,13 +2073,13 @@ static void test_get_group_failure(void **state) {
 static void test_ag_send_syscheck_success(void **state) {
     char *input = "This is a mock message, it wont be sent anywhere";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, SYS_LOCAL_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR SYS_LOCAL_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
 
-    will_return(__wrap_OS_ConnectUnixDomain, 1);
+    will_return(__wrap_OS_ConnectUnixDomain, 1234);
 
-    expect_value(__wrap_OS_SendSecureTCP, sock, 1);
+    expect_value(__wrap_OS_SendSecureTCP, sock, 1234);
     expect_value(__wrap_OS_SendSecureTCP, size, 48);
     expect_string(__wrap_OS_SendSecureTCP, msg, input);
 
@@ -2097,7 +2091,7 @@ static void test_ag_send_syscheck_success(void **state) {
 static void test_ag_send_syscheck_unable_to_connect(void **state) {
     char *input = "This is a mock message, it wont be sent anywhere";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, SYS_LOCAL_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR SYS_LOCAL_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
 
@@ -2110,17 +2104,19 @@ static void test_ag_send_syscheck_unable_to_connect(void **state) {
     expect_value(__wrap__merror, param2, EADDRNOTAVAIL);
 
     ag_send_syscheck(input);
+
+    errno = 0;
 }
 static void test_ag_send_syscheck_error_sending_message(void **state) {
     char *input = "This is a mock message, it wont be sent anywhere";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, SYS_LOCAL_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR SYS_LOCAL_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
 
-    will_return(__wrap_OS_ConnectUnixDomain, 1);
+    will_return(__wrap_OS_ConnectUnixDomain, 1234);
 
-    expect_value(__wrap_OS_SendSecureTCP, sock, 1);
+    expect_value(__wrap_OS_SendSecureTCP, sock, 1234);
     expect_value(__wrap_OS_SendSecureTCP, size, 48);
     expect_string(__wrap_OS_SendSecureTCP, msg, input);
 
@@ -2133,6 +2129,8 @@ static void test_ag_send_syscheck_error_sending_message(void **state) {
     expect_value(__wrap__merror, param2, EWOULDBLOCK);
 
     ag_send_syscheck(input);
+
+    errno = 0;
 }
 
 /* decode_win_attributes tests */
@@ -2204,7 +2202,7 @@ static void test_decode_win_permissions_success_all_permissions(void **state) {
     char *output;
 
     snprintf(raw_perm, OS_MAXSTR,  "|account,0,%ld",
-        GENERIC_READ |
+        (long int)(GENERIC_READ |
         GENERIC_WRITE |
         GENERIC_EXECUTE |
         GENERIC_ALL |
@@ -2220,11 +2218,11 @@ static void test_decode_win_permissions_success_all_permissions(void **state) {
         FILE_WRITE_EA |
         FILE_EXECUTE |
         FILE_READ_ATTRIBUTES |
-        FILE_WRITE_ATTRIBUTES);
+        FILE_WRITE_ATTRIBUTES));
 
     output = decode_win_permissions(raw_perm);
 
-    os_free(raw_perm);
+    free(raw_perm);
     *state = output;
 
     assert_string_equal(output, "account (allowed): generic_read|generic_write|generic_execute|"
@@ -2236,11 +2234,11 @@ static void test_decode_win_permissions_success_no_permissions(void **state) {
     char *raw_perm = calloc(OS_MAXSTR, sizeof(char));
     char *output;
 
-    snprintf(raw_perm, OS_MAXSTR,  "|account,0,%ld", 0);
+    snprintf(raw_perm, OS_MAXSTR,  "|account,0,%ld", (long int)0);
 
     output = decode_win_permissions(raw_perm);
 
-    os_free(raw_perm);
+    free(raw_perm);
     *state = output;
 
     assert_string_equal(output, "account (allowed):");
@@ -2251,7 +2249,7 @@ static void test_decode_win_permissions_success_some_permissions(void **state) {
     char *output;
 
     snprintf(raw_perm, OS_MAXSTR,  "|account,0,%ld",
-        GENERIC_READ |
+        (long int)(GENERIC_READ |
         GENERIC_EXECUTE |
         DELETE |
         WRITE_DAC |
@@ -2259,11 +2257,11 @@ static void test_decode_win_permissions_success_some_permissions(void **state) {
         FILE_WRITE_DATA |
         FILE_READ_EA |
         FILE_EXECUTE |
-        FILE_WRITE_ATTRIBUTES);
+        FILE_WRITE_ATTRIBUTES));
 
     output = decode_win_permissions(raw_perm);
 
-    os_free(raw_perm);
+    free(raw_perm);
     *state = output;
 
     assert_string_equal(output, "account (allowed): generic_read|generic_execute|"
@@ -2274,11 +2272,11 @@ static void test_decode_win_permissions_success_multiple_accounts(void **state) 
     char *raw_perm = calloc(OS_MAXSTR, sizeof(char));
     char *output;
 
-    snprintf(raw_perm, OS_MAXSTR,  "|first,0,%ld|second,1,%ld", GENERIC_READ, GENERIC_EXECUTE);
+    snprintf(raw_perm, OS_MAXSTR,  "|first,0,%ld|second,1,%ld", (long int)GENERIC_READ, (long int)GENERIC_EXECUTE);
 
     output = decode_win_permissions(raw_perm);
 
-    os_free(raw_perm);
+    free(raw_perm);
     *state = output;
 
     assert_string_equal(output, "first (allowed): generic_read, second (denied): generic_execute");
@@ -2307,7 +2305,7 @@ static void test_decode_win_permissions_fail_no_access_type(void **state) {
 
     output = decode_win_permissions(raw_perm);
 
-    os_free(raw_perm);
+    free(raw_perm);
     *state = output;
 
     assert_null(output);
@@ -2319,7 +2317,7 @@ static void test_decode_win_permissions_fail_wrong_format(void **state) {
 
     output = decode_win_permissions(raw_perm);
 
-    os_free(raw_perm);
+    free(raw_perm);
     *state = output;
 
     assert_null(output);
@@ -2364,7 +2362,6 @@ static void test_attrs_to_json_multiple_attributes(void **state) {
 static void test_attrs_to_json_unable_to_create_json_array(void **state)  {
     char *input = "attr1, attr2, attr3";
     cJSON *output;
-    char *attr1, *attr2, *attr3;
 
     will_return(__wrap_cJSON_CreateArray, NULL);
 
@@ -2377,14 +2374,7 @@ static void test_attrs_to_json_unable_to_create_json_array(void **state)  {
 
 // TODO: Validate this condition is required to be tested
 static void test_attrs_to_json_null_attributes(void **state)  {
-    cJSON *output;
-    char *attr1, *attr2, *attr3;
-
-    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-
-    output = attrs_to_json(NULL);
-
-    *state = output;
+    expect_assert_failure(attrs_to_json(NULL));
 }
 
 /* win_perm_to_json tests*/
@@ -2506,8 +2496,6 @@ static void test_win_perm_to_json_some_permissions(void **state) {
 static void test_win_perm_to_json_no_permissions(void **state) {
     char *input = "account (allowed)";
     cJSON *output;
-    cJSON *user, *permissions_array;
-    char *string;
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
 
@@ -2698,8 +2686,8 @@ static void test_win_perm_to_json_fragmented_acl(void **state) {
 
     will_return_always(__wrap_wstr_split, 1);  // use real wstr_split
 
-    expect_string(__wrap__mdebug2, msg, "ACL [%s] fragmented. All permissions may not be displayed.");
-    expect_string(__wrap__mdebug2, param1, input);
+    expect_string(__wrap__mdebug1, msg, "ACL [%s] fragmented. All permissions may not be displayed.");
+    expect_string(__wrap__mdebug1, param1, input);
 
     output = win_perm_to_json(input);
 
@@ -2725,15 +2713,7 @@ static void test_win_perm_to_json_fragmented_acl(void **state) {
 
 // TODO: Validate this condition is required to be tested
 static void test_win_perm_to_json_null_input(void **state) {
-    cJSON *output;
-    cJSON *user, *permissions_array;
-    char *string;
-
-    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-
-    output = win_perm_to_json(NULL);
-
-    assert_int_equal(cJSON_GetArraySize(output), 0);
+    expect_assert_failure(win_perm_to_json(NULL));
 }
 
 static void test_win_perm_to_json_unable_to_create_main_array(void **state) {
@@ -2852,6 +2832,7 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test(test_remove_empty_folders_error_removing_dir),
 
         /* sk_decode_sum tests */
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_decode, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_decode_sum_deleted_file, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_perm, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_decode_sum_missing_separator, setup_sk_decode, teardown_sk_decode),
@@ -2892,6 +2873,7 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_null_c_sum, setup_sk_decode, teardown_sk_decode),
 
         /* sk_decode_extradata tests */
+        cmocka_unit_test_setup_teardown(test_sk_decode_extradata_null_sum, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_decode_extradata_null_c_sum, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_decode_extradata_no_changes, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_decode_extradata_no_date_alert, setup_sk_decode, teardown_sk_decode),
@@ -2915,10 +2897,10 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_setup_teardown(test_sk_build_sum_null_output, setup_sk_build_sum, teardown_sk_build_sum),
 
         /* sk_sum_clean tests */
-        cmocka_unit_test_setup(test_sk_sum_clean_full_message, setup_sk_decode),
-        cmocka_unit_test_setup(test_sk_sum_clean_shortest_valid_message, setup_sk_decode),
-        cmocka_unit_test_setup(test_sk_sum_clean_invalid_message, setup_sk_decode),
-        cmocka_unit_test_setup(test_sk_sum_clean_null_sum, setup_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_sum_clean_full_message, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_sum_clean_shortest_valid_message, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_sum_clean_invalid_message, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_sum_clean_null_sum, setup_sk_decode, teardown_sk_decode),
 
         /* unescape_syscheck_field tests */
         cmocka_unit_test_setup_teardown(test_unescape_syscheck_field_escaped_chars, setup_unescape_syscheck_field, teardown_unescape_syscheck_field),

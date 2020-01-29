@@ -11,6 +11,15 @@
 
 #include "integrity_op.h"
 
+#ifdef UNIT_TESTING
+/* Replace assert with mock_assert */
+extern void mock_assert(const int result, const char* const expression,
+                        const char * const file, const int line);
+#undef assert
+#define assert(expression) \
+    mock_assert((int)(expression), #expression, __FILE__, __LINE__);
+#endif
+
 const char * INTEGRITY_COMMANDS[] = {
     [INTEGRITY_CHECK_LEFT] = "integrity_check_left",
     [INTEGRITY_CHECK_RIGHT] = "integrity_check_right",

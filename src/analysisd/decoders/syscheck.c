@@ -20,6 +20,18 @@
 #include "os_net/os_net.h"
 #include "wazuhdb_op.h"
 
+#ifdef UNIT_TESTING
+/* Remove static qualifier when testing */
+#define static
+
+/* Replace assert with mock_assert */
+extern void mock_assert(const int result, const char* const expression,
+                        const char * const file, const int line);
+#undef assert
+#define assert(expression) \
+    mock_assert((int)(expression), #expression, __FILE__, __LINE__);
+#endif
+
 // Add events into sqlite DB for FIM
 static int fim_db_search (char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *sdb);
 
@@ -1122,6 +1134,9 @@ int decode_fim_event(_sdb *sdb, Eventinfo *lf) {
     cJSON *root_json = NULL;
     int retval = 0;
 
+    assert(sdb != NULL);
+    assert(lf != NULL);
+
     if (root_json = cJSON_Parse(lf->log), !root_json) {
         merror("Malformed FIM JSON event");
         return retval;
@@ -1488,7 +1503,7 @@ int fim_fetch_attributes(cJSON *new_attrs, cJSON *old_attrs, Eventinfo *lf) {
 int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state) {
     cJSON *attr_it;
 
-    assert(lf);
+    assert(lf != NULL);
 
     cJSON_ArrayForEach(attr_it, attr) {
         if (!attr_it->string) {

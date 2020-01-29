@@ -278,7 +278,7 @@ void check_deleted_files();
  * @return File event JSON object.
  * @retval NULL No changes detected. Do not send an event.
  */
-cJSON *fim_json_event(char *file_name, fim_entry_data *old_data, fim_entry_data *new_data, int pos, fim_event_type type, fim_event_mode mode, whodata_evt *w_evt);
+cJSON *fim_json_event(char *file_name, fim_entry_data *old_data, fim_entry_data *new_data, int pos, unsigned int type, fim_event_mode mode, whodata_evt *w_evt);
 
 /**
  * @brief Frees the memory of a FIM entry data structure

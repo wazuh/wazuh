@@ -54,6 +54,9 @@ static void help_makelists(void)
     exit(1);
 }
 
+#ifdef UNIT_TESTING
+__attribute((weak))
+#endif
 int main(int argc, char **argv)
 {
     int test_config = 0;
