@@ -78,6 +78,26 @@ void __wrap_sqlite3_free(void* ptr) {
    return;
 }
 
+int __wrap_sqlite3_reset(sqlite3_stmt *pStmt) {
+    return mock();
+}
+
+int __wrap_sqlite3_clear_bindings(sqlite3_stmt* pStmt) {
+    return mock();
+}
+
+const char *__wrap_sqlite3_errmsg(sqlite3* db){
+    return mock_ptr_type(const char *);
+}
+
+int __wrap_sqlite3_bind_int(sqlite3_stmt* pStmt, int a, int b) {
+    return mock();
+}
+
+int __wrap_sqlite3_bind_text(sqlite3_stmt* pStmt,int a,const char* b,int c,void *d ) {
+    return mock();
+}
+
 void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...)
 {
     char formatted_msg[OS_MAXSTR];
@@ -111,7 +131,7 @@ static void wraps_fim_db_clean() {
  * Successfully wrappes a fim_db_create_file() call
  * */
 static void wraps_fim_db_create_file() {
-    expect_string(__wrap_sqlite3_open_v2, filename, "/var/ossec/queue/db/fim/fim.db");
+    expect_string(__wrap_sqlite3_open_v2, filename, "/var/ossec/queue/db/fim.db");
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
     will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
@@ -136,6 +156,7 @@ static void wraps_fim_db_exec_simple_wquery() {
     will_return(__wrap_sqlite3_exec, NULL);
     will_return(__wrap_sqlite3_exec, SQLITE_OK);
 }
+
 /*-----------------------------------------*/
 /*---------------fim_db_init------------------*/
 static int test_teardown_fim_db_init(void **state) {
@@ -156,8 +177,9 @@ void test_fim_db_init_failed_db_clean(void **state) {
 
 void test_fim_db_init_failed_file_creation(void **state) {
     wraps_fim_db_clean();
-    expect_string(__wrap_sqlite3_open_v2, filename, "/var/ossec/queue/db/fim/fim.db");
+    expect_string(__wrap_sqlite3_open_v2, filename, "/var/ossec/queue/db/fim.db");
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     will_return(__wrap_sqlite3_open_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_close_v2, 0);
     fdb_t* fim_db;
@@ -168,7 +190,7 @@ void test_fim_db_init_failed_file_creation(void **state) {
 void test_fim_db_init_failed_open_db(void **state) {
     wraps_fim_db_clean();
     wraps_fim_db_create_file();
-    expect_string(__wrap_sqlite3_open_v2, filename, "/var/ossec/queue/db/fim/fim.db");
+    expect_string(__wrap_sqlite3_open_v2, filename, "/var/ossec/queue/db/fim.db");
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
     will_return(__wrap_sqlite3_open_v2, SQLITE_ERROR);
     fdb_t* fim_db;
@@ -183,7 +205,8 @@ void test_fim_db_init_failed_cache(void **state) {
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
     will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
-    expect_string(__wrap__merror, formatted_msg, "Error in fim_db_cache(): statement(0)'INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);' out of memory");
+    will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
+    expect_string(__wrap__merror, formatted_msg, "Error in fim_db_cache(): statement(0)'INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);' REASON GOES HERE");
     fdb_t* fim_db;
     fim_db = fim_db_init(0);
     assert_null(fim_db);
@@ -255,9 +278,63 @@ void test_fim_db_clean_failed() {
     assert_int_equal(ret, FIMDB_ERR);
 }
 /*-----------------------------------------*/
+/*----------fim_db_insert_data------------------*/
+typedef struct _test_fim_db_insert_data {
+    fdb_t *fim_sql;
+    char* filepath;
+    fim_entry_data *entry_data;
+} test_fim_db_insert_data;
 
+static int test_fim_db_insert_data_setup(void **state) {
+    test_fim_db_insert_data *test_data;
+    os_calloc(1, sizeof(test_fim_db_insert_data), test_data);
+    os_calloc(1, sizeof(fdb_t), test_data->fim_sql);
+    os_calloc(1, sizeof(fim_entry_data), test_data->entry_data);
+    test_data->filepath =  strdup("/test/path");
+    *state = test_data;
+    return 0;
+}
+
+static int test_fim_db_insert_data_teardown(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    os_free(test_data->filepath);
+    os_free(test_data->entry_data);
+    os_free(test_data->fim_sql);
+    os_free(test_data);
+    return 0;
+}
+
+void test_fim_db_insert_data_clean_error(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return(__wrap_sqlite3_clear_bindings, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_finalize, 0);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Error in fim_db_cache(): ERROR MESSAGE");
+    int ret;
+    ret = fim_db_insert_data(test_data->fim_sql, test_data->filepath, test_data->entry_data);
+    assert_int_equal(ret, FIMDB_ERR);
+}
+
+void test_fim_db_insert_data_insert_error(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 2);
+    will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 2);
+    will_return_always(__wrap_sqlite3_bind_int, 0);
+    will_return_always(__wrap_sqlite3_bind_text, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: (1)ERROR MESSAGE");
+    int ret;
+    ret = fim_db_insert_data(test_data->fim_sql, test_data->filepath, test_data->entry_data);
+    assert_int_equal(ret, FIMDB_ERR);
+}
+
+/*-----------------------------------------*/
 int main(void) {
     const struct CMUnitTest tests[] = {
+        // fim_db_init
         cmocka_unit_test(test_fim_db_init_failed_db_clean),
         cmocka_unit_test(test_fim_db_init_failed_file_creation),
         cmocka_unit_test(test_fim_db_init_failed_open_db),
@@ -265,8 +342,12 @@ int main(void) {
         cmocka_unit_test(test_fim_db_init_failed_execution),
         cmocka_unit_test(test_fim_db_init_failed_simple_query),
         cmocka_unit_test_teardown(test_fim_db_init_success, test_teardown_fim_db_init),
+        // fim_db_clean
         cmocka_unit_test(test_fim_db_clean_success),
-        cmocka_unit_test(test_fim_db_clean_failed)
+        cmocka_unit_test(test_fim_db_clean_failed),
+        // fim_db_insert_data
+        cmocka_unit_test_setup_teardown(test_fim_db_insert_data_clean_error, test_fim_db_insert_data_setup, test_fim_db_insert_data_teardown),    
+        cmocka_unit_test_setup_teardown(test_fim_db_insert_data_insert_error, test_fim_db_insert_data_setup, test_fim_db_insert_data_teardown),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
