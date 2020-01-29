@@ -36,10 +36,12 @@
 #define FIELD_SRCIP      0x8000
 #define FIELD_ID         0x10000
 #define N_FIELDS         17
+
 #define FIELD_DYNAMICS   0x20000
 #define FIELD_AGENT      0x40000
-#define FIELD_DODIFF     0x80000
-#define FIELD_GFREQUENCY 0x100000
+
+#define FIELD_DODIFF     0x01
+#define FIELD_GFREQUENCY 0x02
 
 /* Alert options  - store on a uint16 */
 #define DO_FTS          0x0001
@@ -113,9 +115,9 @@ typedef struct _RuleInfo {
     u_int16_t alert_opts;
 
     /* Context options */
+    u_int16_t context_opts;
     u_int32_t same_field;
     u_int32_t different_field;
-    u_int32_t context_opts;
 
     /* Category */
     u_int8_t category;
@@ -199,11 +201,13 @@ typedef struct _RuleInfo {
     char ** not_same_fields;
 } RuleInfo;
 
+
 typedef struct _RuleNode {
     RuleInfo *ruleinfo;
     struct _RuleNode *next;
     struct _RuleNode *child;
 } RuleNode;
+
 
 RuleInfoDetail *zeroinfodetails(int type, const char *data);
 int get_info_attributes(char **attributes, char **values);
