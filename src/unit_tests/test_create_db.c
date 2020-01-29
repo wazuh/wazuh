@@ -76,50 +76,6 @@ void __wrap__mdebug2(const char * file, int line, const char * func, const char 
     check_expected(formatted_msg);
 }
 
-int __wrap_rbtree_insert() {
-    return mock();
-}
-
-int __wrap_rbtree_replace() {
-    return mock();
-}
-
-int __wrap_rbtree_delete(rb_tree *tree, const char *key) {
-    check_expected(tree);
-    check_expected(key);
-
-    return mock();
-}
-
-void *__wrap_rbtree_get(const rb_tree *tree, const char *key) {
-    check_expected(tree);
-    check_expected(key);
-
-    return mock_type(fim_entry_data *);
-}
-
-int __wrap_OSHash_Add(OSHash *self, const char *key, void *data) {
-    check_expected(key);
-
-    // Data is alloc'd inside fim_update_inode, since there is no real hash map,
-    // this is the only possible place to free it
-    {
-        int i;
-        fim_inode_data * inode_data = data;
-
-        for(i = 0; i < inode_data->items; i++)
-            free(inode_data->paths[i]);
-        free(inode_data->paths);
-
-        free(data);
-    }
-    return mock();
-}
-
-void* __wrap_OSHash_Delete(OSHash *self, const char *key) {
-    return mock_type(void*);
-}
-
 int __wrap_lstat(const char *path, struct stat *buf) {
     buf->st_dev = 1;
     buf->st_ino = 999;
@@ -135,14 +91,6 @@ int __wrap_fim_send_scan_info() {
 
 int __wrap_send_syscheck_msg() {
     return 1;
-}
-
-fim_inode_data *__wrap_OSHash_Get() {
-    return mock_type(fim_inode_data *);
-}
-
-fim_inode_data *__wrap_OSHash_Get_ex() {
-    return mock_type(fim_inode_data *);
 }
 
 struct dirent * __wrap_readdir() {
@@ -170,15 +118,19 @@ bool __wrap_HasFilesystem(__attribute__((unused))const char * path, __attribute_
     return mock();
 }
 
-char ** __wrap_rbtree_keys() {
-    return mock_type(char **);
-}
-
 fim_entry *__wrap_fim_db_get_path(fdb_t *fim_sql, const char *file_path) {
     check_expected_ptr(fim_sql);
     check_expected(file_path);
 
     return mock_type(fim_entry*);
+}
+
+char **__wrap_fim_db_get_paths_from_inode(fdb_t *fim_sql, const unsigned long int inode, const unsigned long int dev) {
+    check_expected_ptr(fim_sql);
+    check_expected(inode);
+    check_expected(dev);
+
+    return mock_type(char **);
 }
 
 /* setup/teardowns */
@@ -884,12 +836,18 @@ void test_fim_audit_inode_event_modify(void **state)
     fim_data_t *data = *state;
 
     char * file = "/test/test.file2";
-    char * inode_key = "1212:9090";
+    char **paths = calloc(2, sizeof(char*));
 
-    // Already in hash table
-    data->inode_data->items = 1;
-    data->inode_data->paths = os_AddStrArray(file, data->inode_data->paths);
-    will_return(__wrap_OSHash_Get_ex, data->inode_data);
+    if(paths == NULL)
+        fail();
+
+    paths[0] = strdup(file);
+    paths[1] = NULL;
+
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
+    will_return(__wrap_fim_db_get_paths_from_inode, paths);
 
     // Inside fim_checker
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test/test.file2'");
@@ -903,10 +861,17 @@ void test_fim_audit_inode_event_add(void **state)
     fim_data_t *fim_data = *state;
 
     char * file = "/test/test.file2";
-    char * inode_key = "1212:9090";
+    char **paths = calloc(2, sizeof(char*));
 
-    // Not in hash table
-    will_return(__wrap_OSHash_Get_ex, NULL);
+    if(paths == NULL)
+        fail();
+
+    paths[0] = NULL;
+
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
+    will_return(__wrap_fim_db_get_paths_from_inode, paths);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test/test.file2'");
 
@@ -927,12 +892,6 @@ void test_fim_checker_file(void **state)
 
     expect_string(__wrap_HasFilesystem, path, "/media/test.file");
     will_return(__wrap_HasFilesystem, 0);
-
-    will_return_count(__wrap_OSHash_Get, NULL, 2);
-    will_return(__wrap_rbtree_replace, 1);
-
-    expect_string(__wrap_OSHash_Add, key, "1:999");
-    will_return(__wrap_OSHash_Add, 2);
 
     fim_checker(path, fim_data->item, fim_data->w_evt, 1);
 
@@ -987,12 +946,6 @@ void test_fim_checker_link(void **state)
     expect_string(__wrap_HasFilesystem, path, "/media/test.file");
     will_return(__wrap_HasFilesystem, 0);
 
-    will_return_count(__wrap_OSHash_Get, NULL, 2);
-    will_return(__wrap_rbtree_replace, 1);
-
-    expect_string(__wrap_OSHash_Add, key, "1:999");
-    will_return(__wrap_OSHash_Add, 2);
-
     fim_checker(path, fim_data->item, NULL, 1);
 }
 
@@ -1041,12 +994,6 @@ void test_fim_scan(void **state)
 
     // In fim_checker
     will_return_count(__wrap_lstat, 0, 6);
-    will_return_count(__wrap_OSHash_Get_ex, NULL, 6);
-    will_return_count(__wrap_rbtree_get, NULL, 6);
-    will_return(__wrap_rbtree_keys, keys);
-    // In check_deleted_files
-    will_return(__wrap_rbtree_keys, keys);
-    will_return(__wrap_rbtree_get, NULL);
 
     fim_scan();
 }
@@ -1131,7 +1078,6 @@ void test_fim_get_data(void **state)
 void test_fim_realtime_event_add(void **state)
 {
     will_return(__wrap_lstat, 1);
-    will_return(__wrap_OSHash_Get_ex, NULL);
 
     // Inside fim_checker
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'test'");
@@ -1154,8 +1100,6 @@ void test_fim_realtime_event_deleted_saved(void **state)
 
     will_return(__wrap_lstat, -1);
 
-    will_return(__wrap_OSHash_Get_ex, NULL);
-
     // Inside fim_checker
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'test'");
 
@@ -1170,8 +1114,6 @@ void test_check_deleted_files(void **state)
     char ** keys = NULL;
     keys = os_AddStrArray("test", keys);
 
-    will_return(__wrap_rbtree_keys, keys);
-
     check_deleted_files();
 }
 
@@ -1181,8 +1123,6 @@ void test_check_deleted_files_scanned(void **state)
 
     char ** keys = NULL;
     keys = os_AddStrArray("test", keys);
-
-    will_return(__wrap_rbtree_keys, keys);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'test'");
 
@@ -1196,12 +1136,6 @@ void test_fim_file_new(void **state)
     int ret;
 
     fim_data->item->index = 1;
-
-    will_return(__wrap_rbtree_insert, 1);
-    will_return(__wrap_OSHash_Get, NULL);
-
-    expect_string(__wrap_OSHash_Add, key, "1:999");
-    will_return(__wrap_OSHash_Add, 2);
 
     ret = fim_file("file", fim_data->item, NULL, 1);
 
@@ -1220,12 +1154,6 @@ void test_fim_file_check(void **state)
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "file");
     will_return(__wrap_fim_db_get_path, fim_data->old_data);
-
-    will_return_count(__wrap_OSHash_Get, NULL, 2);
-    will_return(__wrap_rbtree_replace, 1);
-
-    expect_string(__wrap_OSHash_Add, key, "1:999");
-    will_return(__wrap_OSHash_Add, 2);
 
     ret = fim_file("file", fim_data->item, NULL, 1);
 
