@@ -376,7 +376,6 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
     char *json_formated;
     int result = 1;
     int alert_type;
-    struct stat file_stat;
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 

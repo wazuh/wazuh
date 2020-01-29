@@ -702,7 +702,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
         }
         entry = fim_db_decode_full_row(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]);
         if (i == (m - 1)) {
-            str_pathlh = entry->path;
+            os_strdup(entry->path, str_pathlh);
         }
         fim_db_callback_calculate_checksum(fim_sql, entry, (void *)ctx_left);
         free_entry(entry);
@@ -716,7 +716,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
         }
         entry = fim_db_decode_full_row(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]);
         if (i == m) {
-            str_pathuh = entry->path;
+            os_strdup(entry->path, str_pathuh);
         }
         fim_db_callback_calculate_checksum(fim_sql, entry, (void *)ctx_right);
         free_entry(entry);
@@ -740,11 +740,13 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
     plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_RIGHT, id, str_pathuh, top, "", hexdigest);
     fim_send_sync_msg(plain);
     free(plain);
+    os_free(str_pathuh);
 
     retval = FIMDB_OK;
 
     end1:
         EVP_MD_CTX_destroy(ctx_right);
+        os_free(str_pathlh);
     end:
         EVP_MD_CTX_destroy(ctx_left);
         return retval;
