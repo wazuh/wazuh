@@ -4,11 +4,19 @@ All notable changes to this project will be documented in this file.
 ## [v3.12.0]
 
 ### Added
+
 - Add support for monitoring AWS S3 buckets in GovCloud regions. ([#3953](https://github.com/wazuh/wazuh/issues/3953))
 - Add support for monotiring Cisco Umbrella S3 buckets. ([#3890](https://github.com/wazuh/wazuh/issues/3890))
 
 
-## [v3.11.2]
+## [v3.11.3] - 2020-01-28
+
+### Fixed
+
+- Fixed a bug in the Windows agent that made Rootcheck report false positives about file size mismatch. ([#4493](https://github.com/wazuh/wazuh/pull/4493))
+
+
+## [v3.11.2] - 2020-01-22
 
 ### Changed
 
@@ -22,6 +30,7 @@ All notable changes to this project will be documented in this file.
 - Fixed crash in Slack integration when handling an alert with no description. ([#4426](https://github.com/wazuh/wazuh/pull/4426))
 - Fixed Makefile to allow running scan-build for Windows agents. ([#4314](https://github.com/wazuh/wazuh/pull/4314))
 - Fixed a memory leak in Clusterd. ([#4448](https://github.com/wazuh/wazuh/pull/4448))
+- Disable TCP keepalive options at os_net library to allow building Wazuh on OpenBSD. ([#4462](https://github.com/wazuh/wazuh/pull/4462))
 
 
 ## [v3.11.1] - 2020-01-03

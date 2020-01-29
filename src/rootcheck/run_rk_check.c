@@ -77,7 +77,7 @@ void run_rk_check()
         free(rootcheck.basedir);
         rootcheck.basedir = strdup(basedir);
     } else {
-        if (rootcheck.basedir[strlen(rootcheck.basedir)-1] == PATH_SEP) {
+        if (rootcheck.basedir[strlen(rootcheck.basedir)-1] == '/') {
             rootcheck.basedir[strlen(rootcheck.basedir)-1] = '\0';
         }
     }
