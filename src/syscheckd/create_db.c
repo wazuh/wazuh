@@ -30,12 +30,10 @@ static const char *FIM_EVENT_MODE[] = {
     "whodata"
 };
 
-/* SQLite Development
-static const char *fim_entry_type[] = {
+static const char *FIM_ENTRY_TYPE[] = {
     "file",
     "registry"
 };
-*/
 
 void fim_scan() {
     int it = 0;
@@ -674,7 +672,7 @@ void check_deleted_files() {
 }
 
 
-cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, int pos, fim_event_type type, fim_event_mode mode, whodata_evt * w_evt) {
+cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, int pos, unsigned int type, fim_event_mode mode, whodata_evt * w_evt) {
     cJSON * changed_attributes = NULL;
 
     if (old_data != NULL) {
@@ -743,7 +741,7 @@ cJSON * fim_attributes_json(const fim_entry_data * data) {
 
     // TODO: Read structure.
     // SQLite Development
-    //cJSON_AddStringToObject(attributes, "type", data->entry_type);
+    cJSON_AddStringToObject(attributes, "type", FIM_ENTRY_TYPE[data->entry_type]);
 
     if (data->options & CHECK_SIZE) {
         cJSON_AddNumberToObject(attributes, "size", data->size);
