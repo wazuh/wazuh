@@ -376,6 +376,11 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         }
 #endif
 
+        if (!strcmp(tmp_dir,"")) {
+            dir++;
+            continue;
+        }
+
         attrs = g_attrs;
         values = g_values;
 
