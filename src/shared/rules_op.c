@@ -67,7 +67,7 @@ int OS_ReadXMLRules(const char *rulefile,
     const char *xml_user = "user";
     const char *xml_url = "url";
     const char *xml_id = "id";
-    const char *xml_data = "data";
+    const char *xml_extra_data = "extra_data";
     const char *xml_hostname = "hostname";
     const char *xml_program_name = "program_name";
     const char *xml_status = "status";
@@ -432,7 +432,7 @@ int OS_ReadXMLRules(const char *rulefile,
                     if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                         config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                     }
-                } else if (strcasecmp(rule_opt[k]->element, xml_data) == 0) {
+                } else if (strcasecmp(rule_opt[k]->element, xml_extra_data) == 0) {
                     extra_data = os_LoadString(extra_data, rule_opt[k]->content);
 
                     if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
