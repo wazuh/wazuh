@@ -452,8 +452,8 @@ void fim_db_bind_path(fdb_t *fim_sql, int index, const char *file_path) {
 
 /* FIMDB_STMT_GET_INODE, FIMDB_STMT_GET_DATA_ROW, FIMDB_STMT_GET_PATHS_INODE, FIMDB_STMT_GET_PATHS_INODE_COUNT */
 void fim_db_bind_get_inode(fdb_t *fim_sql, int index, const unsigned long int inode, const unsigned long int dev) {
-    if (index == FIMDB_STMT_GET_INODE || index == FIMDB_STMT_GET_DATA_ROW
-       || FIMDB_STMT_GET_PATHS_INODE || FIMDB_STMT_GET_PATHS_INODE_COUNT) {
+    if (index == FIMDB_STMT_GET_INODE || index == FIMDB_STMT_GET_DATA_ROW ||
+        index == FIMDB_STMT_GET_PATHS_INODE || index == FIMDB_STMT_GET_PATHS_INODE_COUNT) {
         sqlite3_bind_int(fim_sql->stmt[index], 1, inode);
         sqlite3_bind_int(fim_sql->stmt[index], 2, dev);
     }

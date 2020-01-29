@@ -30,12 +30,10 @@ static const char *FIM_EVENT_MODE[] = {
     "whodata"
 };
 
-/* SQLite Development
-static const char *fim_entry_type[] = {
+static const char *FIM_ENTRY_TYPE[] = {
     "file",
     "registry"
 };
-*/
 
 void fim_scan() {
     int it = 0;
@@ -327,13 +325,13 @@ void fim_audit_inode_event(char *file, fim_event_mode mode, whodata_evt * w_evt)
     if (mode == FIM_WHODATA) {
         paths = fim_db_get_paths_from_inode(syscheck.database, atoi(w_evt->inode), atoi(w_evt->dev));
     } else {
-        struct stat *file_stat = NULL;
+        struct stat file_stat;
 
-        if (w_stat(file, file_stat) < 0) {
-            merror("Stat() failed on '%s'", file);
+        if (w_stat(file, &file_stat) < 0) {
+            merror("Stat() failed on '%s': '%s'", file, strerror(errno));
         }
 
-        paths = fim_db_get_paths_from_inode(syscheck.database, file_stat->st_ino, file_stat->st_dev);
+        paths = fim_db_get_paths_from_inode(syscheck.database, file_stat.st_ino, file_stat.st_dev);
     }
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
@@ -674,7 +672,7 @@ void check_deleted_files() {
 }
 
 
-cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, int pos, fim_event_type type, fim_event_mode mode, whodata_evt * w_evt) {
+cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, int pos, unsigned int type, fim_event_mode mode, whodata_evt * w_evt) {
     cJSON * changed_attributes = NULL;
 
     if (old_data != NULL) {
@@ -743,7 +741,7 @@ cJSON * fim_attributes_json(const fim_entry_data * data) {
 
     // TODO: Read structure.
     // SQLite Development
-    //cJSON_AddStringToObject(attributes, "type", data->entry_type);
+    cJSON_AddStringToObject(attributes, "type", FIM_ENTRY_TYPE[data->entry_type]);
 
     if (data->options & CHECK_SIZE) {
         cJSON_AddNumberToObject(attributes, "size", data->size);
