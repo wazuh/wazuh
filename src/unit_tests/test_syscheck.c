@@ -19,14 +19,6 @@
 
 /* redefinitons/wrapping */
 
-int __wrap_OSHash_Create() {
-    return 1;
-}
-
-int __wrap_OSHash_setSize() {
-    return mock();
-}
-
 void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...)
 {
     char formatted_msg[OS_MAXSTR];
@@ -39,35 +31,45 @@ void __wrap__mwarn(const char * file, int line, const char * func, const char *m
     check_expected(formatted_msg);
 }
 
+fdb_t *__wrap_fim_db_init(int memory) {
+    check_expected(memory);
+    return mock_type(fdb_t*);
+}
+
+/* setup/teardowns */
+static int setup_group(void **state) {
+    fdb_t *fdb = calloc(1, sizeof(fdb_t));
+
+    if(fdb == NULL)
+        return -1;
+
+    *state = fdb;
+
+    return 0;
+}
+
+static int teardown_group(void **state) {
+    fdb_t *fdb = *state;
+
+    free(fdb);
+
+    return 0;
+}
 
 /* tests */
 
 void test_fim_initialize(void **state)
 {
-    (void) state;
+    fdb_t *fdb = *state;
 
-    will_return(__wrap_OSHash_setSize, 1);
-
-    fim_initialize();
-
-    assert_non_null(syscheck.fim_entry);
-    assert_non_null(syscheck.fim_inode);
-}
-
-
-void test_fim_initialize_warn(void **state)
-{
-    (void) state;
-
-    will_return(__wrap_OSHash_setSize, 0);
-
-    expect_string(__wrap__mwarn, formatted_msg, LIST_ERROR);
+    expect_value(__wrap_fim_db_init, memory, 0);
+    will_return(__wrap_fim_db_init, fdb);
 
     fim_initialize();
 
-    assert_non_null(syscheck.fim_entry);
-    assert_non_null(syscheck.fim_inode);
+    assert_ptr_equal(syscheck.database, fdb);
 }
+
 
 
 void test_read_internal(void **state)
@@ -81,8 +83,7 @@ void test_read_internal(void **state)
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_fim_initialize),
-        cmocka_unit_test(test_fim_initialize_warn),
     };
 
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
