@@ -35,7 +35,7 @@ int OS_SHA1_File(const char *fname, os_sha1 output, int mode)
     unsigned char md[SHA_DIGEST_LENGTH];
     size_t n;
 
-    memset(output, 0, 65);
+    memset(output, 0, sizeof(os_sha1));
     buf[2049] = '\0';
 
     fp = fopen(fname, mode == OS_BINARY ? "rb" : "r");
