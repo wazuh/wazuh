@@ -467,8 +467,8 @@ void test_fim_db_remove_path_failed_path(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_bind_int, 0);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
+    will_return_maybe(__wrap_sqlite3_bind_int, 0);
+    will_return_maybe(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     expect_string(__wrap_sqlite3_exec, sql, "END;");
     will_return(__wrap_sqlite3_exec, "ERROR MESSAGE");
@@ -479,6 +479,32 @@ void test_fim_db_remove_path_failed_path(void **state) {
     // Last commit time should change
     assert_int_equal(last_commit, test_data->fim_sql->transaction.last_commit);
 }
+/*----------------------------------------------*/
+/*----------fim_db_get_inode------------------*/
+void test_fim_db_get_indode_non_existent(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK); 
+    will_return_maybe(__wrap_sqlite3_bind_int, 0);
+    will_return_maybe(__wrap_sqlite3_bind_text, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    wraps_fim_db_check_transaction();
+    int ret = fim_db_get_inode(test_data->fim_sql, 1, 1);
+    assert_int_equal(ret, 0);
+}
+
+void test_fim_db_get_indode_existent(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK); 
+    will_return_maybe(__wrap_sqlite3_bind_int, 0);
+    will_return_maybe(__wrap_sqlite3_bind_text, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    wraps_fim_db_check_transaction();
+    int ret = fim_db_get_inode(test_data->fim_sql, 1, 1);
+    assert_int_equal(ret, 1);
+}
+
 
 /*-----------------------------------------*/
 int main(void) {
@@ -505,6 +531,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_remove_path_one_entry, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_remove_path_multiple_entry, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_remove_path_failed_path, test_fim_db_setup, test_fim_db_teardown),
+        // fim_db_get_inode()
+        cmocka_unit_test_setup_teardown(test_fim_db_get_indode_non_existent, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_get_indode_existent, test_fim_db_setup, test_fim_db_teardown),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
