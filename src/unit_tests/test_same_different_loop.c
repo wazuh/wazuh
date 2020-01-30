@@ -51,11 +51,11 @@ void test_same_dstip(void **state)
     Eventinfo *my_lf = state[2];
     u_int32_t a = 1;
 
-    rule->same_field = a;
+    rule->same_field = a << 2;
 
     /* Same destination ip strings should return true */
     lf->dstip = "100.200.50.30";
-    my_lf->dstip=  "100.200.50.30";
+    my_lf->dstip = "100.200.50.30";
     ret = same_loop(rule, lf, my_lf);
     assert_true(ret);
 
@@ -82,7 +82,7 @@ void test_same_srcport(void **state)
     Eventinfo *my_lf = state[2];
     u_int32_t a = 1;
 
-    rule->same_field = a << 1;
+    rule->same_field = a << 3;
 
     /* Same source port strings should return true */
     lf->srcport = "30";
@@ -113,7 +113,7 @@ void test_same_dstport(void **state)
     Eventinfo *my_lf = state[2];
     u_int32_t a = 1;
 
-    rule->same_field = a << 2;
+    rule->same_field = a << 4;
 
     /* Same source port strings should return true */
     lf->dstport = "40";
@@ -144,7 +144,7 @@ void test_same_srcuser(void **state)
     Eventinfo *my_lf = state[2];
     u_int32_t a = 1;
 
-    rule->same_field = a << 3;
+    rule->same_field = a << 5;
 
     /* Same source user strings should return true */
     lf->srcuser = "User";
@@ -175,7 +175,7 @@ void test_same_user(void **state)
     Eventinfo *my_lf = state[2];
     u_int32_t a = 1;
 
-    rule->same_field = a << 4;
+    rule->same_field = a << 6;
 
     /* Same user strings should return true */
     lf->dstuser = "User";
@@ -206,7 +206,7 @@ void test_same_protocol(void **state)
     Eventinfo *my_lf = state[2];
     u_int32_t a = 1;
 
-    rule->same_field = a << 5;
+    rule->same_field = a << 7;
 
     /* Same protocol strings should return true */
     lf->protocol = "TCP";
@@ -237,7 +237,7 @@ void test_same_action(void **state)
     Eventinfo *my_lf = state[2];
     u_int32_t a = 1;
 
-    rule->same_field = a << 6;
+    rule->same_field = a << 8;
 
     /* Same action strings should return true */
     lf->action = "install";
@@ -268,7 +268,7 @@ void test_same_url(void **state)
     Eventinfo *my_lf = state[2];
     u_int32_t a = 1;
 
-    rule->same_field = a << 7;
+    rule->same_field = a << 9;
 
     /* Same url strings should return true */
     lf->url = "ossec";
@@ -299,7 +299,7 @@ void test_same_data(void **state)
     Eventinfo *my_lf = state[2];
     u_int32_t a = 1;
 
-    rule->same_field = a << 8;
+    rule->same_field = a << 10;
 
     /* Same data strings should return true */
     lf->data = "data1";
@@ -330,7 +330,7 @@ void test_same_extradata(void **state)
     Eventinfo *my_lf = state[2];
     u_int32_t a = 1;
 
-    rule->same_field = a << 9;
+    rule->same_field = a << 11;
 
     /* Same extra data strings should return true */
     lf->extra_data = "extra data1";
@@ -361,7 +361,7 @@ void test_same_status(void **state)
     Eventinfo *my_lf = state[2];
     u_int32_t a = 1;
 
-    rule->same_field = a << 10;
+    rule->same_field = a << 12;
 
     /* Same status strings should return true */
     lf->status = "started";
@@ -392,7 +392,7 @@ void test_same_systemname(void **state)
     Eventinfo *my_lf = state[2];
     u_int32_t a = 1;
 
-    rule->same_field = a << 11;
+    rule->same_field = a << 13;
 
     /* Same system name strings should return true */
     lf->systemname = "centos";
@@ -423,10 +423,10 @@ void test_same_srcgeoip(void **state)
     Eventinfo *my_lf = state[2];
     u_int32_t a = 1;
 
-    rule->same_field = a << 12;
+    rule->same_field = a << 14;
 
     /* Same srcgeoip strings should return true */
-    lf->srcgeoip= "ES / Madrid";
+    lf->srcgeoip = "ES / Madrid";
     my_lf->srcgeoip = "ES / Madrid";
     ret = same_loop(rule, lf, my_lf);
     assert_true(ret);
@@ -454,10 +454,10 @@ void test_same_dstgeoip(void **state)
     Eventinfo *my_lf = state[2];
     u_int32_t a = 1;
 
-    rule->same_field = a << 13;
+    rule->same_field = a << 15;
 
     /* Same dstgeoip strings should return true */
-    lf->dstgeoip= "ES / Madrid";
+    lf->dstgeoip = "ES / Madrid";
     my_lf->dstgeoip = "ES / Madrid";
     ret = same_loop(rule, lf, my_lf);
     assert_true(ret);
@@ -485,10 +485,10 @@ void test_same_location(void **state)
     Eventinfo *my_lf = state[2];
     u_int32_t a = 1;
 
-    rule->same_field = a << 14;
+    rule->same_field = a << 16;
 
     /* Same location strings should return true */
-    lf->location= "/var/ossec/logs/field1";
+    lf->location = "/var/ossec/logs/field1";
     my_lf->location = "/var/ossec/logs/field1";
     ret = same_loop(rule, lf, my_lf);
     assert_true(ret);
@@ -507,471 +507,6 @@ void test_same_location(void **state)
     os_free(my_lf);
 }
 
-void test_different_dstip(void **state)
-{
-    (void) state;
-    bool ret;
-    RuleInfo *rule = state[0];
-    Eventinfo *lf = state[1];
-    Eventinfo *my_lf = state[2];
-    u_int32_t a = 1;
-
-    rule->different_field = a;
-
-    /* Same destination ip strings should return false */
-    lf->dstip = "100.200.50.30";
-    my_lf->dstip=  "100.200.50.30";
-    ret = different_loop(rule, lf, my_lf);
-    assert_false(ret);
-
-    /* Different destination ip strings should return true */
-    my_lf->dstip = "150.20.70.44";
-    ret = different_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    /* same_loop should not return false */
-    ret = same_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    os_free(rule);
-    os_free(lf);
-    os_free(my_lf);
-}
-
-void test_different_srcport(void **state)
-{
-    (void) state;
-    bool ret;
-    RuleInfo *rule = state[0];
-    Eventinfo *lf = state[1];
-    Eventinfo *my_lf = state[2];
-    u_int32_t a = 1;
-
-    rule->different_field = a << 1;
-
-    /* Same source port strings should return false */
-    lf->srcport = "30";
-    my_lf->srcport = "30";
-    ret = different_loop(rule, lf, my_lf);
-    assert_false(ret);
-
-    /* Different source port strings should return true */
-    my_lf->srcport = "44";
-    ret = different_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    /* same_loop should not return false */
-    ret = same_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    os_free(rule);
-    os_free(lf);
-    os_free(my_lf);
-}
-
-void test_different_dstport(void **state)
-{
-    (void) state;
-    bool ret;
-    RuleInfo *rule = state[0];
-    Eventinfo *lf = state[1];
-    Eventinfo *my_lf = state[2];
-    u_int32_t a = 1;
-
-    rule->different_field = a << 2;
-
-    /* Same source port strings should return false */
-    lf->dstport = "40";
-    my_lf->dstport = "40";
-    ret = different_loop(rule, lf, my_lf);
-    assert_false(ret);
-
-    /* Different source port strings should return true */
-    my_lf->dstport = "54";
-    ret = different_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    /* same_loop should not return false */
-    ret = same_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    os_free(rule);
-    os_free(lf);
-    os_free(my_lf);
-}
-
-void test_different_srcuser(void **state)
-{
-    (void) state;
-    bool ret;
-    RuleInfo *rule = state[0];
-    Eventinfo *lf = state[1];
-    Eventinfo *my_lf = state[2];
-    u_int32_t a = 1;
-
-    rule->different_field = a << 3;
-
-    /* Same source user strings should return false */
-    lf->srcuser = "User";
-    my_lf->srcuser = "User";
-    ret = different_loop(rule, lf, my_lf);
-    assert_false(ret);
-
-    /* Different source user strings should return true */
-    my_lf->srcuser = "Admin";
-    ret = different_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    /* same_loop should not return false */
-    ret = same_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    os_free(rule);
-    os_free(lf);
-    os_free(my_lf);
-}
-
-void test_different_user(void **state)
-{
-    (void) state;
-    bool ret;
-    RuleInfo *rule = state[0];
-    Eventinfo *lf = state[1];
-    Eventinfo *my_lf = state[2];
-    u_int32_t a = 1;
-
-    rule->different_field = a << 4;
-
-    /* Same user strings should return false */
-    lf->dstuser = "User";
-    my_lf->dstuser = "User";
-    ret = different_loop(rule, lf, my_lf);
-    assert_false(ret);
-
-    /* Different user strings should return true */
-    my_lf->dstuser = "Admin";
-    ret = different_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    /* same_loop should not return false */
-    ret = same_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    os_free(rule);
-    os_free(lf);
-    os_free(my_lf);
-}
-
-void test_different_protocol(void **state)
-{
-    (void) state;
-    bool ret;
-    RuleInfo *rule = state[0];
-    Eventinfo *lf = state[1];
-    Eventinfo *my_lf = state[2];
-    u_int32_t a = 1;
-
-    rule->different_field = a << 5;
-
-    /* Same protocol strings should return false */
-    lf->protocol = "TCP";
-    my_lf->protocol = "TCP";
-    ret = different_loop(rule, lf, my_lf);
-    assert_false(ret);
-
-    /* Different protocol strings should return true */
-    my_lf->protocol = "UDP";
-    ret = different_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    /* same_loop should not return false */
-    ret = same_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    os_free(rule);
-    os_free(lf);
-    os_free(my_lf);
-}
-
-void test_different_action(void **state)
-{
-    (void) state;
-    bool ret;
-    RuleInfo *rule = state[0];
-    Eventinfo *lf = state[1];
-    Eventinfo *my_lf = state[2];
-    u_int32_t a = 1;
-
-    rule->different_field = a << 6;
-
-    /* Same action strings should return false */
-    lf->action = "install";
-    my_lf->action = "install";
-    ret = different_loop(rule, lf, my_lf);
-    assert_false(ret);
-
-    /* Different action strings should return true */
-    my_lf->action = "remove";
-    ret = different_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    /* same_loop should not return false */
-    ret = same_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    os_free(rule);
-    os_free(lf);
-    os_free(my_lf);
-}
-
-void test_different_url(void **state)
-{
-    (void) state;
-    bool ret;
-    RuleInfo *rule = state[0];
-    Eventinfo *lf = state[1];
-    Eventinfo *my_lf = state[2];
-    u_int32_t a = 1;
-
-    rule->different_field = a << 7;
-
-    /* Same url strings should return false */
-    lf->url = "ossec";
-    my_lf->url = "ossec";
-    ret = different_loop(rule, lf, my_lf);
-    assert_false(ret);
-
-    /* Different url strings should return true */
-    my_lf->url = "wazuh";
-    ret = different_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    /* same_loop should not return false */
-    ret = same_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    os_free(rule);
-    os_free(lf);
-    os_free(my_lf);
-}
-
-void test_different_data(void **state)
-{
-    (void) state;
-    bool ret;
-    RuleInfo *rule = state[0];
-    Eventinfo *lf = state[1];
-    Eventinfo *my_lf = state[2];
-    u_int32_t a = 1;
-
-    rule->different_field = a << 8;
-
-    /* Same data strings should return false */
-    lf->data = "data1";
-    my_lf->data = "data1";
-    ret = different_loop(rule, lf, my_lf);
-    assert_false(ret);
-
-    /* Different data strings should return true */
-    my_lf->data = "data2";
-    ret = different_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    /* same_loop should not return false */
-    ret = same_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    os_free(rule);
-    os_free(lf);
-    os_free(my_lf);
-}
-
-void test_different_extradata(void **state)
-{
-    (void) state;
-    bool ret;
-    RuleInfo *rule = state[0];
-    Eventinfo *lf = state[1];
-    Eventinfo *my_lf = state[2];
-    u_int32_t a = 1;
-
-    rule->different_field = a << 9;
-
-    /* Same extra data strings should return false */
-    lf->extra_data = "extra data1";
-    my_lf->extra_data = "extra data1";
-    ret = different_loop(rule, lf, my_lf);
-    assert_false(ret);
-
-    /* Different extra data strings should return true */
-    my_lf->extra_data = "extra data2";
-    ret = different_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    /* same_loop should not return false */
-    ret = same_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    os_free(rule);
-    os_free(lf);
-    os_free(my_lf);
-}
-
-void test_different_status(void **state)
-{
-    (void) state;
-    bool ret;
-    RuleInfo *rule = state[0];
-    Eventinfo *lf = state[1];
-    Eventinfo *my_lf = state[2];
-    u_int32_t a = 1;
-
-    rule->different_field = a << 10;
-
-    /* Same status strings should return false */
-    lf->status = "started";
-    my_lf->status = "started";
-    ret = different_loop(rule, lf, my_lf);
-    assert_false(ret);
-
-    /* Different status strings should return true */
-    my_lf->status = "aborted";
-    ret = different_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    /* same_loop should not return false */
-    ret = same_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    os_free(rule);
-    os_free(lf);
-    os_free(my_lf);
-}
-
-void test_different_systemname(void **state)
-{
-    (void) state;
-    bool ret;
-    RuleInfo *rule = state[0];
-    Eventinfo *lf = state[1];
-    Eventinfo *my_lf = state[2];
-    u_int32_t a = 1;
-
-    rule->different_field = a << 11;
-
-    /* Same system name strings should return false */
-    lf->systemname = "centos";
-    my_lf->systemname = "centos";
-    ret = different_loop(rule, lf, my_lf);
-    assert_false(ret);
-
-    /* Different system name strings should return true */
-    my_lf->systemname = "ubuntu";
-    ret = different_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    /* same_loop should not return false */
-    ret = same_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    os_free(rule);
-    os_free(lf);
-    os_free(my_lf);
-}
-
-void test_different_srcgeoip(void **state)
-{
-    (void) state;
-    bool ret;
-    RuleInfo *rule = state[0];
-    Eventinfo *lf = state[1];
-    Eventinfo *my_lf = state[2];
-    u_int32_t a = 1;
-
-    rule->different_field = a << 12;
-
-    /* Same srcgeoip strings should return false */
-    lf->srcgeoip= "ES / Madrid";
-    my_lf->srcgeoip = "ES / Madrid";
-    ret = different_loop(rule, lf, my_lf);
-    assert_false(ret);
-
-    /* Different srcgeoip strings should return true */
-    my_lf->srcgeoip = "ARG / Cordoba";
-    ret = different_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    /* same_loop should not return false */
-    ret = same_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    os_free(rule);
-    os_free(lf);
-    os_free(my_lf);
-}
-
-void test_different_dstgeoip(void **state)
-{
-    (void) state;
-    bool ret;
-    RuleInfo *rule = state[0];
-    Eventinfo *lf = state[1];
-    Eventinfo *my_lf = state[2];
-    u_int32_t a = 1;
-
-    rule->different_field = a << 13;
-
-    /* Same dstgeoip strings should return false */
-    lf->dstgeoip= "ES / Madrid";
-    my_lf->dstgeoip = "ES / Madrid";
-    ret = different_loop(rule, lf, my_lf);
-    assert_false(ret);
-
-    /* Different dstgeoip strings should return true */
-    my_lf->dstgeoip = "ARG / Cordoba";
-    ret = different_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    /* same_loop should not return false */
-    ret = same_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    os_free(rule);
-    os_free(lf);
-    os_free(my_lf);
-}
-
-void test_different_location(void **state)
-{
-    (void) state;
-    bool ret;
-    RuleInfo *rule = state[0];
-    Eventinfo *lf = state[1];
-    Eventinfo *my_lf = state[2];
-    u_int32_t a = 1;
-
-    rule->different_field = a << 14;
-
-    /* Same location strings should return false */
-    lf->location= "/var/ossec/logs/field1";
-    my_lf->location = "/var/ossec/logs/field1";
-    ret = different_loop(rule, lf, my_lf);
-    assert_false(ret);
-
-    /* Different location strings should return true */
-    my_lf->location = "/var/ossec/logs/field2";
-    ret = different_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    /* same_loop should not return false */
-    ret = same_loop(rule, lf, my_lf);
-    assert_true(ret);
-
-    os_free(rule);
-    os_free(lf);
-    os_free(my_lf);
-}
-
 void test_different_srcip(void **state)
 {
     (void) state;
@@ -981,7 +516,7 @@ void test_different_srcip(void **state)
     Eventinfo *my_lf = state[2];
     u_int32_t a = 1;
 
-    rule->different_field = a << 15;
+    rule->different_field = a;
     
     /* Same source ip strings should return false */
     lf->srcip = "100.200.50.30";
@@ -1012,7 +547,7 @@ void test_different_id(void **state)
     Eventinfo *my_lf = state[2];
     u_int32_t a = 1;
 
-    rule->different_field = a << 16;
+    rule->different_field = a << 1;
     
     /* Same id strings should return false */
     lf->id = "006";
@@ -1022,6 +557,471 @@ void test_different_id(void **state)
 
     /* Different source ip strings should return true */
     my_lf->id = "007";
+    ret = different_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    /* same_loop should not return false */
+    ret = same_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    os_free(rule);
+    os_free(lf);
+    os_free(my_lf);
+}
+
+void test_different_dstip(void **state)
+{
+    (void) state;
+    bool ret;
+    RuleInfo *rule = state[0];
+    Eventinfo *lf = state[1];
+    Eventinfo *my_lf = state[2];
+    u_int32_t a = 1;
+
+    rule->different_field = a << 2;
+
+    /* Same destination ip strings should return false */
+    lf->dstip = "100.200.50.30";
+    my_lf->dstip =  "100.200.50.30";
+    ret = different_loop(rule, lf, my_lf);
+    assert_false(ret);
+
+    /* Different destination ip strings should return true */
+    my_lf->dstip = "150.20.70.44";
+    ret = different_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    /* same_loop should not return false */
+    ret = same_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    os_free(rule);
+    os_free(lf);
+    os_free(my_lf);
+}
+
+void test_different_srcport(void **state)
+{
+    (void) state;
+    bool ret;
+    RuleInfo *rule = state[0];
+    Eventinfo *lf = state[1];
+    Eventinfo *my_lf = state[2];
+    u_int32_t a = 1;
+
+    rule->different_field = a << 3;
+
+    /* Same source port strings should return false */
+    lf->srcport = "30";
+    my_lf->srcport = "30";
+    ret = different_loop(rule, lf, my_lf);
+    assert_false(ret);
+
+    /* Different source port strings should return true */
+    my_lf->srcport = "44";
+    ret = different_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    /* same_loop should not return false */
+    ret = same_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    os_free(rule);
+    os_free(lf);
+    os_free(my_lf);
+}
+
+void test_different_dstport(void **state)
+{
+    (void) state;
+    bool ret;
+    RuleInfo *rule = state[0];
+    Eventinfo *lf = state[1];
+    Eventinfo *my_lf = state[2];
+    u_int32_t a = 1;
+
+    rule->different_field = a << 4;
+
+    /* Same source port strings should return false */
+    lf->dstport = "40";
+    my_lf->dstport = "40";
+    ret = different_loop(rule, lf, my_lf);
+    assert_false(ret);
+
+    /* Different source port strings should return true */
+    my_lf->dstport = "54";
+    ret = different_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    /* same_loop should not return false */
+    ret = same_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    os_free(rule);
+    os_free(lf);
+    os_free(my_lf);
+}
+
+void test_different_srcuser(void **state)
+{
+    (void) state;
+    bool ret;
+    RuleInfo *rule = state[0];
+    Eventinfo *lf = state[1];
+    Eventinfo *my_lf = state[2];
+    u_int32_t a = 1;
+
+    rule->different_field = a << 5;
+
+    /* Same source user strings should return false */
+    lf->srcuser = "User";
+    my_lf->srcuser = "User";
+    ret = different_loop(rule, lf, my_lf);
+    assert_false(ret);
+
+    /* Different source user strings should return true */
+    my_lf->srcuser = "Admin";
+    ret = different_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    /* same_loop should not return false */
+    ret = same_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    os_free(rule);
+    os_free(lf);
+    os_free(my_lf);
+}
+
+void test_different_user(void **state)
+{
+    (void) state;
+    bool ret;
+    RuleInfo *rule = state[0];
+    Eventinfo *lf = state[1];
+    Eventinfo *my_lf = state[2];
+    u_int32_t a = 1;
+
+    rule->different_field = a << 6;
+
+    /* Same user strings should return false */
+    lf->dstuser = "User";
+    my_lf->dstuser = "User";
+    ret = different_loop(rule, lf, my_lf);
+    assert_false(ret);
+
+    /* Different user strings should return true */
+    my_lf->dstuser = "Admin";
+    ret = different_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    /* same_loop should not return false */
+    ret = same_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    os_free(rule);
+    os_free(lf);
+    os_free(my_lf);
+}
+
+void test_different_protocol(void **state)
+{
+    (void) state;
+    bool ret;
+    RuleInfo *rule = state[0];
+    Eventinfo *lf = state[1];
+    Eventinfo *my_lf = state[2];
+    u_int32_t a = 1;
+
+    rule->different_field = a << 7;
+
+    /* Same protocol strings should return false */
+    lf->protocol = "TCP";
+    my_lf->protocol = "TCP";
+    ret = different_loop(rule, lf, my_lf);
+    assert_false(ret);
+
+    /* Different protocol strings should return true */
+    my_lf->protocol = "UDP";
+    ret = different_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    /* same_loop should not return false */
+    ret = same_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    os_free(rule);
+    os_free(lf);
+    os_free(my_lf);
+}
+
+void test_different_action(void **state)
+{
+    (void) state;
+    bool ret;
+    RuleInfo *rule = state[0];
+    Eventinfo *lf = state[1];
+    Eventinfo *my_lf = state[2];
+    u_int32_t a = 1;
+
+    rule->different_field = a << 8;
+
+    /* Same action strings should return false */
+    lf->action = "install";
+    my_lf->action = "install";
+    ret = different_loop(rule, lf, my_lf);
+    assert_false(ret);
+
+    /* Different action strings should return true */
+    my_lf->action = "remove";
+    ret = different_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    /* same_loop should not return false */
+    ret = same_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    os_free(rule);
+    os_free(lf);
+    os_free(my_lf);
+}
+
+void test_different_url(void **state)
+{
+    (void) state;
+    bool ret;
+    RuleInfo *rule = state[0];
+    Eventinfo *lf = state[1];
+    Eventinfo *my_lf = state[2];
+    u_int32_t a = 1;
+
+    rule->different_field = a << 9;
+
+    /* Same url strings should return false */
+    lf->url = "ossec";
+    my_lf->url = "ossec";
+    ret = different_loop(rule, lf, my_lf);
+    assert_false(ret);
+
+    /* Different url strings should return true */
+    my_lf->url = "wazuh";
+    ret = different_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    /* same_loop should not return false */
+    ret = same_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    os_free(rule);
+    os_free(lf);
+    os_free(my_lf);
+}
+
+void test_different_data(void **state)
+{
+    (void) state;
+    bool ret;
+    RuleInfo *rule = state[0];
+    Eventinfo *lf = state[1];
+    Eventinfo *my_lf = state[2];
+    u_int32_t a = 1;
+
+    rule->different_field = a << 10;
+
+    /* Same data strings should return false */
+    lf->data = "data1";
+    my_lf->data = "data1";
+    ret = different_loop(rule, lf, my_lf);
+    assert_false(ret);
+
+    /* Different data strings should return true */
+    my_lf->data = "data2";
+    ret = different_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    /* same_loop should not return false */
+    ret = same_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    os_free(rule);
+    os_free(lf);
+    os_free(my_lf);
+}
+
+void test_different_extradata(void **state)
+{
+    (void) state;
+    bool ret;
+    RuleInfo *rule = state[0];
+    Eventinfo *lf = state[1];
+    Eventinfo *my_lf = state[2];
+    u_int32_t a = 1;
+
+    rule->different_field = a << 11;
+
+    /* Same extra data strings should return false */
+    lf->extra_data = "extra data1";
+    my_lf->extra_data = "extra data1";
+    ret = different_loop(rule, lf, my_lf);
+    assert_false(ret);
+
+    /* Different extra data strings should return true */
+    my_lf->extra_data = "extra data2";
+    ret = different_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    /* same_loop should not return false */
+    ret = same_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    os_free(rule);
+    os_free(lf);
+    os_free(my_lf);
+}
+
+void test_different_status(void **state)
+{
+    (void) state;
+    bool ret;
+    RuleInfo *rule = state[0];
+    Eventinfo *lf = state[1];
+    Eventinfo *my_lf = state[2];
+    u_int32_t a = 1;
+
+    rule->different_field = a << 12;
+
+    /* Same status strings should return false */
+    lf->status = "started";
+    my_lf->status = "started";
+    ret = different_loop(rule, lf, my_lf);
+    assert_false(ret);
+
+    /* Different status strings should return true */
+    my_lf->status = "aborted";
+    ret = different_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    /* same_loop should not return false */
+    ret = same_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    os_free(rule);
+    os_free(lf);
+    os_free(my_lf);
+}
+
+void test_different_systemname(void **state)
+{
+    (void) state;
+    bool ret;
+    RuleInfo *rule = state[0];
+    Eventinfo *lf = state[1];
+    Eventinfo *my_lf = state[2];
+    u_int32_t a = 1;
+
+    rule->different_field = a << 13;
+
+    /* Same system name strings should return false */
+    lf->systemname = "centos";
+    my_lf->systemname = "centos";
+    ret = different_loop(rule, lf, my_lf);
+    assert_false(ret);
+
+    /* Different system name strings should return true */
+    my_lf->systemname = "ubuntu";
+    ret = different_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    /* same_loop should not return false */
+    ret = same_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    os_free(rule);
+    os_free(lf);
+    os_free(my_lf);
+}
+
+void test_different_srcgeoip(void **state)
+{
+    (void) state;
+    bool ret;
+    RuleInfo *rule = state[0];
+    Eventinfo *lf = state[1];
+    Eventinfo *my_lf = state[2];
+    u_int32_t a = 1;
+
+    rule->different_field = a << 14;
+
+    /* Same srcgeoip strings should return false */
+    lf->srcgeoip = "ES / Madrid";
+    my_lf->srcgeoip = "ES / Madrid";
+    ret = different_loop(rule, lf, my_lf);
+    assert_false(ret);
+
+    /* Different srcgeoip strings should return true */
+    my_lf->srcgeoip = "ARG / Cordoba";
+    ret = different_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    /* same_loop should not return false */
+    ret = same_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    os_free(rule);
+    os_free(lf);
+    os_free(my_lf);
+}
+
+void test_different_dstgeoip(void **state)
+{
+    (void) state;
+    bool ret;
+    RuleInfo *rule = state[0];
+    Eventinfo *lf = state[1];
+    Eventinfo *my_lf = state[2];
+    u_int32_t a = 1;
+
+    rule->different_field = a << 15;
+
+    /* Same dstgeoip strings should return false */
+    lf->dstgeoip = "ES / Madrid";
+    my_lf->dstgeoip = "ES / Madrid";
+    ret = different_loop(rule, lf, my_lf);
+    assert_false(ret);
+
+    /* Different dstgeoip strings should return true */
+    my_lf->dstgeoip = "ARG / Cordoba";
+    ret = different_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    /* same_loop should not return false */
+    ret = same_loop(rule, lf, my_lf);
+    assert_true(ret);
+
+    os_free(rule);
+    os_free(lf);
+    os_free(my_lf);
+}
+
+void test_different_location(void **state)
+{
+    (void) state;
+    bool ret;
+    RuleInfo *rule = state[0];
+    Eventinfo *lf = state[1];
+    Eventinfo *my_lf = state[2];
+    u_int32_t a = 1;
+
+    rule->different_field = a << 16;
+
+    /* Same location strings should return false */
+    lf->location = "/var/ossec/logs/field1";
+    my_lf->location = "/var/ossec/logs/field1";
+    ret = different_loop(rule, lf, my_lf);
+    assert_false(ret);
+
+    /* Different location strings should return true */
+    my_lf->location = "/var/ossec/logs/field2";
     ret = different_loop(rule, lf, my_lf);
     assert_true(ret);
 
@@ -1054,6 +1054,8 @@ int main(void) {
         cmocka_unit_test_setup(test_same_location, testSetup),
 
         /* Tests for different loop function */
+        cmocka_unit_test_setup(test_different_srcip, testSetup),
+        cmocka_unit_test_setup(test_different_id, testSetup),
         cmocka_unit_test_setup(test_different_dstip, testSetup),
         cmocka_unit_test_setup(test_different_srcport, testSetup),
         cmocka_unit_test_setup(test_different_dstport, testSetup),
@@ -1068,9 +1070,7 @@ int main(void) {
         cmocka_unit_test_setup(test_different_systemname, testSetup),
         cmocka_unit_test_setup(test_different_srcgeoip, testSetup),
         cmocka_unit_test_setup(test_different_dstgeoip, testSetup),
-        cmocka_unit_test_setup(test_different_location, testSetup),
-        cmocka_unit_test_setup(test_different_srcip, testSetup),
-        cmocka_unit_test_setup(test_different_id, testSetup)
+        cmocka_unit_test_setup(test_different_location, testSetup)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
