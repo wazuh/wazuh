@@ -168,20 +168,20 @@ fdb_t *fim_db_init(int memory) {
     fim->transaction.interval = COMMIT_INTERVAL;
 
     if (fim_db_clean() < 0) {
-        return NULL;
+        goto free_fim;
     }
 
     if (fim_db_create_file(path, schema_fim_sql, memory, &fim->db) < 0) {
-        return NULL;
+        goto free_fim;
     }
 
     if (!memory &&
         sqlite3_open_v2(path, &fim->db, SQLITE_OPEN_READWRITE, NULL)) {
-        return NULL;
+        goto free_fim;
     }
 
     if (fim_db_cache(fim)) {
-        return NULL;
+        goto free_fim;
     }
 
     char *error;
@@ -190,14 +190,21 @@ fdb_t *fim_db_init(int memory) {
     if (error) {
         merror("SQL ERROR: %s", error);
         sqlite3_free(error);
-        return NULL;
+        goto free_fim;
     }
 
     if (fim_db_exec_simple_wquery(fim, "BEGIN;") == FIMDB_ERR) {
-        return NULL;
+        goto free_fim;
     }
 
     return fim;
+
+free_fim:
+    if (fim->db){ 
+        sqlite3_close(fim->db);
+    }
+    os_free(fim);
+    return NULL;
 }
 
 void fim_db_close(fdb_t *fim_sql) {
