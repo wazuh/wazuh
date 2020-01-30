@@ -161,8 +161,8 @@ static void wraps_fim_db_cache() {
 /**
  * Successfully wrappes a fim_db_exec_simple_wquery() call
  * */
-static void wraps_fim_db_exec_simple_wquery() {
-    expect_string(__wrap_sqlite3_exec, sql, "BEGIN;");
+static void wraps_fim_db_exec_simple_wquery(const char *query) {
+    expect_string(__wrap_sqlite3_exec, sql, query);
     will_return(__wrap_sqlite3_exec, NULL);
     will_return(__wrap_sqlite3_exec, SQLITE_OK);
 }
@@ -171,12 +171,8 @@ static void wraps_fim_db_exec_simple_wquery() {
  * Successfully wrappes a fim_db_check_transaction() call
  * */
 static void wraps_fim_db_check_transaction() {
-    expect_string(__wrap_sqlite3_exec, sql, "END;");
-    will_return(__wrap_sqlite3_exec, NULL);
-    will_return(__wrap_sqlite3_exec, SQLITE_OK);
-    expect_string(__wrap_sqlite3_exec, sql, "BEGIN;");
-    will_return(__wrap_sqlite3_exec, NULL);
-    will_return(__wrap_sqlite3_exec, SQLITE_OK);
+    wraps_fim_db_exec_simple_wquery("END;");
+    wraps_fim_db_exec_simple_wquery("BEGIN;");
 }
 /*---------------SETUP/TEARDOWN------------------*/
 typedef struct _test_fim_db_insert_data {
@@ -303,7 +299,7 @@ void test_fim_db_init_success(void **state) {
     expect_string(__wrap_sqlite3_exec, sql, "PRAGMA synchronous = OFF");
     will_return(__wrap_sqlite3_exec, NULL);
     will_return(__wrap_sqlite3_exec, SQLITE_OK);
-    wraps_fim_db_exec_simple_wquery();
+    wraps_fim_db_exec_simple_wquery("BEGIN;");
     fdb_t* fim_db;
     fim_db = fim_db_init(0);
     assert_non_null(fim_db);
@@ -379,12 +375,7 @@ void test_fim_db_insert_data_insert_path_error(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "SQL ERROR: (1)ERROR MESSAGE");
-    expect_string(__wrap_sqlite3_exec, sql, "END;");
-    will_return(__wrap_sqlite3_exec, NULL);
-    will_return(__wrap_sqlite3_exec, SQLITE_OK);
-    expect_string(__wrap_sqlite3_exec, sql, "BEGIN;");
-    will_return(__wrap_sqlite3_exec, NULL);
-    will_return(__wrap_sqlite3_exec, SQLITE_OK);
+    wraps_fim_db_check_transaction();
     int ret;
     time_t last_commit =  test_data->fim_sql->transaction.last_commit;
     ret = fim_db_insert_data(test_data->fim_sql, test_data->entry->path, test_data->entry->data);
@@ -592,6 +583,26 @@ void test_fim_db_get_path_existent(void **state) {
     assert_string_equal("hash_sha256", ret->data->hash_sha256);
     assert_int_equal(12345678, ret->data->mtime);
 }
+/*----------------------------------------------*/
+/*----------fim_db_set_all_unscanned()------------------*/
+void test_fim_db_set_all_unscanned_failed(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    expect_string(__wrap_sqlite3_exec, sql, "UPDATE entry_path SET scanned = 0;");
+    will_return(__wrap_sqlite3_exec, "ERROR MESSAGE");
+    will_return(__wrap_sqlite3_exec, SQLITE_ERROR);
+    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: ERROR MESSAGE");
+    wraps_fim_db_check_transaction();
+    int ret = fim_db_set_all_unscanned(test_data->fim_sql);
+    assert_int_equal(ret, FIMDB_ERR);
+}
+
+void test_fim_db_set_all_unscanned_success(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    wraps_fim_db_exec_simple_wquery("UPDATE entry_path SET scanned = 0;");
+    wraps_fim_db_check_transaction();
+    int ret = fim_db_set_all_unscanned(test_data->fim_sql);
+    assert_int_equal(ret, FIMDB_OK);
+}
 /*-----------------------------------------*/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -623,6 +634,9 @@ int main(void) {
         // fim_db_get_path()
         cmocka_unit_test_setup_teardown(test_fim_db_get_path_inexistent, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_get_path_existent, test_fim_db_setup, test_fim_db_teardown),
+        // fim_db_set_all_unscanned()
+        cmocka_unit_test_setup_teardown(test_fim_db_set_all_unscanned_failed, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_set_all_unscanned_success, test_fim_db_setup, test_fim_db_teardown),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
