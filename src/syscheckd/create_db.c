@@ -305,11 +305,11 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
 }
 
 
+// LCOV_EXCL_START
 void fim_realtime_event(char *file) {
     fim_audit_inode_event(file, FIM_REALTIME, NULL);
 }
 
-// LCOV_EXCL_START
 void fim_whodata_event(whodata_evt * w_evt) {
     fim_audit_inode_event(w_evt->path, FIM_WHODATA, w_evt);
 }

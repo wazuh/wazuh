@@ -22,6 +22,7 @@
 typedef struct __fim_data_s {
     fim_element *item;
     whodata_evt *w_evt;
+    fim_entry *fentry;
     fim_inode_data *inode_data;
     fim_entry_data *new_data;
     fim_entry_data *old_data;
@@ -174,6 +175,9 @@ static int setup_group(void **state) {
         return -1;
 
     if(fim_data->w_evt = calloc(1, sizeof(whodata_evt)), fim_data->w_evt == NULL)
+        return -1;
+
+    if(fim_data->fentry = calloc(1, sizeof(fim_entry)), fim_data->fentry == NULL)
         return -1;
 
     if(fim_data->new_data = calloc(1, sizeof(fim_entry_data)), fim_data->new_data == NULL)
@@ -970,11 +974,10 @@ static void test_fim_checker_deleted_enoent(void **state) {
     fim_data_t *fim_data = *state;
 
     char * path = "/media/test.file";
-    fim_element *item = calloc(1, sizeof(fim_element));
     struct stat buf;
     buf.st_mode = S_IFREG;
-    item->index = 3;
-    item->statbuf = buf;
+    fim_data->item->index = 3;
+    fim_data->item->statbuf = buf;
 
     will_return(__wrap_lstat, -1);
     errno = ENOENT;
@@ -983,9 +986,9 @@ static void test_fim_checker_deleted_enoent(void **state) {
     expect_string(__wrap_fim_db_get_path, file_path, "/media/test.file");
     will_return(__wrap_fim_db_get_path, NULL);
 
-    fim_checker(path, item, NULL, 1);
+    fim_checker(path, fim_data->item, NULL, 1);
 
-    free(item);
+    errno = 0;
 }
 
 
@@ -1094,7 +1097,6 @@ static void test_fim_get_data(void **state) {
 
 static void test_fim_get_data_hash_error(void **state) {
     fim_data_t *fim_data = *state;
-    fim_entry_data *data;
 
     fim_data->item->index = 1;
     fim_data->item->configuration = CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_MTIME | \
@@ -1121,67 +1123,6 @@ static void test_fim_get_data_hash_error(void **state) {
 }
 
 
-static void test_fim_realtime_event_add(void **state) {
-    char * file = "/test/test.file2";
-    char **paths = calloc(2, sizeof(char*));
-
-    if(paths == NULL)
-        fail();
-
-    paths[0] = NULL;
-
-    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 999);
-    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 1);
-    will_return(__wrap_fim_db_get_paths_from_inode, paths);
-
-    will_return(__wrap_lstat, 1);
-
-    // Inside fim_checker
-    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'test'");
-
-    fim_realtime_event("test");
-}
-
-
-static void test_fim_realtime_event_deleted(void **state) {
-    char * file = "/test/test.file2";
-    char **paths = calloc(2, sizeof(char*));
-
-    if(paths == NULL)
-        fail();
-
-    paths[0] = strdup(file);
-    paths[1] = NULL;
-
-    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 999);
-    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 1);
-    will_return(__wrap_fim_db_get_paths_from_inode, paths);
-
-    will_return(__wrap_lstat, -1);
-
-    expect_string(__wrap__merror, formatted_msg, "Stat() failed on 'test': 'No such file or directory'");
-    errno = ENOENT;
-
-    fim_realtime_event("test");
-
-    errno = 0;
-}
-
-
-static void test_fim_realtime_event_deleted_saved(void **state) {
-    fim_data_t *fim_data = *state;
-
-    will_return(__wrap_lstat, -1);
-
-    // Inside fim_checker
-    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'test'");
-
-    fim_realtime_event("test");
-}
-
-
 static void test_check_deleted_files(void **state) {
     expect_value(__wrap_fim_db_delete_not_scanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_delete_not_scanned, FIMDB_OK);
@@ -1189,9 +1130,7 @@ static void test_check_deleted_files(void **state) {
     check_deleted_files();
 }
 
-static void test_check_deleted_files_scanned(void **state) {
-    fim_data_t *fim_data = *state;
-
+static void test_check_deleted_files_error(void **state) {
     expect_value(__wrap_fim_db_delete_not_scanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_delete_not_scanned, FIMDB_ERR);
 
@@ -1236,19 +1175,145 @@ static void test_fim_file_modify(void **state) {
     int ret;
 
     fim_data->item->index = 1;
-    fim_data->item->configuration = 511;
+    fim_data->fentry->path = strdup("file");
+    fim_data->fentry->data = fim_data->local_data;
+
+    fim_data->local_data->size = 1500;
+    fim_data->local_data->perm = strdup("0664");
+    fim_data->local_data->attributes = strdup("r--r--r--");
+    fim_data->local_data->uid = strdup("100");
+    fim_data->local_data->gid = strdup("1000");
+    fim_data->local_data->user_name = strdup("test");
+    fim_data->local_data->group_name = strdup("testing");;
+    fim_data->local_data->mtime = 1570184223;
+    fim_data->local_data->inode = 606060;
+    strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
+    strcpy(fim_data->local_data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
+    fim_data->local_data->mode = FIM_REALTIME;
+    fim_data->local_data->last_event = 1570184220;
+    fim_data->local_data->entry_type = FIM_TYPE_FILE;
+    fim_data->local_data->dev = 12345678;
+    fim_data->local_data->scanned = 123456;
+    fim_data->local_data->options = 511;
+    strcpy(fim_data->local_data->checksum, "");
+
+    // Inside fim_get_data
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, "file");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "/bin/ls");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    expect_value(__wrap_OS_MD5_SHA1_SHA256_File, mode, OS_BINARY);
+    expect_value(__wrap_OS_MD5_SHA1_SHA256_File, max_size, 0x400);
+    will_return(__wrap_OS_MD5_SHA1_SHA256_File, 0);
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "file");
-    will_return(__wrap_fim_db_get_path, fim_data->old_data);
+    will_return(__wrap_fim_db_get_path, fim_data->fentry);
+
+    expect_value(__wrap_fim_db_insert_data, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_insert_data, file_path, "file");
+    will_return(__wrap_fim_db_insert_data, 0);
 
     ret = fim_file("file", fim_data->item, NULL, 1);
 
     assert_int_equal(ret, 0);
 }
 
-static void test_fim_file_no_attributes(void **state) {}
-static void test_fim_file_error_on_insert(void **state) {}
+static void test_fim_file_no_attributes(void **state) {
+    fim_data_t *fim_data = *state;
+    int ret;
+
+    fim_data->item->index = 1;
+    fim_data->fentry->path = strdup("file");
+    fim_data->fentry->data = fim_data->local_data;
+
+    fim_data->local_data->size = 1500;
+    fim_data->local_data->perm = strdup("0664");
+    fim_data->local_data->attributes = strdup("r--r--r--");
+    fim_data->local_data->uid = strdup("100");
+    fim_data->local_data->gid = strdup("1000");
+    fim_data->local_data->user_name = strdup("test");
+    fim_data->local_data->group_name = strdup("testing");;
+    fim_data->local_data->mtime = 1570184223;
+    fim_data->local_data->inode = 606060;
+    strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
+    strcpy(fim_data->local_data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
+    fim_data->local_data->mode = FIM_REALTIME;
+    fim_data->local_data->last_event = 1570184220;
+    fim_data->local_data->entry_type = FIM_TYPE_FILE;
+    fim_data->local_data->dev = 12345678;
+    fim_data->local_data->scanned = 123456;
+    fim_data->local_data->options = 511;
+    strcpy(fim_data->local_data->checksum, "");
+
+    // Inside fim_get_data
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, "file");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "/bin/ls");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    expect_value(__wrap_OS_MD5_SHA1_SHA256_File, mode, OS_BINARY);
+    expect_value(__wrap_OS_MD5_SHA1_SHA256_File, max_size, 0x400);
+    will_return(__wrap_OS_MD5_SHA1_SHA256_File, -1);
+
+    ret = fim_file("file", fim_data->item, NULL, 1);
+
+    assert_int_equal(ret, 0);
+}
+
+static void test_fim_file_error_on_insert(void **state) {
+    fim_data_t *fim_data = *state;
+    int ret;
+
+    fim_data->item->index = 1;
+    fim_data->fentry->path = strdup("file");
+    fim_data->fentry->data = fim_data->local_data;
+
+    fim_data->local_data->size = 1500;
+    fim_data->local_data->perm = strdup("0664");
+    fim_data->local_data->attributes = strdup("r--r--r--");
+    fim_data->local_data->uid = strdup("100");
+    fim_data->local_data->gid = strdup("1000");
+    fim_data->local_data->user_name = strdup("test");
+    fim_data->local_data->group_name = strdup("testing");;
+    fim_data->local_data->mtime = 1570184223;
+    fim_data->local_data->inode = 606060;
+    strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
+    strcpy(fim_data->local_data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
+    fim_data->local_data->mode = FIM_REALTIME;
+    fim_data->local_data->last_event = 1570184220;
+    fim_data->local_data->entry_type = FIM_TYPE_FILE;
+    fim_data->local_data->dev = 12345678;
+    fim_data->local_data->scanned = 123456;
+    fim_data->local_data->options = 511;
+    strcpy(fim_data->local_data->checksum, "");
+
+    // Inside fim_get_data
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, "file");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "/bin/ls");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    expect_value(__wrap_OS_MD5_SHA1_SHA256_File, mode, OS_BINARY);
+    expect_value(__wrap_OS_MD5_SHA1_SHA256_File, max_size, 0x400);
+    will_return(__wrap_OS_MD5_SHA1_SHA256_File, 0);
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "file");
+    will_return(__wrap_fim_db_get_path, fim_data->fentry);
+
+    expect_value(__wrap_fim_db_insert_data, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_insert_data, file_path, "file");
+    will_return(__wrap_fim_db_insert_data, -1);
+
+    ret = fim_file("file", fim_data->item, NULL, 1);
+
+    assert_int_equal(ret, OS_INVALID);
+}
 
 static void test_free_inode_data(void **state) {
     fim_inode_data *inode_data = calloc(1, sizeof(fim_inode_data));
@@ -1334,18 +1399,15 @@ int main(void) {
         cmocka_unit_test_teardown(test_fim_get_data, teardown_local_data),
         cmocka_unit_test(test_fim_get_data_hash_error),
 
-        /* fim_realtime_event */
-        cmocka_unit_test(test_fim_realtime_event_add),
-        // cmocka_unit_test(test_fim_realtime_event_deleted),
-        // cmocka_unit_test(test_fim_realtime_event_deleted_saved),
-
         /* check_deleted_files */
         cmocka_unit_test(test_check_deleted_files),
-        cmocka_unit_test(test_check_deleted_files_scanned),
+        cmocka_unit_test(test_check_deleted_files_error),
 
         /* fim_file */
         cmocka_unit_test(test_fim_file_add),
-        // cmocka_unit_test(test_fim_file_modify),
+        cmocka_unit_test_setup(test_fim_file_modify, setup_local_data),
+        cmocka_unit_test_setup(test_fim_file_no_attributes, setup_local_data),
+        cmocka_unit_test_setup(test_fim_file_error_on_insert, setup_local_data),
 
         /* free_inode */
         cmocka_unit_test(test_free_inode_data),
