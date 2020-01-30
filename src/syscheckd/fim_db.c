@@ -752,21 +752,22 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
     OS_SHA1_Hexdigest(digest, hexdigest);
     plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_LEFT, id, start, str_pathlh, str_pathuh, hexdigest);
     fim_send_sync_msg(plain);
-    free(plain);
+    os_free(plain);
 
     // Send message with checksum of second half
     EVP_DigestFinal_ex(ctx_right, digest, &digest_size);
     OS_SHA1_Hexdigest(digest, hexdigest);
     plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_RIGHT, id, str_pathuh, top, "", hexdigest);
     fim_send_sync_msg(plain);
-    free(plain);
-    os_free(str_pathuh);
+    os_free(plain);
 
     retval = FIMDB_OK;
 
     end1:
         EVP_MD_CTX_destroy(ctx_right);
         os_free(str_pathlh);
+        os_free(str_pathuh);
+
     end:
         EVP_MD_CTX_destroy(ctx_left);
         return retval;
