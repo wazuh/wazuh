@@ -158,6 +158,12 @@ int __wrap_OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd,
     return mock();
 }
 
+char *__wrap_seechanges_addfile(const char *filename) {
+    check_expected(filename);
+
+    return mock_type(char*);
+}
+
 int __wrap_fim_db_delete_not_scanned(fdb_t * fim_sql) {
     check_expected_ptr(fim_sql);
 
@@ -377,6 +383,11 @@ static void test_fim_json_event(void **state) {
 static void test_fim_json_event_whodata(void **state) {
     fim_data_t *fim_data = *state;
 
+    syscheck.opts[1] |= CHECK_SEECHANGES;
+
+    expect_string(__wrap_seechanges_addfile, filename, "test.file");
+    will_return(__wrap_seechanges_addfile, strdup("diff"));
+
     fim_data->json = fim_json_event(
         "test.file",
         fim_data->old_data,
@@ -386,6 +397,8 @@ static void test_fim_json_event_whodata(void **state) {
         FIM_WHODATA,
         fim_data->w_evt
     );
+
+    syscheck.opts[1] &= ~CHECK_SEECHANGES;
 
     assert_non_null(fim_data->json);
     cJSON *type = cJSON_GetObjectItem(fim_data->json, "type");
@@ -406,6 +419,8 @@ static void test_fim_json_event_whodata(void **state) {
     cJSON *audit = cJSON_GetObjectItem(data, "audit");
     assert_non_null(audit);
     assert_int_equal(cJSON_GetArraySize(audit), 12);
+    cJSON *diff = cJSON_GetObjectItem(data, "content_changes");
+    assert_string_equal(cJSON_GetStringValue(diff), "diff");
 }
 
 

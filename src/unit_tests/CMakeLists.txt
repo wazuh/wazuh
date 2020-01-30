@@ -51,7 +51,7 @@ list(APPEND tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn 
                          -Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck_msg -Wl,--wrap,readdir \
                          -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,realtime_adddir -Wl,--wrap,HasFilesystem \
                          -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_get_paths_from_inode -Wl,--wrap,delete_target_file \
-                         -Wl,--wrap,fim_db_insert_data -Wl,--wrap,OS_MD5_SHA1_SHA256_File \
+                         -Wl,--wrap,fim_db_insert_data -Wl,--wrap,OS_MD5_SHA1_SHA256_File -Wl,--wrap,seechanges_addfile\
                          -Wl,--wrap,fim_db_delete_not_scanned")
 
 list(APPEND tests_names "test_syscheck_audit")
