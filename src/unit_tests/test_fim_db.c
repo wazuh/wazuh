@@ -616,8 +616,6 @@ void test_fim_db_get_data_checksum_failed(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    will_return_maybe(__wrap_sqlite3_bind_int, 0);
-    will_return_maybe(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     wraps_fim_db_check_transaction();
     int ret = fim_db_get_data_checksum(test_data->fim_sql, NULL);
@@ -628,14 +626,45 @@ void test_fim_db_get_data_checksum_success(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    will_return_maybe(__wrap_sqlite3_bind_int, 0);
-    will_return_maybe(__wrap_sqlite3_bind_text, 0);
+    will_return_always(__wrap_sqlite3_bind_int, 0);
+    will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     wraps_fim_db_decode_full_row();
     wraps_fim_db_check_transaction();
     fim_entry *entry = fim_db_get_path(test_data->fim_sql, test_data->entry->path);
     int ret = fim_db_get_data_checksum(test_data->fim_sql, NULL);
     assert_int_equal(ret, FIMDB_OK);
+}
+/*----------------------------------------------*/
+/*----------fim_db_check_transaction()------------------*/
+void test_fim_db_check_transaction_last_commit_is_0(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    test_data->fim_sql->transaction.last_commit = 0;
+    expect_string(__wrap_sqlite3_exec, sql, "END;");
+    will_return(__wrap_sqlite3_exec, "ERROR MESSAGE");
+    will_return(__wrap_sqlite3_exec, SQLITE_ERROR);
+    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: ERROR MESSAGE");
+    fim_db_check_transaction(test_data->fim_sql);
+    assert_int_equal(test_data->fim_sql->transaction.last_commit, 0);
+}
+
+void test_fim_db_check_transaction_failed(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    expect_string(__wrap_sqlite3_exec, sql, "END;");
+    will_return(__wrap_sqlite3_exec, "ERROR MESSAGE");
+    will_return(__wrap_sqlite3_exec, SQLITE_ERROR);
+    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: ERROR MESSAGE");
+    const time_t commit_time = test_data->fim_sql->transaction.last_commit;
+    fim_db_check_transaction(test_data->fim_sql);
+    assert_int_equal(commit_time, test_data->fim_sql->transaction.last_commit);
+}
+
+void test_fim_db_check_transaction_success(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    wraps_fim_db_check_transaction();
+    const time_t commit_time = test_data->fim_sql->transaction.last_commit;
+    fim_db_check_transaction(test_data->fim_sql);
+    assert_int_not_equal(commit_time, test_data->fim_sql->transaction.last_commit);
 }
 /*-----------------------------------------*/
 int main(void) {
@@ -674,6 +703,10 @@ int main(void) {
         // fim_db_get_data_checksum 
         cmocka_unit_test_setup_teardown(test_fim_db_get_data_checksum_failed, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_get_data_checksum_success, test_fim_db_setup, test_fim_db_teardown),
+        // fim_db_check_transaction
+        cmocka_unit_test_setup_teardown(test_fim_db_check_transaction_last_commit_is_0, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_check_transaction_failed, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_check_transaction_success, test_fim_db_setup, test_fim_db_teardown),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
