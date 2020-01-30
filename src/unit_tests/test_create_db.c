@@ -90,7 +90,7 @@ int __wrap_fim_send_scan_info() {
 }
 
 void __wrap_send_syscheck_msg(char *msg) {
-    check_expected(msg);
+    return;
 }
 
 struct dirent * __wrap_readdir() {
@@ -990,11 +990,27 @@ static void test_fim_checker_deleted_enoent(void **state) {
 
 
 static void test_fim_scan(void **state) {
-    char ** keys = NULL;
-    keys = os_AddStrArray("test", keys);
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // In fim_checker
     will_return_count(__wrap_lstat, 0, 6);
+
+    expect_string(__wrap_HasFilesystem, path, "/etc");
+    expect_string(__wrap_HasFilesystem, path, "/usr/bin");
+    expect_string(__wrap_HasFilesystem, path, "/usr/sbin");
+    expect_string(__wrap_HasFilesystem, path, "/media");
+    expect_string(__wrap_HasFilesystem, path, "/home");
+    expect_string(__wrap_HasFilesystem, path, "/boot");
+    will_return_count(__wrap_HasFilesystem, 0, 6);
+
+    expect_string(__wrap_realtime_adddir, dir, "/media");
+    expect_string(__wrap_realtime_adddir, dir, "/home");
+    expect_string(__wrap_realtime_adddir, dir, "/boot");
+
+    expect_value(__wrap_fim_db_delete_not_scanned, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_delete_not_scanned, FIMDB_OK);
+
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
     fim_scan();
 }
@@ -1300,7 +1316,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_audit_inode_event_modify, setup_inode_data, teardown_inode_data),
         cmocka_unit_test(test_fim_audit_inode_event_add),
 
-        //cmocka_unit_test(test_fim_scan),
+        cmocka_unit_test(test_fim_scan),
 
         /* fim_checker */
         cmocka_unit_test(test_fim_checker_file),
