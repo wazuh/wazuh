@@ -481,6 +481,14 @@ static void test_fim_entry_json(void **state) {
     assert_int_equal(timestamp->valueint, 1570184220);
 }
 
+static void test_fim_entry_json_null_path(void **state) {
+    fim_data_t *fim_data = *state;
+
+    expect_assert_failure(fim_entry_json(NULL, fim_data->old_data));
+}
+static void test_fim_entry_json_null_data(void **state) {
+    expect_assert_failure(fim_entry_json("/a/path", NULL));
+}
 
 static void test_fim_json_compare_attrs(void **state) {
     fim_data_t *fim_data = *state;
@@ -1338,6 +1346,8 @@ int main(void) {
 
         /* fim_entry_json */
         cmocka_unit_test_teardown(test_fim_entry_json, teardown_delete_json),
+        cmocka_unit_test(test_fim_entry_json_null_path),
+        cmocka_unit_test(test_fim_entry_json_null_data),
 
         /* fim_json_compare_attrs */
         cmocka_unit_test_teardown(test_fim_json_compare_attrs, teardown_delete_json),

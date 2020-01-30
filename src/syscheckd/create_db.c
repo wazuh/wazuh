@@ -15,6 +15,16 @@
 #include "time_op.h"
 #include "fim_db.h"
 
+#ifdef UNIT_TESTING
+/* Replace assert with mock_assert */
+extern void mock_assert(const int result, const char* const expression,
+                        const char * const file, const int line);
+
+#undef assert
+#define assert(expression) \
+    mock_assert((int)(expression), #expression, __FILE__, __LINE__);
+#endif
+
 // Global variables
 static int _base_line = 0;
 
@@ -803,8 +813,8 @@ cJSON * fim_attributes_json(const fim_entry_data * data) {
 // Create file entry JSON from a FIM entry structure
 
 cJSON * fim_entry_json(const char * path, fim_entry_data * data) {
-    assert(data);
-    assert(path);
+    assert(data != NULL);
+    assert(path != NULL);
 
     cJSON * root = cJSON_CreateObject();
 
@@ -1020,7 +1030,7 @@ void free_inode_data(fim_inode_data **data) {
     os_free(*data);
 }
 
-
+// LCOV_EXCL_START
 void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_start) {
     mdebug1(FIM_RUNNING_SCAN,
             time_diff(&start, &end),
@@ -1043,7 +1053,7 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
 
     return;
 }
-
+// LCOV_EXCL_STOP
 #ifdef DEBUGAD
 // LCOV_EXCL_START
 #ifndef WIN32
