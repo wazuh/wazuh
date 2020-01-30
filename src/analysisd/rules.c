@@ -1852,7 +1852,7 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->ignore_time = ignore_time;
     ruleinfo_pt->timeframe = timeframe;
     ruleinfo_pt->time_ignored = 0;
-    
+
     ruleinfo_pt->same_field = 0;
     ruleinfo_pt->different_field = 0;
     ruleinfo_pt->context_opts = 0;

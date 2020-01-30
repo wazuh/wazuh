@@ -747,7 +747,7 @@ int OS_ReadXMLRules(const char *rulefile,
                         config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     }
                 } else if (strcasecmp(rule_opt[k]->element,
-                                        xml_fts) == 0) {
+                                      xml_fts) == 0) {
                     config_ruleinfo->alert_opts |= DO_FTS;
                 } else if (strcasecmp(rule_opt[k]->element,
                                         xml_different_srcuser) == 0) {
@@ -782,16 +782,16 @@ int OS_ReadXMLRules(const char *rulefile,
                                         xml_global_frequency) == 0) {
                     config_ruleinfo->context_opts |= FIELD_GFREQUENCY;
                 } else if (strcasecmp(rule_opt[k]->element,
-                                        xml_same_field) == 0) {
+                                      xml_same_field) == 0) {
 
                     if (config_ruleinfo->same_field & FIELD_DYNAMICS) {
 
-                    int size;
-                    for (size = 0; config_ruleinfo->same_fields[size] != NULL; size++);
+                        int size;
+                        for (size = 0; config_ruleinfo->same_fields[size] != NULL; size++);
 
-                    os_realloc(config_ruleinfo->same_fields, (size + 2) * sizeof(char *), config_ruleinfo->same_fields);
-                    os_strdup(rule_opt[k]->content, config_ruleinfo->same_fields[size]);
-                    config_ruleinfo->same_fields[size + 1] = NULL;
+                        os_realloc(config_ruleinfo->same_fields, (size + 2) * sizeof(char *), config_ruleinfo->same_fields);
+                        os_strdup(rule_opt[k]->content, config_ruleinfo->same_fields[size]);
+                        config_ruleinfo->same_fields[size + 1] = NULL;
 
                     } else {
 
@@ -1206,7 +1206,7 @@ static RuleInfo *_OS_AllocateRule()
     ruleinfo_pt->ar = NULL;
 
     ruleinfo_pt->context = 0;
-    
+
     /* Default sigid of -1 */
     ruleinfo_pt->sigid = -1;
     ruleinfo_pt->firedtimes = 0;
@@ -1215,7 +1215,7 @@ static RuleInfo *_OS_AllocateRule()
     ruleinfo_pt->ignore_time = 0;
     ruleinfo_pt->timeframe = 0;
     ruleinfo_pt->time_ignored = 0;
-    
+
     ruleinfo_pt->same_field = 0;
     ruleinfo_pt->different_field = 0;
     ruleinfo_pt->context_opts = 0;
