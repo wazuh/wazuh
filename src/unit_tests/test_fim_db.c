@@ -103,6 +103,11 @@ int __wrap_sqlite3_column_int(sqlite3_stmt* pStmt, int iCol) {
     return mock();
 }
 
+const char *__wrap_sqlite3_column_text(sqlite3_stmt* pStmt, int iCol) {
+    check_expected(iCol);
+    return mock_ptr_type(const char *);
+}
+
 void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...)
 {
     char formatted_msg[OS_MAXSTR];
@@ -481,7 +486,7 @@ void test_fim_db_remove_path_failed_path(void **state) {
 }
 /*----------------------------------------------*/
 /*----------fim_db_get_inode------------------*/
-void test_fim_db_get_indode_non_existent(void **state) {
+void test_fim_db_get_inode_non_existent(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK); 
@@ -493,7 +498,7 @@ void test_fim_db_get_indode_non_existent(void **state) {
     assert_int_equal(ret, 0);
 }
 
-void test_fim_db_get_indode_existent(void **state) {
+void test_fim_db_get_inode_existent(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK); 
@@ -504,8 +509,89 @@ void test_fim_db_get_indode_existent(void **state) {
     int ret = fim_db_get_inode(test_data->fim_sql, 1, 1);
     assert_int_equal(ret, 1);
 }
+/*----------------------------------------------*/
+/*----------fim_db_get_path()------------------*/
+void test_fim_db_get_path_inexistent(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return_maybe(__wrap_sqlite3_bind_int, 0);
+    will_return_maybe(__wrap_sqlite3_bind_text, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    fim_entry *ret = fim_db_get_path(test_data->fim_sql, test_data->entry->path);
+    assert_null(ret);
+}
 
-
+void test_fim_db_get_path_existent(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return_maybe(__wrap_sqlite3_bind_int, 0);
+    will_return_maybe(__wrap_sqlite3_bind_text, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "/some/random/path"); // path
+    expect_value(__wrap_sqlite3_column_int, iCol, 2);
+    will_return(__wrap_sqlite3_column_int, 1); // mode
+    expect_value(__wrap_sqlite3_column_int, iCol, 3);
+    will_return(__wrap_sqlite3_column_int, 1000000); // last_event
+    expect_value(__wrap_sqlite3_column_int, iCol, 4);
+    will_return(__wrap_sqlite3_column_int, 2); // entry_type
+    expect_value(__wrap_sqlite3_column_int, iCol, 5);
+    will_return(__wrap_sqlite3_column_int, 1000001); // scanned
+    expect_value(__wrap_sqlite3_column_int, iCol, 6);
+    will_return(__wrap_sqlite3_column_int, 1000002); // options
+    expect_value(__wrap_sqlite3_column_text, iCol, 7);
+    will_return(__wrap_sqlite3_column_text, "checksum"); // checksum
+    expect_value(__wrap_sqlite3_column_int, iCol, 8);
+    will_return(__wrap_sqlite3_column_int, 111); // dev
+    expect_value(__wrap_sqlite3_column_int, iCol, 9);
+    will_return(__wrap_sqlite3_column_int, 1024); // inode
+    expect_value(__wrap_sqlite3_column_int, iCol, 10);
+    will_return(__wrap_sqlite3_column_int, 4096); // size
+    expect_value(__wrap_sqlite3_column_text, iCol, 11);
+    will_return(__wrap_sqlite3_column_text, "perm"); // perm
+    expect_value(__wrap_sqlite3_column_text, iCol, 12);
+    will_return(__wrap_sqlite3_column_text, "attributes"); // attributes
+    expect_value(__wrap_sqlite3_column_text, iCol, 13);
+    will_return(__wrap_sqlite3_column_text, "uid"); // uid
+    expect_value(__wrap_sqlite3_column_text, iCol, 14);
+    will_return(__wrap_sqlite3_column_text, "gid"); // gid
+    expect_value(__wrap_sqlite3_column_text, iCol, 15);
+    will_return(__wrap_sqlite3_column_text, "user_name"); // user_name
+    expect_value(__wrap_sqlite3_column_text, iCol, 16);
+    will_return(__wrap_sqlite3_column_text, "group_name"); // group_name
+    expect_value(__wrap_sqlite3_column_text, iCol, 17);
+    will_return(__wrap_sqlite3_column_text, "hash_md5"); // hash_md5
+    expect_value(__wrap_sqlite3_column_text, iCol, 18);
+    will_return(__wrap_sqlite3_column_text, "hash_sha1"); // hash_sha1
+    expect_value(__wrap_sqlite3_column_text, iCol, 19);
+    will_return(__wrap_sqlite3_column_text, "hash_sha256"); // hash_sha256
+    expect_value(__wrap_sqlite3_column_int, iCol, 20);
+    will_return(__wrap_sqlite3_column_int, 12345678); // mtime
+    fim_entry *ret = fim_db_get_path(test_data->fim_sql, test_data->entry->path);
+    assert_non_null(ret);
+    assert_string_equal("/some/random/path", ret->path);
+    assert_int_equal(1, ret->data->mode);
+    assert_int_equal(1000000, ret->data->last_event);
+    assert_int_equal(2, ret->data->entry_type);
+    assert_int_equal(1000001, ret->data->scanned);
+    assert_int_equal(1000002, ret->data->options);
+    assert_string_equal("checksum", ret->data->checksum);
+    assert_int_equal(111, ret->data->dev);
+    assert_int_equal(1024, ret->data->inode);
+    assert_int_equal(4096, ret->data->size);
+    assert_string_equal("perm", ret->data->perm);
+    assert_string_equal("attributes", ret->data->attributes);
+    assert_string_equal("uid", ret->data->uid);
+    assert_string_equal("gid", ret->data->gid);
+    assert_string_equal("user_name", ret->data->user_name);
+    assert_string_equal("group_name", ret->data->group_name);
+    assert_string_equal("hash_md5", ret->data->hash_md5);
+    assert_string_equal("hash_sha1", ret->data->hash_sha1);
+    assert_string_equal("hash_sha256", ret->data->hash_sha256);
+    assert_int_equal(12345678, ret->data->mtime);
+}
 /*-----------------------------------------*/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -532,8 +618,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_remove_path_multiple_entry, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_remove_path_failed_path, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_get_inode()
-        cmocka_unit_test_setup_teardown(test_fim_db_get_indode_non_existent, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_get_indode_existent, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_get_inode_non_existent, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_get_inode_existent, test_fim_db_setup, test_fim_db_teardown),
+        // fim_db_get_path()
+        cmocka_unit_test_setup_teardown(test_fim_db_get_path_inexistent, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_get_path_existent, test_fim_db_setup, test_fim_db_teardown),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
