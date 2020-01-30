@@ -154,7 +154,6 @@ static void wraps_fim_db_create_file() {
  * Successfully wrappes a fim_db_cache() call
  * */
 static void wraps_fim_db_cache() {
-    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
     will_return_count(__wrap_sqlite3_prepare_v2, SQLITE_OK, FIMDB_STMT_SIZE);
 }
 
@@ -307,6 +306,7 @@ void test_fim_db_init_failed_execution(void **state) {
     wraps_fim_db_create_file();
     expect_string(__wrap_sqlite3_open_v2, filename, FIM_DB_DISK_PATH);
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
     wraps_fim_db_cache();
     expect_string(__wrap_sqlite3_exec, sql, "PRAGMA synchronous = OFF");
     will_return(__wrap_sqlite3_exec, "ERROR_MESSAGE");
@@ -322,6 +322,7 @@ void test_fim_db_init_failed_simple_query(void **state) {
     wraps_fim_db_create_file();
     expect_string(__wrap_sqlite3_open_v2, filename, FIM_DB_DISK_PATH);
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
     wraps_fim_db_cache();
     expect_string(__wrap_sqlite3_exec, sql, "PRAGMA synchronous = OFF");
     will_return(__wrap_sqlite3_exec, NULL);
@@ -341,6 +342,7 @@ void test_fim_db_init_success(void **state) {
     wraps_fim_db_create_file();
     expect_string(__wrap_sqlite3_open_v2, filename, FIM_DB_DISK_PATH);
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
     wraps_fim_db_cache();
     expect_string(__wrap_sqlite3_exec, sql, "PRAGMA synchronous = OFF");
     will_return(__wrap_sqlite3_exec, NULL);
@@ -666,6 +668,23 @@ void test_fim_db_check_transaction_success(void **state) {
     fim_db_check_transaction(test_data->fim_sql);
     assert_int_not_equal(commit_time, test_data->fim_sql->transaction.last_commit);
 }
+/*----------------------------------------------*/
+/*----------fim_db_cache()------------------*/
+void test_fim_db_cache_failed(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
+    expect_string(__wrap__merror, formatted_msg, "Error in fim_db_cache(): statement(0)'INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);' REASON GOES HERE");
+    int ret = fim_db_cache(test_data->fim_sql);
+    assert_int_equal(ret, FIMDB_ERR);
+}
+
+void test_fim_db_cache_success(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    wraps_fim_db_cache();
+    int ret = fim_db_cache(test_data->fim_sql);
+    assert_int_equal(ret, FIMDB_OK);
+}
 /*-----------------------------------------*/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -707,6 +726,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_check_transaction_last_commit_is_0, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_check_transaction_failed, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_check_transaction_success, test_fim_db_setup, test_fim_db_teardown),
+        // fim_db_cache
+        cmocka_unit_test_setup_teardown(test_fim_db_cache_failed, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_cache_success, test_fim_db_setup, test_fim_db_teardown),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
