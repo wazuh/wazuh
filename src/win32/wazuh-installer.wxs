@@ -416,6 +416,9 @@
                     <Directory Id="TMP" Name="tmp" />
                     <Directory Id="QUEUE" Name="queue">
                         <Directory Id="DIFF" Name="diff" />
+                        <Directory Id="FIM" Name="fim">
+                            <Directory Id="FIM_DB" Name="db" />
+                        </Directory>
                     </Directory>
                     <Directory Id="BOOKMARKS" Name="bookmarks" />
                     <Directory Id="LOGS" Name="logs" />
@@ -463,6 +466,20 @@
                 <CreateFolder />
                 <RemoveFile Id="purgue_diff" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_diff_dir" On="uninstall" />
+            </Component>
+        </DirectoryRef>
+        <DirectoryRef Id="FIM">
+            <Component Id="CMP_FIM" Guid="C53FE6BC-FAD0-4C0D-9CA6-0025A9987F15" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
+                <CreateFolder />
+                <RemoveFile Id="purgue_fim" Name="*.*" On="uninstall" />
+                <RemoveFolder Id="purgue_fim_dir" On="uninstall" />
+            </Component>
+        </DirectoryRef>
+        <DirectoryRef Id="FIM_DB">
+            <Component Id="CMP_FIM_DB" Guid="CEB64639-8DD1-43D3-BC03-4EDC5C9E4E46" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
+                <CreateFolder />
+                <RemoveFile Id="purgue_fim_db" Name="*.*" On="uninstall" />
+                <RemoveFolder Id="purgue_fim_db_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="RULESET">
@@ -567,6 +584,8 @@
             <ComponentRef Id="CMP_TMP" />
             <ComponentRef Id="CMP_QUEUE" />
             <ComponentRef Id="CMP_DIFF" />
+            <ComponentRef Id="CMP_FIM" />
+            <ComponentRef Id="CMP_FIM_DB" />
             <ComponentRef Id="CMP_RULESET" />
             <ComponentRef Id="CMP_SECURITY_CONFIGURATION_ASSESSMENT" />
             <ComponentRef Id="REMOVE_OLD_POLICIES" />
