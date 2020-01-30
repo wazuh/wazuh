@@ -165,7 +165,6 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
         fim_send_sync_msg(plain);
         free(plain);
         free_entry(entry);
-        cJSON_Delete(entry_data);
         break;
 
     default:
