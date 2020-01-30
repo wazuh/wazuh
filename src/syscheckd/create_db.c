@@ -325,13 +325,18 @@ void fim_audit_inode_event(char *file, fim_event_mode mode, whodata_evt * w_evt)
     if (mode == FIM_WHODATA) {
         paths = fim_db_get_paths_from_inode(syscheck.database, atoi(w_evt->inode), atoi(w_evt->dev));
     } else {
-        struct stat file_stat;
+        struct stat statbuf;
+        fim_entry *entry;
+        if (w_stat(file, &statbuf) < 0) {
+            entry = fim_db_get_path(syscheck.database, file);
 
-        if (w_stat(file, &file_stat) < 0) {
-            merror("Stat() failed on '%s': '%s'", file, strerror(errno));
+            if (entry) {
+                paths = fim_db_get_paths_from_inode(syscheck.database, entry->data->inode, entry->data->dev);
+                free_entry(entry);
+            }
+        } else {
+            paths = fim_db_get_paths_from_inode(syscheck.database, statbuf.st_ino, statbuf.st_dev);
         }
-
-        paths = fim_db_get_paths_from_inode(syscheck.database, file_stat.st_ino, file_stat.st_dev);
     }
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
@@ -357,13 +362,12 @@ void fim_audit_inode_event(char *file, fim_event_mode mode, whodata_evt * w_evt)
             os_free(paths[i]);
             os_free(hard_link_items);
         }
-        os_free(paths);
     } else {
         // Add events
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
         fim_checker(file, item, w_evt, 1);
     }
 
+    os_free(paths);
     os_free(item);
 
     return;

@@ -556,7 +556,6 @@ char **fim_db_get_paths_from_inode(fdb_t *fim_sql, const unsigned long int inode
             os_strdup((char *)sqlite3_column_text(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE], 0), paths[i]);
             i++;
         }
-        paths[i] = NULL;
     }
 
     fim_db_check_transaction(fim_sql);
