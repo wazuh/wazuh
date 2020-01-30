@@ -730,14 +730,14 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
             if (glob(tmp_dir, 0, NULL, &g) != 0) {
                 merror(GLOB_ERROR, real_path);
-                ret = 1;
-                goto out_free;
+                dir++;
+                continue;
             }
 
             if (g.gl_pathv[0] == NULL) {
                 merror(GLOB_NFOUND, real_path);
-                ret = 1;
-                goto out_free;
+                dir++;
+                continue;
             }
 
             while (g.gl_pathv[gindex]) {
