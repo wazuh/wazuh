@@ -52,8 +52,6 @@ void init_magic(magic_t *cookie_ptr)
 /* Read syscheck internal options */
 void read_internal(int debug_level)
 {
-    syscheck.tsleep = (unsigned int) getDefine_Int("syscheck", "sleep", 0, 64);
-    syscheck.sleep_after = getDefine_Int("syscheck", "sleep_after", 1, 9999);
     syscheck.rt_delay = getDefine_Int("syscheck", "rt_delay", 1, 1000);
     syscheck.max_depth = getDefine_Int("syscheck", "default_max_depth", 1, 320);
     syscheck.file_max_size = (size_t)getDefine_Int("syscheck", "file_max_size", 0, 4095) * 1024 * 1024;

@@ -329,8 +329,6 @@ cJSON *getSyscheckInternalOptions(void) {
 
     cJSON *syscheckd = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(syscheckd,"sleep",syscheck.tsleep);
-    cJSON_AddNumberToObject(syscheckd,"sleep_after",syscheck.sleep_after);
     cJSON_AddNumberToObject(syscheckd,"rt_delay",syscheck.rt_delay);
     cJSON_AddNumberToObject(syscheckd,"default_max_depth",syscheck.max_depth);
     cJSON_AddNumberToObject(syscheckd,"symlink_scan_interval",syscheck.sym_checker_interval);

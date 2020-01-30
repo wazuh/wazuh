@@ -615,7 +615,10 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     mwarn("Recursion level '%d' exceeding limit. Setting %d.", recursion_limit, MAX_DEPTH_ALLOWED);
                     recursion_limit = syscheck->max_depth;
                 }
-            } else if (strcmp(*attrs, xml_tag) == 0) {
+            } 
+            
+            /* Check tag */
+            else if (strcmp(*attrs, xml_tag) == 0) {
                 if (tag) {
                     free(tag);
                     tag = NULL;
