@@ -37,15 +37,9 @@ typedef enum fdb_stmt {
     FIMDB_STMT_DELETE_DATA,
     FIMDB_STMT_GET_PATHS_INODE,
     FIMDB_STMT_GET_PATHS_INODE_COUNT,
+    FIMDB_STMT_SET_SCANNED,
     FIMDB_STMT_SIZE
 } fdb_stmt;
-
-/*
-static const char *FIM_ENTRY_TYPE[] = {
-    "file",
-    "registry"
-};
-*/
 
 #define FIM_MODE(x) (x & WHODATA_ACTIVE ? FIM_WHODATA : x & REALTIME_ACTIVE ? FIM_REALTIME : FIM_SCHEDULED)
 

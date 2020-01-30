@@ -123,14 +123,14 @@ void fim_sync_checksum() {
         char * plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_GLOBAL, fim_sync_cur_id, start, top, NULL, hexdigest);
         fim_send_sync_msg(plain);
 
-        free(start);
-        free(top);
-        free(plain);
+        os_free(start);
+        os_free(top);
+        os_free(plain);
 
     } else { // If database is empty
         char * plain = dbsync_check_msg("syscheck", INTEGRITY_CLEAR, fim_sync_cur_id, NULL, NULL, NULL, NULL);
         fim_send_sync_msg(plain);
-        free(plain);
+        os_free(plain);
     }
 
     end:

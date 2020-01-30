@@ -144,9 +144,8 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
         w_mutex_lock(&syscheck.fim_entry_mutex);
 
         if (saved_entry = fim_db_get_path(syscheck.database, path), saved_entry) {
-            int alert = FIM_DELETE;
             json_event = fim_json_event(path, NULL, saved_entry->data, item->index, FIM_DELETE, item->mode, w_evt);
-            fim_db_remove_path(syscheck.database, saved_entry, (void *) &alert);
+            fim_db_remove_path(syscheck.database, saved_entry, 0);
             free_entry(saved_entry);
             saved_entry = NULL;
         }
@@ -262,6 +261,7 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
     //Get file attributes
     if (new = fim_get_data(file, item), !new) {
         mdebug1(FIM_GET_ATTRIBUTES, file);
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
         return 0;
     }
 
@@ -283,6 +283,7 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
             return OS_INVALID;
         }
     }
+    fim_db_set_scanned(syscheck.database, file);
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
@@ -668,9 +669,12 @@ void fim_get_checksum (fim_entry_data * data) {
 
 void check_deleted_files() {
     w_mutex_lock(&syscheck.fim_entry_mutex);
+
     if (fim_db_delete_not_scanned(syscheck.database) != FIMDB_OK) {
         merror(FIM_DB_ERROR_RM_NOT_SCANNED);
     }
+    fim_db_set_all_unscanned(syscheck.database);
+
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 }
 

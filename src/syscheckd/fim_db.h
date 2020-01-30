@@ -246,3 +246,11 @@ int fim_db_get_row_path(fdb_t *fim_sql, int mode, char **path);
  * @return int
  */
 int fim_db_set_all_unscanned(fdb_t *fim_sql);
+
+/**
+ * @brief
+ *
+ * @param fim_sql FIM database struct.
+ * @param file_path File path.
+ */
+int fim_db_set_scanned(fdb_t *fim_sql, char *path);
