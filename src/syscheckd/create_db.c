@@ -319,7 +319,7 @@ void fim_whodata_event(whodata_evt * w_evt) {
 
 void fim_audit_inode_event(char *file, fim_event_mode mode, whodata_evt * w_evt) {
     struct fim_element *item;
-    char **paths;
+    char **paths = NULL;
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
