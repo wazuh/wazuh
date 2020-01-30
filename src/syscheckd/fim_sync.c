@@ -90,7 +90,8 @@ void * fim_run_integrity(void * args) {
 // LCOV_EXCL_STOP
 
 void fim_sync_checksum() {
-    char *start, *top;
+    char *start = NULL;
+    char *top = NULL;
     EVP_MD_CTX * ctx = EVP_MD_CTX_create();
     EVP_DigestInit(ctx, EVP_sha1());
 
@@ -130,8 +131,6 @@ void fim_sync_checksum() {
         char * plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_GLOBAL, fim_sync_cur_id, start, top, NULL, hexdigest);
         fim_send_sync_msg(plain);
 
-        os_free(start);
-        os_free(top);
         os_free(plain);
 
     } else { // If database is empty
@@ -141,6 +140,8 @@ void fim_sync_checksum() {
     }
 
     end:
+        os_free(start);
+        os_free(top);
         EVP_MD_CTX_destroy(ctx);
 }
 
