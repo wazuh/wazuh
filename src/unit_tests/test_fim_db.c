@@ -14,6 +14,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "../syscheckd/fim_db.h"
+
+extern const char *SQL_STMT[];
+
 /*--------------WRAPS-----------------------*/
 
 int __wrap_w_is_file(const char * const file) {
@@ -732,7 +735,37 @@ void test_fim_db_clean_succes(void **state) {
     int ret =  fim_db_clean();
     assert_int_equal(ret, FIMDB_OK);
 }
+/*----------------------------------------------*/
+/*----------fim_db_finalize_stmt()------------------*/
+void test_fim_db_finalize_stmt_failed(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    int index;
+    for (index = 0; index < FIMDB_STMT_SIZE; index++) { 
+        // Test failure in every index
+        if ( index > 0) {
+            will_return_count(__wrap_sqlite3_finalize, SQLITE_OK, index);
+        }
+        // Index of failure  SQL_SQMT[index]
+        will_return(__wrap_sqlite3_finalize, SQLITE_ERROR);
+        char buffer[OS_MAXSTR];
+        will_return(__wrap_sqlite3_errmsg, "FINALIZE ERROR");
+        snprintf(buffer, OS_MAXSTR, "Error in fim_db_finalize_stmt(): statement(%d)'%s' FINALIZE ERROR", index, SQL_STMT[index]);
+        expect_string(__wrap__merror, formatted_msg, buffer);
+        int ret = fim_db_finalize_stmt(test_data->fim_sql);
+        assert_int_equal(ret, FIMDB_ERR);
+    }
+}
 
+void test_fim_db_finalize_stmt_success(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return_count(__wrap_sqlite3_finalize, SQLITE_OK, FIMDB_STMT_SIZE);
+    int ret = fim_db_finalize_stmt(test_data->fim_sql);
+    assert_int_equal(ret, FIMDB_OK);
+}
 /*-----------------------------------------*/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -753,7 +786,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_insert_data_update_error, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_insert_data_insert_path_error, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_insert_data_success, test_fim_db_setup, test_fim_db_teardown),
-        // fim_db_insert_data
+        // fim_db_remove_path
         cmocka_unit_test_setup_teardown(test_fim_db_remove_path_no_entry, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_remove_path_one_entry, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_remove_path_multiple_entry, test_fim_db_setup, test_fim_db_teardown),
@@ -784,6 +817,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_clean_no_db_file, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_clean_file_not_removed, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_clean_succes, test_fim_db_setup, test_fim_db_teardown),
+        // fim_db_finalize_stmt
+        cmocka_unit_test_setup_teardown(test_fim_db_finalize_stmt_failed, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_finalize_stmt_success, test_fim_db_setup, test_fim_db_teardown),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

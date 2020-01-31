@@ -10,6 +10,9 @@
 
 #include "fim_db.h"
 
+#ifdef UNIT_TESTING
+#define static
+#endif
 
 static const char *SQL_STMT[] = {
     [FIMDB_STMT_INSERT_DATA] = "INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
