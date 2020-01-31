@@ -146,6 +146,13 @@ int __wrap_fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const c
     return mock();
 }
 
+char * __wrap_dbsync_state_msg(const char * component, cJSON * data) {
+    check_expected(component);
+    check_expected_ptr(data);
+
+    return mock_type(char*);
+}
+
 /* setup/teardown */
 static int setup_fim_sync_queue(void **state) {
     fim_sync_queue = queue_init(10);
@@ -291,11 +298,93 @@ static void test_fim_sync_checksum_success(void **state) {
 }
 
 /* fim_sync_checksum_split */
-static void test_fim_sync_checksum_split_get_count_range_error(void **state) {}
-static void test_fim_sync_checksum_split_range_size_0(void **state) {}
-static void test_fim_sync_checksum_split_range_size_1(void **state) {}
-static void test_fim_sync_checksum_split_range_size_1_get_path_error(void **state) {}
-static void test_fim_sync_checksum_split_range_size_default(void **state) {}
+static void test_fim_sync_checksum_split_get_count_range_error(void **state) {
+    expect_value(__wrap_fim_db_get_count_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_count_range, start, "start");
+    expect_string(__wrap_fim_db_get_count_range, top, "top");
+    will_return(__wrap_fim_db_get_count_range, 0);
+    will_return(__wrap_fim_db_get_count_range, FIMDB_ERR);
+
+    expect_string(__wrap__merror, formatted_msg, "(6703): Couldn't get range size between 'start' and 'top'");
+
+    fim_sync_checksum_split("start", "top", 1234);
+}
+
+static void test_fim_sync_checksum_split_range_size_0(void **state) {
+    expect_value(__wrap_fim_db_get_count_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_count_range, start, "start");
+    expect_string(__wrap_fim_db_get_count_range, top, "top");
+    will_return(__wrap_fim_db_get_count_range, 0);
+    will_return(__wrap_fim_db_get_count_range, FIMDB_OK);
+
+    fim_sync_checksum_split("start", "top", 1234);
+}
+
+static void test_fim_sync_checksum_split_range_size_1(void **state) {
+    fim_entry *mock_entry = calloc(1, sizeof(fim_entry)); // To be freed by fim_sync_checksum_split
+
+    if(mock_entry == NULL)
+        fail();
+
+    expect_value(__wrap_fim_db_get_count_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_count_range, start, "start");
+    expect_string(__wrap_fim_db_get_count_range, top, "top");
+    will_return(__wrap_fim_db_get_count_range, 1);
+    will_return(__wrap_fim_db_get_count_range, FIMDB_OK);
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "start");
+    will_return(__wrap_fim_db_get_path, mock_entry);
+
+    expect_string(__wrap_fim_entry_json, path, "start");
+    will_return(__wrap_fim_entry_json, (cJSON*)2345);
+
+    expect_string(__wrap_dbsync_state_msg, component, "syscheck");
+    expect_value(__wrap_dbsync_state_msg, data, 2345);
+    will_return(__wrap_dbsync_state_msg, strdup("A mock message"));
+
+    expect_string(__wrap_fim_send_sync_msg, msg, "A mock message");
+
+    fim_sync_checksum_split("start", "top", 1234);
+}
+
+static void test_fim_sync_checksum_split_range_size_1_get_path_error(void **state) {
+    expect_value(__wrap_fim_db_get_count_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_count_range, start, "start");
+    expect_string(__wrap_fim_db_get_count_range, top, "top");
+    will_return(__wrap_fim_db_get_count_range, 1);
+    will_return(__wrap_fim_db_get_count_range, FIMDB_OK);
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "start");
+    will_return(__wrap_fim_db_get_path, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "(6704): Couldn't get path of 'start'");
+
+    fim_sync_checksum_split("start", "top", 1234);
+}
+
+static void test_fim_sync_checksum_split_range_size_default(void **state) {
+    fim_entry *mock_entry = calloc(1, sizeof(fim_entry)); // To be freed by fim_sync_checksum_split
+
+    if(mock_entry == NULL)
+        fail();
+
+    expect_value(__wrap_fim_db_get_count_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_count_range, start, "start");
+    expect_string(__wrap_fim_db_get_count_range, top, "top");
+    will_return(__wrap_fim_db_get_count_range, 2);
+    will_return(__wrap_fim_db_get_count_range, FIMDB_OK);
+
+    expect_value(__wrap_fim_db_data_checksum_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_data_checksum_range, start, "start");
+    expect_string(__wrap_fim_db_data_checksum_range, top, "top");
+    expect_value(__wrap_fim_db_data_checksum_range, id, 1234);
+    expect_value(__wrap_fim_db_data_checksum_range, n, 2);
+    will_return(__wrap_fim_db_data_checksum_range, 0);
+
+    fim_sync_checksum_split("start", "top", 1234);
+}
 
 /* fim_sync_send_list */
 static void test_fim_sync_send_list_sync_path_range_error(void **state) {}
