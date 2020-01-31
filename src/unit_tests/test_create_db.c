@@ -223,7 +223,7 @@ static int setup_group(void **state) {
     fim_data->w_evt->user_id = strdup("100");
     fim_data->w_evt->user_name = strdup("test");
     fim_data->w_evt->group_id = strdup("1000");
-    fim_data->w_evt->group_name = strdup("testing");
+    fim_data->w_evt->group_name = "testing";
     fim_data->w_evt->process_name = strdup("test_proc");
     fim_data->w_evt->path = strdup("./test/test.file");
     fim_data->w_evt->audit_uid = strdup("99");
@@ -1219,6 +1219,7 @@ static void test_fim_checker_fim_regular(void **state) {
     buf.st_mode = S_IFREG;
     fim_data->item->index = 3;
     fim_data->item->statbuf = buf;
+    fim_data->item->statbuf.st_size = 1500;
     will_return(__wrap_lstat, 0);
 
     expect_string(__wrap_HasFilesystem, path, "/media/test.file");
@@ -1412,6 +1413,14 @@ static void test_fim_get_data(void **state) {
     buf.st_uid = 0;
     buf.st_gid = 0;
     fim_data->item->statbuf = buf;
+    fim_data->item->configuration = CHECK_SIZE |
+                                    CHECK_PERM |
+                                    CHECK_MTIME |
+                                    CHECK_OWNER |
+                                    CHECK_GROUP |
+                                    CHECK_MD5SUM |
+                                    CHECK_SHA1SUM |
+                                    CHECK_SHA256SUM;
 
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
@@ -1498,6 +1507,13 @@ static void test_fim_file_add(void **state) {
     int ret;
 
     fim_data->item->index = 1;
+    fim_data->item->configuration = CHECK_SIZE |
+                                    CHECK_PERM  |
+                                    CHECK_OWNER |
+                                    CHECK_GROUP |
+                                    CHECK_MD5SUM |
+                                    CHECK_SHA1SUM |
+                                    CHECK_SHA256SUM;
 
     // Inside fim_get_data
     expect_value(__wrap_get_user, uid, 0);
@@ -1538,6 +1554,14 @@ static void test_fim_file_modify(void **state) {
     int ret;
 
     fim_data->item->index = 1;
+    fim_data->item->configuration = CHECK_SIZE |
+                                    CHECK_PERM  |
+                                    CHECK_OWNER |
+                                    CHECK_GROUP |
+                                    CHECK_MD5SUM |
+                                    CHECK_SHA1SUM |
+                                    CHECK_SHA256SUM;
+
     fim_data->fentry->path = strdup("file");
     fim_data->fentry->data = fim_data->local_data;
 
@@ -1599,28 +1623,6 @@ static void test_fim_file_no_attributes(void **state) {
     int ret;
 
     fim_data->item->index = 1;
-    fim_data->fentry->path = strdup("file");
-    fim_data->fentry->data = fim_data->local_data;
-
-    fim_data->local_data->size = 1500;
-    fim_data->local_data->perm = strdup("0664");
-    fim_data->local_data->attributes = strdup("r--r--r--");
-    fim_data->local_data->uid = strdup("100");
-    fim_data->local_data->gid = strdup("1000");
-    fim_data->local_data->user_name = strdup("test");
-    fim_data->local_data->group_name = strdup("testing");
-    fim_data->local_data->mtime = 1570184223;
-    fim_data->local_data->inode = 606060;
-    strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
-    strcpy(fim_data->local_data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-    strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
-    fim_data->local_data->mode = FIM_REALTIME;
-    fim_data->local_data->last_event = 1570184220;
-    fim_data->local_data->entry_type = FIM_TYPE_FILE;
-    fim_data->local_data->dev = 12345678;
-    fim_data->local_data->scanned = 123456;
-    fim_data->local_data->options = 511;
-    strcpy(fim_data->local_data->checksum, "");
 
     // Inside fim_get_data
     expect_value(__wrap_get_user, uid, 0);
@@ -1648,6 +1650,14 @@ static void test_fim_file_error_on_insert(void **state) {
     int ret;
 
     fim_data->item->index = 1;
+    fim_data->item->configuration = CHECK_SIZE |
+                                    CHECK_PERM  |
+                                    CHECK_OWNER |
+                                    CHECK_GROUP |
+                                    CHECK_MD5SUM |
+                                    CHECK_SHA1SUM |
+                                    CHECK_SHA256SUM;
+
     fim_data->fentry->path = strdup("file");
     fim_data->fentry->data = fim_data->local_data;
 
@@ -1803,7 +1813,7 @@ int main(void) {
         /* fim_file */
         cmocka_unit_test(test_fim_file_add),
         cmocka_unit_test_setup(test_fim_file_modify, setup_fim_entry),
-        cmocka_unit_test_setup(test_fim_file_no_attributes, setup_fim_entry),
+        cmocka_unit_test(test_fim_file_no_attributes),
         cmocka_unit_test_setup(test_fim_file_error_on_insert, setup_fim_entry),
 
         /* free_inode */
