@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include "../syscheckd/syscheck.h"
+#include "../syscheckd/fim_db.h"
 
 /* Globals */
 extern w_queue_t * fim_sync_queue;
@@ -58,6 +59,17 @@ void __wrap__mdebug2(const char * file, int line, const char * func, const char 
     check_expected(formatted_msg);
 }
 
+void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
+}
+
 int __wrap_queue_push_ex(w_queue_t * queue, void * data) {
     int retval = mock();
 
@@ -73,6 +85,8 @@ int __wrap_queue_push_ex(w_queue_t * queue, void * data) {
 int __wrap_fim_db_get_row_path(fdb_t * fim_sql, int mode, char **path) {
     check_expected_ptr(fim_sql);
     check_expected(mode);
+
+    *path = mock_type(char*);
 
     return mock();
 }
@@ -151,11 +165,96 @@ static void test_fim_sync_push_msg_no_response(void **state) {
 }
 
 /* fim_sync_checksum */
-static void test_fim_sync_checksum_first_row_error(void **state) {}
-static void test_fim_sync_checksum_last_row_error(void **state) {}
-static void test_fim_sync_checksum_checksum_error(void **state) {}
-static void test_fim_sync_checksum_empty_db(void **state) {}
-static void test_fim_sync_checksum_success(void **state) {}
+static void test_fim_sync_checksum_first_row_error(void **state) {
+    expect_value(__wrap_fim_db_get_row_path, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_row_path, mode, FIM_FIRST_ROW);
+    will_return(__wrap_fim_db_get_row_path, NULL);
+    will_return(__wrap_fim_db_get_row_path, FIMDB_ERR);
+
+    expect_string(__wrap__merror, formatted_msg, "(6706): Couldn't get FIRST row's path");
+
+    fim_sync_checksum();
+}
+
+static void test_fim_sync_checksum_last_row_error(void **state) {
+    expect_value_count(__wrap_fim_db_get_row_path, fim_sql, syscheck.database, 2);
+    expect_value(__wrap_fim_db_get_row_path, mode, FIM_FIRST_ROW);
+    expect_value(__wrap_fim_db_get_row_path, mode, FIM_LAST_ROW);
+    will_return(__wrap_fim_db_get_row_path, NULL);
+    will_return(__wrap_fim_db_get_row_path, FIMDB_OK);
+    will_return(__wrap_fim_db_get_row_path, NULL);
+    will_return(__wrap_fim_db_get_row_path, FIMDB_ERR);
+
+    expect_string(__wrap__merror, formatted_msg, "(6706): Couldn't get LAST row's path");
+
+    fim_sync_checksum();
+}
+
+static void test_fim_sync_checksum_checksum_error(void **state) {
+    expect_value_count(__wrap_fim_db_get_row_path, fim_sql, syscheck.database, 2);
+    expect_value(__wrap_fim_db_get_row_path, mode, FIM_FIRST_ROW);
+    expect_value(__wrap_fim_db_get_row_path, mode, FIM_LAST_ROW);
+    will_return(__wrap_fim_db_get_row_path, NULL);
+    will_return(__wrap_fim_db_get_row_path, FIMDB_OK);
+    will_return(__wrap_fim_db_get_row_path, NULL);
+    will_return(__wrap_fim_db_get_row_path, FIMDB_OK);
+
+    expect_value(__wrap_fim_db_get_data_checksum, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_get_data_checksum, FIMDB_ERR);
+
+    expect_string(__wrap__merror, formatted_msg, FIM_DB_ERROR_CALC_CHECKSUM);
+
+    fim_sync_checksum();
+}
+
+static void test_fim_sync_checksum_empty_db(void **state) {
+    expect_value_count(__wrap_fim_db_get_row_path, fim_sql, syscheck.database, 2);
+    expect_value(__wrap_fim_db_get_row_path, mode, FIM_FIRST_ROW);
+    expect_value(__wrap_fim_db_get_row_path, mode, FIM_LAST_ROW);
+    will_return(__wrap_fim_db_get_row_path, NULL);
+    will_return(__wrap_fim_db_get_row_path, FIMDB_OK);
+    will_return(__wrap_fim_db_get_row_path, NULL);
+    will_return(__wrap_fim_db_get_row_path, FIMDB_OK);
+
+    expect_value(__wrap_fim_db_get_data_checksum, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_get_data_checksum, FIMDB_OK);
+
+    expect_string(__wrap_dbsync_check_msg, component, "syscheck");
+    expect_value(__wrap_dbsync_check_msg, msg, INTEGRITY_CLEAR);
+    expect_value(__wrap_dbsync_check_msg, id, 1572521857);
+    expect_value(__wrap_dbsync_check_msg, start, NULL);
+    expect_value(__wrap_dbsync_check_msg, top, NULL);
+    expect_value(__wrap_dbsync_check_msg, tail, NULL);
+    will_return(__wrap_dbsync_check_msg, strdup("A mock message"));
+
+    expect_string(__wrap_fim_send_sync_msg, msg, "A mock message");
+
+    fim_sync_checksum();
+}
+static void test_fim_sync_checksum_success(void **state) {
+    expect_value_count(__wrap_fim_db_get_row_path, fim_sql, syscheck.database, 2);
+    expect_value(__wrap_fim_db_get_row_path, mode, FIM_FIRST_ROW);
+    expect_value(__wrap_fim_db_get_row_path, mode, FIM_LAST_ROW);
+    will_return(__wrap_fim_db_get_row_path, strdup("start"));
+    will_return(__wrap_fim_db_get_row_path, FIMDB_OK);
+    will_return(__wrap_fim_db_get_row_path, strdup("stop"));
+    will_return(__wrap_fim_db_get_row_path, FIMDB_OK);
+
+    expect_value(__wrap_fim_db_get_data_checksum, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_get_data_checksum, FIMDB_OK);
+
+    expect_string(__wrap_dbsync_check_msg, component, "syscheck");
+    expect_value(__wrap_dbsync_check_msg, msg, INTEGRITY_CHECK_GLOBAL);
+    expect_value(__wrap_dbsync_check_msg, id, 1572521857);
+    expect_string(__wrap_dbsync_check_msg, start, "start");
+    expect_string(__wrap_dbsync_check_msg, top, "stop");
+    expect_value(__wrap_dbsync_check_msg, tail, NULL);
+    will_return(__wrap_dbsync_check_msg, strdup("A mock message"));
+
+    expect_string(__wrap_fim_send_sync_msg, msg, "A mock message");
+
+    fim_sync_checksum();
+}
 
 /* fim_sync_checksum_split */
 static void test_fim_sync_checksum_split_get_count_range_error(void **state) {}
