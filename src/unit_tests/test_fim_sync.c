@@ -153,6 +153,14 @@ char * __wrap_dbsync_state_msg(const char * component, cJSON * data) {
     return mock_type(char*);
 }
 
+int __wrap_fim_db_sync_path_range(fdb_t *fim_sql, char *start, char *top) {
+    check_expected_ptr(fim_sql);
+    check_expected(start);
+    check_expected(top);
+
+    return mock();
+}
+
 /* setup/teardown */
 static int setup_fim_sync_queue(void **state) {
     fim_sync_queue = queue_init(10);
@@ -415,16 +423,18 @@ int main(void) {
         cmocka_unit_test(test_fim_sync_checksum_empty_db),
         cmocka_unit_test(test_fim_sync_checksum_success),
 
-
+        /* fim_sync_checksum_split */
         cmocka_unit_test(test_fim_sync_checksum_split_get_count_range_error),
         cmocka_unit_test(test_fim_sync_checksum_split_range_size_0),
         cmocka_unit_test(test_fim_sync_checksum_split_range_size_1),
         cmocka_unit_test(test_fim_sync_checksum_split_range_size_1_get_path_error),
         cmocka_unit_test(test_fim_sync_checksum_split_range_size_default),
 
-
+        /* fim_sync_send_list */
         cmocka_unit_test(test_fim_sync_send_list_sync_path_range_error),
         cmocka_unit_test(test_fim_sync_send_list_success),
+
+        /* fim_sync_dispatch */
         cmocka_unit_test(test_fim_sync_dispatch_null_payload),
         cmocka_unit_test(test_fim_sync_dispatch_no_argument),
         cmocka_unit_test(test_fim_sync_dispatch_invalid_argument),
