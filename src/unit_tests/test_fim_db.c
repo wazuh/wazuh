@@ -786,6 +786,35 @@ void test_fim_db_force_commit_success(void **state){
     // If commit succeded last_comit time should be updated
     assert_int_not_equal(1, test_data->fim_sql->transaction.last_commit);
 }
+/*----------------------------------------------*/
+/*----------fim_db_clean_stmt()------------------*/
+void test_fim_db_clean_stmt_reset_failed(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return(__wrap_sqlite3_reset, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    int ret = fim_db_clean_stmt(test_data->fim_sql, 0);
+    assert_int_equal(ret, FIMDB_OK);
+}
+
+void test_fim_db_clean_stmt_reset_and_prepare_failed(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return(__wrap_sqlite3_reset, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR");
+    expect_string(__wrap__merror, formatted_msg, "Error in fim_db_cache(): ERROR");
+    int ret = fim_db_clean_stmt(test_data->fim_sql, 0);
+    assert_int_equal(ret, FIMDB_ERR);
+}
+
+void test_fim_db_clean_stmt_success(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    int ret = fim_db_clean_stmt(test_data->fim_sql, 0);
+    assert_int_equal(ret, FIMDB_OK);
+}
 /*-----------------------------------------*/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -843,6 +872,10 @@ int main(void) {
         // fim_db_force_commit
         cmocka_unit_test_setup_teardown(test_fim_db_force_commit_failed, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_force_commit_success, test_fim_db_setup, test_fim_db_teardown),
+        // fim_db_clean_stmt
+        cmocka_unit_test_setup_teardown(test_fim_db_clean_stmt_reset_failed, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_clean_stmt_reset_and_prepare_failed, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_clean_stmt_success, test_fim_db_setup, test_fim_db_teardown),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
