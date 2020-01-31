@@ -18,6 +18,7 @@
 #include "../syscheckd/fim_db.h"
 
 /* Globals */
+extern long fim_sync_cur_id;
 extern w_queue_t * fim_sync_queue;
 
 /* redefinitons/wrapping */
@@ -176,11 +177,29 @@ static int teardown_fim_sync_queue(void **state) {
     return 0;
 }
 
-// static int teardown_free_fim_entry_mutex(void **state) {
-//     w_mutex_unlock(&syscheck.fim_entry_mutex);
+static int setup_fim_sync_dipatch_msg(void **state) {
+    char *text_payload =
+        "{"
+            "\"id\": 1234,"
+            "\"begin\": \"start\","
+            "\"end\": \"top\""
+        "}";
+    cJSON *payload = cJSON_Parse(text_payload);
 
-//     return 0;
-// }
+    if(payload == NULL)
+        return -1;
+
+    *state = payload;
+    return 0;
+}
+
+static int teardown_fim_sync_dipatch_msg(void **state) {
+    cJSON *payload = *state;
+
+    cJSON_Delete(payload);
+
+    return 0;
+}
 
 /* tests */
 /* fim_sync_push_msg */
@@ -416,15 +435,157 @@ static void test_fim_sync_send_list_success(void **state) {
 }
 
 /* fim_sync_dispatch */
-static void test_fim_sync_dispatch_null_payload(void **state) {}
-static void test_fim_sync_dispatch_no_argument(void **state) {}
-static void test_fim_sync_dispatch_invalid_argument(void **state) {}
-static void test_fim_sync_dispatch_id_not_number(void **state) {}
-static void test_fim_sync_dispatch_drop_message(void **state) {}
-static void test_fim_sync_dispatch_no_begin_object(void **state) {}
-static void test_fim_sync_dispatch_checksum_fail(void **state) {}
-static void test_fim_sync_dispatch_no_data(void **state) {}
-static void test_fim_sync_dispatch_unwknown_command(void **state) {}
+static void test_fim_sync_dispatch_null_payload(void **state) {
+    expect_assert_failure(fim_sync_dispatch(NULL));
+}
+
+static void test_fim_sync_dispatch_no_argument(void **state) {
+    expect_string(__wrap__mdebug1, formatted_msg, "(6312): Data synchronization command 'no_argument' with no argument.");
+
+    fim_sync_dispatch("no_argument");
+}
+
+static void test_fim_sync_dispatch_invalid_argument(void **state) {
+    char *json_payload = cJSON_PrintUnformatted((cJSON*)*state);
+    char payload[OS_MAXSTR];
+
+    if(json_payload == NULL)
+        fail();
+
+    snprintf(payload, OS_MAXSTR, "invalid_json %.3s", json_payload);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6314): Invalid data synchronization argument: '{\"i'");
+
+    fim_sync_dispatch(payload);
+}
+
+static void test_fim_sync_dispatch_id_not_number(void **state) {
+    cJSON *json = *state;
+    char *json_payload;
+    char payload[OS_MAXSTR];
+
+    cJSON_DeleteItemFromObject(json, "id");
+    cJSON_AddStringToObject(json, "id", "invalid");
+
+    json_payload = cJSON_PrintUnformatted(json);
+
+    if(json_payload == NULL)
+        fail();
+
+    snprintf(payload, OS_MAXSTR, "invalid_id %s", json_payload);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6314): Invalid data synchronization argument: '{\"begin\":\"start\",\"end\":\"top\",\"id\":\"invalid\"}'");
+
+    fim_sync_dispatch(payload);
+}
+
+static void test_fim_sync_dispatch_drop_message(void **state) {
+    cJSON *json = *state;
+    char *json_payload;
+    char payload[OS_MAXSTR];
+
+    json_payload = cJSON_PrintUnformatted(json);
+
+    if(json_payload == NULL)
+        fail();
+
+    snprintf(payload, OS_MAXSTR, "drop_message %s", json_payload);
+
+    fim_sync_cur_id = 0;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6316): Dropping message with id (1234) greater than global id (0)");
+
+    fim_sync_dispatch(payload);
+}
+
+static void test_fim_sync_dispatch_no_begin_object(void **state) {
+    cJSON *json = *state;
+    char *json_payload;
+    char payload[OS_MAXSTR];
+
+    cJSON_DeleteItemFromObject(json, "begin");
+
+    json_payload = cJSON_PrintUnformatted(json);
+
+    if(json_payload == NULL)
+        fail();
+
+    snprintf(payload, OS_MAXSTR, "no_begin %s", json_payload);
+
+    fim_sync_cur_id = 1235;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6315): Setting global ID back to lower message ID (1234)");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6314): Invalid data synchronization argument: '{\"id\":1234,\"end\":\"top\"}'");
+
+    fim_sync_dispatch(payload);
+}
+
+static void test_fim_sync_dispatch_checksum_fail(void **state) {
+    cJSON *json = *state;
+    char *json_payload;
+    char payload[OS_MAXSTR];
+
+    json_payload = cJSON_PrintUnformatted(json);
+
+    if(json_payload == NULL)
+        fail();
+
+    snprintf(payload, OS_MAXSTR, "checksum_fail %s", json_payload);
+
+    fim_sync_cur_id = 1234;
+
+    // Inside fim_sync_checksum_split
+    expect_value(__wrap_fim_db_get_count_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_count_range, start, "start");
+    expect_string(__wrap_fim_db_get_count_range, top, "top");
+    will_return(__wrap_fim_db_get_count_range, 0);
+    will_return(__wrap_fim_db_get_count_range, FIMDB_OK);
+
+    fim_sync_dispatch(payload);
+}
+
+static void test_fim_sync_dispatch_no_data(void **state) {
+    cJSON *json = *state;
+    char *json_payload;
+    char payload[OS_MAXSTR];
+
+    json_payload = cJSON_PrintUnformatted(json);
+
+    if(json_payload == NULL)
+        fail();
+
+    snprintf(payload, OS_MAXSTR, "no_data %s", json_payload);
+
+    fim_sync_cur_id = 1234;
+
+    // Inside fim_sync_send_list
+    expect_value(__wrap_fim_db_sync_path_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_sync_path_range, start, "start");
+    expect_string(__wrap_fim_db_sync_path_range, top, "top");
+    will_return(__wrap_fim_db_sync_path_range, FIMDB_OK);
+
+    fim_sync_dispatch(payload);
+}
+
+static void test_fim_sync_dispatch_unwknown_command(void **state) {
+    cJSON *json = *state;
+    char *json_payload;
+    char payload[OS_MAXSTR];
+
+    json_payload = cJSON_PrintUnformatted(json);
+
+    if(json_payload == NULL)
+        fail();
+
+    snprintf(payload, OS_MAXSTR, "unknown %s", json_payload);
+
+    fim_sync_cur_id = 1234;
+
+    // Inside fim_sync_send_list
+    expect_string(__wrap__mdebug1, formatted_msg, "(6313): Unknown data synchronization command: 'unknown'");
+
+    fim_sync_dispatch(payload);
+}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -454,13 +615,13 @@ int main(void) {
         /* fim_sync_dispatch */
         cmocka_unit_test(test_fim_sync_dispatch_null_payload),
         cmocka_unit_test(test_fim_sync_dispatch_no_argument),
-        cmocka_unit_test(test_fim_sync_dispatch_invalid_argument),
-        cmocka_unit_test(test_fim_sync_dispatch_id_not_number),
-        cmocka_unit_test(test_fim_sync_dispatch_drop_message),
-        cmocka_unit_test(test_fim_sync_dispatch_no_begin_object),
-        cmocka_unit_test(test_fim_sync_dispatch_checksum_fail),
-        cmocka_unit_test(test_fim_sync_dispatch_no_data),
-        cmocka_unit_test(test_fim_sync_dispatch_unwknown_command),
+        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_invalid_argument, setup_fim_sync_dipatch_msg, teardown_fim_sync_dipatch_msg),
+        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_id_not_number, setup_fim_sync_dipatch_msg, teardown_fim_sync_dipatch_msg),
+        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_drop_message, setup_fim_sync_dipatch_msg, teardown_fim_sync_dipatch_msg),
+        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_no_begin_object, setup_fim_sync_dipatch_msg, teardown_fim_sync_dipatch_msg),
+        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_checksum_fail, setup_fim_sync_dipatch_msg, teardown_fim_sync_dipatch_msg),
+        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_no_data, setup_fim_sync_dipatch_msg, teardown_fim_sync_dipatch_msg),
+        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_unwknown_command, setup_fim_sync_dipatch_msg, teardown_fim_sync_dipatch_msg),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
