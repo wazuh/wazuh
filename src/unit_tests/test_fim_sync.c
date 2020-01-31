@@ -112,6 +112,40 @@ void __wrap_fim_send_sync_msg(const char * msg) {
     check_expected(msg);
 }
 
+
+int __wrap_fim_db_get_count_range(fdb_t *fim_sql, char *start, char *top, int *count) {
+    check_expected_ptr(fim_sql);
+    check_expected(start);
+    check_expected(top);
+
+    *count = mock();
+    return mock();
+}
+
+fim_entry *__wrap_fim_db_get_path(fdb_t *fim_sql, const char *file_path) {
+    check_expected_ptr(fim_sql);
+    check_expected(file_path);
+
+    return mock_type(fim_entry*);
+}
+
+cJSON *__wrap_fim_entry_json(const char * path, fim_entry_data * data) {
+    check_expected(path);
+
+    return mock_type(cJSON*);
+}
+
+int __wrap_fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *top,
+                                      const long id, const int n) {
+    check_expected_ptr(fim_sql);
+    check_expected(start);
+    check_expected(top);
+    check_expected(id);
+    check_expected(n);
+
+    return mock();
+}
+
 /* setup/teardown */
 static int setup_fim_sync_queue(void **state) {
     fim_sync_queue = queue_init(10);
