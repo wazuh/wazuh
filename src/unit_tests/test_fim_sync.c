@@ -20,10 +20,6 @@
 extern w_queue_t * fim_sync_queue;
 
 /* redefinitons/wrapping */
-int __wrap_fim_send_sync_msg(char * msg) {
-    check_expected(msg);
-    return 1;
-}
 
 int __wrap_time() {
     return 1572521857;
@@ -74,6 +70,34 @@ int __wrap_queue_push_ex(w_queue_t * queue, void * data) {
     return retval;
 }
 
+int __wrap_fim_db_get_row_path(fdb_t * fim_sql, int mode, char **path) {
+    check_expected_ptr(fim_sql);
+    check_expected(mode);
+
+    return mock();
+}
+
+int __wrap_fim_db_get_data_checksum(fdb_t *fim_sql, void * arg) {
+    check_expected_ptr(fim_sql);
+
+    return mock();
+}
+
+char * __wrap_dbsync_check_msg(const char * component, dbsync_msg msg, long id, const char * start, const char * top, const char * tail, const char * checksum) {
+    check_expected(component);
+    check_expected(msg);
+    check_expected(id);
+    check_expected(start);
+    check_expected(top);
+    check_expected(tail);
+
+    return mock_type(char*);
+}
+
+void __wrap_fim_send_sync_msg(const char * msg) {
+    check_expected(msg);
+}
+
 /* setup/teardown */
 static int setup_fim_sync_queue(void **state) {
     fim_sync_queue = queue_init(10);
@@ -96,6 +120,7 @@ static int teardown_fim_sync_queue(void **state) {
 // }
 
 /* tests */
+/* fim_sync_push_msg */
 static void test_fim_sync_push_msg_success(void **state) {
     char *msg = "This is a mock message, it won't go anywhere";
 
@@ -161,16 +186,21 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_sync_push_msg_queue_full, setup_fim_sync_queue, teardown_fim_sync_queue),
         cmocka_unit_test(test_fim_sync_push_msg_no_response),
 
+        /* fim_sync_checksum */
         cmocka_unit_test(test_fim_sync_checksum_first_row_error),
         cmocka_unit_test(test_fim_sync_checksum_last_row_error),
         cmocka_unit_test(test_fim_sync_checksum_checksum_error),
         cmocka_unit_test(test_fim_sync_checksum_empty_db),
         cmocka_unit_test(test_fim_sync_checksum_success),
+
+
         cmocka_unit_test(test_fim_sync_checksum_split_get_count_range_error),
         cmocka_unit_test(test_fim_sync_checksum_split_range_size_0),
         cmocka_unit_test(test_fim_sync_checksum_split_range_size_1),
         cmocka_unit_test(test_fim_sync_checksum_split_range_size_1_get_path_error),
         cmocka_unit_test(test_fim_sync_checksum_split_range_size_default),
+
+
         cmocka_unit_test(test_fim_sync_send_list_sync_path_range_error),
         cmocka_unit_test(test_fim_sync_send_list_success),
         cmocka_unit_test(test_fim_sync_dispatch_null_payload),

@@ -80,8 +80,9 @@ list(APPEND tests_names "test_syscheck")
 list(APPEND tests_flags "-Wl,--wrap,_mwarn -Wl,--wrap,fim_db_init")
 
 list(APPEND tests_names "test_fim_sync")
-list(APPEND tests_flags "-Wl,--wrap,fim_send_sync_msg -Wl,--wrap,time -Wl,--wrap,_mwarn \
-                         -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,queue_push_ex")
+list(APPEND tests_flags "-Wl,--wrap,fim_send_sync_msg -Wl,--wrap,time -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 \
+                         -Wl,--wrap,_mdebug2 -Wl,--wrap,queue_push_ex -Wl,--wrap,fim_db_get_row_path \
+                         -Wl,--wrap,fim_db_get_data_checksum -Wl,--wrap,dbsync_check_msg -Wl,--wrap,fim_send_sync_msg")
 
 list(APPEND tests_names "test_run_check")
 list(APPEND tests_flags "-Wl,--wrap,_minfo")
