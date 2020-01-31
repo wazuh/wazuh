@@ -227,7 +227,7 @@ int Start_win32_Syscheck()
     }
 
     /* Some sync time */
-    sleep(syscheck.tsleep * 5);
+    sleep(SYSCHECK_TSLEEP * 5);
     fim_initialize();
 
     /* Wait if agent started properly */
