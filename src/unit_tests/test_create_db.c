@@ -194,6 +194,12 @@ const char *__wrap_get_group(int gid) {
 
     return mock_type(const char*);
 }
+
+void __wrap_fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, void *arg) {
+    check_expected_ptr(fim_sql);
+    check_expected_ptr(entry);
+}
+
 /* setup/teardowns */
 static int setup_group(void **state) {
     fim_data_t *fim_data = calloc(1, sizeof(fim_data_t));
@@ -236,7 +242,7 @@ static int setup_group(void **state) {
     fim_data->old_data->uid = strdup("100");
     fim_data->old_data->gid = strdup("1000");
     fim_data->old_data->user_name = strdup("test");
-    fim_data->old_data->group_name = strdup("testing");;
+    fim_data->old_data->group_name = strdup("testing");
     fim_data->old_data->mtime = 1570184223;
     fim_data->old_data->inode = 606060;
     strcpy(fim_data->old_data->hash_md5, "3691689a513ace7e508297b583d7050d");
@@ -257,7 +263,7 @@ static int setup_group(void **state) {
     fim_data->new_data->uid = strdup("101");
     fim_data->new_data->gid = strdup("1001");
     fim_data->new_data->user_name = strdup("test1");
-    fim_data->new_data->group_name = strdup("testing1");;
+    fim_data->new_data->group_name = strdup("testing1");
     fim_data->new_data->mtime = 1570184224;
     fim_data->new_data->inode = 606061;
     strcpy(fim_data->new_data->hash_md5, "3691689a513ace7e508297b583d7550d");
@@ -706,7 +712,7 @@ static void test_fim_scan_info_json_start(void **state) {
     fim_data->json = fim_scan_info_json(FIM_SCAN_START, 1570184220);
 
     assert_non_null(fim_data->json);
-    cJSON *type = cJSON_GetObjectItem(fim_data->json, "type");;
+    cJSON *type = cJSON_GetObjectItem(fim_data->json, "type");
     assert_string_equal(type->valuestring, "scan_start");
     cJSON *data = cJSON_GetObjectItem(fim_data->json, "data");
     assert_non_null(data);
@@ -722,7 +728,7 @@ static void test_fim_scan_info_json_end(void **state) {
     fim_data->json = fim_scan_info_json(FIM_SCAN_END, 1570184220);
 
     assert_non_null(fim_data->json);
-    cJSON *type = cJSON_GetObjectItem(fim_data->json, "type");;
+    cJSON *type = cJSON_GetObjectItem(fim_data->json, "type");
     assert_string_equal(type->valuestring, "scan_end");
     cJSON *data = cJSON_GetObjectItem(fim_data->json, "data");
     assert_non_null(data);
@@ -741,7 +747,7 @@ static void test_fim_get_checksum(void **state) {
     fim_data->local_data->uid = strdup("100");
     fim_data->local_data->gid = strdup("1000");
     fim_data->local_data->user_name = strdup("test");
-    fim_data->local_data->group_name = strdup("testing");;
+    fim_data->local_data->group_name = strdup("testing");
     fim_data->local_data->mtime = 1570184223;
     fim_data->local_data->inode = 606060;
     strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
@@ -769,7 +775,7 @@ static void test_fim_get_checksum_wrong_size(void **state) {
     fim_data->local_data->uid = strdup("100");
     fim_data->local_data->gid = strdup("1000");
     fim_data->local_data->user_name = strdup("test");
-    fim_data->local_data->group_name = strdup("testing");;
+    fim_data->local_data->group_name = strdup("testing");
     fim_data->local_data->mtime = 1570184223;
     fim_data->local_data->inode = 606060;
     strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
@@ -981,7 +987,7 @@ static void test_fim_audit_inode_event_realtime_add_empty_paths(void **state) {
     fim_data->local_data->uid = strdup("100");
     fim_data->local_data->gid = strdup("1000");
     fim_data->local_data->user_name = strdup("test");
-    fim_data->local_data->group_name = strdup("testing");;
+    fim_data->local_data->group_name = strdup("testing");
     fim_data->local_data->mtime = 1570184223;
     fim_data->local_data->inode = 606060;
     strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
@@ -1141,6 +1147,29 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     fim_data->item->statbuf = buf;
     syscheck.opts[3] |= CHECK_SEECHANGES;
 
+    fim_data->fentry->path = strdup("file");
+    fim_data->fentry->data = fim_data->local_data;
+
+    fim_data->local_data->size = 1500;
+    fim_data->local_data->perm = strdup("0664");
+    fim_data->local_data->attributes = strdup("r--r--r--");
+    fim_data->local_data->uid = strdup("100");
+    fim_data->local_data->gid = strdup("1000");
+    fim_data->local_data->user_name = strdup("test");
+    fim_data->local_data->group_name = strdup("testing");
+    fim_data->local_data->mtime = 1570184223;
+    fim_data->local_data->inode = 606060;
+    strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
+    strcpy(fim_data->local_data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
+    fim_data->local_data->mode = FIM_REALTIME;
+    fim_data->local_data->last_event = 1570184220;
+    fim_data->local_data->entry_type = FIM_TYPE_FILE;
+    fim_data->local_data->dev = 12345678;
+    fim_data->local_data->scanned = 123456;
+    fim_data->local_data->options = 511;
+    strcpy(fim_data->local_data->checksum, "");
+
     will_return(__wrap_lstat, -1);
     errno = ENOENT;
 
@@ -1149,7 +1178,10 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "/media/test.file");
-    will_return(__wrap_fim_db_get_path, NULL);
+    will_return(__wrap_fim_db_get_path, fim_data->fentry);
+
+    expect_value(__wrap_fim_db_remove_path, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_remove_path, entry, fim_data->fentry);
 
     fim_checker(path, fim_data->item, NULL, 1);
 
@@ -1217,8 +1249,52 @@ static void test_fim_checker_fim_regular(void **state) {
     assert_int_equal(fim_data->item->index, 3);
 }
 
-static void test_fim_checker_fim_regular_ignore(void **state) {}
-static void test_fim_checker_fim_regular_restrict(void **state) {}
+static void test_fim_checker_fim_regular_ignore(void **state) {
+    fim_data_t *fim_data = *state;
+
+    char * path = "/etc/mtab";
+    struct stat buf;
+    buf.st_mode = S_IFREG;
+    fim_data->item->index = 3;
+    fim_data->item->statbuf = buf;
+    fim_data->item->mode = FIM_WHODATA;
+
+    will_return(__wrap_lstat, 0);
+
+    expect_string(__wrap_HasFilesystem, path, "/etc/mtab");
+    will_return(__wrap_HasFilesystem, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6204): Ignoring 'file' '/etc/mtab' due to '/etc/mtab'");
+
+    fim_checker(path, fim_data->item, fim_data->w_evt, 1);
+
+    assert_int_equal(fim_data->item->configuration, 66047);
+    assert_int_equal(fim_data->item->index, 0);
+}
+
+static void test_fim_checker_fim_regular_restrict(void **state) {
+    fim_data_t *fim_data = *state;
+
+    char * path = "/media/test";
+    struct stat buf;
+    buf.st_mode = S_IFREG;
+    fim_data->item->index = 3;
+    fim_data->item->statbuf = buf;
+    fim_data->item->mode = FIM_REALTIME;
+
+    will_return(__wrap_lstat, 0);
+
+    expect_string(__wrap_HasFilesystem, path, path);
+    will_return(__wrap_HasFilesystem, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6203): Ignoring file '/media/test' due to restriction 'file$'");
+
+    fim_checker(path, fim_data->item, fim_data->w_evt, 1);
+
+    assert_int_equal(fim_data->item->configuration, 33279);
+    assert_int_equal(fim_data->item->index, 3);
+}
+
 static void test_fim_checker_fim_directory(void **state) {
     fim_data_t *fim_data = *state;
 
@@ -1227,6 +1303,8 @@ static void test_fim_checker_fim_directory(void **state) {
     buf.st_mode = S_IFDIR;
     fim_data->item->index = 3;
     fim_data->item->statbuf = buf;
+    fim_data->item->mode = FIM_REALTIME;
+
     will_return_always(__wrap_lstat, 0);
 
     expect_string(__wrap_HasFilesystem, path, "/media/");
@@ -1530,7 +1608,7 @@ static void test_fim_file_no_attributes(void **state) {
     fim_data->local_data->uid = strdup("100");
     fim_data->local_data->gid = strdup("1000");
     fim_data->local_data->user_name = strdup("test");
-    fim_data->local_data->group_name = strdup("testing");;
+    fim_data->local_data->group_name = strdup("testing");
     fim_data->local_data->mtime = 1570184223;
     fim_data->local_data->inode = 606060;
     strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
@@ -1579,7 +1657,7 @@ static void test_fim_file_error_on_insert(void **state) {
     fim_data->local_data->uid = strdup("100");
     fim_data->local_data->gid = strdup("1000");
     fim_data->local_data->user_name = strdup("test");
-    fim_data->local_data->group_name = strdup("testing");;
+    fim_data->local_data->group_name = strdup("testing");
     fim_data->local_data->mtime = 1570184223;
     fim_data->local_data->inode = 606060;
     strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
@@ -1702,7 +1780,7 @@ int main(void) {
         cmocka_unit_test(test_fim_checker_invalid_fim_mode),
         cmocka_unit_test(test_fim_checker_over_max_recursion_level),
         cmocka_unit_test(test_fim_checker_deleted_file),
-        cmocka_unit_test(test_fim_checker_deleted_file_enoent),
+        cmocka_unit_test_setup(test_fim_checker_deleted_file_enoent, setup_fim_entry),
         cmocka_unit_test(test_fim_checker_no_file_system),
         cmocka_unit_test(test_fim_checker_fim_regular),
         cmocka_unit_test(test_fim_checker_fim_regular_ignore),
