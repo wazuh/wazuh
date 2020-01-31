@@ -154,9 +154,8 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
         w_mutex_lock(&syscheck.fim_entry_mutex);
 
         if (saved_entry = fim_db_get_path(syscheck.database, path), saved_entry) {
-            int alert = FIM_DELETE;
             json_event = fim_json_event(path, NULL, saved_entry->data, item->index, FIM_DELETE, item->mode, w_evt);
-            fim_db_remove_path(syscheck.database, saved_entry, (void *) &alert);
+            fim_db_remove_path(syscheck.database, saved_entry, 0);
             free_entry(saved_entry);
             saved_entry = NULL;
         }
@@ -272,6 +271,7 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
     //Get file attributes
     if (new = fim_get_data(file, item), !new) {
         mdebug1(FIM_GET_ATTRIBUTES, file);
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
         return 0;
     }
 
@@ -293,6 +293,7 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
             return OS_INVALID;
         }
     }
+    fim_db_set_scanned(syscheck.database, file);
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
@@ -335,13 +336,18 @@ void fim_audit_inode_event(char *file, fim_event_mode mode, whodata_evt * w_evt)
     if (mode == FIM_WHODATA) {
         paths = fim_db_get_paths_from_inode(syscheck.database, atoi(w_evt->inode), atoi(w_evt->dev));
     } else {
-        struct stat file_stat;
+        struct stat statbuf;
+        fim_entry *entry;
+        if (w_stat(file, &statbuf) < 0) {
+            entry = fim_db_get_path(syscheck.database, file);
 
-        if (w_stat(file, &file_stat) < 0) {
-            merror("Stat() failed on '%s': '%s'", file, strerror(errno));
+            if (entry) {
+                paths = fim_db_get_paths_from_inode(syscheck.database, entry->data->inode, entry->data->dev);
+                free_entry(entry);
+            }
+        } else {
+            paths = fim_db_get_paths_from_inode(syscheck.database, statbuf.st_ino, statbuf.st_dev);
         }
-
-        paths = fim_db_get_paths_from_inode(syscheck.database, file_stat.st_ino, file_stat.st_dev);
     }
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
@@ -367,13 +373,12 @@ void fim_audit_inode_event(char *file, fim_event_mode mode, whodata_evt * w_evt)
             os_free(paths[i]);
             os_free(hard_link_items);
         }
-        os_free(paths);
     } else {
         // Add events
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
         fim_checker(file, item, w_evt, 1);
     }
 
+    os_free(paths);
     os_free(item);
 
     return;
@@ -382,11 +387,10 @@ void fim_audit_inode_event(char *file, fim_event_mode mode, whodata_evt * w_evt)
 #ifdef WIN32
 int fim_registry_event(char *key, fim_entry_data *data, int pos) {
     cJSON *json_event = NULL;
-    fim_entry_data *saved;
+    fim_entry *saved;
     char *json_formated;
     int result = 1;
     int alert_type;
-    struct stat file_stat;
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
@@ -398,14 +402,14 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
 
     json_event = fim_json_event(key, saved ? saved->data : NULL, data, pos,
                                 alert_type, 0, NULL);
-    if ((saved && strcmp(saved->hash_sha1, data->hash_sha1) != 0)
+    if ((saved && strcmp(saved->data->hash_sha1, data->hash_sha1) != 0)
         || alert_type == FIM_ADD) {
         if (fim_db_insert_data(syscheck.database, key, data) == -1) {
             w_mutex_unlock(&syscheck.fim_entry_mutex);
             return OS_INVALID;
         }
     } else {
-        saved->scanned = 1;
+        saved->data->scanned = 1;
         result = 0;
     }
 
@@ -675,9 +679,12 @@ void fim_get_checksum (fim_entry_data * data) {
 
 void check_deleted_files() {
     w_mutex_lock(&syscheck.fim_entry_mutex);
+
     if (fim_db_delete_not_scanned(syscheck.database) != FIMDB_OK) {
         merror(FIM_DB_ERROR_RM_NOT_SCANNED);
     }
+    fim_db_set_all_unscanned(syscheck.database);
+
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 }
 
