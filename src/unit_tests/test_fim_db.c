@@ -111,6 +111,11 @@ const char *__wrap_sqlite3_column_text(sqlite3_stmt* pStmt, int iCol) {
     return mock_ptr_type(const char *);
 }
 
+int __wrap_printf(const char *fmt, ...) {
+    // Printf should not exits, if found test will fail
+    fail();
+}
+
 void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...)
 {
     char formatted_msg[OS_MAXSTR];
@@ -815,6 +820,99 @@ void test_fim_db_clean_stmt_success(void **state) {
     int ret = fim_db_clean_stmt(test_data->fim_sql, 0);
     assert_int_equal(ret, FIMDB_OK);
 }
+/*----------------------------------------------*/
+/*----------fim_db_get_paths_from_inode()------------------*/
+void test_fim_db_get_paths_from_inode_none_path(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 2);
+    will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 2);
+    will_return_always(__wrap_sqlite3_bind_int, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    wraps_fim_db_check_transaction();
+    char **paths;
+    paths = fim_db_get_paths_from_inode(test_data->fim_sql, 1, 1);
+    assert_null(paths);
+}
+
+void test_fim_db_get_paths_from_inode_single_path(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 2);
+    will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 2);
+    will_return_always(__wrap_sqlite3_bind_int, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 1);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "Path 1");
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    wraps_fim_db_check_transaction();
+    char **paths;
+    paths = fim_db_get_paths_from_inode(test_data->fim_sql, 1, 1);
+    assert_string_equal(paths[0], "Path 1");
+    assert_null(paths[1]);
+}
+
+void test_fim_db_get_paths_from_inode_multiple_path(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 2);
+    will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 2);
+    will_return_always(__wrap_sqlite3_bind_int, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 5);
+    int i;
+    char buffer[10];
+    for(i = 0; i < 5; i++) {
+        // Generate 5 paths
+        will_return(__wrap_sqlite3_step, SQLITE_ROW);
+        expect_value(__wrap_sqlite3_column_text, iCol, 0);
+        snprintf(buffer, 10, "Path %d", i + 1);
+        will_return(__wrap_sqlite3_column_text, strdup(buffer));
+    }
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    wraps_fim_db_check_transaction();
+    char **paths;
+    paths = fim_db_get_paths_from_inode(test_data->fim_sql, 1, 1);
+    for(i=0; i<5; i++) {
+        snprintf(buffer, 10, "Path %d", i + 1);
+        assert_string_equal(paths[i], buffer);
+    }
+    assert_null(paths[5]);
+}
+
+/**
+ * Test error message when number of iterated rows is larger than count
+ * */
+void test_fim_db_get_paths_from_inode_multiple_unamatched_rows(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 2);
+    will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 2);
+    will_return_always(__wrap_sqlite3_bind_int, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 5);
+    int i;
+    char buffer[10];
+    for(i = 0; i < 5; i++) {
+        // Generate 5 paths
+        will_return(__wrap_sqlite3_step, SQLITE_ROW);
+        expect_value(__wrap_sqlite3_column_text, iCol, 0);
+        snprintf(buffer, 10, "Path %d", i + 1);
+        will_return(__wrap_sqlite3_column_text, strdup(buffer));
+    }
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    expect_string(__wrap__merror, formatted_msg, "Error in fim_db_get_paths_from_inode(): Unmatched number of rows in queries");
+    wraps_fim_db_check_transaction();
+    char **paths;
+    paths = fim_db_get_paths_from_inode(test_data->fim_sql, 1, 1);
+    for(i=0; i<5; i++) {
+        snprintf(buffer, 10, "Path %d", i + 1);
+        assert_string_equal(paths[i], buffer);
+    }
+    assert_null(paths[5]);
+}
+
 /*-----------------------------------------*/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -876,6 +974,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_clean_stmt_reset_failed, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_clean_stmt_reset_and_prepare_failed, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_clean_stmt_success, test_fim_db_setup, test_fim_db_teardown),
+        // fim_db_get_paths_from_inode
+        cmocka_unit_test_setup_teardown(test_fim_db_get_paths_from_inode_none_path, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_get_paths_from_inode_single_path, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_get_paths_from_inode_multiple_path, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_get_paths_from_inode_multiple_unamatched_rows, test_fim_db_setup, test_fim_db_teardown),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
