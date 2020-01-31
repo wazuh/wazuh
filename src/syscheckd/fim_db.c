@@ -721,7 +721,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
             goto end;
         }
         entry = fim_db_decode_full_row(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]);
-        if (i == (m - 1)) {
+        if (i == (m - 1) && entry->path) {
             os_strdup(entry->path, str_pathlh);
         }
         fim_db_callback_calculate_checksum(fim_sql, entry, (void *)ctx_left);
@@ -735,7 +735,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
             goto end1;
         }
         entry = fim_db_decode_full_row(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]);
-        if (i == m) {
+        if (i == m && entry->path) {
             os_strdup(entry->path, str_pathuh);
         }
         fim_db_callback_calculate_checksum(fim_sql, entry, (void *)ctx_right);
