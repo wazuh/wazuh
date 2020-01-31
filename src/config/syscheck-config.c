@@ -1560,7 +1560,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
 
 int Test_Syscheck(const char * path){
     int fail = 0;
-    syscheck_config test_syscheck = { .tsleep = 0 };
+    syscheck_config test_syscheck = { .rootcheck = 0 };
 
     if (ReadConfig(CAGENT_CONFIG | CSYSCHECK, path, &test_syscheck, NULL) < 0) {
 		merror(RCONFIG_ERROR,"Syscheck", path);
