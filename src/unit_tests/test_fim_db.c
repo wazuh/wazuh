@@ -709,6 +709,29 @@ void test_fim_db_close_success(void **state) {
     will_return(__wrap_sqlite3_close_v2, SQLITE_OK);
     fim_db_close(test_data->fim_sql);
 }
+/*----------------------------------------------*/
+/*----------fim_db_clean()------------------*/
+void test_fim_db_clean_no_db_file(void **state) {
+    expect_string(__wrap_w_is_file, file, FIM_DB_DISK_PATH);
+    will_return(__wrap_w_is_file, 0);
+    int ret = fim_db_clean();
+    assert_int_equal(ret, FIMDB_OK);
+}
+
+void test_fim_db_clean_file_not_removed(void **state) {
+    expect_string(__wrap_w_is_file, file, FIM_DB_DISK_PATH);
+    will_return(__wrap_w_is_file, 1);
+    expect_string(__wrap_remove, filename, FIM_DB_DISK_PATH);
+    will_return(__wrap_remove, -1);
+    int ret = fim_db_clean();
+    assert_int_equal(ret, FIMDB_ERR);
+}
+
+void test_fim_db_clean_succes(void **state) {
+    wraps_fim_db_clean();
+    int ret =  fim_db_clean();
+    assert_int_equal(ret, FIMDB_OK);
+}
 
 /*-----------------------------------------*/
 int main(void) {
@@ -757,6 +780,10 @@ int main(void) {
         // fim_db_close
         cmocka_unit_test_setup_teardown(test_fim_db_close_failed, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_close_success, test_fim_db_setup, test_fim_db_teardown),
+        // fim_db_clean
+        cmocka_unit_test_setup_teardown(test_fim_db_clean_no_db_file, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_clean_file_not_removed, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_clean_succes, test_fim_db_setup, test_fim_db_teardown),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
