@@ -255,6 +255,8 @@ static void rb_balance_delete(rb_tree * tree, rb_node * node, rb_node * parent) 
         if (node == parent->left) {
             rb_node * sibling = parent->right;
 
+            assert(sibling != NULL);
+
             if (sibling->color == RB_RED) {
                 // Case 1: sibling is red
 
@@ -292,6 +294,8 @@ static void rb_balance_delete(rb_tree * tree, rb_node * node, rb_node * parent) 
             }
         } else {
             rb_node * sibling = parent->left;
+
+            assert(sibling != NULL);
 
             if (sibling->color == RB_RED) {
                 // Case 1b: sibling is red
