@@ -766,6 +766,26 @@ void test_fim_db_finalize_stmt_success(void **state) {
     int ret = fim_db_finalize_stmt(test_data->fim_sql);
     assert_int_equal(ret, FIMDB_OK);
 }
+/*----------------------------------------------*/
+/*----------fim_db_force_commit()------------------*/
+void test_fim_db_force_commit_failed(void **state){
+    test_fim_db_insert_data *test_data = *state;
+    expect_string(__wrap_sqlite3_exec, sql, "END;");
+    will_return(__wrap_sqlite3_exec, "ERROR_MESSAGE");
+    will_return(__wrap_sqlite3_exec, SQLITE_ERROR);
+    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: ERROR_MESSAGE");
+    fim_db_force_commit(test_data->fim_sql);
+    // If commit fails last_commit should still be one
+    assert_int_equal(1, test_data->fim_sql->transaction.last_commit);
+}
+
+void test_fim_db_force_commit_success(void **state){
+    test_fim_db_insert_data *test_data = *state;
+    wraps_fim_db_check_transaction();
+    fim_db_force_commit(test_data->fim_sql);
+    // If commit succeded last_comit time should be updated
+    assert_int_not_equal(1, test_data->fim_sql->transaction.last_commit);
+}
 /*-----------------------------------------*/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -820,6 +840,9 @@ int main(void) {
         // fim_db_finalize_stmt
         cmocka_unit_test_setup_teardown(test_fim_db_finalize_stmt_failed, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_finalize_stmt_success, test_fim_db_setup, test_fim_db_teardown),
+        // fim_db_force_commit
+        cmocka_unit_test_setup_teardown(test_fim_db_force_commit_failed, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_force_commit_success, test_fim_db_setup, test_fim_db_teardown),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
