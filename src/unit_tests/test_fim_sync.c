@@ -395,8 +395,25 @@ static void test_fim_sync_checksum_split_range_size_default(void **state) {
 }
 
 /* fim_sync_send_list */
-static void test_fim_sync_send_list_sync_path_range_error(void **state) {}
-static void test_fim_sync_send_list_success(void **state) {}
+static void test_fim_sync_send_list_sync_path_range_error(void **state) {
+    expect_value(__wrap_fim_db_sync_path_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_sync_path_range, start, "start");
+    expect_string(__wrap_fim_db_sync_path_range, top, "top");
+    will_return(__wrap_fim_db_sync_path_range, FIMDB_ERR);
+
+    expect_string(__wrap__merror, formatted_msg, FIM_DB_ERROR_SYNC_DB);
+
+    fim_sync_send_list("start", "top");
+}
+
+static void test_fim_sync_send_list_success(void **state) {
+    expect_value(__wrap_fim_db_sync_path_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_sync_path_range, start, "start");
+    expect_string(__wrap_fim_db_sync_path_range, top, "top");
+    will_return(__wrap_fim_db_sync_path_range, FIMDB_OK);
+
+    fim_sync_send_list("start", "top");
+}
 
 /* fim_sync_dispatch */
 static void test_fim_sync_dispatch_null_payload(void **state) {}
