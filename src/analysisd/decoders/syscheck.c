@@ -1512,6 +1512,7 @@ int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state) {
         }
 
         if (attr_it->type == cJSON_Number) {
+            assert(lf->fields != NULL);
             if (!strcmp(attr_it->string, "size")) {
                 if (new_state) {
                     lf->fields[FIM_SIZE].value = w_long_str((long) attr_it->valuedouble);
