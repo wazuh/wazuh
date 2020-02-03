@@ -21,8 +21,13 @@
 extern long fim_sync_cur_id;
 extern w_queue_t * fim_sync_queue;
 
-/* redefinitons/wrapping */
+/* Auxiliar structs */
+typedef struct __json_payload_s {
+    cJSON *payload;
+    char *printed_payload;
+} json_payload_t;
 
+/* redefinitons/wrapping */
 int __wrap_time() {
     return 1572521857;
 }
@@ -177,26 +182,38 @@ static int teardown_fim_sync_queue(void **state) {
     return 0;
 }
 
-static int setup_fim_sync_dipatch_msg(void **state) {
-    char *text_payload =
+static int setup_json_payload(void **state) {
+    json_payload_t *json_payload = calloc(1, sizeof(json_payload_t));
+    const static char *text_payload =
         "{"
             "\"id\": 1234,"
             "\"begin\": \"start\","
             "\"end\": \"top\""
         "}";
-    cJSON *payload = cJSON_Parse(text_payload);
 
-    if(payload == NULL)
+    if(json_payload == NULL)
         return -1;
 
-    *state = payload;
+    json_payload->payload = cJSON_Parse(text_payload);
+
+    if(json_payload->payload == NULL)
+        return -1;
+
+    json_payload->printed_payload = cJSON_PrintUnformatted(json_payload->payload);
+
+    if(json_payload->printed_payload == NULL)
+        return -1;
+
+    *state = json_payload;
     return 0;
 }
 
-static int teardown_fim_sync_dipatch_msg(void **state) {
-    cJSON *payload = *state;
+static int teardown_json_payload(void **state) {
+    json_payload_t *json_payload = *state;
 
-    cJSON_Delete(payload);
+    cJSON_Delete(json_payload->payload);
+    free(json_payload->printed_payload);
+    free(json_payload);
 
     return 0;
 }
@@ -392,11 +409,6 @@ static void test_fim_sync_checksum_split_range_size_1_get_path_error(void **stat
 }
 
 static void test_fim_sync_checksum_split_range_size_default(void **state) {
-    fim_entry *mock_entry = calloc(1, sizeof(fim_entry)); // To be freed by fim_sync_checksum_split
-
-    if(mock_entry == NULL)
-        fail();
-
     expect_value(__wrap_fim_db_get_count_range, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_count_range, start, "start");
     expect_string(__wrap_fim_db_get_count_range, top, "top");
@@ -446,13 +458,10 @@ static void test_fim_sync_dispatch_no_argument(void **state) {
 }
 
 static void test_fim_sync_dispatch_invalid_argument(void **state) {
-    char *json_payload = cJSON_PrintUnformatted((cJSON*)*state);
+    json_payload_t *json_payload = *state;
     char payload[OS_MAXSTR];
 
-    if(json_payload == NULL)
-        fail();
-
-    snprintf(payload, OS_MAXSTR, "invalid_json %.3s", json_payload);
+    snprintf(payload, OS_MAXSTR, "invalid_json %.3s", json_payload->printed_payload);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6314): Invalid data synchronization argument: '{\"i'");
 
@@ -460,19 +469,20 @@ static void test_fim_sync_dispatch_invalid_argument(void **state) {
 }
 
 static void test_fim_sync_dispatch_id_not_number(void **state) {
-    cJSON *json = *state;
-    char *json_payload;
+    json_payload_t *json_payload = *state;
     char payload[OS_MAXSTR];
 
-    cJSON_DeleteItemFromObject(json, "id");
-    cJSON_AddStringToObject(json, "id", "invalid");
+    cJSON_DeleteItemFromObject(json_payload->payload, "id");
+    cJSON_AddStringToObject(json_payload->payload, "id", "invalid");
 
-    json_payload = cJSON_PrintUnformatted(json);
+    free(json_payload->printed_payload);
 
-    if(json_payload == NULL)
+    json_payload->printed_payload = cJSON_PrintUnformatted(json_payload->payload);
+
+    if(json_payload->printed_payload == NULL)
         fail();
 
-    snprintf(payload, OS_MAXSTR, "invalid_id %s", json_payload);
+    snprintf(payload, OS_MAXSTR, "invalid_id %s", json_payload->printed_payload);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6314): Invalid data synchronization argument: '{\"begin\":\"start\",\"end\":\"top\",\"id\":\"invalid\"}'");
 
@@ -480,16 +490,10 @@ static void test_fim_sync_dispatch_id_not_number(void **state) {
 }
 
 static void test_fim_sync_dispatch_drop_message(void **state) {
-    cJSON *json = *state;
-    char *json_payload;
+    json_payload_t *json_payload = *state;
     char payload[OS_MAXSTR];
 
-    json_payload = cJSON_PrintUnformatted(json);
-
-    if(json_payload == NULL)
-        fail();
-
-    snprintf(payload, OS_MAXSTR, "drop_message %s", json_payload);
+    snprintf(payload, OS_MAXSTR, "drop_message %s", json_payload->printed_payload);
 
     fim_sync_cur_id = 0;
 
@@ -499,18 +503,19 @@ static void test_fim_sync_dispatch_drop_message(void **state) {
 }
 
 static void test_fim_sync_dispatch_no_begin_object(void **state) {
-    cJSON *json = *state;
-    char *json_payload;
+    json_payload_t *json_payload = *state;
     char payload[OS_MAXSTR];
 
-    cJSON_DeleteItemFromObject(json, "begin");
+    cJSON_DeleteItemFromObject(json_payload->payload, "begin");
 
-    json_payload = cJSON_PrintUnformatted(json);
+    free(json_payload->printed_payload);
 
-    if(json_payload == NULL)
+    json_payload->printed_payload = cJSON_PrintUnformatted(json_payload->payload);
+
+    if(json_payload->printed_payload == NULL)
         fail();
 
-    snprintf(payload, OS_MAXSTR, "no_begin %s", json_payload);
+    snprintf(payload, OS_MAXSTR, "no_begin %s", json_payload->printed_payload);
 
     fim_sync_cur_id = 1235;
 
@@ -521,16 +526,10 @@ static void test_fim_sync_dispatch_no_begin_object(void **state) {
 }
 
 static void test_fim_sync_dispatch_checksum_fail(void **state) {
-    cJSON *json = *state;
-    char *json_payload;
+    json_payload_t *json_payload = *state;
     char payload[OS_MAXSTR];
 
-    json_payload = cJSON_PrintUnformatted(json);
-
-    if(json_payload == NULL)
-        fail();
-
-    snprintf(payload, OS_MAXSTR, "checksum_fail %s", json_payload);
+    snprintf(payload, OS_MAXSTR, "checksum_fail %s", json_payload->printed_payload);
 
     fim_sync_cur_id = 1234;
 
@@ -545,16 +544,10 @@ static void test_fim_sync_dispatch_checksum_fail(void **state) {
 }
 
 static void test_fim_sync_dispatch_no_data(void **state) {
-    cJSON *json = *state;
-    char *json_payload;
+    json_payload_t *json_payload = *state;
     char payload[OS_MAXSTR];
 
-    json_payload = cJSON_PrintUnformatted(json);
-
-    if(json_payload == NULL)
-        fail();
-
-    snprintf(payload, OS_MAXSTR, "no_data %s", json_payload);
+    snprintf(payload, OS_MAXSTR, "no_data %s", json_payload->printed_payload);
 
     fim_sync_cur_id = 1234;
 
@@ -568,16 +561,10 @@ static void test_fim_sync_dispatch_no_data(void **state) {
 }
 
 static void test_fim_sync_dispatch_unwknown_command(void **state) {
-    cJSON *json = *state;
-    char *json_payload;
+    json_payload_t *json_payload = *state;
     char payload[OS_MAXSTR];
 
-    json_payload = cJSON_PrintUnformatted(json);
-
-    if(json_payload == NULL)
-        fail();
-
-    snprintf(payload, OS_MAXSTR, "unknown %s", json_payload);
+    snprintf(payload, OS_MAXSTR, "unknown %s", json_payload->printed_payload);
 
     fim_sync_cur_id = 1234;
 
@@ -615,13 +602,13 @@ int main(void) {
         /* fim_sync_dispatch */
         cmocka_unit_test(test_fim_sync_dispatch_null_payload),
         cmocka_unit_test(test_fim_sync_dispatch_no_argument),
-        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_invalid_argument, setup_fim_sync_dipatch_msg, teardown_fim_sync_dipatch_msg),
-        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_id_not_number, setup_fim_sync_dipatch_msg, teardown_fim_sync_dipatch_msg),
-        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_drop_message, setup_fim_sync_dipatch_msg, teardown_fim_sync_dipatch_msg),
-        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_no_begin_object, setup_fim_sync_dipatch_msg, teardown_fim_sync_dipatch_msg),
-        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_checksum_fail, setup_fim_sync_dipatch_msg, teardown_fim_sync_dipatch_msg),
-        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_no_data, setup_fim_sync_dipatch_msg, teardown_fim_sync_dipatch_msg),
-        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_unwknown_command, setup_fim_sync_dipatch_msg, teardown_fim_sync_dipatch_msg),
+        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_invalid_argument, setup_json_payload, teardown_json_payload),
+        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_id_not_number, setup_json_payload, teardown_json_payload),
+        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_drop_message, setup_json_payload, teardown_json_payload),
+        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_no_begin_object, setup_json_payload, teardown_json_payload),
+        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_checksum_fail, setup_json_payload, teardown_json_payload),
+        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_no_data, setup_json_payload, teardown_json_payload),
+        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_unwknown_command, setup_json_payload, teardown_json_payload),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
