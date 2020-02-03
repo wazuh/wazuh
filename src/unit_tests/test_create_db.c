@@ -1403,15 +1403,17 @@ static void test_fim_directory_opendir_error(void **state) {
 /* fim_get_data */
 static void test_fim_get_data(void **state) {
     fim_data_t *fim_data = *state;
-
-    fim_data->item->index = 1;
-    fim_data->item->configuration = CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_MTIME | \
-                          CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP;
     struct stat buf;
+
     buf.st_mode = S_IFREG | 00444 ;
     buf.st_size = 1000;
     buf.st_uid = 0;
     buf.st_gid = 0;
+    buf.st_ino = 1234;
+    buf.st_dev = 2345;
+    buf.st_mtime = 3456;
+
+    fim_data->item->index = 1;
     fim_data->item->statbuf = buf;
     fim_data->item->configuration = CHECK_SIZE |
                                     CHECK_PERM |
@@ -1505,8 +1507,18 @@ static void test_check_deleted_files_error(void **state) {
 static void test_fim_file_add(void **state) {
     fim_data_t *fim_data = *state;
     int ret;
+    struct stat buf;
+
+    buf.st_mode = S_IFREG | 00444 ;
+    buf.st_size = 1000;
+    buf.st_uid = 0;
+    buf.st_gid = 0;
+    buf.st_ino = 1234;
+    buf.st_dev = 2345;
+    buf.st_mtime = 3456;
 
     fim_data->item->index = 1;
+    fim_data->item->statbuf = buf;
     fim_data->item->configuration = CHECK_SIZE |
                                     CHECK_PERM  |
                                     CHECK_OWNER |
