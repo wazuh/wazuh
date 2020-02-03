@@ -115,7 +115,10 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
     _message = log_builder_build(mq_log_builder, target->format, message, locmsg);
 
     if (strcmp(target->log_socket->name, "agent") == 0) {
-        SendMSG(queue, _message, locmsg, loc);
+        if(SendMSG(queue, _message, locmsg, loc) != 0) {
+            free(_message);
+            return -1;
+        }
     }
     else {
         tmpstr[OS_MAXSTR] = '\0';

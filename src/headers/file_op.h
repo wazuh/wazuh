@@ -514,6 +514,7 @@ DWORD FileSizeWin(const char * file);
  */
 int trail_path_separator(char * dest, const char * src, size_t n);
 
+
 /**
  * @brief Check if a path is absolute
  *
@@ -527,6 +528,7 @@ int trail_path_separator(char * dest, const char * src, size_t n);
  */
 bool isabspath(const char * path);
 
+
 /**
  * @brief Unify path separators (slashes) for Windows paths
  *
@@ -535,6 +537,7 @@ bool isabspath(const char * path);
  * @param path A string containing a path.
  */
 void win_path_backslash(char * path);
+
 
 /**
  * @brief Get an absolute path
@@ -545,5 +548,16 @@ void win_path_backslash(char * path);
  * @return Pointer to buffer on success, or NULL on error.
  */
 char * abspath(const char * path, char * buffer, size_t size);
+
+
+/**
+ * @brief Get the content of a given file
+ *
+ * @param path File location
+ * @param max_size Maximum allowed file size
+ * @return The content of the file
+ * @retval NULL The file doesn't exist or its size exceeds the maximum allowed
+ */
+char * w_get_file_content(const char * path, int max_size);
 
 #endif /* FILE_OP_H */
