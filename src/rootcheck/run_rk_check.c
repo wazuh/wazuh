@@ -303,7 +303,7 @@ void * w_rootcheck_thread(__attribute__((unused)) void * args) {
     time_t prev_time_rk = 0;
     syscheck_config *syscheck = args;
 
-    sleep(10);
+    sleep(ROOTCHECK_SLEEP_THREAD*10);
 
     while (1) {
         int run_now = 0;
