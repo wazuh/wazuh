@@ -34,9 +34,6 @@ ruleset_conf = {
     'rule_dir': ['ruleset/rules', 'etc/rules'], 'rule_exclude': ['0215-policy_rules.xml'],
     'list': ['etc/lists/audit-keys', 'etc/lists/amazon/aws-eventnames', 'etc/lists/security-eventchannel']
 }
-files = [
-    '0425-cisco-estreamer_rules.xml'
-]
 
 
 @pytest.mark.parametrize('detail, value, details', [
@@ -84,6 +81,7 @@ def test_check_status(status, expected_result):
 @pytest.mark.parametrize('rule_file, rule_path, rule_status, exception', [
     ('0010-rules_config.xml', 'tests/data/rules', 'enabled', None),
     ('0015-ossec_rules.xml', 'tests/data/rules', 'enabled', None),
+    ('0225-mcafee_av_rules.xml', 'tests/data/rules', 'enabled', None),
     ('0260-nginx_rules.xml', 'tests/data/rules', 'enabled', None),
     ('0350-amazon_rules.xml', 'tests/data/rules', 'enabled', None),
     ('noexists.xml', 'tests/data/rules', 'enabled', WazuhError(1201))
@@ -144,11 +142,14 @@ def test_remove_files(tmp_data, parameters, expected_result):
     assert result == expected_result
 
 
-def test_format_rule_decoder_file():
+@pytest.mark.parametrize('rule_file, rule_path, rule_status', [
+    ('0015-ossec_rules.xml', 'etc/rules', 'enabled'),
+    ('0350-amazon_rules.xml', 'etc/rules', 'enabled'),
+])
+def test_format_rule_decoder_file(rule_file, rule_path, rule_status):
     """Test format_rule_decoder_file rule core function."""
-    for file in files:
-        result = rule.format_rule_decoder_file(
-            ruleset_conf, {'status': rule.Status.S_ENABLED.value, 'path': 'ruleset/rules', 'file': file},
-            ['rule_include', 'rule_exclude', 'rule_dir'])
-        print(result)
-        assert result == [{'file': file, 'path': 'ruleset/rules', 'status': 'enabled'}]
+    result = rule.format_rule_decoder_file(
+        ruleset_conf, {'status': rule_status, 'path': rule_path, 'file': rule_file},
+        ['rule_include', 'rule_exclude', 'rule_dir'])
+
+    assert result == [{'file': rule_file, 'path': rule_path, 'status': rule_status}]
