@@ -1,11 +1,11 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import errno
+import fcntl
 import hashlib
 import operator
-
+import os
 import socket
 from base64 import b64encode
 from datetime import date, datetime, timedelta, timezone
@@ -18,7 +18,6 @@ from shutil import copyfile, rmtree
 from time import time, sleep
 from typing import Dict
 
-import fcntl
 import requests
 
 from wazuh import common, configuration
@@ -28,10 +27,9 @@ from wazuh.database import Connection
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
-from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
-                        get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
-                        md5, SQLiteBackend, WazuhDBBackend, filter_array_by_query, safe_move
-from wazuh.wdb import WazuhDBConnection
+from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, \
+    plain_dict_to_nested_dict, get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, \
+    mkdir_with_mode, md5, SQLiteBackend, WazuhDBBackend, filter_array_by_query, safe_move
 
 
 def create_exception_dic(id, e):
@@ -1967,6 +1965,8 @@ class Agent:
             with open(wpk_file_path, 'wb') as fd:
                 for chunk in result.iter_content(chunk_size=128):
                     fd.write(chunk)
+                os.chown(wpk_file_path, common.ossec_gid(), common.ossec_gid())
+                os.chmod(wpk_file_path, 0o660)
         else:
             raise WazuhException(1714,
                                  WazuhException.ERRORS[1714] + ". Can't access to the WPK file in {}".format(wpk_url),
