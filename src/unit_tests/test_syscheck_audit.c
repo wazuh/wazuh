@@ -100,6 +100,7 @@ int __wrap_fopen(const char *filename, const char *mode)
 char * __wrap_realpath(const char * path, char * resolved_path)
 {
     snprintf(resolved_path, OS_SIZE_1024, "%s", mock_ptr_type(char *));
+    return resolved_path;
 }
 
 size_t __real_fwrite(const void * ptr, size_t size, size_t count, FILE * stream);

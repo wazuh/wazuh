@@ -47,9 +47,14 @@ list(APPEND tests_names "test_version_op")
 list(APPEND tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose")
 
 list(APPEND tests_names "test_create_db")
-list(APPEND tests_flags "-Wl,--wrap,rbtree_insert -Wl,--wrap,rbtree_get -Wl,--wrap,rbtree_replace -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug2 \
-                         -Wl,--wrap,OSHash_Add -Wl,--wrap,lstat -Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck_msg -Wl,--wrap,rbtree_keys -Wl,--wrap,readdir -Wl,--wrap,opendir -Wl,--wrap,closedir \
-                         -Wl,--wrap,rbtree_delete -Wl,--wrap,OSHash_Delete -Wl,--wrap,print_rbtree -Wl,--wrap,realtime_adddir -Wl,--wrap,HasFilesystem")
+list(APPEND tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug2 -Wl,--wrap,lstat \
+                         -Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck_msg -Wl,--wrap,readdir \
+                         -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,realtime_adddir -Wl,--wrap,HasFilesystem \
+                         -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_get_paths_from_inode -Wl,--wrap,delete_target_file \
+                         -Wl,--wrap,fim_db_insert_data -Wl,--wrap,OS_MD5_SHA1_SHA256_File -Wl,--wrap,seechanges_addfile\
+                         -Wl,--wrap,fim_db_delete_not_scanned -Wl,--wrap,fim_db_set_all_unscanned \
+                         -Wl,--wrap,fim_db_set_scanned -Wl,--wrap,get_user -Wl,--wrap,get_group \
+                         -Wl,--wrap,fim_db_remove_path")
 
 list(APPEND tests_names "test_syscheck_audit")
 list(APPEND tests_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,IsSocket -Wl,--wrap,IsFile -Wl,--wrap,IsDir -Wl,--wrap,IsLink -Wl,--wrap,IsFile -Wl,--wrap,audit_restart \
@@ -72,11 +77,15 @@ list(APPEND tests_names "test_syscheck_config")
 list(APPEND tests_flags "-Wl,--wrap,_merror")
 
 list(APPEND tests_names "test_syscheck")
-list(APPEND tests_flags "-Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_setSize -Wl,--wrap,_mwarn")
+list(APPEND tests_flags "-Wl,--wrap,_mwarn -Wl,--wrap,fim_db_init")
 
 list(APPEND tests_names "test_fim_sync")
-list(APPEND tests_flags "-Wl,--wrap,rbtree_keys -Wl,--wrap,rbtree_get -Wl,--wrap,fim_send_sync_msg -Wl,--wrap,time -Wl,--wrap,rbtree_range -Wl,--wrap,_mwarn \
-                         -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,queue_push_ex")
+list(APPEND tests_flags "-Wl,--wrap,fim_send_sync_msg -Wl,--wrap,time -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 \
+                         -Wl,--wrap,_merror -Wl,--wrap,_mdebug2 -Wl,--wrap,queue_push_ex -Wl,--wrap,fim_db_get_row_path \
+                         -Wl,--wrap,fim_db_get_data_checksum -Wl,--wrap,dbsync_check_msg -Wl,--wrap,fim_send_sync_msg \
+                         -Wl,--wrap,fim_db_get_count_range -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_entry_json \
+                         -Wl,--wrap,fim_db_data_checksum_range -Wl,--wrap,dbsync_state_msg \
+                         -Wl,--wrap,fim_db_sync_path_range")
 
 list(APPEND tests_names "test_run_check")
 list(APPEND tests_flags "-Wl,--wrap,_minfo")
