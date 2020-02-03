@@ -1021,6 +1021,52 @@ void test_fim_db_get_row_path_sqlite_done(void **state) {
     assert_int_equal(ret, FIMDB_OK);
     assert_null(path);
 }
+/*----------------------------------------------*/
+/*----------fim_db_get_count_range()------------------*/
+void test_fim_db_get_count_range_error_stepping(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    int ret, count = -1;
+
+    // Inside fim_db_clean_stmt
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+
+    // Inside fim_db_bind_range
+    will_return_count(__wrap_sqlite3_bind_text, 0, 2);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+
+    will_return(__wrap_sqlite3_errmsg, "Some SQLite error");
+
+    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: Some SQLite error");
+
+    ret = fim_db_get_count_range(test_data->fim_sql, "begin", "top", &count);
+
+    assert_int_equal(ret, FIMDB_ERR);
+    assert_int_equal(count, -1);
+}
+
+void test_fim_db_get_count_range_success(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    int ret, count = -1;
+
+    // Inside fim_db_clean_stmt
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+
+    // Inside fim_db_bind_range
+    will_return_count(__wrap_sqlite3_bind_text, 0, 2);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 15);
+
+    ret = fim_db_get_count_range(test_data->fim_sql, "begin", "top", &count);
+
+    assert_int_equal(ret, FIMDB_OK);
+    assert_int_equal(count, 15);
+}
 
 /*-----------------------------------------*/
 int main(void) {
@@ -1096,6 +1142,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_get_row_path_error, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_get_row_path_sqlite_row, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_get_row_path_sqlite_done, test_fim_db_setup, test_fim_db_teardown),
+        // fim_db_get_count_range
+        cmocka_unit_test_setup_teardown(test_fim_db_get_count_range_error_stepping, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_get_count_range_success, test_fim_db_setup, test_fim_db_teardown),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
