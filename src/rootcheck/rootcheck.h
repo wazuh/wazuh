@@ -43,7 +43,7 @@ extern rkconfig rootcheck;
 #define ROOTCHECK_WAIT          43200
 
 /*rootcheck sleep thread*/
-#define ROOTCHECK_SLEEP_THREAD 1
+#define ROOTCHECK_SLEEP_THREAD 0
 
 /** Prototypes **/
 
