@@ -42,6 +42,9 @@ extern rkconfig rootcheck;
 /* Default to 12 hours */
 #define ROOTCHECK_WAIT          43200
 
+/*rootcheck sleep thread*/
+#define ROOTCHECK_SLEEP_THREAD 1
+
 /** Prototypes **/
 
 /* Check if file is present on dir */
