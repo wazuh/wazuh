@@ -131,6 +131,11 @@ void __wrap__merror(const char * file, int line, const char * func, const char *
 int __wrap_chmod (const char *__file, __mode_t __mode) {
     return 0;
 }
+
+
+int __wrap_fim_send_sync_msg(char * msg) {
+    return 1;
+}
 /*-----------------------------------------*/
 
 /*---------------AUXILIAR------------------*/
@@ -186,8 +191,8 @@ static void wraps_fim_db_check_transaction() {
  * Successfully wrappes a fim_db_decode_full_row() call
  * */
 static void wraps_fim_db_decode_full_row() {
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, "/some/random/path"); // path
+    expect_value_count(__wrap_sqlite3_column_text, iCol, 0, 2);
+    will_return_count(__wrap_sqlite3_column_text, "/some/random/path", 2); // path
     expect_value(__wrap_sqlite3_column_int, iCol, 2);
     will_return(__wrap_sqlite3_column_int, 1); // mode
     expect_value(__wrap_sqlite3_column_int, iCol, 3);
@@ -206,18 +211,18 @@ static void wraps_fim_db_decode_full_row() {
     will_return(__wrap_sqlite3_column_int, 1024); // inode
     expect_value(__wrap_sqlite3_column_int, iCol, 10);
     will_return(__wrap_sqlite3_column_int, 4096); // size
-    expect_value(__wrap_sqlite3_column_text, iCol, 11);
-    will_return(__wrap_sqlite3_column_text, "perm"); // perm
-    expect_value(__wrap_sqlite3_column_text, iCol, 12);
-    will_return(__wrap_sqlite3_column_text, "attributes"); // attributes
-    expect_value(__wrap_sqlite3_column_text, iCol, 13);
-    will_return(__wrap_sqlite3_column_text, "uid"); // uid
-    expect_value(__wrap_sqlite3_column_text, iCol, 14);
-    will_return(__wrap_sqlite3_column_text, "gid"); // gid
-    expect_value(__wrap_sqlite3_column_text, iCol, 15);
-    will_return(__wrap_sqlite3_column_text, "user_name"); // user_name
-    expect_value(__wrap_sqlite3_column_text, iCol, 16);
-    will_return(__wrap_sqlite3_column_text, "group_name"); // group_name
+    expect_value_count(__wrap_sqlite3_column_text, iCol, 11, 2);
+    will_return_count(__wrap_sqlite3_column_text, "perm",2); // perm
+    expect_value_count(__wrap_sqlite3_column_text, iCol, 12, 2);
+    will_return_count(__wrap_sqlite3_column_text, "attributes", 2); // attributes
+    expect_value_count(__wrap_sqlite3_column_text, iCol, 13, 2);
+    will_return_count(__wrap_sqlite3_column_text, "uid", 2); // uid
+    expect_value_count(__wrap_sqlite3_column_text, iCol, 14, 2);
+    will_return_count(__wrap_sqlite3_column_text, "gid", 2); // gid
+    expect_value_count(__wrap_sqlite3_column_text, iCol, 15, 2);
+    will_return_count(__wrap_sqlite3_column_text, "user_name", 2); // user_name
+    expect_value_count(__wrap_sqlite3_column_text, iCol, 16, 2);
+    will_return_count(__wrap_sqlite3_column_text, "group_name", 2); // group_name
     expect_value(__wrap_sqlite3_column_text, iCol, 17);
     will_return(__wrap_sqlite3_column_text, "hash_md5"); // hash_md5
     expect_value(__wrap_sqlite3_column_text, iCol, 18);
@@ -912,6 +917,49 @@ void test_fim_db_get_paths_from_inode_multiple_unamatched_rows(void **state) {
     }
     assert_null(paths[5]);
 }
+/*----------------------------------------------*/
+/*----------fim_db_data_checksum_range()------------------*/
+void test_fim_db_data_checksum_range_first_half_failed(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_bind_text, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: ERROR MESSAGE");
+    int ret;
+    ret = fim_db_data_checksum_range(test_data->fim_sql, "init", "end", 1, 5);
+    assert_int_equal(ret, FIMDB_ERR);
+}
+
+void test_fim_db_data_checksum_range_second_half_failed(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_bind_text, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    wraps_fim_db_decode_full_row();
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: ERROR MESSAGE");
+    int ret;
+    ret = fim_db_data_checksum_range(test_data->fim_sql, "init", "end", 1, 2);
+    assert_int_equal(ret, FIMDB_ERR);
+}
+
+void test_fim_db_data_checksum_range_success(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_bind_text, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    wraps_fim_db_decode_full_row();
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    wraps_fim_db_decode_full_row();
+    int ret;
+    ret = fim_db_data_checksum_range(test_data->fim_sql, "init", "end", 1, 2);
+    assert_int_equal(ret, FIMDB_OK);
+}
 
 /*----------------------------------------------*/
 /*----------fim_db_get_row_path()------------------*/
@@ -1040,6 +1088,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_get_paths_from_inode_single_path, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_get_paths_from_inode_multiple_path, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_get_paths_from_inode_multiple_unamatched_rows, test_fim_db_setup, test_fim_db_teardown),
+        // fim_db_data_checksum_range
+        cmocka_unit_test_setup_teardown(test_fim_db_data_checksum_range_first_half_failed, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_data_checksum_range_second_half_failed, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_data_checksum_range_success, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_get_row_path
         cmocka_unit_test_setup_teardown(test_fim_db_get_row_path_error, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_get_row_path_sqlite_row, test_fim_db_setup, test_fim_db_teardown),
