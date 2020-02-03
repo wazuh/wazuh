@@ -15,7 +15,7 @@ try:
     here = os.path.abspath(os.path.dirname(__file__))
     with open(os.path.join(here, 'wazuh.json'), 'r') as f:
         metadata = json.load(f)
-except Exception:
+except (FileNotFoundError, PermissionError):
     metadata = {
         'install_type': 'server',
         'installation_date': '',
