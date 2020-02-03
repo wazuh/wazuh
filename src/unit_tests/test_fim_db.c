@@ -915,9 +915,64 @@ void test_fim_db_get_paths_from_inode_multiple_unamatched_rows(void **state) {
 
 /*----------------------------------------------*/
 /*----------fim_db_get_row_path()------------------*/
-void test_fim_db_get_row_path_error(void **state) {}
-void test_fim_db_get_row_path_sqlite_row(void **state) {}
-void test_fim_db_get_row_path_sqlite_done(void **state) {}
+void test_fim_db_get_row_path_error(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    char *path = NULL;
+    int ret;
+
+    // Inside fim_db_clean_stmt
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+
+    will_return(__wrap_sqlite3_errmsg, "An error message.");
+
+    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: An error message.");
+
+    ret = fim_db_get_row_path(test_data->fim_sql, FIMDB_STMT_GET_FIRST_PATH, &path);
+
+    assert_int_equal(ret, FIMDB_ERR);
+    assert_null(path);
+}
+
+void test_fim_db_get_row_path_sqlite_row(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    char *path = NULL;
+    int ret;
+
+    // Inside fim_db_clean_stmt
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value_count(__wrap_sqlite3_column_text, iCol, 0, 2);
+    will_return_count(__wrap_sqlite3_column_text, "A query response", 2);
+
+    ret = fim_db_get_row_path(test_data->fim_sql, FIMDB_STMT_GET_FIRST_PATH, &path);
+
+    assert_int_equal(ret, FIMDB_OK);
+    assert_string_equal(path, "A query response");
+    free(path);
+}
+
+void test_fim_db_get_row_path_sqlite_done(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    char *path = NULL;
+    int ret;
+
+    // Inside fim_db_clean_stmt
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    ret = fim_db_get_row_path(test_data->fim_sql, FIMDB_STMT_GET_FIRST_PATH, &path);
+
+    assert_int_equal(ret, FIMDB_OK);
+    assert_null(path);
+}
 
 /*-----------------------------------------*/
 int main(void) {
