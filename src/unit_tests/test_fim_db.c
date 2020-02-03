@@ -536,7 +536,7 @@ void test_fim_db_remove_path_failed_path(void **state) {
 void test_fim_db_get_inode_non_existent(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK); 
+    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return_maybe(__wrap_sqlite3_bind_int, 0);
     will_return_maybe(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
@@ -548,7 +548,7 @@ void test_fim_db_get_inode_non_existent(void **state) {
 void test_fim_db_get_inode_existent(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK); 
+    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return_maybe(__wrap_sqlite3_bind_int, 0);
     will_return_maybe(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
@@ -747,7 +747,7 @@ void test_fim_db_finalize_stmt_failed(void **state) {
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     int index;
-    for (index = 0; index < FIMDB_STMT_SIZE; index++) { 
+    for (index = 0; index < FIMDB_STMT_SIZE; index++) {
         // Test failure in every index
         if ( index > 0) {
             will_return_count(__wrap_sqlite3_finalize, SQLITE_OK, index);
@@ -913,6 +913,12 @@ void test_fim_db_get_paths_from_inode_multiple_unamatched_rows(void **state) {
     assert_null(paths[5]);
 }
 
+/*----------------------------------------------*/
+/*----------fim_db_get_row_path()------------------*/
+void test_fim_db_get_row_path_error(void **state) {}
+void test_fim_db_get_row_path_sqlite_row(void **state) {}
+void test_fim_db_get_row_path_sqlite_done(void **state) {}
+
 /*-----------------------------------------*/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -928,7 +934,7 @@ int main(void) {
         cmocka_unit_test(test_fim_db_clean_success),
         cmocka_unit_test(test_fim_db_clean_failed),
         // fim_db_insert_data
-        cmocka_unit_test_setup_teardown(test_fim_db_insert_data_clean_error, test_fim_db_setup, test_fim_db_teardown),    
+        cmocka_unit_test_setup_teardown(test_fim_db_insert_data_clean_error, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_insert_data_insert_error, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_insert_data_update_error, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_insert_data_insert_path_error, test_fim_db_setup, test_fim_db_teardown),
@@ -947,7 +953,7 @@ int main(void) {
         // fim_db_set_all_unscanned
         cmocka_unit_test_setup_teardown(test_fim_db_set_all_unscanned_failed, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_set_all_unscanned_success, test_fim_db_setup, test_fim_db_teardown),
-        // fim_db_get_data_checksum 
+        // fim_db_get_data_checksum
         cmocka_unit_test_setup_teardown(test_fim_db_get_data_checksum_failed, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_get_data_checksum_success, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_check_transaction
@@ -979,6 +985,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_get_paths_from_inode_single_path, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_get_paths_from_inode_multiple_path, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_get_paths_from_inode_multiple_unamatched_rows, test_fim_db_setup, test_fim_db_teardown),
+        // fim_db_get_row_path
+        cmocka_unit_test_setup_teardown(test_fim_db_get_row_path_error, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_get_row_path_sqlite_row, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_get_row_path_sqlite_done, test_fim_db_setup, test_fim_db_teardown),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
