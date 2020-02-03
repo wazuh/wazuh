@@ -52,11 +52,13 @@ def get_rules(rule_ids=None, status=None, group=None, pci=None, gpg13=None, gdpr
         if len(levels) < 0 or len(levels) > 2:
             raise WazuhError(1203)
 
-    for rule_file in get_rules_files(status=status, limit=None).affected_items:
+    for rule_file in get_rules_files(limit=None).affected_items:
         rules.extend(load_rules_from_file(rule_file['file'], rule_file['path'], rule_file['status']))
 
+    status = check_status(status)
+    status = ['enabled', 'disabled'] if status == 'all' else [status]
     parameters = {'groups': group, 'pci': pci, 'gpg13': gpg13, 'gdpr': gdpr, 'hipaa': hipaa, 'nist_800_53': nist_800_53,
-                  'path': path, 'file': file, 'id': rule_ids, 'level': levels}
+                  'path': path, 'file': file, 'id': rule_ids, 'level': levels, 'status': status}
     original_rules = list(rules)
     no_existent_ids = rule_ids[:]
     for r in original_rules:
@@ -64,7 +66,7 @@ def get_rules(rule_ids=None, status=None, group=None, pci=None, gpg13=None, gdpr
             if value:
                 if key == 'level' and r in rules:
                     if len(value) == 1 and int(value[0]) != r['level'] or len(value) == 2 and \
-                            not (int(value[0]) <= r['level'] <= int(value[1])):
+                            not int(value[0]) <= r['level'] <= int(value[1]):
                         rules.remove(r)
                 elif key == 'id':
                     if r[key] not in value and r in rules:
@@ -72,6 +74,8 @@ def get_rules(rule_ids=None, status=None, group=None, pci=None, gpg13=None, gdpr
                     elif r[key] in no_existent_ids:
                         no_existent_ids.remove(r[key])
                 elif key == 'file' and r[key] not in file and r in rules:
+                    rules.remove(r)
+                elif key == 'status' and r[key] not in value and r in rules:
                     rules.remove(r)
                 elif not isinstance(value, list) and value not in r[key]:
                     rules.remove(r)
@@ -109,7 +113,7 @@ def get_rules_files(status=None, path=None, file=None, offset=0, limit=common.da
                                       all_msg='All rules files were shown')
     status = check_status(status)
     # Rules configuration
-    ruleset_conf = configuration.get_ossec_conf(section='ruleset')['ruleset']
+    ruleset_conf = configuration.get_ossec_conf(section='ruleset')
     if not ruleset_conf:
         raise WazuhError(1200)
     rules_files = list()
@@ -117,9 +121,10 @@ def get_rules_files(status=None, path=None, file=None, offset=0, limit=common.da
     if isinstance(file, list):
         for f in file:
             rules_files.extend(
-                format_rule_decoder_file(ruleset_conf, {'status': status, 'path': path, 'file': f}, tags))
+                format_rule_decoder_file(ruleset_conf['ruleset'], {'status': status, 'path': path, 'file': f}, tags))
     else:
-        rules_files = format_rule_decoder_file(ruleset_conf, {'status': status, 'path': path, 'file': file}, tags)
+        rules_files = format_rule_decoder_file(ruleset_conf['ruleset'], {'status': status, 'path': path, 'file': file},
+                                               tags)
     result.affected_items = process_array(rules_files, search_text=search_text, search_in_fields=search_in_fields,
                                           complementary_search=complementary_search, sort_by=sort_by,
                                           sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
@@ -182,7 +187,10 @@ def get_requirement(requirement=None, offset=0, limit=common.database_limit, sor
 
     if requirement not in valid_requirements:
         result.add_failed_item(id_=requirement,
-                               error=WazuhError(1205, extra_message=requirement, extra_remediation=valid_requirements))
+                               error=WazuhError(1205, extra_message=requirement,
+                                                extra_remediation=f'Valid ones are {valid_requirements}'))
+
+        return result
 
     req = list({req for rule in get_rules(limit=None).affected_items for req in rule[requirement]})
 
@@ -210,7 +218,5 @@ def get_file(filename=None):
                 return f.read()
         except OSError:
             raise WazuhError(1414, extra_message=os.path.join('WAZUH_HOME', rules_path, filename))
-        except Exception:
-            raise WazuhError(1413, extra_message=os.path.join('WAZUH_HOME', rules_path, filename))
     else:
         raise WazuhError(1415)
