@@ -87,7 +87,7 @@ class WazuhDBQuerySyscheck(WazuhDBQuery):
 
     def _filter_date(self, date_filter, filter_db_name):
         # dates are stored as timestamps
-        date_filter['value'] = int(time.mktime(time.strptime(date_filter['value'], "%Y-%m-%d")))
+        date_filter['value'] = int(datetime.timestamp(datetime.strptime(date_filter['value'], "%Y-%m-%d %H:%M:%S")))
         self.query += "{0} IS NOT NULL AND {0} {1} :{2}".format(self.fields[filter_db_name], date_filter['operator'],
                                                                 date_filter['field'])
         self.request[date_filter['field']] = date_filter['value']
