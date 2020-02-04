@@ -140,6 +140,18 @@ int __wrap_chmod (const char *__file, __mode_t __mode) {
 int __wrap_fim_send_sync_msg(char * msg) {
     return 1;
 }
+
+cJSON *__wrap_fim_entry_json(const char * path, fim_entry_data * data) {
+    return mock_type(cJSON*);
+}
+
+char *__wrap_dbsync_state_msg(const char * component, cJSON * data) {
+    check_expected(component);
+    check_expected_ptr(data);
+
+    return mock_type(char*);
+}
+
 /*-----------------------------------------*/
 
 /*---------------AUXILIAR------------------*/
@@ -1229,6 +1241,20 @@ void test_fim_db_delete_not_scanned_error(void **state) {
     assert_int_equal(ret, FIMDB_ERR);
 }
 
+/*----------------------------------------------*/
+/*----------fim_db_callback_sync_path_range()------------------*/
+void test_fim_db_callback_sync_path_range(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    cJSON *root = cJSON_CreateObject();
+
+    will_return(__wrap_fim_entry_json, root);
+
+    expect_string(__wrap_dbsync_state_msg, component, "syscheck");
+    expect_value(__wrap_dbsync_state_msg, data, root);
+    will_return(__wrap_dbsync_state_msg, strdup("This is the returned JSON"));
+
+    fim_db_callback_sync_path_range(test_data->fim_sql, test_data->entry, NULL);
+}
 /*-----------------------------------------*/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -1317,6 +1343,8 @@ int main(void) {
         // fim_db_delete_not_scanned
         cmocka_unit_test_setup_teardown(test_fim_db_delete_not_scanned_success, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_delete_not_scanned_error, test_fim_db_setup, test_fim_db_teardown),
+        // fim_db_callback_sync_path_range
+        cmocka_unit_test_setup_teardown(test_fim_db_callback_sync_path_range, test_fim_db_setup, test_fim_db_teardown),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
