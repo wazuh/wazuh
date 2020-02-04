@@ -775,7 +775,7 @@ class WazuhDBQuery(object):
     """
     def __init__(self, offset, limit, table, sort, search, select, query, fields, default_sort_field, count,
                  get_data, backend, default_sort_order='ASC', filters={}, min_select_fields=set(), date_fields=set(),
-                 extra_fields=set()):
+                 extra_fields=set(), distinct=False):
         """
         Wazuh DB Query constructor
 
@@ -797,6 +797,7 @@ class WazuhDBQuery(object):
         :param get_data: whether to return data or not
         :param backend: Database engine to use. Possible options are 'wdb' and 'sqlite3'.
         :param agent_id: Agent to fetch information about.
+        :param distinct: Look for distinct values
         """
         self.offset = offset
         self.limit = limit
@@ -805,6 +806,7 @@ class WazuhDBQuery(object):
         self.search = search
         self.select = None if not select else select.copy()
         self.fields = fields.copy()
+        self.distinct = distinct
         self.query = self._default_query()
         self.request = {}
         self.default_sort_field = default_sort_field
@@ -992,9 +994,16 @@ class WazuhDBQuery(object):
 
             self.query += ('))' if curr_level > q_filter['level'] else ')') + ' {} '.format(q_filter['separator'])
             curr_level = q_filter['level']
+        if self.distinct:
+            self.query += ' WHERE ' if not self.q and 'WHERE' not in self.query else ' AND '
+            self.query += ' AND '.join(
+                ["{0} IS NOT null AND {0} != ''".format(self.fields[field]) for field in self.select['fields']])
 
     def _get_total_items(self):
-        self.total_items = self.backend.execute(self.query.format(self._default_count_query()), self.request, True)
+        query_with_select_fields = self.query.format(','.join(map(lambda x: f"{self.fields[x]} as '{x}'",
+                                                                  self.select['fields'] | self.min_select_fields)))
+        self.total_items = self.backend.execute(self._default_count_query().format(query_with_select_fields),
+                                                self.request, True)
 
     def _execute_data_query(self):
         query_with_select_fields = self.query.format(','.join(map(lambda x: f"{self.fields[x]} as '{x}'",
@@ -1050,10 +1059,10 @@ class WazuhDBQuery(object):
         """
         :return: The default query
         """
-        return "SELECT {0} FROM " + self.table
+        return "SELECT {0} FROM " + self.table if not self.distinct else "SELECT DISTINCT {0} FROM " + self.table
 
     def _default_count_query(self):
-        return "COUNT(*)"
+        return "SELECT COUNT(*) FROM ({0})"
 
     @staticmethod
     def _pass_filter(db_filter):
