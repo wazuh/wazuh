@@ -130,7 +130,7 @@ static void fim_db_bind_get_inode(fdb_t *fim_sql, int index,
  */
 static void fim_db_bind_update_data(fdb_t *fim_sql,
                                     fim_entry_data *entry,
-                                    int row_id);
+                                    int *row_id);
 
 
 /**
@@ -495,7 +495,7 @@ void fim_db_bind_get_inode(fdb_t *fim_sql, int index, const unsigned long int in
 }
 
 /* FIMDB_STMT_UPDATE_ENTRY_DATA */
-void fim_db_bind_update_data(fdb_t *fim_sql, fim_entry_data *entry, int row_id) {
+void fim_db_bind_update_data(fdb_t *fim_sql, fim_entry_data *entry, int *row_id) {
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_UPDATE_DATA], 1, entry->size);
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_UPDATE_DATA], 2, entry->perm, -1, NULL);
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_UPDATE_DATA], 3, entry->attributes, -1, NULL);
@@ -507,7 +507,7 @@ void fim_db_bind_update_data(fdb_t *fim_sql, fim_entry_data *entry, int row_id) 
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_UPDATE_DATA], 9, entry->hash_sha1, -1, NULL);
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_UPDATE_DATA], 10, entry->hash_sha256, -1, NULL);
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_UPDATE_DATA], 11, entry->mtime);
-    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_UPDATE_DATA], 12, row_id);
+    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_UPDATE_DATA], 12, *row_id);
 }
 
 /* FIMDB_STMT_UPDATE_ENTRY_PATH */
@@ -599,10 +599,10 @@ int fim_db_get_count_range(fdb_t *fim_sql, char *start, char *top, int *count) {
     return FIMDB_OK;
 }
 
-int fim_db_insert_data(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry, int *row_id) {
+int fim_db_insert_data(fdb_t *fim_sql, fim_entry_data *entry, int *row_id) {
     int res;
 
-    if(*row_id = 0) {
+    if(*row_id == 0) {
         fim_db_clean_stmt(fim_sql, FIMDB_STMT_INSERT_DATA);
 
         fim_db_bind_insert_data(fim_sql, entry);
@@ -687,7 +687,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) 
         return FIMDB_ERR;
     }
 
-    res_data = fim_db_insert_data(fim_sql, file_path, entry, &inode_id);
+    res_data = fim_db_insert_data(fim_sql, entry, &inode_id);
     res_path = fim_db_insert_path(fim_sql, file_path, entry, inode_id);
 
     return res_data && res_path;

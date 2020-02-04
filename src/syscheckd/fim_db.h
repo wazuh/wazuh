@@ -149,12 +149,11 @@ char **fim_db_get_paths_from_inode(fdb_t *fim_sql, const unsigned long int inode
  * @brief Insert or update entry data.
  *
  * @param fim_sql FIM database struct.
- * @param file_path File path.
  * @param entry Entry data to be inserted.
  * @param row_id
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_insert_data(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry, int row_id);
+int fim_db_insert_data(fdb_t *fim_sql, fim_entry_data *entry, int *row_id);
 
 /**
  * @brief Insert or update entry path.
@@ -162,9 +161,20 @@ int fim_db_insert_data(fdb_t *fim_sql, const char *file_path, fim_entry_data *en
  * @param fim_sql FIM database struct.
  * @param file_path File path.
  * @param entry Entry data to be inserted.
+ * @param inode_id
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry);
+int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry, int inode_id);
+
+/**
+ * @brief Insert an entry in the needed tables.
+ *
+ * @param fim_sql FIM database struct.
+ * @param file_path File path.
+ * @param entry Entry data to be inserted.
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ */
+int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry);
 
 /**
  * @brief Callback function: Send sync message for a sole entry.
