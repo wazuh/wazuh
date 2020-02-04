@@ -655,6 +655,22 @@ void test_fim_db_get_data_checksum_success(void **state) {
     assert_int_equal(ret, FIMDB_OK);
 }
 /*----------------------------------------------*/
+/*----------fim_db_sync_path_range()------------------*/
+void test_fim_db_sync_path_range(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    //will_return_always(__wrap_sqlite3_bind_int, 0);
+    will_return_always(__wrap_sqlite3_bind_text, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    wraps_fim_db_decode_full_row();
+    wraps_fim_db_check_transaction();
+
+    int ret = fim_db_sync_path_range(test_data->fim_sql, "init", "top");
+    assert_int_equal(FIMDB_OK, ret);
+}
+/*----------------------------------------------*/
 /*----------fim_db_check_transaction()------------------*/
 void test_fim_db_check_transaction_last_commit_is_0(void **state) {
     test_fim_db_insert_data *test_data = *state;
@@ -1143,6 +1159,8 @@ int main(void) {
         // fim_db_get_data_checksum
         cmocka_unit_test_setup_teardown(test_fim_db_get_data_checksum_failed, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_get_data_checksum_success, test_fim_db_setup, test_fim_db_teardown),
+        // fim_db_sync_path_range
+        cmocka_unit_test_setup_teardown(test_fim_db_sync_path_range, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_check_transaction
         cmocka_unit_test_setup_teardown(test_fim_db_check_transaction_last_commit_is_0, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_check_transaction_failed, test_fim_db_setup, test_fim_db_teardown),
