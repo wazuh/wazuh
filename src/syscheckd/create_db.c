@@ -395,11 +395,12 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
     if ((saved && strcmp(saved->data->hash_sha1, data->hash_sha1) != 0)
         || alert_type == FIM_ADD) {
         if (fim_db_insert(syscheck.database, key, data) == -1) {
+            os_free(saved);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
             return OS_INVALID;
         }
     } else {
-        saved->data->scanned = 1;
+        fim_db_set_scanned(syscheck.database, key);
         result = 0;
     }
 
@@ -411,6 +412,7 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
         os_free(json_formated);
     }
     cJSON_Delete(json_event);
+    os_free(saved);
 
     return result;
 }
