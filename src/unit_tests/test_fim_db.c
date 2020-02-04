@@ -1166,6 +1166,53 @@ void test_fim_db_delete_range_error(void **state) {
     assert_int_equal(ret, FIMDB_ERR);
 }
 
+/*----------------------------------------------*/
+/*----------fim_db_delete_not_scanned()------------------*/
+void test_fim_db_delete_not_scanned_success(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    int ret;
+
+    // Inside fim_db_process_get_query
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    wraps_fim_db_decode_full_row();
+
+    // Inside fim_db_remove_path (callback)
+    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_bind_text, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 5);
+    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    will_return(__wrap_sqlite3_column_int, 1);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    wraps_fim_db_check_transaction();
+
+    // Done with fim_db_process_get_query
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    wraps_fim_db_check_transaction();
+
+    ret = fim_db_delete_not_scanned(test_data->fim_sql);
+
+    assert_int_equal(ret, FIMDB_OK);
+}
+
+void test_fim_db_delete_not_scanned_error(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    int ret;
+
+    // Inside fim_db_process_get_query
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+
+    wraps_fim_db_check_transaction();
+
+    ret = fim_db_delete_not_scanned(test_data->fim_sql);
+
+    assert_int_equal(ret, FIMDB_ERR);
+}
+
 /*-----------------------------------------*/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -1249,7 +1296,9 @@ int main(void) {
         // fim_db_delete_range
         cmocka_unit_test_setup_teardown(test_fim_db_delete_range_success, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_delete_range_error, test_fim_db_setup, test_fim_db_teardown),
-
+        // fim_db_delete_not_scanned
+        cmocka_unit_test_setup_teardown(test_fim_db_delete_not_scanned_success, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_delete_not_scanned_error, test_fim_db_setup, test_fim_db_teardown),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
