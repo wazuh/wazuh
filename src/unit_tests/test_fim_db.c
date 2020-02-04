@@ -17,6 +17,10 @@
 
 extern const char *SQL_STMT[];
 
+int fim_db_process_get_query(fdb_t *fim_sql, int index,
+                                    void (*callback)(fdb_t *, fim_entry *, void *),
+                                    void * arg);
+
 /*--------------WRAPS-----------------------*/
 
 int __wrap_w_is_file(const char * const file) {
@@ -1067,6 +1071,40 @@ void test_fim_db_get_count_range_success(void **state) {
     assert_int_equal(ret, FIMDB_OK);
     assert_int_equal(count, 15);
 }
+/*----------------------------------------------*/
+/*----------fim_db_process_get_query()------------------*/
+void auxiliar_callback(fdb_t *fim_sql, fim_entry *entry, void *arg) {
+    // unused
+}
+
+void test_fim_db_process_get_query_success(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    int ret;
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    wraps_fim_db_decode_full_row();
+
+    wraps_fim_db_check_transaction();
+
+    ret = fim_db_process_get_query(test_data->fim_sql, 0, auxiliar_callback, NULL);
+
+    assert_int_equal(ret, FIMDB_OK);
+}
+
+void test_fim_db_process_get_query_error(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    int ret;
+
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+
+    wraps_fim_db_check_transaction();
+
+    ret = fim_db_process_get_query(test_data->fim_sql, 0, auxiliar_callback, NULL);
+
+    assert_int_equal(ret, FIMDB_ERR);
+}
 
 /*-----------------------------------------*/
 int main(void) {
@@ -1145,6 +1183,9 @@ int main(void) {
         // fim_db_get_count_range
         cmocka_unit_test_setup_teardown(test_fim_db_get_count_range_error_stepping, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_get_count_range_success, test_fim_db_setup, test_fim_db_teardown),
+        // fim_db_process_get_query
+        cmocka_unit_test_setup_teardown(test_fim_db_process_get_query_success, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_process_get_query_error, test_fim_db_setup, test_fim_db_teardown),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
