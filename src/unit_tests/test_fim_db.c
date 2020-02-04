@@ -254,6 +254,11 @@ typedef struct _test_fim_db_insert_data {
     fim_entry *entry;
 } test_fim_db_insert_data;
 
+typedef struct __test_fim_db_ctx_s {
+    test_fim_db_insert_data *test_data;
+    EVP_MD_CTX *ctx;
+} test_fim_db_ctx_t;
+
 static int test_fim_db_setup(void **state) {
     test_fim_db_insert_data *test_data;
     os_calloc(1, sizeof(test_fim_db_insert_data), test_data);
@@ -275,6 +280,36 @@ static int test_fim_db_teardown(void **state) {
     os_free(test_data);
     return 0;
 }
+
+static int setup_fim_db_with_ctx(void **state) {
+    test_fim_db_ctx_t *data = calloc(1, sizeof(test_fim_db_ctx_t));
+
+    if(data == NULL)
+        return -1;
+
+    if(test_fim_db_setup((void**)&data->test_data) != 0)
+        return -1;
+
+    data->ctx = EVP_MD_CTX_create();
+    EVP_DigestInit(data->ctx, EVP_sha1());
+
+    *state = data;
+
+    return 0;
+}
+
+static int teardown_fim_db_with_ctx(void **state) {
+    test_fim_db_ctx_t *data = *state;
+
+    test_fim_db_teardown((void**)&data->test_data);
+
+    EVP_MD_CTX_destroy(data->ctx);
+
+    free(data);
+
+    return 0;
+}
+
 /*-----------------------------------------*/
 /*---------------fim_db_init------------------*/
 static int test_teardown_fim_db_init(void **state) {
@@ -1255,6 +1290,38 @@ void test_fim_db_callback_sync_path_range(void **state) {
 
     fim_db_callback_sync_path_range(test_data->fim_sql, test_data->entry, NULL);
 }
+
+/*----------------------------------------------*/
+/*----------fim_db_callback_calculate_checksum()------------------*/
+void test_fim_db_callback_calculate_checksum(void **state) {
+    test_fim_db_ctx_t *data = *state;
+
+    // Fill up a mock fim_entry
+    data->test_data->entry->data->mode = 1;
+    data->test_data->entry->data->last_event = 1234;
+    data->test_data->entry->data->entry_type = 2;
+    data->test_data->entry->data->scanned = 2345;
+    data->test_data->entry->data->options = 3456;
+    strcpy(data->test_data->entry->data->checksum, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    data->test_data->entry->data->dev = 4567;
+    data->test_data->entry->data->inode = 5678;
+    data->test_data->entry->data->size = 4096;
+    data->test_data->entry->data->perm = "perm";
+    data->test_data->entry->data->attributes = "attributes";
+    data->test_data->entry->data->uid = "uid";
+    data->test_data->entry->data->gid = "gid";
+    data->test_data->entry->data->user_name = "user_name";
+    data->test_data->entry->data->group_name = "group_name";
+    strcpy(data->test_data->entry->data->hash_md5, "3691689a513ace7e508297b583d7050d");
+    strcpy(data->test_data->entry->data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    strcpy(data->test_data->entry->data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
+    data->test_data->entry->data->mtime = 6789;
+
+    fim_db_callback_calculate_checksum(data->test_data->fim_sql, data->test_data->entry, data->ctx);
+
+    assert_string_equal(data->test_data->entry->data->checksum, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+}
+
 /*-----------------------------------------*/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -1345,6 +1412,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_delete_not_scanned_error, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_callback_sync_path_range
         cmocka_unit_test_setup_teardown(test_fim_db_callback_sync_path_range, test_fim_db_setup, test_fim_db_teardown),
+        // fim_db_callback_calculate_checksum
+        cmocka_unit_test_setup_teardown(test_fim_db_callback_calculate_checksum, setup_fim_db_with_ctx, teardown_fim_db_with_ctx),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

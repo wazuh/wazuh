@@ -10,6 +10,7 @@ cmake_minimum_required(VERSION 3.10)
 set(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../)
 
 include_directories(${SRC_FOLDER}/headers)
+include_directories(${SRC_FOLDER}/external/openssl/include)
 include_directories(${SRC_FOLDER})
 
 
