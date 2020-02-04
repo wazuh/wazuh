@@ -209,8 +209,6 @@ typedef struct fim_inode_data {
 } fim_inode_data;
 
 typedef struct _config {
-    unsigned int tsleep;            /* sleep for sometime for daemon to settle */
-    int sleep_after;
     int rootcheck;                  /* set to 0 when rootcheck is disabled */
     int disabled;                   /* is syscheck disabled? */
     int scan_on_start;

@@ -259,8 +259,6 @@ static int setup_group(void **state)
     // Read and setup global values.
     Read_Syscheck_Config("test_syscheck.conf");
 
-    syscheck.tsleep = 1;
-    syscheck.sleep_after = 100;
     syscheck.rt_delay = 1;
     syscheck.max_depth = 256;
     syscheck.file_max_size = 1024;
@@ -810,6 +808,7 @@ void test_fim_check_depth_failure_null_directory(void **state)
     assert_int_equal(ret, -1);
 
 }
+
 
 void test_fim_insert_success_new(void **state)
 {
