@@ -7,6 +7,35 @@
 
 cmake_minimum_required(VERSION 3.10)
 
+# set(CMAKE_VERBOSE_MAKEFILE ON)
+
+# message("${TARGET}")
+
+if(NOT TARGET)
+  message(FATAL_ERROR "No TARGET specified. Aborting...")
+elseif(${TARGET} STREQUAL "winagent")
+  message("Setting toolchain")
+  # Specify toolchain
+  set(CMAKE_SYSTEM_NAME Windows)
+
+  set(COMPILER_PREFIX "i686-w64-mingw32")
+  set(CMAKE_C_COMPILER ${COMPILER_PREFIX}-gcc)
+  # set(CMAKE_FIND_ROOT_PATH  /usr/${COMPILER_PREFIX} ${CMAKE_SOURCE_DIR}/../../)
+  set(CMAKE_C_LINK_EXECUTABLE "${CMAKE_C_COMPILER} <FLAGS> <CMAKE_C_LINK_FLAGS> <LINK_FLAGS> <OBJECTS>  -o <TARGET> <LINK_LIBRARIES>")
+  set(CMAKE_AR i686-w64-mingw32-ar)
+  set(CMAKE_RANLIB i686-w64-mingw32-ranlib)
+
+  set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+  set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+  set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+  set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+
+  set(CMAKE_FIND_LIBRARY_PREFIXES "")
+  set(CMAKE_FIND_LIBRARY_SUFFIXES ".lib" ".dll" ".a")
+else()
+  message(FATAL_ERROR "Invalid TARGET '${TARGET}'. Aborting...")
+endif()
+
 set(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../)
 
 include_directories(${SRC_FOLDER}/headers)
@@ -20,9 +49,14 @@ if(NOT WAZUHLIB)
   message(FATAL_ERROR "libwazuh.a not found! Aborting...")
 endif()
 
-find_library(WAZUHEXT NAMES libwazuhext.so HINTS "${SRC_FOLDER}")
+if(${TARGET} STREQUAL "winagent")
+  find_library(WAZUHEXT NAMES libwazuhext.dll HINTS "${SRC_FOLDER}")
+else()
+  find_library(WAZUHEXT NAMES libwazuhext.so HINTS "${SRC_FOLDER}")
+endif()
+
 if(NOT WAZUHEXT)
-  message(FATAL_ERROR "libwazuhext.so not found! Aborting...")
+  message(FATAL_ERROR "libwazuhext not found! Aborting...")
 endif()
 
 
@@ -156,35 +190,37 @@ set_target_properties(
   ROOTCHECK_O
   PROPERTIES
   LINKER_LANGUAGE C
+  CMAKE_C_COMPILER i686-w64-mingw32-gcc
+  CMAKE_C_LINK_EXECUTABLE "CMAKE_C_COMPILER <FLAGS> <CMAKE_C_LINK_FLAGS> <LINK_FLAGS> <OBJECTS>  -o <TARGET> <LINK_LIBRARIES>"
   )
 
 target_link_libraries(SYSCHECK_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
+if(${TARGET} STREQUAL "server")
+  # Generate analysisd library
+  file(GLOB analysisd_files
+    ../analysisd/*.o
+    ../analysisd/cdb/*.o
+    ../analysisd/decoders/*.o
+    ../analysisd/decoders/plugins/*.o)
 
-# Generate analysisd library
-file(GLOB analysisd_files
-  ../analysisd/*.o
-  ../analysisd/cdb/*.o
-  ../analysisd/decoders/*.o
-  ../analysisd/decoders/plugins/*.o)
+  add_library(ANALYSISD_O STATIC ${analysisd_files})
 
-add_library(ANALYSISD_O STATIC ${analysisd_files})
+  set_source_files_properties(
+    ${analysisd_files}
+    PROPERTIES
+    EXTERNAL_OBJECT true
+    GENERATED true
+    )
 
-set_source_files_properties(
-  ${analysisd_files}
-  PROPERTIES
-  EXTERNAL_OBJECT true
-  GENERATED true
-  )
+  set_target_properties(
+    ANALYSISD_O
+    PROPERTIES
+    LINKER_LANGUAGE C
+    )
 
-set_target_properties(
-  ANALYSISD_O
-  PROPERTIES
-  LINKER_LANGUAGE C
-  )
-
-target_link_libraries(ANALYSISD_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
-
+  target_link_libraries(ANALYSISD_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+endif()
 
 # Compiling tests
 list(LENGTH tests_names count)
@@ -195,16 +231,29 @@ foreach(counter RANGE ${count})
 
     add_executable(${test_name} ${test_name}.c)
 
-    target_link_libraries(
-        ${test_name}
-        ${WAZUHLIB}
-        ${WAZUHEXT}
-        SYSCHECK_O
-        ANALYSISD_O
-        -lcmocka
-        -fprofile-arcs
-        -ftest-coverage
-    )
+    if(${TARGET} STREQUAL "server")
+      target_link_libraries(
+          ${test_name}
+          ${WAZUHLIB}
+          ${WAZUHEXT}
+          SYSCHECK_O
+          ANALYSISD_O
+          -lcmocka
+          -fprofile-arcs
+          -ftest-coverage
+      )
+    else(${TARGET} STREQUAL "winagent")
+      target_link_libraries(
+          ${test_name}
+          ${WAZUHLIB}
+          ${WAZUHEXT}
+          SYSCHECK_O
+          -lcmocka
+          -fprofile-arcs
+          -ftest-coverage
+      )
+    endif()
+
     if(NOT test_flags STREQUAL " ")
         target_link_libraries(
             ${test_name}
