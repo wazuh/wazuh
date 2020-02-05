@@ -126,16 +126,6 @@ int fim_db_sync_path_range(fdb_t *fim_sql, char *start, char *top);
 fim_entry *fim_db_get_path(fdb_t *fim_sql, const char *file_path);
 
 /**
- * @brief Check if a specific inode exists in the database
- *
- * @param fim_sql FIM database struct.
- * @param inode Inode.
- * @param dev Device.
- * @return int 1 if exists, 0 if not.
- */
-int fim_db_get_inode(fdb_t *fim_sql, const unsigned long int inode, const unsigned long int dev);
-
-/**
  * @brief Get all the paths asociated to an inode
  *
  * @param fim_sql FIM databse struct.
