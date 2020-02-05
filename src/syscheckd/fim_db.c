@@ -200,7 +200,7 @@ fdb_t *fim_db_init(int memory) {
     return fim;
 
 free_fim:
-    if (fim->db){ 
+    if (fim->db){
         sqlite3_close(fim->db);
     }
     os_free(fim);
@@ -246,14 +246,14 @@ int fim_db_create_file(const char *path, const char *source, const int memory, s
     int result;
 
     if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL)) {
-        printf("Couldn't create SQLite database '%s': %s", path, sqlite3_errmsg(db));
+        merror("Couldn't create SQLite database '%s': %s", path, sqlite3_errmsg(db));
         sqlite3_close_v2(db);
         return -1;
     }
 
     for (sql = source; sql && *sql; sql = tail) {
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, &tail) != SQLITE_OK) {
-            printf("Preparing statement: %s", sqlite3_errmsg(db));
+            merror("Preparing statement: %s", sqlite3_errmsg(db));
             sqlite3_close_v2(db);
             return -1;
         }
@@ -266,7 +266,7 @@ int fim_db_create_file(const char *path, const char *source, const int memory, s
         case SQLITE_DONE:
             break;
         default:
-            printf("Stepping statement: %s", sqlite3_errmsg(db));
+            merror("Stepping statement: %s", sqlite3_errmsg(db));
             sqlite3_finalize(stmt);
             sqlite3_close_v2(db);
             return -1;
@@ -283,7 +283,7 @@ int fim_db_create_file(const char *path, const char *source, const int memory, s
     sqlite3_close_v2(db);
 
     if (chmod(path, 0660) < 0) {
-        printf("CHMOD_ERROR");
+        merror(CHMOD_ERROR, path, errno, strerror(errno));
         return -1;
     }
 
@@ -571,7 +571,7 @@ char **fim_db_get_paths_from_inode(fdb_t *fim_sql, const unsigned long int inode
 
         while (result = sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE]), result == SQLITE_ROW) {
             if (i >= rows) {
-                printf("ERROR: The count returned is smaller than the actual elements. This shouldn't happen.\n");
+                merror("ERROR: The count returned is smaller than the actual elements. This shouldn't happen.\n");
                 break;
             }
             os_strdup((char *)sqlite3_column_text(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE], 0), paths[i]);
