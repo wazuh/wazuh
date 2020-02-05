@@ -753,14 +753,20 @@ add_whodata_evt:
                         } else {
                             // At this point the file can be created
                         }
-                        fim_checker(w_evt->path, item, w_evt, 1);
+                        fim_whodata_event(w_evt, item);
                     } else if (w_evt->scan_directory == 1) { // Directory scan has been aborted if scan_directory is 2
                         if (mask & DELETE) {
-                            fim_checker(w_evt->path, item, w_evt, 1);
+
+                            fim_whodata_event(w_evt, item);
+
+                            // Find new files
+                            int pos = fim_configuration_directory(w_evt->path, "file");
+                            fim_checker(syscheck.dir[pos], item, NULL, 1);
+
                         } else if ((mask & FILE_WRITE_DATA) && w_evt->path && (w_dir = OSHash_Get(syscheck.wdata.directories, w_evt->path))) {
                             // Check that a new file has been added
                             GetSystemTime(&w_dir->timestamp);
-                            fim_checker(w_evt->path, item, w_evt, 1);
+                            fim_whodata_event(w_evt, item);
 
                             mdebug1(FIM_WHODATA_SCAN, w_evt->path);
                         } else {
