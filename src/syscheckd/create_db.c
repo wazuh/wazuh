@@ -669,13 +669,13 @@ void check_deleted_files() {
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
-    if (fim_db_get_not_scanned(syscheck.database, &file) != FIMDB_OK) {
+    if (fim_db_get_not_scanned(syscheck.database, &file, syscheck.database_store) != FIMDB_OK) {
         merror(FIM_DB_ERROR_RM_NOT_SCANNED);
     }
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
-    fim_db_delete_not_scanned(syscheck.database, file, &syscheck.fim_entry_mutex);
+    fim_db_delete_not_scanned(syscheck.database, file, &syscheck.fim_entry_mutex, syscheck.database_store);
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 

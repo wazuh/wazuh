@@ -193,12 +193,13 @@ void fim_sync_send_list(const char * start, const char * top) {
     fim_tmp_file *file = NULL;
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
-    if (fim_db_get_path_range(syscheck.database, (char*)start, (char*)top, &file) != FIMDB_OK) {
+    if (fim_db_get_path_range(syscheck.database, (char*)start,
+        (char*)top, &file, syscheck.database_store) != FIMDB_OK) {
         merror(FIM_DB_ERROR_SYNC_DB);
     }
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
-    fim_db_sync_path_range(syscheck.database, &syscheck.fim_entry_mutex, file);
+    fim_db_sync_path_range(syscheck.database, &syscheck.fim_entry_mutex, file,syscheck.database_store);
 }
 
 void fim_sync_dispatch(char * payload) {

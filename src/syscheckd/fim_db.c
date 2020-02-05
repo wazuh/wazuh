@@ -39,6 +39,7 @@ static const char *SQL_STMT[] = {
     [FIMDB_STMT_GET_PATHS_INODE] = "SELECT path FROM entry_path INNER JOIN entry_data ON entry_data.rowid=entry_path.inode_id WHERE entry_data.inode=? AND entry_data.dev=?;",
     [FIMDB_STMT_GET_PATHS_INODE_COUNT] = "SELECT count(*) FROM entry_path INNER JOIN entry_data ON entry_data.rowid=entry_path.inode_id WHERE entry_data.inode=? AND entry_data.dev=?;",
     [FIMDB_STMT_SET_SCANNED] = "UPDATE entry_path SET scanned = 1 WHERE path = ?;",
+    [FIMDB_STMT_COUNT_NOT_SCANNED] = "SELECT count(*) FROM entry_path WHERE scanned = 0;",
 };
 
 /**
@@ -65,11 +66,12 @@ static int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query);
  * @param index
  * @param callback
  * @param arg
- * @return int
+ * @param pos
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 static int fim_db_process_get_query(fdb_t *fim_sql, int index,
-                                    void (*callback)(fdb_t *, fim_entry *, void *),
-                                    void * arg);
+                                    void (*callback)(fdb_t *, fim_entry *, int, int, void *),
+                                    int memory, void * arg);
 
 /**
  * @brief Binds data into a insert data statement.
@@ -169,12 +171,13 @@ static int fim_db_create_file(const char *path, const char *source, const int me
  *
  * @param fim_sql FIM database structure.
  * @param mutex
+ * @param memory 0 use disk - 1 use memory.
  * @param callback Function to call within a step.
  * @param args Adicional arguments for callback function.
  *
  */
  static int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex,
-        void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *), void * arg);
+        void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *), int memory, void * arg);
 
 /**
  * @brief Create a new temporal file to stored file paths.
@@ -326,7 +329,7 @@ int fim_db_create_file(const char *path, const char *source, const int memory, s
 }
 
 
-fim_tmp_file *fim_db_create_temp_file(int memory) {
+fim_tmp_file *fim_db_create_temp_file(int memory, int size) {
     fim_tmp_file *file;
     os_calloc(1, sizeof(fim_tmp_file), file);
 
@@ -345,7 +348,8 @@ fim_tmp_file *fim_db_create_temp_file(int memory) {
             return NULL;
         }
     } else {
-        os_calloc(100, sizeof(char *), file->all_path);
+        os_calloc(size, sizeof(char *), file->all_path);
+        file->elements = size;
     }
 
     return file;
@@ -408,36 +412,45 @@ int fim_db_clean_stmt(fdb_t *fim_sql, int index) {
 //wrappers
 
 int fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file, int memory) {
+    int count = 0;
+    if (memory && !fim_db_get_count_range(fim_sql, start, top, &count)) {
+        return FIMDB_ERR;
+    }
+
+    if ((*file = fim_db_create_temp_file(memory, count)) == NULL) {
+        return FIMDB_ERR;
+    }
+
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_RANGE);
     fim_db_bind_range(fim_sql, FIMDB_STMT_GET_PATH_RANGE, start, top);
 
-    if ((*file = fim_db_create_temp_file(memory)) == NULL) {
-        return FIMDB_ERR;
-    }
-
-    return fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_PATH_RANGE, fim_db_callback_save_path, (void*) file);
+    return fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_PATH_RANGE, fim_db_callback_save_path, memory, (void*) file);
 }
 
-int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file) {
-    if ((*file = fim_db_create_temp_file()) == NULL) {
+int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int memory) {
+    int count = 0;
+    if (memory && !fim_db_count_not_scanned(fim_sql, &count)) {
         return FIMDB_ERR;
     }
 
-    return fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_NOT_SCANNED, fim_db_callback_save_path, (void*) file);
+    if ((*file = fim_db_create_temp_file(memory, count)) == NULL) {
+        return FIMDB_ERR;
+    }
+
+    return fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_NOT_SCANNED, fim_db_callback_save_path, memory, (void*) file);
 }
 
 int fim_db_get_data_checksum(fdb_t *fim_sql, void * arg) {
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_ALL_ENTRIES);
-    return fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_ALL_ENTRIES, fim_db_callback_calculate_checksum, arg);
+    return fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_ALL_ENTRIES, fim_db_callback_calculate_checksum, 0, arg);
 }
 
-int fim_db_process_get_query(fdb_t *fim_sql, int index, void (*callback)(fdb_t *, fim_entry *, void *), void * arg) {
+int fim_db_process_get_query(fdb_t *fim_sql, int index, void (*callback)(fdb_t *, fim_entry *, int , int, void *), int memory, void * arg) {
     int result;
-
-    while (result = sqlite3_step(fim_sql->stmt[index]), result == SQLITE_ROW) {
+    int i;
+    for (i = 0; result = sqlite3_step(fim_sql->stmt[index]), result == SQLITE_ROW; i++) {
         fim_entry *entry = fim_db_decode_full_row(fim_sql->stmt[index]);
-        callback(fim_sql, (void *) entry, arg);
-
+        callback(fim_sql, entry, i, memory, arg);
         free_entry(entry);
     }
 
@@ -463,49 +476,63 @@ int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query) {
 
 //Wrapper 2
 
-int fim_db_sync_path_range(fdb_t * fim_sql, pthread_mutex_t *mutex, fim_tmp_file *file) {
-    return fim_db_process_read_file(fim_sql, file, mutex, fim_db_callback_sync_path_range, NULL);
+int fim_db_sync_path_range(fdb_t * fim_sql, pthread_mutex_t *mutex, fim_tmp_file *file, int memory) {
+    return fim_db_process_read_file(fim_sql, file, mutex, fim_db_callback_sync_path_range,
+            memory, (void *) (int) 0);
 }
 
-int fim_db_delete_not_scanned(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex) {
-    return fim_db_process_read_file(fim_sql, file, mutex, fim_db_remove_path, (void *) (int) 1);
+int fim_db_delete_not_scanned(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int memory) {
+    return fim_db_process_read_file(fim_sql, file, mutex, fim_db_remove_path,
+            memory, (void *) (int) 1);
 }
 
-int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex) {
-    return fim_db_process_read_file(fim_sql, file, mutex, fim_db_remove_path, (void *) (int) 0);
+int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int memory) {
+    return fim_db_process_read_file(fim_sql, file, mutex, fim_db_remove_path,
+            memory, (void *) (int) 0);
 }
 
 int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex,
-    void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *), void * arg) {
+    void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *),
+    int memory, void * arg) {
 
-    char *line, *path;
+    char *line = NULL;
+    char *path = NULL;
+    int i = 0;
 
-    os_calloc(BUFSIZ + 1, sizeof(char), line);
-
-    fseek(file->fd, SEEK_SET, 0);
-
-    while (fgets(line, BUFSIZ, file->fd)) {
-        path = decode_base64(line);
-        if (path == NULL) {
-            merror("Error decoding '%s' to base64", path);
-            continue;
-        }
-
-        w_mutex_lock(mutex);
-        fim_entry *entry = fim_db_get_path(fim_sql, path);
-        w_mutex_unlock(mutex);
-
-        callback(fim_sql, entry, mutex, arg);
-
-        os_free(path);
+    if (memory == 0) {
+        os_calloc(BUFSIZ + 1, sizeof(char), line);
+        fseek(file->fd, SEEK_SET, 0);
     }
 
-    fclose(file->fd);
-    remove(file->path);
-    os_free(file->path);
-    os_free(file);
-    os_free(line);
+    do {
+        if (memory == 0) {
+            path = (fgets(line, BUFSIZ, file->fd))? decode_base64(line) : NULL;
+        } else {
+            path = file->all_path[i];
+        }
 
+        if (path) {
+            w_mutex_lock(mutex);
+            fim_entry *entry = fim_db_get_path(fim_sql, path);
+            w_mutex_unlock(mutex);
+
+            callback(fim_sql, entry, mutex, arg);
+            os_free(path);
+        }
+
+        i++;
+    } while (path);
+
+    if (memory == 0) {
+        fclose(file->fd);
+        remove(file->path);
+        os_free(file->path);
+        os_free(line);
+    } else {
+        os_free(file->all_path);
+    }
+
+    os_free(file);
     return FIMDB_OK;
 }
 
@@ -707,7 +734,20 @@ int fim_db_get_count_range(fdb_t *fim_sql, char *start, char *top, int *count) {
     return FIMDB_OK;
 }
 
-int fim_db_insert_data(fdb_t *fim_sql, fim_entry_data *entry, int *row_id) {
+int fim_db_count_not_scanned(fdb_t *fim_sql, int *count) {
+    // Clean and bind statements
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_COUNT_NOT_SCANNED);
+
+    if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_COUNT_NOT_SCANNED]) != SQLITE_ROW) {
+        merror("SQL ERROR: %s", sqlite3_errmsg(fim_sql->db));
+        return FIMDB_ERR;
+    }
+
+    *count = sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_COUNT_NOT_SCANNED], 0);
+    return FIMDB_OK;
+}
+
+int fim_db_insert_data(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) {
     int res;
 
     if(*row_id == 0) {
@@ -767,7 +807,10 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_entry_data *en
     return FIMDB_OK;
 }
 
-void fim_db_callback_calculate_checksum(__attribute__((unused)) fdb_t *fim_sql, fim_entry *entry, void *arg) {
+void fim_db_callback_calculate_checksum(__attribute__((unused)) fdb_t *fim_sql, fim_entry *entry,
+    __attribute__((unused)) __attribute__((unused)) int pos,
+    __attribute__((unused))int memory, void *arg) {
+
     EVP_MD_CTX *ctx = (EVP_MD_CTX *)arg;
     EVP_DigestUpdate(ctx, entry->data->checksum, strlen(entry->data->checksum));
 }
@@ -809,7 +852,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
         if (i == (m - 1) && entry->path) {
             os_strdup(entry->path, str_pathlh);
         }
-        fim_db_callback_calculate_checksum(fim_sql, entry, (void *)ctx_left);
+        fim_db_callback_calculate_checksum(fim_sql, entry, 0, 0, (void *)ctx_left);
         free_entry(entry);
     }
 
@@ -824,7 +867,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
         if (i == m && entry->path) {
             os_strdup(entry->path, str_pathuh);
         }
-        fim_db_callback_calculate_checksum(fim_sql, entry, (void *)ctx_right);
+        fim_db_callback_calculate_checksum(fim_sql, entry, 0, 0, (void *)ctx_right);
         free_entry(entry);
     }
 
@@ -906,7 +949,7 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
     w_mutex_unlock(mutex);
 
 
-    if (*alert && rows >= 1) {
+    if (*alert && rows == 1) {
         cJSON * json_event      = NULL;
         char * json_formated    = NULL;
         int pos = 0;
@@ -977,14 +1020,14 @@ int fim_db_set_scanned(fdb_t *fim_sql, char *path) {
     return FIMDB_OK;
 }
 
-void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry *entry, void *arg) {
+void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry *entry, int pos, int memory, void *arg) {
     char *base = encode_base64(strlen(entry->path), entry->path);
     if (base == NULL) {
         merror("Error encoding '%s' to base64", entry->path);
         return;
     }
 
-    if (memory == 1) {
+    if (memory == 0) { // disk option enabled
         if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", base) != (strlen(entry->path) + sizeof(char))) {
             merror("%s - %s", entry->path, strerror(errno));
             goto end;
@@ -992,13 +1035,9 @@ void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry
 
         fflush(((fim_tmp_file *) arg)->fd);
 
-    } else {
-        if (!(pos % 100)) {
-            os_realloc(((fim_tmp_file *) arg)->all_paths)
-            //realloc()
-        }
+    } else { // memory option enabled
+        os_strdup(entry->path, ((fim_tmp_file *) arg)->all_path[pos]);
     }
-
 
     end:
         os_free(base);

@@ -54,11 +54,14 @@ typedef struct fim_element {
 } fim_element;
 
 typedef struct fim_tmp_file {
-    union {
+    union { //type_storage
         FILE *fd;
         char **all_path;
-    }
-    char *path;
+    };
+    union { //info_storage
+        char *path;
+        int elements;
+    };
 } fim_tmp_file;
 
 /* Win32 does not have lstat */
