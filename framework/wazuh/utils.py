@@ -964,7 +964,7 @@ class WazuhDBQuery(object):
     def _process_filter(self, field_name, field_filter, q_filter):
         if field_name == "status":
             self._filter_status(q_filter)
-        elif field_name in self.date_fields and self.date_regex.match(q_filter['value']):
+        elif field_name in self.date_fields and not isinstance(q_filter['value'], int):
             # Filter a date, but only if it is in string (YYYY-MM-DD hh:mm:ss) format.
             # If it matches the same format as DB (timestamp integer), filter directly by value (next if cond).
             self._filter_date(q_filter, field_name)
