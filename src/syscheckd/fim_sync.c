@@ -158,26 +158,31 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
         goto end;
     }
 
+    w_mutex_unlock(&syscheck.fim_entry_mutex)
+
     switch (range_size) {
     case 0:
-        break;
+        return;
 
     case 1:
+        w_mutex_lock(&syscheck.fim_entry_mutex);
         if ((entry = fim_db_get_path(syscheck.database, start)) == NULL){
             merror(FIM_DB_ERROR_GET_PATH, start);
             goto end;
         }
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
 
         entry_data = fim_entry_json(start, entry->data);
         char * plain = dbsync_state_msg("syscheck", entry_data);
         fim_send_sync_msg(plain);
-        free(plain);
+        os_free(plain);
         free_entry(entry);
-        break;
+        return;
 
     default:
-        fim_db_data_checksum_range(syscheck.database, start, top, id, range_size);
-        break;
+        fim_db_data_checksum_range(syscheck.database, start, top, id,
+                                   range_size, &syscheck.fim_entry_mutex);
+        return;
     }
 
     end:
@@ -185,11 +190,15 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
 }
 
 void fim_sync_send_list(const char * start, const char * top) {
+    fim_tmp_file *file = NULL;
+
     w_mutex_lock(&syscheck.fim_entry_mutex);
-    if (fim_db_sync_path_range(syscheck.database, (char*)start, (char*)top) != FIMDB_OK) {
+    if (fim_db_get_path_range(syscheck.database, (char*)start, (char*)top, &file) != FIMDB_OK) {
         merror(FIM_DB_ERROR_SYNC_DB);
     }
     w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    fim_db_sync_path_range(syscheck.database, &syscheck.fim_entry_mutex, file);
 }
 
 void fim_sync_dispatch(char * payload) {

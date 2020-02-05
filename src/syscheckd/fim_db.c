@@ -163,6 +163,27 @@ static void fim_db_bind_delete_data_id(fdb_t *fim_sql, int row);
  */
 static int fim_db_create_file(const char *path, const char *source, const int memory, sqlite3 **fim_db);
 
+
+/**
+ * @brief Read paths which are stored in a temporal file.
+ *
+ * @param fim_sql FIM database structure.
+ * @param mutex
+ * @param callback Function to call within a step.
+ * @param args Adicional arguments for callback function.
+ *
+ */
+ static int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex,
+        void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *), void * arg);
+
+/**
+ * @brief Create a new temporal file to stored file paths.
+ *
+ * @return New file structure.
+ */
+static fim_tmp_file *fim_db_create_temp_file(int memory, int size);
+
+
 /**
  * @brief
  *
@@ -304,6 +325,32 @@ int fim_db_create_file(const char *path, const char *source, const int memory, s
     return 0;
 }
 
+
+fim_tmp_file *fim_db_create_temp_file(int memory) {
+    fim_tmp_file *file;
+    os_calloc(1, sizeof(fim_tmp_file), file);
+
+    if (memory == 0) {
+        os_calloc(PATH_MAX, sizeof(char), file->path);
+        //Create random name unique to this thread
+        sprintf(file->path, "%s/.tmp_%lu%d", DEFAULTDIR,
+                    (unsigned long)time(NULL),
+                    getpid());
+
+        file->fd = fopen(file->path, "w+");
+        if (file->fd == NULL) {
+            merror("Failed to create temporal database %s", file->path);
+            os_free(file->path);
+            os_free(file);
+            return NULL;
+        }
+    } else {
+        os_calloc(100, sizeof(char *), file->all_path);
+    }
+
+    return file;
+}
+
 int fim_db_finalize_stmt(fdb_t *fim_sql) {
     int index;
     int retval = FIMDB_ERR;
@@ -357,29 +404,31 @@ int fim_db_clean_stmt(fdb_t *fim_sql, int index) {
     return FIMDB_OK;
 }
 
-/** Wrapper functions **/
+
+//wrappers
+
+int fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file, int memory) {
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_RANGE);
+    fim_db_bind_range(fim_sql, FIMDB_STMT_GET_PATH_RANGE, start, top);
+
+    if ((*file = fim_db_create_temp_file(memory)) == NULL) {
+        return FIMDB_ERR;
+    }
+
+    return fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_PATH_RANGE, fim_db_callback_save_path, (void*) file);
+}
+
+int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file) {
+    if ((*file = fim_db_create_temp_file()) == NULL) {
+        return FIMDB_ERR;
+    }
+
+    return fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_NOT_SCANNED, fim_db_callback_save_path, (void*) file);
+}
 
 int fim_db_get_data_checksum(fdb_t *fim_sql, void * arg) {
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_ALL_ENTRIES);
     return fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_ALL_ENTRIES, fim_db_callback_calculate_checksum, arg);
-}
-
-int fim_db_sync_path_range(fdb_t *fim_sql, char *start, char *top) {
-    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_RANGE);
-    fim_db_bind_range(fim_sql, FIMDB_STMT_GET_PATH_RANGE, start, top);
-    return fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_PATH_RANGE, fim_db_callback_sync_path_range, NULL);
-}
-
-int fim_db_delete_not_scanned(fdb_t * fim_sql) {
-    return fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_NOT_SCANNED,
-                                    fim_db_remove_path, (void *) (int) 1);
-}
-
-int fim_db_delete_range(fdb_t * fim_sql, char *start, char *top) {
-    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_RANGE);
-    fim_db_bind_range(fim_sql, FIMDB_STMT_GET_PATH_RANGE, start, top);
-    return fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_PATH_RANGE,
-                                    fim_db_remove_path, NULL);
 }
 
 int fim_db_process_get_query(fdb_t *fim_sql, int index, void (*callback)(fdb_t *, fim_entry *, void *), void * arg) {
@@ -407,6 +456,55 @@ int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query) {
         sqlite3_free(error);
         return FIMDB_ERR;
     }
+
+    return FIMDB_OK;
+}
+
+
+//Wrapper 2
+
+int fim_db_sync_path_range(fdb_t * fim_sql, pthread_mutex_t *mutex, fim_tmp_file *file) {
+    return fim_db_process_read_file(fim_sql, file, mutex, fim_db_callback_sync_path_range, NULL);
+}
+
+int fim_db_delete_not_scanned(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex) {
+    return fim_db_process_read_file(fim_sql, file, mutex, fim_db_remove_path, (void *) (int) 1);
+}
+
+int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex) {
+    return fim_db_process_read_file(fim_sql, file, mutex, fim_db_remove_path, (void *) (int) 0);
+}
+
+int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex,
+    void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *), void * arg) {
+
+    char *line, *path;
+
+    os_calloc(BUFSIZ + 1, sizeof(char), line);
+
+    fseek(file->fd, SEEK_SET, 0);
+
+    while (fgets(line, BUFSIZ, file->fd)) {
+        path = decode_base64(line);
+        if (path == NULL) {
+            merror("Error decoding '%s' to base64", path);
+            continue;
+        }
+
+        w_mutex_lock(mutex);
+        fim_entry *entry = fim_db_get_path(fim_sql, path);
+        w_mutex_unlock(mutex);
+
+        callback(fim_sql, entry, mutex, arg);
+
+        os_free(path);
+    }
+
+    fclose(file->fd);
+    remove(file->path);
+    os_free(file->path);
+    os_free(file);
+    os_free(line);
 
     return FIMDB_OK;
 }
@@ -669,56 +767,13 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_entry_data *en
     return FIMDB_OK;
 }
 
-int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) {
-    int inode_id;
-    int res, res_data, res_path;
-
-#ifdef WIN32
-    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_DATA_ROW);
-    fim_db_bind_path(fim_sql, FIMDB_STMT_GET_DATA_ROW, file_path);
-#else
-    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_DATA_ROW);
-    fim_db_bind_get_inode(fim_sql, FIMDB_STMT_GET_DATA_ROW, entry->inode, entry->dev);
-#endif
-
-    res = sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_DATA_ROW]);
-
-    switch(res) {
-    case SQLITE_ROW:
-        inode_id = sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_DATA_ROW], 0);
-    break;
-
-    case SQLITE_DONE:
-        inode_id = 0;
-    break;
-
-    default:
-        merror("SQL ERROR: (%d)%s", res, sqlite3_errmsg(fim_sql->db));
-        return FIMDB_ERR;
-    }
-
-    res_data = fim_db_insert_data(fim_sql, entry, &inode_id);
-    res_path = fim_db_insert_path(fim_sql, file_path, entry, inode_id);
-
-    return res_data && res_path;
-}
-
-void fim_db_callback_sync_path_range(__attribute__((unused)) fdb_t *fim_sql,
-                                     fim_entry *entry, __attribute__((unused))void *arg) {
-        cJSON * entry_data = fim_entry_json(entry->path, entry->data);
-        char * plain = dbsync_state_msg("syscheck", entry_data);
-        mdebug1("Sync Message for %s sent: %s", entry->path, plain);
-        fim_send_sync_msg(plain);
-        free(plain);
-}
-
 void fim_db_callback_calculate_checksum(__attribute__((unused)) fdb_t *fim_sql, fim_entry *entry, void *arg) {
     EVP_MD_CTX *ctx = (EVP_MD_CTX *)arg;
     EVP_DigestUpdate(ctx, entry->data->checksum, strlen(entry->data->checksum));
 }
 
 int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *top,
-                                const long id, const int n) {
+                                const long id, const int n, pthread_mutex_t *mutex) {
     fim_entry *entry = NULL;
     int m = n / 2;
     int i;
@@ -730,14 +785,16 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
     char *str_pathuh = NULL;
     char *plain      = NULL;
 
-    // Clean statements
-    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_RANGE);
-
     EVP_MD_CTX *ctx_left = EVP_MD_CTX_create();
     EVP_MD_CTX *ctx_right = EVP_MD_CTX_create();
 
     EVP_DigestInit(ctx_left, EVP_sha1());
     EVP_DigestInit(ctx_right, EVP_sha1());
+
+    w_mutex_lock(mutex);
+
+    // Clean statements
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_RANGE);
 
     fim_db_bind_range(fim_sql, FIMDB_STMT_GET_PATH_RANGE, start, top);
 
@@ -745,6 +802,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
     for (i = 0; i < m; i++) {
         if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]) != SQLITE_ROW) {
             merror("SQL ERROR: %s", sqlite3_errmsg(fim_sql->db));
+            w_mutex_unlock(mutex);
             goto end;
         }
         entry = fim_db_decode_full_row(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]);
@@ -759,6 +817,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
     for (i = m; i < n; i++) {
         if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]) != SQLITE_ROW) {
             merror("SQL ERROR: %s", sqlite3_errmsg(fim_sql->db));
+            w_mutex_unlock(mutex);
             goto end1;
         }
         entry = fim_db_decode_full_row(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]);
@@ -768,6 +827,8 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
         fim_db_callback_calculate_checksum(fim_sql, entry, (void *)ctx_right);
         free_entry(entry);
     }
+
+    w_mutex_unlock(mutex);
 
     if (!str_pathlh || !str_pathuh) {
         merror("Failed to obtain required paths in order to form message");
@@ -787,6 +848,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
     plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_RIGHT, id, str_pathuh, top, "", hexdigest);
     fim_send_sync_msg(plain);
     os_free(plain);
+    os_free(str_pathuh);
 
     retval = FIMDB_OK;
 
@@ -800,9 +862,13 @@ end:
     return retval;
 }
 
-void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, __attribute__((unused))void *arg) {
+void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex,
+     __attribute__((unused))void *arg) {
 
     int *alert = (int *) arg;
+    int rows = 0;
+
+    w_mutex_lock(mutex);
 
     // Clean and bind statements
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_COUNT);
@@ -811,7 +877,7 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, __attribute__((unused)
     fim_db_bind_path(fim_sql, FIMDB_STMT_GET_PATH_COUNT, entry->path);
 
     if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATH_COUNT]) == SQLITE_ROW) {
-        int rows = sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_PATH_COUNT], 0);
+        rows = sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_PATH_COUNT], 0);
         int rowid = sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_PATH_COUNT], 1);
 
         switch (rows) {
@@ -822,47 +888,51 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, __attribute__((unused)
             // The inode has only one entry, delete the entry data.
             fim_db_bind_delete_data_id(fim_sql, rowid);
             if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_DELETE_DATA]) != SQLITE_DONE) {
+                w_mutex_unlock(mutex);
                 goto end;
             }
-
-            if (alert) {
-                cJSON * json_event      = NULL;
-                char * json_formated    = NULL;
-                int pos = 0;
-
-                const char *FIM_ENTRY_TYPE[] = { "file", "registry"};
-
-                if (pos = fim_configuration_directory(entry->path,
-                    FIM_ENTRY_TYPE[entry->data->entry_type]), pos < 0) {
-                    goto end;
-                }
-
-                json_event = fim_json_event(entry->path, NULL, entry->data, pos,
-                                                FIM_DELETE, FIM_SCHEDULED, NULL);
-
-                if (!strcmp(FIM_ENTRY_TYPE[entry->data->entry_type], "file") &&
-                    syscheck.opts[pos] & CHECK_SEECHANGES) {
-                    delete_target_file(entry->path);
-                }
-
-                if (json_event) {
-                    mdebug2(FIM_FILE_MSG_DELETE, entry->path);
-                    json_formated = cJSON_PrintUnformatted(json_event);
-                    send_syscheck_msg(json_formated);
-
-                    os_free(json_formated);
-                    cJSON_Delete(json_event);
-                }
-            }
-            // Fallthrough
+            //Fallthrough
         default:
             // The inode has more entries, delete only this path.
             fim_db_bind_path(fim_sql, FIMDB_STMT_DELETE_PATH, entry->path);
             if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_DELETE_PATH]) != SQLITE_DONE) {
+                w_mutex_unlock(mutex);
                 goto end;
             }
-
             break;
+        }
+    }
+
+    w_mutex_unlock(mutex);
+
+
+    if (*alert && rows >= 1) {
+        cJSON * json_event      = NULL;
+        char * json_formated    = NULL;
+        int pos = 0;
+
+         const char *FIM_ENTRY_TYPE[] = { "file", "registry"};
+
+        if (pos = fim_configuration_directory(entry->path,
+            FIM_ENTRY_TYPE[entry->data->entry_type]), pos < 0) {
+            goto end;
+        }
+
+        json_event = fim_json_event(entry->path, NULL, entry->data, pos,
+                                                FIM_DELETE, FIM_SCHEDULED, NULL);
+
+        if (!strcmp(FIM_ENTRY_TYPE[entry->data->entry_type], "file") &&
+            syscheck.opts[pos] & CHECK_SEECHANGES) {
+            delete_target_file(entry->path);
+        }
+
+        if (json_event) {
+            mdebug2(FIM_FILE_MSG_DELETE, entry->path);
+            json_formated = cJSON_PrintUnformatted(json_event);
+            send_syscheck_msg(json_formated);
+
+            os_free(json_formated);
+            cJSON_Delete(json_event);
         }
     }
 
@@ -894,7 +964,6 @@ int fim_db_set_all_unscanned(fdb_t *fim_sql) {
     return retval;
 }
 
-
 int fim_db_set_scanned(fdb_t *fim_sql, char *path) {
     // Clean and bind statements
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_SET_SCANNED);
@@ -906,4 +975,42 @@ int fim_db_set_scanned(fdb_t *fim_sql, char *path) {
     }
 
     return FIMDB_OK;
+}
+
+void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry *entry, void *arg) {
+    char *base = encode_base64(strlen(entry->path), entry->path);
+    if (base == NULL) {
+        merror("Error encoding '%s' to base64", entry->path);
+        return;
+    }
+
+    if (memory == 1) {
+        if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", base) != (strlen(entry->path) + sizeof(char))) {
+            merror("%s - %s", entry->path, strerror(errno));
+            goto end;
+        }
+
+        fflush(((fim_tmp_file *) arg)->fd);
+
+    } else {
+        if (!(pos % 100)) {
+            os_realloc(((fim_tmp_file *) arg)->all_paths)
+            //realloc()
+        }
+    }
+
+
+    end:
+        os_free(base);
+}
+
+void fim_db_callback_sync_path_range(__attribute__((unused))fdb_t *fim_sql, fim_entry *entry,
+    __attribute__((unused))pthread_mutex_t *mutex, __attribute__((unused))void *args) {
+
+    cJSON * entry_data = fim_entry_json(entry->path, entry->data);
+    char * plain = dbsync_state_msg("syscheck", entry_data);
+    mdebug1("Sync Message for %s sent: %s", entry->path, plain);
+    fim_send_sync_msg(plain);
+    free_entry(entry);
+    os_free(plain);
 }

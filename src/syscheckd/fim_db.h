@@ -107,16 +107,6 @@ int fim_db_clean_stmt(fdb_t *fim_sql, int index);
 int fim_db_get_data_checksum(fdb_t *fim_sql, void * arg);
 
 /**
- * @brief Send sync messages for all entries between @start and @top.
- *
- * @param start First entry of the range.
- * @param top Last entry of the range.
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_sync_path_range(fdb_t *fim_sql, char *start, char *top);
-
-/**
  * @brief Get entry data using path.
  *
  * @param fim_sql FIM database struct.
@@ -124,6 +114,16 @@ int fim_db_sync_path_range(fdb_t *fim_sql, char *start, char *top);
  * @return FIM entry struct on success, NULL on error.
  */
 fim_entry *fim_db_get_path(fdb_t *fim_sql, const char *file_path);
+
+/**
+ * @brief Get list of all paths by storing them in a temporal file.
+ *
+ * @param fim_sql FIM database struct.
+ * @param index Type of query.
+ * @param fd    File where all paths will be stored.
+ * @return FIM entry struct on success, NULL on error.
+ */
+int fim_db_get_multiple_path(fdb_t *fim_sql, int index, FILE *fd);
 
 /**
  * @brief Get all the paths asociated to an inode
@@ -167,11 +167,12 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_entry_data *en
 int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry);
 
 /**
- * @brief Callback function: Send sync message for a sole entry.
- *
+ * @brief Send sync message for a all entries.
+ * @param fim_sql FIM database struct.
+ * @param mutex FIM database's mutex for thread synchronization.
+ * @param fd    Descriptor of the file which contains all the paths.
  */
- void fim_db_callback_sync_path_range(__attribute__((unused)) fdb_t *fim_sql,
-                                      fim_entry *entry, void *arg);
+int fim_db_sync_path_range(fdb_t *fim_sql, pthread_mutex_t *mutex, fim_tmp_file *file);
 
 /**
  * @brief Callback function: Entry checksum calculation.
@@ -189,11 +190,11 @@ void fim_db_callback_calculate_checksum(__attribute__((unused)) fdb_t *fim_sql,
  * @param top Last entry of the range.
  * @param id Sync session counter (timetamp).
  * @param n Number of entries between start and stop.
- *
+ * @param mutex FIM database's mutex for thread synchronization.
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *top,
-                                const long id, const int n);
+                                const long id, const int n, pthread_mutex_t *mutex);
 
 /**
  * @brief Count the number of entries between range @start and @top.
@@ -211,30 +212,12 @@ int fim_db_get_count_range(fdb_t *fim_sql, char *start, char *top, int *counter)
  *
  * @param fim_sql FIM database struct.
  * @param file_path File path.
+ * @param mutex
  * @param arg 0 No send alert, 1 send delete alert.
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, void *arg);
-
-/**
- * @brief Delete not scanned entries from database.
- *
- * @param fim_sql FIM database struct.
- * @return int
- */
-int fim_db_delete_not_scanned(fdb_t * fim_sql);
-
-/**
- * @brief Removes a range of paths from the database.
- * The paths are alphabetically ordered.
- * The range is given by start and top parameters.
- *
- * @param fim_sql FIM database struct.
- * @param start Path that sets the beggining of the range.
- * @param top Path that sets the ending of the range.
- * @return int
- */
-int fim_db_delete_range(fdb_t * fim_sql, char *start, char *top);
+void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex,
+                         __attribute__((unused))void *arg);
 
 /**
  * @brief Get the last/first row from entry_path.
@@ -249,7 +232,7 @@ int fim_db_get_row_path(fdb_t *fim_sql, int mode, char **path);
  * @brief Set all entries from database to unscanned.
  *
  * @param fim_sql FIM database struct.
- * @return int
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 int fim_db_set_all_unscanned(fdb_t *fim_sql);
 
@@ -258,5 +241,75 @@ int fim_db_set_all_unscanned(fdb_t *fim_sql);
  *
  * @param fim_sql FIM database struct.
  * @param file_path File path.
+* @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 int fim_db_set_scanned(fdb_t *fim_sql, char *path);
+
+/**
+ * @brief Get all the unscanned files by storing them in a temporal file.
+ *
+ * @param fim_sql FIM database struct.
+ * @param fd    Structure of the file which contains all the paths.
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ */
+int fim_db_get_not_scanned(fdb_t * fim_sql,fim_tmp_file **file);
+
+/**
+ * @brief Write an entry path into the file pointed by args(fd).
+ *
+ * @param fim_sql FIM database struct.
+ * @param args    Descriptor of the file which contains all the paths.
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ */
+void fim_db_callback_save_path(fdb_t *fim_sql, fim_entry *entry, void *arg);
+
+/**
+ * @brief Callback function to send a sync message for a sole entry.
+ * @param fim_sql FIM database struct.
+ * @param entry Entry data to be inserted.
+ * @param mutex FIM database's mutex for thread synchronization.
+ * @param args  Unused arguments.
+ */
+void fim_db_callback_sync_path_range(__attribute__((unused))fdb_t *fim_sql, fim_entry *entry,
+    __attribute__((unused))pthread_mutex_t *mutex, __attribute__((unused))void *args);
+
+/**
+ * @brief Delete not scanned entries from database.
+ *
+ * @param fim_sql FIM database struct.
+ * @param fd      Structure of the file which contains all the paths.
+ * @param mutex
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ */
+int fim_db_delete_not_scanned(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex);
+
+/**
+ * @brief Get path list between @start and @top. (stored in @fd).
+ *
+ * @param fim_sql FIM database struct.
+ * @param file  Structure of the file which contains all the paths.
+ * @param start First entry of the range.
+ * @param top Last entry of the range.
+ *
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ *
+ */
+int fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file) ;
+
+/**
+ * @brief Removes a range of paths from the database.
+ * The paths are alphabetically ordered.
+ * The range is given by start and top parameters.
+ *
+ * @param fim_sql FIM database struct.
+ * @param file  Structure of the file which contains all the paths.
+ * @param mutex
+ *
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ */
+int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex);
+
+/* b64 function prototypes */
+char *decode_base64(const char *src);
+
+char *encode_base64(int size, char *src);

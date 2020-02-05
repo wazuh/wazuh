@@ -53,6 +53,14 @@ typedef struct fim_element {
     int mode;
 } fim_element;
 
+typedef struct fim_tmp_file {
+    union {
+        FILE *fd;
+        char **all_path;
+    }
+    char *path;
+} fim_tmp_file;
+
 /* Win32 does not have lstat */
 #ifdef WIN32
     #define w_stat(x, y) stat(x, y)

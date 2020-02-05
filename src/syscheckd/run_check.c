@@ -594,17 +594,18 @@ static void fim_delete_realtime_watches(__attribute__((unused)) int pos) {
 static void fim_link_delete_range(int pos) {
     char first_entry[PATH_MAX] = {0};
     char last_entry[PATH_MAX]  = {0};
+    fim_tmp_file * file = NULL;
 
     snprintf(first_entry, PATH_MAX, "%s/", syscheck.dir[pos]);
     snprintf(last_entry, PATH_MAX, "%s0", syscheck.dir[pos]);
 
-    w_mutex_lock(&syscheck.fim_entry_mutex);
-
-    if (fim_db_delete_range(syscheck.database, (char*)first_entry, (char*)last_entry) != FIMDB_OK) {
+    if (fim_db_get_path_range(syscheck.database, first_entry, last_entry, &file) != FIMDB_OK) {
         merror(FIM_DB_ERROR_RM_RANGE, first_entry, last_entry);
     }
 
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
+    if (fim_db_delete_range(syscheck.database, file, &syscheck.fim_entry_mutex) != FIMDB_OK) {
+        merror(FIM_DB_ERROR_RM_RANGE, first_entry, last_entry);
+    }
 }
 // LCOV_EXCL_STOP
 
