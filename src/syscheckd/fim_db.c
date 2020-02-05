@@ -765,14 +765,14 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
 
     retval = FIMDB_OK;
 
-    end1:
-        EVP_MD_CTX_destroy(ctx_right);
-        os_free(str_pathlh);
-        os_free(str_pathuh);
+end1:
+    EVP_MD_CTX_destroy(ctx_right);
+    os_free(str_pathlh);
+    os_free(str_pathuh);
 
-    end:
-        EVP_MD_CTX_destroy(ctx_left);
-        return retval;
+end:
+    EVP_MD_CTX_destroy(ctx_left);
+    return retval;
 }
 
 void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, __attribute__((unused))void *arg) {
