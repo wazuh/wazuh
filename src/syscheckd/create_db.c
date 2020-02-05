@@ -1164,11 +1164,7 @@ void free_entry_data(fim_entry_data * data) {
         os_free(data->attributes);
     }
     if (data->uid) {
-#ifdef WIN32
-        LocalFree(data->uid);
-#else
         os_free(data->uid);
-#endif
     }
     if (data->gid) {
         os_free(data->gid);
