@@ -189,11 +189,13 @@ fdb_t *fim_db_init(int memory) {
 
     if (error) {
         merror("SQL ERROR: %s", error);
+        fim_db_finalize_stmt(fim);
         sqlite3_free(error);
         goto free_fim;
     }
 
     if (fim_db_exec_simple_wquery(fim, "BEGIN;") == FIMDB_ERR) {
+        fim_db_finalize_stmt(fim);
         goto free_fim;
     }
 
