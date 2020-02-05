@@ -7,8 +7,8 @@
 
 cmake_minimum_required(VERSION 3.10)
 
-# set(TARGET winagent)
-# set(CMAKE_VERBOSE_MAKEFILE ON)
+set(TARGET winagent)
+set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # message("${TARGET}")
 
@@ -66,6 +66,15 @@ list(APPEND tests_flags "-Wl,--wrap,_mdebug1 -Wl,--wrap,wdb_stmt_cache -Wl,--wra
 list(APPEND tests_names "test_version_op")
 list(APPEND tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose")
 
+list(APPEND tests_names "test_create_db")
+list(APPEND tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug2 -Wl,--wrap,lstat \
+                       -Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck_msg -Wl,--wrap,readdir \
+                       -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,realtime_adddir -Wl,--wrap,HasFilesystem \
+                       -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_get_paths_from_inode -Wl,--wrap,delete_target_file \
+                       -Wl,--wrap,fim_db_insert_data -Wl,--wrap,OS_MD5_SHA1_SHA256_File -Wl,--wrap,seechanges_addfile\
+                       -Wl,--wrap,fim_db_delete_not_scanned -Wl,--wrap,fim_db_set_all_unscanned \
+                       -Wl,--wrap,fim_db_set_scanned -Wl,--wrap,get_user -Wl,--wrap,get_group \
+                       -Wl,--wrap,fim_db_remove_path")
 
 # Config files
 configure_file("test_syscheck.conf" "test_syscheck.conf" COPYONLY)
