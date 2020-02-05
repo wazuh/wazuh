@@ -92,7 +92,8 @@ static int CreatePID_teardown(void **state) {
 }
 
 /* tests */
-
+#ifndef WIN32
+// getline not defined in windows, comment until fixed
 void test_CreatePID_success(void **state)
 {
     (void) state;
@@ -126,7 +127,7 @@ void test_CreatePID_success(void **state)
 
     assert_string_equal(content, "42\n");
 }
-
+#endif
 
 void test_CreatePID_failure_chmod(void **state)
 {
@@ -196,7 +197,9 @@ void test_DeletePID_failure(void **state)
 
 int main(void) {
     const struct CMUnitTest tests[] = {
+        #ifndef WIN32
         cmocka_unit_test_teardown(test_CreatePID_success, CreatePID_teardown),
+        #endif
         cmocka_unit_test_teardown(test_CreatePID_failure_chmod, CreatePID_teardown),
         cmocka_unit_test(test_CreatePID_failure_fopen),
         //cmocka_unit_test(test_DeletePID_success),
