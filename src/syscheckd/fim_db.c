@@ -403,7 +403,7 @@ fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt) {
     fim_entry *entry = NULL;
 
     os_calloc(1, sizeof(fim_entry), entry);
-    w_strdup((char *)sqlite3_column_text(stmt, 0), entry->path);
+    os_strdup((char *)sqlite3_column_text(stmt, 0), entry->path);
 
     os_calloc(1, sizeof(fim_entry_data), entry->data);
     entry->data->mode = (unsigned int)sqlite3_column_int(stmt, 2);
@@ -415,12 +415,12 @@ fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt) {
     entry->data->dev = (unsigned long int)sqlite3_column_int(stmt, 8);
     entry->data->inode = (unsigned long int)sqlite3_column_int(stmt, 9);
     entry->data->size = (unsigned int)sqlite3_column_int(stmt, 10);
-    w_strdup((char *)sqlite3_column_text(stmt, 11), entry->data->perm);
-    w_strdup((char *)sqlite3_column_text(stmt, 12), entry->data->attributes);
-    w_strdup((char *)sqlite3_column_text(stmt, 13), entry->data->uid);
-    w_strdup((char *)sqlite3_column_text(stmt, 14), entry->data->gid);
-    w_strdup((char *)sqlite3_column_text(stmt, 15), entry->data->user_name);
-    w_strdup((char *)sqlite3_column_text(stmt, 16), entry->data->group_name);
+    os_strdup((char *)sqlite3_column_text(stmt, 11), entry->data->perm);
+    os_strdup((char *)sqlite3_column_text(stmt, 12), entry->data->attributes);
+    os_strdup((char *)sqlite3_column_text(stmt, 13), entry->data->uid);
+    os_strdup((char *)sqlite3_column_text(stmt, 14), entry->data->gid);
+    os_strdup((char *)sqlite3_column_text(stmt, 15), entry->data->user_name);
+    os_strdup((char *)sqlite3_column_text(stmt, 16), entry->data->group_name);
     strncpy(entry->data->hash_md5, (char *)sqlite3_column_text(stmt, 17), sizeof(os_md5) - 1);
     strncpy(entry->data->hash_sha1, (char *)sqlite3_column_text(stmt, 18), sizeof(os_sha1) - 1);
     strncpy(entry->data->hash_sha256, (char *)sqlite3_column_text(stmt, 19), sizeof(os_sha256) - 1);
@@ -857,7 +857,7 @@ int fim_db_get_row_path(fdb_t * fim_sql, int mode, char **path) {
     }
 
     if (result == SQLITE_ROW) {
-        w_strdup((char *)sqlite3_column_text(fim_sql->stmt[index], 0), *path);
+        os_strdup((char *)sqlite3_column_text(fim_sql->stmt[index], 0), *path);
     }
 
     return FIMDB_OK;
