@@ -169,6 +169,9 @@ int w_del_plist(OSList *p_list)
         p_node = NULL;
     }
 
+    pthread_mutex_destroy(&(p_list->mutex));
+    pthread_rwlock_destroy(&(p_list->wr_mutex));
+
     free(p_list);
 
     return (1);

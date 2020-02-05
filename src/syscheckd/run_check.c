@@ -119,7 +119,6 @@ void start_daemon()
 
     // Some time to settle
     memset(curr_hour, '\0', 12);
-    sleep(syscheck.tsleep);
 
     // A higher nice value means a low priority.
 #ifndef WIN32

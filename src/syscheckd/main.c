@@ -242,8 +242,6 @@ int main(int argc, char **argv)
         }
     }
 
-    /* Some sync time */
-    sleep(syscheck.tsleep * 5);
     fim_initialize();
 
     // Audit events thread

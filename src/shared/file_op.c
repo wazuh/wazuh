@@ -2985,7 +2985,6 @@ void w_descriptor_cloexec(__attribute__((unused)) int fd){
 }
 
 // Add a trailing separator to a path string
-
 int trail_path_separator(char * dest, const char * src, size_t n) {
     const char STR_SEPARATOR[] = { PATH_SEP, '\0' };
     if (strlen(src) == 0) return 0;
@@ -2993,7 +2992,6 @@ int trail_path_separator(char * dest, const char * src, size_t n) {
 }
 
 // Check if a path is absolute
-
 bool isabspath(const char * path) {
 #ifdef WIN32
     return strlen(path) >= 3 && isalpha(path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/');
@@ -3011,7 +3009,6 @@ void win_path_backslash(char * path) {
 }
 
 // Get an absolute path
-
 char * abspath(const char * path, char * buffer, size_t size) {
     // If the path is already absolute, copy and return
     if (isabspath(path)) {
@@ -3058,6 +3055,57 @@ char * abspath(const char * path, char * buffer, size_t size) {
         return NULL;
     }
 #endif
+
+    return buffer;
+}
+
+/* Return the content of a file from a given path */
+char * w_get_file_content(const char * path, int max_size) {
+    FILE * fp = NULL;
+    char * buffer = NULL;
+    long size;
+    size_t read;
+
+    // Check if path is NULL
+    if (path == NULL) {
+        mdebug1("Cannot open NULL path");
+        goto end;
+    }
+
+    // Load file
+    if (fp = fopen(path, "r"), !fp) {
+        mdebug1(FOPEN_ERROR, path, errno, strerror(errno));
+        goto end;
+    }
+
+    // Get file size
+    if (size = get_fp_size(fp), size < 0) {
+        mdebug1(FSEEK_ERROR, path, errno, strerror(errno));
+        goto end;
+    }
+
+    // Check file size limit
+    if (size > max_size) {
+        mdebug1("Cannot load file '%s': it exceeds %i MiB", path, (max_size / (1024 * 1024)));
+        goto end;
+    }
+
+    // Allocate memory
+    os_malloc(size + 1, buffer);
+
+    // Get file content
+    if (read = fread(buffer, 1, size, fp), read != (size_t)size && !feof(fp)) {
+        mdebug1(FREAD_ERROR, path, errno, strerror(errno));
+        os_free(buffer);
+        goto end;
+    }
+
+    buffer[size] = '\0';
+
+end:
+    if (fp) {
+        fclose(fp);
+    }
 
     return buffer;
 }
