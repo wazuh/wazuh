@@ -758,7 +758,7 @@ int fim_db_count_not_scanned(fdb_t *fim_sql, int *count) {
     return FIMDB_OK;
 }
 
-int fim_db_insert_data(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) {
+int fim_db_insert_data(fdb_t *fim_sql, fim_entry_data *entry, int *row_id) {
     int res;
 
     if(*row_id == 0) {
@@ -816,6 +816,40 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_entry_data *en
     }
 
     return FIMDB_OK;
+}
+
+int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) {
+    int inode_id;
+    int res, res_data, res_path;
+
+#ifdef WIN32
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_DATA_ROW);
+    fim_db_bind_path(fim_sql, FIMDB_STMT_GET_DATA_ROW, file_path);
+#else
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_DATA_ROW);
+    fim_db_bind_get_inode(fim_sql, FIMDB_STMT_GET_DATA_ROW, entry->inode, entry->dev);
+#endif
+
+    res = sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_DATA_ROW]);
+
+    switch(res) {
+    case SQLITE_ROW:
+        inode_id = sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_DATA_ROW], 0);
+    break;
+
+    case SQLITE_DONE:
+        inode_id = 0;
+    break;
+
+    default:
+        merror("SQL ERROR: (%d)%s", res, sqlite3_errmsg(fim_sql->db));
+        return FIMDB_ERR;
+    }
+
+    res_data = fim_db_insert_data(fim_sql, entry, &inode_id);
+    res_path = fim_db_insert_path(fim_sql, file_path, entry, inode_id);
+
+    return res_data && res_path;
 }
 
 void fim_db_callback_calculate_checksum(__attribute__((unused)) fdb_t *fim_sql, fim_entry *entry,
