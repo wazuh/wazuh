@@ -15,6 +15,10 @@
 #include <stdlib.h>
 #include "../syscheckd/fim_db.h"
 
+#ifdef TEST_WINAGENT
+    #define __mode_t int
+#endif
+
 extern const char *SQL_STMT[];
 
 int fim_db_process_get_query(fdb_t *fim_sql, int index,
