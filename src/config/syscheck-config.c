@@ -377,6 +377,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 #endif
 
         if (!strcmp(tmp_dir,"")) {
+            mdebug2(FIM_EMPTY_DIRECTORIES_CONFIG);
             dir++;
             continue;
         }
