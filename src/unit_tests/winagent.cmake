@@ -1,0 +1,23 @@
+# Setup the compiling toolchain
+set(CMAKE_SYSTEM_NAME Windows)
+
+set(COMPILER_PREFIX "i686-w64-mingw32")
+set(CMAKE_C_COMPILER ${COMPILER_PREFIX}-gcc)
+# set(CMAKE_FIND_ROOT_PATH  /usr/${COMPILER_PREFIX} ${CMAKE_SOURCE_DIR}/../../)
+set(CMAKE_C_LINK_EXECUTABLE "${CMAKE_C_COMPILER} <FLAGS> <CMAKE_C_LINK_FLAGS> <LINK_FLAGS> <OBJECTS>  -o <TARGET> <LINK_LIBRARIES>")
+set(CMAKE_AR i686-w64-mingw32-ar)
+set(CMAKE_RANLIB i686-w64-mingw32-ranlib)
+
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+
+set(CMAKE_FIND_LIBRARY_PREFIXES "")
+set(CMAKE_FIND_LIBRARY_SUFFIXES ".lib" ".dll" ".a")
+
+# Find the wazuh shared library
+find_library(WAZUHEXT NAMES libwazuhext.dll HINTS "${SRC_FOLDER}")
+
+# Add compiling flags
+add_compile_options(-ggdb -O0 -g -coverage -DTEST_WINAGENT)
