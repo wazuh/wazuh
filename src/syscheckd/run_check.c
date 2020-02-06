@@ -157,6 +157,8 @@ void start_daemon()
         return;
     }
 
+    minfo(FIM_DAEMON_STARTED);
+
     // Create File integrity monitoring base-line
     minfo(FIM_FREQUENCY_TIME, syscheck.time);
     fim_scan();
@@ -217,8 +219,6 @@ void start_daemon()
             }
         }
     }
-
-    minfo(FIM_DAEMON_STARTED);
 
     // Check every SYSCHECK_WAIT
     while (1) {
