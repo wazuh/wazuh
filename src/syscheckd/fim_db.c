@@ -415,12 +415,12 @@ fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt) {
     entry->data->dev = (unsigned long int)sqlite3_column_int(stmt, 8);
     entry->data->inode = (unsigned long int)sqlite3_column_int(stmt, 9);
     entry->data->size = (unsigned int)sqlite3_column_int(stmt, 10);
-    os_strdup((char *)sqlite3_column_text(stmt, 11), entry->data->perm);
-    os_strdup((char *)sqlite3_column_text(stmt, 12), entry->data->attributes);
-    os_strdup((char *)sqlite3_column_text(stmt, 13), entry->data->uid);
-    os_strdup((char *)sqlite3_column_text(stmt, 14), entry->data->gid);
-    os_strdup((char *)sqlite3_column_text(stmt, 15), entry->data->user_name);
-    os_strdup((char *)sqlite3_column_text(stmt, 16), entry->data->group_name);
+    sqlite_strdup((char *)sqlite3_column_text(stmt, 11), entry->data->perm);
+    sqlite_strdup((char *)sqlite3_column_text(stmt, 12), entry->data->attributes);
+    sqlite_strdup((char *)sqlite3_column_text(stmt, 13), entry->data->uid);
+    sqlite_strdup((char *)sqlite3_column_text(stmt, 14), entry->data->gid);
+    sqlite_strdup((char *)sqlite3_column_text(stmt, 15), entry->data->user_name);
+    sqlite_strdup((char *)sqlite3_column_text(stmt, 16), entry->data->group_name);
     strncpy(entry->data->hash_md5, (char *)sqlite3_column_text(stmt, 17), sizeof(os_md5) - 1);
     strncpy(entry->data->hash_sha1, (char *)sqlite3_column_text(stmt, 18), sizeof(os_sha1) - 1);
     strncpy(entry->data->hash_sha256, (char *)sqlite3_column_text(stmt, 19), sizeof(os_sha256) - 1);
