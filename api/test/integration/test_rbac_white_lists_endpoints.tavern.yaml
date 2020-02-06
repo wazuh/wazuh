@@ -88,12 +88,10 @@ stages:
       body:
         data:
           affected_items:
-            - folder: etc/lists/amazon
-              name: aws-eventnames
-              path: etc/lists/amazon/aws-eventnames
-            - folder: etc/lists
-              name: audit-keys
-              path: etc/lists/audit-keys
+            - name: audit-keys
+              path: etc/lists
+            - name: aws-eventnames
+              path: etc/lists/amazon
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0

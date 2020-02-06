@@ -265,8 +265,7 @@ stages:
       body:
         data:
           affected_items: &full_items_array_files
-            - folder: !anystr
-              name: !anystr
+            - name: !anystr
               path: !anystr
           failed_items: []
           total_affected_items: !anyint
@@ -274,7 +273,6 @@ stages:
       # Save some data for future use in the test
       save:
         body:
-          returned_folder: data.affected_items.0.folder
           returned_name: data.affected_items.0.name
           returned_path: data.affected_items.0.path
 
@@ -299,7 +297,6 @@ stages:
       # Save second item to check offset in next stage
       save:
         body:
-          offset_item_folder: data.affected_items.1.folder
           offset_item_name: data.affected_items.1.name
           offset_item_path: data.affected_items.1.path
 
@@ -316,8 +313,7 @@ stages:
         data:
           affected_items:
               # Check offset matches with previous request
-            - folder: "{offset_item_folder}"
-              name: "{offset_item_name}"
+            - name: "{offset_item_name}"
               path: "{offset_item_path}"
           failed_items: []
           total_affected_items: !anyint
@@ -351,10 +347,9 @@ stages:
       status_code: 200
       body:
         data:
-          affected_items:
-            - <<: *full_items_array_files
+          affected_items: []
           failed_items: []
-          total_affected_items: !anyint
+          total_affected_items: 0
           total_failed_items: 0
 
     # GET /lists/files?limit=1&search=empty_search
