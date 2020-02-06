@@ -42,6 +42,7 @@ static const char *SQL_STMT[] = {
     [FIMDB_STMT_COUNT_NOT_SCANNED] = "SELECT count(*) FROM entry_path WHERE scanned = 0;",
 };
 
+
 /**
  * @brief Decodes a row from the database to be saved in a fim_entry structure.
  *
@@ -49,6 +50,7 @@ static const char *SQL_STMT[] = {
  * @return fim_entry* The filled structure.
  */
 static fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt);
+
 
 /**
  * @brief Executes a simple query in a given database.
@@ -58,6 +60,7 @@ static fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt);
  * @return int 0 on success, -1 on error.
  */
 static int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query);
+
 
 /**
  * @brief
@@ -73,6 +76,7 @@ static int fim_db_process_get_query(fdb_t *fim_sql, int index,
                                     void (*callback)(fdb_t *, fim_entry *, int, int, void *),
                                     int memory, void * arg);
 
+
 /**
  * @brief Binds data into a insert data statement.
  *
@@ -80,6 +84,7 @@ static int fim_db_process_get_query(fdb_t *fim_sql, int index,
  * @param entry FIM entry data structure.
  */
 static void fim_db_bind_insert_data(fdb_t *fim_sql, fim_entry_data *entry);
+
 
 /**
  * @brief Binds data into a insert data statement.
@@ -89,6 +94,7 @@ static void fim_db_bind_insert_data(fdb_t *fim_sql, fim_entry_data *entry);
  * @param top Last entry of the range.
  */
 void fim_db_bind_range(fdb_t *fim_sql, int index, const char *start, const char *top);
+
 
 /**
  * @brief Binds a range of paths.
@@ -101,6 +107,7 @@ void fim_db_bind_range(fdb_t *fim_sql, int index, const char *start, const char 
 static void fim_db_bind_insert_path(fdb_t *fim_sql, const char *file_path,
                                     int row_id, fim_entry_data *entry);
 
+
 /**
  * @brief Binds a path into a statement.
  *
@@ -110,6 +117,7 @@ static void fim_db_bind_insert_path(fdb_t *fim_sql, const char *file_path,
  */
 static void fim_db_bind_path(fdb_t *fim_sql, int index,
                              const char * file_path);
+
 
 /**
  * @brief Binds data into a get inode statement.
@@ -122,6 +130,7 @@ static void fim_db_bind_path(fdb_t *fim_sql, int index,
 static void fim_db_bind_get_inode(fdb_t *fim_sql, int index,
                                   const unsigned long int inode,
                                   const unsigned long int dev);
+
 
 /**
  * @brief Binds data into an update entry data statement.
@@ -167,11 +176,11 @@ static int fim_db_create_file(const char *path, const char *source, const int me
 
 
 /**
- * @brief Read paths which are stored in a temporal file.
+ * @brief Read paths which are stored in a temporal storage.
  *
  * @param fim_sql FIM database structure.
  * @param mutex
- * @param memory 0 use disk - 1 use memory.
+ * @param memory FIM_DB_DISK use disk - FIM_DB_MEMORY use memory.
  * @param callback Function to call within a step.
  * @param args Adicional arguments for callback function.
  *
@@ -179,9 +188,11 @@ static int fim_db_create_file(const char *path, const char *source, const int me
  static int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex,
         void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *), int memory, void * arg);
 
+
 /**
- * @brief Create a new temporal file to stored file paths.
- *
+ * @brief Create a new temporal storage to save all the files' paths.
+ * @param memory FIM_DB_DISK use disk - FIM_DB_MEMORY use memory
+ * @param size Number of paths(Only if memory is 1)
  * @return New file structure.
  */
 static fim_tmp_file *fim_db_create_temp_file(int memory, int size);
@@ -333,7 +344,7 @@ fim_tmp_file *fim_db_create_temp_file(int memory, int size) {
     fim_tmp_file *file;
     os_calloc(1, sizeof(fim_tmp_file), file);
 
-    if (memory == 0) {
+    if (memory == FIM_DB_DISK) {
         os_calloc(PATH_MAX, sizeof(char), file->path);
         //Create random name unique to this thread
         sprintf(file->path, "%s/.tmp_%lu%d", DEFAULTDIR,
@@ -342,7 +353,7 @@ fim_tmp_file *fim_db_create_temp_file(int memory, int size) {
 
         file->fd = fopen(file->path, "w+");
         if (file->fd == NULL) {
-            merror("Failed to create temporal database %s", file->path);
+            merror("Failed to create temporal database '%s'", file->path);
             os_free(file->path);
             os_free(file);
             return NULL;
@@ -424,7 +435,7 @@ int fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file *
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_RANGE);
     fim_db_bind_range(fim_sql, FIMDB_STMT_GET_PATH_RANGE, start, top);
 
-    return fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_PATH_RANGE, fim_db_callback_save_path, memory, (void*) file);
+    return fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_PATH_RANGE, fim_db_callback_save_path, memory, (void*) *file);
 }
 
 int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int memory) {
@@ -437,7 +448,7 @@ int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int memory) {
         return FIMDB_ERR;
     }
 
-    return fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_NOT_SCANNED, fim_db_callback_save_path, memory, (void*) file);
+    return fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_NOT_SCANNED, fim_db_callback_save_path, memory, (void*) *file);
 }
 
 int fim_db_get_data_checksum(fdb_t *fim_sql, void * arg) {
@@ -473,9 +484,6 @@ int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query) {
     return FIMDB_OK;
 }
 
-
-//Wrapper 2
-
 int fim_db_sync_path_range(fdb_t * fim_sql, pthread_mutex_t *mutex, fim_tmp_file *file, int memory) {
     return fim_db_process_read_file(fim_sql, file, mutex, fim_db_callback_sync_path_range,
             memory, (void *) (int) 0);
@@ -499,13 +507,13 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
     char *path = NULL;
     int i = 0;
 
-    if (memory == 0) {
+    if (memory == FIM_DB_DISK) {
         os_calloc(BUFSIZ + 1, sizeof(char), line);
         fseek(file->fd, SEEK_SET, 0);
     }
 
     do {
-        if (memory == 0) {
+        if (memory == FIM_DB_DISK) {
             path = (fgets(line, BUFSIZ, file->fd))? decode_base64(line) : NULL;
         } else {
             path = file->all_path[i];
@@ -523,7 +531,7 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
         i++;
     } while (path);
 
-    if (memory == 0) {
+    if (memory == FIM_DB_DISK) {
         fclose(file->fd);
         remove(file->path);
         os_free(file->path);
@@ -852,7 +860,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
         if (i == (m - 1) && entry->path) {
             os_strdup(entry->path, str_pathlh);
         }
-        fim_db_callback_calculate_checksum(fim_sql, entry, 0, 0, (void *)ctx_left);
+        fim_db_callback_calculate_checksum(fim_sql, entry, 0, FIM_DB_DISK, (void *)ctx_left);
         free_entry(entry);
     }
 
@@ -867,7 +875,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
         if (i == m && entry->path) {
             os_strdup(entry->path, str_pathuh);
         }
-        fim_db_callback_calculate_checksum(fim_sql, entry, 0, 0, (void *)ctx_right);
+        fim_db_callback_calculate_checksum(fim_sql, entry, 0, FIM_DB_DISK, (void *)ctx_right);
         free_entry(entry);
     }
 
@@ -949,7 +957,7 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
     w_mutex_unlock(mutex);
 
 
-    if (*alert && rows == 1) {
+    if (alert && rows == 1) {
         cJSON * json_event      = NULL;
         char * json_formated    = NULL;
         int pos = 0;
@@ -1027,7 +1035,7 @@ void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry
         return;
     }
 
-    if (memory == 0) { // disk option enabled
+    if (memory == FIM_DB_DISK) { // disk storage enabled
         if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", base) != (strlen(entry->path) + sizeof(char))) {
             merror("%s - %s", entry->path, strerror(errno));
             goto end;
@@ -1035,7 +1043,7 @@ void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry
 
         fflush(((fim_tmp_file *) arg)->fd);
 
-    } else { // memory option enabled
+    } else { // memory storage enabled
         os_strdup(entry->path, ((fim_tmp_file *) arg)->all_path[pos]);
     }
 

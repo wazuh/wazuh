@@ -213,9 +213,11 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
 int fim_db_get_count_range(fdb_t *fim_sql, char *start, char *top, int *counter);
 
 /**
- * @brief Count the number of not scanned.
+ * @brief Count the number of not scanned paths.
  *
  * @param count Pointer which will hold the final count.
+ *
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 int fim_db_count_not_scanned(fdb_t *fim_sql, int *count);
 
@@ -258,20 +260,22 @@ int fim_db_set_all_unscanned(fdb_t *fim_sql);
 int fim_db_set_scanned(fdb_t *fim_sql, char *path);
 
 /**
- * @brief Get all the unscanned files by storing them in a temporal file.
+ * @brief Get all the unscanned files by saving them in a temporal storage.
  *
  * @param fim_sql FIM database struct.
- * @param memory  0 in disk - 1 in disk
+ * @param memory  0 in disk - 1 in memory.
  * @param File    Structure of the file which contains all the paths.
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 int fim_db_get_not_scanned(fdb_t * fim_sql,fim_tmp_file **file, int memory);
 
 /**
- * @brief Write an entry path into the file pointed by args(fd).
+ * @brief Write an entry path into the storage pointed by @args.
  *
  * @param fim_sql FIM database struct.
- * @param args    Descriptor of the file which contains all the paths.
+ * @param memory  0 use disk - 1 use memory
+ * @param args    Storage which contains all the paths.
+ * @param pos     If memory is 1, pos indicates the position in the array.
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 void fim_db_callback_save_path(fdb_t *fim_sql, fim_entry *entry, int pos,
