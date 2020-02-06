@@ -268,7 +268,7 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
     json_event = fim_json_event(file, saved ? saved->data : NULL, new, item->index, alert_type, item->mode, w_evt);
 
     if (json_event) {
-        if (fim_db_insert_data(syscheck.database, file, new) == -1) {
+        if (fim_db_insert(syscheck.database, file, new) == -1) {
             free_entry_data(new);
             free_entry(saved);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
@@ -389,12 +389,13 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
                                 alert_type, 0, NULL);
     if ((saved && strcmp(saved->data->hash_sha1, data->hash_sha1) != 0)
         || alert_type == FIM_ADD) {
-        if (fim_db_insert_data(syscheck.database, key, data) == -1) {
+        if (fim_db_insert(syscheck.database, key, data) == -1) {
+            os_free(saved);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
             return OS_INVALID;
         }
     } else {
-        saved->data->scanned = 1;
+        fim_db_set_scanned(syscheck.database, key);
         result = 0;
     }
 
@@ -406,6 +407,7 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
         os_free(json_formated);
     }
     cJSON_Delete(json_event);
+    os_free(saved);
 
     return result;
 }
