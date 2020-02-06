@@ -204,7 +204,7 @@ static int teardown_string(void **state) {
     free(*state);
     return 0;
 }
-#if defined(TEST_SERVER) || defined(TEST_AGENT)
+#if defined(TEST_SERVER)
     static int setup_sk_decode(void **state) {
         sk_decode_data_t *data = calloc(1, sizeof(sk_decode_data_t));
 
@@ -297,7 +297,7 @@ static int teardown_string(void **state) {
         }
         return 0;
     }
-
+#if defined(TEST_AGENT)
     static int setup_unescape_syscheck_field(void **state) {
         *state = calloc(1, sizeof(unescape_syscheck_field_data_t));
 
@@ -317,6 +317,7 @@ static int teardown_string(void **state) {
         }
         return 0;
     }
+#endif
 #endif
 
 static int teardown_cjson(void **state) {
@@ -548,7 +549,7 @@ static void test_remove_empty_folders_error_removing_dir(void **state) {
     assert_int_equal(ret, 1);
 }
 
-#if defined(TEST_SERVER) || defined(TEST_AGENT)
+#if defined(TEST_SERVER)
     /* sk_decode_sum tests */
     static void test_sk_decode_sum_no_decode(void **state) {
         sk_decode_data_t *data = *state;
@@ -1959,7 +1960,7 @@ static void test_remove_empty_folders_error_removing_dir(void **state) {
     static void test_sk_sum_clean_null_sum(void **state) {
         expect_assert_failure(sk_sum_clean(NULL));
     }
-
+#if defined(TEST_AGENT)
     /* unescape_syscheck_field tests */
     static void test_unescape_syscheck_field_escaped_chars(void **state) {
         unescape_syscheck_field_data_t *data = *state;
@@ -2057,10 +2058,13 @@ static void test_remove_empty_folders_error_removing_dir(void **state) {
         assert_null(user);
     }
 #endif
+#endif
 
+#if defined(TEST_WINAGENT)
 struct group {
     const char *gr_name;
 };
+#endif
 
 /* get_group tests */
 static void test_get_group_success(void **state) {
@@ -2848,7 +2852,7 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test(test_remove_empty_folders_non_empty_dir),
         cmocka_unit_test(test_remove_empty_folders_error_removing_dir),
 
-        #if defined(TEST_SERVER) || defined(TEST_AGENT)
+        #if defined(TEST_SERVER)
             /* sk_decode_sum tests */
             cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_decode, setup_sk_decode, teardown_sk_decode),
             cmocka_unit_test_setup_teardown(test_sk_decode_sum_deleted_file, setup_sk_decode, teardown_sk_decode),
@@ -2919,7 +2923,7 @@ int main(int argc, char *argv[]) {
             cmocka_unit_test_setup_teardown(test_sk_sum_clean_shortest_valid_message, setup_sk_decode, teardown_sk_decode),
             cmocka_unit_test_setup_teardown(test_sk_sum_clean_invalid_message, setup_sk_decode, teardown_sk_decode),
             cmocka_unit_test_setup_teardown(test_sk_sum_clean_null_sum, setup_sk_decode, teardown_sk_decode),
-
+        #if defined(TEST_AGENT)
             /* unescape_syscheck_field tests */
             cmocka_unit_test_setup_teardown(test_unescape_syscheck_field_escaped_chars, setup_unescape_syscheck_field, teardown_unescape_syscheck_field),
             cmocka_unit_test_setup_teardown(test_unescape_syscheck_field_no_escaped_chars, setup_unescape_syscheck_field, teardown_unescape_syscheck_field),
@@ -2930,6 +2934,7 @@ int main(int argc, char *argv[]) {
             cmocka_unit_test_teardown(test_get_user_success, teardown_string),
             cmocka_unit_test_teardown(test_get_user_uid_not_found, teardown_string),
             cmocka_unit_test_teardown(test_get_user_error, teardown_string),
+        #endif
         #endif
         /* get_group tests */
         cmocka_unit_test(test_get_group_success),
