@@ -7,6 +7,8 @@
  * Foundation.
  */
 
+#if defined(TEST_SERVER) || defined(TEST_AGENT)
+
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -1396,3 +1398,5 @@ int main(void) {
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
+
+#endif
