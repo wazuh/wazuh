@@ -171,20 +171,20 @@ fdb_t *fim_db_init(int memory) {
     fim->transaction.interval = COMMIT_INTERVAL;
 
     if (fim_db_clean() < 0) {
-        return NULL;
+        goto free_fim;
     }
 
     if (fim_db_create_file(path, schema_fim_sql, memory, &fim->db) < 0) {
-        return NULL;
+        goto free_fim;
     }
 
     if (!memory &&
         sqlite3_open_v2(path, &fim->db, SQLITE_OPEN_READWRITE, NULL)) {
-        return NULL;
+        goto free_fim;
     }
 
     if (fim_db_cache(fim)) {
-        return NULL;
+        goto free_fim;
     }
 
     char *error;
@@ -192,15 +192,24 @@ fdb_t *fim_db_init(int memory) {
 
     if (error) {
         merror("SQL ERROR: %s", error);
+        fim_db_finalize_stmt(fim);
         sqlite3_free(error);
-        return NULL;
+        goto free_fim;
     }
 
     if (fim_db_exec_simple_wquery(fim, "BEGIN;") == FIMDB_ERR) {
-        return NULL;
+        fim_db_finalize_stmt(fim);
+        goto free_fim;
     }
 
     return fim;
+
+free_fim:
+    if (fim->db){
+        sqlite3_close(fim->db);
+    }
+    os_free(fim);
+    return NULL;
 }
 
 void fim_db_close(fdb_t *fim_sql) {
@@ -242,14 +251,14 @@ int fim_db_create_file(const char *path, const char *source, const int memory, s
     int result;
 
     if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL)) {
-        printf("Couldn't create SQLite database '%s': %s", path, sqlite3_errmsg(db));
+        merror("Couldn't create SQLite database '%s': %s", path, sqlite3_errmsg(db));
         sqlite3_close_v2(db);
         return -1;
     }
 
     for (sql = source; sql && *sql; sql = tail) {
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, &tail) != SQLITE_OK) {
-            printf("Preparing statement: %s", sqlite3_errmsg(db));
+            merror("Preparing statement: %s", sqlite3_errmsg(db));
             sqlite3_close_v2(db);
             return -1;
         }
@@ -262,7 +271,7 @@ int fim_db_create_file(const char *path, const char *source, const int memory, s
         case SQLITE_DONE:
             break;
         default:
-            printf("Stepping statement: %s", sqlite3_errmsg(db));
+            merror("Stepping statement: %s", sqlite3_errmsg(db));
             sqlite3_finalize(stmt);
             sqlite3_close_v2(db);
             return -1;
@@ -279,7 +288,7 @@ int fim_db_create_file(const char *path, const char *source, const int memory, s
     sqlite3_close_v2(db);
 
     if (chmod(path, 0660) < 0) {
-        printf("CHMOD_ERROR");
+        merror(CHMOD_ERROR, path, errno, strerror(errno));
         return -1;
     }
 
@@ -397,7 +406,7 @@ fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt) {
     fim_entry *entry = NULL;
 
     os_calloc(1, sizeof(fim_entry), entry);
-    w_strdup((char *)sqlite3_column_text(stmt, 0), entry->path);
+    os_strdup((char *)sqlite3_column_text(stmt, 0), entry->path);
 
     os_calloc(1, sizeof(fim_entry_data), entry->data);
     entry->data->mode = (unsigned int)sqlite3_column_int(stmt, 2);
@@ -409,12 +418,12 @@ fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt) {
     entry->data->dev = (unsigned long int)sqlite3_column_int(stmt, 8);
     entry->data->inode = (unsigned long int)sqlite3_column_int(stmt, 9);
     entry->data->size = (unsigned int)sqlite3_column_int(stmt, 10);
-    w_strdup((char *)sqlite3_column_text(stmt, 11), entry->data->perm);
-    w_strdup((char *)sqlite3_column_text(stmt, 12), entry->data->attributes);
-    w_strdup((char *)sqlite3_column_text(stmt, 13), entry->data->uid);
-    w_strdup((char *)sqlite3_column_text(stmt, 14), entry->data->gid);
-    w_strdup((char *)sqlite3_column_text(stmt, 15), entry->data->user_name);
-    w_strdup((char *)sqlite3_column_text(stmt, 16), entry->data->group_name);
+    os_strdup((char *)sqlite3_column_text(stmt, 11), entry->data->perm);
+    os_strdup((char *)sqlite3_column_text(stmt, 12), entry->data->attributes);
+    os_strdup((char *)sqlite3_column_text(stmt, 13), entry->data->uid);
+    os_strdup((char *)sqlite3_column_text(stmt, 14), entry->data->gid);
+    os_strdup((char *)sqlite3_column_text(stmt, 15), entry->data->user_name);
+    os_strdup((char *)sqlite3_column_text(stmt, 16), entry->data->group_name);
     strncpy(entry->data->hash_md5, (char *)sqlite3_column_text(stmt, 17), sizeof(os_md5) - 1);
     strncpy(entry->data->hash_sha1, (char *)sqlite3_column_text(stmt, 18), sizeof(os_sha1) - 1);
     strncpy(entry->data->hash_sha256, (char *)sqlite3_column_text(stmt, 19), sizeof(os_sha256) - 1);
@@ -567,7 +576,7 @@ char **fim_db_get_paths_from_inode(fdb_t *fim_sql, const unsigned long int inode
 
         while (result = sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE]), result == SQLITE_ROW) {
             if (i >= rows) {
-                printf("ERROR: The count returned is smaller than the actual elements. This shouldn't happen.\n");
+                merror("ERROR: The count returned is smaller than the actual elements. This shouldn't happen.\n");
                 break;
             }
             os_strdup((char *)sqlite3_column_text(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE], 0), paths[i]);
@@ -717,7 +726,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
             goto end;
         }
         entry = fim_db_decode_full_row(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]);
-        if (i == (m - 1)) {
+        if (i == (m - 1) && entry->path) {
             os_strdup(entry->path, str_pathlh);
         }
         fim_db_callback_calculate_checksum(fim_sql, entry, (void *)ctx_left);
@@ -731,7 +740,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
             goto end1;
         }
         entry = fim_db_decode_full_row(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]);
-        if (i == m) {
+        if (i == m && entry->path) {
             os_strdup(entry->path, str_pathuh);
         }
         fim_db_callback_calculate_checksum(fim_sql, entry, (void *)ctx_right);
@@ -748,24 +757,25 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
     OS_SHA1_Hexdigest(digest, hexdigest);
     plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_LEFT, id, start, str_pathlh, str_pathuh, hexdigest);
     fim_send_sync_msg(plain);
-    free(plain);
+    os_free(plain);
 
     // Send message with checksum of second half
     EVP_DigestFinal_ex(ctx_right, digest, &digest_size);
     OS_SHA1_Hexdigest(digest, hexdigest);
     plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_RIGHT, id, str_pathuh, top, "", hexdigest);
     fim_send_sync_msg(plain);
-    free(plain);
-    os_free(str_pathuh);
+    os_free(plain);
 
     retval = FIMDB_OK;
 
-    end1:
-        EVP_MD_CTX_destroy(ctx_right);
-        os_free(str_pathlh);
-    end:
-        EVP_MD_CTX_destroy(ctx_left);
-        return retval;
+end1:
+    EVP_MD_CTX_destroy(ctx_right);
+    os_free(str_pathlh);
+    os_free(str_pathuh);
+
+end:
+    EVP_MD_CTX_destroy(ctx_left);
+    return retval;
 }
 
 void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, __attribute__((unused))void *arg) {
@@ -850,7 +860,7 @@ int fim_db_get_row_path(fdb_t * fim_sql, int mode, char **path) {
     }
 
     if (result == SQLITE_ROW) {
-        w_strdup((char *)sqlite3_column_text(fim_sql->stmt[index], 0), *path);
+        os_strdup((char *)sqlite3_column_text(fim_sql->stmt[index], 0), *path);
     }
 
     return FIMDB_OK;

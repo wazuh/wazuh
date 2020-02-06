@@ -676,10 +676,13 @@ char *get_user(const char *path, __attribute__((unused)) int uid, char **sid) {
 
     CloseHandle(hFile);
 
-
-    if (!ConvertSidToStringSid(pSidOwner, sid)) {
+    char *aux;
+    if (!ConvertSidToStringSid(pSidOwner, &aux)) {
         *sid = NULL;
         mdebug1("The user's SID could not be extracted.");
+    } else {
+        os_strdup(aux, *sid);
+        LocalFree(aux);
     }
 
     // Check GetLastError for GetSecurityInfo error condition.

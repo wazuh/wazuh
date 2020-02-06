@@ -88,7 +88,6 @@ int labels_format(const wlabel_t *labels, char *str, size_t size) {
         }
 
         z += l;
-        l = 0;
     }
 
     return 0;

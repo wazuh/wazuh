@@ -284,8 +284,6 @@ static int setup_group(void **state) {
     // Read and setup global values.
     Read_Syscheck_Config("test_syscheck.conf");
 
-    syscheck.tsleep = 1;
-    syscheck.sleep_after = 100;
     syscheck.rt_delay = 1;
     syscheck.max_depth = 256;
     syscheck.file_max_size = 1024;

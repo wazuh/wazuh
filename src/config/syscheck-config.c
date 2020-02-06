@@ -336,7 +336,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     dir = OS_StrBreak(',', dirs, MAX_DIR_SIZE); /* Max number */
     char **dir_org = dir;
 
-    int ret = 0, i;
+    int i;
 
     /* Dir can not be null */
     if (dir == NULL) {
@@ -375,6 +375,11 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             tmp_str = strchr(tmp_str, '/');
         }
 #endif
+
+        if (!strcmp(tmp_dir,"")) {
+            dir++;
+            continue;
+        }
 
         attrs = g_attrs;
         values = g_values;
@@ -418,8 +423,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     opts &= ~ CHECK_ATTRS;
 #endif
                 } else {
-                    merror(FIM_INVALID_OPTION, *values, *attrs);
-                    ret = 0;
+                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);       
                     goto out_free;
                 }
             }
@@ -432,8 +436,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ (CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM);
                 } else {
-                    merror(FIM_INVALID_OPTION, *values, *attrs);
-                    ret = 0;
+                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
                     goto out_free;
                 }
             }
@@ -444,8 +447,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_MD5SUM;
                 } else {
-                    merror(FIM_INVALID_OPTION, *values, *attrs);
-                    ret = 0;
+                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
                     goto out_free;
                 }
             }
@@ -456,8 +458,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_SHA1SUM;
                 } else {
-                    merror(FIM_INVALID_OPTION, *values, *attrs);
-                    ret = 0;
+                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
                     goto out_free;
                 }
             }
@@ -468,8 +469,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_SHA256SUM;
                 } else {
-                    merror(FIM_INVALID_OPTION, *values, *attrs);
-                    ret = 0;
+                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
                     goto out_free;
                 }
             }
@@ -482,8 +482,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ WHODATA_ACTIVE;
                 } else {
-                    merror(FIM_INVALID_OPTION, *values, *attrs);
-                    ret = 0;
+                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
                     goto out_free;
                 }
             }
@@ -494,8 +493,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_PERM;
                 } else {
-                    merror(FIM_INVALID_OPTION, *values, *attrs);
-                    ret = 0;
+                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
                     goto out_free;
                 }
             }
@@ -506,8 +504,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_SIZE;
                 } else {
-                    merror(FIM_INVALID_OPTION, *values, *attrs);
-                    ret = 0;
+                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
                     goto out_free;
                 }
             }
@@ -518,8 +515,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_OWNER;
                 } else {
-                    merror(FIM_INVALID_OPTION, *values, *attrs);
-                    ret = 0;
+                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
                     goto out_free;
                 }
             }
@@ -530,8 +526,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_GROUP;
                 } else {
-                    merror(FIM_INVALID_OPTION, *values, *attrs);
-                    ret = 0;
+                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
                     goto out_free;
                 }
             }
@@ -542,8 +537,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_MTIME;
                 } else {
-                    merror(FIM_INVALID_OPTION, *values, *attrs);
-                    ret = 0;
+                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
                     goto out_free;
                 }
             }
@@ -554,8 +548,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_INODE;
                 } else {
-                    merror(FIM_INVALID_OPTION, *values, *attrs);
-                    ret = 0;
+                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
                     goto out_free;
                 }
             }
@@ -567,8 +560,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_ATTRS;
                 } else {
-                    merror(FIM_INVALID_OPTION, *values, *attrs);
-                    ret = 0;
+                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
                     goto out_free;
                 }
 #else
@@ -583,8 +575,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ REALTIME_ACTIVE;
                 } else {
-                    merror(FIM_INVALID_OPTION, *values, *attrs);
-                    ret = 0;
+                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
                     goto out_free;
                 }
             }
@@ -595,8 +586,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_SEECHANGES;
                 } else {
-                    merror(FIM_INVALID_OPTION, *values, *attrs);
-                    ret = 0;
+                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
                     goto out_free;
                 }
             }
@@ -625,7 +615,10 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     mwarn("Recursion level '%d' exceeding limit. Setting %d.", recursion_limit, MAX_DEPTH_ALLOWED);
                     recursion_limit = syscheck->max_depth;
                 }
-            } else if (strcmp(*attrs, xml_tag) == 0) {
+            } 
+            
+            /* Check tag */
+            else if (strcmp(*attrs, xml_tag) == 0) {
                 if (tag) {
                     free(tag);
                     tag = NULL;
@@ -639,8 +632,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                } else if (strcmp(*values, "no") == 0) {
                    opts &= ~ CHECK_FOLLOW;
                } else {
-                   merror(FIM_INVALID_OPTION, *values, *attrs);
-                   ret = 0;
+                   mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
                    goto out_free;
                }
             } else {
@@ -653,7 +645,6 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         /* You must have something set */
         if (opts == 0) {
             mwarn(FIM_NO_OPTIONS, dirs);
-            ret = 0;
             goto out_free;
         }
 
@@ -725,14 +716,14 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
             if (glob(tmp_dir, 0, NULL, &g) != 0) {
                 merror(GLOB_ERROR, real_path);
-                ret = 1;
-                goto out_free;
+                dir++;
+                continue;
             }
 
             if (g.gl_pathv[0] == NULL) {
                 merror(GLOB_NFOUND, real_path);
-                ret = 1;
-                goto out_free;
+                dir++;
+                continue;
             }
 
             while (g.gl_pathv[gindex]) {
@@ -764,7 +755,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     dump_syscheck_entry(syscheck, resolved_path, opts, 0, restrictfile, recursion_limit, clean_tag, real_path);
                 }
             } else {
-                mdebug1("Could not check the real path of '%s' due to [(%d)-(%s)].", real_path, errno, strerror(errno));
+                dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL);
             }
             os_free(resolved_path);
         }
@@ -789,8 +780,6 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         dir++;
     }
 
-    ret = 1;
-
 out_free:
 
     i = 0;
@@ -807,7 +796,7 @@ out_free:
         free(clean_tag);
     }
 
-    return ret;
+    return 1;
 }
 
 static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
@@ -1582,7 +1571,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
 
 int Test_Syscheck(const char * path){
     int fail = 0;
-    syscheck_config test_syscheck = { .tsleep = 0 };
+    syscheck_config test_syscheck = { .rootcheck = 0 };
 
     if (ReadConfig(CAGENT_CONFIG | CSYSCHECK, path, &test_syscheck, NULL) < 0) {
 		merror(RCONFIG_ERROR,"Syscheck", path);

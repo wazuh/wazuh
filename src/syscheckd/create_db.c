@@ -290,9 +290,12 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
             free_entry_data(new);
             free_entry(saved);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
+            cJSON_Delete(json_event);
+
             return OS_INVALID;
         }
     }
+
     fim_db_set_scanned(syscheck.database, file);
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
@@ -329,7 +332,7 @@ void fim_whodata_event(whodata_evt * w_evt) {
 
 void fim_audit_inode_event(char *file, fim_event_mode mode, whodata_evt * w_evt) {
     struct fim_element *item;
-    char **paths;
+    char **paths = NULL;
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
@@ -994,11 +997,7 @@ void free_entry_data(fim_entry_data * data) {
         os_free(data->attributes);
     }
     if (data->uid) {
-#ifdef WIN32
-        LocalFree(data->uid);
-#else
         os_free(data->uid);
-#endif
     }
     if (data->gid) {
         os_free(data->gid);

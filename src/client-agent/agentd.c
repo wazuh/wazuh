@@ -15,7 +15,7 @@
 int rotate_log;
 
 /* Start the agent daemon */
-void AgentdStart(const char *dir, int uid, int gid, const char *user, const char *group)
+void AgentdStart(int uid, int gid, const char *user, const char *group)
 {
     int rc = 0;
     int maxfd = 0;
