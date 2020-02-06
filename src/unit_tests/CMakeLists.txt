@@ -85,7 +85,7 @@ list(APPEND tests_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,IsSocket -Wl
 
 # Config files
 configure_file("test_syscheck.conf" "test_syscheck.conf" COPYONLY)
-configure_file("internal_options.conf" "internal_options.conf" COPYONLY)
+configure_file("test_internal_options.conf" "internal_options.conf" COPYONLY)
 
 
 # Generate syscheck library
