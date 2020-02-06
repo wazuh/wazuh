@@ -359,7 +359,10 @@ fim_tmp_file *fim_db_create_temp_file(int memory, int size) {
             return NULL;
         }
     } else {
-        os_calloc(size, sizeof(char *), file->all_path);
+        if (size) {
+            os_calloc(size, sizeof(char *), file->all_path);
+        }
+
         file->elements = size;
     }
 
