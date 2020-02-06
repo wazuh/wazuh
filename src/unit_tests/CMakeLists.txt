@@ -7,8 +7,8 @@
 
 cmake_minimum_required(VERSION 3.10)
 
-set(TARGET winagent)
-set(CMAKE_VERBOSE_MAKEFILE ON)
+# set(TARGET winagent)
+# set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # message("${TARGET}")
 
@@ -74,10 +74,11 @@ list(APPEND tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn 
                        -Wl,--wrap,fim_db_insert_data -Wl,--wrap,OS_MD5_SHA1_SHA256_File -Wl,--wrap,seechanges_addfile\
                        -Wl,--wrap,fim_db_delete_not_scanned -Wl,--wrap,fim_db_set_all_unscanned \
                        -Wl,--wrap,fim_db_set_scanned -Wl,--wrap,get_user -Wl,--wrap,get_group \
-                       -Wl,--wrap,fim_db_remove_path")
+                       -Wl,--wrap,fim_db_remove_path -Wl,--wrap,getDefine_Int -Wl,--wrap,isChroot")
 
 # Config files
 configure_file("test_syscheck.conf" "test_syscheck.conf" COPYONLY)
+configure_file("internal_options.conf" "internal_options.conf" COPYONLY)
 
 
 # Generate syscheck library
