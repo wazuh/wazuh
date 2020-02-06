@@ -262,16 +262,6 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag)
         /* Add entries - look for the last available */
         i = 0;
         while (syscheck->registry && syscheck->registry[i].entry) {
-            int str_len_i;
-            int str_len_dir;
-
-            str_len_dir = strlen(tmp_entry);
-            str_len_i = strlen(syscheck->registry[i].entry);
-
-            if (str_len_dir > str_len_i) {
-                str_len_dir = str_len_i;
-            }
-
             /* Duplicated entry */
             if (syscheck->registry[i].arch == arch && strcmp(syscheck->registry[i].entry, tmp_entry) == 0) {
                 mdebug2("Overwriting the registration entry: %s", syscheck->registry[i].entry);
