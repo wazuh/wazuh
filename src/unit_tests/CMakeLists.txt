@@ -96,28 +96,6 @@ set_target_properties(
 
 target_link_libraries(SYSCHECK_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
-if(${TARGET} STREQUAL "winagent")
-  # Generate win32 library
-  file(GLOB win32_files ../win32/win_service_rk.o)
-  add_library(WIN32_O SHARED ${win32_files})
-  set_source_files_properties(
-    ${win32_files}
-    PROPERTIES
-    EXTERNAL_OBJECT true
-    GENERATED true
-    )
-
-  set_target_properties(
-    WIN32_O
-    PROPERTIES
-    LINKER_LANGUAGE C
-    CMAKE_C_COMPILER i686-w64-mingw32-gcc
-    CMAKE_C_LINK_EXECUTABLE "CMAKE_C_COMPILER <FLAGS> <CMAKE_C_LINK_FLAGS> <LINK_FLAGS> <OBJECTS>  -o <TARGET> <LINK_LIBRARIES>"
-  )
-
-  target_link_libraries(WIN32_O ${WAZUHLIB} ${WAZUHEXT} -lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32)
-endif()
-
 # Compiling tests
 list(LENGTH tests_names count)
 math(EXPR count "${count} - 1")
@@ -127,25 +105,12 @@ foreach(counter RANGE ${count})
 
     add_executable(${test_name} ${test_name}.c)
 
-    if(${TARGET} STREQUAL "server")
-      target_link_libraries(
-          ${test_name}
-          ${WAZUHLIB}
-          ${WAZUHEXT}
-          ${TEST_DEPS}
-      )
-    else(${TARGET} STREQUAL "winagent")
-      target_link_libraries(
-          ${test_name}
-          ${WAZUHLIB}
-          ${WAZUHEXT}
-          SYSCHECK_O
-          WIN32_O
-          -lcmocka
-          -fprofile-arcs
-          -ftest-coverage
-      )
-    endif()
+    target_link_libraries(
+        ${test_name}
+        ${WAZUHLIB}
+        ${WAZUHEXT}
+        ${TEST_DEPS}
+    )
 
     if(NOT test_flags STREQUAL " ")
         target_link_libraries(
