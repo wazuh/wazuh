@@ -7,7 +7,7 @@
 
 cmake_minimum_required(VERSION 3.10)
 
-# set(TARGET winagent)
+set(TARGET winagent)
 # set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # message("${TARGET}")
@@ -89,6 +89,29 @@ list(APPEND tests_flags " ")
 list(APPEND tests_names "test_run_realtime")
 list(APPEND tests_flags "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watch -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Update_ex -Wl,--wrap,read \
                       -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Get -Wl,--wrap,rbtree_insert -Wl,--wrap,_merror -Wl,--wrap,W_Vector_insert_unique")
+
+list(APPEND tests_names "test_syscheck_config")
+list(APPEND tests_flags "-Wl,--wrap,_merror")
+
+list(APPEND tests_names "test_syscheck")
+list(APPEND tests_flags "-Wl,--wrap,_mwarn -Wl,--wrap,fim_db_init")
+
+list(APPEND tests_names "test_fim_sync")
+list(APPEND tests_flags "-Wl,--wrap,fim_send_sync_msg -Wl,--wrap,time -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 \
+                      -Wl,--wrap,_merror -Wl,--wrap,_mdebug2 -Wl,--wrap,queue_push_ex -Wl,--wrap,fim_db_get_row_path \
+                       -Wl,--wrap,fim_db_get_data_checksum -Wl,--wrap,dbsync_check_msg -Wl,--wrap,fim_send_sync_msg \
+                       -Wl,--wrap,fim_db_get_count_range -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_entry_json \
+                       -Wl,--wrap,fim_db_data_checksum_range -Wl,--wrap,dbsync_state_msg \
+                       -Wl,--wrap,fim_db_sync_path_range")
+
+list(APPEND tests_names "test_run_check")
+list(APPEND tests_flags "-Wl,--wrap,_minfo")
+
+list(APPEND tests_names "test_syscheck_op")
+list(APPEND tests_flags "-Wl,--wrap,rmdir_ex -Wl,--wrap,wreaddir -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 \
+                        -Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,getpwuid_r -Wl,--wrap,getgrgid \
+                         -Wl,--wrap,cJSON_CreateArray -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,wstr_split \
+                         -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP")
 
 # Config files
 configure_file("test_syscheck.conf" "test_syscheck.conf" COPYONLY)

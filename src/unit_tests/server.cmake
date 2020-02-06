@@ -9,29 +9,6 @@ endif()
 add_compile_options(-ggdb -O0 -g -coverage -DTEST_SERVER)
 
 # Add server specific tests to the list
-list(APPEND tests_names "test_syscheck_config")
-list(APPEND tests_flags "-Wl,--wrap,_merror")
-
-list(APPEND tests_names "test_syscheck")
-list(APPEND tests_flags "-Wl,--wrap,_mwarn -Wl,--wrap,fim_db_init")
-
-list(APPEND tests_names "test_fim_sync")
-list(APPEND tests_flags "-Wl,--wrap,fim_send_sync_msg -Wl,--wrap,time -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 \
-                      -Wl,--wrap,_merror -Wl,--wrap,_mdebug2 -Wl,--wrap,queue_push_ex -Wl,--wrap,fim_db_get_row_path \
-                       -Wl,--wrap,fim_db_get_data_checksum -Wl,--wrap,dbsync_check_msg -Wl,--wrap,fim_send_sync_msg \
-                       -Wl,--wrap,fim_db_get_count_range -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_entry_json \
-                       -Wl,--wrap,fim_db_data_checksum_range -Wl,--wrap,dbsync_state_msg \
-                       -Wl,--wrap,fim_db_sync_path_range")
-
-list(APPEND tests_names "test_run_check")
-list(APPEND tests_flags "-Wl,--wrap,_minfo")
-
-list(APPEND tests_names "test_syscheck_op")
-list(APPEND tests_flags "-Wl,--wrap,rmdir_ex -Wl,--wrap,wreaddir -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 \
-                        -Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,getpwuid_r -Wl,--wrap,getgrgid \
-                         -Wl,--wrap,cJSON_CreateArray -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,wstr_split \
-                         -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP")
-
 list(APPEND tests_names "test_fim_db")
 list(APPEND tests_flags "-Wl,--wrap=w_is_file,--wrap=remove,--wrap=sqlite3_open_v2,--wrap=sqlite3_exec,--wrap=_merror \
                          -Wl,--wrap=sqlite3_prepare_v2,--wrap=sqlite3_step,--wrap=sqlite3_finalize,--wrap=sqlite3_close_v2 \
