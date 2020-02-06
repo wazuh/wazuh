@@ -7,8 +7,6 @@
  * Foundation.
  */
 
-#if defined(TEST_SERVER) || defined(TEST_AGENT)
-
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -224,6 +222,8 @@ char *__wrap_get_user(__attribute__((unused)) const char *path, int uid, __attri
     check_expected(uid);
     return mock_type(char*);
 }
+
+#if defined(TEST_SERVER) || defined(TEST_AGENT)
 
 /* setup/teardown */
 static int free_string(void **state)

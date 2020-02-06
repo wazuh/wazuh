@@ -116,21 +116,23 @@ static int teardown_group(void **state) {
     return 0;
 }
 
-static int setup_w_vector(void **state)
-{
-    audit_added_dirs = W_Vector_init(2);
-    if(!audit_added_dirs)
-        return -1;
+#if defined(TEST_SERVER) || defined(TEST_AGENT)
+    static int setup_w_vector(void **state)
+    {
+        audit_added_dirs = W_Vector_init(2);
+        if(!audit_added_dirs)
+            return -1;
 
-    return 0;
-}
+        return 0;
+    }
 
-static int teardown_w_vector(void **state)
-{
-    W_Vector_free(audit_added_dirs);
+    static int teardown_w_vector(void **state)
+    {
+        W_Vector_free(audit_added_dirs);
 
-    return 0;
-}
+        return 0;
+    }
+#endif
 
 static int setup_realtime_start(void **state) {
     OSHash *hash = calloc(1, sizeof(OSHash));
@@ -199,22 +201,25 @@ void test_realtime_start_failure_inotify(void **state) {
     assert_int_equal(ret, -1);
 }
 
+#if defined(TEST_SERVER) || defined(TEST_AGENT)
 
-void test_realtime_adddir_whodata(void **state) {
-    int ret;
+    void test_realtime_adddir_whodata(void **state) {
+        int ret;
 
-    const char * path = "/etc/folder";
+        const char * path = "/etc/folder";
 
-    audit_thread_active = 1;
+        audit_thread_active = 1;
 
-    expect_value(__wrap_W_Vector_insert_unique, v, audit_added_dirs);
-    expect_string(__wrap_W_Vector_insert_unique, element, "/etc/folder");
-    will_return(__wrap_W_Vector_insert_unique, 1);
+        expect_value(__wrap_W_Vector_insert_unique, v, audit_added_dirs);
+        expect_string(__wrap_W_Vector_insert_unique, element, "/etc/folder");
+        will_return(__wrap_W_Vector_insert_unique, 1);
 
-    ret = realtime_adddir(path, 1);
+        ret = realtime_adddir(path, 1);
 
-    assert_int_equal(ret, 1);
-}
+        assert_int_equal(ret, 1);
+    }
+
+#endif
 
 
 void test_realtime_adddir_realtime_failure(void **state)
@@ -287,82 +292,87 @@ void test_realtime_adddir_realtime_update_failure(void **state)
     assert_int_equal(ret, -1);
 }
 
-void test_free_syscheck_dirtb_data(void **state)
-{
-    (void) state;
-    char *data = strdup("test");
+#if defined(TEST_SERVER) || defined(TEST_AGENT)
+    void test_free_syscheck_dirtb_data(void **state)
+    {
+        (void) state;
+        char *data = strdup("test");
 
-    free_syscheck_dirtb_data(data);
+        free_syscheck_dirtb_data(data);
 
-    assert_non_null(data);
-}
-
-
-void test_free_syscheck_dirtb_data_null(void **state)
-{
-    (void) state;
-    char *data = NULL;
-
-    free_syscheck_dirtb_data(data);
-
-    assert_null(data);
-}
+        assert_non_null(data);
+    }
 
 
-void test_realtime_process(void **state)
-{
-    (void) state;
+    void test_free_syscheck_dirtb_data_null(void **state)
+    {
+        (void) state;
+        char *data = NULL;
 
-    syscheck.realtime->fd = 1;
+        free_syscheck_dirtb_data(data);
 
-    will_return(__wrap_read, 1); // Use wrap
-    will_return(__wrap_read, 0);
+        assert_null(data);
+    }
 
-    realtime_process();
-}
 
-void test_realtime_process_len(void **state)
-{
-    (void) state;
+    void test_realtime_process(void **state)
+    {
+        (void) state;
 
-    syscheck.realtime->fd = 1;
+        syscheck.realtime->fd = 1;
 
-    will_return(__wrap_read, 2); // Use wrap
-    will_return(__wrap_read, 16);
+        will_return(__wrap_read, 1); // Use wrap
+        will_return(__wrap_read, 0);
 
-    realtime_process();
-}
+        realtime_process();
+    }
 
-void test_realtime_process_failure(void **state)
-{
-    (void) state;
+    void test_realtime_process_len(void **state)
+    {
+        (void) state;
 
-    syscheck.realtime->fd = 1;
+        syscheck.realtime->fd = 1;
 
-    will_return(__wrap_read, 1); // Use wrap
-    will_return(__wrap_read, -1);
+        will_return(__wrap_read, 2); // Use wrap
+        will_return(__wrap_read, 16);
 
-    expect_string(__wrap__merror, formatted_msg, FIM_ERROR_REALTIME_READ_BUFFER);
+        realtime_process();
+    }
 
-    realtime_process();
-}
+    void test_realtime_process_failure(void **state)
+    {
+        (void) state;
 
+        syscheck.realtime->fd = 1;
+
+        will_return(__wrap_read, 1); // Use wrap
+        will_return(__wrap_read, -1);
+
+        expect_string(__wrap__merror, formatted_msg, FIM_ERROR_REALTIME_READ_BUFFER);
+
+        realtime_process();
+    }
+#endif
 
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_realtime_start_success, setup_realtime_start, teardown_realtime_start),
         cmocka_unit_test_setup_teardown(test_realtime_start_failure_hash, setup_realtime_start, teardown_realtime_start),
         cmocka_unit_test_setup_teardown(test_realtime_start_failure_inotify, setup_realtime_start, teardown_realtime_start),
-        cmocka_unit_test_setup_teardown(test_realtime_adddir_whodata, setup_w_vector, teardown_w_vector),
+        #if defined(TEST_SERVER) || defined(TEST_AGENT)
+            cmocka_unit_test_setup_teardown(test_realtime_adddir_whodata, setup_w_vector, teardown_w_vector),
+        #endif
         cmocka_unit_test(test_realtime_adddir_realtime_failure),
         cmocka_unit_test(test_realtime_adddir_realtime_add),
         cmocka_unit_test(test_realtime_adddir_realtime_update),
         cmocka_unit_test(test_realtime_adddir_realtime_update_failure),
-        cmocka_unit_test(test_free_syscheck_dirtb_data),
-        cmocka_unit_test(test_free_syscheck_dirtb_data_null),
-        cmocka_unit_test(test_realtime_process),
-        cmocka_unit_test(test_realtime_process_len),
-        cmocka_unit_test(test_realtime_process_failure),
+        #if defined(TEST_SERVER) || defined(TEST_AGENT)
+            cmocka_unit_test(test_free_syscheck_dirtb_data),
+            cmocka_unit_test(test_free_syscheck_dirtb_data_null),
+            cmocka_unit_test(test_realtime_process),
+            cmocka_unit_test(test_realtime_process_len),
+            cmocka_unit_test(test_realtime_process_failure),
+        #endif
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
