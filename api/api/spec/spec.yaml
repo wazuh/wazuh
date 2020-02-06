@@ -2546,21 +2546,16 @@ components:
     CDBListFile:
       type: object
       required:
-        - folder
         - name
         - path
       properties:
-        folder:
-          type: string
-          format: path
-          description: Folder path where the CDB list file is contained
         name:
           type: string
           description: Name of the CDB list file.
         path:
           type: string
           format: etc_path
-          description: File path of the CDB list. This path is relative to the Wazuh installation path.
+          description: Folder path of the CDB list. This path is relative to the Wazuh installation path.
 
     CDBListPair:
       type: object
@@ -7116,18 +7111,14 @@ paths:
               example:
                 data:
                   affected_items:
-                    - folder: etc/lists/amazon
+                    - path: etc/lists/amazon
                       name: aws-eventnames
-                      path: etc/lists/amazon/aws-eventnames
-                    - folder: etc/lists/amazon
+                    - path: etc/lists/amazon
                       name: aws-sources
-                      path: etc/lists/amazon/aws-sources
-                    - folder: etc/lists
+                    - path: etc/lists
                       name: audit-keys
-                      path: etc/lists/audit-keys
-                    - folder: etc/lists
+                    - path: etc/lists
                       name: security-eventchannel
-                      path: etc/lists/security-eventchannel
                   failed_items: []
                   total_affected_items: 4
                   total_failed_items: 0

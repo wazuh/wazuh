@@ -1,8 +1,9 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
+import os
 import re
 from collections import defaultdict
 from functools import wraps
@@ -75,7 +76,7 @@ def _expand_resource(resource):
                                                        {'status': Status.S_ALL.value, 'path': None, 'file': None}, tags)
             return {decoder['file'] for decoder in format_decoders}
         elif resource_type == 'list:path':
-            return {cdb_list['path'] for cdb_list in iterate_lists(only_names=True)}
+            return {os.path.join(cdb_list['path'], cdb_list['name']) for cdb_list in iterate_lists(only_names=True)}
         elif resource_type == 'node:id':
             return set(cluster_nodes.get())
         elif resource_type == 'file:path':
