@@ -47,8 +47,8 @@ RESULT_GET_LIST_FILE_2 = [{'items': [{'key': 'test-ossec-w', 'value': 'write'},
                                      ],
                            'path': PATH_FILE_2
                            }]
-RESULT_GET_PATH_LIST_FILE_1 = [{'folder': RELATIVE_PATH, 'name': NAME_FILE_1, 'path': PATH_FILE_1}]
-RESULT_GET_PATH_LIST_FILE_2 = [{'folder': RELATIVE_PATH, 'name': NAME_FILE_2, 'path': PATH_FILE_2}]
+RESULT_GET_PATH_LIST_FILE_1 = [{'name': NAME_FILE_1, 'path': RELATIVE_PATH}]
+RESULT_GET_PATH_LIST_FILE_2 = [{'name': NAME_FILE_2, 'path': RELATIVE_PATH}]
 
 RESULTS_GET_LIST = RESULT_GET_LIST_FILE_1 + RESULT_GET_LIST_FILE_2
 RESULTS_GET_PATH_LIST = RESULT_GET_PATH_LIST_FILE_1 + RESULT_GET_PATH_LIST_FILE_2
@@ -190,9 +190,8 @@ def test_get_path_lists_limit(limit):
         Maximum number of items to be returned by `get_path_lists`
     """
     common.reset_context_cache()
-    result = get_path_lists(path=PATHS_FILES, limit=limit, sort_by=['path'])
+    result = get_path_lists(path=PATHS_FILES, limit=limit, sort_by=['name'])
 
-    assert limit > 0
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == limit
     assert result.affected_items == RESULTS_GET_PATH_LIST[:limit]
@@ -208,7 +207,7 @@ def test_get_path_lists_offset(offset):
          Indicates the first item to return.
     """
     common.reset_context_cache()
-    result = get_path_lists(path=PATHS_FILES, offset=offset, sort_by=['path'])
+    result = get_path_lists(path=PATHS_FILES, offset=offset, sort_by=['name'])
 
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == len(PATHS_FILES) - offset
@@ -219,24 +218,18 @@ def test_get_path_lists_offset(offset):
     ("lists_1", False, None, PATHS_FILES, RESULT_GET_PATH_LIST_FILE_1),
     ("lists_2", False, None, PATHS_FILES, RESULT_GET_PATH_LIST_FILE_2),
     ("invalid", False, None, PATHS_FILES, []),
-    ("lists_1", False, "path", PATHS_FILES, RESULT_GET_PATH_LIST_FILE_1),
-    ("lists_2", False, "path", PATHS_FILES, RESULT_GET_PATH_LIST_FILE_2),
+    ("test_cdb_list", False, "path", PATHS_FILES, RESULTS_GET_PATH_LIST),
     ("invalid", False, "path", PATHS_FILES, []),
     ("lists_1", False, "name", PATHS_FILES, RESULT_GET_PATH_LIST_FILE_1),
     ("lists_2", False, "name", PATHS_FILES, RESULT_GET_PATH_LIST_FILE_2),
     ("invalid", False, "name", PATHS_FILES, []),
-    ("test_cdb_list", False, "folder", PATHS_FILES, RESULTS_GET_PATH_LIST),
-
     ("lists_1", True, None, PATHS_FILES, RESULT_GET_PATH_LIST_FILE_2),
     ("lists_2", True, None, PATHS_FILES, RESULT_GET_PATH_LIST_FILE_1),
     ("invalid", True, None, PATHS_FILES, RESULTS_GET_PATH_LIST),
-    ("lists_1", True, "path", PATHS_FILES, RESULT_GET_PATH_LIST_FILE_2),
-    ("lists_2", True, "path", PATHS_FILES, RESULT_GET_PATH_LIST_FILE_1),
     ("invalid", True, "path", PATHS_FILES, RESULTS_GET_PATH_LIST),
     ("lists_1", True, "name", PATHS_FILES, RESULT_GET_PATH_LIST_FILE_2),
     ("lists_2", True, "name", PATHS_FILES, RESULT_GET_PATH_LIST_FILE_1),
-    ("invalid", True, "name", PATHS_FILES, RESULTS_GET_PATH_LIST),
-    ("test_cdb_list", True, "folder", PATHS_FILES, [])
+    ("invalid", True, "name", PATHS_FILES, RESULTS_GET_PATH_LIST)
 ])
 def test_get_path_lists_search(search_text, complementary_search, search_in_fields, paths, expected_result):
     """Test `get_path_lists` functionality when using the `search` parameter.
@@ -257,7 +250,7 @@ def test_get_path_lists_search(search_text, complementary_search, search_in_fiel
     """
     common.reset_context_cache()
     result = get_path_lists(path=paths, search_text=search_text, complementary_search=complementary_search,
-                            search_in_fields=search_in_fields, sort_by=['path'])
+                            search_in_fields=search_in_fields, sort_by=['name'])
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == len(expected_result)
     assert result.affected_items == expected_result
