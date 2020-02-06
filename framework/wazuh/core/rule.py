@@ -66,8 +66,9 @@ def set_groups(groups, general_groups, rule):
         for key, value in requirements.items():
             if key in g:
                 value[1].append(g.strip()[value[2]:])
-            else:
-                requirements['groups'][1].append(g)
+                break
+        else:
+            requirements['groups'][1].append(g)
 
     for key, value in requirements.items():
         add_unique_element(rule[value[0]], value[1])
