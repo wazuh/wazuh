@@ -119,7 +119,6 @@ void start_daemon()
 
     // Some time to settle
     memset(curr_hour, '\0', 12);
-    sleep(syscheck.tsleep);
 
     // A higher nice value means a low priority.
 #ifndef WIN32
@@ -158,6 +157,8 @@ void start_daemon()
     if (syscheck.disabled) {
         return;
     }
+
+    minfo(FIM_DAEMON_STARTED);
 
     // Create File integrity monitoring base-line
     minfo(FIM_FREQUENCY_TIME, syscheck.time);
@@ -219,8 +220,6 @@ void start_daemon()
             }
         }
     }
-
-    minfo(FIM_DAEMON_STARTED);
 
     // Check every SYSCHECK_WAIT
     while (1) {

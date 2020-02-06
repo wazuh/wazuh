@@ -85,14 +85,6 @@ void fim_scan() {
     if (isDebug()) {
         fim_print_info(start, end, cputime_start);
     }
-
-#ifdef DEBUGAD
-    print_rbtree();
-#ifndef WIN32
-    print_inodes();
-#endif
-    print_dirtb();
-#endif
 }
 
 void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) {
@@ -280,9 +272,12 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
             free_entry_data(new);
             free_entry(saved);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
+            cJSON_Delete(json_event);
+
             return OS_INVALID;
         }
     }
+
     fim_db_set_scanned(syscheck.database, file);
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
@@ -319,7 +314,7 @@ void fim_whodata_event(whodata_evt * w_evt) {
 
 void fim_audit_inode_event(char *file, fim_event_mode mode, whodata_evt * w_evt) {
     struct fim_element *item;
-    char **paths;
+    char **paths = NULL;
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
@@ -986,11 +981,7 @@ void free_entry_data(fim_entry_data * data) {
         os_free(data->attributes);
     }
     if (data->uid) {
-#ifdef WIN32
-        LocalFree(data->uid);
-#else
         os_free(data->uid);
-#endif
     }
     if (data->gid) {
         os_free(data->gid);
@@ -1052,76 +1043,3 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
 
     return;
 }
-
-#ifdef DEBUGAD
-// LCOV_EXCL_START
-#ifndef WIN32
-void print_inodes() {
-    OSHashNode *hash_node;
-    fim_inode_data *node;
-    unsigned int *inode_it;
-    int i = 0;
-    int it = 0;
-
-    os_calloc(1, sizeof(unsigned int), inode_it);
-
-    w_mutex_lock(&syscheck.fim_entry_mutex);
-    hash_node = OSHash_Begin(syscheck.fim_inode, inode_it);
-    while(hash_node) {
-        node = hash_node->data;
-        mdebug2("inodes(%d) => (%d)'%s'", i, node->items, (char*)hash_node->key);
-        for(it = 0; it < node->items; it++) {
-            mdebug2("  -> '%s'", (char*)node->paths[it]);
-        }
-        hash_node = OSHash_Next(syscheck.fim_inode, inode_it, hash_node);
-        i++;
-    }
-    os_free(inode_it);
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-    return;
-}
-#endif
-
-void print_rbtree() {
-    char **keys;
-    fim_entry_data *node;
-    int i = 0;
-
-    w_mutex_lock(&syscheck.fim_entry_mutex);
-    keys = rbtree_keys(syscheck.fim_entry);
-
-    while(keys[i]) {
-        node = (fim_entry_data *) rbtree_get(syscheck.fim_entry, keys[i]);
-        mdebug2("entry(%d) => (%s)'%ld:%ld'", i, keys[i], node->dev, node->inode);
-        i++;
-    }
-    free_strarray(keys);
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-    return;
-}
-
-void print_dirtb() {
-    OSHashNode *hash_node;
-    char *data;
-    unsigned int inode_it = 0;
-    int i = 0;
-
-
-    if(syscheck.realtime && syscheck.realtime->dirtb) {
-        w_mutex_lock(&syscheck.fim_realtime_mutex);
-        hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
-        while(hash_node) {
-            data = hash_node->data;
-            mdebug2("dirtb(%d)(%d) => (%s)'%s'", i, inode_it, (char*)hash_node->key, (char*)data);
-            hash_node = OSHash_Next(syscheck.realtime->dirtb, &inode_it, hash_node);
-            i++;
-        }
-        w_mutex_unlock(&syscheck.fim_realtime_mutex);
-    }
-
-    return;
-}
-// LCOV_EXCL_STOP
-#endif

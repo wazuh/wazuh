@@ -41,6 +41,8 @@ static w_queue_t * fim_sync_queue;
 void * fim_run_integrity(void * args) {
     // Keep track of synchronization failures
     long sync_interval = syscheck.sync_interval;
+    struct timespec start;
+    struct timespec end;
 
     fim_sync_queue = queue_init(syscheck.sync_queue_size);
 
@@ -48,7 +50,12 @@ void * fim_run_integrity(void * args) {
         bool sync_successful = true;
 
         mdebug1("Initializing FIM Integrity Synchronization check. Sync interval is %li seconds.", sync_interval);
+
+        gettime(&start);
         fim_sync_checksum();
+        gettime(&end);
+
+        mdebug2("Finished calculating FIM integrity. Time: %.3f seconds.", time_diff(&start, &end));
 
         struct timespec timeout = { .tv_sec = time(NULL) + sync_interval };
 
@@ -83,7 +90,8 @@ void * fim_run_integrity(void * args) {
 // LCOV_EXCL_STOP
 
 void fim_sync_checksum() {
-    char *start, *top;
+    char *start = NULL;
+    char *top = NULL;
     EVP_MD_CTX * ctx = EVP_MD_CTX_create();
     EVP_DigestInit(ctx, EVP_sha1());
 
@@ -123,8 +131,6 @@ void fim_sync_checksum() {
         char * plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_GLOBAL, fim_sync_cur_id, start, top, NULL, hexdigest);
         fim_send_sync_msg(plain);
 
-        os_free(start);
-        os_free(top);
         os_free(plain);
 
     } else { // If database is empty
@@ -134,6 +140,8 @@ void fim_sync_checksum() {
     }
 
     end:
+        os_free(start);
+        os_free(top);
         EVP_MD_CTX_destroy(ctx);
 }
 
@@ -218,7 +226,7 @@ void fim_sync_dispatch(char * payload) {
         mdebug1(FIM_DBSYNC_DEC_ID, fim_sync_cur_id);
     } else if (id->valuedouble > fim_sync_cur_id) {
         mdebug1(FIM_DBSYNC_DROP_MESSAGE, (long)id->valuedouble, fim_sync_cur_id);
-        return;
+        goto end;
     }
 
     char * begin = cJSON_GetStringValue(cJSON_GetObjectItem(root, "begin"));

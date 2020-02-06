@@ -17,7 +17,7 @@
 #define FIM_DB_MEMORY_PATH  ":memory:"
 
 #ifndef WIN32
-#define FIM_DB_DISK_PATH    DEFAULTDIR "/queue/db/fim.db"
+#define FIM_DB_DISK_PATH    DEFAULTDIR "/queue/fim/db/fim.db"
 #else
 #define FIM_DB_DISK_PATH    "queue/fim/db/fim.db"
 #endif
