@@ -7,8 +7,8 @@
 
 cmake_minimum_required(VERSION 3.10)
 
-set(TARGET winagent)
-#set(CMAKE_VERBOSE_MAKEFILE ON)
+# set(TARGET winagent)
+# set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # message("${TARGET}")
 
@@ -30,8 +30,10 @@ enable_testing()
 # Add target specific file
 if(NOT TARGET)
   message(FATAL_ERROR "No TARGET specified. Aborting...")
-  elseif(${TARGET} STREQUAL "server")
-    include("./server.cmake")
+elseif(${TARGET} STREQUAL "server")
+  include("./server.cmake")
+elseif(${TARGET} STREQUAL "agent")
+  include("./agent.cmake")
 elseif(${TARGET} STREQUAL "winagent")
   include("./winagent.cmake")
 else()
