@@ -280,9 +280,12 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
             free_entry_data(new);
             free_entry(saved);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
+            cJSON_Delete(json_event);
+
             return OS_INVALID;
         }
     }
+
     fim_db_set_scanned(syscheck.database, file);
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
