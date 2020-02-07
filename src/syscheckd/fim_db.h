@@ -334,8 +334,3 @@ int fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top,
  */
 int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file,
                         pthread_mutex_t *mutex, int memory);
-
-/* b64 function prototypes */
-char *decode_base64(const char *src);
-
-char *encode_base64(int size, char *src);

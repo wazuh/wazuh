@@ -1290,7 +1290,7 @@ rootcheck.a: ${rootcheck_o_lib}
 
 
 syscheck_sql := syscheckd/schema_fim_db.sql
-syscheck_c := $(wildcard syscheckd/*.c addagent/b64.c)
+syscheck_c := $(wildcard syscheckd/*.c)
 syschecklib_o := $(syschecklib_c:.c=.o) $(syscheck_sql:.sql=.o)
 syscheck_o := $(syschecklib_o:.c=.o) $(syscheck_c:.c=.o) $(syscheck_sql:.sql=.o)
 syscheck_eventchannel_o := $(syscheck_c:.c=-event.o) $(syscheck_sql:.sql=.o)

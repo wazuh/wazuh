@@ -517,7 +517,12 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
 
     do {
         if (memory == FIM_DB_DISK) {
-            path = (fgets(line, BUFSIZ, file->fd))? decode_base64(line) : NULL;
+            /* fgets() adds \n(newline) to the end of the string,
+             So it must be removed. */
+            if (fgets(line, BUFSIZ, file->fd)) {
+                line[strlen(line) - 1] = '\0';
+                path = wstr_unescape_json(line);
+            }
         } else {
             path = file->all_path[i];
         }
@@ -525,10 +530,14 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
         if (path) {
             w_mutex_lock(mutex);
             fim_entry *entry = fim_db_get_path(fim_sql, path);
+            if (entry == NULL) {
+                continue;
+            }
             w_mutex_unlock(mutex);
 
             callback(fim_sql, entry, mutex, arg);
             os_free(path);
+            path = NULL;
         }
 
         i++;
@@ -1066,14 +1075,14 @@ int fim_db_set_scanned(fdb_t *fim_sql, char *path) {
 }
 
 void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry *entry, int pos, int memory, void *arg) {
-    char *base = encode_base64(strlen(entry->path), entry->path);
+    char *base = wstr_escape_json(entry->path);
     if (base == NULL) {
-        merror("Error encoding '%s' to base64", entry->path);
+        merror("Error escaping '%s'", entry->path);
         return;
     }
 
     if (memory == FIM_DB_DISK) { // disk storage enabled
-        if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", base) != (strlen(entry->path) + sizeof(char))) {
+        if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", base) != (strlen(base) + sizeof(char))) {
             merror("%s - %s", entry->path, strerror(errno));
             goto end;
         }
