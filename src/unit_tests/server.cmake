@@ -22,37 +22,7 @@ list(APPEND tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_mer
                          -Wl,--wrap,wdb_fim_delete -Wl,--wrap,wdb_syscheck_save -Wl,--wrap,wdb_syscheck_save2 \
                          -Wl,--wrap,wdbi_query_checksum -Wl,--wrap,wdbi_query_clear")
 
-list(APPEND tests_names "test_analysisd_syscheck")
-list(APPEND tests_flags "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result -Wl,--wrap,_merror -Wl,--wrap,_mdebug1")
-
-list(APPEND tests_names "test_dbsync")
-list(APPEND tests_flags "-Wl,--wrap,_merror -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP \
-                         -Wl,--wrap,connect_to_remoted -Wl,--wrap,send_msg_to_agent -Wl,--wrap,wdbc_query_ex \
-                         -Wl,--wrap,wdbc_parse_result")
-
-# Generate analysisd library
-file(GLOB analysisd_files
-    ../analysisd/*.o
-    ../analysisd/cdb/*.o
-    ../analysisd/decoders/*.o
-    ../analysisd/decoders/plugins/*.o)
-
-add_library(ANALYSISD_O STATIC ${analysisd_files})
-
-set_source_files_properties(
-    ${analysisd_files}
-    PROPERTIES
-    EXTERNAL_OBJECT true
-    GENERATED true
-)
-
-set_target_properties(
-    ANALYSISD_O
-    PROPERTIES
-    LINKER_LANGUAGE C
-)
-
-target_link_libraries(ANALYSISD_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
-
 # Set tests dependencies
 set(TEST_DEPS SYSCHECK_O ANALYSISD_O -lcmocka -fprofile-arcs -ftest-coverage)
+
+add_subdirectory(analysisd)
