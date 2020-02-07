@@ -120,6 +120,18 @@ int __wrap_printf(const char *fmt, ...) {
     fail();
 }
 
+void __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...)
+{
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
+}
+
 void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...)
 {
     char formatted_msg[OS_MAXSTR];
@@ -932,8 +944,8 @@ void test_fim_db_get_paths_from_inode_multiple_unamatched_rows(void **state) {
         snprintf(buffer, 10, "Path %d", i + 1);
         will_return(__wrap_sqlite3_column_text, strdup(buffer));
     }
-    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
-    expect_string(__wrap__merror, formatted_msg, "Error in fim_db_get_paths_from_inode(): Unmatched number of rows in queries");
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_string(__wrap__minfo, formatted_msg, "The count returned is smaller than the actual elements. This shouldn't happen.");
     wraps_fim_db_check_transaction();
     char **paths;
     paths = fim_db_get_paths_from_inode(test_data->fim_sql, 1, 1);
