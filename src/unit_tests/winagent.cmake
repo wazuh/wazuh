@@ -69,7 +69,7 @@ set_source_files_properties(
   GENERATED true
   )
 set_target_properties(
-  CLIENT_AGENT_O 
+  CLIENT_AGENT_O
   PROPERTIES
   LINKER_LANGUAGE C
   CMAKE_C_COMPILER i686-w64-mingw32-gcc
@@ -113,4 +113,4 @@ set_target_properties(
 target_link_libraries(WIN32_O MONITORD_O EXECD_O LOGCOLLECTOR_O CLIENT_AGENT_O SYSCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lcmocka -lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32)
 
 # Set tests dependencies
-set(TEST_DEPS SYSCHECK_O WIN32_O -lcmocka -fprofile-arcs -ftest-coverage)
+set(TEST_DEPS WIN32_O -lcmocka -fprofile-arcs -ftest-coverage)

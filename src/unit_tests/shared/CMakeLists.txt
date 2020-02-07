@@ -28,12 +28,22 @@ foreach(counter RANGE ${count})
 
     add_executable(${test_name} ${test_name}.c)
 
-    target_link_libraries(
-        ${test_name}
-        ${WAZUHLIB}
-        ${WAZUHEXT}
-        ${TEST_DEPS}
-    )
+    if(TEST_SERVER)
+        target_link_libraries(
+            ${test_name}
+            ${WAZUHLIB}
+            ${WAZUHEXT}
+            ANALYSISD_O
+            ${TEST_DEPS}
+        )
+    else()
+        target_link_libraries(
+            ${test_name}
+            ${WAZUHLIB}
+            ${WAZUHEXT}
+            ${TEST_DEPS}
+        )
+    endif()
 
     if(NOT test_flags STREQUAL " ")
         target_link_libraries(

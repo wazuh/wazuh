@@ -93,6 +93,7 @@ foreach(counter RANGE ${count})
         ${test_name}
         ${WAZUHLIB}
         ${WAZUHEXT}
+        SYSCHECK_O
         ${TEST_DEPS}
     )
 
