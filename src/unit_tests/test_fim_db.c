@@ -264,6 +264,28 @@ static void wraps_fim_db_decode_full_row() {
     expect_value(__wrap_sqlite3_column_int, iCol, 20);
     will_return(__wrap_sqlite3_column_int, 12345678); // mtime
 }
+
+/**
+ * Successfully wrappes a wraps_fim_db_insert_data() call
+ * */
+static void wraps_fim_db_insert_data_success(int row_id) {
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    if (row_id == 0) {
+        will_return(__wrap_sqlite3_last_insert_rowid, 1);
+    }
+}
+
+/**
+ * Successfully wrappes a wraps_fim_db_insert_data() call
+ * */
+static void wraps_fim_db_insert_path_success() {
+    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+}
+
 /*---------------SETUP/TEARDOWN------------------*/
 typedef struct _test_fim_db_insert_data {
     fdb_t *fim_sql;
@@ -572,6 +594,60 @@ void test_fim_db_insert_path_success(void **state) {
     int ret;
     ret = fim_db_insert_path(test_data->fim_sql, test_data->entry->path, test_data->entry->data, 1);
     assert_int_equal(ret, FIMDB_OK);
+}
+
+/*-----------------------------------------*/
+/*----------fim_db_insert()----------------*/
+void test_fim_db_insert_error(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_bind_int, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: (1)ERROR MESSAGE");
+    int ret;
+    ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data);
+    assert_int_equal(ret, FIMDB_ERR);
+}
+
+void test_fim_db_insert_inode_id_nonull(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_bind_int, 0);
+    will_return_always(__wrap_sqlite3_bind_text, 0);    // Needed for fim_db_insert_path()
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 1);
+
+    // Wrap functions for fim_db_insert_data() & fim_db_insert_path()
+    int inode_id = 1;
+    wraps_fim_db_insert_data_success(inode_id);
+    wraps_fim_db_insert_path_success();
+
+    int ret;
+    ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data);
+    assert_int_equal(ret, 0);   // Success
+}
+
+void test_fim_db_insert_inode_id_null(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return_count(__wrap_sqlite3_bind_int, 0, 2);
+
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    // Wrap functions for fim_db_insert_data() & fim_db_insert_path()
+    int inode_id = 0;
+    wraps_fim_db_insert_data_success(inode_id);
+    wraps_fim_db_insert_path_success();
+
+    int ret;
+    ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data);
+    assert_int_equal(ret, 0);   // Success
 }
 
 /*-----------------------------------------*/
@@ -1357,6 +1433,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_insert_path_constraint_error, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_insert_path_constraint_success, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_insert_path_success, test_fim_db_setup, test_fim_db_teardown),
+        // fim_db_insert
+        cmocka_unit_test_setup_teardown(test_fim_db_insert_error, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_insert_inode_id_nonull, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_insert_inode_id_null, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_remove_path
         cmocka_unit_test_setup_teardown(test_fim_db_remove_path_no_entry, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_remove_path_one_entry, test_fim_db_setup, test_fim_db_teardown),
