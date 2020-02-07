@@ -770,7 +770,6 @@ void test_fim_db_close_failed(void **state) {
     will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
     expect_string(__wrap__merror, formatted_msg, "Error in fim_db_finalize_stmt(): statement(0)'INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);' REASON GOES HERE");
     will_return(__wrap_sqlite3_close_v2, SQLITE_BUSY);
-    expect_string(__wrap__merror, formatted_msg, "Error in fim_db_close(): Fim db couldn't close");
     fim_db_close(test_data->fim_sql);
 }
 
