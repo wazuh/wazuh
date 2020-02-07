@@ -311,7 +311,7 @@ static int teardown_fim_db_with_ctx(void **state) {
 }
 
 /*-----------------------------------------*/
-/*---------------fim_db_init------------------*/
+/*---------------fim_db_init()---------------*/
 static int test_teardown_fim_db_init(void **state) {
     fdb_t *fim_db = (fdb_t *) *state;
     os_free(fim_db);
@@ -418,20 +418,27 @@ void test_fim_db_init_success(void **state) {
     *state = fim_db;
 }
 /*-----------------------------------------*/
-/*---------------fim_db_clean------------------*/
-void test_fim_db_clean_success() {
-    wraps_fim_db_clean();
+/*---------------fim_db_clean()----------------*/
+void test_fim_db_clean_no_db_file(void **state) {
+    expect_string(__wrap_w_is_file, file, FIM_DB_DISK_PATH);
+    will_return(__wrap_w_is_file, 0);
     int ret = fim_db_clean();
     assert_int_equal(ret, FIMDB_OK);
 }
 
-void test_fim_db_clean_failed() {
+void test_fim_db_clean_file_not_removed(void **state) {
     expect_string(__wrap_w_is_file, file, FIM_DB_DISK_PATH);
     will_return(__wrap_w_is_file, 1);
     expect_string(__wrap_remove, filename, FIM_DB_DISK_PATH);
-    will_return(__wrap_remove, FIMDB_ERR);
+    will_return(__wrap_remove, -1);
     int ret = fim_db_clean();
     assert_int_equal(ret, FIMDB_ERR);
+}
+
+void test_fim_db_clean_succes(void **state) {
+    wraps_fim_db_clean();
+    int ret =  fim_db_clean();
+    assert_int_equal(ret, FIMDB_OK);
 }
 /*-----------------------------------------*/
 /*----------fim_db_insert_data------------------*/
@@ -763,29 +770,6 @@ void test_fim_db_close_success(void **state) {
     will_return_always(__wrap_sqlite3_finalize, SQLITE_OK);
     will_return(__wrap_sqlite3_close_v2, SQLITE_OK);
     fim_db_close(test_data->fim_sql);
-}
-/*----------------------------------------------*/
-/*----------fim_db_clean()------------------*/
-void test_fim_db_clean_no_db_file(void **state) {
-    expect_string(__wrap_w_is_file, file, FIM_DB_DISK_PATH);
-    will_return(__wrap_w_is_file, 0);
-    int ret = fim_db_clean();
-    assert_int_equal(ret, FIMDB_OK);
-}
-
-void test_fim_db_clean_file_not_removed(void **state) {
-    expect_string(__wrap_w_is_file, file, FIM_DB_DISK_PATH);
-    will_return(__wrap_w_is_file, 1);
-    expect_string(__wrap_remove, filename, FIM_DB_DISK_PATH);
-    will_return(__wrap_remove, -1);
-    int ret = fim_db_clean();
-    assert_int_equal(ret, FIMDB_ERR);
-}
-
-void test_fim_db_clean_succes(void **state) {
-    wraps_fim_db_clean();
-    int ret =  fim_db_clean();
-    assert_int_equal(ret, FIMDB_OK);
 }
 /*----------------------------------------------*/
 /*----------fim_db_finalize_stmt()------------------*/
@@ -1309,8 +1293,9 @@ int main(void) {
         cmocka_unit_test(test_fim_db_init_failed_simple_query),
         cmocka_unit_test_teardown(test_fim_db_init_success, test_teardown_fim_db_init),
         // fim_db_clean
-        cmocka_unit_test(test_fim_db_clean_success),
-        cmocka_unit_test(test_fim_db_clean_failed),
+        cmocka_unit_test_setup_teardown(test_fim_db_clean_no_db_file, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_clean_file_not_removed, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_clean_succes, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_insert_data
         cmocka_unit_test_setup_teardown(test_fim_db_insert_data_clean_error, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_insert_data_insert_error, test_fim_db_setup, test_fim_db_teardown),
@@ -1343,10 +1328,6 @@ int main(void) {
         // fim_db_close
         cmocka_unit_test_setup_teardown(test_fim_db_close_failed, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_close_success, test_fim_db_setup, test_fim_db_teardown),
-        // fim_db_clean
-        cmocka_unit_test_setup_teardown(test_fim_db_clean_no_db_file, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_clean_file_not_removed, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_clean_succes, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_finalize_stmt
         cmocka_unit_test_setup_teardown(test_fim_db_finalize_stmt_failed, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_finalize_stmt_success, test_fim_db_setup, test_fim_db_teardown),
