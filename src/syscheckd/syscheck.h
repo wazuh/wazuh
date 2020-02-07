@@ -225,24 +225,6 @@ void fim_get_checksum(fim_entry_data *data);
 void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_start);
 
 /**
- * @brief Prints the rbtree information
- *
- */
-void print_rbtree();
-
-/**
- * @brief Prints the inode hash table information
- *
- */
-void print_inodes();
-
-/**
- * @brief Prints the realtime watches information
- *
- */
-void print_dirtb();
-
-/**
  * @brief Checks for deleted files, deletes them from the agent's database and sends a deletion event on scheduled scans
  *
  */
