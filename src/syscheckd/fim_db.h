@@ -18,9 +18,12 @@
 
 #ifndef WIN32
 #define FIM_DB_DISK_PATH    DEFAULTDIR "/queue/fim/db/fim.db"
+#define FIM_DB_TMPDIR       DEFAULTDIR "/tmp/"
 #else
 #define FIM_DB_DISK_PATH    "queue/fim/db/fim.db"
+#define FIM_DB_TMPDIR       "tmp/"
 #endif
+
 #define COMMIT_INTERVAL     2
 
 #define FIMDB_OK 0   // Successful result.
