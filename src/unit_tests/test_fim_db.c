@@ -519,6 +519,62 @@ void test_fim_db_insert_data_rowid_success(void **state) {
     assert_int_equal(ret, FIMDB_OK);
 }
 /*-----------------------------------------*/
+/*----------fim_db_insert_path()---------------*/
+void test_fim_db_insert_path_error(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_bind_int, 0);
+    will_return_always(__wrap_sqlite3_bind_text, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: (1)ERROR MESSAGE");
+    int ret;
+    ret = fim_db_insert_path(test_data->fim_sql, test_data->entry->path, test_data->entry->data, 1);
+    assert_int_equal(ret, FIMDB_ERR);
+}
+
+void test_fim_db_insert_path_constraint_error(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_bind_int, 0);
+    will_return_always(__wrap_sqlite3_bind_text, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_CONSTRAINT);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: (1)ERROR MESSAGE");
+    int ret;
+    ret = fim_db_insert_path(test_data->fim_sql, test_data->entry->path, test_data->entry->data, 1);
+    assert_int_equal(ret, FIMDB_ERR);
+}
+
+void test_fim_db_insert_path_constraint_success(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_bind_int, 0);
+    will_return_always(__wrap_sqlite3_bind_text, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_CONSTRAINT);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    int ret;
+    ret = fim_db_insert_path(test_data->fim_sql, test_data->entry->path, test_data->entry->data, 1);
+    assert_int_equal(ret, FIMDB_OK);
+}
+
+void test_fim_db_insert_path_success(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_bind_int, 0);
+    will_return_always(__wrap_sqlite3_bind_text, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    int ret;
+    ret = fim_db_insert_path(test_data->fim_sql, test_data->entry->path, test_data->entry->data, 1);
+    assert_int_equal(ret, FIMDB_OK);
+}
+
+/*-----------------------------------------*/
 /*----------fim_db_remove_path------------------*/
 void test_fim_db_remove_path_no_entry(void **state) {
     test_fim_db_insert_data *test_data = *state;
@@ -1296,6 +1352,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_insert_data_no_rowid_success, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_insert_data_rowid_error, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_insert_data_rowid_success, test_fim_db_setup, test_fim_db_teardown),
+        // fim_db_insert_path
+        cmocka_unit_test_setup_teardown(test_fim_db_insert_path_error, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_insert_path_constraint_error, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_insert_path_constraint_success, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_insert_path_success, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_remove_path
         cmocka_unit_test_setup_teardown(test_fim_db_remove_path_no_entry, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_remove_path_one_entry, test_fim_db_setup, test_fim_db_teardown),
