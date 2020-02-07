@@ -186,7 +186,7 @@ static void wraps_fim_db_clean() {
  * Successfully wrappes a fim_db_create_file() call
  * */
 static void wraps_fim_db_create_file() {
-    expect_string(__wrap_sqlite3_open_v2, filename, "/var/ossec/queue/db/fim.db");
+    expect_string(__wrap_sqlite3_open_v2, filename, "/var/ossec/queue/fim/db/fim.db");
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
     will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
@@ -368,10 +368,11 @@ void test_fim_db_init_failed_db_clean(void **state) {
 
 void test_fim_db_init_failed_file_creation(void **state) {
     wraps_fim_db_clean();
-    expect_string(__wrap_sqlite3_open_v2, filename, "/var/ossec/queue/db/fim.db");
+    expect_string(__wrap_sqlite3_open_v2, filename, "/var/ossec/queue/fim/db/fim.db");
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
-    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     will_return(__wrap_sqlite3_open_v2, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Couldn't create SQLite database '/var/ossec/queue/fim/db/fim.db': ERROR MESSAGE");
     will_return(__wrap_sqlite3_close_v2, 0);
     fdb_t* fim_db;
     fim_db = fim_db_init(0);
@@ -381,7 +382,7 @@ void test_fim_db_init_failed_file_creation(void **state) {
 void test_fim_db_init_failed_open_db(void **state) {
     wraps_fim_db_clean();
     wraps_fim_db_create_file();
-    expect_string(__wrap_sqlite3_open_v2, filename, "/var/ossec/queue/db/fim.db");
+    expect_string(__wrap_sqlite3_open_v2, filename, "/var/ossec/queue/fim/db/fim.db");
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
     will_return(__wrap_sqlite3_open_v2, SQLITE_ERROR);
     fdb_t* fim_db;
