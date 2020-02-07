@@ -175,6 +175,13 @@ class Roles(_Base):
         self.rule = rule
         self.created_at = datetime.utcnow()
 
+    def _get_policies(self):
+        policies = list()
+        for policy in self.policies:
+            policies.append(policy.get_policy()['id'])
+
+        return policies
+
     def get_role(self):
         """Role's getter
 
@@ -791,7 +798,7 @@ class UserRolesManager:
         """
         try:
             user = self.session.query(User).filter_by(username=username).first()
-            roles = user.roles
+            roles = user._get_roles()
             return roles
         except (IntegrityError, AttributeError):
             self.session.rollback()
@@ -1000,7 +1007,7 @@ class RolesPoliciesManager:
         """
         try:
             role = self.session.query(Roles).filter_by(id=role_id).first()
-            policies = role.policies
+            policies = role._get_policies()
             return policies
         except (IntegrityError, AttributeError):
             self.session.rollback()
