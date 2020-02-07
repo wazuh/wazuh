@@ -46,54 +46,11 @@ endif()
 
 add_subdirectory(syscheckd)
 add_subdirectory(wazuh_db)
-
-# Tests list and flags
-list(APPEND tests_names "test_file_op")
-list(APPEND tests_flags "-Wl,--wrap,isChroot -Wl,--wrap,mferror -Wl,--wrap,stat -Wl,--wrap,chmod -Wl,--wrap,File_DateofChange -Wl,--wrap,getpid -Wl,--wrap,unlink -Wl,--wrap,_merror -Wl,--wrap,_minfo -Wl,--wrap,_mwarn -Wl,--wrap,fopen")
-
-list(APPEND tests_names "test_integrity_op")
-list(APPEND tests_flags " ")
-
-list(APPEND tests_names "test_rbtree_op")
-list(APPEND tests_flags " ")
-
-list(APPEND tests_names "test_version_op")
-list(APPEND tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose")
-
-list(APPEND tests_names "test_syscheck_op")
-list(APPEND tests_flags "-Wl,--wrap,rmdir_ex -Wl,--wrap,wreaddir -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 \
-                        -Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,getpwuid_r -Wl,--wrap,getgrgid \
-                         -Wl,--wrap,cJSON_CreateArray -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,wstr_split \
-                         -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP")
+add_subdirectory(shared)
 
 # Config files
 configure_file("test_syscheck.conf" "syscheckd/test_syscheck.conf" COPYONLY)
 configure_file("test_internal_options.conf" "syscheckd/internal_options.conf" COPYONLY)
-
-# Compiling tests
-list(LENGTH tests_names count)
-math(EXPR count "${count} - 1")
-foreach(counter RANGE ${count})
-    list(GET tests_names ${counter} test_name)
-    list(GET tests_flags ${counter} test_flags)
-
-    add_executable(${test_name} ${test_name}.c)
-
-    target_link_libraries(
-        ${test_name}
-        ${WAZUHLIB}
-        ${WAZUHEXT}
-        ${TEST_DEPS}
-    )
-
-    if(NOT test_flags STREQUAL " ")
-        target_link_libraries(
-            ${test_name}
-            ${test_flags}
-        )
-    endif()
-    add_test(${test_name} ${test_name})
-endforeach()
 
 
 # Coverage
