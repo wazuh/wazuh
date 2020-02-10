@@ -20,7 +20,7 @@ extern const char *SQL_STMT[];
 int fim_db_process_get_query(fdb_t *fim_sql, int index,
                                     void (*callback)(fdb_t *, fim_entry *, void *),
                                     void * arg);
-
+int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query);
 fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt);
 
 /*--------------WRAPS-----------------------*/
@@ -360,6 +360,29 @@ static int teardown_fim_db_with_ctx(void **state) {
     free(data);
 
     return 0;
+}
+
+/*-----------------------------------------*/
+/*----------fim_db_exec_simple_wquery()----------*/
+void test_fim_db_exec_simple_wquery_error(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    expect_string(__wrap_sqlite3_exec, sql, "BEGIN;");
+    will_return(__wrap_sqlite3_exec, "ERROR_MESSAGE");
+    will_return(__wrap_sqlite3_exec, SQLITE_ERROR);
+    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: ERROR_MESSAGE");
+
+    int ret = fim_db_exec_simple_wquery(test_data->fim_sql, "BEGIN;");
+    assert_int_equal(ret, FIMDB_ERR);
+}
+
+void test_fim_db_exec_simple_wquery_success(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    expect_string(__wrap_sqlite3_exec, sql, "PRAGMA synchronous = OFF");
+    will_return(__wrap_sqlite3_exec, NULL);
+    will_return(__wrap_sqlite3_exec, SQLITE_OK);
+
+    int ret = fim_db_exec_simple_wquery(test_data->fim_sql, "PRAGMA synchronous = OFF");
+    assert_int_equal(ret, FIMDB_OK);
 }
 
 /*-----------------------------------------*/
@@ -1492,9 +1515,40 @@ void test_fim_db_decode_full_row(void **state) {
     *state = test_data;
 }
 
+/*----------------------------------------------*/
+/*----------fim_db_set_scanned_error()------------*/
+void test_fim_db_set_scanned_error(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: ERROR MESSAGE");
+
+    int ret = fim_db_set_scanned(test_data->fim_sql, test_data->entry->path);
+    assert_int_equal(ret, FIMDB_ERR);
+}
+
+void test_fim_db_set_scanned_success(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+
+    will_return(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    int ret = fim_db_set_scanned(test_data->fim_sql, test_data->entry->path);
+    assert_int_equal(ret, FIMDB_OK);
+}
+
 /*-----------------------------------------*/
 int main(void) {
     const struct CMUnitTest tests[] = {
+        // fim_db_exec_simple_wquery
+        cmocka_unit_test_setup_teardown(test_fim_db_exec_simple_wquery_error, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_exec_simple_wquery_success, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_init
         cmocka_unit_test(test_fim_db_init_failed_db_clean),
         cmocka_unit_test(test_fim_db_init_failed_file_creation),
@@ -1588,6 +1642,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_callback_calculate_checksum, setup_fim_db_with_ctx, teardown_fim_db_with_ctx),
         // fim_db_decode_full_row
         cmocka_unit_test_teardown(test_fim_db_decode_full_row, test_fim_db_teardown),
+        // fim_db_set_scanned
+        cmocka_unit_test_setup_teardown(test_fim_db_set_scanned_error, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_set_scanned_success, test_fim_db_setup, test_fim_db_teardown),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
