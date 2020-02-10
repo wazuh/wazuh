@@ -168,6 +168,12 @@ char *__wrap_dbsync_state_msg(const char * component, cJSON * data) {
     return mock_type(char*);
 }
 
+int __wrap_EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *d, size_t cnt) {
+    check_expected(d);
+    check_expected(cnt);
+    return mock();
+}
+
 /*-----------------------------------------*/
 
 /*---------------AUXILIAR------------------*/
@@ -223,8 +229,8 @@ static void wraps_fim_db_check_transaction() {
  * Successfully wrappes a fim_db_decode_full_row() call
  * */
 static void wraps_fim_db_decode_full_row() {
-    expect_value_count(__wrap_sqlite3_column_text, iCol, 0, 2);
-    will_return_count(__wrap_sqlite3_column_text, "/some/random/path", 2); // path
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "/some/random/path"); // path
     expect_value(__wrap_sqlite3_column_int, iCol, 2);
     will_return(__wrap_sqlite3_column_int, 1); // mode
     expect_value(__wrap_sqlite3_column_int, iCol, 3);
@@ -812,12 +818,13 @@ void test_fim_db_get_data_checksum_success(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_bind_int, 0);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     wraps_fim_db_decode_full_row();
+    expect_string(__wrap_EVP_DigestUpdate, d, "checksum");
+    expect_value(__wrap_EVP_DigestUpdate, cnt, 8);
+    will_return(__wrap_EVP_DigestUpdate, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);  // Ending the loop at fim_db_process_get_query()
     wraps_fim_db_check_transaction();
-    fim_entry *entry = fim_db_get_path(test_data->fim_sql, test_data->entry->path);
     int ret = fim_db_get_data_checksum(test_data->fim_sql, NULL);
     assert_int_equal(ret, FIMDB_OK);
 }
