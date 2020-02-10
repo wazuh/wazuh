@@ -1040,7 +1040,9 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
     }
 
    end:
+        w_mutex_lock(mutex);
         fim_db_check_transaction(fim_sql);
+        w_mutex_unlock(mutex);
 }
 
 int fim_db_get_row_path(fdb_t * fim_sql, int mode, char **path) {
