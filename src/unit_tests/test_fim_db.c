@@ -645,7 +645,8 @@ void test_fim_db_insert_inode_id_null(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return(__wrap_sqlite3_reset, SQLITE_OK);
     will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    will_return_count(__wrap_sqlite3_bind_int, 0, 2);
+    will_return_always(__wrap_sqlite3_bind_int, 0);
+    will_return_always(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
