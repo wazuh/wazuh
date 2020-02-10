@@ -834,11 +834,18 @@ void test_fim_db_sync_path_range(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    //will_return_always(__wrap_sqlite3_bind_int, 0);
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
     wraps_fim_db_decode_full_row();
+
+    // fim_db_callback_sync_path_range()
+    cJSON *root = cJSON_CreateObject();
+    will_return(__wrap_fim_entry_json, root);
+    expect_string(__wrap_dbsync_state_msg, component, "syscheck");
+    expect_value(__wrap_dbsync_state_msg, data, root);
+    will_return(__wrap_dbsync_state_msg, strdup("This is the returned JSON"));
+
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);  // Ending the loop at fim_db_process_get_query()
     wraps_fim_db_check_transaction();
 
     int ret = fim_db_sync_path_range(test_data->fim_sql, "init", "top");
