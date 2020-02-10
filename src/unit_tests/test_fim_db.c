@@ -21,6 +21,8 @@ int fim_db_process_get_query(fdb_t *fim_sql, int index,
                                     void (*callback)(fdb_t *, fim_entry *, void *),
                                     void * arg);
 
+fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt);
+
 /*--------------WRAPS-----------------------*/
 
 int __wrap_w_is_file(const char * const file) {
@@ -318,6 +320,12 @@ static int test_fim_db_setup(void **state) {
 static int test_fim_db_teardown(void **state) {
     test_fim_db_insert_data *test_data = *state;
     os_free(test_data->entry->path);
+    os_free(test_data->entry->data->perm);
+    os_free(test_data->entry->data->attributes);
+    os_free(test_data->entry->data->uid);
+    os_free(test_data->entry->data->gid);
+    os_free(test_data->entry->data->user_name);
+    os_free(test_data->entry->data->group_name);
     os_free(test_data->entry->data);
     os_free(test_data->entry);
     os_free(test_data->fim_sql);
@@ -1431,12 +1439,12 @@ void test_fim_db_callback_calculate_checksum(void **state) {
     data->test_data->entry->data->dev = 4567;
     data->test_data->entry->data->inode = 5678;
     data->test_data->entry->data->size = 4096;
-    data->test_data->entry->data->perm = "perm";
-    data->test_data->entry->data->attributes = "attributes";
-    data->test_data->entry->data->uid = "uid";
-    data->test_data->entry->data->gid = "gid";
-    data->test_data->entry->data->user_name = "user_name";
-    data->test_data->entry->data->group_name = "group_name";
+    os_strdup("perm", data->test_data->entry->data->perm);
+    os_strdup("attributes", data->test_data->entry->data->attributes);
+    os_strdup("uid", data->test_data->entry->data->uid);
+    os_strdup("gid", data->test_data->entry->data->gid);
+    os_strdup("user_name", data->test_data->entry->data->user_name);
+    os_strdup("group_name", data->test_data->entry->data->group_name);
     strcpy(data->test_data->entry->data->hash_md5, "3691689a513ace7e508297b583d7050d");
     strcpy(data->test_data->entry->data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
     strcpy(data->test_data->entry->data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
@@ -1450,6 +1458,38 @@ void test_fim_db_callback_calculate_checksum(void **state) {
     fim_db_callback_calculate_checksum(data->test_data->fim_sql, data->test_data->entry, data->ctx);
 
     assert_string_equal(data->test_data->entry->data->checksum, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+}
+
+/*----------------------------------------------*/
+/*----------fim_db_decode_full_row()------------*/
+void test_fim_db_decode_full_row(void **state) {
+    test_fim_db_insert_data *test_data;
+    os_calloc(1, sizeof(test_fim_db_insert_data), test_data);
+    os_calloc(1, sizeof(fdb_t), test_data->fim_sql);
+    wraps_fim_db_decode_full_row();
+    test_data->entry = fim_db_decode_full_row(test_data->fim_sql->stmt[FIMDB_STMT_GET_PATH]);
+    assert_non_null(test_data->entry);
+    assert_string_equal(test_data->entry->path, "/some/random/path");
+    assert_int_equal(test_data->entry->data->mode, 1);
+    assert_int_equal(test_data->entry->data->last_event, 1000000);
+    assert_int_equal(test_data->entry->data->entry_type, 2);
+    assert_int_equal(test_data->entry->data->scanned, 1000001);
+    assert_int_equal(test_data->entry->data->options, 1000002);
+    assert_string_equal(test_data->entry->data->checksum, "checksum");
+    assert_int_equal(test_data->entry->data->dev, 111);
+    assert_int_equal(test_data->entry->data->inode, 1024);
+    assert_int_equal(test_data->entry->data->size, 4096);
+    assert_string_equal(test_data->entry->data->perm, "perm");
+    assert_string_equal(test_data->entry->data->attributes, "attributes");
+    assert_string_equal(test_data->entry->data->uid, "uid");
+    assert_string_equal(test_data->entry->data->gid, "gid");
+    assert_string_equal(test_data->entry->data->user_name, "user_name");
+    assert_string_equal(test_data->entry->data->group_name, "group_name");
+    assert_string_equal(test_data->entry->data->hash_md5, "hash_md5");
+    assert_string_equal(test_data->entry->data->hash_sha1, "hash_sha1");
+    assert_string_equal(test_data->entry->data->hash_sha256, "hash_sha256");
+    assert_int_equal(test_data->entry->data->mtime, 12345678);
+    *state = test_data;
 }
 
 /*-----------------------------------------*/
@@ -1546,6 +1586,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_callback_sync_path_range, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_callback_calculate_checksum
         cmocka_unit_test_setup_teardown(test_fim_db_callback_calculate_checksum, setup_fim_db_with_ctx, teardown_fim_db_with_ctx),
+        // fim_db_decode_full_row
+        cmocka_unit_test_teardown(test_fim_db_decode_full_row, test_fim_db_teardown),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
