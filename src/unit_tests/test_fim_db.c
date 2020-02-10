@@ -415,6 +415,10 @@ void test_fim_db_init_failed_execution(void **state) {
     will_return(__wrap_sqlite3_exec, "ERROR_MESSAGE");
     will_return(__wrap_sqlite3_exec, SQLITE_ERROR);
     expect_string(__wrap__merror, formatted_msg, "SQL ERROR: ERROR_MESSAGE");
+    // fim_db_finalize_stmt()
+    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_finalize, SQLITE_OK);
     fdb_t* fim_db;
     fim_db = fim_db_init(0);
     assert_null(fim_db);
@@ -435,6 +439,10 @@ void test_fim_db_init_failed_simple_query(void **state) {
     will_return(__wrap_sqlite3_exec, "ERROR_MESSAGE");
     will_return(__wrap_sqlite3_exec, SQLITE_ERROR);
     expect_string(__wrap__merror, formatted_msg, "SQL ERROR: ERROR_MESSAGE");
+    // fim_db_finalize_stmt()
+    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_finalize, SQLITE_OK);
     fdb_t* fim_db;
     fim_db = fim_db_init(0);
     assert_null(fim_db);
