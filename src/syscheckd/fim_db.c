@@ -539,17 +539,15 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
         if (path) {
             w_mutex_lock(mutex);
             fim_entry *entry = fim_db_get_path(fim_sql, path);
-            if (entry == NULL) {
-                continue;
+            if (entry != NULL) {
+                callback(fim_sql, entry, mutex, arg);
             }
             w_mutex_unlock(mutex);
-
-            callback(fim_sql, entry, mutex, arg);
             os_free(path);
         }
 
         i++;
-    } while ((i < file->elements) && path);
+    } while (i < file->elements);
 
     if (memory == FIM_DB_DISK) {
         fclose(file->fd);
