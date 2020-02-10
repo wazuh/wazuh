@@ -61,14 +61,15 @@ def test_users_default(user_name, auth_context):
 @pytest.mark.parametrize('user_name, role_ids', user_roles)
 def test_user_roles_default(user_name, role_ids):
     with orm.UserRolesManager() as urm:
-        assert role_ids == urm.get_all_roles_from_user(username=user_name)
+        db_roles = urm.get_all_roles_from_user(username=user_name)
+        orm_role_names = [role['name'] for role in db_roles]
+        assert set(role_ids) == set(orm_role_names)
 
 
 @pytest.mark.parametrize('role_name, policy_names', role_policies)
 def test_role_policies_default(role_name, policy_names):
     with orm.RolesPoliciesManager() as rpm:
-        with orm.RolesManager() as rm, orm.PoliciesManager() as pm:
-            role_id = rm.get_role(name=role_name)['id']
-            policy_ids = rpm.get_all_policies_from_role(role_id=role_id)
-            orm_policy_names = [pm.get_policy_id(policy_id)['name'] for policy_id in policy_ids]
+        with orm.RolesManager() as rm:
+            db_policies = rpm.get_all_policies_from_role(role_id=rm.get_role(name=role_name)['id'])
+            orm_policy_names = [policy['name'] for policy in db_policies]
             assert set(orm_policy_names) == set(policy_names)

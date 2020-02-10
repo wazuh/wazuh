@@ -1,10 +1,12 @@
 relationships:
   users:
     wazuh:
-      role_ids: [1, 2, 3, 4, 5, 6]
+      role_ids:
+        - administrator
 
     wazuh-wui:
-      role_ids: []
+      role_ids:
+        - readonly
 
   roles:
     administrator:
