@@ -675,13 +675,11 @@ void check_deleted_files() {
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
-    if (file->elements) {
+    if (file && file->elements) {
         fim_db_delete_not_scanned(syscheck.database, file, &syscheck.fim_entry_mutex, syscheck.database_store);
 
         w_mutex_lock(&syscheck.fim_entry_mutex);
-
         fim_db_set_all_unscanned(syscheck.database);
-
         w_mutex_unlock(&syscheck.fim_entry_mutex);
     }
 }

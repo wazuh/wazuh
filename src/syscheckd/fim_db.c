@@ -353,7 +353,7 @@ fim_tmp_file *fim_db_create_temp_file(int memory, int size) {
 
         file->fd = fopen(file->path, "w+");
         if (file->fd == NULL) {
-            merror("Failed to create temporal database '%s'", file->path);
+            merror("Failed to create temporal storage '%s'", file->path);
             os_free(file->path);
             os_free(file);
             return NULL;
@@ -362,9 +362,9 @@ fim_tmp_file *fim_db_create_temp_file(int memory, int size) {
         if (size) {
             os_calloc(size, sizeof(char *), file->all_path);
         }
-
-        file->elements = size;
     }
+
+    file->elements = size;
 
     return file;
 }
@@ -427,8 +427,12 @@ int fim_db_clean_stmt(fdb_t *fim_sql, int index) {
 
 int fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file, int memory) {
     int count = 0;
-    if (memory && !fim_db_get_count_range(fim_sql, start, top, &count)) {
+    if (fim_db_get_count_range(fim_sql, start, top, &count) != FIMDB_OK) {
         return FIMDB_ERR;
+    }
+
+    if (count == 0) { //Empty range, nothing to do.
+        return FIMDB_OK;
     }
 
     if ((*file = fim_db_create_temp_file(memory, count)) == NULL) {
@@ -443,8 +447,12 @@ int fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file *
 
 int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int memory) {
     int count = 0;
-    if (memory && !fim_db_count_not_scanned(fim_sql, &count)) {
+    if (fim_db_count_not_scanned(fim_sql, &count) != FIMDB_OK) {
         return FIMDB_ERR;
+    }
+
+    if (count == 0) { //Empty range, nothing to do.
+        return FIMDB_OK;
     }
 
     if ((*file = fim_db_create_temp_file(memory, count)) == NULL) {
@@ -516,6 +524,7 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
     }
 
     do {
+        path = NULL;
         if (memory == FIM_DB_DISK) {
             /* fgets() adds \n(newline) to the end of the string,
              So it must be removed. */
@@ -537,11 +546,10 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
 
             callback(fim_sql, entry, mutex, arg);
             os_free(path);
-            path = NULL;
         }
 
         i++;
-    } while (path);
+    } while ((i < file->elements) && path);
 
     if (memory == FIM_DB_DISK) {
         fclose(file->fd);
@@ -1090,7 +1098,7 @@ void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry
         fflush(((fim_tmp_file *) arg)->fd);
 
     } else { // memory storage enabled
-        os_strdup(entry->path, ((fim_tmp_file *) arg)->all_path[pos]);
+        sqlite_strdup(entry->path, ((fim_tmp_file *) arg)->all_path[pos]);
     }
 
     end:

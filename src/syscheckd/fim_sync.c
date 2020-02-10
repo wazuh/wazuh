@@ -199,7 +199,9 @@ void fim_sync_send_list(const char * start, const char * top) {
     }
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
-    fim_db_sync_path_range(syscheck.database, &syscheck.fim_entry_mutex, file,syscheck.database_store);
+    if (file && file->elements) {
+        fim_db_sync_path_range(syscheck.database, &syscheck.fim_entry_mutex, file,syscheck.database_store);
+    }
 }
 
 void fim_sync_dispatch(char * payload) {

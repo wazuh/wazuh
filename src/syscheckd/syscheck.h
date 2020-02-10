@@ -58,10 +58,8 @@ typedef struct fim_tmp_file {
         FILE *fd;
         char **all_path;
     };
-    union { //info_storage
-        char *path;
-        int elements;
-    };
+    char *path;
+    int elements;
 } fim_tmp_file;
 
 /* Win32 does not have lstat */

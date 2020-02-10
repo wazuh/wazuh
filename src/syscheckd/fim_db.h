@@ -172,11 +172,11 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_entry_data *en
 int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry);
 
 /**
- * @brief Send sync message for a all entries.
+ * @brief Send sync message for all entries.
  * @param fim_sql FIM database struct.
  * @param memory 0 use disk - 1 use memory.
  * @param mutex FIM database's mutex for thread synchronization.
- * @param fd    Descriptor of the file which contains all the paths.
+ * @param fd    Structure of temporal storage which contains all the paths.
  */
 int fim_db_sync_path_range(fdb_t *fim_sql, pthread_mutex_t *mutex,
                             fim_tmp_file *file, int memory);
@@ -307,13 +307,13 @@ int fim_db_delete_not_scanned(fdb_t *fim_sql, fim_tmp_file *file,
                                 pthread_mutex_t *mutex, int memory);
 
 /**
- * @brief Get path list between @start and @top. (stored in @fd).
+ * @brief Get path list between @start and @top. (stored in @file).
  *
  * @param fim_sql FIM database struct.
- * @param file  Structure of the file which contains all the paths.
+ * @param file  Structure of the storage which contains all the paths.
  * @param start First entry of the range.
  * @param top Last entry of the range.
- * @param memory 0 in disk - 1 in memory
+ * @param memory 0 in disk - 1 in memory.
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  *
  */
