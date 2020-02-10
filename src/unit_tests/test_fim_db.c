@@ -1110,11 +1110,19 @@ void test_fim_db_data_checksum_range_second_half_failed(void **state) {
     will_return(__wrap_sqlite3_reset, SQLITE_OK);
     will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return_always(__wrap_sqlite3_bind_text, 0);
+
+    // First half
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     wraps_fim_db_decode_full_row();
+    expect_string(__wrap_EVP_DigestUpdate, d, "checksum");
+    expect_value(__wrap_EVP_DigestUpdate, cnt, 8);
+    will_return(__wrap_EVP_DigestUpdate, 0);
+
+    // Second half
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "SQL ERROR: ERROR MESSAGE");
+
     int ret;
     ret = fim_db_data_checksum_range(test_data->fim_sql, "init", "end", 1, 2);
     assert_int_equal(ret, FIMDB_ERR);
@@ -1125,10 +1133,21 @@ void test_fim_db_data_checksum_range_success(void **state) {
     will_return(__wrap_sqlite3_reset, SQLITE_OK);
     will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return_always(__wrap_sqlite3_bind_text, 0);
+
+    // Fist half
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     wraps_fim_db_decode_full_row();
+    expect_string(__wrap_EVP_DigestUpdate, d, "checksum");
+    expect_value(__wrap_EVP_DigestUpdate, cnt, 8);
+    will_return(__wrap_EVP_DigestUpdate, 0);
+
+    // Second half
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     wraps_fim_db_decode_full_row();
+    expect_string(__wrap_EVP_DigestUpdate, d, "checksum");
+    expect_value(__wrap_EVP_DigestUpdate, cnt, 8);
+    will_return(__wrap_EVP_DigestUpdate, 0);
+
     int ret;
     ret = fim_db_data_checksum_range(test_data->fim_sql, "init", "end", 1, 2);
     assert_int_equal(ret, FIMDB_OK);
