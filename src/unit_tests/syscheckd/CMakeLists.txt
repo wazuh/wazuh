@@ -1,31 +1,31 @@
+if(NOT ${TARGET} STREQUAL "winagent")
+  # Generate syscheck library
+  file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/*.o)
+  list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/syscheckd/main.o)
+  file(GLOB rootfiles ${SRC_FOLDER}/rootcheck/*.o)
 
-# Generate syscheck library
-file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/*.o)
-list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/syscheckd/main.o)
-file(GLOB rootfiles ${SRC_FOLDER}/rootcheck/*.o)
+  add_library(SYSCHECK_O STATIC ${sysfiles})
+  add_library(ROOTCHECK_O STATIC ${rootfiles})
 
-add_library(SYSCHECK_O STATIC ${sysfiles})
-add_library(ROOTCHECK_O STATIC ${rootfiles})
+  set_source_files_properties(
+    ${sysfiles}
+    ${rootfiles}
+    PROPERTIES
+    EXTERNAL_OBJECT true
+    GENERATED true
+    )
 
-set_source_files_properties(
-  ${sysfiles}
-  ${rootfiles}
-  PROPERTIES
-  EXTERNAL_OBJECT true
-  GENERATED true
-  )
+  set_target_properties(
+    SYSCHECK_O
+    ROOTCHECK_O
+    PROPERTIES
+    LINKER_LANGUAGE C
+    CMAKE_C_COMPILER i686-w64-mingw32-gcc
+    CMAKE_C_LINK_EXECUTABLE "CMAKE_C_COMPILER <FLAGS> <CMAKE_C_LINK_FLAGS> <LINK_FLAGS> <OBJECTS>  -o <TARGET> <LINK_LIBRARIES>"
+    )
 
-set_target_properties(
-  SYSCHECK_O
-  ROOTCHECK_O
-  PROPERTIES
-  LINKER_LANGUAGE C
-  CMAKE_C_COMPILER i686-w64-mingw32-gcc
-  CMAKE_C_LINK_EXECUTABLE "CMAKE_C_COMPILER <FLAGS> <CMAKE_C_LINK_FLAGS> <LINK_FLAGS> <OBJECTS>  -o <TARGET> <LINK_LIBRARIES>"
-  )
-
-target_link_libraries(SYSCHECK_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
-
+  target_link_libraries(SYSCHECK_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+endif()
 # Generate Analysisd tests
 list(APPEND syscheckd_tests_names "test_syscom")
 list(APPEND syscheckd_tests_flags "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap,fim_sync_push_msg")
@@ -89,13 +89,22 @@ foreach(counter RANGE ${count})
 
     add_executable(${test_name} ${test_name}.c)
 
-    target_link_libraries(
+    if(NOT ${TARGET} STREQUAL "winagent")
+      target_link_libraries(
         ${test_name}
         ${WAZUHLIB}
         ${WAZUHEXT}
         SYSCHECK_O
         ${TEST_DEPS}
-    )
+      )
+    else()
+      target_link_libraries(
+        ${test_name}
+        ${WAZUHLIB}
+        ${WAZUHEXT}
+        ${TEST_DEPS}
+      )
+    endif() 
 
     if(NOT test_flags STREQUAL " ")
         target_link_libraries(
@@ -103,5 +112,5 @@ foreach(counter RANGE ${count})
             ${test_flags}
         )
     endif()
-    add_test(${test_name} ${test_name})
+    add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()

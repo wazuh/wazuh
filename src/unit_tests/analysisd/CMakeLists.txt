@@ -53,5 +53,5 @@ foreach(counter RANGE ${count})
             ${analysisd_test_flags}
         )
     endif()
-    add_test(${analysisd_test_name} ${analysisd_test_name})
+    add_test(NAME ${analysisd_test_name} COMMAND ${analysisd_test_name})
 endforeach()

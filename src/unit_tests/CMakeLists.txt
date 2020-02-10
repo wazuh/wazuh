@@ -4,16 +4,17 @@
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
-
 cmake_minimum_required(VERSION 3.10)
 
-# set(TARGET winagent)
-# set(CMAKE_VERBOSE_MAKEFILE ON)
+PROJECT(UnitTests C)
+
+set(TARGET winagent)
+#set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # message("${TARGET}")
+get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
 
-set(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../)
-
+message(Source folder: ${SRC_FOLDER})
 include_directories(${SRC_FOLDER}/headers)
 include_directories(${SRC_FOLDER}/external/openssl/include)
 include_directories(${SRC_FOLDER})
@@ -21,7 +22,7 @@ include_directories(${SRC_FOLDER})
 # Wazuh libraries
 find_library(WAZUHLIB NAMES libwazuh.a HINTS "${SRC_FOLDER}")
 if(NOT WAZUHLIB)
-  message(FATAL_ERROR "libwazuh.a not found! Aborting...")
+  message(FATAL_ERROR "libwazuh.a not found in ${SRC_FOLDER} Aborting...")
 endif()
 
 # Enable testing
@@ -49,9 +50,13 @@ add_subdirectory(wazuh_db)
 add_subdirectory(shared)
 
 # Config files
-configure_file("test_syscheck.conf" "syscheckd/test_syscheck.conf" COPYONLY)
-configure_file("test_internal_options.conf" "syscheckd/internal_options.conf" COPYONLY)
-
+if(${TARGET} STREQUAL "winagent")
+  configure_file("test_syscheck.conf" "syscheckd/test_syscheck.conf" NEWLINE_STYLE WIN32)
+  configure_file("test_internal_options.conf" "syscheckd/internal_options.conf" NEWLINE_STYLE WIN32)
+else()
+  configure_file("test_syscheck.conf" "syscheckd/test_syscheck.conf" COPYONLY)
+  configure_file("test_internal_options.conf" "syscheckd/internal_options.conf" COPYONLY)
+endif()
 
 # Coverage
 find_program(LCOV_PATH lcov)

@@ -1400,3 +1400,13 @@ int main(void) {
 }
 
 #endif
+
+#if defined(TEST_WINAGENT)
+
+int main(void) {
+    const struct CMUnitTest tests[] = {
+    };
+    return cmocka_run_group_tests(tests, NULL, NULL);
+}
+
+#endif
