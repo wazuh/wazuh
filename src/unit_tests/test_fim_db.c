@@ -1187,13 +1187,13 @@ void test_fim_db_get_row_path_sqlite_row(void **state) {
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value_count(__wrap_sqlite3_column_text, iCol, 0, 2);
-    will_return_count(__wrap_sqlite3_column_text, "A query response", 2);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "/some/random/path");
 
     ret = fim_db_get_row_path(test_data->fim_sql, FIMDB_STMT_GET_FIRST_PATH, &path);
 
     assert_int_equal(ret, FIMDB_OK);
-    assert_string_equal(path, "A query response");
+    assert_string_equal(path, "/some/random/path");
     free(path);
 }
 
@@ -1441,6 +1441,11 @@ void test_fim_db_callback_calculate_checksum(void **state) {
     strcpy(data->test_data->entry->data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
     strcpy(data->test_data->entry->data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
     data->test_data->entry->data->mtime = 6789;
+
+    // Mock EVP_DigestUpdate()
+    expect_string(__wrap_EVP_DigestUpdate, d, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    expect_value(__wrap_EVP_DigestUpdate, cnt, 40);
+    will_return(__wrap_EVP_DigestUpdate, 0);
 
     fim_db_callback_calculate_checksum(data->test_data->fim_sql, data->test_data->entry, data->ctx);
 
