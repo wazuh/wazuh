@@ -1099,6 +1099,7 @@ void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry
 
     } else { // memory storage enabled
         sqlite_strdup(entry->path, ((fim_tmp_file *) arg)->all_path[pos]);
+        os_free(entry->path);
     }
 
     end:
