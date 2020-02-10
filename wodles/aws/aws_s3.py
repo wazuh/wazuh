@@ -573,6 +573,8 @@ class AWSBucket(WazuhIntegration):
             sys.exit(10)
 
     def marker_only_logs_after(self, aws_region, aws_account_id):
+        if self.only_logs_after.strftime('%Y/%m/%d') in self.get_full_prefix(aws_account_id, aws_region):
+                return self.get_full_prefix(aws_account_id, aws_region)
         return '{init}{only_logs_after}'.format(
             init=self.get_full_prefix(aws_account_id, aws_region),
             only_logs_after=self.only_logs_after.strftime('%Y/%m/%d')
