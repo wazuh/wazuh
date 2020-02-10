@@ -841,12 +841,8 @@ void test_fim_db_sync_path_range(void **state) {
 void test_fim_db_check_transaction_last_commit_is_0(void **state) {
     test_fim_db_insert_data *test_data = *state;
     test_data->fim_sql->transaction.last_commit = 0;
-    expect_string(__wrap_sqlite3_exec, sql, "END;");
-    will_return(__wrap_sqlite3_exec, "ERROR MESSAGE");
-    will_return(__wrap_sqlite3_exec, SQLITE_ERROR);
-    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: ERROR MESSAGE");
     fim_db_check_transaction(test_data->fim_sql);
-    assert_int_equal(test_data->fim_sql->transaction.last_commit, 0);
+    assert_int_not_equal(test_data->fim_sql->transaction.last_commit, 0);
 }
 
 void test_fim_db_check_transaction_failed(void **state) {
