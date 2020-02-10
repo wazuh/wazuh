@@ -28,7 +28,7 @@ foreach(counter RANGE ${count})
 
     add_executable(${test_name} ${test_name}.c)
 
-    if(TEST_SERVER)
+    if(${TARGET} STREQUAL "server")
         target_link_libraries(
             ${test_name}
             ${WAZUHLIB}
