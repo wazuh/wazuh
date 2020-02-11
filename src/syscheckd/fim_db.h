@@ -44,10 +44,10 @@ extern const char *schema_fim_sql;
  * If it exists deletes the previous version and creates a new one.
  *
  * @param fim_sql FIM database struct.
- * @param memory 1 Store database in memory, disk otherwise.
+ * @param storage 1 Store database in memory, disk otherwise.
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-fdb_t *fim_db_init(int memory);
+fdb_t *fim_db_init(int storage);
 
 /**
  * @brief Finalize stmt and close DB
@@ -174,19 +174,19 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry);
 /**
  * @brief Send sync message for all entries.
  * @param fim_sql FIM database struct.
- * @param memory 0 use disk - 1 use memory.
+ * @param storage 1 Store database in memory, disk otherwise.
  * @param mutex FIM database's mutex for thread synchronization.
  * @param fd    Structure of temporal storage which contains all the paths.
  */
 int fim_db_sync_path_range(fdb_t *fim_sql, pthread_mutex_t *mutex,
-                            fim_tmp_file *file, int memory);
+                            fim_tmp_file *file, int storage);
 
 /**
  * @brief Callback function: Entry checksum calculation.
  *
  */
 void fim_db_callback_calculate_checksum(__attribute__((unused)) fdb_t *fim_sql,
-                                        fim_entry *entry, int pos, int memory,
+                                        fim_entry *entry, int pos, int storage,
                                         void *arg);
 
 /**
@@ -266,23 +266,23 @@ int fim_db_set_scanned(fdb_t *fim_sql, char *path);
  * @brief Get all the unscanned files by saving them in a temporal storage.
  *
  * @param fim_sql FIM database struct.
- * @param memory  0 in disk - 1 in memory.
+ * @param storage 1 Store database in memory, disk otherwise.
  * @param File    Structure of the file which contains all the paths.
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_get_not_scanned(fdb_t * fim_sql,fim_tmp_file **file, int memory);
+int fim_db_get_not_scanned(fdb_t * fim_sql,fim_tmp_file **file, int storage);
 
 /**
  * @brief Write an entry path into the storage pointed by @args.
  *
  * @param fim_sql FIM database struct.
- * @param memory  0 use disk - 1 use memory
+ * @param storage 1 Store database in memory, disk otherwise.
  * @param args    Storage which contains all the paths.
  * @param pos     If memory is 1, pos indicates the position in the array.
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 void fim_db_callback_save_path(fdb_t *fim_sql, fim_entry *entry, int pos,
-    int memory, void *arg);
+    int storage, void *arg);
 
 /**
  * @brief Callback function to send a sync message for a sole entry.
@@ -300,11 +300,11 @@ void fim_db_callback_sync_path_range(__attribute__((unused))fdb_t *fim_sql, fim_
  * @param fim_sql FIM database struct.
  * @param file    Structure of the file which contains all the paths.
  * @param mutex
- * @param memory 0 use disk - 1 use memory.
+ * @param storage 1 Store database in memory, disk otherwise.
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 int fim_db_delete_not_scanned(fdb_t *fim_sql, fim_tmp_file *file,
-                                pthread_mutex_t *mutex, int memory);
+                                pthread_mutex_t *mutex, int storage);
 
 /**
  * @brief Get path list between @start and @top. (stored in @file).
@@ -313,12 +313,12 @@ int fim_db_delete_not_scanned(fdb_t *fim_sql, fim_tmp_file *file,
  * @param file  Structure of the storage which contains all the paths.
  * @param start First entry of the range.
  * @param top Last entry of the range.
- * @param memory 0 in disk - 1 in memory.
+ * @param storage 1 Store database in memory, disk otherwise.
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  *
  */
 int fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top,
-                         fim_tmp_file **file, int memory) ;
+                         fim_tmp_file **file, int storage) ;
 
 /**
  * @brief Removes a range of paths from the database.
@@ -328,9 +328,9 @@ int fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top,
  * @param fim_sql FIM database struct.
  * @param file  Structure of the file which contains all the paths.
  * @param mutex
- * @param memory 0 use disk - 1 use memory
+ * @param storage 1 Store database in memory, disk otherwise.
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file,
-                        pthread_mutex_t *mutex, int memory);
+                        pthread_mutex_t *mutex, int storage);
