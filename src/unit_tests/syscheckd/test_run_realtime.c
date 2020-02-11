@@ -201,7 +201,9 @@ void test_realtime_start_success(void **state) {
     int ret;
 
     will_return(__wrap_OSHash_Create, hash);
-    will_return(__wrap_inotify_init, 0);
+    #if defined(TEST_SERVER) || defined(TEST_AGENT)
+        will_return(__wrap_inotify_init, 0);
+    #endif
 
     ret = realtime_start();
 
@@ -215,8 +217,13 @@ void test_realtime_start_failure_hash(void **state) {
     will_return(__wrap_OSHash_Create, NULL);
 
     errno = ENOMEM;
-    expect_string(__wrap__merror, formatted_msg,
-        "(1102): Could not acquire memory due to [(12)-(Cannot allocate memory)].");
+    #if defined(TEST_SERVER) || defined(TEST_AGENT)
+        expect_string(__wrap__merror, formatted_msg,
+            "(1102): Could not acquire memory due to [(12)-(Cannot allocate memory)].");
+    #else
+        expect_string(__wrap__merror, formatted_msg,
+            "(1102): Could not acquire memory due to [(12)-(Not enough space)].");
+    #endif
 
     ret = realtime_start();
 
@@ -224,22 +231,21 @@ void test_realtime_start_failure_hash(void **state) {
     assert_int_equal(ret, -1);
 }
 
-
-void test_realtime_start_failure_inotify(void **state) {
-    OSHash *hash = *state;
-    int ret;
-
-    will_return(__wrap_OSHash_Create, hash);
-    will_return(__wrap_inotify_init, -1);
-
-    expect_string(__wrap__merror, formatted_msg, FIM_ERROR_INOTIFY_INITIALIZE);
-
-    ret = realtime_start();
-
-    assert_int_equal(ret, -1);
-}
-
 #if defined(TEST_SERVER) || defined(TEST_AGENT)
+
+    void test_realtime_start_failure_inotify(void **state) {
+        OSHash *hash = *state;
+        int ret;
+
+        will_return(__wrap_OSHash_Create, hash);
+        will_return(__wrap_inotify_init, -1);
+
+        expect_string(__wrap__merror, formatted_msg, FIM_ERROR_INOTIFY_INITIALIZE);
+
+        ret = realtime_start();
+
+        assert_int_equal(ret, -1);
+    }
 
     void test_realtime_adddir_whodata(void **state) {
         int ret;
@@ -268,7 +274,7 @@ void test_realtime_adddir_realtime_failure(void **state)
     const char * path = "/etc/folder";
 
     syscheck.realtime->fd = -1;
-
+    
     ret = realtime_adddir(path, 0);
 
     assert_int_equal(ret, -1);
@@ -396,8 +402,8 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_realtime_start_success, setup_realtime_start, teardown_realtime_start),
         cmocka_unit_test_setup_teardown(test_realtime_start_failure_hash, setup_realtime_start, teardown_realtime_start),
-        cmocka_unit_test_setup_teardown(test_realtime_start_failure_inotify, setup_realtime_start, teardown_realtime_start),
         #if defined(TEST_SERVER) || defined(TEST_AGENT)
+            cmocka_unit_test_setup_teardown(test_realtime_start_failure_inotify, setup_realtime_start, teardown_realtime_start),
             cmocka_unit_test_setup_teardown(test_realtime_adddir_whodata, setup_w_vector, teardown_w_vector),
         #endif
         cmocka_unit_test(test_realtime_adddir_realtime_failure),
