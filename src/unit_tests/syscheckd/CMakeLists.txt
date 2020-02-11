@@ -48,7 +48,11 @@ list(APPEND syscheckd_tests_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,Is
                        -Wl,--wrap,openproc -Wl,--wrap,readproc -Wl,--wrap,freeproc -Wl,--wrap,closeproc -Wl,--wrap,_mdebug2 -Wl,--wrap,get_user -Wl,--wrap,get_group -Wl,--wrap,realpath")
 
 list(APPEND syscheckd_tests_names "test_seechanges")
-list(APPEND syscheckd_tests_flags " ")
+if(${TARGET} STREQUAL "agent")
+  list(APPEND syscheckd_tests_flags "-Wl,--wrap=getDefine_Int,--wrap=isChroot")
+else()
+  list(APPEND syscheckd_tests_flags " ")
+endif()
 
 list(APPEND syscheckd_tests_names "test_run_realtime")
 list(APPEND syscheckd_tests_flags "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watch -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Update_ex -Wl,--wrap,read \
@@ -104,7 +108,7 @@ foreach(counter RANGE ${count})
         ${WAZUHEXT}
         ${TEST_DEPS}
       )
-    endif() 
+    endif()
 
     if(NOT test_flags STREQUAL " ")
         target_link_libraries(
