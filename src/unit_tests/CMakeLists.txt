@@ -51,8 +51,8 @@ add_subdirectory(shared)
 
 # Config files
 if(${TARGET} STREQUAL "winagent")
-  configure_file("test_syscheck.conf" "syscheckd/test_syscheck.conf" NEWLINE_STYLE WIN32)
-  configure_file("test_syscheck.conf" "syscheckd/ossec.conf" NEWLINE_STYLE WIN32)
+  configure_file("test_syscheck_win.conf" "syscheckd/test_syscheck.conf" NEWLINE_STYLE WIN32)
+  configure_file("test_syscheck_win.conf" "syscheckd/ossec.conf" NEWLINE_STYLE WIN32)
   configure_file("test_internal_options.conf" "syscheckd/internal_options.conf" NEWLINE_STYLE WIN32)
 else()
   configure_file("test_syscheck.conf" "syscheckd/test_syscheck.conf" COPYONLY)

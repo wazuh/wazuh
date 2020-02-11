@@ -13,7 +13,7 @@ if(NOT WAZUHEXT)
 endif()
 
 # Add compiling flags
-add_compile_options(-ggdb -O0 -g -coverage -DTEST_WINAGENT)
+add_compile_options(-ggdb -O0 -g -coverage -DTEST_WINAGENT -DDEBUG)
 
 # Add syscheck objects
 file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/*.o)
