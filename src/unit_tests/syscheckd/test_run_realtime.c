@@ -98,6 +98,44 @@ int __wrap_W_Vector_insert_unique(W_Vector *v, const char *element) {
     return mock();
 }
 
+#ifdef TEST_AGENT
+char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
+
+int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, int max) {
+    int ret;
+    char *value;
+    char *pt;
+
+    /* Try to read from the local define file */
+    value = _read_file(high_name, low_name, "./internal_options.conf");
+    if (!value) {
+        merror_exit(DEF_NOT_FOUND, high_name, low_name);
+    }
+
+    pt = value;
+    while (*pt != '\0') {
+        if (!isdigit((int)*pt)) {
+            merror_exit(INV_DEF, high_name, low_name, value);
+        }
+        pt++;
+    }
+
+    ret = atoi(value);
+    if ((ret < min) || (ret > max)) {
+        merror_exit(INV_DEF, high_name, low_name, value);
+    }
+
+    /* Clear memory */
+    free(value);
+
+    return (ret);
+}
+
+int __wrap_isChroot() {
+    return 1;
+}
+#endif
+
 /* setup/teardown */
 static int setup_group(void **state) {
     Read_Syscheck_Config("test_syscheck.conf");

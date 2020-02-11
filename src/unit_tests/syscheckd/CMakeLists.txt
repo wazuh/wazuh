@@ -54,9 +54,17 @@ else()
   list(APPEND syscheckd_tests_flags " ")
 endif()
 
+set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watch -Wl,--wrap,OSHash_Get_ex \
+                             -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Update_ex -Wl,--wrap,read \
+                             -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Get -Wl,--wrap,rbtree_insert -Wl,--wrap,_merror \
+                             -Wl,--wrap,W_Vector_insert_unique")
+
 list(APPEND syscheckd_tests_names "test_run_realtime")
-list(APPEND syscheckd_tests_flags "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watch -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Update_ex -Wl,--wrap,read \
-                      -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Get -Wl,--wrap,rbtree_insert -Wl,--wrap,_merror -Wl,--wrap,W_Vector_insert_unique")
+if(${TARGET} STREQUAL "agent")
+  list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot")
+else()
+  list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS}")
+endif()
 
 list(APPEND syscheckd_tests_names "test_syscheck_config")
 list(APPEND syscheckd_tests_flags "-Wl,--wrap,_merror")
