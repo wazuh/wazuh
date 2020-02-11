@@ -18,6 +18,8 @@
 #include "../os_crypto/sha1/sha1_op.h"
 #include "../external/sqlite/sqlite3.h"
 
+void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp);
+
 /* setup/teardown */
 static int setup_wdb_t(void **state) {
     wdb_t *data = calloc(1, sizeof(wdb_t));
