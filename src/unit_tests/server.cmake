@@ -9,6 +9,6 @@ endif()
 add_compile_options(-ggdb -O0 -g -coverage -DTEST_SERVER)
 
 # Set tests dependencies
-set(TEST_DEPS -lcmocka -fprofile-arcs -ftest-coverage)
+set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lcmocka -fprofile-arcs -ftest-coverage)
 
-add_subdirectory(analysisd  ${WAZUHLIB} ${WAZUHEXT})
+add_subdirectory(analysisd)
