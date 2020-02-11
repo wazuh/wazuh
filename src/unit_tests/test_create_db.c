@@ -1601,6 +1601,23 @@ static void test_fim_directory(void **state) {
     assert_int_equal(ret, 0);
 }
 
+static void test_fim_directory_ignore(void **state) {
+    fim_data_t *fim_data = *state;
+    int ret;
+
+    strcpy(fim_data->entry->d_name, ".");
+
+    will_return(__wrap_opendir, 1);
+    will_return(__wrap_readdir, fim_data->entry);
+    will_return(__wrap_readdir, NULL);
+
+    fim_data->item->index = 1;
+
+    ret = fim_directory(".", fim_data->item, NULL, 1);
+
+    assert_int_equal(ret, 0);
+}
+
 static void test_fim_directory_nodir(void **state) {
     int ret;
 
@@ -1674,6 +1691,40 @@ static void test_fim_get_data(void **state) {
     assert_string_equal(fim_data->local_data->hash_sha256, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
 }
 
+static void test_fim_get_data_no_hashes(void **state) {
+    fim_data_t *fim_data = *state;
+    struct stat buf;
+
+    buf.st_mode = S_IFREG | 00444 ;
+    buf.st_size = 1000;
+    buf.st_uid = 0;
+    buf.st_gid = 0;
+    buf.st_ino = 1234;
+    buf.st_dev = 2345;
+    buf.st_mtime = 3456;
+
+    fim_data->item->index = 1;
+    fim_data->item->statbuf = buf;
+    fim_data->item->configuration = CHECK_SIZE |
+                                    CHECK_PERM |
+                                    CHECK_MTIME |
+                                    CHECK_OWNER |
+                                    CHECK_GROUP;
+
+    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, strdup("user"));
+
+    expect_value(__wrap_get_group, gid, 0);
+    will_return(__wrap_get_group, "group");
+
+    fim_data->local_data = fim_get_data("test", fim_data->item);
+
+    assert_string_equal(fim_data->local_data->perm, "r--r--r--");
+    assert_string_equal(fim_data->local_data->hash_md5, "");
+    assert_string_equal(fim_data->local_data->hash_sha1, "");
+    assert_string_equal(fim_data->local_data->hash_sha256, "");
+}
+
 static void test_fim_get_data_hash_error(void **state) {
     fim_data_t *fim_data = *state;
 
@@ -1734,6 +1785,14 @@ static void test_free_inode_data(void **state) {
     fim_inode_data *inode_data = calloc(1, sizeof(fim_inode_data));
     inode_data->items = 1;
     inode_data->paths = os_AddStrArray("test.file", inode_data->paths);
+
+    free_inode_data(&inode_data);
+
+    assert_null(inode_data);
+}
+
+static void test_free_inode_data_null(void **state) {
+    fim_inode_data *inode_data = NULL;
 
     free_inode_data(&inode_data);
 
@@ -1826,11 +1885,13 @@ int main(void) {
 
         /* fim_directory */
         cmocka_unit_test_setup_teardown(test_fim_directory, setup_struct_dirent, teardown_struct_dirent),
+        cmocka_unit_test_setup_teardown(test_fim_directory_ignore, setup_struct_dirent, teardown_struct_dirent),
         cmocka_unit_test(test_fim_directory_nodir),
         cmocka_unit_test(test_fim_directory_opendir_error),
 
         /* fim_get_data */
         cmocka_unit_test_teardown(test_fim_get_data, teardown_local_data),
+        cmocka_unit_test_teardown(test_fim_get_data_no_hashes, teardown_local_data),
         cmocka_unit_test(test_fim_get_data_hash_error),
 
         /* check_deleted_files */
@@ -1839,6 +1900,7 @@ int main(void) {
 
         /* free_inode */
         cmocka_unit_test(test_free_inode_data),
+        cmocka_unit_test(test_free_inode_data_null),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
