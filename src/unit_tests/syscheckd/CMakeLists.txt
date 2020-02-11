@@ -92,16 +92,12 @@ foreach(counter RANGE ${count})
     if(NOT ${TARGET} STREQUAL "winagent")
       target_link_libraries(
         ${test_name}
-        ${WAZUHLIB}
-        ${WAZUHEXT}
         SYSCHECK_O
         ${TEST_DEPS}
       )
     else()
       target_link_libraries(
         ${test_name}
-        ${WAZUHLIB}
-        ${WAZUHEXT}
         ${TEST_DEPS}
       )
     endif() 

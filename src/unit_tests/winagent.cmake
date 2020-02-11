@@ -49,7 +49,7 @@ list(APPEND obj_files ${os_execd_lib})
 file(GLOB win32_files ${SRC_FOLDER}/win32/win_service.o ${SRC_FOLDER}/win32/win_utils.o)
 list(APPEND obj_files ${win32_files})
 
-add_library(DEPENDENCIES_O SHARED ${obj_files})
+add_library(DEPENDENCIES_O STATIC ${obj_files})
 set_source_files_properties(
   ${obj_files}
   PROPERTIES
@@ -67,4 +67,5 @@ set_target_properties(
 target_link_libraries(DEPENDENCIES_O ${WAZUHLIB} ${WAZUHEXT} cmocka wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32)
 
 # Set tests dependencies
-set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} DEPENDENCIES_O cmocka wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 -fprofile-arcs -ftest-coverage)
+# Use --start-group and --end-group to handle circular dependencies
+set(TEST_DEPS -Wl,--start-group ${WAZUHLIB} ${WAZUHEXT} DEPENDENCIES_O -Wl,--end-group cmocka wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 -fprofile-arcs -ftest-coverage)

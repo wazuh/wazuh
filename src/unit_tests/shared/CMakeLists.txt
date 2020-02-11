@@ -39,8 +39,6 @@ foreach(counter RANGE ${count})
     else()
         target_link_libraries(
             ${test_name}
-            ${WAZUHLIB}
-            ${WAZUHEXT}
             ${TEST_DEPS}
         )
     endif()
