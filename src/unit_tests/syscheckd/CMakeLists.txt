@@ -86,8 +86,14 @@ list(APPEND syscheckd_tests_flags "-Wl,--wrap,fim_send_sync_msg -Wl,--wrap,time 
                        -Wl,--wrap,fim_db_data_checksum_range -Wl,--wrap,dbsync_state_msg \
                        -Wl,--wrap,fim_db_sync_path_range")
 
+set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,_minfo")
+
 list(APPEND syscheckd_tests_names "test_run_check")
-list(APPEND syscheckd_tests_flags "-Wl,--wrap,_minfo")
+if(${TARGET} STREQUAL "agent")
+  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot")
+else()
+  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS}")
+endif()
 
 list(APPEND syscheckd_tests_names "test_fim_db")
 list(APPEND syscheckd_tests_flags "-Wl,--wrap=w_is_file,--wrap=remove,--wrap=sqlite3_open_v2,--wrap=sqlite3_exec,--wrap=_merror \
