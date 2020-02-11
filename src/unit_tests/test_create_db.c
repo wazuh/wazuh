@@ -139,7 +139,7 @@ int __wrap_delete_target_file(const char *path) {
     return mock();
 }
 
-int __wrap_fim_db_insert_data(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) {
+int __wrap_fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) {
     check_expected_ptr(fim_sql);
     check_expected(file_path);
 
@@ -201,6 +201,7 @@ void __wrap_fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, void *arg) {
 }
 
 /* setup/teardowns */
+
 static int setup_group(void **state) {
     fim_data_t *fim_data = calloc(1, sizeof(fim_data_t));
 
@@ -311,6 +312,15 @@ static int teardown_delete_json(void **state) {
     return 0;
 }
 
+static int setup_fim_database(void **state) {
+    os_calloc(1, sizeof(fdb_t), syscheck.database);
+    return 0;
+}
+static int teardown_fim_database(void **state) {
+    os_free(syscheck.database);
+    return 0;
+}
+
 static int setup_fim_entry(void **state) {
     fim_data_t *fim_data = *state;
 
@@ -330,6 +340,7 @@ static int teardown_fim_entry(void **state) {
     fim_data_t *fim_data = *state;
 
     free_entry(fim_data->fentry);
+
     return 0;
 }
 
@@ -1051,6 +1062,224 @@ static void test_fim_audit_inode_event_realtime_modify(void **state) {
     fim_audit_inode_event(file, FIM_REALTIME, data->w_evt);
 }
 
+static void test_fim_file_add(void **state) {
+    fim_data_t *fim_data = *state;
+    int ret;
+    struct stat buf;
+
+    buf.st_mode = S_IFREG | 00444 ;
+    buf.st_size = 1000;
+    buf.st_uid = 0;
+    buf.st_gid = 0;
+    buf.st_ino = 1234;
+    buf.st_dev = 2345;
+    buf.st_mtime = 3456;
+
+    fim_data->item->index = 1;
+    fim_data->item->statbuf = buf;
+    fim_data->item->configuration = CHECK_SIZE |
+                                    CHECK_PERM  |
+                                    CHECK_OWNER |
+                                    CHECK_GROUP |
+                                    CHECK_MD5SUM |
+                                    CHECK_SHA1SUM |
+                                    CHECK_SHA256SUM;
+
+    // Inside fim_get_data
+    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, strdup("user"));
+
+    expect_value(__wrap_get_group, gid, 0);
+    will_return(__wrap_get_group, "group");
+
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, "file");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "/bin/ls");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    expect_value(__wrap_OS_MD5_SHA1_SHA256_File, mode, OS_BINARY);
+    expect_value(__wrap_OS_MD5_SHA1_SHA256_File, max_size, 0x400);
+    will_return(__wrap_OS_MD5_SHA1_SHA256_File, 0);
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "file");
+    will_return(__wrap_fim_db_get_path, NULL);
+
+    expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_insert, file_path, "file");
+    will_return(__wrap_fim_db_insert, 0);
+
+    expect_value(__wrap_fim_db_set_scanned, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_set_scanned, path, "file");
+    will_return(__wrap_fim_db_set_scanned, 0);
+
+    ret = fim_file("file", fim_data->item, NULL, 1);
+
+    assert_int_equal(ret, 0);
+}
+
+
+static void test_fim_file_modify(void **state) {
+    fim_data_t *fim_data = *state;
+    int ret;
+
+    fim_data->item->index = 1;
+    fim_data->item->configuration = CHECK_SIZE |
+                                    CHECK_PERM  |
+                                    CHECK_OWNER |
+                                    CHECK_GROUP |
+                                    CHECK_MD5SUM |
+                                    CHECK_SHA1SUM |
+                                    CHECK_SHA256SUM;
+
+    fim_data->fentry->path = strdup("file");
+    fim_data->fentry->data = fim_data->local_data;
+
+    fim_data->local_data->size = 1500;
+    fim_data->local_data->perm = strdup("0664");
+    fim_data->local_data->attributes = strdup("r--r--r--");
+    fim_data->local_data->uid = strdup("100");
+    fim_data->local_data->gid = strdup("1000");
+    fim_data->local_data->user_name = strdup("test");
+    fim_data->local_data->group_name = strdup("testing");
+    fim_data->local_data->mtime = 1570184223;
+    fim_data->local_data->inode = 606060;
+    strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
+    strcpy(fim_data->local_data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
+    fim_data->local_data->mode = FIM_REALTIME;
+    fim_data->local_data->last_event = 1570184220;
+    fim_data->local_data->entry_type = FIM_TYPE_FILE;
+    fim_data->local_data->dev = 12345678;
+    fim_data->local_data->scanned = 123456;
+    fim_data->local_data->options = 511;
+    strcpy(fim_data->local_data->checksum, "");
+
+    // Inside fim_get_data
+    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, strdup("user"));
+
+    expect_value(__wrap_get_group, gid, 0);
+    will_return(__wrap_get_group, "group");
+
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, "file");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "/bin/ls");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    expect_value(__wrap_OS_MD5_SHA1_SHA256_File, mode, OS_BINARY);
+    expect_value(__wrap_OS_MD5_SHA1_SHA256_File, max_size, 0x400);
+    will_return(__wrap_OS_MD5_SHA1_SHA256_File, 0);
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "file");
+    will_return(__wrap_fim_db_get_path, fim_data->fentry);
+
+    expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_insert, file_path, "file");
+    will_return(__wrap_fim_db_insert, 0);
+
+    expect_value(__wrap_fim_db_set_scanned, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_set_scanned, path, "file");
+    will_return(__wrap_fim_db_set_scanned, 0);
+
+    ret = fim_file("file", fim_data->item, NULL, 1);
+
+    assert_int_equal(ret, 0);
+}
+
+static void test_fim_file_no_attributes(void **state) {
+    fim_data_t *fim_data = *state;
+    int ret;
+
+    fim_data->item->index = 1;
+
+    // Inside fim_get_data
+    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, strdup("user"));
+
+    expect_value(__wrap_get_group, gid, 0);
+    will_return(__wrap_get_group, "group");
+
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, "file");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "/bin/ls");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    expect_value(__wrap_OS_MD5_SHA1_SHA256_File, mode, OS_BINARY);
+    expect_value(__wrap_OS_MD5_SHA1_SHA256_File, max_size, 0x400);
+    will_return(__wrap_OS_MD5_SHA1_SHA256_File, -1);
+
+    ret = fim_file("file", fim_data->item, NULL, 1);
+
+    assert_int_equal(ret, 0);
+}
+
+static void test_fim_file_error_on_insert(void **state) {
+    fim_data_t *fim_data = *state;
+    int ret;
+
+    fim_data->item->index = 1;
+    fim_data->item->configuration = CHECK_SIZE |
+                                    CHECK_PERM  |
+                                    CHECK_OWNER |
+                                    CHECK_GROUP |
+                                    CHECK_MD5SUM |
+                                    CHECK_SHA1SUM |
+                                    CHECK_SHA256SUM;
+
+    fim_data->fentry->path = strdup("file");
+    fim_data->fentry->data = fim_data->local_data;
+
+    fim_data->local_data->size = 1500;
+    fim_data->local_data->perm = strdup("0664");
+    fim_data->local_data->attributes = strdup("r--r--r--");
+    fim_data->local_data->uid = strdup("100");
+    fim_data->local_data->gid = strdup("1000");
+    fim_data->local_data->user_name = strdup("test");
+    fim_data->local_data->group_name = strdup("testing");
+    fim_data->local_data->mtime = 1570184223;
+    fim_data->local_data->inode = 606060;
+    strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
+    strcpy(fim_data->local_data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
+    fim_data->local_data->mode = FIM_REALTIME;
+    fim_data->local_data->last_event = 1570184220;
+    fim_data->local_data->entry_type = FIM_TYPE_FILE;
+    fim_data->local_data->dev = 12345678;
+    fim_data->local_data->scanned = 123456;
+    fim_data->local_data->options = 511;
+    strcpy(fim_data->local_data->checksum, "");
+
+    // Inside fim_get_data
+    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, strdup("user"));
+
+    expect_value(__wrap_get_group, gid, 0);
+    will_return(__wrap_get_group, "group");
+
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, "file");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "/bin/ls");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    expect_value(__wrap_OS_MD5_SHA1_SHA256_File, mode, OS_BINARY);
+    expect_value(__wrap_OS_MD5_SHA1_SHA256_File, max_size, 0x400);
+    will_return(__wrap_OS_MD5_SHA1_SHA256_File, 0);
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "file");
+    will_return(__wrap_fim_db_get_path, fim_data->fentry);
+
+    expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_insert, file_path, "file");
+    will_return(__wrap_fim_db_insert, -1);
+
+    ret = fim_file("file", fim_data->item, NULL, 1);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
 static void test_fim_checker_scheduled_configuration_directory_error(void **state) {
     fim_data_t *fim_data = *state;
 
@@ -1234,9 +1463,9 @@ static void test_fim_checker_fim_regular(void **state) {
     expect_string(__wrap_fim_db_get_path, file_path, "/media/test.file");
     will_return(__wrap_fim_db_get_path, NULL);
 
-    expect_value(__wrap_fim_db_insert_data, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_insert_data, file_path, "/media/test.file");
-    will_return(__wrap_fim_db_insert_data, 0);
+    expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_insert, file_path, "/media/test.file");
+    will_return(__wrap_fim_db_insert, 0);
 
     expect_value(__wrap_fim_db_set_scanned, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_set_scanned, path, "/media/test.file");
@@ -1501,225 +1730,6 @@ static void test_check_deleted_files_error(void **state) {
     check_deleted_files();
 }
 
-
-static void test_fim_file_add(void **state) {
-    fim_data_t *fim_data = *state;
-    int ret;
-    struct stat buf;
-
-    buf.st_mode = S_IFREG | 00444 ;
-    buf.st_size = 1000;
-    buf.st_uid = 0;
-    buf.st_gid = 0;
-    buf.st_ino = 1234;
-    buf.st_dev = 2345;
-    buf.st_mtime = 3456;
-
-    fim_data->item->index = 1;
-    fim_data->item->statbuf = buf;
-    fim_data->item->configuration = CHECK_SIZE |
-                                    CHECK_PERM  |
-                                    CHECK_OWNER |
-                                    CHECK_GROUP |
-                                    CHECK_MD5SUM |
-                                    CHECK_SHA1SUM |
-                                    CHECK_SHA256SUM;
-
-    // Inside fim_get_data
-    expect_value(__wrap_get_user, uid, 0);
-    will_return(__wrap_get_user, strdup("user"));
-
-    expect_value(__wrap_get_group, gid, 0);
-    will_return(__wrap_get_group, "group");
-
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, "file");
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "/bin/ls");
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
-    expect_value(__wrap_OS_MD5_SHA1_SHA256_File, mode, OS_BINARY);
-    expect_value(__wrap_OS_MD5_SHA1_SHA256_File, max_size, 0x400);
-    will_return(__wrap_OS_MD5_SHA1_SHA256_File, 0);
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "file");
-    will_return(__wrap_fim_db_get_path, NULL);
-
-    expect_value(__wrap_fim_db_insert_data, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_insert_data, file_path, "file");
-    will_return(__wrap_fim_db_insert_data, 0);
-
-    expect_value(__wrap_fim_db_set_scanned, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_set_scanned, path, "file");
-    will_return(__wrap_fim_db_set_scanned, 0);
-
-    ret = fim_file("file", fim_data->item, NULL, 1);
-
-    assert_int_equal(ret, 0);
-}
-
-
-static void test_fim_file_modify(void **state) {
-    fim_data_t *fim_data = *state;
-    int ret;
-
-    fim_data->item->index = 1;
-    fim_data->item->configuration = CHECK_SIZE |
-                                    CHECK_PERM  |
-                                    CHECK_OWNER |
-                                    CHECK_GROUP |
-                                    CHECK_MD5SUM |
-                                    CHECK_SHA1SUM |
-                                    CHECK_SHA256SUM;
-
-    fim_data->fentry->path = strdup("file");
-    fim_data->fentry->data = fim_data->local_data;
-
-    fim_data->local_data->size = 1500;
-    fim_data->local_data->perm = strdup("0664");
-    fim_data->local_data->attributes = strdup("r--r--r--");
-    fim_data->local_data->uid = strdup("100");
-    fim_data->local_data->gid = strdup("1000");
-    fim_data->local_data->user_name = strdup("test");
-    fim_data->local_data->group_name = strdup("testing");
-    fim_data->local_data->mtime = 1570184223;
-    fim_data->local_data->inode = 606060;
-    strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
-    strcpy(fim_data->local_data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-    strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
-    fim_data->local_data->mode = FIM_REALTIME;
-    fim_data->local_data->last_event = 1570184220;
-    fim_data->local_data->entry_type = FIM_TYPE_FILE;
-    fim_data->local_data->dev = 12345678;
-    fim_data->local_data->scanned = 123456;
-    fim_data->local_data->options = 511;
-    strcpy(fim_data->local_data->checksum, "");
-
-    // Inside fim_get_data
-    expect_value(__wrap_get_user, uid, 0);
-    will_return(__wrap_get_user, strdup("user"));
-
-    expect_value(__wrap_get_group, gid, 0);
-    will_return(__wrap_get_group, "group");
-
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, "file");
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "/bin/ls");
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
-    expect_value(__wrap_OS_MD5_SHA1_SHA256_File, mode, OS_BINARY);
-    expect_value(__wrap_OS_MD5_SHA1_SHA256_File, max_size, 0x400);
-    will_return(__wrap_OS_MD5_SHA1_SHA256_File, 0);
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "file");
-    will_return(__wrap_fim_db_get_path, fim_data->fentry);
-
-    expect_value(__wrap_fim_db_insert_data, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_insert_data, file_path, "file");
-    will_return(__wrap_fim_db_insert_data, 0);
-
-    expect_value(__wrap_fim_db_set_scanned, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_set_scanned, path, "file");
-    will_return(__wrap_fim_db_set_scanned, 0);
-
-    ret = fim_file("file", fim_data->item, NULL, 1);
-
-    assert_int_equal(ret, 0);
-}
-
-static void test_fim_file_no_attributes(void **state) {
-    fim_data_t *fim_data = *state;
-    int ret;
-
-    fim_data->item->index = 1;
-
-    // Inside fim_get_data
-    expect_value(__wrap_get_user, uid, 0);
-    will_return(__wrap_get_user, strdup("user"));
-
-    expect_value(__wrap_get_group, gid, 0);
-    will_return(__wrap_get_group, "group");
-
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, "file");
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "/bin/ls");
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
-    expect_value(__wrap_OS_MD5_SHA1_SHA256_File, mode, OS_BINARY);
-    expect_value(__wrap_OS_MD5_SHA1_SHA256_File, max_size, 0x400);
-    will_return(__wrap_OS_MD5_SHA1_SHA256_File, -1);
-
-    ret = fim_file("file", fim_data->item, NULL, 1);
-
-    assert_int_equal(ret, 0);
-}
-
-static void test_fim_file_error_on_insert(void **state) {
-    fim_data_t *fim_data = *state;
-    int ret;
-
-    fim_data->item->index = 1;
-    fim_data->item->configuration = CHECK_SIZE |
-                                    CHECK_PERM  |
-                                    CHECK_OWNER |
-                                    CHECK_GROUP |
-                                    CHECK_MD5SUM |
-                                    CHECK_SHA1SUM |
-                                    CHECK_SHA256SUM;
-
-    fim_data->fentry->path = strdup("file");
-    fim_data->fentry->data = fim_data->local_data;
-
-    fim_data->local_data->size = 1500;
-    fim_data->local_data->perm = strdup("0664");
-    fim_data->local_data->attributes = strdup("r--r--r--");
-    fim_data->local_data->uid = strdup("100");
-    fim_data->local_data->gid = strdup("1000");
-    fim_data->local_data->user_name = strdup("test");
-    fim_data->local_data->group_name = strdup("testing");
-    fim_data->local_data->mtime = 1570184223;
-    fim_data->local_data->inode = 606060;
-    strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
-    strcpy(fim_data->local_data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-    strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
-    fim_data->local_data->mode = FIM_REALTIME;
-    fim_data->local_data->last_event = 1570184220;
-    fim_data->local_data->entry_type = FIM_TYPE_FILE;
-    fim_data->local_data->dev = 12345678;
-    fim_data->local_data->scanned = 123456;
-    fim_data->local_data->options = 511;
-    strcpy(fim_data->local_data->checksum, "");
-
-    // Inside fim_get_data
-    expect_value(__wrap_get_user, uid, 0);
-    will_return(__wrap_get_user, strdup("user"));
-
-    expect_value(__wrap_get_group, gid, 0);
-    will_return(__wrap_get_group, "group");
-
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, "file");
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "/bin/ls");
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
-    expect_value(__wrap_OS_MD5_SHA1_SHA256_File, mode, OS_BINARY);
-    expect_value(__wrap_OS_MD5_SHA1_SHA256_File, max_size, 0x400);
-    will_return(__wrap_OS_MD5_SHA1_SHA256_File, 0);
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "file");
-    will_return(__wrap_fim_db_get_path, fim_data->fentry);
-
-    expect_value(__wrap_fim_db_insert_data, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_insert_data, file_path, "file");
-    will_return(__wrap_fim_db_insert_data, -1);
-
-    ret = fim_file("file", fim_data->item, NULL, 1);
-
-    assert_int_equal(ret, OS_INVALID);
-}
-
 static void test_free_inode_data(void **state) {
     fim_inode_data *inode_data = calloc(1, sizeof(fim_inode_data));
     inode_data->items = 1;
@@ -1792,7 +1802,14 @@ int main(void) {
         cmocka_unit_test_setup(test_fim_audit_inode_event_realtime_add_empty_paths, setup_fim_entry),
         cmocka_unit_test_setup_teardown(test_fim_audit_inode_event_realtime_modify, setup_inode_data, teardown_inode_data),
 
+        /* fim_scan */
         cmocka_unit_test(test_fim_scan),
+
+        /* fim_file */
+        cmocka_unit_test(test_fim_file_add),
+        cmocka_unit_test_setup(test_fim_file_modify, setup_fim_entry),
+        cmocka_unit_test(test_fim_file_no_attributes),
+        cmocka_unit_test_setup(test_fim_file_error_on_insert, setup_fim_entry),
 
         /* fim_checker */
         cmocka_unit_test(test_fim_checker_scheduled_configuration_directory_error),
@@ -1819,12 +1836,6 @@ int main(void) {
         /* check_deleted_files */
         cmocka_unit_test(test_check_deleted_files),
         cmocka_unit_test(test_check_deleted_files_error),
-
-        /* fim_file */
-        cmocka_unit_test(test_fim_file_add),
-        cmocka_unit_test_setup(test_fim_file_modify, setup_fim_entry),
-        cmocka_unit_test(test_fim_file_no_attributes),
-        cmocka_unit_test_setup(test_fim_file_error_on_insert, setup_fim_entry),
 
         /* free_inode */
         cmocka_unit_test(test_free_inode_data),
