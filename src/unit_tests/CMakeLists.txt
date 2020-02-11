@@ -133,6 +133,8 @@ list(APPEND tests_flags "-Wl,--wrap,_merror -Wl,--wrap,OS_ConnectUnixDomain -Wl,
 
 # Config files
 configure_file("test_syscheck.conf" "test_syscheck.conf" COPYONLY)
+configure_file("test_syscheck2.conf" "test_syscheck2.conf" COPYONLY)
+configure_file("test_empty_config.conf" "test_empty_config.conf" COPYONLY)
 
 
 # Generate syscheck library
