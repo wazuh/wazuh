@@ -66,8 +66,14 @@ else()
   list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS}")
 endif()
 
+set(SYSCHECK_CONFIG_BASE_FLAGS "-Wl,--wrap,_merror")
+
 list(APPEND syscheckd_tests_names "test_syscheck_config")
-list(APPEND syscheckd_tests_flags "-Wl,--wrap,_merror")
+if(${TARGET} STREQUAL "agent")
+  list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot")
+else()
+  list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS}")
+endif()
 
 list(APPEND syscheckd_tests_names "test_syscheck")
 list(APPEND syscheckd_tests_flags "-Wl,--wrap,_mwarn -Wl,--wrap,fim_db_init")
