@@ -263,80 +263,77 @@ void test_realtime_start_failure_hash(void **state) {
         assert_int_equal(ret, 1);
     }
 
-#endif
+    void test_realtime_adddir_realtime_failure(void **state)
+    {
+        (void) state;
+        int ret;
+
+        const char * path = "/etc/folder";
+
+        syscheck.realtime->fd = -1;
+        
+        ret = realtime_adddir(path, 0);
+
+        assert_int_equal(ret, -1);
+    }
 
 
-void test_realtime_adddir_realtime_failure(void **state)
-{
-    (void) state;
-    int ret;
+    void test_realtime_adddir_realtime_add(void **state)
+    {
+        (void) state;
+        int ret;
 
-    const char * path = "/etc/folder";
+        const char * path = "/etc/folder";
 
-    syscheck.realtime->fd = -1;
-    
-    ret = realtime_adddir(path, 0);
+        syscheck.realtime->fd = 1;
+        will_return(__wrap_inotify_add_watch, 1);
+        will_return(__wrap_OSHash_Get_ex, 0);
+        will_return(__wrap_OSHash_Add_ex, 1);
 
-    assert_int_equal(ret, -1);
-}
+        ret = realtime_adddir(path, 0);
 
-
-void test_realtime_adddir_realtime_add(void **state)
-{
-    (void) state;
-    int ret;
-
-    const char * path = "/etc/folder";
-
-    syscheck.realtime->fd = 1;
-    will_return(__wrap_inotify_add_watch, 1);
-    will_return(__wrap_OSHash_Get_ex, 0);
-    will_return(__wrap_OSHash_Add_ex, 1);
-
-    ret = realtime_adddir(path, 0);
-
-    assert_int_equal(ret, 1);
-}
+        assert_int_equal(ret, 1);
+    }
 
 
-void test_realtime_adddir_realtime_update(void **state)
-{
-    (void) state;
-    int ret;
+    void test_realtime_adddir_realtime_update(void **state)
+    {
+        (void) state;
+        int ret;
 
-    const char * path = "/etc/folder";
+        const char * path = "/etc/folder";
 
-    syscheck.realtime->fd = 1;
-    will_return(__wrap_inotify_add_watch, 1);
-    will_return(__wrap_OSHash_Get_ex, 1);
-    will_return(__wrap_OSHash_Update_ex, 1);
+        syscheck.realtime->fd = 1;
+        will_return(__wrap_inotify_add_watch, 1);
+        will_return(__wrap_OSHash_Get_ex, 1);
+        will_return(__wrap_OSHash_Update_ex, 1);
 
-    ret = realtime_adddir(path, 0);
+        ret = realtime_adddir(path, 0);
 
-    assert_int_equal(ret, 1);
-}
+        assert_int_equal(ret, 1);
+    }
 
 
-void test_realtime_adddir_realtime_update_failure(void **state)
-{
-    (void) state;
-    int ret;
+    void test_realtime_adddir_realtime_update_failure(void **state)
+    {
+        (void) state;
+        int ret;
 
-    const char * path = "/etc/folder";
+        const char * path = "/etc/folder";
 
-    syscheck.realtime->fd = 1;
-    will_return(__wrap_inotify_add_watch, 1);
-    will_return(__wrap_OSHash_Get_ex, 1);
-    will_return(__wrap_OSHash_Update_ex, 0);
+        syscheck.realtime->fd = 1;
+        will_return(__wrap_inotify_add_watch, 1);
+        will_return(__wrap_OSHash_Get_ex, 1);
+        will_return(__wrap_OSHash_Update_ex, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "Unable to update 'dirtb'. Directory not found: '/etc/folder'");
+        expect_string(__wrap__merror, formatted_msg, "Unable to update 'dirtb'. Directory not found: '/etc/folder'");
 
-    ret = realtime_adddir(path, 0);
+        ret = realtime_adddir(path, 0);
 
-    assert_int_equal(ret, -1);
-}
+        assert_int_equal(ret, -1);
+    }
 
-#if defined(TEST_SERVER) || defined(TEST_AGENT)
+
     void test_free_syscheck_dirtb_data(void **state)
     {
         (void) state;
@@ -405,12 +402,10 @@ int main(void) {
         #if defined(TEST_SERVER) || defined(TEST_AGENT)
             cmocka_unit_test_setup_teardown(test_realtime_start_failure_inotify, setup_realtime_start, teardown_realtime_start),
             cmocka_unit_test_setup_teardown(test_realtime_adddir_whodata, setup_w_vector, teardown_w_vector),
-        #endif
-        cmocka_unit_test(test_realtime_adddir_realtime_failure),
-        cmocka_unit_test(test_realtime_adddir_realtime_add),
-        cmocka_unit_test(test_realtime_adddir_realtime_update),
-        cmocka_unit_test(test_realtime_adddir_realtime_update_failure),
-        #if defined(TEST_SERVER) || defined(TEST_AGENT)
+            cmocka_unit_test(test_realtime_adddir_realtime_failure),
+            cmocka_unit_test(test_realtime_adddir_realtime_add),
+            cmocka_unit_test(test_realtime_adddir_realtime_update),
+            cmocka_unit_test(test_realtime_adddir_realtime_update_failure),    
             cmocka_unit_test(test_free_syscheck_dirtb_data),
             cmocka_unit_test(test_free_syscheck_dirtb_data_null),
             cmocka_unit_test(test_realtime_process),
