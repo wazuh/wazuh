@@ -185,9 +185,8 @@ int fim_db_sync_path_range(fdb_t *fim_sql, pthread_mutex_t *mutex,
  * @brief Callback function: Entry checksum calculation.
  *
  */
-void fim_db_callback_calculate_checksum(__attribute__((unused)) fdb_t *fim_sql,
-                                        fim_entry *entry, int pos, int storage,
-                                        void *arg);
+void fim_db_callback_calculate_checksum( fdb_t *fim_sql, fim_entry *entry, int storage,
+                                         void *arg);
 
 /**
  * @brief Calculate checksum of data entries between @start and @top.
@@ -214,15 +213,6 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 int fim_db_get_count_range(fdb_t *fim_sql, char *start, char *top, int *counter);
-
-/**
- * @brief Count the number of not scanned paths.
- *
- * @param count Pointer which will hold the final count.
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_count_not_scanned(fdb_t *fim_sql, int *count);
 
 /**
  * @brief Delete entry using file path.
@@ -281,8 +271,7 @@ int fim_db_get_not_scanned(fdb_t * fim_sql,fim_tmp_file **file, int storage);
  * @param pos     If memory is 1, pos indicates the position in the array.
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-void fim_db_callback_save_path(fdb_t *fim_sql, fim_entry *entry, int pos,
-    int storage, void *arg);
+void fim_db_callback_save_path(fdb_t *fim_sql, fim_entry *entry, int storage, void *arg);
 
 /**
  * @brief Callback function to send a sync message for a sole entry.

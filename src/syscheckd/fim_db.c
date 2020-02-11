@@ -39,7 +39,6 @@ static const char *SQL_STMT[] = {
     [FIMDB_STMT_GET_PATHS_INODE] = "SELECT path FROM entry_path INNER JOIN entry_data ON entry_data.rowid=entry_path.inode_id WHERE entry_data.inode=? AND entry_data.dev=?;",
     [FIMDB_STMT_GET_PATHS_INODE_COUNT] = "SELECT count(*) FROM entry_path INNER JOIN entry_data ON entry_data.rowid=entry_path.inode_id WHERE entry_data.inode=? AND entry_data.dev=?;",
     [FIMDB_STMT_SET_SCANNED] = "UPDATE entry_path SET scanned = 1 WHERE path = ?;",
-    [FIMDB_STMT_COUNT_NOT_SCANNED] = "SELECT count(*) FROM entry_path WHERE scanned = 0;",
 };
 
 
@@ -73,7 +72,7 @@ static int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query);
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 static int fim_db_process_get_query(fdb_t *fim_sql, int index,
-                                    void (*callback)(fdb_t *, fim_entry *, int, int, void *),
+                                    void (*callback)(fdb_t *, fim_entry *, int, void *),
                                     int memory, void * arg);
 
 
@@ -191,11 +190,10 @@ static int fim_db_create_file(const char *path, const char *source, const int st
 
 /**
  * @brief Create a new temporal storage to save all the files' paths.
- * @param storage 1 Store database in memory, disk otherwise.
  * @param size Number of paths(Only if memory is 1)
  * @return New file structure.
  */
-static fim_tmp_file *fim_db_create_temp_file(int storage, int size);
+static fim_tmp_file *fim_db_create_temp_file(int storage);
 
 
 /**
@@ -340,7 +338,7 @@ int fim_db_create_file(const char *path, const char *source, const int storage, 
 }
 
 
-fim_tmp_file *fim_db_create_temp_file(int storage, int size) {
+fim_tmp_file *fim_db_create_temp_file(int storage) {
     fim_tmp_file *file;
     os_calloc(1, sizeof(fim_tmp_file), file);
 
@@ -359,12 +357,8 @@ fim_tmp_file *fim_db_create_temp_file(int storage, int size) {
             return NULL;
         }
     } else {
-        if (size) {
-            os_calloc(size, sizeof(char *), file->all_path);
-        }
+            file->list = W_Vector_init(100);
     }
-
-    file->elements = size;
 
     return file;
 }
@@ -426,16 +420,7 @@ int fim_db_clean_stmt(fdb_t *fim_sql, int index) {
 //wrappers
 
 int fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file, int storage) {
-    int count = 0;
-    if (fim_db_get_count_range(fim_sql, start, top, &count) != FIMDB_OK) {
-        return FIMDB_ERR;
-    }
-
-    if (count == 0) { //Empty range, nothing to do.
-        return FIMDB_OK;
-    }
-
-    if ((*file = fim_db_create_temp_file(storage, count)) == NULL) {
+    if ((*file = fim_db_create_temp_file(storage)) == NULL) {
         return FIMDB_ERR;
     }
 
@@ -446,16 +431,7 @@ int fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file *
 }
 
 int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
-    int count = 0;
-    if (fim_db_count_not_scanned(fim_sql, &count) != FIMDB_OK) {
-        return FIMDB_ERR;
-    }
-
-    if (count == 0) { //Empty range, nothing to do.
-        return FIMDB_OK;
-    }
-
-    if ((*file = fim_db_create_temp_file(storage, count)) == NULL) {
+    if ((*file = fim_db_create_temp_file(storage)) == NULL) {
         return FIMDB_ERR;
     }
 
@@ -467,12 +443,12 @@ int fim_db_get_data_checksum(fdb_t *fim_sql, void * arg) {
     return fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_ALL_ENTRIES, fim_db_callback_calculate_checksum, 0, arg);
 }
 
-int fim_db_process_get_query(fdb_t *fim_sql, int index, void (*callback)(fdb_t *, fim_entry *, int , int, void *), int storage, void * arg) {
+int fim_db_process_get_query(fdb_t *fim_sql, int index, void (*callback)(fdb_t *, fim_entry *, int , void *), int storage, void * arg) {
     int result;
     int i;
     for (i = 0; result = sqlite3_step(fim_sql->stmt[index]), result == SQLITE_ROW; i++) {
         fim_entry *entry = fim_db_decode_full_row(fim_sql->stmt[index]);
-        callback(fim_sql, entry, i, storage, arg);
+        callback(fim_sql, entry, storage, arg);
         free_entry(entry);
     }
 
@@ -524,7 +500,7 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
     }
 
     do {
-        path = NULL;
+
         if (storage == FIM_DB_DISK) {
             /* fgets() adds \n(newline) to the end of the string,
              So it must be removed. */
@@ -533,7 +509,7 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
                 path = wstr_unescape_json(line);
             }
         } else {
-            path = file->all_path[i];
+            path = (char *)W_Vector_get(file->list, i);
         }
 
         if (path) {
@@ -555,7 +531,8 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
         os_free(file->path);
         os_free(line);
     } else {
-        os_free(file->all_path);
+        os_free(file->list->vector);
+        os_free(file->list);
     }
 
     os_free(file);
@@ -760,19 +737,6 @@ int fim_db_get_count_range(fdb_t *fim_sql, char *start, char *top, int *count) {
     return FIMDB_OK;
 }
 
-int fim_db_count_not_scanned(fdb_t *fim_sql, int *count) {
-    // Clean and bind statements
-    fim_db_clean_stmt(fim_sql, FIMDB_STMT_COUNT_NOT_SCANNED);
-
-    if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_COUNT_NOT_SCANNED]) != SQLITE_ROW) {
-        merror("SQL ERROR: %s", sqlite3_errmsg(fim_sql->db));
-        return FIMDB_ERR;
-    }
-
-    *count = sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_COUNT_NOT_SCANNED], 0);
-    return FIMDB_OK;
-}
-
 int fim_db_insert_data(fdb_t *fim_sql, fim_entry_data *entry, int *row_id) {
     int res;
 
@@ -868,7 +832,6 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) 
 }
 
 void fim_db_callback_calculate_checksum(__attribute__((unused)) fdb_t *fim_sql, fim_entry *entry,
-    __attribute__((unused)) __attribute__((unused)) int pos,
     __attribute__((unused))int storage, void *arg) {
 
     EVP_MD_CTX *ctx = (EVP_MD_CTX *)arg;
@@ -913,7 +876,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
             os_strdup(entry->path, str_pathlh);
         }
         //Type of storage not required
-        fim_db_callback_calculate_checksum(fim_sql, entry, 0, FIM_DB_DISK, (void *)ctx_left);
+        fim_db_callback_calculate_checksum(fim_sql, entry, FIM_DB_DISK, (void *)ctx_left);
         free_entry(entry);
     }
 
@@ -929,7 +892,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
             os_strdup(entry->path, str_pathuh);
         }
         //Type of storage not required
-        fim_db_callback_calculate_checksum(fim_sql, entry, 0, FIM_DB_DISK, (void *)ctx_right);
+        fim_db_callback_calculate_checksum(fim_sql, entry, FIM_DB_DISK, (void *)ctx_right);
         free_entry(entry);
     }
 
@@ -1084,7 +1047,7 @@ int fim_db_set_scanned(fdb_t *fim_sql, char *path) {
     return FIMDB_OK;
 }
 
-void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry *entry, int pos, int storage, void *arg) {
+void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry *entry, int storage, void *arg) {
     char *base = wstr_escape_json(entry->path);
     if (base == NULL) {
         merror("Error escaping '%s'", entry->path);
@@ -1100,9 +1063,10 @@ void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry
         fflush(((fim_tmp_file *) arg)->fd);
 
     } else { // memory storage enabled
-        sqlite_strdup(entry->path, ((fim_tmp_file *) arg)->all_path[pos]);
-        os_free(entry->path);
+        W_Vector_insert(((fim_tmp_file *) arg)->list, base);
     }
+
+    ((fim_tmp_file *) arg)->elements++;
 
     end:
         os_free(base);

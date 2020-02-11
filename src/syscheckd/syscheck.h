@@ -56,7 +56,7 @@ typedef struct fim_element {
 typedef struct fim_tmp_file {
     union { //type_storage
         FILE *fd;
-        char **all_path;
+        W_Vector *list;
     };
     char *path;
     int elements;
