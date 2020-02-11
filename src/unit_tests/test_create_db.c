@@ -129,8 +129,9 @@ int __wrap_lstat(const char *path, struct stat *buf) {
     return mock();
 }
 
-int __wrap_fim_send_scan_info() {
-    return 1;
+void __wrap_fim_send_scan_info(fim_scan_event event) {
+    check_expected(event);
+    return;
 }
 
 int __wrap_send_syscheck_msg() {
@@ -159,14 +160,10 @@ int __wrap_closedir() {
 
 int __wrap_realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
 {
-    check_expected(dir);
-
-    return 0;
+    return mock();
 }
 
 bool __wrap_HasFilesystem(__attribute__((unused))const char * path, __attribute__((unused))fs_set set) {
-    check_expected(path);
-
     return mock();
 }
 
@@ -1175,8 +1172,6 @@ void test_fim_checker_file(void **state)
     fim_data->item->index = 3;
     fim_data->item->statbuf = buf;
     will_return(__wrap_lstat, 0);
-
-    expect_string(__wrap_HasFilesystem, path, "/media/test.file");
     will_return(__wrap_HasFilesystem, 0);
 
     expect_value(__wrap_rbtree_get, tree, syscheck.fim_entry);
@@ -1206,13 +1201,8 @@ void test_fim_checker_directory(void **state)
     fim_data->item->index = 3;
     fim_data->item->statbuf = buf;
     will_return_always(__wrap_lstat, 0);
-
-    expect_string(__wrap_HasFilesystem, path, "/media/");
-    expect_string(__wrap_HasFilesystem, path, "/media/test");
     will_return_always(__wrap_HasFilesystem, 0);
-
-    expect_string(__wrap_realtime_adddir, dir, "/media/");
-    expect_string(__wrap_realtime_adddir, dir, "/media/test");
+    will_return_always(__wrap_realtime_adddir, 0);
 
     strcpy(fim_data->entry->d_name, "test");
 
@@ -1238,8 +1228,6 @@ void test_fim_checker_link(void **state)
     fim_data->item->mode = 1;
 
     will_return(__wrap_lstat, 0);
-
-    expect_string(__wrap_HasFilesystem, path, "/media/test.file");
     will_return(__wrap_HasFilesystem, 0);
 
     expect_value(__wrap_rbtree_get, tree, syscheck.fim_entry);
@@ -1306,14 +1294,22 @@ void test_fim_scan(void **state)
     char ** keys = NULL;
     keys = os_AddStrArray("test", keys);
 
-    // In fim_checker
-    will_return_count(__wrap_lstat, 0, 6);
-    will_return_count(__wrap_OSHash_Get_ex, NULL, 6);
-    will_return_count(__wrap_rbtree_get, NULL, 6);
-    will_return(__wrap_rbtree_keys, keys);
-    // In check_deleted_files
-    will_return(__wrap_rbtree_keys, keys);
-    will_return(__wrap_rbtree_get, NULL);
+    expect_string(__wrap__minfo, formatted_msg, "(6008): File integrity monitoring scan started.");
+    expect_value(__wrap_fim_send_scan_info, event, FIM_SCAN_START);
+    will_return_always(__wrap_realtime_adddir, 0);
+
+    // Inside fim_checker()
+    will_return_always(__wrap_lstat, 0);
+    will_return_always(__wrap_HasFilesystem, 0);
+    will_return_maybe(__wrap_OSHash_Get_ex, NULL);
+    expect_value(__wrap_rbtree_get, tree, syscheck.fim_entry);
+    expect_string(__wrap_rbtree_get, key, "test");
+    will_return_always(__wrap_rbtree_get, NULL);
+    will_return_always(__wrap_rbtree_keys, keys);
+
+    expect_value(__wrap_fim_send_scan_info, event, FIM_SCAN_END);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6009): File integrity monitoring scan ended.");
 
     fim_scan();
 }
@@ -1653,7 +1649,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_audit_inode_event_modify, setup_inode_data, teardown_inode_data),
         cmocka_unit_test(test_fim_audit_inode_event_add),
 
-        //cmocka_unit_test(test_fim_scan),
+        /* fim_scan */
+        cmocka_unit_test(test_fim_scan),
 
         /* fim_checker */
         cmocka_unit_test(test_fim_checker_file),

@@ -67,7 +67,7 @@ void fim_scan() {
 
 
 #ifdef WIN32
-        os_winreg_check();
+    os_winreg_check();
 #endif
 
     gettime(&end);
@@ -1133,9 +1133,7 @@ int fim_check_ignore (const char *file_name) {
     return 0;
 }
 
-
-// LCOV_EXCL_START
-int fim_check_restrict (const char *file_name, OSMatch *restriction) {
+int fim_check_restrict(const char *file_name, OSMatch *restriction) {
     if (file_name == NULL) {
         merror(NULL_ERROR);
         return 1;
@@ -1151,7 +1149,6 @@ int fim_check_restrict (const char *file_name, OSMatch *restriction) {
 
     return 0;
 }
-// LCOV_EXCL_STOP
 
 void free_entry_data(fim_entry_data * data) {
     if (!data) {
