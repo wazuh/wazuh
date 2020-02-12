@@ -65,6 +65,24 @@ void __wrap__mwarn(const char * file, int line, const char * func, const char *m
     check_expected(formatted_msg);
 }
 
+// In some cases such as the Setup function, we are not interesting in checking the mdebug1() uses
+void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    switch(mock_type(int)) {
+    case 0:     // Ignore checks
+        return;
+    default:
+
+        va_start(args, msg);
+        vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+        va_end(args);
+
+        check_expected(formatted_msg);
+    }
+}
+
 void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
     char formatted_msg[OS_MAXSTR];
     va_list args;
@@ -120,6 +138,14 @@ void* __wrap_OSHash_Delete(OSHash *self, const char *key) {
     return mock_type(void*);
 }
 
+OSHashNode * __wrap_OSHash_Begin(const OSHash *self, unsigned int *i) {
+    return mock_ptr_type(OSHashNode*);
+}
+
+OSHashNode * __wrap_OSHash_Next(const OSHash *self, unsigned int *i, OSHashNode *current) {
+    return mock_ptr_type(OSHashNode*);
+}
+
 int __wrap_lstat(const char *path, struct stat *buf) {
     buf->st_dev = 1;
     buf->st_ino = 999;
@@ -169,6 +195,14 @@ bool __wrap_HasFilesystem(__attribute__((unused))const char * path, __attribute_
 
 char ** __wrap_rbtree_keys() {
     return mock_type(char **);
+}
+
+clock_t __wrap_clock(void) {
+    return mock();
+}
+
+unsigned int __wrap_rbtree_size(const rb_tree *tree) {
+    return mock();
 }
 
 /* setup/teardowns */
@@ -254,6 +288,7 @@ static int setup_group(void **state)
     *state = fim_data;
 
     // Read and setup global values.
+    will_return_always(__wrap__mdebug1, 0);
     Read_Syscheck_Config("test_syscheck.conf");
 
     syscheck.rt_delay = 1;
@@ -893,6 +928,8 @@ void test_fim_insert_failure_duplicated(void **state)
 
     // Duplicated
     will_return(__wrap_rbtree_insert, 0);
+    expect_string(__wrap__mdebug1, formatted_msg, "(6326): Couldn't insert entry, duplicate path: 'test-file.tst'");
+    will_return(__wrap__mdebug1, 1);
 
     ret = fim_insert(file, fim_data->old_data, &file_stat);
 
@@ -946,6 +983,8 @@ void test_fim_update_failure_rbtree(void **state)
     will_return(__wrap_OSHash_Get, fim_data->inode_data);
 
     will_return(__wrap_rbtree_replace, 0);
+    will_return(__wrap__mdebug1, 1);
+    expect_string(__wrap__mdebug1, formatted_msg, "(6328): Unable to update file to db, key not found: 'test-file.tst'");
 
     ret = fim_update(file, fim_data->old_data, fim_data->old_data);
 
@@ -1255,7 +1294,9 @@ void test_fim_checker_deleted(void **state)
     fim_data->item->statbuf = buf;
 
     will_return(__wrap_lstat, -1);
-    errno = 1;
+    errno = 1;  // != ENOENT
+    expect_string(__wrap__mdebug1, formatted_msg, "(6222): Stat() function failed on: '/media/test.file' due to [(1)-(Operation not permitted)]");
+    will_return(__wrap__mdebug1, 1);
 
     fim_checker(path, fim_data->item, NULL, 1);
 }
@@ -1294,6 +1335,7 @@ void test_fim_scan(void **state)
     char ** keys = NULL;
     keys = os_AddStrArray("test", keys);
 
+    will_return(__wrap_clock, 2000000);
     expect_string(__wrap__minfo, formatted_msg, "(6008): File integrity monitoring scan started.");
     expect_value(__wrap_fim_send_scan_info, event, FIM_SCAN_START);
     will_return_always(__wrap_realtime_adddir, 0);
@@ -1572,6 +1614,48 @@ void test_delete_inode_item_paths(void **state)
     assert_string_equal(fim_data->inode_data->paths[0], "test-file2.tst");
 }
 
+void test_fim_print_info_empty_table(void **state) {
+    struct timespec start = {.tv_sec = 0};
+    struct timespec end = {.tv_sec = 10};
+    clock_t cputime_start = 1000000;
+
+    will_return(__wrap_clock, 2000000);
+    will_return_always(__wrap__mdebug1, 1);
+    expect_string(__wrap__mdebug1, formatted_msg, "(6330): The scan has been running during: 10.000 sec (1.000 clock sec)");
+    will_return(__wrap_rbtree_size, 10);
+    expect_string(__wrap__mdebug1, formatted_msg, "(6335): Fim entries: 10");
+
+    will_return(__wrap_OSHash_Begin, NULL);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6336): Fim inode entries: 0, path count: 0");
+
+    fim_print_info(start, end, cputime_start);
+}
+
+void test_fim_print_info_success(void **state) {
+    OSHashNode * hash_node = NULL;
+    os_calloc(1, sizeof(OSHashNode), hash_node);
+    os_calloc(1, sizeof(fim_inode_data), hash_node->data);
+    ((fim_inode_data*)hash_node->data)->items = 10;
+    struct timespec start = {.tv_sec = 0};
+    struct timespec end = {.tv_sec = 10};
+    clock_t cputime_start = 1000000;
+
+    will_return(__wrap_clock, 2000000);
+    will_return_always(__wrap__mdebug1, 1);
+    expect_string(__wrap__mdebug1, formatted_msg, "(6330): The scan has been running during: 10.000 sec (1.000 clock sec)");
+    will_return(__wrap_rbtree_size, 10);
+    expect_string(__wrap__mdebug1, formatted_msg, "(6335): Fim entries: 10");
+
+    will_return(__wrap_OSHash_Begin, hash_node);
+    will_return(__wrap_OSHash_Next, NULL);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6336): Fim inode entries: 1, path count: 10");
+
+    fim_print_info(start, end, cputime_start);
+    os_free(hash_node->data);
+    os_free(hash_node);
+}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -1686,6 +1770,10 @@ int main(void) {
         /* delete_inode */
         cmocka_unit_test_setup_teardown(test_delete_inode_item, setup_inode_data, teardown_inode_data),
         cmocka_unit_test_setup_teardown(test_delete_inode_item_paths, setup_inode_data, teardown_inode_data),
+
+        /* fim_print_info */
+        cmocka_unit_test(test_fim_print_info_empty_table),
+        cmocka_unit_test(test_fim_print_info_success),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
