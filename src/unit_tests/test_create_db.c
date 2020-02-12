@@ -66,6 +66,10 @@ void __wrap__mwarn(const char * file, int line, const char * func, const char *m
     check_expected(formatted_msg);
 }
 
+int __wrap__mdebug1() {
+    return 1;
+}
+
 void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
     char formatted_msg[OS_MAXSTR];
     va_list args;
@@ -288,6 +292,8 @@ static int setup_group(void **state) {
     syscheck.rt_delay = 1;
     syscheck.max_depth = 256;
     syscheck.file_max_size = 1024;
+
+    nowDebug();
 
     return 0;
 }

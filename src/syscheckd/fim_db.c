@@ -218,7 +218,7 @@ fdb_t *fim_db_init(int memory) {
 
 free_fim:
     if (fim->db){
-        sqlite3_close(fim->db);
+        sqlite3_close_v2(fim->db);
     }
     os_free(fim);
     return NULL;
