@@ -312,15 +312,6 @@ static int teardown_delete_json(void **state) {
     return 0;
 }
 
-static int setup_fim_database(void **state) {
-    os_calloc(1, sizeof(fdb_t), syscheck.database);
-    return 0;
-}
-static int teardown_fim_database(void **state) {
-    os_free(syscheck.database);
-    return 0;
-}
-
 static int setup_fim_entry(void **state) {
     fim_data_t *fim_data = *state;
 
