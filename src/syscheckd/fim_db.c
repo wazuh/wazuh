@@ -692,10 +692,8 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) 
     fim_db_bind_path(fim_sql, FIMDB_STMT_GET_DATA_ROW, file_path);
 #else
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_DATA_ROW);
-    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_INODE_ID);
-    fim_db_clean_stmt(fim_sql, FIMDB_STMT_DELETE_DATA);
     fim_db_bind_get_inode(fim_sql, FIMDB_STMT_GET_DATA_ROW, entry->inode, entry->dev);
-    fim_db_bind_get_inode_id(fim_sql, file_path);
+    
 #endif
 
     res = sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_DATA_ROW]);
@@ -706,28 +704,30 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) 
     break;
 
     case SQLITE_DONE:
+        fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_INODE_ID);
+        fim_db_bind_get_inode_id(fim_sql, file_path);
+
         res_inode_id = sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_INODE_ID]);
 
-        switch (res_inode_id) {
-        case SQLITE_ROW:
+        if (res_inode_id == SQLITE_ROW) {
             inode_id = sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_INODE_ID], 0);
 
+            fim_db_clean_stmt(fim_sql, FIMDB_STMT_DELETE_DATA);
             fim_db_bind_delete_data_id(fim_sql, inode_id);
 
             if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_DELETE_DATA]) != SQLITE_DONE) {
                 merror("SQL ERROR: %s", sqlite3_errmsg(fim_sql->db));
                 return FIMDB_ERR;
-            } 
-        break;
-        
-        case SQLITE_DONE:
-            inode_id = 0;
-        break;
+            }
 
-        default:
+            fim_db_force_commit(fim_sql);
+        }
+        else if (res_inode_id == SQLITE_ERROR) {
             merror("SQL ERROR: (%d)%s", res_inode_id, sqlite3_errmsg(fim_sql->db));
             return FIMDB_ERR;
         }
+
+        inode_id = 0;
     break;
 
     default:
