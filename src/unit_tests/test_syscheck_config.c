@@ -26,15 +26,12 @@ int __wrap__merror()
 
 static int restart_syscheck(void **state)
 {
-    (void) state;
-    memset(&syscheck, 0, sizeof(syscheck_config));
-    return 0;
-}
-
-static int delete_json(void **state)
-{
     cJSON *data = *state;
-    cJSON_Delete(data);
+    if (data) {
+        cJSON_Delete(data);
+    }
+    Free_Syscheck(&syscheck);
+    memset(&syscheck, 0, sizeof(syscheck_config));
     return 0;
 }
 
@@ -339,14 +336,14 @@ void test_getSyscheckInternalOptions(void **state)
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup(test_Read_Syscheck_Config_success, restart_syscheck),
-        cmocka_unit_test_setup(test_Read_Syscheck_Config_invalid, restart_syscheck),
-        cmocka_unit_test_setup(test_Read_Syscheck_Config_undefined, restart_syscheck),
-        cmocka_unit_test_setup(test_Read_Syscheck_Config_unparsed, restart_syscheck),
-        cmocka_unit_test_setup_teardown(test_getSyscheckConfig, restart_syscheck, delete_json),
-        cmocka_unit_test_setup_teardown(test_getSyscheckConfig_no_audit, restart_syscheck, delete_json),
-        cmocka_unit_test_setup(test_getSyscheckConfig_no_directories, restart_syscheck),
-        cmocka_unit_test_setup_teardown(test_getSyscheckInternalOptions, restart_syscheck, delete_json),
+        cmocka_unit_test_teardown(test_Read_Syscheck_Config_success, restart_syscheck),
+        cmocka_unit_test_teardown(test_Read_Syscheck_Config_invalid, restart_syscheck),
+        cmocka_unit_test_teardown(test_Read_Syscheck_Config_undefined, restart_syscheck),
+        cmocka_unit_test_teardown(test_Read_Syscheck_Config_unparsed, restart_syscheck),
+        cmocka_unit_test_teardown(test_getSyscheckConfig, restart_syscheck),
+        cmocka_unit_test_teardown(test_getSyscheckConfig_no_audit, restart_syscheck),
+        cmocka_unit_test_teardown(test_getSyscheckConfig_no_directories, restart_syscheck),
+        cmocka_unit_test_teardown(test_getSyscheckInternalOptions, restart_syscheck),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -529,6 +529,28 @@ static void test_fim_attributes_json(void **state) {
     assert_string_equal(cJSON_GetStringValue(checksum), "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
 }
 
+static void test_fim_attributes_json_without_options(void **state) {
+    fim_data_t *fim_data = *state;
+
+    fim_data->old_data->options = 0;
+
+    fim_data->json = fim_attributes_json(fim_data->old_data);
+
+    fim_data->old_data->options = 511;
+
+    assert_non_null(fim_data->json);
+    assert_int_equal(cJSON_GetArraySize(fim_data->json), 4);
+
+    cJSON *type = cJSON_GetObjectItem(fim_data->json, "type");
+    assert_string_equal(cJSON_GetStringValue(type), "file");
+    cJSON *user_name = cJSON_GetObjectItem(fim_data->json, "user_name");
+    assert_string_equal(cJSON_GetStringValue(user_name), "test");
+    cJSON *group_name = cJSON_GetObjectItem(fim_data->json, "group_name");
+    assert_string_equal(cJSON_GetStringValue(group_name), "testing");
+    cJSON *checksum = cJSON_GetObjectItem(fim_data->json, "checksum");
+    assert_string_equal(cJSON_GetStringValue(checksum), "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+}
+
 
 static void test_fim_entry_json(void **state) {
     fim_data_t *fim_data = *state;
@@ -587,6 +609,23 @@ static void test_fim_json_compare_attrs(void **state) {
     assert_string_equal(cJSON_GetStringValue(sha1), "sha1");
     cJSON *sha256 = cJSON_GetArrayItem(fim_data->json, 10);
     assert_string_equal(cJSON_GetStringValue(sha256), "sha256");
+
+}
+
+static void test_fim_json_compare_attrs_without_options(void **state) {
+    fim_data_t *fim_data = *state;
+
+    fim_data->old_data->options = 0;
+
+    fim_data->json = fim_json_compare_attrs(
+        fim_data->old_data,
+        fim_data->new_data
+    );
+
+    fim_data->old_data->options = 511;
+
+    assert_non_null(fim_data->json);
+    assert_int_equal(cJSON_GetArraySize(fim_data->json), 0);
 
 }
 
@@ -1085,6 +1124,8 @@ static void test_fim_file_add(void **state) {
                                     CHECK_SHA1SUM |
                                     CHECK_SHA256SUM;
 
+    fim_data->item->configuration |= CHECK_SEECHANGES;
+
     // Inside fim_get_data
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
@@ -1113,7 +1154,12 @@ static void test_fim_file_add(void **state) {
     expect_string(__wrap_fim_db_set_scanned, path, "file");
     will_return(__wrap_fim_db_set_scanned, 0);
 
+    expect_string(__wrap_seechanges_addfile, filename, "file");
+    will_return(__wrap_seechanges_addfile, strdup("diff"));
+
     ret = fim_file("file", fim_data->item, NULL, 1);
+
+    fim_data->item->configuration &= ~CHECK_SEECHANGES;
 
     assert_int_equal(ret, 0);
 }
@@ -1477,6 +1523,43 @@ static void test_fim_checker_fim_regular(void **state) {
     assert_int_equal(fim_data->item->index, 3);
 }
 
+static void test_fim_checker_fim_regular_warning(void **state) {
+    fim_data_t *fim_data = *state;
+
+    char * path = "/media/test.file";
+    struct stat buf;
+    buf.st_mode = S_IFREG;
+    fim_data->item->index = 3;
+    fim_data->item->statbuf = buf;
+    fim_data->item->statbuf.st_size = 1500;
+    will_return(__wrap_lstat, 0);
+
+    expect_string(__wrap_HasFilesystem, path, "/media/test.file");
+    will_return(__wrap_HasFilesystem, 0);
+
+    // Inside fim_file
+    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, strdup("user"));
+
+    expect_value(__wrap_get_group, gid, 0);
+    will_return(__wrap_get_group, "group");
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "/media/test.file");
+    will_return(__wrap_fim_db_get_path, NULL);
+
+    expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_insert, file_path, "/media/test.file");
+    will_return(__wrap_fim_db_insert, -1);
+
+    expect_string(__wrap__mwarn, formatted_msg, "(6923): Unable to process file '/media/test.file'");
+
+    fim_checker(path, fim_data->item, fim_data->w_evt, 1);
+
+    assert_int_equal(fim_data->item->configuration, 33279);
+    assert_int_equal(fim_data->item->index, 3);
+}
+
 static void test_fim_checker_fim_regular_ignore(void **state) {
     fim_data_t *fim_data = *state;
 
@@ -1809,6 +1892,7 @@ int main(void) {
 
         /* fim_attributes_json */
         cmocka_unit_test_teardown(test_fim_attributes_json, teardown_delete_json),
+        cmocka_unit_test_teardown(test_fim_attributes_json_without_options, teardown_delete_json),
 
         /* fim_entry_json */
         cmocka_unit_test_teardown(test_fim_entry_json, teardown_delete_json),
@@ -1817,6 +1901,7 @@ int main(void) {
 
         /* fim_json_compare_attrs */
         cmocka_unit_test_teardown(test_fim_json_compare_attrs, teardown_delete_json),
+        cmocka_unit_test_teardown(test_fim_json_compare_attrs_without_options, teardown_delete_json),
 
         /* fim_audit_json */
         cmocka_unit_test_teardown(test_fim_audit_json, teardown_delete_json),
@@ -1861,14 +1946,14 @@ int main(void) {
         cmocka_unit_test_setup(test_fim_audit_inode_event_realtime_add_empty_paths, setup_fim_entry),
         cmocka_unit_test_setup_teardown(test_fim_audit_inode_event_realtime_modify, setup_inode_data, teardown_inode_data),
 
-        /* fim_scan */
-        cmocka_unit_test(test_fim_scan),
-
         /* fim_file */
         cmocka_unit_test(test_fim_file_add),
         cmocka_unit_test_setup(test_fim_file_modify, setup_fim_entry),
         cmocka_unit_test(test_fim_file_no_attributes),
         cmocka_unit_test_setup(test_fim_file_error_on_insert, setup_fim_entry),
+
+        /* fim_scan */
+        cmocka_unit_test(test_fim_scan),
 
         /* fim_checker */
         cmocka_unit_test(test_fim_checker_scheduled_configuration_directory_error),
@@ -1879,6 +1964,7 @@ int main(void) {
         cmocka_unit_test_setup(test_fim_checker_deleted_file_enoent, setup_fim_entry),
         cmocka_unit_test(test_fim_checker_no_file_system),
         cmocka_unit_test(test_fim_checker_fim_regular),
+        cmocka_unit_test(test_fim_checker_fim_regular_warning),
         cmocka_unit_test(test_fim_checker_fim_regular_ignore),
         cmocka_unit_test(test_fim_checker_fim_regular_restrict),
         cmocka_unit_test_setup_teardown(test_fim_checker_fim_directory, setup_struct_dirent, teardown_struct_dirent),
