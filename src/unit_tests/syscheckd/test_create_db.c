@@ -450,7 +450,11 @@ static void test_fim_json_event(void **state) {
     cJSON *old_attributes = cJSON_GetObjectItem(data, "old_attributes");
     assert_non_null(old_attributes);
 
+#ifdef TEST_WINAGENT
+    assert_int_equal(cJSON_GetArraySize(changed_attributes), 10);
+#else
     assert_int_equal(cJSON_GetArraySize(changed_attributes), 11);
+#endif
     assert_int_equal(cJSON_GetArraySize(attributes), 13);
     assert_int_equal(cJSON_GetArraySize(old_attributes), 13);
 }
@@ -494,7 +498,11 @@ static void test_fim_json_event_whodata(void **state) {
     assert_string_equal(cJSON_GetStringValue(tags), "tag1,tag2");
     cJSON *audit = cJSON_GetObjectItem(data, "audit");
     assert_non_null(audit);
+    #ifdef TEST_WINAGENT
+    assert_int_equal(cJSON_GetArraySize(audit), 5);
+    #else
     assert_int_equal(cJSON_GetArraySize(audit), 12);
+    #endif
     cJSON *diff = cJSON_GetObjectItem(data, "content_changes");
     assert_string_equal(cJSON_GetStringValue(diff), "diff");
 }
@@ -583,6 +591,7 @@ static void test_fim_entry_json_null_data(void **state) {
 
 static void test_fim_json_compare_attrs(void **state) {
     fim_data_t *fim_data = *state;
+    int i = 0;
 
     fim_data->json = fim_json_compare_attrs(
         fim_data->old_data,
@@ -590,29 +599,35 @@ static void test_fim_json_compare_attrs(void **state) {
     );
 
     assert_non_null(fim_data->json);
+    #ifdef TEST_WINAGENT
+    assert_int_equal(cJSON_GetArraySize(fim_data->json), 10);
+    #else
     assert_int_equal(cJSON_GetArraySize(fim_data->json), 11);
+    #endif
 
-    cJSON *size = cJSON_GetArrayItem(fim_data->json, 0);
+    cJSON *size = cJSON_GetArrayItem(fim_data->json, i++);
     assert_string_equal(cJSON_GetStringValue(size), "size");
-    cJSON *permission = cJSON_GetArrayItem(fim_data->json, 1);
+    cJSON *permission = cJSON_GetArrayItem(fim_data->json, i++);
     assert_string_equal(cJSON_GetStringValue(permission), "permission");
-    cJSON *uid = cJSON_GetArrayItem(fim_data->json, 2);
+    cJSON *uid = cJSON_GetArrayItem(fim_data->json, i++);
     assert_string_equal(cJSON_GetStringValue(uid), "uid");
-    cJSON *user_name = cJSON_GetArrayItem(fim_data->json, 3);
+    cJSON *user_name = cJSON_GetArrayItem(fim_data->json, i++);
     assert_string_equal(cJSON_GetStringValue(user_name), "user_name");
-    cJSON *gid = cJSON_GetArrayItem(fim_data->json, 4);
+    cJSON *gid = cJSON_GetArrayItem(fim_data->json, i++);
     assert_string_equal(cJSON_GetStringValue(gid), "gid");
-    cJSON *group_name = cJSON_GetArrayItem(fim_data->json, 5);
+    cJSON *group_name = cJSON_GetArrayItem(fim_data->json, i++);
     assert_string_equal(cJSON_GetStringValue(group_name), "group_name");
-    cJSON *mtime = cJSON_GetArrayItem(fim_data->json, 6);
+    cJSON *mtime = cJSON_GetArrayItem(fim_data->json, i++);
     assert_string_equal(cJSON_GetStringValue(mtime), "mtime");
-    cJSON *inode = cJSON_GetArrayItem(fim_data->json, 7);
+    #ifndef TEST_WINAGENT
+    cJSON *inode = cJSON_GetArrayItem(fim_data->json, i++);
     assert_string_equal(cJSON_GetStringValue(inode), "inode");
-    cJSON *md5 = cJSON_GetArrayItem(fim_data->json, 8);
+    #endif
+    cJSON *md5 = cJSON_GetArrayItem(fim_data->json, i++);
     assert_string_equal(cJSON_GetStringValue(md5), "md5");
-    cJSON *sha1 = cJSON_GetArrayItem(fim_data->json, 9);
+    cJSON *sha1 = cJSON_GetArrayItem(fim_data->json, i++);
     assert_string_equal(cJSON_GetStringValue(sha1), "sha1");
-    cJSON *sha256 = cJSON_GetArrayItem(fim_data->json, 10);
+    cJSON *sha256 = cJSON_GetArrayItem(fim_data->json, i++);
     assert_string_equal(cJSON_GetStringValue(sha256), "sha256");
 
 }
@@ -624,7 +639,11 @@ static void test_fim_audit_json(void **state) {
     fim_data->json = fim_audit_json(fim_data->w_evt);
 
     assert_non_null(fim_data->json);
+    #ifdef TEST_WINAGENT
+    assert_int_equal(cJSON_GetArraySize(fim_data->json), 5);
+    #else
     assert_int_equal(cJSON_GetArraySize(fim_data->json), 12);
+    #endif
 
     cJSON *path = cJSON_GetObjectItem(fim_data->json, "path");
     assert_string_equal(cJSON_GetStringValue(path), "./test/test.file");
@@ -654,7 +673,7 @@ static void test_fim_audit_json(void **state) {
     assert_int_equal(ppid->valueint, 1000);
 }
 
-
+#ifndef TEST_WINAGENT
 static void test_fim_check_ignore_strncasecmp(void **state) {
    int ret;
 
@@ -664,12 +683,35 @@ static void test_fim_check_ignore_strncasecmp(void **state) {
 
     assert_int_equal(ret, 1);
 }
+#else
+static void test_fim_check_ignore_strncasecmp(void **state) {
+    int ret;
+    char *path = "%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\DeskTop.ini";
+    char expanded_path[OS_MAXSTR];
+    char debug_msg[OS_MAXSTR];
 
+    if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
+        fail();
+
+    snprintf(debug_msg, OS_MAXSTR, "(6204): Ignoring 'file' '%s' due to '%s'", expanded_path, syscheck.ignore[0]);
+
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+
+
+    ret = fim_check_ignore(expanded_path);
+
+    assert_int_equal(ret, 1);
+}
+#endif
 
 static void test_fim_check_ignore_regex(void **state) {
    int ret;
 
+    #ifndef TEST_WINAGENT
     expect_string(__wrap__mdebug2, formatted_msg, "(6205): Ignoring 'file' '/test/files/test.swp' due to sregex '.log$|.swp$'");
+    #else
+    expect_string(__wrap__mdebug2, formatted_msg, "(6205): Ignoring 'file' '/test/files/test.swp' due to sregex '.log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$'");
+    #endif
 
     ret = fim_check_ignore("/test/files/test.swp");
 
@@ -829,12 +871,21 @@ static void test_fim_get_checksum_wrong_size(void **state) {
     assert_string_equal(fim_data->local_data->checksum, "551cab7f774d4633a3be09207b4cdea1db03b9c0");
 }
 
-
 static void test_fim_check_depth_success(void **state) {
     int ret;
 
-    char * path = "/usr/bin/folder1/folder2/folder3/file";
+    #ifndef TEST_WINAGENT
     // Pos 1 = "/usr/bin"
+    char * path = "/usr/bin/folder1/folder2/folder3/file";
+    #else
+    // Pos 1 = "%WINDIR%\\SysNative\\drivers\\etc"
+    char *aux_path = "%WINDIR%\\SysNative\\drivers\\etc\\random\\path.exe";
+    char path[OS_MAXSTR];
+    char debug_msg[OS_MAXSTR];
+
+    if(!ExpandEnvironmentStrings(aux_path, path, OS_MAXSTR))
+        fail();
+    #endif
     ret = fim_check_depth(path, 1);
 
     assert_int_equal(ret, 3);
@@ -874,6 +925,7 @@ static void test_fim_configuration_directory_no_path(void **state) {
 }
 
 
+#ifndef TEST_WINAGENT
 static void test_fim_configuration_directory_file(void **state) {
     int ret;
 
@@ -884,6 +936,22 @@ static void test_fim_configuration_directory_file(void **state) {
 
     assert_int_equal(ret, 3);
 }
+#else
+static void test_fim_configuration_directory_file(void **state) {
+    char *aux_path = "%WINDIR%\\SysNative\\drivers\\etc";
+    char path[OS_MAXSTR];
+    char debug_msg[OS_MAXSTR];
+    const char * entry = "file";
+    int ret;
+
+    if(!ExpandEnvironmentStrings(aux_path, path, OS_MAXSTR))
+        fail();
+
+    ret = fim_configuration_directory(path, entry);
+
+    assert_int_equal(ret, 3);
+}
+#endif
 
 
 static void test_fim_configuration_directory_not_found(void **state) {
