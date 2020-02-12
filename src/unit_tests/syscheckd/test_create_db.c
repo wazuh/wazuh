@@ -33,6 +33,8 @@ typedef struct __fim_data_s {
     cJSON *json;
 }fim_data_t;
 
+bool unit_testing;
+
 /* redefinitons/wrapping */
 
 void __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...) {
@@ -79,6 +81,7 @@ void __wrap__mdebug2(const char * file, int line, const char * func, const char 
     check_expected(formatted_msg);
 }
 
+#ifndef TEST_WINAGENT
 int __wrap_lstat(const char *path, struct stat *buf) {
     buf->st_dev = 1;
     buf->st_ino = 999;
@@ -87,6 +90,35 @@ int __wrap_lstat(const char *path, struct stat *buf) {
     buf->st_mtime = 1433395216;
     return mock();
 }
+#else
+extern int __real_stat(const char *path, struct stat *buf);
+int __wrap_stat(const char *path, struct stat *buf) {
+    if(unit_testing){
+        buf->st_dev = 1;
+        buf->st_ino = 999;
+        buf->st_uid = 0;
+        buf->st_gid = 0;
+        buf->st_mtime = 1433395216;
+        return mock();
+    } else {
+        return __real_stat(path, buf);
+    }
+}
+
+int __wrap_w_get_file_permissions(const char *file_path, char *permissions, int perm_size) {
+    check_expected(file_path);
+
+    snprintf(permissions, perm_size, "%s", mock_type(char*));
+
+    return mock();
+}
+
+char *__wrap_decode_win_permissions(char *raw_perm) {
+    check_expected(raw_perm);
+    return mock_type(char*);
+}
+
+#endif
 
 int __wrap_fim_send_scan_info() {
     return 1;
@@ -240,6 +272,8 @@ int __wrap_isChroot() {
 static int setup_group(void **state) {
     fim_data_t *fim_data = calloc(1, sizeof(fim_data_t));
 
+    unit_testing = false;
+
     if(fim_data == NULL)
         return -1;
 
@@ -326,11 +360,15 @@ static int setup_group(void **state) {
     syscheck.max_depth = 256;
     syscheck.file_max_size = 1024;
 
+    unit_testing = true;
+
     return 0;
 }
 
 static int teardown_group(void **state) {
     fim_data_t *fim_data = *state;
+
+    unit_testing = false;
 
     free(fim_data->item);
     free_whodata_event(fim_data->w_evt);
@@ -947,9 +985,11 @@ static void test_fim_configuration_directory_file(void **state) {
     if(!ExpandEnvironmentStrings(aux_path, path, OS_MAXSTR))
         fail();
 
+    str_lowercase(path);
+
     ret = fim_configuration_directory(path, entry);
 
-    assert_int_equal(ret, 3);
+    assert_int_equal(ret, 2);
 }
 #endif
 
@@ -1187,6 +1227,7 @@ static void test_fim_checker_not_scheduled_configuration_directory_error(void **
     fim_checker(path, fim_data->item, NULL, 1);
 }
 
+#ifndef TEST_WINAGENT
 static void test_fim_checker_invalid_fim_mode(void **state) {
     fim_data_t *fim_data = *state;
 
@@ -1428,6 +1469,284 @@ static void test_fim_checker_fim_directory(void **state) {
 
     fim_checker(path, fim_data->item, NULL, 1);
 }
+#else
+static void test_fim_checker_invalid_fim_mode(void **state) {
+    fim_data_t *fim_data = *state;
+
+    char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
+    char expanded_path[OS_MAXSTR];
+    struct stat buf;
+    buf.st_mode = S_IFREG;
+    fim_data->item->index = 3;
+    fim_data->item->statbuf = buf;
+    fim_data->item->mode = -1;
+
+    if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
+        fail();
+
+    str_lowercase(expanded_path);
+
+    // Nothing to check on this condition
+    fim_checker(expanded_path, fim_data->item, NULL, 1);
+}
+
+static void test_fim_checker_over_max_recursion_level(void **state) {
+    fim_data_t *fim_data = *state;
+
+    char *path = "%WINDIR%\\System32\\drivers\\etc\\random\\test.exe";
+    char expanded_path[OS_MAXSTR];
+    char debug_msg[OS_MAXSTR];
+    struct stat buf;
+    buf.st_mode = S_IFREG;
+    fim_data->item->index = 2;
+    fim_data->item->statbuf = buf;
+    fim_data->item->mode = FIM_REALTIME;
+
+    syscheck.recursion_level[2] = 0;
+    if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
+        fail();
+
+    str_lowercase(expanded_path);
+
+    snprintf(debug_msg, OS_MAXSTR,
+        "(6217): Maximum level of recursion reached. Depth:1 recursion_level:0 '%s'", expanded_path);
+
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+
+    fim_checker(expanded_path, fim_data->item, NULL, 1);
+}
+
+static void test_fim_checker_deleted_file(void **state) {
+    fim_data_t *fim_data = *state;
+
+    char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
+    char expanded_path[OS_MAXSTR];
+    struct stat buf;
+    buf.st_mode = S_IFREG;
+    fim_data->item->index = 6;
+    fim_data->item->statbuf = buf;
+    fim_data->item->mode = FIM_REALTIME;
+
+    if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
+        fail();
+
+    str_lowercase(expanded_path);
+
+    will_return(__wrap_stat, -1);
+    errno = 1;
+
+    fim_checker(expanded_path, fim_data->item, NULL, 1);
+
+    errno = 0;
+
+    assert_int_equal(fim_data->item->configuration, 37375);
+    assert_int_equal(fim_data->item->index, 6);
+}
+
+static void test_fim_checker_deleted_file_enoent(void **state) {
+    fim_data_t *fim_data = *state;
+
+    char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
+    char expanded_path[OS_MAXSTR];
+    struct stat buf;
+    buf.st_mode = S_IFREG;
+    fim_data->item->index = 6;
+    fim_data->item->statbuf = buf;
+    syscheck.opts[6] |= CHECK_SEECHANGES;
+
+    if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
+        fail();
+
+    str_lowercase(expanded_path);
+
+    fim_data->fentry->path = strdup("file");
+    fim_data->fentry->data = fim_data->local_data;
+
+    fim_data->local_data->size = 1500;
+    fim_data->local_data->perm = strdup("0664");
+    fim_data->local_data->attributes = strdup("r--r--r--");
+    fim_data->local_data->uid = strdup("100");
+    fim_data->local_data->gid = strdup("1000");
+    fim_data->local_data->user_name = strdup("test");
+    fim_data->local_data->group_name = strdup("testing");
+    fim_data->local_data->mtime = 1570184223;
+    fim_data->local_data->inode = 606060;
+    strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
+    strcpy(fim_data->local_data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
+    fim_data->local_data->mode = FIM_REALTIME;
+    fim_data->local_data->last_event = 1570184220;
+    fim_data->local_data->entry_type = FIM_TYPE_FILE;
+    fim_data->local_data->dev = 12345678;
+    fim_data->local_data->scanned = 123456;
+    fim_data->local_data->options = 511;
+    strcpy(fim_data->local_data->checksum, "");
+
+    will_return(__wrap_stat, -1);
+    errno = ENOENT;
+
+    expect_string(__wrap_delete_target_file, path, expanded_path);
+    will_return(__wrap_delete_target_file, 0);
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, expanded_path);
+    will_return(__wrap_fim_db_get_path, fim_data->fentry);
+
+    expect_value(__wrap_fim_db_remove_path, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_remove_path, entry, fim_data->fentry);
+
+    fim_checker(expanded_path, fim_data->item, NULL, 1);
+
+    errno = 0;
+    syscheck.opts[6] &= ~CHECK_SEECHANGES;
+
+    assert_int_equal(fim_data->item->configuration, 41471);
+    assert_int_equal(fim_data->item->index, 6);
+}
+
+static void test_fim_checker_fim_regular(void **state) {
+    fim_data_t *fim_data = *state;
+
+    char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
+    char expanded_path[OS_MAXSTR];
+    struct stat buf;
+    buf.st_mode = S_IFREG;
+    fim_data->item->index = 6;
+    fim_data->item->statbuf = buf;
+    fim_data->item->statbuf.st_size = 1500;
+
+    will_return(__wrap_stat, 0);
+
+    if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
+        fail();
+
+    str_lowercase(expanded_path);
+
+    expect_string(__wrap_HasFilesystem, path, expanded_path);
+    will_return(__wrap_HasFilesystem, 0);
+
+    // Inside fim_file
+    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, strdup("user"));
+
+    expect_value(__wrap_get_group, gid, 0);
+    will_return(__wrap_get_group, "group");
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, expanded_path);
+    will_return(__wrap_fim_db_get_path, NULL);
+
+    expect_value(__wrap_fim_db_insert_data, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_insert_data, file_path, expanded_path);
+    will_return(__wrap_fim_db_insert_data, 0);
+
+    expect_value(__wrap_fim_db_set_scanned, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_set_scanned, path, expanded_path);
+    will_return(__wrap_fim_db_set_scanned, 0);
+
+    fim_checker(expanded_path, fim_data->item, fim_data->w_evt, 1);
+
+    assert_int_equal(fim_data->item->configuration, 33279);
+    assert_int_equal(fim_data->item->index, 6);
+}
+
+static void test_fim_checker_fim_regular_ignore(void **state) {
+    fim_data_t *fim_data = *state;
+
+    char *path = "%WINDIR%\\System32\\drivers\\etc\\ignored.file";
+    char expanded_path[OS_MAXSTR];
+    char debug_msg[OS_MAXSTR];
+    struct stat buf;
+    buf.st_mode = S_IFREG;
+    fim_data->item->index = 6;
+    fim_data->item->statbuf = buf;
+    // fim_data->item->mode = FIM_REALTIME;
+
+    if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
+        fail();
+
+    str_lowercase(expanded_path);
+
+    will_return(__wrap_stat, 0);
+
+    expect_string(__wrap_HasFilesystem, path, expanded_path);
+    will_return(__wrap_HasFilesystem, 0);
+
+    snprintf(debug_msg, OS_MAXSTR, "(6204): Ignoring 'file' '%s' due to '%s'", expanded_path, expanded_path);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+
+    fim_checker(expanded_path, fim_data->item, fim_data->w_evt, 1);
+
+    assert_int_equal(fim_data->item->configuration, 45567);
+    assert_int_equal(fim_data->item->index, 6);
+}
+
+static void test_fim_checker_fim_regular_restrict(void **state) {
+    fim_data_t *fim_data = *state;
+
+    char * path = "%WINDIR%\\System32\\wbem\\restricted.exe";
+    char expanded_path[OS_MAXSTR];
+    char debug_msg[OS_MAXSTR];
+    struct stat buf;
+    buf.st_mode = S_IFREG;
+    fim_data->item->index = 7;
+    fim_data->item->statbuf = buf;
+    fim_data->item->mode = FIM_REALTIME;
+
+    if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
+        fail();
+
+    str_lowercase(expanded_path);
+
+    will_return(__wrap_stat, 0);
+
+    expect_string(__wrap_HasFilesystem, path, expanded_path);
+    will_return(__wrap_HasFilesystem, 0);
+
+    snprintf(debug_msg, OS_MAXSTR, "(6203): Ignoring file '%s' due to restriction 'wmic.exe$'", expanded_path);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+
+    fim_checker(expanded_path, fim_data->item, fim_data->w_evt, 1);
+
+    assert_int_equal(fim_data->item->configuration, 37375);
+    assert_int_equal(fim_data->item->index, 7);
+}
+
+static void test_fim_checker_fim_directory(void **state) {
+    fim_data_t *fim_data = *state;
+
+    char * path = "%WINDIR%\\System32\\drivers\\etc";
+    char expanded_path[OS_MAXSTR];
+    char expanded_path_test[OS_MAXSTR];
+    struct stat buf;
+    buf.st_mode = S_IFDIR;
+    fim_data->item->index = 6;
+    fim_data->item->statbuf = buf;
+    fim_data->item->mode = FIM_REALTIME;
+
+    if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
+        fail();
+
+    str_lowercase(expanded_path);
+
+    snprintf(expanded_path_test, OS_MAXSTR, "%s\\test", expanded_path);
+
+    will_return_always(__wrap_stat, 0);
+
+    expect_string(__wrap_HasFilesystem, path, expanded_path);
+    expect_string(__wrap_HasFilesystem, path, expanded_path_test);
+    will_return_always(__wrap_HasFilesystem, 0);
+
+    strcpy(fim_data->entry->d_name, "test");
+
+    will_return_always(__wrap_opendir, 1);
+    will_return(__wrap_readdir, fim_data->entry);
+    will_return(__wrap_readdir, NULL);
+    will_return(__wrap_readdir, NULL);
+
+    fim_checker(expanded_path, fim_data->item, NULL, 1);
+}
+#endif
 
 static void test_fim_scan(void **state) {
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
@@ -1469,7 +1788,11 @@ static void test_fim_directory(void **state) {
     will_return(__wrap_readdir, fim_data->entry);
     will_return(__wrap_readdir, NULL);
 
+    #ifndef TEST_WINAGENT
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'test/test'");
+    #else
+    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'test\\test'");
+    #endif
 
     fim_data->item->index = 1;
 
@@ -1531,11 +1854,24 @@ static void test_fim_get_data(void **state) {
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
+    #else
+    expect_string(__wrap_w_get_file_permissions, file_path, "test");
+    will_return(__wrap_w_get_file_permissions, "permissions");
+    will_return(__wrap_w_get_file_permissions, 0);
+
+    expect_string(__wrap_decode_win_permissions, raw_perm, "permissions");
+    will_return(__wrap_decode_win_permissions, "decoded_perms");
+    #endif
 
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, "test");
+    #ifndef TEST_WINAGENT
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "/bin/ls");
+    #else
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "c:\\windows\\system32\\cmd.exe");
+    #endif
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
@@ -1545,7 +1881,11 @@ static void test_fim_get_data(void **state) {
 
     fim_data->local_data = fim_get_data("test", fim_data->item);
 
+    #ifndef TEST_WINAGENT
     assert_string_equal(fim_data->local_data->perm, "r--r--r--");
+    #else
+    assert_string_equal(fim_data->local_data->perm, "decoded_perms");
+    #endif
     assert_string_equal(fim_data->local_data->hash_md5, "d41d8cd98f00b204e9800998ecf8427e");
     assert_string_equal(fim_data->local_data->hash_sha1, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     assert_string_equal(fim_data->local_data->hash_sha256, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
@@ -1567,11 +1907,24 @@ static void test_fim_get_data_hash_error(void **state) {
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
+    #else
+    expect_string(__wrap_w_get_file_permissions, file_path, "test");
+    will_return(__wrap_w_get_file_permissions, "permissions");
+    will_return(__wrap_w_get_file_permissions, 0);
+
+    expect_string(__wrap_decode_win_permissions, raw_perm, "permissions");
+    will_return(__wrap_decode_win_permissions, "decoded_perms");
+    #endif
 
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, "test");
+    #ifndef TEST_WINAGENT
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "/bin/ls");
+    #else
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "c:\\windows\\system32\\cmd.exe");
+    #endif
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
@@ -1907,7 +2260,9 @@ int main(void) {
         cmocka_unit_test(test_fim_checker_over_max_recursion_level),
         cmocka_unit_test(test_fim_checker_deleted_file),
         cmocka_unit_test_setup(test_fim_checker_deleted_file_enoent, setup_fim_entry),
+        #ifndef TEST_WINAGENT
         cmocka_unit_test(test_fim_checker_no_file_system),
+        #endif
         cmocka_unit_test(test_fim_checker_fim_regular),
         cmocka_unit_test(test_fim_checker_fim_regular_ignore),
         cmocka_unit_test(test_fim_checker_fim_regular_restrict),
