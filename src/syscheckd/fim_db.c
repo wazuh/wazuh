@@ -846,7 +846,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) 
 #else
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_DATA_ROW);
     fim_db_bind_get_inode(fim_sql, FIMDB_STMT_GET_DATA_ROW, entry->inode, entry->dev);
-    
+
 #endif
 
     res = sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_DATA_ROW]);
@@ -862,7 +862,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) 
 
         res_inode_id = sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_INODE_ID]);
 
-        /* 
+        /*
             When the inode of a file changes, it will delete the row from the database
             and insert the new one (inode is primary key) to have the path pointing to
             the right inode.
@@ -1042,7 +1042,7 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
     w_mutex_unlock(mutex);
 
 
-    if (alert && rows == 1) {
+    if (alert && rows >= 1) {
         cJSON * json_event      = NULL;
         char * json_formated    = NULL;
         int pos = 0;
