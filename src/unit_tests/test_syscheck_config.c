@@ -24,6 +24,11 @@ int __wrap__merror()
     return 0;
 }
 
+int __wrap__mdebug1()
+{
+    return 0;
+}
+
 static int restart_syscheck(void **state)
 {
     cJSON *data = *state;

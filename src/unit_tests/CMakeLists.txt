@@ -75,7 +75,7 @@ list(APPEND tests_flags "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watch -W
                         -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Get -Wl,--wrap,rbtree_insert -Wl,--wrap,_merror -Wl,--wrap,W_Vector_insert_unique")
 
 list(APPEND tests_names "test_syscheck_config")
-list(APPEND tests_flags "-Wl,--wrap,_merror")
+list(APPEND tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1")
 
 list(APPEND tests_names "test_syscheck")
 list(APPEND tests_flags "-Wl,--wrap,_mwarn -Wl,--wrap,fim_db_init")
@@ -98,7 +98,7 @@ list(APPEND tests_flags "-Wl,--wrap,rmdir_ex -Wl,--wrap,wreaddir -Wl,--wrap,_mde
                          -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP")
 
 list(APPEND tests_names "test_fim_db")
-list(APPEND tests_flags "-Wl,--wrap=w_is_file,--wrap=remove,--wrap=sqlite3_open_v2,--wrap=sqlite3_exec,--wrap=_minfo,--wrap=_merror \
+list(APPEND tests_flags "-Wl,--wrap=w_is_file,--wrap=remove,--wrap=sqlite3_open_v2,--wrap=sqlite3_exec,--wrap=_minfo,--wrap=_merror,--wrap=_mdebug1,--wrap=_mdebug2 \
                          -Wl,--wrap=sqlite3_prepare_v2,--wrap=sqlite3_step,--wrap=sqlite3_finalize,--wrap=sqlite3_close_v2 \
                          -Wl,--wrap=chmod,--wrap=sqlite3_free,--wrap=sqlite3_reset,--wrap=sqlite3_clear_bindings \
                          -Wl,--wrap=sqlite3_errmsg,--wrap=sqlite3_bind_int,--wrap=sqlite3_bind_text,--wrap=sqlite3_column_int \
