@@ -293,8 +293,6 @@ static int setup_group(void **state) {
     syscheck.max_depth = 256;
     syscheck.file_max_size = 1024;
 
-    nowDebug();
-
     return 0;
 }
 

@@ -762,7 +762,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
     for (i = m; i < n; i++) {
         if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]) != SQLITE_ROW) {
             merror("SQL ERROR: %s", sqlite3_errmsg(fim_sql->db));
-            goto end1;
+            goto end;
         }
         entry = fim_db_decode_full_row(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]);
         if (i == m && entry->path) {
@@ -774,7 +774,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
 
     if (!str_pathlh || !str_pathuh) {
         merror("Failed to obtain required paths in order to form message");
-        goto end1;
+        goto end;
     }
 
     // Send message with checksum of first half
@@ -793,13 +793,11 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
 
     retval = FIMDB_OK;
 
-end1:
+end:
+    EVP_MD_CTX_destroy(ctx_left);
     EVP_MD_CTX_destroy(ctx_right);
     os_free(str_pathlh);
     os_free(str_pathuh);
-
-end:
-    EVP_MD_CTX_destroy(ctx_left);
     return retval;
 }
 
