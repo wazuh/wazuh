@@ -201,7 +201,7 @@ static fim_tmp_file *fim_db_create_temp_file(int storage);
  * @param file Storage structure
  * @param storage Type of storage (memory or disk)
  */
-static void fim_db_clean_file(fim_tmp_file *file, int storage);
+static void fim_db_clean_file(fim_tmp_file **file, int storage);
 
 
 /**
@@ -370,17 +370,17 @@ fim_tmp_file *fim_db_create_temp_file(int storage) {
     return file;
 }
 
-void fim_db_clean_file(fim_tmp_file *file, int storage) {
+void fim_db_clean_file(fim_tmp_file **file, int storage) {
     if (storage == FIM_DB_DISK) {
-        fclose(file->fd);
-        remove(file->path);
-        os_free(file->path);
+        fclose((*file)->fd);
+        remove((*file)->path);
+        os_free((*file)->path);
     } else {
-        os_free(file->list->vector);
-        os_free(file->list);
+        os_free((*file)->list->vector);
+        os_free((*file)->list);
     }
 
-    os_free(file);
+    os_free((*file));
 }
 
 int fim_db_finalize_stmt(fdb_t *fim_sql) {
@@ -450,7 +450,7 @@ int fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file *
     int ret = fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_PATH_RANGE, fim_db_callback_save_path, storage, (void*) *file);
 
     if (*file && (*file)->elements == 0) {
-        fim_db_clean_file(*file, storage);
+        fim_db_clean_file(file, storage);
     }
 
     return ret;
@@ -464,7 +464,7 @@ int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
     int ret = fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_NOT_SCANNED, fim_db_callback_save_path, storage, (void*) *file);
 
     if (*file && (*file)->elements == 0) {
-        fim_db_clean_file(*file, storage);
+        fim_db_clean_file(file, storage);
     }
 
     return ret;
@@ -558,7 +558,7 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
         i++;
     } while (i < file->elements);
 
-    fim_db_clean_file(file, storage);
+    fim_db_clean_file(&file, storage);
     os_free(line);
 
     return FIMDB_OK;
