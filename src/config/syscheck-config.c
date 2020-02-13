@@ -1041,6 +1041,9 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             if (strcmp(node[i]->content, "memory") == 0) {
                 syscheck->database_store = FIM_DB_MEMORY;
             }
+            else if (strcmp(node[i]->content, "disk") == 0){
+                syscheck->database_store = FIM_DB_DISK; 
+            }
         }
 
         /* Get frequency */
