@@ -1667,7 +1667,9 @@ void Free_Syscheck(syscheck_config * config) {
     #endif
 
         if (config->realtime) {
-            OSHash_Free(config->realtime->dirtb);
+            if (config->realtime->dirtb) {
+                OSHash_Free(config->realtime->dirtb);
+            }
 #ifdef WIN32
             CloseEventLog(config->realtime->evt);
 #endif
