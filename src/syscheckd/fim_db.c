@@ -197,6 +197,14 @@ static fim_tmp_file *fim_db_create_temp_file(int storage);
 
 
 /**
+ * @brief Clean and free resources
+ * @param file Storage structure
+ * @param storage Type of storage (memory or disk)
+ */
+static void fim_db_clean_file(fim_tmp_file *file, int storage);
+
+
+/**
  * @brief
  *
  * @param fim_sql FIM database structure.
@@ -337,7 +345,6 @@ int fim_db_create_file(const char *path, const char *source, const int storage, 
     return 0;
 }
 
-
 fim_tmp_file *fim_db_create_temp_file(int storage) {
     fim_tmp_file *file;
     os_calloc(1, sizeof(fim_tmp_file), file);
@@ -361,6 +368,19 @@ fim_tmp_file *fim_db_create_temp_file(int storage) {
     }
 
     return file;
+}
+
+void fim_db_clean_file(fim_tmp_file *file, int storage) {
+    if (storage == FIM_DB_DISK) {
+        fclose(file->fd);
+        remove(file->path);
+        os_free(file->path);
+    } else {
+        os_free(file->list->vector);
+        os_free(file->list);
+    }
+
+    os_free(file);
 }
 
 int fim_db_finalize_stmt(fdb_t *fim_sql) {
@@ -427,7 +447,13 @@ int fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file *
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_RANGE);
     fim_db_bind_range(fim_sql, FIMDB_STMT_GET_PATH_RANGE, start, top);
 
-    return fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_PATH_RANGE, fim_db_callback_save_path, storage, (void*) *file);
+    int ret = fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_PATH_RANGE, fim_db_callback_save_path, storage, (void*) *file);
+
+    if (*file && (*file)->elements == 0) {
+        fim_db_clean_file(*file, storage);
+    }
+
+    return ret;
 }
 
 int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
@@ -435,7 +461,14 @@ int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
         return FIMDB_ERR;
     }
 
-    return fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_NOT_SCANNED, fim_db_callback_save_path, storage, (void*) *file);
+    int ret = fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_NOT_SCANNED, fim_db_callback_save_path, storage, (void*) *file);
+
+    if (*file && (*file)->elements == 0) {
+        fim_db_clean_file(*file, storage);
+    }
+
+    return ret;
+
 }
 
 int fim_db_get_data_checksum(fdb_t *fim_sql, void * arg) {
@@ -515,27 +548,19 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
         if (path) {
             w_mutex_lock(mutex);
             fim_entry *entry = fim_db_get_path(fim_sql, path);
+            w_mutex_unlock(mutex);
             if (entry != NULL) {
                 callback(fim_sql, entry, mutex, arg);
             }
-            w_mutex_unlock(mutex);
             os_free(path);
         }
 
         i++;
     } while (i < file->elements);
 
-    if (storage == FIM_DB_DISK) {
-        fclose(file->fd);
-        remove(file->path);
-        os_free(file->path);
-        os_free(line);
-    } else {
-        os_free(file->list->vector);
-        os_free(file->list);
-    }
+    fim_db_clean_file(file, storage);
+    os_free(line);
 
-    os_free(file);
     return FIMDB_OK;
 }
 
