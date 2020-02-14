@@ -85,13 +85,20 @@ endif()
 list(APPEND syscheckd_tests_names "test_syscheck")
 list(APPEND syscheckd_tests_flags "-Wl,--wrap,_mwarn -Wl,--wrap,fim_db_init")
 
-list(APPEND syscheckd_tests_names "test_fim_sync")
-list(APPEND syscheckd_tests_flags "-Wl,--wrap,fim_send_sync_msg -Wl,--wrap,time -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 \
+
+set(FIM_SYNC_BASE_FLAGS "-Wl,--wrap,fim_send_sync_msg -Wl,--wrap,time -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 \
                       -Wl,--wrap,_merror -Wl,--wrap,_mdebug2 -Wl,--wrap,queue_push_ex -Wl,--wrap,fim_db_get_row_path \
                        -Wl,--wrap,fim_db_get_data_checksum -Wl,--wrap,dbsync_check_msg -Wl,--wrap,fim_send_sync_msg \
                        -Wl,--wrap,fim_db_get_count_range -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_entry_json \
                        -Wl,--wrap,fim_db_data_checksum_range -Wl,--wrap,dbsync_state_msg \
                        -Wl,--wrap,fim_db_sync_path_range")
+
+list(APPEND syscheckd_tests_names "test_fim_sync")
+if(${TARGET} STREQUAL "winagent")
+  list(APPEND syscheckd_tests_flags "${FIM_SYNC_BASE_FLAGS} -Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock")
+else()
+  list(APPEND syscheckd_tests_flags "${FIM_SYNC_BASE_FLAGS}")
+endif()
 
 set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,_minfo")
 
@@ -108,8 +115,7 @@ list(APPEND syscheckd_tests_flags "-Wl,--wrap=w_is_file,--wrap=remove,--wrap=sql
                          -Wl,--wrap=chmod,--wrap=sqlite3_free,--wrap=sqlite3_reset,--wrap=sqlite3_clear_bindings \
                          -Wl,--wrap=sqlite3_errmsg,--wrap=sqlite3_bind_int,--wrap=sqlite3_bind_text,--wrap=sqlite3_column_int \
                          -Wl,--wrap=sqlite3_column_text,--wrap=printf,--wrap=fim_send_sync_msg,--wrap=dbsync_state_msg \
-                         -Wl,--wrap=fim_entry_json")
-
+                         -Wl,--wrap=fim_entry_json" )
 
 # Compiling tests
 list(LENGTH syscheckd_tests_names count)
