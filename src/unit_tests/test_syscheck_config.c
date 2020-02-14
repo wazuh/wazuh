@@ -71,7 +71,6 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_int_equal(syscheck.sync_response_timeout, 30);
     assert_int_equal(syscheck.sync_queue_size, 64);
     assert_int_equal(syscheck.max_eps, 200);
-    assert_int_equal(syscheck.send_delay, 5000);
 }
 
 
