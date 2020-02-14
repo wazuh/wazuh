@@ -91,6 +91,7 @@ static int decode_event_delete;
 static int decode_event_modify;
 
 // Initialize the necessary information to process the syscheck information
+// LCOV_EXCL_START
 int fim_init(void) {
     //Create hash table for agent information
     fim_agentinfo = OSHash_Create();
@@ -1046,7 +1047,7 @@ int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb, const char* param) {
     os_free(response);
     return (1);
 }
-
+// LCOV_EXCL_STOP
 
 int decode_fim_event(_sdb *sdb, Eventinfo *lf) {
     /* Every syscheck message must be in the following JSON format, as of agent version v3.11
