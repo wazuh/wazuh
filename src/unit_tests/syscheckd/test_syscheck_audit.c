@@ -14,10 +14,10 @@
 #include <stdio.h>
 
 
-#include "../syscheckd/syscheck.h"
-#include "../external/procps/readproc.h"
+#include "syscheckd/syscheck.h"
+#include "external/procps/readproc.h"
 
-
+#if defined(TEST_SERVER) || defined(TEST_AGENT)
 extern volatile int audit_health_check_deletion;
 
 /* redefinitons/wrapping */
@@ -222,8 +222,6 @@ char *__wrap_get_user(__attribute__((unused)) const char *path, int uid, __attri
     check_expected(uid);
     return mock_type(char*);
 }
-
-#if defined(TEST_SERVER) || defined(TEST_AGENT)
 
 /* setup/teardown */
 static int free_string(void **state)
@@ -1399,9 +1397,7 @@ int main(void) {
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
 
-#endif
-
-#if defined(TEST_WINAGENT)
+#elif defined(TEST_WINAGENT)
 
 int main(void) {
     const struct CMUnitTest tests[] = {
