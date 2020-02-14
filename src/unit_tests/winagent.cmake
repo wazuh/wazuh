@@ -12,6 +12,18 @@ if(NOT WAZUHEXT)
   message(FATAL_ERROR "libwazuhext not found in ${SRC_FOLDER} Aborting...")
 endif()
 
+# Win32 pthread library
+find_library(PTHREAD NAMES libwinpthread-1.dll HINTS "${SRC_FOLDER}/win32")
+if(NOT PTHREAD)
+  message(FATAL_ERROR "libwinpthread-1.dll not found in  "${SRC_FOLDER}/win32" Aborting...")
+endif()
+
+# Static cmocka
+find_library(STATIC_CMOCKA NAMES libcmocka.a HINTS "/usr/i686-w64-mingw32/sys-root/mingw/lib/")
+if(NOT STATIC_CMOCKA)
+  message(FATAL_ERROR "libcmocka.a not found in  "/usr/i686-w64-mingw32/sys-root/mingw/lib/" Aborting...")
+endif()
+
 # Add compiling flags
 add_compile_options(-ggdb -O0 -g -coverage -DTEST_WINAGENT -DDEBUG)
 
@@ -64,8 +76,8 @@ set_target_properties(
   CMAKE_C_LINK_EXECUTABLE "CMAKE_C_COMPILER <FLAGS> <CMAKE_C_LINK_FLAGS> <LINK_FLAGS> <OBJECTS>  -o <TARGET> <LINK_LIBRARIES>"
 )
 
-target_link_libraries(DEPENDENCIES_O ${WAZUHLIB} ${WAZUHEXT} cmocka wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32)
+target_link_libraries(DEPENDENCIES_O ${WAZUHLIB} ${WAZUHEXT} ${PTHREAD} ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32)
 
 # Set tests dependencies
 # Use --start-group and --end-group to handle circular dependencies
-set(TEST_DEPS -Wl,--start-group ${WAZUHLIB} ${WAZUHEXT} DEPENDENCIES_O -Wl,--end-group cmocka wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 -fprofile-arcs -ftest-coverage)
+set(TEST_DEPS -Wl,--start-group ${WAZUHLIB} ${WAZUHEXT} DEPENDENCIES_O -Wl,--end-group ${PTHREAD} ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 -fprofile-arcs -ftest-coverage)

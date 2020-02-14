@@ -138,7 +138,11 @@ void test_getSyscheckConfig(void **state)
     assert_int_equal(cJSON_GetArraySize(ret), 1);
 
     cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
+    #if defined(TEST_SERVER) || defined(TEST_AGENT)
     assert_int_equal(cJSON_GetArraySize(sys_items), 17);
+    #elif defined(TEST_SERVER)
+    assert_int_equal(cJSON_GetArraySize(sys_items), 20);
+    #endif
 
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
     assert_string_equal(cJSON_GetStringValue(disabled), "no");
@@ -156,14 +160,23 @@ void test_getSyscheckConfig(void **state)
     assert_string_equal(cJSON_GetStringValue(scan_on_start), "yes");
 
     cJSON *sys_dir = cJSON_GetObjectItem(sys_items, "directories");
+    #if defined(TEST_SERVER) || defined(TEST_AGENT)
     assert_int_equal(cJSON_GetArraySize(sys_dir), 6);
+    #elif defined(TEST_SERVER)
+    assert_int_equal(cJSON_GetArraySize(sys_dir), 10);
+    #endif
+    
 
     cJSON *sys_nodiff = cJSON_GetObjectItem(sys_items, "nodiff");
     assert_int_equal(cJSON_GetArraySize(sys_nodiff), 1);
 
     cJSON *sys_ignore = cJSON_GetObjectItem(sys_items, "ignore");
+    #if defined(TEST_SERVER) || defined(TEST_AGENT)
     assert_int_equal(cJSON_GetArraySize(sys_ignore), 12);
-
+    #elif defined(TEST_SERVER)
+    assert_int_equal(cJSON_GetArraySize(sys_ignore), 2);
+    #endif
+    
     cJSON *sys_whodata = cJSON_GetObjectItem(sys_items, "whodata");
     cJSON *whodata_restart_audit = cJSON_GetObjectItem(sys_whodata, "restart_audit");
     assert_string_equal(cJSON_GetStringValue(whodata_restart_audit), "yes");
