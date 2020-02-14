@@ -1397,6 +1397,22 @@ void test_audit_parse_hex(void **state)
 }
 
 
+void test_audit_parse_empty_fields(void **state)
+{
+    (void) state;
+
+    char * buffer = " \
+        type=SYSCALL msg=audit(1571914029.306:3004254): arch=c000003e syscall=263 success=yes exit=0 a0=ffffff9c a1=55c5f8170490 a2=0 a3=7ff365c5eca0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"test\" key=\"wazuh_fim\" \
+        type=PROCTITLE msg=audit(1571914029.306:3004254): proctitle=726D0074657374 \
+    ";
+
+    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
+
+    audit_parse(buffer);
+}
+
+
 void test_audit_parse_delete(void **state)
 {
     (void) state;
@@ -2014,6 +2030,7 @@ int main(void) {
         cmocka_unit_test(test_audit_parse3),
         cmocka_unit_test(test_audit_parse4),
         cmocka_unit_test(test_audit_parse_hex),
+        cmocka_unit_test(test_audit_parse_empty_fields),
         cmocka_unit_test(test_audit_parse_delete),
         cmocka_unit_test(test_audit_parse_delete_recursive),
         cmocka_unit_test(test_audit_parse_mv),
