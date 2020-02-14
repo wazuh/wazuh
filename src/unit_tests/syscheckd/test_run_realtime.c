@@ -217,14 +217,9 @@ void test_realtime_start_failure_hash(void **state) {
     will_return(__wrap_OSHash_Create, NULL);
 
     errno = ENOMEM;
-    #if defined(TEST_SERVER) || defined(TEST_AGENT)
-        expect_string(__wrap__merror, formatted_msg,
-            "(1102): Could not acquire memory due to [(12)-(Cannot allocate memory)].");
-    #else
-        expect_string(__wrap__merror, formatted_msg,
-            "(1102): Could not acquire memory due to [(12)-(Not enough space)].");
-    #endif
-
+    expect_string(__wrap__merror, formatted_msg,
+        "(1102): Could not acquire memory due to [(12)-(Cannot allocate memory)].");
+    
     ret = realtime_start();
 
     errno = 0;
