@@ -118,6 +118,17 @@ char *__wrap_decode_win_permissions(char *raw_perm) {
     return mock_type(char*);
 }
 
+unsigned int __wrap_w_get_file_attrs(const char *file_path) {
+    check_expected(file_path);
+    return mock();
+}
+
+void __wrap_decode_win_attributes(char *str, unsigned int attrs) {
+    check_expected(str);
+    check_expected(attrs);
+}
+
+void __wrap_os_winreg_check() {}
 #endif
 
 int __wrap_fim_send_scan_info() {
@@ -267,6 +278,16 @@ int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, i
 int __wrap_isChroot() {
     return 1;
 }
+
+#ifdef TEST_WINAGENT
+int __wrap_pthread_mutex_lock (pthread_mutex_t *__mutex) {
+    return 0;
+}
+
+int __wrap_pthread_mutex_unlock (pthread_mutex_t *__mutex) {
+    return 0;
+}
+#endif
 
 /* setup/teardowns */
 static int setup_group(void **state) {
@@ -495,6 +516,7 @@ static void test_fim_json_event(void **state) {
 #endif
     assert_int_equal(cJSON_GetArraySize(attributes), 13);
     assert_int_equal(cJSON_GetArraySize(old_attributes), 13);
+
 }
 
 
@@ -694,6 +716,8 @@ static void test_fim_audit_json(void **state) {
     cJSON *process_id = cJSON_GetObjectItem(fim_data->json, "process_id");
     assert_non_null(process_id);
     assert_int_equal(process_id->valueint, 1001);
+
+    #ifndef TEST_WINAGENT
     cJSON *group_id = cJSON_GetObjectItem(fim_data->json, "group_id");
     assert_string_equal(cJSON_GetStringValue(group_id), "1000");
     cJSON *group_name = cJSON_GetObjectItem(fim_data->json, "group_name");
@@ -709,6 +733,7 @@ static void test_fim_audit_json(void **state) {
     cJSON *ppid = cJSON_GetObjectItem(fim_data->json, "ppid");
     assert_non_null(ppid);
     assert_int_equal(ppid->valueint, 1000);
+    #endif
 }
 
 #ifndef TEST_WINAGENT
@@ -919,7 +944,6 @@ static void test_fim_check_depth_success(void **state) {
     // Pos 1 = "%WINDIR%\\SysNative\\drivers\\etc"
     char *aux_path = "%WINDIR%\\SysNative\\drivers\\etc\\random\\path.exe";
     char path[OS_MAXSTR];
-    char debug_msg[OS_MAXSTR];
 
     if(!ExpandEnvironmentStrings(aux_path, path, OS_MAXSTR))
         fail();
@@ -978,7 +1002,6 @@ static void test_fim_configuration_directory_file(void **state) {
 static void test_fim_configuration_directory_file(void **state) {
     char *aux_path = "%WINDIR%\\SysNative\\drivers\\etc";
     char path[OS_MAXSTR];
-    char debug_msg[OS_MAXSTR];
     const char * entry = "file";
     int ret;
 
@@ -1030,22 +1053,34 @@ static void test_init_fim_data_entry(void **state) {
 static void test_fim_audit_inode_whodata_add(void **state) {
     fim_data_t *fim_data = *state;
 
+    #ifndef TEST_WINAGENT
     char * file = "/test/test.file2";
+    #else
+    char * file = "C:\\test\\file2.exe";
+    #endif
     char **paths = calloc(2, sizeof(char*));
+    char debug_msg[2][OS_MAXSTR];
 
     if(paths == NULL)
         fail();
 
+    #ifndef TEST_WINAGENT
     paths[0] = strdup("/test/test.file");
+    #else
+    paths[0] = strdup("C:\\test\\file.exe");
+    #endif
     paths[1] = NULL;
+
+    snprintf(debug_msg[0], OS_MAXSTR, "(6319): No configuration found for (file):'%s'", file);
+    snprintf(debug_msg[1], OS_MAXSTR, "(6319): No configuration found for (file):'%s'", paths[0]);
 
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
     will_return(__wrap_fim_db_get_paths_from_inode, paths);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test/test.file2'");
-    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test/test.file'");
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg[0]);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg[1]);
 
     fim_audit_inode_event(file, FIM_WHODATA, fim_data->w_evt);
 }
@@ -1106,7 +1141,11 @@ static void test_fim_audit_inode_event_realtime_add(void **state) {
     paths[0] = strdup("/test/test.file");
     paths[1] = NULL;
 
+    #ifndef TEST_WINAGENT
     will_return(__wrap_lstat, 0);
+    #else
+    will_return(__wrap_stat, 0);
+    #endif
 
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_paths_from_inode, inode, 999);
@@ -1153,7 +1192,11 @@ static void test_fim_audit_inode_event_realtime_add_empty_paths(void **state) {
 
     paths[0] = NULL;
 
+    #ifndef TEST_WINAGENT
     will_return(__wrap_lstat, -1);
+    #else
+    will_return(__wrap_stat, -1);
+    #endif
     errno = EACCES;
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
@@ -1184,7 +1227,11 @@ static void test_fim_audit_inode_event_realtime_modify(void **state) {
     paths[0] = strdup(file);
     paths[1] = NULL;
 
+    #ifndef TEST_WINAGENT
     will_return(__wrap_lstat, 0);
+    #else
+    will_return(__wrap_stat, 0);
+    #endif
 
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_paths_from_inode, inode, 999);
@@ -1469,6 +1516,35 @@ static void test_fim_checker_fim_directory(void **state) {
 
     fim_checker(path, fim_data->item, NULL, 1);
 }
+
+static void test_fim_scan(void **state) {
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+
+    // In fim_checker
+    will_return_count(__wrap_lstat, 0, 6);
+
+    expect_string(__wrap_HasFilesystem, path, "/etc");
+    expect_string(__wrap_HasFilesystem, path, "/usr/bin");
+    expect_string(__wrap_HasFilesystem, path, "/usr/sbin");
+    expect_string(__wrap_HasFilesystem, path, "/media");
+    expect_string(__wrap_HasFilesystem, path, "/home");
+    expect_string(__wrap_HasFilesystem, path, "/boot");
+    will_return_count(__wrap_HasFilesystem, 0, 6);
+
+    expect_string(__wrap_realtime_adddir, dir, "/media");
+    expect_string(__wrap_realtime_adddir, dir, "/home");
+    expect_string(__wrap_realtime_adddir, dir, "/boot");
+
+    expect_value(__wrap_fim_db_delete_not_scanned, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_delete_not_scanned, FIMDB_OK);
+
+    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_set_all_unscanned, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
+
+    fim_scan();
+}
 #else
 static void test_fim_checker_invalid_fim_mode(void **state) {
     fim_data_t *fim_data = *state;
@@ -1600,7 +1676,7 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     errno = 0;
     syscheck.opts[6] &= ~CHECK_SEECHANGES;
 
-    assert_int_equal(fim_data->item->configuration, 41471);
+    assert_int_equal(fim_data->item->configuration, 45567);
     assert_int_equal(fim_data->item->index, 6);
 }
 
@@ -1629,8 +1705,15 @@ static void test_fim_checker_fim_regular(void **state) {
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
-    expect_value(__wrap_get_group, gid, 0);
-    will_return(__wrap_get_group, "group");
+    expect_string(__wrap_w_get_file_permissions, file_path, expanded_path);
+    will_return(__wrap_w_get_file_permissions, "permissions");
+    will_return(__wrap_w_get_file_permissions, 0);
+
+    expect_string(__wrap_decode_win_permissions, raw_perm, "permissions");
+    will_return(__wrap_decode_win_permissions, "decoded_perms");
+
+    expect_string(__wrap_w_get_file_attrs, file_path, expanded_path);
+    will_return(__wrap_w_get_file_attrs, 123456);
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, expanded_path);
@@ -1646,7 +1729,7 @@ static void test_fim_checker_fim_regular(void **state) {
 
     fim_checker(expanded_path, fim_data->item, fim_data->w_evt, 1);
 
-    assert_int_equal(fim_data->item->configuration, 33279);
+    assert_int_equal(fim_data->item->configuration, 37375);
     assert_int_equal(fim_data->item->index, 6);
 }
 
@@ -1677,7 +1760,7 @@ static void test_fim_checker_fim_regular_ignore(void **state) {
 
     fim_checker(expanded_path, fim_data->item, fim_data->w_evt, 1);
 
-    assert_int_equal(fim_data->item->configuration, 45567);
+    assert_int_equal(fim_data->item->configuration, 37375);
     assert_int_equal(fim_data->item->index, 6);
 }
 
@@ -1746,25 +1829,37 @@ static void test_fim_checker_fim_directory(void **state) {
 
     fim_checker(expanded_path, fim_data->item, NULL, 1);
 }
-#endif
 
 static void test_fim_scan(void **state) {
+    char expanded_dirs[10][OS_SIZE_1024];
+    char directories[10][OS_SIZE_256] = {
+        "%WINDIR%",
+        "%WINDIR%\\SysNative",
+        "%WINDIR%\\SysNative\\drivers\\etc",
+        "%WINDIR%\\SysNative\\wbem",
+        "%WINDIR%\\SysNative\\WindowsPowerShell\\v1.0",
+        "%WINDIR%\\System32",
+        "%WINDIR%\\System32\\drivers\\etc",
+        "%WINDIR%\\System32\\wbem",
+        "%WINDIR%\\System32\\WindowsPowerShell\\v1.0",
+        "%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
+    };
+    int i;
+
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // In fim_checker
-    will_return_count(__wrap_lstat, 0, 6);
+    will_return_count(__wrap_stat, 0, 10);
 
-    expect_string(__wrap_HasFilesystem, path, "/etc");
-    expect_string(__wrap_HasFilesystem, path, "/usr/bin");
-    expect_string(__wrap_HasFilesystem, path, "/usr/sbin");
-    expect_string(__wrap_HasFilesystem, path, "/media");
-    expect_string(__wrap_HasFilesystem, path, "/home");
-    expect_string(__wrap_HasFilesystem, path, "/boot");
-    will_return_count(__wrap_HasFilesystem, 0, 6);
+    for(i = 0; i < 10; i++) {
+        if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024))
+            fail();
 
-    expect_string(__wrap_realtime_adddir, dir, "/media");
-    expect_string(__wrap_realtime_adddir, dir, "/home");
-    expect_string(__wrap_realtime_adddir, dir, "/boot");
+        str_lowercase(expanded_dirs[i]);
+        expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
+    }
+
+    will_return_count(__wrap_HasFilesystem, 0, 10);
 
     expect_value(__wrap_fim_db_delete_not_scanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_delete_not_scanned, FIMDB_OK);
@@ -1776,6 +1871,7 @@ static void test_fim_scan(void **state) {
 
     fim_scan();
 }
+#endif
 
 /* fim_directory */
 static void test_fim_directory(void **state) {
@@ -1988,11 +2084,24 @@ static void test_fim_file_add(void **state) {
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
+    #else
+    expect_string(__wrap_w_get_file_permissions, file_path, "file");
+    will_return(__wrap_w_get_file_permissions, "permissions");
+    will_return(__wrap_w_get_file_permissions, 0);
+
+    expect_string(__wrap_decode_win_permissions, raw_perm, "permissions");
+    will_return(__wrap_decode_win_permissions, "decoded_perms");
+    #endif
 
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, "file");
+    #ifndef TEST_WINAGENT
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "/bin/ls");
+    #else
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "c:\\windows\\system32\\cmd.exe");
+    #endif
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
@@ -2058,11 +2167,24 @@ static void test_fim_file_modify(void **state) {
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
+    #else
+    expect_string(__wrap_w_get_file_permissions, file_path, "file");
+    will_return(__wrap_w_get_file_permissions, "permissions");
+    will_return(__wrap_w_get_file_permissions, 0);
+
+    expect_string(__wrap_decode_win_permissions, raw_perm, "permissions");
+    will_return(__wrap_decode_win_permissions, "decoded_perms");
+    #endif
 
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, "file");
+    #ifndef TEST_WINAGENT
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "/bin/ls");
+    #else
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "c:\\windows\\system32\\cmd.exe");
+    #endif
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
@@ -2097,11 +2219,24 @@ static void test_fim_file_no_attributes(void **state) {
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
+    #else
+    expect_string(__wrap_w_get_file_permissions, file_path, "file");
+    will_return(__wrap_w_get_file_permissions, "permissions");
+    will_return(__wrap_w_get_file_permissions, 0);
+
+    expect_string(__wrap_decode_win_permissions, raw_perm, "permissions");
+    will_return(__wrap_decode_win_permissions, "decoded_perms");
+    #endif
 
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, "file");
+    #ifndef TEST_WINAGENT
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "/bin/ls");
+    #else
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "c:\\windows\\system32\\cmd.exe");
+    #endif
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
@@ -2154,11 +2289,24 @@ static void test_fim_file_error_on_insert(void **state) {
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
+    #else
+    expect_string(__wrap_w_get_file_permissions, file_path, "file");
+    will_return(__wrap_w_get_file_permissions, "permissions");
+    will_return(__wrap_w_get_file_permissions, 0);
+
+    expect_string(__wrap_decode_win_permissions, raw_perm, "permissions");
+    will_return(__wrap_decode_win_permissions, "decoded_perms");
+    #endif
 
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, "file");
+    #ifndef TEST_WINAGENT
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "/bin/ls");
+    #else
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "c:\\windows\\system32\\cmd.exe");
+    #endif
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
