@@ -1590,9 +1590,15 @@ int Test_Syscheck(const char * path){
 void Free_Syscheck(syscheck_config * config) {
     if (config) {
         int i;
-        free(config->opts);
-        free(config->scan_day);
-        free(config->scan_time);
+        if (config->opts) {
+            free(config->opts);
+        }
+        if (config->scan_day) {
+            free(config->scan_day);
+        }
+        if (config->scan_time) {
+            free(config->scan_time);
+        }
         if (config->ignore) {
             for (i=0; config->ignore[i] != NULL; i++) {
                 free(config->ignore[i]);
@@ -1622,17 +1628,21 @@ void Free_Syscheck(syscheck_config * config) {
         if (config->dir) {
             for (i=0; config->dir[i] != NULL; i++) {
                 free(config->dir[i]);
-                if(config->filerestrict[i]) {
+                if(config->filerestrict && config->filerestrict[i]) {
                     OSMatch_FreePattern(config->filerestrict[i]);
                     free(config->filerestrict[i]);
                 }
-                if(config->tag[i]) {
+                if(config->tag && config->tag[i]) {
                     free(config->tag[i]);
                 }
             }
             free(config->dir);
-            free(config->filerestrict);
-            free(config->tag);
+            if (config->filerestrict) {
+                free(config->filerestrict);
+            }
+            if (config->tag) {
+                free(config->tag);
+            }
         }
         if (config->symbolic_links) {
             for (i=0; config->symbolic_links[i] != NULL; i++) {
@@ -1640,7 +1650,9 @@ void Free_Syscheck(syscheck_config * config) {
             }
             free(config->symbolic_links);
         }
-        free(config->recursion_level);
+        if (config->recursion_level) {
+            free(config->recursion_level);
+        }
 
     #ifdef WIN32
         if (config->registry_ignore) {
@@ -1675,7 +1687,9 @@ void Free_Syscheck(syscheck_config * config) {
 #endif
             free(config->realtime);
         }
-        free(config->prefilter_cmd);
+        if (config->prefilter_cmd) {
+            free(config->prefilter_cmd);
+        }
 
         free_strarray(config->audit_key);
     }
