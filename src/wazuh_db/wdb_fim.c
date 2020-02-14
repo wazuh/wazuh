@@ -19,6 +19,7 @@ static const char *SQL_DELETE_EVENT = "DELETE FROM fim_event;";
 static const char *SQL_DELETE_FILE = "DELETE FROM fim_file;";
 
 /* Find file: returns ID, or 0 if it doesn't exists, or -1 on error. */
+// LCOV_EXCL_START
 int wdb_insert_file(sqlite3 *db, const char *path, int type) {
     sqlite3_stmt *stmt = NULL;
     int result;
@@ -364,6 +365,8 @@ end:
     sk_sum_clean(&sum);
     return retval;
 }
+
+// LCOV_EXCL_STOP
 int wdb_syscheck_save2(wdb_t * wdb, const char * payload) {
     int retval = -1;
     cJSON * data = cJSON_Parse(payload);
@@ -372,7 +375,7 @@ int wdb_syscheck_save2(wdb_t * wdb, const char * payload) {
         merror("WDB object cannot be null.");
         goto end;
     }
- 
+
     if (data == NULL) {
         mdebug1("DB(%s): cannot parse FIM payload: '%s'", wdb->agent_id, payload);
         goto end;
@@ -396,6 +399,7 @@ end:
 }
 
 // Find file entry: returns 1 if found, 0 if not, or -1 on error.
+// LCOV_EXCL_START
 int wdb_fim_find_entry(wdb_t * wdb, const char * path) {
     sqlite3_stmt *stmt = NULL;
 
@@ -478,6 +482,7 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
         return -1;
     }
 }
+// LCOV_EXCL_STOP
 
 int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
     if (!wdb) {
@@ -486,7 +491,7 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
     }
 
     cJSON *json_path = cJSON_GetObjectItem(data, "path");
-    
+
     if (!json_path) {
         merror("DB(%s) fim/save request with no file path argument.", wdb->agent_id);
         return -1;
@@ -578,6 +583,7 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
     return 0;
 }
 
+// LCOV_EXCL_START
 int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum) {
     sqlite3_stmt *stmt = NULL;
     char s_perm[16];
@@ -711,3 +717,4 @@ int wdb_fim_clean_old_entries(wdb_t * wdb) {
 
     return 0;
 }
+// LCOV_EXCL_STOP
