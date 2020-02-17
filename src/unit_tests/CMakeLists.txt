@@ -50,8 +50,8 @@ list(APPEND tests_names "test_create_db")
 list(APPEND tests_flags "-Wl,--wrap,rbtree_insert -Wl,--wrap,rbtree_get -Wl,--wrap,rbtree_replace -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 \
                          -Wl,--wrap,OSHash_Add -Wl,--wrap,lstat -Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck_msg -Wl,--wrap,rbtree_keys -Wl,--wrap,readdir -Wl,--wrap,opendir -Wl,--wrap,closedir \
                          -Wl,--wrap,rbtree_delete -Wl,--wrap,OSHash_Delete -Wl,--wrap,print_rbtree -Wl,--wrap,realtime_adddir -Wl,--wrap,HasFilesystem \
-                         -Wl,--wrap,OSHash_Begin -Wl,--wrap,OSHash_Next -Wl,--wrap,rbtree_size \
-                         -Wl,--wrap,clock")
+                         -Wl,--wrap,OSHash_Begin -Wl,--wrap,OSHash_Next -Wl,--wrap,rbtree_size -Wl,--wrap,clock -Wl,--wrap,seechanges_addfile \
+                         -Wl,--wrap,delete_target_file -Wl,--wrap,get_user -Wl,--wrap,get_group -Wl,--wrap,OS_MD5_SHA1_SHA256_File")
 
 list(APPEND tests_names "test_syscheck_audit")
 list(APPEND tests_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,IsSocket -Wl,--wrap,IsFile -Wl,--wrap,IsDir -Wl,--wrap,IsLink -Wl,--wrap,IsFile -Wl,--wrap,audit_restart \
@@ -75,7 +75,7 @@ list(APPEND tests_flags "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watch -W
                         -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,rbtree_keys -Wl,--wrap,fim_realtime_event")
 
 list(APPEND tests_names "test_syscheck_config")
-list(APPEND tests_flags "-Wl,--wrap,_merror")
+list(APPEND tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1")
 
 list(APPEND tests_names "test_syscheck")
 list(APPEND tests_flags "-Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_setSize -Wl,--wrap,_mwarn")
@@ -121,6 +121,8 @@ list(APPEND tests_flags "-Wl,--wrap,_merror -Wl,--wrap,OS_ConnectUnixDomain -Wl,
 
 # Config files
 configure_file("test_syscheck.conf" "test_syscheck.conf" COPYONLY)
+configure_file("test_syscheck2.conf" "test_syscheck2.conf" COPYONLY)
+configure_file("test_empty_config.conf" "test_empty_config.conf" COPYONLY)
 
 
 # Generate syscheck library

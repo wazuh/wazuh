@@ -82,7 +82,7 @@ void fim_scan() {
     fim_send_scan_info(FIM_SCAN_END);
 
     if (isDebug()) {
-        fim_print_info(start, end, cputime_start);
+        fim_print_info(start, end, cputime_start); // LCOV_EXCL_LINE
     }
 
 #ifdef DEBUGAD
@@ -252,9 +252,11 @@ int fim_file (char *file, fim_element *item, whodata_evt *w_evt, int report) {
 
     //Get file attributes
     if (entry_data = fim_get_data(file, item), !entry_data) {
+        // LCOV_EXCL_START
         mdebug1(FIM_GET_ATTRIBUTES, file);
         w_mutex_unlock(&syscheck.fim_entry_mutex);
         return 0;
+        // LCOV_EXCL_STOP
     }
 
     if (saved_data = (fim_entry_data *) rbtree_get(syscheck.fim_entry, file), !saved_data) {
@@ -323,7 +325,6 @@ void fim_realtime_event(char *file) {
     fim_audit_inode_event(file, inode_key, FIM_REALTIME, NULL);
 }
 
-
 // LCOV_EXCL_START
 void fim_whodata_event(whodata_evt * w_evt) {
     char inode_key[OS_SIZE_128];
@@ -332,7 +333,6 @@ void fim_whodata_event(whodata_evt * w_evt) {
     fim_audit_inode_event(w_evt->path, inode_key, FIM_WHODATA, w_evt);
 }
 // LCOV_EXCL_STOP
-
 
 void fim_audit_inode_event(char *file, const char *inode_key, fim_event_mode mode, whodata_evt * w_evt) {
     struct fim_element *item;
