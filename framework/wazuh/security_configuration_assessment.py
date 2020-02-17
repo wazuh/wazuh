@@ -65,6 +65,9 @@ class WazuhDBQuerySCA(WazuhDBQuery):
     def _default_query(self):
         return self.default_query
 
+    def _default_count_query(self):
+        return f"SELECT COUNT(DISTINCT {self.count_field})" + " FROM ({0})"
+
 
 def get_sca_list(agent_id=None, q="", offset=0, limit=common.database_limit,
                  sort=None, search=None, select=None, filters={}):
