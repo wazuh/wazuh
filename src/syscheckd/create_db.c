@@ -75,9 +75,9 @@ void fim_scan() {
 
     if (_base_line == 0) {
         _base_line = 1;
-    } else {
-        check_deleted_files();
     }
+
+    check_deleted_files();
 
     minfo(FIM_FREQUENCY_ENDED);
     fim_send_scan_info(FIM_SCAN_END);
