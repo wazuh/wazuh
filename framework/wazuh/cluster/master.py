@@ -146,6 +146,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.node_type = ""
         # dictionary to save loggers for each sync task
         self.task_loggers = {}
+        cluster.context_tag.set(self.tag)
 
     def to_dict(self):
         """
