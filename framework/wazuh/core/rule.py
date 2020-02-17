@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -10,12 +10,14 @@ from wazuh import common
 from wazuh.exception import WazuhError
 from wazuh.utils import load_wazuh_xml
 
+RULE_REQUIREMENTS = ['pci_dss', 'gdpr', 'hipaa', 'nist_800_53', 'gpg13']
+
 
 class Status(Enum):
     S_ENABLED = 'enabled'
     S_DISABLED = 'disabled'
     S_ALL = 'all'
-    SORT_FIELDS = ['file', 'path', 'description', 'id', 'level', 'status']
+    SORT_FIELDS = ['filename', 'relative_path', 'description', 'id', 'level', 'status']
 
 
 def add_detail(detail, value, details):
@@ -36,17 +38,6 @@ def add_detail(detail, value, details):
         details[detail] = value
 
 
-def add_unique_element(src_list, element):
-    new_list = list()
-    new_list.extend(element) if type(element) in [list, tuple] else new_list.append(element)
-
-    for item in new_list:
-        if item is not None and item != '':
-            i = item.strip()
-            if i not in src_list:
-                src_list.append(i)
-
-
 def check_status(status):
     if status is None:
         return Status.S_ALL.value
@@ -57,27 +48,22 @@ def check_status(status):
 
 
 def set_groups(groups, general_groups, rule):
-    pci_groups, gpg13_groups, gdpr_groups, hipaa_groups, nist_800_53_groups, ossec_groups = (list() for i in range(6))
-    requirements = {'pci_dss_': ('pci', pci_groups, 8), 'gpg13_': ('gpg13', gpg13_groups, 6),
-                    'gdpr_': ('gdpr', gdpr_groups, 5), 'hipaa_': ('hipaa', hipaa_groups, 6),
-                    'nist_800_53_': ('nist_800_53', nist_800_53_groups, 12), 'groups': ('groups', ossec_groups)}
     groups.extend(general_groups)
     for g in groups:
-        for key, value in requirements.items():
-            if key in g:
-                value[1].append(g.strip()[value[2]:])
+        for req in RULE_REQUIREMENTS:
+            if req in g:
+                # We add the requirement to the rule
+                rule[req].append(g[len(req) + 1:]) if g[len(req) + 1:] not in rule[req] else None
                 break
         else:
-            requirements['groups'][1].append(g)
-
-    for key, value in requirements.items():
-        add_unique_element(rule[value[0]], value[1])
+            # If a requirement is not found we add it to the rule as group
+            rule['groups'].append(g) if g is not '' else None
 
 
-def load_rules_from_file(rule_file, rule_path, rule_status):
+def load_rules_from_file(rule_filename, rule_relative_path, rule_status):
     try:
         rules = list()
-        root = load_wazuh_xml(os.path.join(common.ossec_path, rule_path, rule_file))
+        root = load_wazuh_xml(os.path.join(common.ossec_path, rule_relative_path, rule_filename))
 
         for xml_group in list(root):
             if xml_group.tag.lower() == "group":
@@ -86,10 +72,11 @@ def load_rules_from_file(rule_file, rule_path, rule_status):
                     # New rule
                     if xml_rule.tag.lower() == "rule":
                         groups = list()
-                        rule = {'file': rule_file, 'path': rule_path, 'id': int(xml_rule.attrib['id']),
-                                'level': int(xml_rule.attrib['level']), 'status': rule_status, 'details': dict(),
-                                'pci': list(), 'gpg13': list(), 'gdpr': list(), 'hipaa': list(), 'nist_800_53': list(),
-                                'groups': list(), 'description': ''}
+                        rule = {'filename': rule_filename, 'relative_path': rule_relative_path,
+                                'id': int(xml_rule.attrib['id']), 'level': int(xml_rule.attrib['level']),
+                                'status': rule_status, 'details': dict(), 'pci_dss': list(), 'gpg13': list(),
+                                'gdpr': list(), 'hipaa': list(), 'nist_800_53': list(), 'groups': list(),
+                                'description': ''}
                         for k in xml_rule.attrib:
                             if k != 'id' and k != 'level':
                                 rule['details'][k] = xml_rule.attrib[k]
@@ -148,7 +135,7 @@ def item_format(data, all_items, exclude_filenames):
         item_name = os.path.basename(item)
         item_dir = os.path.relpath(os.path.dirname(item), start=common.ossec_path)
         item_status = Status.S_DISABLED.value if item_name in exclude_filenames else Status.S_ENABLED.value
-        data.append({'file': item_name, 'path': item_dir, 'status': item_status})
+        data.append({'filename': item_name, 'relative_path': item_dir, 'status': item_status})
 
 
 def _create_rule_decoder_dir_dict(ruleset_conf, tag, exclude_filenames, data):
@@ -167,7 +154,7 @@ def _create_dict(ruleset_conf, tag, exclude_filenames, data):
         full_dir = os.path.dirname(item)
         item_dir = os.path.relpath(full_dir if full_dir else common.ruleset_rules_path, start=common.ossec_path)
         exclude_filenames.append(item_name) if tag == 'rule_exclude' or tag == 'decoder_exclude' else \
-            data.append({'file': item_name, 'path': item_dir, 'status': item_status})
+            data.append({'filename': item_name, 'relative_path': item_dir, 'status': item_status})
 
 
 def format_rule_decoder_file(ruleset_conf, parameters, tags):

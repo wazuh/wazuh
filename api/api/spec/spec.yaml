@@ -2922,9 +2922,9 @@ components:
         type: string
     downloadFile:
       in: path
-      name: file
+      name: filename
       required: True
-      description: File name to download.
+      description: Filename to download.
       schema:
         type: string
         format: alphanumeric
@@ -2953,9 +2953,9 @@ components:
         items:
           type: string
           format: names
-    file:
+    filename:
       in: query
-      name: file
+      name: filename
       description: Filters by filename.
       schema:
         type: array
@@ -3225,7 +3225,7 @@ components:
       required: true
       schema:
         type: string
-        enum: [pci, gdpr, hipaa, nist-800-53, gpg13]
+        enum: [pci_dss, gdpr, hipaa, nist-800-53, gpg13]
     result:
       in: query
       name: result
@@ -3551,8 +3551,8 @@ components:
         format: etc_and_ruleset_file_path
     etc_and_ruleset_path:
       in: query
-      name: path
-      description: Path to return.
+      name: relative_path
+      description: Filters by relative path
       schema:
         type: string
         format: etc_and_ruleset_path
@@ -3584,10 +3584,10 @@ components:
       schema:
         type: string
         format: range
-    pci:
+    pci_dss:
       in: query
-      name: pci
-      description: Filters by PCI requirement name.
+      name: pci_dss
+      description: Filters by PCI_DSS requirement name.
       schema:
         type: string
         format: alphanumeric
@@ -8099,7 +8099,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/query'
         - $ref: '#/components/parameters/rootcheck_status'
-        - $ref: '#/components/parameters/pci'
+        - $ref: '#/components/parameters/pci_dss'
         - $ref: '#/components/parameters/cis'
       responses:
         '200':
@@ -8131,7 +8131,7 @@ paths:
                     - status: outstanding
                       readDay: "2019-03-08T09:20:05Z"
                       oldDay: "2019-03-08T09:20:05Z"
-                      pci: 2.2.4
+                      pci_dss: 2.2.4
                       event: "System Audit: SSH Hardening - 4: No Public Key authentication {PCI_DSS: 2.2.4}. File: /etc/ssh/sshd_config. Reference: 4 ."
         default:
           $ref: '#/components/responses/ResponseError'
@@ -8314,9 +8314,9 @@ paths:
         - $ref: '#/components/parameters/statusRLDParam'
         - $ref: '#/components/parameters/group'
         - $ref: '#/components/parameters/level'
-        - $ref: '#/components/parameters/file'
+        - $ref: '#/components/parameters/filename'
         - $ref: '#/components/parameters/etc_and_ruleset_path'
-        - $ref: '#/components/parameters/pci'
+        - $ref: '#/components/parameters/pci_dss'
         - $ref: '#/components/parameters/gdpr'
         - $ref: '#/components/parameters/gpg13'
         - $ref: '#/components/parameters/hipaa'
@@ -8350,7 +8350,7 @@ paths:
                       level: 0
                       nist_800_53: []
                       path: ruleset/rules
-                      pci: []
+                      pci_dss: []
                       status: enabled
                     - description: Generic template for all web proxy rules.
                       details:
@@ -8366,7 +8366,7 @@ paths:
                       level: 0
                       nist_800_53: []
                       path: ruleset/rules
-                      pci: []
+                      pci_dss: []
                       status: enabled
                   failed_items: []
                   total_affected_items: 54
@@ -8476,7 +8476,7 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/etc_and_ruleset_path'
-        - $ref: '#/components/parameters/file'
+        - $ref: '#/components/parameters/filename'
         - $ref: '#/components/parameters/statusRLDParam'
       responses:
         '200':
@@ -8512,7 +8512,7 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /rules/files/{file}/download:
+  /rules/files/{filename}/download:
     get:
       tags:
         - rules
@@ -8879,7 +8879,7 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/query'
-        - $ref: '#/components/parameters/file'
+        - $ref: '#/components/parameters/filename'
         - $ref: '#/components/parameters/etc_and_ruleset_path'
         - $ref: '#/components/parameters/statusRLDParam'
       responses:
@@ -8931,7 +8931,7 @@ paths:
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/file'
+        - $ref: '#/components/parameters/filename'
         - $ref: '#/components/parameters/etc_and_ruleset_path'
         - $ref: '#/components/parameters/statusRLDParam'
       responses:
@@ -8965,7 +8965,7 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /decoders/files/{file}/download:
+  /decoders/files/{filename}/download:
     get:
       tags:
       - decoders

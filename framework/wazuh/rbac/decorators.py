@@ -67,14 +67,18 @@ def _expand_resource(resource):
             return users_system
         elif resource_type == 'rule:file':
             tags = ['rule_include', 'rule_exclude', 'rule_dir']
-            format_rules = format_rule_decoder_file(get_ossec_conf(section='ruleset')['ruleset'],
-                                                    {'status': Status.S_ALL.value, 'path': None, 'file': None}, tags)
-            return {rule['file'] for rule in format_rules}
+            format_rules = format_rule_decoder_file(
+                get_ossec_conf(section='ruleset')['ruleset'],
+                {'status': Status.S_ALL.value, 'relative_path': None, 'filename': None},
+                tags)
+            return {rule['filename'] for rule in format_rules}
         elif resource_type == 'decoder:file':
             tags = ['decoder_include', 'decoder_exclude', 'decoder_dir']
-            format_decoders = format_rule_decoder_file(get_ossec_conf(section='ruleset')['ruleset'],
-                                                       {'status': Status.S_ALL.value, 'path': None, 'file': None}, tags)
-            return {decoder['file'] for decoder in format_decoders}
+            format_decoders = format_rule_decoder_file(
+                get_ossec_conf(section='ruleset')['ruleset'],
+                {'status': Status.S_ALL.value, 'relative_path': None, 'filename': None},
+                tags)
+            return {decoder['filename'] for decoder in format_decoders}
         elif resource_type == 'list:path':
             return {os.path.join(cdb_list['path'], cdb_list['name']) for cdb_list in iterate_lists(only_names=True)}
         elif resource_type == 'node:id':

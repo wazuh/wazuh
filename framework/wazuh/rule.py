@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -6,28 +6,28 @@ import os
 
 import wazuh.configuration as configuration
 from wazuh import common
-from wazuh.core.rule import check_status, load_rules_from_file, Status, format_rule_decoder_file
+from wazuh.core.rule import check_status, load_rules_from_file, Status, format_rule_decoder_file, RULE_REQUIREMENTS
 from wazuh.exception import WazuhError
 from wazuh.rbac.decorators import expose_resources
 from wazuh.results import AffectedItemsWazuhResult
 from wazuh.utils import process_array
 
 
-def get_rules(rule_ids=None, status=None, group=None, pci=None, gpg13=None, gdpr=None, hipaa=None, nist_800_53=None,
-              path=None, file=None, level=None, offset=0, limit=common.database_limit, sort_by=None,
+def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, gdpr=None, hipaa=None, nist_800_53=None,
+              relative_path=None, filename=None, level=None, offset=0, limit=common.database_limit, sort_by=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None, q=''):
     """Gets a list of rules.
 
     :param rule_ids: IDs of rules.
     :param status: Filters the rules by status.
     :param group: Filters the rules by group.
-    :param pci: Filters the rules by pci requirement.
+    :param pci_dss: Filters the rules by pci_dss requirement.
     :param gpg13: Filters the rules by gpg13 requirement.
     :param gdpr: Filters the rules by gdpr requirement.
     :param hipaa: Filters the rules by hipaa requirement.
     :param nist_800_53: Filters the rules by nist_800_53 requirement.
-    :param path: Filters the rules by path.
-    :param file: Filters the rules by file name.
+    :param relative_path: Filters the rules by path.
+    :param filename: Filters the rules by file name.
     :param level: Filters the rules by level. level=2 or level=2-5.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
@@ -53,12 +53,13 @@ def get_rules(rule_ids=None, status=None, group=None, pci=None, gpg13=None, gdpr
             raise WazuhError(1203)
 
     for rule_file in get_rules_files(limit=None).affected_items:
-        rules.extend(load_rules_from_file(rule_file['file'], rule_file['path'], rule_file['status']))
+        rules.extend(load_rules_from_file(rule_file['filename'], rule_file['relative_path'], rule_file['status']))
 
     status = check_status(status)
     status = ['enabled', 'disabled'] if status == 'all' else [status]
-    parameters = {'groups': group, 'pci': pci, 'gpg13': gpg13, 'gdpr': gdpr, 'hipaa': hipaa, 'nist_800_53': nist_800_53,
-                  'path': path, 'file': file, 'id': rule_ids, 'level': levels, 'status': status}
+    parameters = {'groups': group, 'pci_dss': pci_dss, 'gpg13': gpg13, 'gdpr': gdpr, 'hipaa': hipaa,
+                  'nist_800_53': nist_800_53, 'relative_path': relative_path, 'filename': filename, 'id': rule_ids,
+                  'level': levels, 'status': status}
     original_rules = list(rules)
     no_existent_ids = rule_ids[:]
     for r in original_rules:
@@ -73,7 +74,7 @@ def get_rules(rule_ids=None, status=None, group=None, pci=None, gpg13=None, gdpr
                         rules.remove(r)
                     elif r[key] in no_existent_ids:
                         no_existent_ids.remove(r[key])
-                elif key == 'file' and r[key] not in file and r in rules:
+                elif key == 'filename' and r[key] not in filename and r in rules:
                     rules.remove(r)
                 elif key == 'status' and r[key] not in value and r in rules:
                     rules.remove(r)
@@ -91,14 +92,14 @@ def get_rules(rule_ids=None, status=None, group=None, pci=None, gpg13=None, gdpr
     return result
 
 
-@expose_resources(actions=['rules:read'], resources=['rule:file:{file}'])
-def get_rules_files(status=None, path=None, file=None, offset=0, limit=common.database_limit, sort_by=None,
+@expose_resources(actions=['rules:read'], resources=['rule:file:{filename}'])
+def get_rules_files(status=None, relative_path=None, filename=None, offset=0, limit=common.database_limit, sort_by=None,
                     sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Gets a list of the rule files.
 
     :param status: Filters by status: enabled, disabled, all.
-    :param path: Filters by path.
-    :param file: Filters by filename.
+    :param relative_path: Filters by path.
+    :param filename: Filters by filename.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
     :param sort_by: Fields to sort the items by
@@ -106,7 +107,7 @@ def get_rules_files(status=None, path=None, file=None, offset=0, limit=common.da
     :param search_text: Text to search
     :param complementary_search: Find items without the text to search
     :param search_in_fields: Fields to search in
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    :return: AffectedItemsWazuhResult
     """
     result = AffectedItemsWazuhResult(none_msg='No rules files were shown',
                                       some_msg='Some rules files were shown',
@@ -118,13 +119,17 @@ def get_rules_files(status=None, path=None, file=None, offset=0, limit=common.da
         raise WazuhError(1200)
     rules_files = list()
     tags = ['rule_include', 'rule_exclude', 'rule_dir']
-    if isinstance(file, list):
-        for f in file:
+    if isinstance(filename, list):
+        for f in filename:
             rules_files.extend(
-                format_rule_decoder_file(ruleset_conf['ruleset'], {'status': status, 'path': path, 'file': f}, tags))
+                format_rule_decoder_file(ruleset_conf['ruleset'],
+                                         {'status': status, 'relative_path': relative_path, 'filename': f},
+                                         tags))
     else:
-        rules_files = format_rule_decoder_file(ruleset_conf['ruleset'], {'status': status, 'path': path, 'file': file},
+        rules_files = format_rule_decoder_file(ruleset_conf['ruleset'],
+                                               {'status': status, 'relative_path': relative_path, 'filename': filename},
                                                tags)
+
     result.affected_items = process_array(rules_files, search_text=search_text, search_in_fields=search_in_fields,
                                           complementary_search=complementary_search, sort_by=sort_by,
                                           sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
@@ -176,12 +181,10 @@ def get_requirement(requirement=None, offset=0, limit=common.database_limit, sor
     """
     result = AffectedItemsWazuhResult(none_msg='No rule was shown',
                                       all_msg='Selected rules were shown')
-    valid_requirements = ['pci', 'gdpr', 'hipaa', 'nist_800_53', 'gpg13']
 
-    if requirement not in valid_requirements:
-        result.add_failed_item(id_=requirement,
-                               error=WazuhError(1205, extra_message=requirement,
-                                                extra_remediation=f'Valid ones are {valid_requirements}'))
+    if requirement not in RULE_REQUIREMENTS:
+        result.add_failed_item(id_=requirement, error=WazuhError(1205, extra_message=requirement,
+                               extra_remediation=f'Valid ones are {RULE_REQUIREMENTS}'))
 
         return result
 
@@ -201,10 +204,10 @@ def get_file(filename=None):
     :param filename: File name to read content from
     :return: File contents
     """
-    files = get_rules_files(file=filename).affected_items
+    files = get_rules_files(filename=filename).affected_items
 
     if len(files) > 0:
-        rules_path = files[0]['path']
+        rules_path = files[0]['relative_path']
         try:
             full_path = os.path.join(common.ossec_path, rules_path, filename)
             with open(full_path) as f:
