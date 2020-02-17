@@ -248,8 +248,6 @@ static int setup_realtime_start(void **state) {
 
     *state = hash;
 
-    // free the global syscheck.realtime before running syscheck_start
-    free(syscheck.realtime);
     state[1] = syscheck.realtime;
     syscheck.realtime = NULL;
 
