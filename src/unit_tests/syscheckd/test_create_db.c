@@ -2077,9 +2077,9 @@ static void test_fim_checker_fim_regular(void **state) {
     expect_string(__wrap_fim_db_get_path, file_path, expanded_path);
     will_return(__wrap_fim_db_get_path, NULL);
 
-    expect_value(__wrap_fim_db_insert_data, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_insert_data, file_path, expanded_path);
-    will_return(__wrap_fim_db_insert_data, 0);
+    expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_insert, file_path, expanded_path);
+    will_return(__wrap_fim_db_insert, 0);
 
     expect_value(__wrap_fim_db_set_scanned, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_set_scanned, path, expanded_path);
@@ -2151,6 +2151,58 @@ static void test_fim_checker_fim_regular_restrict(void **state) {
 
     assert_int_equal(fim_data->item->configuration, 37375);
     assert_int_equal(fim_data->item->index, 7);
+}
+
+static void test_fim_checker_fim_regular_warning(void **state) {
+    fim_data_t *fim_data = *state;
+    char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
+    char expanded_path[OS_MAXSTR];
+    char debug_msg[OS_MAXSTR];
+    struct stat buf;
+    buf.st_mode = S_IFREG;
+    fim_data->item->index = 3;
+    fim_data->item->statbuf = buf;
+    fim_data->item->statbuf.st_size = 1500;
+
+    if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
+        fail();
+
+    str_lowercase(expanded_path);
+
+    will_return(__wrap_stat, 0);
+
+    expect_string(__wrap_HasFilesystem, path, expanded_path);
+    will_return(__wrap_HasFilesystem, 0);
+
+    // Inside fim_file
+    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, strdup("user"));
+
+    expect_string(__wrap_w_get_file_permissions, file_path, expanded_path);
+    will_return(__wrap_w_get_file_permissions, "permissions");
+    will_return(__wrap_w_get_file_permissions, 0);
+
+    expect_string(__wrap_decode_win_permissions, raw_perm, "permissions");
+    will_return(__wrap_decode_win_permissions, "decoded_perms");
+
+    expect_string(__wrap_w_get_file_attrs, file_path, expanded_path);
+    will_return(__wrap_w_get_file_attrs, 123456);
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, expanded_path);
+    will_return(__wrap_fim_db_get_path, NULL);
+
+    expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_insert, file_path, expanded_path);
+    will_return(__wrap_fim_db_insert, -1);
+
+    snprintf(debug_msg, OS_MAXSTR, "(6923): Unable to process file '%s'", expanded_path);
+    expect_string(__wrap__mwarn, formatted_msg, debug_msg);
+
+    fim_checker(expanded_path, fim_data->item, fim_data->w_evt, 1);
+
+    assert_int_equal(fim_data->item->configuration, 37375);
+    assert_int_equal(fim_data->item->index, 6);
 }
 
 static void test_fim_checker_fim_directory(void **state) {
@@ -2376,7 +2428,7 @@ static void test_fim_get_data_no_hashes(void **state) {
 
     fim_data->item->index = 1;
     fim_data->item->statbuf = buf;
-    fim_data->item->configuration = CHECK_SIZE |
+    fim_data->item->configuration = 0 | CHECK_SIZE |
                                     CHECK_PERM |
                                     CHECK_MTIME |
                                     CHECK_OWNER |
@@ -2385,12 +2437,22 @@ static void test_fim_get_data_no_hashes(void **state) {
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
-    expect_value(__wrap_get_group, gid, 0);
-    will_return(__wrap_get_group, "group");
+    #ifdef TEST_WINAGENT
+    expect_string(__wrap_w_get_file_permissions, file_path, "test");
+    will_return(__wrap_w_get_file_permissions, "permissions");
+    will_return(__wrap_w_get_file_permissions, 0);
+
+    expect_string(__wrap_decode_win_permissions, raw_perm, "permissions");
+    will_return(__wrap_decode_win_permissions, "decoded_perms");
+    #endif 
 
     fim_data->local_data = fim_get_data("test", fim_data->item);
 
+    #ifndef TEST_WINAGENT
     assert_string_equal(fim_data->local_data->perm, "r--r--r--");
+    #else
+    assert_string_equal(fim_data->local_data->perm, "decoded_perms");
+    #endif 
     assert_string_equal(fim_data->local_data->hash_md5, "");
     assert_string_equal(fim_data->local_data->hash_sha1, "");
     assert_string_equal(fim_data->local_data->hash_sha256, "");
