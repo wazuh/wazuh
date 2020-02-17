@@ -8,6 +8,10 @@ All notable changes to this project will be documented in this file.
 - Add support for monitoring AWS S3 buckets in GovCloud regions. ([#3953](https://github.com/wazuh/wazuh/issues/3953))
 - Add support for monitoring Cisco Umbrella S3 buckets. ([#3890](https://github.com/wazuh/wazuh/issues/3890))
 
+### Fixed
+
+- Fixed a small memory leak in clusterd. ([#4465](https://github.com/wazuh/wazuh/pull/4465))
+
 
 ## [v3.11.3] - 2020-01-28
 
