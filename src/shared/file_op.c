@@ -773,7 +773,7 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
     FILE *finalfp;
     char newpath[PATH_MAX];
     DIR *dir;
-    struct dirent *ent;
+    struct dirent *ent = NULL;
 
     /* Create a new entry */
 
@@ -1944,7 +1944,7 @@ int cldir_ex(const char *name) {
 
 int cldir_ex_ignore(const char * name, const char ** ignore) {
     DIR *dir;
-    struct dirent *dirent;
+    struct dirent *dirent = NULL;
     char path[PATH_MAX + 1];
 
     // Erase content
@@ -2409,7 +2409,7 @@ static int qsort_strcmp(const void *s1, const void *s2) {
 // Read directory and return an array of contained files, sorted alphabetically.
 char ** wreaddir(const char * name) {
     DIR * dir;
-    struct dirent * dirent;
+    struct dirent * dirent = NULL;
     char ** files;
     unsigned int i = 0;
 

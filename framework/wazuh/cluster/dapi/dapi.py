@@ -279,7 +279,7 @@ class DistributedAPI:
             agents = agent.Agent.get_agents_overview(
                 select=select_node, filters={'group': self.input_json['arguments']['group_id']})['items']
             if len(agents) == 0:
-                raise WazuhException(1750)
+                raise WazuhException(1751)
             del self.input_json['arguments']['group_id']
             node_name = {k: list(map(operator.itemgetter('id'), g)) for k, g in
                          itertools.groupby(agents, key=operator.itemgetter('node_name'))}

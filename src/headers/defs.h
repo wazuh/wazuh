@@ -56,12 +56,11 @@
 #define MAX_TAG_COUNTER 256             /* Max retrying counter         */
 #define SOCK_RECV_TIME0 300             /* Socket receiving timeout (s) */
 #define MIN_ORDER_SIZE  10              /* Minimum size of orders array */
-#define KEEPALIVE_SIZE  700             /* Random keepalive string size */
 #define MAX_DYN_STR     4194304         /* Max message size received 4MiB */
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
-#define __ossec_version "v3.11.2"
+#define __ossec_version "v3.12.0"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"
@@ -141,6 +140,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define MON_LOCAL_SOCK  "/queue/ossec/monitor"
 #define CLUSTER_SOCK "/queue/cluster/c-internal.sock"
 #define CONTROL_SOCK "/queue/ossec/control"
+
+// Absolute path local requests socket
+#define CONTROL_SOCK_PATH DEFAULTDIR CONTROL_SOCK
 
 // Attempts to check sockets availability
 #define SOCK_ATTEMPTS   10
@@ -276,6 +278,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #ifndef WIN32
 #define OSSEC_DEFINES   "/etc/internal_options.conf"
 #define OSSEC_LDEFINES   "/etc/local_internal_options.conf"
+#define OSSEC_DEFINES_PATH DEFAULTDIR OSSEC_DEFINES
 #else
 #define OSSEC_DEFINES   "internal_options.conf"
 #define OSSEC_LDEFINES   "local_internal_options.conf"

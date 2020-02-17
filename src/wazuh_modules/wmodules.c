@@ -354,7 +354,7 @@ int get_time_to_hour(const char * hour) {
 
     time_t curr_time;
     time_t target_time;
-    struct tm * time_now;
+    struct tm tm_result = { .tm_sec = 0 };
     double diff;
     int i;
 
@@ -362,9 +362,9 @@ int get_time_to_hour(const char * hour) {
 
     // Get current time
     curr_time = time(NULL);
-    time_now = localtime(&curr_time);
+    localtime_r(&curr_time, &tm_result);
 
-    struct tm t_target = *time_now;
+    struct tm t_target = tm_result;
 
     // Look for the particular hour
     t_target.tm_hour = atoi(parts[0]);
@@ -393,7 +393,7 @@ int get_time_to_day(int wday, const char * hour) {
 
     time_t curr_time;
     time_t target_time;
-    struct tm * time_now;
+    struct tm tm_result = { .tm_sec = 0 };
     double diff;
     int i, ret;
 
@@ -402,9 +402,9 @@ int get_time_to_day(int wday, const char * hour) {
 
     // Get current time
     curr_time = time(NULL);
-    time_now = localtime(&curr_time);
+    localtime_r(&curr_time, &tm_result);
 
-    struct tm t_target = *time_now;
+    struct tm t_target = tm_result;
 
     // Look for the particular hour
     t_target.tm_hour = atoi(parts[0]);
@@ -415,22 +415,22 @@ int get_time_to_day(int wday, const char * hour) {
     target_time = mktime(&t_target);
     diff = difftime(target_time, curr_time);
 
-    if (wday == time_now->tm_wday) {    // We are in the desired day
+    if (wday == tm_result.tm_wday) {    // We are in the desired day
 
         if (diff < 0) {
             diff += (7*24*60*60);   // Seconds of a week
         }
 
-    } else if (wday > time_now->tm_wday) {  // We are looking for a future day
+    } else if (wday > tm_result.tm_wday) {  // We are looking for a future day
 
-        while (wday > time_now->tm_wday) {
+        while (wday > tm_result.tm_wday) {
             diff += (24*60*60);
-            time_now->tm_wday++;
+            tm_result.tm_wday++;
         }
 
-    } else if (wday < time_now->tm_wday) { // We have past the desired day
+    } else if (wday < tm_result.tm_wday) { // We have past the desired day
 
-        ret = 7 - (time_now->tm_wday - wday);
+        ret = 7 - (tm_result.tm_wday - wday);
         for (i = 0; i < ret; i++) {
             diff += (24*60*60);
         }
@@ -447,17 +447,17 @@ int check_day_to_scan(int day, const char *hour) {
 
     time_t curr_time;
     time_t target_time;
-    struct tm * time_now;
+    struct tm tm_result = { .tm_sec = 0 };
     double diff;
     int i;
 
     // Get current time
     curr_time = time(NULL);
-    time_now = localtime(&curr_time);
+    localtime_r(&curr_time, &tm_result);
 
-    if (day == time_now->tm_mday) {    // Day of the scan
+    if (day == tm_result.tm_mday) {    // Day of the scan
 
-        struct tm t_target = *time_now;
+        struct tm t_target = tm_result;
 
         char ** parts = OS_StrBreak(':', hour, 2);
 
@@ -496,6 +496,7 @@ int wm_get_path(const char *binary, char **validated_comm){
     char *full_path;
     char *validated = NULL;
     char *env_path = NULL;
+    char *save_ptr = NULL;
 
 #ifdef WIN32
     if (IsFile(binary) == 0) {
@@ -511,7 +512,7 @@ int wm_get_path(const char *binary, char **validated_comm){
     } else {
 
         env_path = getenv("PATH");
-        path = strtok(env_path, sep);
+        path = strtok_r(env_path, sep, &save_ptr);
 
         while (path != NULL) {
             os_calloc(strlen(path) + strlen(binary) + 2, sizeof(char), full_path);
@@ -526,7 +527,7 @@ int wm_get_path(const char *binary, char **validated_comm){
                 break;
             }
             free(full_path);
-            path = strtok(NULL, sep);
+            path = strtok_r(NULL, sep, &save_ptr);
         }
 
         // Check binary found

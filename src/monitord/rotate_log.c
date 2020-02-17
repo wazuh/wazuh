@@ -46,7 +46,7 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
     char compressed_path[PATH_MAX];
     char rename_path[PATH_MAX];
     char old_rename_path[PATH_MAX];
-    struct tm tm;
+    struct tm tm = { .tm_sec = 0 };
     time_t now;
     int counter = 0;
 
@@ -194,7 +194,7 @@ void remove_old_logs(const char *base_dir, int keep_log_days) {
     char path[PATH_MAX];
     int year;
     DIR *dir;
-    struct dirent *dirent;
+    struct dirent *dirent = NULL;
 
     if (dir = opendir(base_dir), !dir) {
         merror("Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
@@ -220,7 +220,7 @@ void remove_old_logs_y(const char * base_dir, int year, time_t threshold) {
     char path[PATH_MAX];
     int month;
     DIR *dir;
-    struct dirent *dirent;
+    struct dirent *dirent = NULL;
 
     if (dir = opendir(base_dir), !dir) {
         merror("Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
@@ -257,9 +257,9 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
     char path[PATH_MAX];
     DIR *dir;
     int day;
-    struct dirent *dirent;
+    struct dirent *dirent = NULL;
     time_t now = time(NULL);
-    struct tm tm;
+    struct tm tm = { .tm_sec = 0 };
     int counter;
 
     localtime_r(&now, &tm);

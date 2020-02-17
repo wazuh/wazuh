@@ -11,6 +11,7 @@
 
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 uname_P := $(shell sh -c 'uname -p 2>/dev/null || echo not')
+uname_K := $(shell sh -c 'uname -k 2>/dev/null || echo not')
 HAS_CHECKMODULE = $(shell command -v checkmodule > /dev/null && echo YES)
 HAS_SEMODULE_PACKAGE = $(shell command -v semodule_package > /dev/null && echo YES)
 
@@ -113,9 +114,11 @@ ifeq (${uname_S},SunOS)
 		DEFINES+=-std=gnu99
 		DEFINES+=-D_REENTRANT
 ifneq (${uname_P},sparc)
+ifeq (${uname_K},5.11)
 		OSSEC_LDFLAGS+=-z relax=secadj
 else
 		OSSEC_CFLAGS+=-DMSGPACK_ZONE_ALIGN=8
+endif
 endif
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		OSSEC_LIBS+=-lsocket -lnsl -lresolv -lrt -lpthread

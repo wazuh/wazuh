@@ -130,7 +130,7 @@ void start_daemon()
     time_t curr_time = 0;
     time_t prev_time_sk = 0;
     char curr_hour[12];
-    struct tm *p;
+    struct tm tm_result = { .tm_sec = 0 };
     int first_start = 1;
 
 #ifndef WIN32
@@ -201,19 +201,19 @@ void start_daemon()
      */
     if (syscheck.scan_time || syscheck.scan_day) {
         curr_time = time(0);
-        p = localtime(&curr_time);
+        localtime_r(&curr_time, &tm_result);
 
         /* Assign hour/min/sec values */
         snprintf(curr_hour, 9, "%02d:%02d:%02d",
-                 p->tm_hour,
-                 p->tm_min,
-                 p->tm_sec);
+                 tm_result.tm_hour,
+                 tm_result.tm_min,
+                 tm_result.tm_sec);
 
-        curr_day = p->tm_mday;
+        curr_day = tm_result.tm_mday;
 
         if (syscheck.scan_time && syscheck.scan_day) {
             if ((OS_IsAfterTime(curr_hour, syscheck.scan_time)) &&
-                    (OS_IsonDay(p->tm_wday, syscheck.scan_day))) {
+                    (OS_IsonDay(tm_result.tm_wday, syscheck.scan_day))) {
                 day_scanned = 1;
             }
         } else if (syscheck.scan_time) {
@@ -221,7 +221,7 @@ void start_daemon()
                 day_scanned = 1;
             }
         } else if (syscheck.scan_day) {
-            if (OS_IsonDay(p->tm_wday, syscheck.scan_day)) {
+            if (OS_IsonDay(tm_result.tm_wday, syscheck.scan_day)) {
                 day_scanned = 1;
             }
         }
@@ -237,29 +237,29 @@ void start_daemon()
 
         /* Check if a day_time or scan_time is set */
         if (syscheck.scan_time || syscheck.scan_day) {
-            p = localtime(&curr_time);
+            localtime_r(&curr_time, &tm_result);
 
             /* Day changed */
-            if (curr_day != p->tm_mday) {
+            if (curr_day != tm_result.tm_mday) {
                 day_scanned = 0;
-                curr_day = p->tm_mday;
+                curr_day = tm_result.tm_mday;
             }
 
             /* Check for the time of the scan */
             if (!day_scanned && syscheck.scan_time && syscheck.scan_day) {
                 /* Assign hour/min/sec values */
                 snprintf(curr_hour, 9, "%02d:%02d:%02d",
-                         p->tm_hour, p->tm_min, p->tm_sec);
+                         tm_result.tm_hour, tm_result.tm_min, tm_result.tm_sec);
 
                 if ((OS_IsAfterTime(curr_hour, syscheck.scan_time)) &&
-                        (OS_IsonDay(p->tm_wday, syscheck.scan_day))) {
+                        (OS_IsonDay(tm_result.tm_wday, syscheck.scan_day))) {
                     day_scanned = 1;
                     run_now = 1;
                 }
             } else if (!day_scanned && syscheck.scan_time) {
                 /* Assign hour/min/sec values */
                 snprintf(curr_hour, 9, "%02d:%02d:%02d",
-                         p->tm_hour, p->tm_min, p->tm_sec);
+                         tm_result.tm_hour, tm_result.tm_min, tm_result.tm_sec);
 
                 if (OS_IsAfterTime(curr_hour, syscheck.scan_time)) {
                     run_now = 1;
@@ -267,7 +267,7 @@ void start_daemon()
                 }
             } else if (!day_scanned && syscheck.scan_day) {
                 /* Check for the day of the scan */
-                if (OS_IsonDay(p->tm_wday, syscheck.scan_day)) {
+                if (OS_IsonDay(tm_result.tm_wday, syscheck.scan_day)) {
                     run_now = 1;
                     day_scanned = 1;
                 }
@@ -535,6 +535,8 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
         sprintf(str_inode, "%ld", (long)statbuf.st_ino);
     }
 
+    char *user_name = get_user(file_name, statbuf.st_uid, NULL);
+    char *group_name = get_group(statbuf.st_gid);
     snprintf(newsum, OS_SIZE_4096, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u",
         str_size,
         str_perm,
@@ -542,12 +544,15 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
         str_group,
         md5sum   == 0 ? "" : mf_sum,
         sha1sum  == 0 ? "" : sf_sum,
-        owner == 0 ? "" : get_user(file_name, statbuf.st_uid, NULL),
-        group == 0 ? "" : get_group(statbuf.st_gid),
+        owner == 0 ? "" : user_name,
+        group == 0 ? "" : group_name,
         str_mtime,
         inode == 0 ? "" : str_inode,
         sha256sum  == 0 ? "" : sf256_sum,
         0);
+
+    os_free(user_name);
+    os_free(group_name);
 #else
     user = get_user(file_name, statbuf.st_uid, &sid);
 
