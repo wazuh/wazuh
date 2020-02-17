@@ -15,7 +15,7 @@ class Status(Enum):
     S_ENABLED = 'enabled'
     S_DISABLED = 'disabled'
     S_ALL = 'all'
-    SORT_FIELDS = ['file', 'path', 'name', 'position', 'status']
+    SORT_FIELDS = ['filename', 'relative_path', 'name', 'position', 'status']
 
 
 def add_detail(detail, value, details):
@@ -54,7 +54,7 @@ def load_decoders_from_file(decoder_file, decoder_path, decoder_status):
         for xml_decoder in list(root):
             # New decoder
             if xml_decoder.tag.lower() == "decoder":
-                decoder = {'file': decoder_file, 'path': decoder_path, 'status': decoder_status,
+                decoder = {'filename': decoder_file, 'relative_path': decoder_path, 'status': decoder_status,
                            'name': xml_decoder.attrib['name'], 'position': position, 'details': dict()}
                 position += 1
 

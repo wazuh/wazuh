@@ -1804,10 +1804,10 @@ components:
     RulesFiles:
       type: object
       properties:
-        file:
+        filename:
           type: string
           description: Filename where the rule is defined.
-        path:
+        relative_path:
           type: string
           description: Path where the file defining the rule is located. The path is relative to the Wazuh install path.
         status:
@@ -2057,17 +2057,17 @@ components:
     DecoderFile:
       type: object
       required:
-      - file
+      - filename
       - status
-      - path
+      - relative_path
       properties:
-        file:
+        filename:
           type: string
           description: Filename containing decoder definitions.
         status:
           type: string
           description: Whether the decoders defined in that file are used by Wazuh or not.
-        path:
+        relative_path:
           type: string
           format: ruleset_path
           description: Decoder file path.
