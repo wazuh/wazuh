@@ -5,7 +5,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug1 -Wl,--wrap,wdb_stmt_cache -Wl,-
                          -Wl,--wrap,sqlite3_column_text -Wl,--wrap,_mdebug2")
 
 # Add server specific tests to the list
-if(TEST_SERVER)
+if(${TARGET} STREQUAL "server")
     list(APPEND wdb_tests_names "test_wdb_fim")
     list(APPEND wdb_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,cJSON_Parse -Wl,--wrap,wdb_begin2 \
                             -Wl,--wrap,cJSON_Delete -Wl,--wrap,cJSON_GetStringValue -Wl,--wrap,cJSON_IsNumber \
