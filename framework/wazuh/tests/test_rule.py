@@ -105,7 +105,7 @@ def test_get_rules_file_status_include(mock_ossec, status, func):
             if status != 'enabled':
                 index_disabled = next((index for (index, d) in enumerate(
                     d_files['affected_items']) if d["status"] == "disabled"), None)
-                assert d_files['affected_items'][index_disabled]['file'] == '0010-rules_config.xml'
+                assert d_files['affected_items'][index_disabled]['filename'] == '0010-rules_config.xml'
 
 
 @pytest.mark.parametrize('func', [
@@ -119,8 +119,8 @@ def test_get_rules_file_status_include(mock_ossec, status, func):
 @patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
 def test_get_rules_file_file_param(mock_config, file_, func):
     """Test getting rules using param filter."""
-    d_files = func(file=file_)
-    assert [d_files.affected_items[0]['file']] == file_
+    d_files = func(filename=file_)
+    assert [d_files.affected_items[0]['filename']] == file_
     if func == rule.get_rules_files:
         assert d_files.total_affected_items == 1
     else:
@@ -138,14 +138,14 @@ def test_failed_get_rules_file(mock_config):
 
 @pytest.mark.parametrize('arg', [
     {'group': 'user1'},
-    {'pci': 'user1'},
+    {'pci_dss': 'user1'},
     {'gpg13': '10.0'},
     {'gdpr': 'IV_35.7.a'},
     {'hipaa': '164.312.a'},
     {'nist_800_53': 'AU.1'},
     {'rule_ids': [510], 'status': 'all'},
     {'rule_ids': [1, 1]},
-    {'rule_ids': [510, 1], 'file': ['noexists.xml']},
+    {'rule_ids': [510, 1], 'filename': ['noexists.xml']},
     {'rule_ids': [510, 999999], 'status': 'disabled'},
     {'level': '2'},
     {'level': '2-2'},
@@ -196,7 +196,7 @@ def test_get_groups(mock_config, arg):
 
 
 @pytest.mark.parametrize('requirement', [
-    'pci', 'gdpr', 'hipaa', 'nist_800_53', 'gpg13'
+    'pci_dss', 'gdpr', 'hipaa', 'nist_800_53', 'gpg13'
 ])
 @patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
 def test_get_requirement(mocked_config, requirement):
@@ -242,7 +242,7 @@ def test_get_rules_file_download(mock_config, file_):
 def test_get_rules_file_download_failed(mock_config, file_):
     """Test download a specified rule filter."""
     with patch('wazuh.rule.get_rules_files', return_value=AffectedItemsWazuhResult(
-            all_msg='test', affected_items=[{'path': list(file_.keys())[0]}])):
+            all_msg='test', affected_items=[{'relative_path': list(file_.keys())[0]}])):
         try:
             rule.get_file(list(file_.keys())[0])
             assert False
