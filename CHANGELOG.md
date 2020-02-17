@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Add support for monitoring AWS S3 buckets in GovCloud regions. ([#3953](https://github.com/wazuh/wazuh/issues/3953))
-- Add support for monotiring Cisco Umbrella S3 buckets. ([#3890](https://github.com/wazuh/wazuh/issues/3890))
+- Add support for monitoring Cisco Umbrella S3 buckets. ([#3890](https://github.com/wazuh/wazuh/issues/3890))
 
 
 ## [v3.11.3] - 2020-01-28

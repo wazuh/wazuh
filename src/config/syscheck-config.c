@@ -377,6 +377,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 #endif
 
         if (!strcmp(tmp_dir,"")) {
+            mdebug2(FIM_EMPTY_DIRECTORIES_CONFIG);
             dir++;
             continue;
         }
@@ -1039,6 +1040,9 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         else if (strcmp(node[i]->element, xml_database) == 0) {
             if (strcmp(node[i]->content, "memory") == 0) {
                 syscheck->database_store = FIM_DB_MEMORY;
+            }
+            else if (strcmp(node[i]->content, "disk") == 0){
+                syscheck->database_store = FIM_DB_DISK; 
             }
         }
 
