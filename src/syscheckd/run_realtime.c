@@ -91,6 +91,7 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
 
                 if (!OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
                     if (retval = OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
+                        os_free(data);
                         merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
                     } else if (retval == 1) {
                         mdebug2(FIM_REALTIME_HASH_DUP, data);

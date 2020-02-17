@@ -1580,9 +1580,15 @@ int Test_Syscheck(const char * path){
 void Free_Syscheck(syscheck_config * config) {
     if (config) {
         int i;
-        free(config->opts);
-        free(config->scan_day);
-        free(config->scan_time);
+        if (config->opts) {
+            free(config->opts);
+        }
+        if (config->scan_day) {
+            free(config->scan_day);
+        }
+        if (config->scan_time) {
+            free(config->scan_time);
+        }
         if (config->ignore) {
             for (i=0; config->ignore[i] != NULL; i++) {
                 free(config->ignore[i]);
@@ -1592,6 +1598,7 @@ void Free_Syscheck(syscheck_config * config) {
         if (config->ignore_regex) {
             for (i=0; config->ignore_regex[i] != NULL; i++) {
                 OSMatch_FreePattern(config->ignore_regex[i]);
+                free(config->ignore_regex[i]);
             }
             free(config->ignore_regex);
         }
@@ -1604,22 +1611,37 @@ void Free_Syscheck(syscheck_config * config) {
         if (config->nodiff_regex) {
             for (i=0; config->nodiff_regex[i] != NULL; i++) {
                 OSMatch_FreePattern(config->nodiff_regex[i]);
+                free(config->nodiff_regex[i]);
             }
+            free(config->nodiff_regex);
         }
         if (config->dir) {
             for (i=0; config->dir[i] != NULL; i++) {
                 free(config->dir[i]);
-                if(config->filerestrict[i]) {
+                if(config->filerestrict && config->filerestrict[i]) {
                     OSMatch_FreePattern(config->filerestrict[i]);
                     free(config->filerestrict[i]);
                 }
-                if(config->tag[i]) {
+                if(config->tag && config->tag[i]) {
                     free(config->tag[i]);
                 }
             }
             free(config->dir);
-            free(config->filerestrict);
-            free(config->tag);
+            if (config->filerestrict) {
+                free(config->filerestrict);
+            }
+            if (config->tag) {
+                free(config->tag);
+            }
+        }
+        if (config->symbolic_links) {
+            for (i=0; config->symbolic_links[i] != NULL; i++) {
+                free(config->symbolic_links[i]);
+            }
+            free(config->symbolic_links);
+        }
+        if (config->recursion_level) {
+            free(config->recursion_level);
         }
 
     #ifdef WIN32
@@ -1647,13 +1669,17 @@ void Free_Syscheck(syscheck_config * config) {
     #endif
 
         if (config->realtime) {
-            OSHash_Free(config->realtime->dirtb);
+            if (config->realtime->dirtb) {
+                OSHash_Free(config->realtime->dirtb);
+            }
 #ifdef WIN32
             CloseEventLog(config->realtime->evt);
 #endif
             free(config->realtime);
         }
-        free(config->prefilter_cmd);
+        if (config->prefilter_cmd) {
+            free(config->prefilter_cmd);
+        }
 
         free_strarray(config->audit_key);
     }
