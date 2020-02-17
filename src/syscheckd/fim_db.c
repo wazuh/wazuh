@@ -373,7 +373,7 @@ fim_tmp_file *fim_db_create_temp_file(int storage) {
             return NULL;
         }
     } else {
-            file->list = W_Vector_init(100);
+        file->list = W_Vector_init(100);
     }
 
     return file;
