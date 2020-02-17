@@ -196,6 +196,8 @@ extern const char *__local_name;
 
 #define w_fclose(x) if (x) { fclose(x); x=NULL; }
 
+#define sqlite_strdup(x,y) ({ if (x) { if ((y = strdup(x))) { (void)1; } else merror_exit(MEM_ERROR, errno, strerror(errno)); } else (void)0; })
+
 #define w_strdup(x,y) ({ int retstr = 0; if (x) { os_strdup(x, y);} else retstr = 1; retstr;})
 
 #define w_strlen(x) ({ size_t ret = 0; if (x) ret = strlen(x); ret;})

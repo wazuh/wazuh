@@ -59,10 +59,17 @@ int __wrap_isChroot() {
 }
 #endif
 
-/* setups/teardowns */
-static int setup_group(void **state) {
-    Read_Syscheck_Config("test_syscheck.conf");
+/* Setup/teardown */
 
+static int setup_group(void **state) {
+    (void) state;
+    Read_Syscheck_Config("test_syscheck.conf");
+    return 0;
+}
+
+static int teardown_group(void **state) {
+    (void) state;
+    Free_Syscheck(&syscheck);
     return 0;
 }
 
@@ -114,7 +121,21 @@ void test_is_nodiff_regex_false(void **state) {
 
 void test_is_nodiff_no_nodiff(void **state) {
     int ret;
+    int i;
 
+    if (syscheck.nodiff) {
+        for (i=0; syscheck.nodiff[i] != NULL; i++) {
+            free(syscheck.nodiff[i]);
+        }
+        free(syscheck.nodiff);
+    }
+    if (syscheck.nodiff_regex) {
+        for (i=0; syscheck.nodiff_regex[i] != NULL; i++) {
+            OSMatch_FreePattern(syscheck.nodiff_regex[i]);
+            free(syscheck.nodiff_regex[i]);
+        }
+        free(syscheck.nodiff_regex);
+    }
     syscheck.nodiff = NULL;
     syscheck.nodiff_regex = NULL;
 
@@ -135,5 +156,5 @@ int main(void) {
         cmocka_unit_test(test_is_nodiff_no_nodiff),
     };
 
-    return cmocka_run_group_tests(tests, setup_group, NULL);
+    return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

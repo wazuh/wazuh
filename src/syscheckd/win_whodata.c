@@ -769,8 +769,8 @@ add_whodata_evt:
                     } else if (w_evt->scan_directory == 2) {
                         mdebug1(FIM_WHODATA_SCAN_ABORTED, w_evt->path);
                     }
-                    free_win_whodata_evt(w_evt);
                 } // In else section: The file was opened before Wazuh started Syscheck.
+                free_win_whodata_evt(w_evt);
                 os_free(item);
             break;
 
@@ -1110,8 +1110,10 @@ int compare_timestamp(SYSTEMTIME *t1, SYSTEMTIME *t2) {
 }
 
 void free_win_whodata_evt(whodata_evt *evt) {
-    whodata_clist_remove(evt->wnode);
-    free_whodata_event(evt);
+    if (evt) {
+        whodata_clist_remove(evt->wnode);
+        free_whodata_event(evt);
+    }
 }
 
 int check_object_sacl(char *obj, int is_file) {

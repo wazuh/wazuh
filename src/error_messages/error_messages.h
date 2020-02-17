@@ -325,6 +325,7 @@
 #define VU_REPORT_ERROR             "(5436): The agent %s vulnerabilities could not be reported. Error: %s."
 #define VU_UPDATE_RETRY             "(5437): Failed when updating '%s %s' database. Retrying in %lu seconds."
 #define VU_API_REQ_INV              "(5489): There was no valid response to '%s' after %d attempts."
+#define VU_CONTENT_FEED_ERROR       "(5490): Couldn't get the content of the %s feed from '%s' file."
 #define VU_PARSED_FEED_ERROR        "(5491): The %s feed couldn't be parsed from '%s' file."
 #define VU_VER_EXTRACT_ERROR        "(5493): The version of '%s' could not be extracted."
 #define VU_GLOBALDB_ERROR           "(5496): Could not connect to global DB."
@@ -476,11 +477,11 @@
 
 #define FIM_DB_ERROR_COUNT_RANGE                    "(6703): Couldn't get range size between '%s' and '%s'"
 #define FIM_DB_ERROR_GET_PATH                       "(6704): Couldn't get path of '%s'"
-#define FIM_DB_ERROR_SYNC_DB                        "(6705): Failed to synchronize database"
-#define FIM_DB_ERROR_GET_ROW_PATH                   "(6706): Couldn't get %s row's path"
-#define FIM_DB_ERROR_CALC_CHECKSUM                  "(6707): Failed to calculate database checksum"
+#define FIM_DB_ERROR_SYNC_DB                        "(6705): Failed to synchronize database."
+#define FIM_DB_ERROR_GET_ROW_PATH                   "(6706): Couldn't get %s row's path."
+#define FIM_DB_ERROR_CALC_CHECKSUM                  "(6707): Failed to calculate database checksum."
 #define FIM_DB_ERROR_RM_RANGE                       "(6708): Failed to delete a range of paths between '%s' and '%s'"
-#define FIM_DB_ERROR_RM_NOT_SCANNED                 "(6709): Failed to delete from db all unscanned files"
+#define FIM_DB_ERROR_RM_NOT_SCANNED                 "(6709): Failed to delete from db all unscanned files."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."

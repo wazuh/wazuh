@@ -265,7 +265,7 @@ static void test_fim_sync_checksum_first_row_error(void **state) {
     will_return(__wrap_fim_db_get_row_path, NULL);
     will_return(__wrap_fim_db_get_row_path, FIMDB_ERR);
 
-    expect_string(__wrap__merror, formatted_msg, "(6706): Couldn't get FIRST row's path");
+    expect_string(__wrap__merror, formatted_msg, "(6706): Couldn't get FIRST row's path.");
 
     fim_sync_checksum();
 }
@@ -279,7 +279,7 @@ static void test_fim_sync_checksum_last_row_error(void **state) {
     will_return(__wrap_fim_db_get_row_path, NULL);
     will_return(__wrap_fim_db_get_row_path, FIMDB_ERR);
 
-    expect_string(__wrap__merror, formatted_msg, "(6706): Couldn't get LAST row's path");
+    expect_string(__wrap__merror, formatted_msg, "(6706): Couldn't get LAST row's path.");
 
     fim_sync_checksum();
 }

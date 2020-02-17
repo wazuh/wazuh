@@ -21,7 +21,6 @@ typedef enum fdb_stmt {
     FIMDB_STMT_INSERT_DATA,
     FIMDB_STMT_INSERT_PATH,
     FIMDB_STMT_GET_PATH,
-    FIMDB_STMT_GET_INODE,
     FIMDB_STMT_UPDATE_DATA,
     FIMDB_STMT_UPDATE_PATH,
     FIMDB_STMT_GET_LAST_PATH,
@@ -260,8 +259,6 @@ typedef struct fdb_t
 } fdb_t;
 
 typedef struct _config {
-    unsigned int tsleep;            /* sleep for sometime for daemon to settle */
-    int sleep_after;
     int rootcheck;                  /* set to 0 when rootcheck is disabled */
     int disabled;                   /* is syscheck disabled? */
     int scan_on_start;

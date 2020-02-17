@@ -62,16 +62,29 @@ int __wrap_isChroot() {
 }
 #endif
 
+/* teardown */
+
+static int free_syscheck(void **state)
+{
+    (void) state;
+    Free_Syscheck(&syscheck);
+    return 0;
+}
+
 /* tests */
 
 void test_log_realtime_status(void **state)
 {
     (void) state;
 
+    log_realtime_status(2);
+
     expect_string(__wrap__minfo, msg, FIM_REALTIME_STARTED);
+    log_realtime_status(1);
     log_realtime_status(1);
 
     expect_string(__wrap__minfo, msg, FIM_REALTIME_PAUSED);
+    log_realtime_status(2);
     log_realtime_status(2);
 
     expect_string(__wrap__minfo, msg, FIM_REALTIME_RESUMED);
@@ -96,7 +109,7 @@ void test_fim_whodata_initialize(void **state)
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_log_realtime_status),
-        cmocka_unit_test(test_fim_whodata_initialize),
+        cmocka_unit_test_teardown(test_fim_whodata_initialize, free_syscheck),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
