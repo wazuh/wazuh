@@ -125,7 +125,8 @@ list(APPEND syscheckd_tests_flags "-Wl,--wrap=w_is_file,--wrap=remove,--wrap=sql
                          -Wl,--wrap=sqlite3_errmsg,--wrap=sqlite3_bind_int,--wrap=sqlite3_bind_text,--wrap=sqlite3_column_int \
                          -Wl,--wrap=sqlite3_column_text,--wrap=printf,--wrap=fim_send_sync_msg,--wrap=dbsync_state_msg \
                          -Wl,--wrap=fim_entry_json,--wrap=sqlite3_last_insert_rowid,--wrap=EVP_DigestUpdate \
-                         -Wl,--wrap=fim_configuration_directory,--wrap=fim_json_event,--wrap=send_syscheck_msg,--wrap=delete_target_file")
+                         -Wl,--wrap=fim_configuration_directory,--wrap=fim_json_event,--wrap=send_syscheck_msg \
+                         -Wl,--wrap=delete_target_file,--wrap=_minfo,--wrap=_merror,--wrap=_mdebug1,--wrap=_mdebug2")
 
 # Compiling tests
 list(LENGTH syscheckd_tests_names count)
