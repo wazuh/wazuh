@@ -862,7 +862,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) 
 
         res_inode_id = sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_INODE_ID]);
 
-        /*
+        /* 
             When the inode of a file changes, it will delete the row from the database
             and insert the new one (inode is primary key) to have the path pointing to
             the right inode.
