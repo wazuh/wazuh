@@ -49,11 +49,6 @@ int __wrap_unlink(const char *file)
     return mock();
 }
 
-int __wrap__mferror()
-{
-    return 0;
-}
-
 int __wrap__merror()
 {
     return 0;
@@ -66,6 +61,10 @@ int __wrap__mwarn()
 
 int __wrap__minfo()
 {
+    return 0;
+}
+
+int __wrap__mferror(const char * file, int line, const char * func, const char *msg, ...){
     return 0;
 }
 
@@ -91,9 +90,6 @@ static int CreatePID_teardown(void **state) {
     return 0;
 }
 
-/* tests */
-#ifndef WIN32
-// getline not defined in windows, comment until fixed
 void test_CreatePID_success(void **state)
 {
     (void) state;
@@ -122,12 +118,12 @@ void test_CreatePID_success(void **state)
 
     assert_non_null(fp);
 
-    getline(&content, &len, fp);
+    char buff[256];
+    fgets(buff, 256, fp);
     fclose(fp);
 
-    assert_string_equal(content, "42\n");
+    assert_string_equal(buff, "42\n");
 }
-#endif
 
 void test_CreatePID_failure_chmod(void **state)
 {
@@ -197,13 +193,11 @@ void test_DeletePID_failure(void **state)
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        #ifndef WIN32
         cmocka_unit_test_teardown(test_CreatePID_success, CreatePID_teardown),
-        #endif
         cmocka_unit_test_teardown(test_CreatePID_failure_chmod, CreatePID_teardown),
         cmocka_unit_test(test_CreatePID_failure_fopen),
-        //cmocka_unit_test(test_DeletePID_success),
-        //cmocka_unit_test(test_DeletePID_failure),
+        cmocka_unit_test(test_DeletePID_success),
+        cmocka_unit_test(test_DeletePID_failure),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
