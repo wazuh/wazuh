@@ -304,7 +304,7 @@ void fim_realtime_event(char *file, fim_element *item) {
 
     struct stat file_stat;
 
-    // If file exist, generate add or modify events.
+    // If the file exist, generate add or modify events.
     if (w_stat(file, &file_stat) >= 0) {
 
 #ifdef WIN32
@@ -328,7 +328,7 @@ void fim_whodata_event(whodata_evt * w_evt, fim_element *item) {
 
     struct stat file_stat;
 
-    // If file exist, generate add or modify events.
+    // If the file exist, generate add or modify events.
     if(w_stat(w_evt->path, &file_stat) >= 0) {
 
 #ifdef WIN32
@@ -393,7 +393,7 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
         return;
     }
 
-    // If doesn't exist, research if it's directory and have files in DB.
+    // Since the file doesn't exist, research if it's directory and have files in DB.
     char **paths;
     char first_entry[PATH_MAX];
     char last_entry[PATH_MAX];

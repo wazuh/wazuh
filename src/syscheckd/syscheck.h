@@ -162,7 +162,7 @@ void fim_whodata_event(whodata_evt *w_evt, fim_element *item);
 /**
  * @brief Process a path that has possibly been deleted
  *
- * @note On Windows, calls function fim_checker meanwhile, on Linux, calls function fim_audit_inode_event. It's due Windows haven't got inodes.
+ * @note On Windows, calls function fim_checker meanwhile, on Linux, calls function fim_audit_inode_event. It's because Windows haven't got inodes.
  * @param pathname Name of path
  * @param mode Monitoring FIM mode
  * @param w_evt Pointer to whodata information
