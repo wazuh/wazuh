@@ -18,7 +18,9 @@ set(SYSCHECK_OP_BASE_FLAGS "-Wl,--wrap,rmdir_ex -Wl,--wrap,wreaddir -Wl,--wrap,_
 
 list(APPEND shared_tests_names "test_syscheck_op")
 if(${TARGET} STREQUAL "winagent")
-    list(APPEND shared_tests_flags "${SYSCHECK_OP_BASE_FLAGS} -Wl,--wrap=syscom_dispatch")
+    # cJSON_CreateArray@0 instead of cJSON_CreateArray since linker will be looking for cdecl forma
+    # More info at: (https://devblogs.microsoft.com/oldnewthing/20040108-00/?p=41163)
+    list(APPEND shared_tests_flags "${SYSCHECK_OP_BASE_FLAGS} -Wl,--wrap=syscom_dispatch -Wl,--wrap,cJSON_CreateArray@0 -Wl,--wrap,cJSON_CreateObject@0")
 else()
     list(APPEND shared_tests_flags "${SYSCHECK_OP_BASE_FLAGS} -Wl,--wrap=cJSON_CreateArray,--wrap=cJSON_CreateObject")
 endif()
