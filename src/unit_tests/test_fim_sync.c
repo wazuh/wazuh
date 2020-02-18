@@ -113,6 +113,12 @@ static int setup_group(void **state) {
     return 0;
 }
 
+static int teardown_group(void **state) {
+    Free_Syscheck(&syscheck);
+
+    return 0;
+}
+
 static int setup_fim_sync_queue(void **state) {
     fim_sync_queue = queue_init(10);
 
@@ -129,6 +135,11 @@ static int teardown_fim_sync_queue(void **state) {
 
 static int teardown_free_fim_entry_mutex(void **state) {
     w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    if (*state) {
+        char **keys = (char **) *state;
+        free_strarray(keys);
+    }
 
     return 0;
 }
@@ -188,6 +199,9 @@ void test_fim_sync_checksum(void **state)
     expect_string(__wrap_fim_send_sync_msg, msg, expected);
 
     fim_sync_checksum();
+
+    free_entry_data(data1);
+    free_entry_data(data2);
 }
 
 void test_fim_sync_checksum_clear(void **state)
@@ -211,11 +225,24 @@ void test_fim_sync_checksum_null_rbtree(void **state)
     keys = os_AddStrArray("test1", keys);
     keys = os_AddStrArray("test2", keys);
 
+    *state = keys;
+
     will_return(__wrap_rbtree_keys, keys);
 
     will_return(__wrap_rbtree_get, NULL);
 
     expect_assert_failure(fim_sync_checksum());
+}
+
+void test_fim_sync_checksum_split_no_keys(void **state)
+{
+    (void) state;
+    char ** keys = calloc(1, sizeof(char *));
+    keys[0] = NULL;
+
+    will_return(__wrap_rbtree_range, keys);
+
+    fim_sync_checksum_split("init", "end", 1);
 }
 
 void test_fim_sync_checksum_split_unary(void **state)
@@ -235,6 +262,8 @@ void test_fim_sync_checksum_split_unary(void **state)
     expect_string(__wrap_fim_send_sync_msg, msg, expected);
 
     fim_sync_checksum_split("init", "end", 1);
+
+    free_entry_data(data);
 }
 
 void test_fim_sync_checksum_split_list(void **state)
@@ -260,6 +289,9 @@ void test_fim_sync_checksum_split_list(void **state)
     expect_string(__wrap_fim_send_sync_msg, msg, expected2);
 
     fim_sync_checksum_split("init", "end", 1);
+
+    free_entry_data(data1);
+    free_entry_data(data2);
 }
 
 void test_fim_sync_checksum_split_null_start(void **state)
@@ -295,6 +327,9 @@ void test_fim_sync_send_list(void **state)
     expect_string(__wrap_fim_send_sync_msg, msg, expected2);
 
     fim_sync_send_list("start", "top");
+
+    free_entry_data(data1);
+    free_entry_data(data2);
 }
 
 
@@ -353,6 +388,17 @@ void test_fim_sync_dispatch_invalid_id(void **state)
     fim_sync_dispatch(payload);
 }
 
+void test_fim_sync_dispatch_greater_id(void **state)
+{
+    (void) state;
+
+    char payload[] = "msg {\"id\":123456789123456789}";
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6316): Dropping message with id (123456789123456784) greater than global id (1572521857)");
+
+    fim_sync_dispatch(payload);
+}
+
 void test_fim_sync_dispatch_id(void **state)
 {
     (void) state;
@@ -385,6 +431,8 @@ void test_fim_sync_dispatch_checksum(void **state)
     char payload[] = "checksum_fail {\"id\":1,\"begin\":\"test_begin\",\"end\":\"test_end\"}";
 
     fim_sync_dispatch(payload);
+
+    free_entry_data(data);
 }
 
 
@@ -408,14 +456,14 @@ void test_fim_sync_dispatch_no_data(void **state)
     char payload[] = "no_data {\"id\":1,\"begin\":\"test_begin\",\"end\":\"test_end\"}";
 
     fim_sync_dispatch(payload);
+
+    free_entry_data(data);
 }
 
 
 void test_fim_sync_dispatch_unknown(void **state)
 {
     (void) state;
-    char ** keys = NULL;
-    keys = os_AddStrArray("test", keys);
 
     char payload[] = "unknown {\"id\":1,\"begin\":\"test_begin\",\"end\":\"test_end\"}";
 
@@ -440,6 +488,7 @@ int main(void) {
         cmocka_unit_test(test_fim_sync_checksum),
         cmocka_unit_test(test_fim_sync_checksum_clear),
         cmocka_unit_test_teardown(test_fim_sync_checksum_null_rbtree, teardown_free_fim_entry_mutex),
+        cmocka_unit_test(test_fim_sync_checksum_split_no_keys),
         cmocka_unit_test(test_fim_sync_checksum_split_unary),
         cmocka_unit_test_teardown(test_fim_sync_checksum_split_null_start, teardown_free_fim_entry_mutex),
         cmocka_unit_test_teardown(test_fim_sync_checksum_split_null_stop, teardown_free_fim_entry_mutex),
@@ -451,6 +500,7 @@ int main(void) {
         cmocka_unit_test(test_fim_sync_dispatch_noarg),
         cmocka_unit_test(test_fim_sync_dispatch_invalidarg),
         cmocka_unit_test(test_fim_sync_dispatch_invalid_id),
+        cmocka_unit_test(test_fim_sync_dispatch_greater_id),
         cmocka_unit_test(test_fim_sync_dispatch_id),
         cmocka_unit_test(test_fim_sync_dispatch_checksum),
         cmocka_unit_test(test_fim_sync_dispatch_no_data),
@@ -458,5 +508,5 @@ int main(void) {
         cmocka_unit_test(test_fim_sync_dispatch_null_payload),
     };
 
-    return cmocka_run_group_tests(tests, setup_group, NULL);
+    return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

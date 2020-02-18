@@ -1682,6 +1682,16 @@ void Free_Syscheck(syscheck_config * config) {
         }
 
         free_strarray(config->audit_key);
+
+        if (config->fim_entry) {
+            rbtree_destroy(config->fim_entry);
+        }
+        if (config->fim_inode) {
+            OSHash_Free(config->fim_inode);
+        }
+        w_mutex_destroy(&config->fim_entry_mutex);
+        w_mutex_destroy(&config->fim_scan_mutex);
+        w_mutex_destroy(&config->fim_realtime_mutex);
     }
 }
 
