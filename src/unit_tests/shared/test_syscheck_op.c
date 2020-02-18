@@ -135,6 +135,7 @@ struct group *__wrap_getgrgid(gid_t gid) {
     return mock_ptr_type(struct group*);
 }
 
+#ifndef TEST_WINAGENT
 extern cJSON * __real_cJSON_CreateArray(void);
 CJSON_PUBLIC(cJSON *) __wrap_cJSON_CreateArray(void) {
     return mock_type(CJSON_PUBLIC(cJSON *));
@@ -144,6 +145,7 @@ extern cJSON * __real_cJSON_CreateObject(void);
 CJSON_PUBLIC(cJSON *) __wrap_cJSON_CreateObject(void) {
     return mock_type(CJSON_PUBLIC(cJSON *));
 }
+#endif
 
 extern void __real_wstr_split(char *str, char *delim, char *replace_delim, int occurrences, char ***splitted_str);
 void __wrap_wstr_split(char *str, char *delim, char *replace_delim, int occurrences, char ***splitted_str) {
@@ -180,13 +182,13 @@ struct passwd **__wrap_getpwuid_r(uid_t uid, struct passwd *pwd,
         return mock_type(struct passwd*);
     #else // TEST_WINAGENT
         // Leave empty wrapper since avoiding compile will bring problems with cmocka
-        return NULL;        
+        return NULL;
     #endif
 }
 #else
 int __wrap_getpwuid_r(uid_t uid, struct passwd *pwd,
                       char *buf, size_t buflen, struct passwd **result) {
-    
+
     #if defined(TEST_SERVER) || defined(TEST_AGENT)
         pwd->pw_name = mock_type(char*);
         *result = mock_type(struct passwd*);
@@ -194,8 +196,17 @@ int __wrap_getpwuid_r(uid_t uid, struct passwd *pwd,
         return mock();
     #else // TEST_WINAGENT
         // Leave empty wrapper since avoiding compile will bring problems with cmocka
-        return 0;        
+        return 0;
     #endif
+}
+#endif
+
+#ifdef TEST_WINAGENT
+size_t __wrap_syscom_dispatch(char * command, char ** output) {
+    check_expected(command);
+
+    *output = mock_type(char*);
+    return mock();
 }
 #endif
 
@@ -297,7 +308,7 @@ static int teardown_string(void **state) {
         }
         return 0;
     }
-#if defined(TEST_AGENT)
+#elif defined(TEST_AGENT)
     static int setup_unescape_syscheck_field(void **state) {
         *state = calloc(1, sizeof(unescape_syscheck_field_data_t));
 
@@ -318,7 +329,6 @@ static int teardown_string(void **state) {
         return 0;
     }
 #endif
-#endif
 
 static int teardown_cjson(void **state) {
     cJSON *array = *state;
@@ -331,6 +341,7 @@ static int teardown_cjson(void **state) {
 /* Tests */
 
 /* delete_target_file tests */
+#ifndef TEST_WINAGENT
 static void test_delete_target_file_success(void **state) {
     int ret = -1;
     char *path = "/test_file.tmp";
@@ -354,6 +365,40 @@ static void test_delete_target_file_rmdir_ex_error(void **state) {
 
     assert_int_equal(ret, 1);
 }
+#else
+static void test_delete_target_file_success(void **state) {
+    int ret = -1;
+    char *path = "c:\\test_file.tmp";
+
+    expect_string(__wrap_rmdir_ex, name, "queue/diff\\local\\c\\test_file.tmp");
+    will_return(__wrap_rmdir_ex, 0);
+
+    expect_string(__wrap_wreaddir, name, "queue/diff\\local\\c");
+    will_return(__wrap_wreaddir, NULL);
+
+    expect_string(__wrap__mdebug1, msg, "Removing empty directory '%s'.");
+    expect_string(__wrap__mdebug1, param1, "queue/diff\\local\\c");
+
+    expect_string(__wrap_rmdir_ex, name, "queue/diff\\local\\c");
+    will_return(__wrap_rmdir_ex, 0);
+
+    ret = delete_target_file(path);
+
+    assert_int_equal(ret, 0);
+}
+
+static void test_delete_target_file_rmdir_ex_error(void **state) {
+    int ret = -1;
+    char *path = "c:\\test_file.tmp";
+
+    expect_string(__wrap_rmdir_ex, name, "queue/diff\\local\\c\\test_file.tmp");
+    will_return(__wrap_rmdir_ex, -1);
+
+    ret = delete_target_file(path);
+
+    assert_int_equal(ret, 1);
+}
+#endif
 
 /* escape_syscheck_field tests */
 static void test_escape_syscheck_field_escape_all(void **state) {
@@ -408,16 +453,22 @@ static void test_normalize_path_null_input(void **state) {
 
 /* remove_empty_folders tests */
 static void test_remove_empty_folders_success(void **state) {
+    #ifndef TEST_WINAGENT
     char *input = "/var/ossec/queue/diff/local/test-dir/";
+    char *first_subdir = "/var/ossec/queue/diff/local/test-dir";
+    #else
+    char *input = "queue/diff\\local\\test-dir\\";
+    char *first_subdir = "queue/diff\\local\\test-dir";
+    #endif
     int ret = -1;
 
-    expect_string(__wrap_wreaddir, name, "/var/ossec/queue/diff/local/test-dir");
+    expect_string(__wrap_wreaddir, name, first_subdir);
     will_return(__wrap_wreaddir, NULL);
 
     expect_string(__wrap__mdebug1, msg, "Removing empty directory '%s'.");
-    expect_string(__wrap__mdebug1, param1, "/var/ossec/queue/diff/local/test-dir");
+    expect_string(__wrap__mdebug1, param1, first_subdir);
 
-    expect_string(__wrap_rmdir_ex, name, "/var/ossec/queue/diff/local/test-dir");
+    expect_string(__wrap_rmdir_ex, name, first_subdir);
     will_return(__wrap_rmdir_ex, 0);
 
     ret = remove_empty_folders(input);
@@ -426,27 +477,39 @@ static void test_remove_empty_folders_success(void **state) {
 }
 
 static void test_remove_empty_folders_recursive_success(void **state) {
+    #ifndef TEST_WINAGENT
     char *input = "/var/ossec/queue/diff/local/dir1/dir2/";
+    static const char *parent_dirs[] = {
+        "/var/ossec/queue/diff/local/dir1/dir2",
+        "/var/ossec/queue/diff/local/dir1"
+    };
+    #else
+    char *input = "queue/diff\\local\\dir1\\dir2\\";
+    static const char *parent_dirs[] = {
+        "queue/diff\\local\\dir1\\dir2",
+        "queue/diff\\local\\dir1"
+    };
+    #endif
     int ret = -1;
 
     // Remove dir2
-    expect_string(__wrap_wreaddir, name, "/var/ossec/queue/diff/local/dir1/dir2");
+    expect_string(__wrap_wreaddir, name, parent_dirs[0]);
     will_return(__wrap_wreaddir, NULL);
 
     expect_string(__wrap__mdebug1, msg, "Removing empty directory '%s'.");
-    expect_string(__wrap__mdebug1, param1, "/var/ossec/queue/diff/local/dir1/dir2");
+    expect_string(__wrap__mdebug1, param1, parent_dirs[0]);
 
-    expect_string(__wrap_rmdir_ex, name, "/var/ossec/queue/diff/local/dir1/dir2");
+    expect_string(__wrap_rmdir_ex, name, parent_dirs[0]);
     will_return(__wrap_rmdir_ex, 0);
 
     // Remove dir1
-    expect_string(__wrap_wreaddir, name, "/var/ossec/queue/diff/local/dir1");
+    expect_string(__wrap_wreaddir, name, parent_dirs[1]);
     will_return(__wrap_wreaddir, NULL);
 
     expect_string(__wrap__mdebug1, msg, "Removing empty directory '%s'.");
-    expect_string(__wrap__mdebug1, param1, "/var/ossec/queue/diff/local/dir1");
+    expect_string(__wrap__mdebug1, param1, parent_dirs[1]);
 
-    expect_string(__wrap_rmdir_ex, name, "/var/ossec/queue/diff/local/dir1");
+    expect_string(__wrap_rmdir_ex, name, parent_dirs[1]);
     will_return(__wrap_rmdir_ex, 0);
 
     ret = remove_empty_folders(input);
@@ -460,22 +523,28 @@ static void test_remove_empty_folders_null_input(void **state) {
 
 // TODO: Validate this condition is required to be tested
 static void test_remove_empty_folders_relative_path(void **state) {
+    #ifndef TEST_WINAGENT
     char *input = "./local/test-dir/";
+    const static char *parent_dirs[] = {"./local/test-dir", "./local", "."};
+    #else
+    char *input = ".\\local\\test-dir\\";
+    const static char *parent_dirs[] = {".\\local\\test-dir", ".\\local", "."};
+    #endif
     int ret = -1;
 
-    expect_string(__wrap_wreaddir, name, "./local/test-dir");
-    expect_string(__wrap_wreaddir, name, "./local");
-    expect_string(__wrap_wreaddir, name, ".");
+    expect_string(__wrap_wreaddir, name, parent_dirs[0]);
+    expect_string(__wrap_wreaddir, name, parent_dirs[1]);
+    expect_string(__wrap_wreaddir, name, parent_dirs[2]);
     will_return_always(__wrap_wreaddir, NULL);
 
     expect_string_count(__wrap__mdebug1, msg, "Removing empty directory '%s'.", 3);
-    expect_string(__wrap__mdebug1, param1, "./local/test-dir");
-    expect_string(__wrap__mdebug1, param1, "./local");
-    expect_string(__wrap__mdebug1, param1, ".");
+    expect_string(__wrap__mdebug1, param1, parent_dirs[0]);
+    expect_string(__wrap__mdebug1, param1, parent_dirs[1]);
+    expect_string(__wrap__mdebug1, param1, parent_dirs[2]);
 
-    expect_string(__wrap_rmdir_ex, name, "./local/test-dir");
-    expect_string(__wrap_rmdir_ex, name, "./local");
-    expect_string(__wrap_rmdir_ex, name, ".");
+    expect_string(__wrap_rmdir_ex, name, parent_dirs[0]);
+    expect_string(__wrap_rmdir_ex, name, parent_dirs[1]);
+    expect_string(__wrap_rmdir_ex, name, parent_dirs[2]);
     will_return_always(__wrap_rmdir_ex, 0);
 
     ret = remove_empty_folders(input);
@@ -485,22 +554,36 @@ static void test_remove_empty_folders_relative_path(void **state) {
 
 // TODO: Validate this condition is required to be tested
 static void test_remove_empty_folders_absolute_path(void **state) {
-    char *input = "/home/user1/";
     int ret = -1;
+    #ifndef TEST_WINAGENT
+    char *input = "/home/user1/";
+    static const char *parent_dirs[] = {
+        "/home/user1",
+        "/home",
+        ""
+    };
+    #else
+    char *input = "c:\\home\\user1\\";
+    static const char *parent_dirs[] = {
+        "c:\\home\\user1",
+        "c:\\home",
+        "c:"
+    };
+    #endif
 
-    expect_string(__wrap_wreaddir, name, "/home/user1");
-    expect_string(__wrap_wreaddir, name, "/home");
-    expect_string(__wrap_wreaddir, name, "");
+    expect_string(__wrap_wreaddir, name, parent_dirs[0]);
+    expect_string(__wrap_wreaddir, name, parent_dirs[1]);
+    expect_string(__wrap_wreaddir, name, parent_dirs[2]);
     will_return_always(__wrap_wreaddir, NULL);
 
     expect_string_count(__wrap__mdebug1, msg, "Removing empty directory '%s'.", 3);
-    expect_string(__wrap__mdebug1, param1, "/home/user1");
-    expect_string(__wrap__mdebug1, param1, "/home");
-    expect_string(__wrap__mdebug1, param1, "");
+    expect_string(__wrap__mdebug1, param1, parent_dirs[0]);
+    expect_string(__wrap__mdebug1, param1, parent_dirs[1]);
+    expect_string(__wrap__mdebug1, param1, parent_dirs[2]);
 
-    expect_string(__wrap_rmdir_ex, name, "/home/user1");
-    expect_string(__wrap_rmdir_ex, name, "/home");
-    expect_string(__wrap_rmdir_ex, name, "");
+    expect_string(__wrap_rmdir_ex, name, parent_dirs[0]);
+    expect_string(__wrap_rmdir_ex, name, parent_dirs[1]);
+    expect_string(__wrap_rmdir_ex, name, parent_dirs[2]);
     will_return_always(__wrap_rmdir_ex, 0);
 
     ret = remove_empty_folders(input);
@@ -509,7 +592,13 @@ static void test_remove_empty_folders_absolute_path(void **state) {
 }
 
 static void test_remove_empty_folders_non_empty_dir(void **state) {
+    #ifndef TEST_WINAGENT
     char *input = "/var/ossec/queue/diff/local/test-dir/";
+    static const char *parent_dir = "/var/ossec/queue/diff/local/test-dir";
+    #else
+    char *input = "queue/diff\\local\\c\\test-dir\\";
+    static const char *parent_dir = "queue/diff\\local\\c\\test-dir";
+    #endif
     int ret = -1;
     char **subdir;
 
@@ -519,7 +608,7 @@ static void test_remove_empty_folders_non_empty_dir(void **state) {
     subdir[0] = strdup("some-file.tmp");
     subdir[1] = NULL;
 
-    expect_string(__wrap_wreaddir, name, "/var/ossec/queue/diff/local/test-dir");
+    expect_string(__wrap_wreaddir, name, parent_dir);
     will_return(__wrap_wreaddir, subdir);
 
     ret = remove_empty_folders(input);
@@ -528,20 +617,26 @@ static void test_remove_empty_folders_non_empty_dir(void **state) {
 }
 
 static void test_remove_empty_folders_error_removing_dir(void **state) {
+    #ifndef TEST_WINAGENT
     char *input = "/var/ossec/queue/diff/local/test-dir/";
+    static const char *parent_dir = "/var/ossec/queue/diff/local/test-dir";
+    #else
+    char *input = "queue/diff\\local\\test-dir\\";
+    static const char *parent_dir = "queue/diff\\local\\test-dir";
+    #endif
     int ret = -1;
 
-    expect_string(__wrap_wreaddir, name, "/var/ossec/queue/diff/local/test-dir");
+    expect_string(__wrap_wreaddir, name, parent_dir);
     will_return(__wrap_wreaddir, NULL);
 
     expect_string(__wrap__mdebug1, msg, "Removing empty directory '%s'.");
-    expect_string(__wrap__mdebug1, param1, "/var/ossec/queue/diff/local/test-dir");
+    expect_string(__wrap__mdebug1, param1, parent_dir);
 
-    expect_string(__wrap_rmdir_ex, name, "/var/ossec/queue/diff/local/test-dir");
+    expect_string(__wrap_rmdir_ex, name, parent_dir);
     will_return(__wrap_rmdir_ex, -1);
 
     expect_string(__wrap__mwarn, msg, "Empty directory '%s' couldn't be deleted. ('%s')");
-    expect_string(__wrap__mwarn, param1, "/var/ossec/queue/diff/local/test-dir");
+    expect_string(__wrap__mwarn, param1, parent_dir);
     expect_string(__wrap__mwarn, param2, "Directory not empty");
 
     ret = remove_empty_folders(input);
@@ -1960,7 +2055,7 @@ static void test_remove_empty_folders_error_removing_dir(void **state) {
     static void test_sk_sum_clean_null_sum(void **state) {
         expect_assert_failure(sk_sum_clean(NULL));
     }
-#if defined(TEST_AGENT)
+#elif defined(TEST_AGENT)
     /* unescape_syscheck_field tests */
     static void test_unescape_syscheck_field_escaped_chars(void **state) {
         unescape_syscheck_field_data_t *data = *state;
@@ -2058,7 +2153,6 @@ static void test_remove_empty_folders_error_removing_dir(void **state) {
         assert_null(user);
     }
 #endif
-#endif
 
 #if defined(TEST_WINAGENT)
 struct group {
@@ -2067,6 +2161,7 @@ struct group {
 #endif
 
 /* get_group tests */
+#ifndef TEST_WINAGENT
 static void test_get_group_success(void **state) {
     struct group group = { .gr_name = "group" };
     const char *output;
@@ -2087,10 +2182,16 @@ static void test_get_group_failure(void **state) {
 
     assert_string_equal(output, "");
 }
+#else
+static void test_get_group(void **state) {
+    assert_string_equal(get_group(0), "");
+}
+#endif
 
 /* ag_send_syscheck tests */
 /* ag_send_syscheck does not modify inputs or return anything, so there are no asserts */
 /* validation of this function is done through the wrapped functions. */
+#ifndef TEST_WINAGENT
 static void test_ag_send_syscheck_success(void **state) {
     char *input = "This is a mock message, it wont be sent anywhere";
 
@@ -2153,6 +2254,17 @@ static void test_ag_send_syscheck_error_sending_message(void **state) {
 
     errno = 0;
 }
+#else
+static void test_ag_send_syscheck(void **state) {
+    char *response = strdup("A mock reponse message");
+
+    expect_string(__wrap_syscom_dispatch, command, "command");
+    will_return(__wrap_syscom_dispatch, response);
+    will_return(__wrap_syscom_dispatch, 23);
+
+    ag_send_syscheck("command");
+}
+#endif
 
 /* decode_win_attributes tests */
 static void test_decode_win_attributes_all_attributes(void **state) {
@@ -2350,7 +2462,9 @@ static void test_attrs_to_json_single_attribute(void **state) {
     cJSON *output;
     char *string;
 
+    #ifndef TEST_WINAGENT
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    #endif
 
     output = attrs_to_json(input);
 
@@ -2365,7 +2479,9 @@ static void test_attrs_to_json_multiple_attributes(void **state) {
     cJSON *output;
     char *attr1, *attr2, *attr3;
 
+    #ifndef TEST_WINAGENT
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    #endif
 
     output = attrs_to_json(input);
 
@@ -2380,6 +2496,7 @@ static void test_attrs_to_json_multiple_attributes(void **state) {
     assert_string_equal(attr3, "attr3");
 }
 
+#ifndef TEST_WINAGENT
 static void test_attrs_to_json_unable_to_create_json_array(void **state)  {
     char *input = "attr1, attr2, attr3";
     cJSON *output;
@@ -2392,6 +2509,7 @@ static void test_attrs_to_json_unable_to_create_json_array(void **state)  {
 
     assert_null(output);
 }
+#endif
 
 // TODO: Validate this condition is required to be tested
 static void test_attrs_to_json_null_attributes(void **state)  {
@@ -2407,10 +2525,12 @@ static void test_win_perm_to_json_all_permissions(void **state) {
     cJSON *user, *permissions_array;
     char *string;
 
+    #ifndef TEST_WINAGENT
     will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    #endif
 
     will_return_always(__wrap_wstr_split, 1);  // use real wstr_split
 
@@ -2472,10 +2592,12 @@ static void test_win_perm_to_json_some_permissions(void **state) {
     cJSON *user, *permissions_array;
     char *string;
 
+    #ifndef TEST_WINAGENT
     will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    #endif
 
     will_return_always(__wrap_wstr_split, 1);  // use real wstr_split
 
@@ -2518,7 +2640,9 @@ static void test_win_perm_to_json_no_permissions(void **state) {
     char *input = "account (allowed)";
     cJSON *output;
 
+    #ifndef TEST_WINAGENT
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    #endif
 
     expect_string(__wrap__mdebug1, msg, "Uncontrolled condition when parsing a Windows permission from '%s'.");
     expect_string(__wrap__mdebug1, param1, "account (allowed)");
@@ -2538,11 +2662,13 @@ static void test_win_perm_to_json_allowed_denied_permissions(void **state) {
     cJSON *user, *permissions_array;
     char *string;
 
+    #ifndef TEST_WINAGENT
     will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    #endif
 
     will_return_always(__wrap_wstr_split, 1);  // use real wstr_split
 
@@ -2609,6 +2735,7 @@ static void test_win_perm_to_json_multiple_accounts(void **state) {
     cJSON *user, *permissions_array;
     char *string;
 
+    #ifndef TEST_WINAGENT
     will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
     will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
     will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
@@ -2618,6 +2745,7 @@ static void test_win_perm_to_json_multiple_accounts(void **state) {
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    #endif
 
     will_return_always(__wrap_wstr_split, 1);  // use real wstr_split
 
@@ -2700,10 +2828,12 @@ static void test_win_perm_to_json_fragmented_acl(void **state) {
     cJSON *user, *permissions_array;
     char *string;
 
+    #ifndef TEST_WINAGENT
     will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    #endif
 
     will_return_always(__wrap_wstr_split, 1);  // use real wstr_split
 
@@ -2737,6 +2867,7 @@ static void test_win_perm_to_json_null_input(void **state) {
     expect_assert_failure(win_perm_to_json(NULL));
 }
 
+#ifndef TEST_WINAGENT
 static void test_win_perm_to_json_unable_to_create_main_array(void **state) {
     char *input = "first (allowed): generic_read|generic_write|generic_execute,";
     cJSON *output;
@@ -2780,12 +2911,15 @@ static void test_win_perm_to_json_unable_to_create_user_object(void **state) {
 
     assert_null(output);
 }
+#endif
 
 static void test_win_perm_to_json_incorrect_permission_format(void **state) {
     char *input = "This format is incorrect";
     cJSON *output;
 
+    #ifndef TEST_WINAGENT
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    #endif
 
     expect_string(__wrap__mdebug1, msg, "Uncontrolled condition when parsing a Windows permission from '%s'.");
     expect_string(__wrap__mdebug1, param1, "This format is incorrect");
@@ -2798,7 +2932,9 @@ static void test_win_perm_to_json_incorrect_permission_format_2(void **state) {
     char *input = "This format is incorrect (too";
     cJSON *output;
 
+    #ifndef TEST_WINAGENT
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    #endif
 
     expect_string(__wrap__mdebug1, msg, "Uncontrolled condition when parsing a Windows permission from '%s'.");
     expect_string(__wrap__mdebug1, param1, "This format is incorrect (too");
@@ -2812,10 +2948,12 @@ static void test_win_perm_to_json_error_splitting_permissions(void **state) {
     char *input = "first (allowed): generic_read|generic_write|generic_execute,";
     cJSON *output;
 
+    #ifndef TEST_WINAGENT
     will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    #endif
 
     will_return_always(__wrap_wstr_split, 0);  // fail to split string
 
@@ -2893,7 +3031,7 @@ int main(int argc, char *argv[]) {
             cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_null_ppid, setup_sk_decode, teardown_sk_decode),
             cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_null_sum, setup_sk_decode, teardown_sk_decode),
             cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_null_c_sum, setup_sk_decode, teardown_sk_decode),
-        
+
             /* sk_decode_extradata tests */
             cmocka_unit_test_setup_teardown(test_sk_decode_extradata_null_sum, setup_sk_decode, teardown_sk_decode),
             cmocka_unit_test_setup_teardown(test_sk_decode_extradata_null_c_sum, setup_sk_decode, teardown_sk_decode),
@@ -2917,34 +3055,40 @@ int main(int argc, char *argv[]) {
             cmocka_unit_test_setup_teardown(test_sk_build_sum_insufficient_buffer_size, setup_sk_build_sum, teardown_sk_build_sum),
             cmocka_unit_test_setup_teardown(test_sk_build_sum_null_sum, setup_sk_build_sum, teardown_sk_build_sum),
             cmocka_unit_test_setup_teardown(test_sk_build_sum_null_output, setup_sk_build_sum, teardown_sk_build_sum),
-            
+
             /* sk_sum_clean tests */
             cmocka_unit_test_setup_teardown(test_sk_sum_clean_full_message, setup_sk_decode, teardown_sk_decode),
             cmocka_unit_test_setup_teardown(test_sk_sum_clean_shortest_valid_message, setup_sk_decode, teardown_sk_decode),
             cmocka_unit_test_setup_teardown(test_sk_sum_clean_invalid_message, setup_sk_decode, teardown_sk_decode),
             cmocka_unit_test_setup_teardown(test_sk_sum_clean_null_sum, setup_sk_decode, teardown_sk_decode),
-        #if defined(TEST_AGENT)
+        #elif defined(TEST_AGENT)
             /* unescape_syscheck_field tests */
             cmocka_unit_test_setup_teardown(test_unescape_syscheck_field_escaped_chars, setup_unescape_syscheck_field, teardown_unescape_syscheck_field),
             cmocka_unit_test_setup_teardown(test_unescape_syscheck_field_no_escaped_chars, setup_unescape_syscheck_field, teardown_unescape_syscheck_field),
             cmocka_unit_test_setup_teardown(test_unescape_syscheck_null_input, setup_unescape_syscheck_field, teardown_unescape_syscheck_field),
             cmocka_unit_test_setup_teardown(test_unescape_syscheck_empty_string, setup_unescape_syscheck_field, teardown_unescape_syscheck_field),
-        
+
             /* get_user tests */
             cmocka_unit_test_teardown(test_get_user_success, teardown_string),
             cmocka_unit_test_teardown(test_get_user_uid_not_found, teardown_string),
             cmocka_unit_test_teardown(test_get_user_error, teardown_string),
         #endif
-        #endif
         /* get_group tests */
+        #ifndef TEST_WINAGENT
         cmocka_unit_test(test_get_group_success),
         cmocka_unit_test(test_get_group_failure),
+        #else
+        cmocka_unit_test(test_get_group),
+        #endif
 
         /* ag_send_syscheck tests */
+        #ifndef TEST_WINAGENT
         cmocka_unit_test(test_ag_send_syscheck_success),
         cmocka_unit_test(test_ag_send_syscheck_unable_to_connect),
         cmocka_unit_test(test_ag_send_syscheck_error_sending_message),
-
+        #else
+        cmocka_unit_test(test_ag_send_syscheck),
+        #endif
 
         /* decode_win_attributes tests */
         cmocka_unit_test(test_decode_win_attributes_all_attributes),
@@ -2963,7 +3107,9 @@ int main(int argc, char *argv[]) {
         /* attrs_to_json tests */
         cmocka_unit_test_teardown(test_attrs_to_json_single_attribute, teardown_cjson),
         cmocka_unit_test_teardown(test_attrs_to_json_multiple_attributes, teardown_cjson),
+        #ifndef TEST_WINAGENT
         cmocka_unit_test_teardown(test_attrs_to_json_unable_to_create_json_array, teardown_cjson),
+        #endif
         cmocka_unit_test_teardown(test_attrs_to_json_null_attributes, teardown_cjson),
 
         /* win_perm_to_json tests*/
@@ -2974,9 +3120,11 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_teardown(test_win_perm_to_json_multiple_accounts, teardown_cjson),
         cmocka_unit_test_teardown(test_win_perm_to_json_fragmented_acl, teardown_cjson),
         cmocka_unit_test_teardown(test_win_perm_to_json_null_input, teardown_cjson),
+        #ifndef TEST_WINAGENT
         cmocka_unit_test_teardown(test_win_perm_to_json_unable_to_create_main_array, teardown_cjson),
         cmocka_unit_test_teardown(test_win_perm_to_json_unable_to_create_sub_array, teardown_cjson),
         cmocka_unit_test_teardown(test_win_perm_to_json_unable_to_create_user_object, teardown_cjson),
+        #endif
         cmocka_unit_test_teardown(test_win_perm_to_json_incorrect_permission_format, teardown_cjson),
         cmocka_unit_test_teardown(test_win_perm_to_json_incorrect_permission_format_2, teardown_cjson),
         cmocka_unit_test_teardown(test_win_perm_to_json_error_splitting_permissions, teardown_cjson),

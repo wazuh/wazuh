@@ -369,8 +369,8 @@ void test_getSyscheckConfig_no_audit(void **state)
     cJSON *sys_ignore = cJSON_GetObjectItem(sys_items, "ignore");
     assert_null(sys_ignore);
 
-    cJSON *sys_whodata = cJSON_GetObjectItem(sys_items, "whodata");
     #ifndef TEST_WINAGENT
+    cJSON *sys_whodata = cJSON_GetObjectItem(sys_items, "whodata");
     cJSON *whodata_restart_audit = cJSON_GetObjectItem(sys_whodata, "restart_audit");
     assert_string_equal(cJSON_GetStringValue(whodata_restart_audit), "no");
     cJSON *whodata_audit_key = cJSON_GetObjectItem(sys_whodata, "audit_key");
