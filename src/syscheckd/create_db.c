@@ -276,6 +276,7 @@ int fim_file (char *file, fim_element *item, whodata_evt *w_evt, int report) {
         if (json_event = fim_json_event(file, saved_data, entry_data, item->index, FIM_MODIFICATION, item->mode, w_evt), json_event) {
             if (fim_update(file, entry_data, saved_data) == -1) {
                 free_entry_data(entry_data);
+                cJSON_Delete(json_event);
                 w_mutex_unlock(&syscheck.fim_entry_mutex);
                 return OS_INVALID;
             }

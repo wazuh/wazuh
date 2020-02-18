@@ -17,6 +17,8 @@
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 
+fim_entry_data * data_to_erase = NULL;
+
 /* auxiliary structs */
 typedef struct __fim_data_s
 {
@@ -94,12 +96,24 @@ void __wrap__mdebug2(const char * file, int line, const char * func, const char 
     check_expected(formatted_msg);
 }
 
-int __wrap_rbtree_insert() {
-    return mock();
+void * __wrap_rbtree_insert(rb_tree * tree, const char * key, void * value) {
+    if (mock()) {
+        if (data_to_erase) {
+            free_entry_data(data_to_erase);
+        }
+        data_to_erase = (fim_entry_data *) value;
+    }
+    return mock_type(void *);
 }
 
-int __wrap_rbtree_replace() {
-    return mock();
+void * __wrap_rbtree_replace(rb_tree * tree, const char * key, void * value) {
+    if (mock()) {
+        if (data_to_erase) {
+            free_entry_data(data_to_erase);
+        }
+        data_to_erase = (fim_entry_data *) value;
+    }
+    return mock_type(void *);
 }
 
 int __wrap_rbtree_delete(rb_tree *tree, const char *key) {
@@ -265,7 +279,7 @@ static int setup_group(void **state)
     fim_data->w_evt->user_id = strdup("100");
     fim_data->w_evt->user_name = strdup("test");
     fim_data->w_evt->group_id = strdup("1000");
-    fim_data->w_evt->group_name = strdup("testing");
+    fim_data->w_evt->group_name = "testing";
     fim_data->w_evt->process_name = strdup("test_proc");
     fim_data->w_evt->path = strdup("./test/test.file");
     fim_data->w_evt->audit_uid = strdup("99");
@@ -345,6 +359,10 @@ static int teardown_group(void **state)
     free(fim_data);
 
     Free_Syscheck(&syscheck);
+
+    if (data_to_erase) {
+        free_entry_data(data_to_erase);
+    }
 
     return 0;
 }
@@ -937,6 +955,7 @@ void test_fim_insert_success_new(void **state)
     file_stat.st_ino = 922287;
 
     // Not duplicated
+    will_return(__wrap_rbtree_insert, 0);
     will_return(__wrap_rbtree_insert, 1);
     // Not in hash table
     will_return(__wrap_OSHash_Get, NULL);
@@ -961,6 +980,7 @@ void test_fim_insert_success_add(void **state)
     file_stat.st_ino = 922287;
 
     // Not duplicated
+    will_return(__wrap_rbtree_insert, 0);
     will_return(__wrap_rbtree_insert, 1);
     // Already in hash table
     fim_data->inode_data->items = 1;
@@ -984,6 +1004,7 @@ void test_fim_insert_failure_new(void **state)
     file_stat.st_ino = 922287;
 
     // Not duplicated
+    will_return(__wrap_rbtree_insert, 0);
     will_return(__wrap_rbtree_insert, 1);
     // Not in hash table
     will_return(__wrap_OSHash_Get, NULL);
@@ -1012,6 +1033,7 @@ void test_fim_insert_failure_duplicated(void **state)
 
     // Duplicated
     will_return(__wrap_rbtree_insert, 0);
+    will_return(__wrap_rbtree_insert, 0);
     expect_string(__wrap__mdebug1, formatted_msg, "(6326): Couldn't insert entry, duplicate path: 'test-file.tst'");
     will_return(__wrap__mdebug1, 1);
 
@@ -1033,6 +1055,7 @@ void test_fim_update_success(void **state)
     fim_data->inode_data->paths = os_AddStrArray("test.file", fim_data->inode_data->paths);
     will_return(__wrap_OSHash_Get, fim_data->inode_data);
 
+    will_return(__wrap_rbtree_replace, 0);
     will_return(__wrap_rbtree_replace, 1);
 
     ret = fim_update(file, fim_data->old_data, fim_data->old_data);
@@ -1066,6 +1089,7 @@ void test_fim_update_failure_rbtree(void **state)
     fim_data->inode_data->paths = os_AddStrArray("test.file", fim_data->inode_data->paths);
     will_return(__wrap_OSHash_Get, fim_data->inode_data);
 
+    will_return(__wrap_rbtree_replace, 0);
     will_return(__wrap_rbtree_replace, 0);
     will_return(__wrap__mdebug1, 1);
     expect_string(__wrap__mdebug1, formatted_msg, "(6328): Unable to update file to db, key not found: 'test-file.tst'");
@@ -1436,6 +1460,7 @@ void test_fim_checker_no_file_system(void **state) {
     char * path = "/media/test.file";
     struct stat buf;
     buf.st_mode = S_IFREG;
+    buf.st_size = 1500;
     fim_data->item->index = 3;
     fim_data->item->statbuf = buf;
     will_return(__wrap_lstat, 0);
@@ -1456,6 +1481,7 @@ void test_fim_checker_file(void **state)
     char * path = "/media/test.file";
     struct stat buf;
     buf.st_mode = S_IFREG;
+    buf.st_size = 1500;
     fim_data->item->index = 3;
     fim_data->item->statbuf = buf;
     will_return(__wrap_lstat, 0);
@@ -1475,6 +1501,7 @@ void test_fim_checker_file(void **state)
     will_return(__wrap_OSHash_Add, 2);
 
     will_return(__wrap_rbtree_replace, 1);
+    will_return(__wrap_rbtree_replace, 1);
 
     fim_checker(path, fim_data->item, fim_data->w_evt, 1);
 
@@ -1490,6 +1517,7 @@ void test_fim_checker_file_warning(void **state)
     char * path = "/media/test.file";
     struct stat buf;
     buf.st_mode = S_IFREG;
+    buf.st_size = 1500;
     fim_data->item->index = 3;
     fim_data->item->statbuf = buf;
     will_return(__wrap_lstat, 0);
@@ -1504,6 +1532,7 @@ void test_fim_checker_file_warning(void **state)
     expect_string(__wrap_rbtree_get, key, "/media/test.file");
     will_return(__wrap_rbtree_get, NULL);
 
+    will_return(__wrap_rbtree_insert, 0);
     will_return(__wrap_rbtree_insert, 0);
 
     will_return(__wrap__mdebug1, 1);
@@ -1523,6 +1552,7 @@ void test_fim_checker_fim_regular_ignore(void **state) {
     char * path = "/etc/mtab";
     struct stat buf;
     buf.st_mode = S_IFREG;
+    buf.st_size = 1500;
     fim_data->item->index = 3;
     fim_data->item->statbuf = buf;
     fim_data->item->mode = FIM_WHODATA;
@@ -1544,6 +1574,7 @@ void test_fim_checker_fim_regular_restrict(void **state) {
     char * path = "/media/test";
     struct stat buf;
     buf.st_mode = S_IFREG;
+    buf.st_size = 1500;
     fim_data->item->index = 3;
     fim_data->item->statbuf = buf;
     fim_data->item->mode = FIM_REALTIME;
@@ -1566,6 +1597,7 @@ void test_fim_checker_directory(void **state)
     char * path = "/media/";
     struct stat buf;
     buf.st_mode = S_IFDIR;
+    buf.st_size = 1500;
     fim_data->item->index = 3;
     fim_data->item->statbuf = buf;
     will_return_always(__wrap_lstat, 0);
@@ -1589,6 +1621,7 @@ void test_fim_checker_link(void **state)
     char * path = "/media/test.file";
     struct stat buf;
     buf.st_mode = S_IFLNK;
+    buf.st_size = 1500;
 
     fim_data->item->index = 3;
     fim_data->item->statbuf = buf;
@@ -1612,6 +1645,7 @@ void test_fim_checker_link(void **state)
     will_return(__wrap_OSHash_Add, 2);
 
     will_return(__wrap_rbtree_replace, 1);
+    will_return(__wrap_rbtree_replace, 1);
 
     fim_checker(path, fim_data->item, NULL, 1);
 }
@@ -1633,6 +1667,7 @@ void test_fim_file_baseline(void **state)
     expect_string(__wrap_rbtree_get, key, "file");
     will_return(__wrap_rbtree_get, NULL);
 
+    will_return(__wrap_rbtree_insert, 1);
     will_return(__wrap_rbtree_insert, 1);
     will_return(__wrap_OSHash_Get, NULL);
 
@@ -1938,6 +1973,39 @@ void test_check_deleted_files_scanned(void **state)
     check_deleted_files();
 }
 
+void test_check_deleted_files_scanned_delete(void **state)
+{
+    fim_data_t *fim_data = *state;
+
+    char ** keys = NULL;
+    keys = os_AddStrArray("/media/file", keys);
+
+    syscheck.opts[3] |= CHECK_SEECHANGES;
+
+    will_return(__wrap_rbtree_keys, keys);
+
+    expect_value(__wrap_rbtree_get, tree, syscheck.fim_entry);
+    expect_string(__wrap_rbtree_get, key, "/media/file");
+    expect_value(__wrap_rbtree_get, tree, syscheck.fim_entry);
+    expect_string(__wrap_rbtree_get, key, "/media/file");
+    will_return_always(__wrap_rbtree_get, fim_data->old_data);
+
+    expect_string(__wrap_delete_target_file, path, "/media/file");
+    will_return(__wrap_delete_target_file, 0);
+
+    will_return(__wrap_OSHash_Get, NULL);
+
+    expect_value(__wrap_rbtree_delete, tree, syscheck.fim_entry);
+    expect_string(__wrap_rbtree_delete, key, "/media/file");
+    will_return(__wrap_rbtree_delete, 1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6220): Sending delete message for file: '/media/file'");
+
+    check_deleted_files();
+
+    syscheck.opts[3] &= ~CHECK_SEECHANGES;
+}
+
 
 void test_fim_file_new(void **state)
 {
@@ -1980,6 +2048,7 @@ void test_fim_file_new(void **state)
     expect_string(__wrap_rbtree_get, key, "file");
     will_return(__wrap_rbtree_get, NULL);
 
+    will_return(__wrap_rbtree_insert, 1);
     will_return(__wrap_rbtree_insert, 1);
     will_return(__wrap_OSHash_Get, NULL);
 
@@ -2033,6 +2102,7 @@ void test_fim_file_new_error(void **state)
     expect_string(__wrap_rbtree_get, key, "file");
     will_return(__wrap_rbtree_get, NULL);
 
+    will_return(__wrap_rbtree_insert, 0);
     will_return(__wrap_rbtree_insert, 0);
 
     will_return(__wrap__mdebug1, 1);
@@ -2089,6 +2159,7 @@ void test_fim_file_check(void **state)
     expect_string(__wrap_OSHash_Add, key, "2345:1234");
     will_return(__wrap_OSHash_Add, 2);
 
+    will_return(__wrap_rbtree_replace, 1);
     will_return(__wrap_rbtree_replace, 1);
 
     ret = fim_file("file", fim_data->item, NULL, 1);
@@ -2194,6 +2265,7 @@ void test_fim_file_check_error(void **state)
     will_return(__wrap_OSHash_Add, 2);
 
     will_return(__wrap_rbtree_replace, 0);
+    will_return(__wrap_rbtree_replace, 0);
 
     will_return(__wrap__mdebug1, 1);
     expect_string(__wrap__mdebug1, formatted_msg, "(6328): Unable to update file to db, key not found: 'file'");
@@ -2269,11 +2341,31 @@ void test_free_entry_data_null(void **state)
 }
 
 
+void test_free_entry_data_empty(void **state)
+{
+    (void) state;
+
+    fim_entry_data *entry_data = calloc(1, sizeof(fim_entry_data));
+
+    free_entry_data(entry_data);
+}
+
+
 void test_free_inode_data_null(void **state)
 {
     (void) state;
 
     fim_inode_data *inode_data = NULL;
+
+    free_inode_data(&inode_data);
+}
+
+
+void test_free_inode_data_empty(void **state)
+{
+    (void) state;
+
+    fim_inode_data *inode_data = calloc(1, sizeof(fim_inode_data));
 
     free_inode_data(&inode_data);
 }
@@ -2424,8 +2516,8 @@ int main(void) {
         cmocka_unit_test(test_fim_checker_link),
 
         /* fim_directory */
-        cmocka_unit_test(test_fim_directory),
-        cmocka_unit_test(test_fim_directory_ignore),
+        cmocka_unit_test_setup_teardown(test_fim_directory, setup_struct_dirent, teardown_struct_dirent),
+        cmocka_unit_test_setup_teardown(test_fim_directory_ignore, setup_struct_dirent, teardown_struct_dirent),
         cmocka_unit_test(test_fim_directory_nodir),
         cmocka_unit_test(test_fim_directory_opendir_error),
 
@@ -2442,6 +2534,7 @@ int main(void) {
         /* check_deleted_files */
         cmocka_unit_test(test_check_deleted_files),
         cmocka_unit_test(test_check_deleted_files_scanned),
+        cmocka_unit_test(test_check_deleted_files_scanned_delete),
 
         /* fim_file */
         cmocka_unit_test(test_fim_file_new),
@@ -2463,7 +2556,9 @@ int main(void) {
 
         /* free functions */
         cmocka_unit_test(test_free_entry_data_null),
+        cmocka_unit_test(test_free_entry_data_empty),
         cmocka_unit_test(test_free_inode_data_null),
+        cmocka_unit_test(test_free_inode_data_empty),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
