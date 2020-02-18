@@ -15,13 +15,13 @@ endif()
 # Win32 pthread library
 find_library(PTHREAD NAMES libwinpthread-1.dll HINTS "${SRC_FOLDER}/win32")
 if(NOT PTHREAD)
-  message(FATAL_ERROR "libwinpthread-1.dll not found in  "${SRC_FOLDER}/win32" Aborting...")
+  message(FATAL_ERROR "libwinpthread-1.dll not found in ${SRC_FOLDER}/win32 Aborting...")
 endif()
 
 # Static cmocka
 find_library(STATIC_CMOCKA NAMES libcmocka.a HINTS "/usr/i686-w64-mingw32/sys-root/mingw/lib/")
 if(NOT STATIC_CMOCKA)
-  message(FATAL_ERROR "libcmocka.a not found in  "/usr/i686-w64-mingw32/sys-root/mingw/lib/" Aborting...")
+  message(FATAL_ERROR "libcmocka.a not found in /usr/i686-w64-mingw32/sys-root/mingw/lib/ Aborting...")
 endif()
 
 # Add compiling flags

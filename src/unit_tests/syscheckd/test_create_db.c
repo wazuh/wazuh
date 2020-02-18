@@ -2437,14 +2437,17 @@ static void test_fim_get_data_no_hashes(void **state) {
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
-    #ifdef TEST_WINAGENT
+    #ifndef TEST_WINAGENT
+    expect_value(__wrap_get_group, gid, 0);
+    will_return(__wrap_get_group, "group");
+    #else
     expect_string(__wrap_w_get_file_permissions, file_path, "test");
     will_return(__wrap_w_get_file_permissions, "permissions");
     will_return(__wrap_w_get_file_permissions, 0);
 
     expect_string(__wrap_decode_win_permissions, raw_perm, "permissions");
     will_return(__wrap_decode_win_permissions, "decoded_perms");
-    #endif 
+    #endif
 
     fim_data->local_data = fim_get_data("test", fim_data->item);
 
@@ -2452,7 +2455,7 @@ static void test_fim_get_data_no_hashes(void **state) {
     assert_string_equal(fim_data->local_data->perm, "r--r--r--");
     #else
     assert_string_equal(fim_data->local_data->perm, "decoded_perms");
-    #endif 
+    #endif
     assert_string_equal(fim_data->local_data->hash_md5, "");
     assert_string_equal(fim_data->local_data->hash_sha1, "");
     assert_string_equal(fim_data->local_data->hash_sha256, "");
