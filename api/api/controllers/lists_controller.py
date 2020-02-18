@@ -79,7 +79,7 @@ def get_lists_files(pretty: bool = False, wait_for_complete: bool = False, offse
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
-                'search_in_fields': ['filename', 'relative_path'],
+                'search_in_fields': ['filename', 'relative_dirname'],
                 'filename': filename,
                 'relative_dirname': relative_dirname
                 }
