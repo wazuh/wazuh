@@ -42,6 +42,7 @@ static const char *SQL_STMT[] = {
     [FIMDB_STMT_GET_INODE_ID] = "SELECT inode_id FROM entry_path WHERE path = ?",
 };
 
+
 /**
  * @brief Decodes a row from the database to be saved in a fim_entry structure.
  *
@@ -49,6 +50,7 @@ static const char *SQL_STMT[] = {
  * @return fim_entry* The filled structure.
  */
 static fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt);
+
 
 /**
  * @brief Executes a simple query in a given database.
@@ -59,6 +61,7 @@ static fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt);
  */
 static int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query);
 
+
 /**
  * @brief
  *
@@ -66,11 +69,13 @@ static int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query);
  * @param index
  * @param callback
  * @param arg
- * @return int
+ * @param pos
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 static int fim_db_process_get_query(fdb_t *fim_sql, int index,
-                                    void (*callback)(fdb_t *, fim_entry *, void *),
-                                    void * arg);
+                                    void (*callback)(fdb_t *, fim_entry *, int, void *),
+                                    int memory, void * arg);
+
 
 /**
  * @brief Binds data into a insert data statement.
@@ -80,6 +85,7 @@ static int fim_db_process_get_query(fdb_t *fim_sql, int index,
  */
 static void fim_db_bind_insert_data(fdb_t *fim_sql, fim_entry_data *entry);
 
+
 /**
  * @brief Binds data into a insert data statement.
  *
@@ -88,6 +94,7 @@ static void fim_db_bind_insert_data(fdb_t *fim_sql, fim_entry_data *entry);
  * @param top Last entry of the range.
  */
 void fim_db_bind_range(fdb_t *fim_sql, int index, const char *start, const char *top);
+
 
 /**
  * @brief Binds a range of paths.
@@ -100,6 +107,7 @@ void fim_db_bind_range(fdb_t *fim_sql, int index, const char *start, const char 
 static void fim_db_bind_insert_path(fdb_t *fim_sql, const char *file_path,
                                     int row_id, fim_entry_data *entry);
 
+
 /**
  * @brief Binds a path into a statement.
  *
@@ -109,6 +117,7 @@ static void fim_db_bind_insert_path(fdb_t *fim_sql, const char *file_path,
  */
 static void fim_db_bind_path(fdb_t *fim_sql, int index,
                              const char * file_path);
+
 
 /**
  * @brief Binds data into a get inode statement.
@@ -121,6 +130,7 @@ static void fim_db_bind_path(fdb_t *fim_sql, int index,
 static void fim_db_bind_get_inode(fdb_t *fim_sql, int index,
                                   const unsigned long int inode,
                                   const unsigned long int dev);
+
 
 /**
  * @brief Binds data into an update entry data statement.
@@ -158,11 +168,42 @@ static void fim_db_bind_delete_data_id(fdb_t *fim_sql, int row);
  * @brief Create a new database.
  * @param path New database path.
  * @param source SQlite3 schema file.
- * @param memory Boolean value to choose between db stored in disk or in memory.
+ * @param storage 1 Store database in memory, disk otherwise.
  * @param fim_db Database pointer.
  *
  */
-static int fim_db_create_file(const char *path, const char *source, const int memory, sqlite3 **fim_db);
+static int fim_db_create_file(const char *path, const char *source, const int storage, sqlite3 **fim_db);
+
+
+/**
+ * @brief Read paths which are stored in a temporal storage.
+ *
+ * @param fim_sql FIM database structure.
+ * @param mutex
+ * @param storage 1 Store database in memory, disk otherwise.
+ * @param callback Function to call within a step.
+ * @param args Adicional arguments for callback function.
+ *
+ */
+ static int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex,
+        void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *), int storage, void * arg);
+
+
+/**
+ * @brief Create a new temporal storage to save all the files' paths.
+ * @param size Number of paths(Only if memory is 1)
+ * @return New file structure.
+ */
+static fim_tmp_file *fim_db_create_temp_file(int storage);
+
+
+/**
+ * @brief Clean and free resources
+ * @param file Storage structure
+ * @param storage Type of storage (memory or disk)
+ */
+static void fim_db_clean_file(fim_tmp_file **file, int storage);
+
 
 /**
  * @brief
@@ -181,9 +222,9 @@ void fim_db_bind_set_scanned(fdb_t *fim_sql, const char *file_path);
 void fim_db_bind_get_inode_id(fdb_t *fim_sql, const char *file_path);
 
 
-fdb_t *fim_db_init(int memory) {
+fdb_t *fim_db_init(int storage) {
     fdb_t *fim;
-    char *path = (memory == 1) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
+    char *path = (storage == 1) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
 
     os_calloc(1, sizeof(fdb_t), fim);
     fim->transaction.interval = COMMIT_INTERVAL;
@@ -192,11 +233,11 @@ fdb_t *fim_db_init(int memory) {
         goto free_fim;
     }
 
-    if (fim_db_create_file(path, schema_fim_sql, memory, &fim->db) < 0) {
+    if (fim_db_create_file(path, schema_fim_sql, storage, &fim->db) < 0) {
         goto free_fim;
     }
 
-    if (!memory &&
+    if (!storage &&
         sqlite3_open_v2(path, &fim->db, SQLITE_OPEN_READWRITE, NULL)) {
         goto free_fim;
     }
@@ -260,7 +301,7 @@ end:
     return retval;
 }
 
-int fim_db_create_file(const char *path, const char *source, const int memory, sqlite3 **fim_db) {
+int fim_db_create_file(const char *path, const char *source, const int storage, sqlite3 **fim_db) {
     const char *sql;
     const char *tail;
 
@@ -298,7 +339,7 @@ int fim_db_create_file(const char *path, const char *source, const int memory, s
         sqlite3_finalize(stmt);
     }
 
-    if (memory == 1) {
+    if (storage == FIM_DB_MEMORY) {
         *fim_db = db;
         return 0;
     }
@@ -311,6 +352,44 @@ int fim_db_create_file(const char *path, const char *source, const int memory, s
     }
 
     return 0;
+}
+
+fim_tmp_file *fim_db_create_temp_file(int storage) {
+    fim_tmp_file *file;
+    os_calloc(1, sizeof(fim_tmp_file), file);
+
+    if (storage == FIM_DB_DISK) {
+        os_calloc(PATH_MAX, sizeof(char), file->path);
+        //Create random name unique to this thread
+        sprintf(file->path, "%stmp_%lu%d", FIM_DB_TMPDIR,
+                    (unsigned long)time(NULL),
+                    getpid());
+
+        file->fd = fopen(file->path, "w+");
+        if (file->fd == NULL) {
+            merror("Failed to create temporal storage '%s'", file->path);
+            os_free(file->path);
+            os_free(file);
+            return NULL;
+        }
+    } else {
+        file->list = W_Vector_init(100);
+    }
+
+    return file;
+}
+
+void fim_db_clean_file(fim_tmp_file **file, int storage) {
+    if (storage == FIM_DB_DISK) {
+        fclose((*file)->fd);
+        remove((*file)->path);
+        os_free((*file)->path);
+    } else {
+        os_free((*file)->list->vector);
+        os_free((*file)->list);
+    }
+
+    os_free((*file));
 }
 
 int fim_db_finalize_stmt(fdb_t *fim_sql) {
@@ -366,38 +445,52 @@ int fim_db_clean_stmt(fdb_t *fim_sql, int index) {
     return FIMDB_OK;
 }
 
-/** Wrapper functions **/
+
+//wrappers
+
+int fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file, int storage) {
+    if ((*file = fim_db_create_temp_file(storage)) == NULL) {
+        return FIMDB_ERR;
+    }
+
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_RANGE);
+    fim_db_bind_range(fim_sql, FIMDB_STMT_GET_PATH_RANGE, start, top);
+
+    int ret = fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_PATH_RANGE, fim_db_callback_save_path, storage, (void*) *file);
+
+    if (*file && (*file)->elements == 0) {
+        fim_db_clean_file(file, storage);
+    }
+
+    return ret;
+}
+
+int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
+    if ((*file = fim_db_create_temp_file(storage)) == NULL) {
+        return FIMDB_ERR;
+    }
+
+    int ret = fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_NOT_SCANNED, fim_db_callback_save_path, storage, (void*) *file);
+
+    if (*file && (*file)->elements == 0) {
+        fim_db_clean_file(file, storage);
+    }
+
+    return ret;
+
+}
 
 int fim_db_get_data_checksum(fdb_t *fim_sql, void * arg) {
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_ALL_ENTRIES);
-    return fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_ALL_ENTRIES, fim_db_callback_calculate_checksum, arg);
+    return fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_ALL_ENTRIES, fim_db_callback_calculate_checksum, 0, arg);
 }
 
-int fim_db_sync_path_range(fdb_t *fim_sql, char *start, char *top) {
-    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_RANGE);
-    fim_db_bind_range(fim_sql, FIMDB_STMT_GET_PATH_RANGE, start, top);
-    return fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_PATH_RANGE, fim_db_callback_sync_path_range, NULL);
-}
-
-int fim_db_delete_not_scanned(fdb_t * fim_sql) {
-    return fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_NOT_SCANNED,
-                                    fim_db_remove_path, (void *) (int) 1);
-}
-
-int fim_db_delete_range(fdb_t * fim_sql, char *start, char *top) {
-    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_RANGE);
-    fim_db_bind_range(fim_sql, FIMDB_STMT_GET_PATH_RANGE, start, top);
-    return fim_db_process_get_query(fim_sql, FIMDB_STMT_GET_PATH_RANGE,
-                                    fim_db_remove_path, NULL);
-}
-
-int fim_db_process_get_query(fdb_t *fim_sql, int index, void (*callback)(fdb_t *, fim_entry *, void *), void * arg) {
+int fim_db_process_get_query(fdb_t *fim_sql, int index, void (*callback)(fdb_t *, fim_entry *, int , void *), int storage, void * arg) {
     int result;
-
-    while (result = sqlite3_step(fim_sql->stmt[index]), result == SQLITE_ROW) {
+    int i;
+    for (i = 0; result = sqlite3_step(fim_sql->stmt[index]), result == SQLITE_ROW; i++) {
         fim_entry *entry = fim_db_decode_full_row(fim_sql->stmt[index]);
-        callback(fim_sql, (void *) entry, arg);
-
+        callback(fim_sql, entry, storage, arg);
         free_entry(entry);
     }
 
@@ -416,6 +509,66 @@ int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query) {
         sqlite3_free(error);
         return FIMDB_ERR;
     }
+
+    return FIMDB_OK;
+}
+
+int fim_db_sync_path_range(fdb_t * fim_sql, pthread_mutex_t *mutex, fim_tmp_file *file, int storage) {
+    return fim_db_process_read_file(fim_sql, file, mutex, fim_db_callback_sync_path_range,
+            storage, (void *) (int) 0);
+}
+
+int fim_db_delete_not_scanned(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {
+    return fim_db_process_read_file(fim_sql, file, mutex, fim_db_remove_path,
+            storage, (void *) (int) 1);
+}
+
+int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {
+    return fim_db_process_read_file(fim_sql, file, mutex, fim_db_remove_path,
+            storage, (void *) (int) 0);
+}
+
+int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex,
+    void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *),
+    int storage, void * arg) {
+
+    char *line = NULL;
+    char *path = NULL;
+    int i = 0;
+
+    if (storage == FIM_DB_DISK) {
+        os_calloc(BUFSIZ + 1, sizeof(char), line);
+        fseek(file->fd, SEEK_SET, 0);
+    }
+
+    do {
+
+        if (storage == FIM_DB_DISK) {
+            /* fgets() adds \n(newline) to the end of the string,
+             So it must be removed. */
+            if (fgets(line, BUFSIZ, file->fd)) {
+                line[strlen(line) - 1] = '\0';
+                path = wstr_unescape_json(line);
+            }
+        } else {
+            path = (char *)W_Vector_get(file->list, i);
+        }
+
+        if (path) {
+            w_mutex_lock(mutex);
+            fim_entry *entry = fim_db_get_path(fim_sql, path);
+            w_mutex_unlock(mutex);
+            if (entry != NULL) {
+                callback(fim_sql, entry, mutex, arg);
+            }
+            os_free(path);
+        }
+
+        i++;
+    } while (i < file->elements);
+
+    fim_db_clean_file(&file, storage);
+    os_free(line);
 
     return FIMDB_OK;
 }
@@ -693,7 +846,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) 
 #else
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_DATA_ROW);
     fim_db_bind_get_inode(fim_sql, FIMDB_STMT_GET_DATA_ROW, entry->inode, entry->dev);
-    
+
 #endif
 
     res = sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_DATA_ROW]);
@@ -746,22 +899,15 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) 
     return res_data && res_path;
 }
 
-void fim_db_callback_sync_path_range(__attribute__((unused)) fdb_t *fim_sql,
-                                     fim_entry *entry, __attribute__((unused))void *arg) {
-        cJSON * entry_data = fim_entry_json(entry->path, entry->data);
-        char * plain = dbsync_state_msg("syscheck", entry_data);
-        mdebug1("Sync Message for %s sent: %s", entry->path, plain);
-        fim_send_sync_msg(plain);
-        free(plain);
-}
+void fim_db_callback_calculate_checksum(__attribute__((unused)) fdb_t *fim_sql, fim_entry *entry,
+    __attribute__((unused))int storage, void *arg) {
 
-void fim_db_callback_calculate_checksum(__attribute__((unused)) fdb_t *fim_sql, fim_entry *entry, void *arg) {
     EVP_MD_CTX *ctx = (EVP_MD_CTX *)arg;
     EVP_DigestUpdate(ctx, entry->data->checksum, strlen(entry->data->checksum));
 }
 
 int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *top,
-                                const long id, const int n) {
+                                const long id, const int n, pthread_mutex_t *mutex) {
     fim_entry *entry = NULL;
     int m = n / 2;
     int i;
@@ -773,14 +919,16 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
     char *str_pathuh = NULL;
     char *plain      = NULL;
 
-    // Clean statements
-    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_RANGE);
-
     EVP_MD_CTX *ctx_left = EVP_MD_CTX_create();
     EVP_MD_CTX *ctx_right = EVP_MD_CTX_create();
 
     EVP_DigestInit(ctx_left, EVP_sha1());
     EVP_DigestInit(ctx_right, EVP_sha1());
+
+    w_mutex_lock(mutex);
+
+    // Clean statements
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_RANGE);
 
     fim_db_bind_range(fim_sql, FIMDB_STMT_GET_PATH_RANGE, start, top);
 
@@ -788,13 +936,15 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
     for (i = 0; i < m; i++) {
         if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]) != SQLITE_ROW) {
             merror("SQL ERROR: %s", sqlite3_errmsg(fim_sql->db));
+            w_mutex_unlock(mutex);
             goto end;
         }
         entry = fim_db_decode_full_row(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]);
         if (i == (m - 1) && entry->path) {
             os_strdup(entry->path, str_pathlh);
         }
-        fim_db_callback_calculate_checksum(fim_sql, entry, (void *)ctx_left);
+        //Type of storage not required
+        fim_db_callback_calculate_checksum(fim_sql, entry, FIM_DB_DISK, (void *)ctx_left);
         free_entry(entry);
     }
 
@@ -802,15 +952,19 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
     for (i = m; i < n; i++) {
         if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]) != SQLITE_ROW) {
             merror("SQL ERROR: %s", sqlite3_errmsg(fim_sql->db));
+            w_mutex_unlock(mutex);
             goto end1;
         }
         entry = fim_db_decode_full_row(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]);
         if (i == m && entry->path) {
             os_strdup(entry->path, str_pathuh);
         }
-        fim_db_callback_calculate_checksum(fim_sql, entry, (void *)ctx_right);
+        //Type of storage not required
+        fim_db_callback_calculate_checksum(fim_sql, entry, FIM_DB_DISK, (void *)ctx_right);
         free_entry(entry);
     }
+
+    w_mutex_unlock(mutex);
 
     if (!str_pathlh || !str_pathuh) {
         merror("Failed to obtain required paths in order to form message");
@@ -830,6 +984,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
     plain = dbsync_check_msg("syscheck", INTEGRITY_CHECK_RIGHT, id, str_pathuh, top, "", hexdigest);
     fim_send_sync_msg(plain);
     os_free(plain);
+    os_free(str_pathuh);
 
     retval = FIMDB_OK;
 
@@ -843,9 +998,13 @@ end:
     return retval;
 }
 
-void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, __attribute__((unused))void *arg) {
+void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex,
+     __attribute__((unused))void *arg) {
 
     int *alert = (int *) arg;
+    int rows = 0;
+
+    w_mutex_lock(mutex);
 
     // Clean and bind statements
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_COUNT);
@@ -854,7 +1013,7 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, __attribute__((unused)
     fim_db_bind_path(fim_sql, FIMDB_STMT_GET_PATH_COUNT, entry->path);
 
     if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATH_COUNT]) == SQLITE_ROW) {
-        int rows = sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_PATH_COUNT], 0);
+        rows = sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_PATH_COUNT], 0);
         int rowid = sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_PATH_COUNT], 1);
 
         switch (rows) {
@@ -865,52 +1024,58 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, __attribute__((unused)
             // The inode has only one entry, delete the entry data.
             fim_db_bind_delete_data_id(fim_sql, rowid);
             if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_DELETE_DATA]) != SQLITE_DONE) {
+                w_mutex_unlock(mutex);
                 goto end;
             }
-
-            if (alert) {
-                cJSON * json_event      = NULL;
-                char * json_formated    = NULL;
-                int pos = 0;
-
-                const char *FIM_ENTRY_TYPE[] = { "file", "registry"};
-
-                if (pos = fim_configuration_directory(entry->path,
-                    FIM_ENTRY_TYPE[entry->data->entry_type]), pos < 0) {
-                    goto end;
-                }
-
-                json_event = fim_json_event(entry->path, NULL, entry->data, pos,
-                                                FIM_DELETE, FIM_SCHEDULED, NULL);
-
-                if (!strcmp(FIM_ENTRY_TYPE[entry->data->entry_type], "file") &&
-                    syscheck.opts[pos] & CHECK_SEECHANGES) {
-                    delete_target_file(entry->path);
-                }
-
-                if (json_event) {
-                    mdebug2(FIM_FILE_MSG_DELETE, entry->path);
-                    json_formated = cJSON_PrintUnformatted(json_event);
-                    send_syscheck_msg(json_formated);
-
-                    os_free(json_formated);
-                    cJSON_Delete(json_event);
-                }
-            }
-            // Fallthrough
+            //Fallthrough
         default:
             // The inode has more entries, delete only this path.
             fim_db_bind_path(fim_sql, FIMDB_STMT_DELETE_PATH, entry->path);
             if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_DELETE_PATH]) != SQLITE_DONE) {
+                w_mutex_unlock(mutex);
                 goto end;
             }
-
             break;
         }
     }
 
+    w_mutex_unlock(mutex);
+
+
+    if (alert && rows >= 1) {
+        cJSON * json_event      = NULL;
+        char * json_formated    = NULL;
+        int pos = 0;
+
+         const char *FIM_ENTRY_TYPE[] = { "file", "registry"};
+
+        if (pos = fim_configuration_directory(entry->path,
+            FIM_ENTRY_TYPE[entry->data->entry_type]), pos < 0) {
+            goto end;
+        }
+
+        json_event = fim_json_event(entry->path, NULL, entry->data, pos,
+                                                FIM_DELETE, FIM_SCHEDULED, NULL);
+
+        if (!strcmp(FIM_ENTRY_TYPE[entry->data->entry_type], "file") &&
+            syscheck.opts[pos] & CHECK_SEECHANGES) {
+            delete_target_file(entry->path);
+        }
+
+        if (json_event) {
+            mdebug2(FIM_FILE_MSG_DELETE, entry->path);
+            json_formated = cJSON_PrintUnformatted(json_event);
+            send_syscheck_msg(json_formated);
+
+            os_free(json_formated);
+            cJSON_Delete(json_event);
+        }
+    }
+
    end:
+        w_mutex_lock(mutex);
         fim_db_check_transaction(fim_sql);
+        w_mutex_unlock(mutex);
 }
 
 int fim_db_get_row_path(fdb_t * fim_sql, int mode, char **path) {
@@ -937,7 +1102,6 @@ int fim_db_set_all_unscanned(fdb_t *fim_sql) {
     return retval;
 }
 
-
 int fim_db_set_scanned(fdb_t *fim_sql, char *path) {
     // Clean and bind statements
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_SET_SCANNED);
@@ -949,4 +1113,40 @@ int fim_db_set_scanned(fdb_t *fim_sql, char *path) {
     }
 
     return FIMDB_OK;
+}
+
+void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry *entry, int storage, void *arg) {
+    char *base = wstr_escape_json(entry->path);
+    if (base == NULL) {
+        merror("Error escaping '%s'", entry->path);
+        return;
+    }
+
+    if (storage == FIM_DB_DISK) { // disk storage enabled
+        if ((size_t)fprintf(((fim_tmp_file *) arg)->fd, "%s\n", base) != (strlen(base) + sizeof(char))) {
+            merror("%s - %s", entry->path, strerror(errno));
+            goto end;
+        }
+
+        fflush(((fim_tmp_file *) arg)->fd);
+
+    } else { // memory storage enabled
+        W_Vector_insert(((fim_tmp_file *) arg)->list, base);
+    }
+
+    ((fim_tmp_file *) arg)->elements++;
+
+    end:
+        os_free(base);
+}
+
+void fim_db_callback_sync_path_range(__attribute__((unused))fdb_t *fim_sql, fim_entry *entry,
+    __attribute__((unused))pthread_mutex_t *mutex, __attribute__((unused))void *args) {
+
+    cJSON * entry_data = fim_entry_json(entry->path, entry->data);
+    char * plain = dbsync_state_msg("syscheck", entry_data);
+    mdebug1("Sync Message for %s sent: %s", entry->path, plain);
+    fim_send_sync_msg(plain);
+    free_entry(entry);
+    os_free(plain);
 }
