@@ -19,7 +19,7 @@ logger = logging.getLogger('wazuh')
 @exception_handler
 @flask_cached
 def get_rules(rule_ids=None, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None,
-              q=None, status=None, group=None, level=None, filename=None, relative_path=None, pci_dss=None, gdpr=None,
+              q=None, status=None, group=None, level=None, filename=None, relative_dirname=None, pci_dss=None, gdpr=None,
               gpg13=None, hipaa=None):
     """Get information about all Wazuh rules.
 
@@ -36,7 +36,7 @@ def get_rules(rule_ids=None, pretty=False, wait_for_complete=False, offset=0, li
     :param group: Filters by rule group.
     :param level: Filters by rule level. Can be a single level (4) or an interval (2-4)
     :param filename: Filters by filename.
-    :param relative_path: Filters by rule path.
+    :param relative_dirname: Filters by relative dirname.
     :param pci_dss: Filters by PCI_DSS requirement name.
     :param gdpr: Filters by GDPR requirement.
     :param gpg13: Filters by GPG13 requirement.
@@ -53,7 +53,7 @@ def get_rules(rule_ids=None, pretty=False, wait_for_complete=False, offset=0, li
                 'group': group,
                 'level': level,
                 'filename': filename,
-                'relative_path': relative_path,
+                'relative_dirname': relative_dirname,
                 'pci_dss': pci_dss,
                 'gdpr': gdpr,
                 'gpg13': gpg13,
@@ -149,7 +149,7 @@ def get_rules_requirement(requirement=None, pretty=False, wait_for_complete=Fals
 @exception_handler
 @flask_cached
 def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None,
-                    status=None, filename=None, relative_path=None):
+                    status=None, filename=None, relative_dirname=None):
     """Get all files which defines rules
 
     :param pretty: Show results in human-readable format
@@ -161,7 +161,7 @@ def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None,
     :param search: Looks for elements with the specified string
     :param status: Filters by rules status.
     :param filename: Filters by filename.
-    :param relative_path: Filters by relative_path.
+    :param relative_dirname: Filters by relative dirname.
     :return: Data object
     """
     f_kwargs = {'offset': offset,
@@ -172,7 +172,7 @@ def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None,
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
                 'status': status,
                 'filename': filename,
-                'relative_path': relative_path}
+                'relative_dirname': relative_dirname}
 
     dapi = DistributedAPI(f=rule_framework.get_rules_files,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

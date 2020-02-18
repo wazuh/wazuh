@@ -80,7 +80,7 @@ def test_load_rules_from_file(rule_file, rule_path, rule_status, exception):
         result = rule.load_rules_from_file(rule_file, rule_path, rule_status)
         for r in result:
             assert r['filename'] == rule_file
-            assert r['relative_path'] == rule_path
+            assert r['relative_dirname'] == rule_path
             assert r['status'] == rule_status
     except WazuhError as e:
         assert e.code == exception.code
@@ -135,10 +135,10 @@ def test_remove_files(tmp_data, parameters, expected_result):
 def test_format_rule_decoder_file(rule_file, rule_path, rule_status):
     """Test format_rule_decoder_file rule core function."""
     result = rule.format_rule_decoder_file(
-        ruleset_conf, {'status': rule_status, 'relative_path': rule_path, 'filename': rule_file},
+        ruleset_conf, {'status': rule_status, 'relative_dirname': rule_path, 'filename': rule_file},
         ['rule_include', 'rule_exclude', 'rule_dir'])
 
-    assert result == [{'filename': rule_file, 'relative_path': rule_path, 'status': rule_status}]
+    assert result == [{'filename': rule_file, 'relative_dirname': rule_path, 'status': rule_status}]
 
 
 @pytest.mark.parametrize('groups, general_groups', [

@@ -19,7 +19,7 @@ logger = logging.getLogger('wazuh')
 @exception_handler
 def get_decoders(decoder_names: list = None, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                  limit: int = None, sort: str = None, search: str = None, q: str = None, filename: str = None,
-                 relative_path: str = None, status: str = None):
+                 relative_dirname: str = None, status: str = None):
     """Get all decoders
 
     Returns information about all decoders included in ossec.conf. This information include decoder's route,
@@ -35,7 +35,7 @@ def get_decoders(decoder_names: list = None, pretty: bool = False, wait_for_comp
     :param search: Looks for elements with the specified string
     :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
     :param filename: Filters by filename.
-    :param relative_path: Filters by relative path
+    :param relative_dirname: Filters by relative dirname.
     :param status: Filters by list status.
     :return: Data object
     """
@@ -49,7 +49,7 @@ def get_decoders(decoder_names: list = None, pretty: bool = False, wait_for_comp
                 'q': q,
                 'filename': filename,
                 'status': status,
-                'relative_path': relative_path}
+                'relative_dirname': relative_dirname}
 
     dapi = DistributedAPI(f=decoder_framework.get_decoders,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -67,7 +67,7 @@ def get_decoders(decoder_names: list = None, pretty: bool = False, wait_for_comp
 
 @exception_handler
 def get_decoders_files(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
-                       sort: str = None, search: str = None, filename: str = None, relative_path: str = None,
+                       sort: str = None, search: str = None, filename: str = None, relative_dirname: str = None,
                        status: str = None):
     """Get all decoders files
 
@@ -81,9 +81,9 @@ def get_decoders_files(pretty: bool = False, wait_for_complete: bool = False, of
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
     :param search: Looks for elements with the specified string
-    :param filename: Filters by filename.
-    :param relative_path: Filters by relative path
-    :param status: Filters by list status.
+    :param filename: Filters by filename
+    :param relative_dirname: Filters by relative dirname
+    :param status: Filters by list status
     :return: Data object
     """
     f_kwargs = {'offset': offset,
@@ -93,7 +93,7 @@ def get_decoders_files(pretty: bool = False, wait_for_complete: bool = False, of
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
                 'filename': filename,
-                'relative_path': relative_path,
+                'relative_dirname': relative_dirname,
                 'status': status}
 
     dapi = DistributedAPI(f=decoder_framework.get_decoders_files,

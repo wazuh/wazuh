@@ -14,7 +14,7 @@ from wazuh.utils import process_array
 
 
 def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, gdpr=None, hipaa=None, nist_800_53=None,
-              relative_path=None, filename=None, level=None, offset=0, limit=common.database_limit, sort_by=None,
+              relative_dirname=None, filename=None, level=None, offset=0, limit=common.database_limit, sort_by=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None, q=''):
     """Gets a list of rules.
 
@@ -26,7 +26,7 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
     :param gdpr: Filters the rules by gdpr requirement.
     :param hipaa: Filters the rules by hipaa requirement.
     :param nist_800_53: Filters the rules by nist_800_53 requirement.
-    :param relative_path: Filters the rules by path.
+    :param relative_dirname: Filters the relative dirname.
     :param filename: Filters the rules by file name.
     :param level: Filters the rules by level. level=2 or level=2-5.
     :param offset: First item to return.
@@ -53,12 +53,12 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
             raise WazuhError(1203)
 
     for rule_file in get_rules_files(limit=None).affected_items:
-        rules.extend(load_rules_from_file(rule_file['filename'], rule_file['relative_path'], rule_file['status']))
+        rules.extend(load_rules_from_file(rule_file['filename'], rule_file['relative_dirname'], rule_file['status']))
 
     status = check_status(status)
     status = ['enabled', 'disabled'] if status == 'all' else [status]
     parameters = {'groups': group, 'pci_dss': pci_dss, 'gpg13': gpg13, 'gdpr': gdpr, 'hipaa': hipaa,
-                  'nist_800_53': nist_800_53, 'relative_path': relative_path, 'filename': filename, 'id': rule_ids,
+                  'nist_800_53': nist_800_53, 'relative_dirname': relative_dirname, 'filename': filename, 'id': rule_ids,
                   'level': levels, 'status': status}
     original_rules = list(rules)
     no_existent_ids = rule_ids[:]
@@ -93,12 +93,12 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
 
 
 @expose_resources(actions=['rules:read'], resources=['rule:file:{filename}'])
-def get_rules_files(status=None, relative_path=None, filename=None, offset=0, limit=common.database_limit, sort_by=None,
+def get_rules_files(status=None, relative_dirname=None, filename=None, offset=0, limit=common.database_limit, sort_by=None,
                     sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Gets a list of the rule files.
 
     :param status: Filters by status: enabled, disabled, all.
-    :param relative_path: Filters by path.
+    :param relative_dirname: Filters by relative dirname.
     :param filename: Filters by filename.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
@@ -123,11 +123,11 @@ def get_rules_files(status=None, relative_path=None, filename=None, offset=0, li
         for f in filename:
             rules_files.extend(
                 format_rule_decoder_file(ruleset_conf['ruleset'],
-                                         {'status': status, 'relative_path': relative_path, 'filename': f},
+                                         {'status': status, 'relative_dirname': relative_dirname, 'filename': f},
                                          tags))
     else:
         rules_files = format_rule_decoder_file(ruleset_conf['ruleset'],
-                                               {'status': status, 'relative_path': relative_path, 'filename': filename},
+                                               {'status': status, 'relative_dirname': relative_dirname, 'filename': filename},
                                                tags)
 
     result.affected_items = process_array(rules_files, search_text=search_text, search_in_fields=search_in_fields,
@@ -207,7 +207,7 @@ def get_file(filename=None):
     files = get_rules_files(filename=filename).affected_items
 
     if len(files) > 0:
-        rules_path = files[0]['relative_path']
+        rules_path = files[0]['relative_dirname']
         try:
             full_path = os.path.join(common.ossec_path, rules_path, filename)
             with open(full_path) as f:

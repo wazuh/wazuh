@@ -69,14 +69,14 @@ def _expand_resource(resource):
             tags = ['rule_include', 'rule_exclude', 'rule_dir']
             format_rules = format_rule_decoder_file(
                 get_ossec_conf(section='ruleset')['ruleset'],
-                {'status': Status.S_ALL.value, 'relative_path': None, 'filename': None},
+                {'status': Status.S_ALL.value, 'relative_dirname': None, 'filename': None},
                 tags)
             return {rule['filename'] for rule in format_rules}
         elif resource_type == 'decoder:file':
             tags = ['decoder_include', 'decoder_exclude', 'decoder_dir']
             format_decoders = format_rule_decoder_file(
                 get_ossec_conf(section='ruleset')['ruleset'],
-                {'status': Status.S_ALL.value, 'relative_path': None, 'filename': None},
+                {'status': Status.S_ALL.value, 'relative_dirname': None, 'filename': None},
                 tags)
             return {decoder['filename'] for decoder in format_decoders}
         elif resource_type == 'list:path':

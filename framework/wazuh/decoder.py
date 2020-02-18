@@ -14,7 +14,7 @@ from wazuh.results import AffectedItemsWazuhResult
 from wazuh.utils import process_array
 
 
-def get_decoders(names=None, status=None, filename=None, relative_path=None, parents=False, offset=0,
+def get_decoders(names=None, status=None, filename=None, relative_dirname=None, parents=False, offset=0,
                  limit=common.database_limit, sort_by=None, sort_ascending=True, search_text=None,
                  complementary_search=False, search_in_fields=None, q=''):
     """Gets a list of available decoders.
@@ -22,7 +22,7 @@ def get_decoders(names=None, status=None, filename=None, relative_path=None, par
     :param names: Filters by decoder name.
     :param filename: Filters by file.
     :param status: Filters by status: enabled, disabled, all.
-    :param relative_path: Filters by relative path.
+    :param relative_dirname: Filters by relative dirname.
     :param parents: Just parent decoders.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
@@ -43,12 +43,12 @@ def get_decoders(names=None, status=None, filename=None, relative_path=None, par
         names = list()
 
     for decoder_file in get_decoders_files(limit=None).affected_items:
-        all_decoders.extend(load_decoders_from_file(decoder_file['filename'], decoder_file['relative_path'],
+        all_decoders.extend(load_decoders_from_file(decoder_file['filename'], decoder_file['relative_dirname'],
                                                     decoder_file['status']))
 
     status = check_status(status)
     status = ['enabled', 'disabled'] if status == 'all' else [status]
-    parameters = {'relative_path': relative_path, 'filename': filename, 'name': names, 'parents': parents, 'status': status}
+    parameters = {'relative_dirname': relative_dirname, 'filename': filename, 'name': names, 'parents': parents, 'status': status}
     decoders = list(all_decoders)
     no_existent_files = names[:]
     for d in all_decoders:
@@ -63,7 +63,7 @@ def get_decoders(names=None, status=None, filename=None, relative_path=None, par
                     decoders.remove(d)
                 elif key == 'filename' and d[key] not in filename and d in decoders:
                     decoders.remove(d)
-                elif key == 'relative_path' and d[key] != relative_path and d in decoders:
+                elif key == 'relative_dirname' and d[key] != relative_dirname and d in decoders:
                     decoders.remove(d)
                 elif 'parent' in d['details'] and parents and d in decoders:
                     decoders.remove(d)
@@ -81,13 +81,13 @@ def get_decoders(names=None, status=None, filename=None, relative_path=None, par
 
 
 @expose_resources(actions=['decoders:read'], resources=['decoder:file:{filename}'])
-def get_decoders_files(status=None, relative_path=None, filename=None, offset=0, limit=common.database_limit,
+def get_decoders_files(status=None, relative_dirname=None, filename=None, offset=0, limit=common.database_limit,
                        sort_by=None, sort_ascending=True, search_text=None, complementary_search=False,
                        search_in_fields=None):
     """Gets a list of the available decoder files.
 
     :param status: Filters by status: enabled, disabled, all.
-    :param relative_path: Filters by relative path.
+    :param relative_dirname: Filters by relative dirname.
     :param filename: Filters by filename.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
@@ -111,12 +111,12 @@ def get_decoders_files(status=None, relative_path=None, filename=None, offset=0,
     if isinstance(filename, list):
         for f in filename:
             decoders_files.extend(format_rule_decoder_file(
-                ruleset_conf, {'status': status, 'relative_path': relative_path, 'filename': f},
+                ruleset_conf, {'status': status, 'relative_dirname': relative_dirname, 'filename': f},
                 tags))
     else:
         decoders_files = format_rule_decoder_file(
             ruleset_conf,
-            {'status': status, 'relative_path': relative_path, 'filename': filename},
+            {'status': status, 'relative_dirname': relative_dirname, 'filename': filename},
             tags)
     result.affected_items = process_array(decoders_files, search_text=search_text, search_in_fields=search_in_fields,
                                           complementary_search=complementary_search, sort_by=sort_by,
@@ -135,7 +135,7 @@ def get_file(filename=None):
     decoders = get_decoders_files(filename=filename).affected_items
 
     if len(decoders) > 0:
-        decoder_path = decoders[0]['relative_path']
+        decoder_path = decoders[0]['relative_dirname']
         try:
             full_path = os.path.join(common.ossec_path, decoder_path, filename)
             with open(full_path) as f:

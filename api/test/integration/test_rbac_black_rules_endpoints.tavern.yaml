@@ -36,7 +36,7 @@ stages:
               id: !anyint
               level: !anyint
               nist_800_53: !anything
-              relative_path: !anystr
+              relative_dirname: !anystr
               pci_dss: !anything
               status: !anystr
             - <<: *full_item_rules
@@ -114,7 +114,7 @@ stages:
           affected_items:
             - &full_item_rules_files
               filename: 0016-wazuh_rules.xml
-              relative_path: ruleset/rules
+              relative_dirname: ruleset/rules
               status: enabled
             - <<: *full_item_rules_files
               filename: 0020-syslog_rules.xml
@@ -146,7 +146,7 @@ stages:
               filename: 0620-win-generic_rules.xml
             - <<: *full_item_rules_files
               filename: local_rules.xml
-              relative_path: etc/rules
+              relative_dirname: etc/rules
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
@@ -167,7 +167,7 @@ stages:
           affected_items:
             - <<: *full_item_rules_files
               filename: local_rules.xml
-              relative_path: etc/rules
+              relative_dirname: etc/rules
           failed_items:
             - error:
                 code: 4000

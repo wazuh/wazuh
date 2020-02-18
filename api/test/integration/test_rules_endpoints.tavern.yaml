@@ -33,7 +33,7 @@ stages:
               groups: !anything
               id: !anyint
               level: !anyint
-              relative_path: !anystr
+              relative_dirname: !anystr
               pci_dss: !anything
               status: !anystr
               gpg13: !anything
@@ -350,11 +350,11 @@ stages:
       body:
         <<: *error_response
 
-  - name: Filter relative_path
+  - name: Filter relative_dirname
     request:
       <<: *general_rules_request
       params:
-        relative_path: ruleset/rules
+        relative_dirname: ruleset/rules
         limit: 2
     response:
       status_code: 200
@@ -367,11 +367,11 @@ stages:
           total_affected_items: !anyint
           total_failed_items: !anyint
 
-  - name: Filter relative_path without limit
+  - name: Filter relative_dirname without limit
     request:
       <<: *general_rules_request
       params:
-        relative_path: ruleset/rules
+        relative_dirname: ruleset/rules
     response:
       status_code: 200
       body:

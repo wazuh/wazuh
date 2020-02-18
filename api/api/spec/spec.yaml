@@ -3551,8 +3551,8 @@ components:
         format: etc_and_ruleset_file_path
     etc_and_ruleset_path:
       in: query
-      name: relative_path
-      description: Filters by relative path
+      name: relative_dirname
+      description: Filters by relative directory name
       schema:
         type: string
         format: etc_and_ruleset_path

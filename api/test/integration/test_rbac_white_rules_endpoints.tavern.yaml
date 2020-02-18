@@ -36,7 +36,7 @@ stages:
               id: !anyint
               level: !anyint
               nist_800_53: !anything
-              relative_path: !anystr
+              relative_dirname: !anystr
               pci_dss: !anything
               status: !anystr
             - <<: *full_item_rules
@@ -117,7 +117,7 @@ stages:
           affected_items:
             - &full_item_rules_files
               filename: 0010-rules_config.xml
-              relative_path: ruleset/rules
+              relative_dirname: ruleset/rules
               status: enabled
             - <<: *full_item_rules_files
               filename: 0015-ossec_rules.xml

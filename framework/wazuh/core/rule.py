@@ -17,7 +17,7 @@ class Status(Enum):
     S_ENABLED = 'enabled'
     S_DISABLED = 'disabled'
     S_ALL = 'all'
-    SORT_FIELDS = ['filename', 'relative_path', 'description', 'id', 'level', 'status']
+    SORT_FIELDS = ['filename', 'relative_dirname', 'description', 'id', 'level', 'status']
 
 
 def add_detail(detail, value, details):
@@ -72,7 +72,7 @@ def load_rules_from_file(rule_filename, rule_relative_path, rule_status):
                     # New rule
                     if xml_rule.tag.lower() == "rule":
                         groups = list()
-                        rule = {'filename': rule_filename, 'relative_path': rule_relative_path,
+                        rule = {'filename': rule_filename, 'relative_dirname': rule_relative_path,
                                 'id': int(xml_rule.attrib['id']), 'level': int(xml_rule.attrib['level']),
                                 'status': rule_status, 'details': dict(), 'pci_dss': list(), 'gpg13': list(),
                                 'gdpr': list(), 'hipaa': list(), 'nist_800_53': list(), 'groups': list(),
@@ -135,7 +135,7 @@ def item_format(data, all_items, exclude_filenames):
         item_name = os.path.basename(item)
         item_dir = os.path.relpath(os.path.dirname(item), start=common.ossec_path)
         item_status = Status.S_DISABLED.value if item_name in exclude_filenames else Status.S_ENABLED.value
-        data.append({'filename': item_name, 'relative_path': item_dir, 'status': item_status})
+        data.append({'filename': item_name, 'relative_dirname': item_dir, 'status': item_status})
 
 
 def _create_rule_decoder_dir_dict(ruleset_conf, tag, exclude_filenames, data):
@@ -154,7 +154,7 @@ def _create_dict(ruleset_conf, tag, exclude_filenames, data):
         full_dir = os.path.dirname(item)
         item_dir = os.path.relpath(full_dir if full_dir else common.ruleset_rules_path, start=common.ossec_path)
         exclude_filenames.append(item_name) if tag == 'rule_exclude' or tag == 'decoder_exclude' else \
-            data.append({'filename': item_name, 'relative_path': item_dir, 'status': item_status})
+            data.append({'filename': item_name, 'relative_dirname': item_dir, 'status': item_status})
 
 
 def format_rule_decoder_file(ruleset_conf, parameters, tags):

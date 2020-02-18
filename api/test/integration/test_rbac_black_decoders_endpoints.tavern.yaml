@@ -29,7 +29,7 @@ stages:
               details: !anything
               filename: 0006-json_decoders.xml
               name: !anystr
-              relative_path: !anystr
+              relative_dirname: !anystr
               position: !anyint
               status: !anystr
             - <<: *full_item_decoders
@@ -108,19 +108,19 @@ stages:
         data:
           affected_items:
             - filename: 0006-json_decoders.xml
-              relative_path: ruleset/decoders
+              relative_dirname: ruleset/decoders
               status: enabled
             - filename: 0010-active-response_decoders.xml
-              relative_path: ruleset/decoders
+              relative_dirname: ruleset/decoders
               status: enabled
             - filename: 0015-aix-ipsec_decoders.xml
-              relative_path: ruleset/decoders
+              relative_dirname: ruleset/decoders
               status: enabled
             - filename: 0025-apache_decoders.xml
-              relative_path: ruleset/decoders
+              relative_dirname: ruleset/decoders
               status: enabled
             - filename: 0030-arpwatch_decoders.xml
-              relative_path: ruleset/decoders
+              relative_dirname: ruleset/decoders
               status: enabled
           failed_items: []
           total_affected_items: !anyint
@@ -141,10 +141,10 @@ stages:
         data:
           affected_items:
             - filename: 0006-json_decoders.xml
-              relative_path: ruleset/decoders
+              relative_dirname: ruleset/decoders
               status: enabled
             - filename: 0025-apache_decoders.xml
-              relative_path: ruleset/decoders
+              relative_dirname: ruleset/decoders
               status: enabled
           failed_items:
             - error:
@@ -225,7 +225,7 @@ stages:
               details: !anything
               filename: 0006-json_decoders.xml
               name: !anystr
-              relative_path: !anystr
+              relative_dirname: !anystr
               position: !anyint
               status: !anystr
             - <<: *full_item_decoders_parent

@@ -242,7 +242,7 @@ def test_get_rules_file_download(mock_config, file_):
 def test_get_rules_file_download_failed(mock_config, file_):
     """Test download a specified rule filter."""
     with patch('wazuh.rule.get_rules_files', return_value=AffectedItemsWazuhResult(
-            all_msg='test', affected_items=[{'relative_path': list(file_.keys())[0]}])):
+            all_msg='test', affected_items=[{'relative_dirname': list(file_.keys())[0]}])):
         try:
             rule.get_file(list(file_.keys())[0])
             assert False

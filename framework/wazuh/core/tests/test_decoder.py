@@ -53,7 +53,7 @@ def test_check_status(status, expected_result):
         assert e.code == expected_result.code
 
 
-@pytest.mark.parametrize("filename, relative_path, status, permissions, exception", [
+@pytest.mark.parametrize("filename, relative_dirname, status, permissions, exception", [
     ('test1_decoders.xml', 'decoders', "all", 777, None),
     ('test2_decoders.xml', 'decoders', "enabled", 777, None),
     ('wrong_decoders.xml', 'decoders', "all", 777, WazuhInternalError(1501)),
@@ -61,18 +61,18 @@ def test_check_status(status, expected_result):
     ('test1_decoders.xml', 'decoders', "all", 000, WazuhError(1502)),
 ])
 @patch('wazuh.common.ossec_path', new=test_data_path)
-def test_load_decoders_from_file(filename, relative_path, status, permissions, exception):
-    full_file_path = os.path.join(test_data_path, relative_path, filename)
+def test_load_decoders_from_file(filename, relative_dirname, status, permissions, exception):
+    full_file_path = os.path.join(test_data_path, relative_dirname, filename)
     try:
         # Set file permissions if the file exists
         os.path.exists(full_file_path) and os.chmod(full_file_path, permissions)
         # UUT call
-        result = decoder.load_decoders_from_file(filename, relative_path, status)
+        result = decoder.load_decoders_from_file(filename, relative_dirname, status)
         # Assert result is a list with at least one dict element with the appropriate fields
         assert isinstance(result, list)
         assert len(result) != 0
         for item in result:
-            assert (item['filename'], item['relative_path'], item['status']) == (filename, relative_path, status)
+            assert (item['filename'], item['relative_dirname'], item['status']) == (filename, relative_dirname, status)
             assert {'name', 'position', 'details'}.issubset(set(item))
     except WazuhException as e:
         # If the UUT call returns an exception we check it has the appropriate error code

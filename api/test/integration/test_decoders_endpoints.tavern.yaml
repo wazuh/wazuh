@@ -42,7 +42,7 @@ stages:
             - details: !anything
               filename: !anystr
               name: !anystr
-              relative_path: !anystr
+              relative_dirname: !anystr
               position: !anyint
               status: !anystr
           failed_items: []
@@ -52,7 +52,7 @@ stages:
       save:
         body:
           returned_filename: data.affected_items.0.filename
-          returned_relative_path: data.affected_items.0.relative_path
+          returned_relative_path: data.affected_items.0.relative_dirname
           returned_status: data.affected_items.0.status
           returned_name: data.affected_items.0.name
 
@@ -95,7 +95,7 @@ stages:
             - details: !anything
               filename: "{offset_item.filename}"
               name: "{offset_item.name}"
-              relative_path: "{offset_item.relative_path}"
+              relative_dirname: "{offset_item.relative_dirname}"
               position: !int "{offset_item.position}"
               status: "{offset_item.status}"
           failed_items: []
@@ -136,19 +136,19 @@ stages:
           total_affected_items: !anyint
           total_failed_items: !anyint
 
-    # GET /decoders?limit=1&relative_path={returned_relative_path}
+    # GET /decoders?limit=1&relative_dirname={returned_relative_path}
   - name: Try to get decoders using limit and path parameter
     request:
       <<: *get_decoders
       params:
         limit: 1
-        relative_path: "{returned_relative_path:s}"
+        relative_dirname: "{returned_relative_path:s}"
     response:
       status_code: 200
       body:
         data:
           affected_items:
-            - relative_path: "{tavern.request_vars.params.relative_path}"
+            - relative_dirname: "{tavern.request_vars.params.relative_dirname}"
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: !anyint
@@ -219,7 +219,7 @@ marks:
       key: field
       vals:
         - filename
-        - relative_path
+        - relative_dirname
         - name
         - position
         - status
@@ -283,7 +283,7 @@ stages:
             - details: !anything
               filename: !anystr
               name: "auditd-selinux_macstatus"
-              relative_path: !anystr
+              relative_dirname: !anystr
               position: !anyint
               status: !anystr
           failed_items: []
@@ -329,7 +329,7 @@ stages:
             - details: !anything
               filename: "{offset_item.filename}"
               name: "{offset_item.name}"
-              relative_path: "{offset_item.relative_path}"
+              relative_dirname: "{offset_item.relative_dirname}"
               position: !int "{offset_item.position}"
               status: "{offset_item.status}"
           failed_items: []
@@ -384,7 +384,7 @@ marks:
       key: field
       vals:
         - filename
-        - relative_path
+        - relative_dirname
         - name
         - position
         - status
@@ -457,7 +457,7 @@ stages:
         data:
           affected_items: &full_items_array_files
             - filename: !anystr
-              relative_path: !anystr
+              relative_dirname: !anystr
               status: !anystr
           failed_items: []
           total_affected_items: !anyint
@@ -466,7 +466,7 @@ stages:
       save:
         body:
           returned_files_filename: data.affected_items.0.filename
-          returned_files_relative_path: data.affected_items.0.relative_path
+          returned_files_relative_path: data.affected_items.0.relative_dirname
           returned_files_status: data.affected_items.0.status
 
 # We implement a dual stage to check offset parameter behaviour
@@ -506,7 +506,7 @@ stages:
           affected_items:
               # Check offset matches with previous request
             - filename: "{offset_item.filename}"
-              relative_path: "{offset_item.relative_path}"
+              relative_dirname: "{offset_item.relative_dirname}"
               status: "{offset_item.status}"
           failed_items: []
           total_affected_items: !anyint
@@ -546,19 +546,19 @@ stages:
           total_affected_items: !anyint
           total_failed_items: !anyint
 
-    # GET /decoders/files?limit=1&relative_path={returned_files_relative_path}
-  - name: Try to get information about all decoders files using limit and relative_path parameter
+    # GET /decoders/files?limit=1&relative_dirname={returned_files_relative_path}
+  - name: Try to get information about all decoders files using limit and relative_dirname parameter
     request:
       <<: *get_decoders_files
       params:
         limit: 1
-        relative_path: "{returned_files_relative_path:s}"
+        relative_dirname: "{returned_files_relative_path:s}"
     response:
       status_code: 200
       body:
         data:
           affected_items:
-            - relative_path: "{tavern.request_vars.params.relative_path}"
+            - relative_dirname: "{tavern.request_vars.params.relative_dirname}"
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: !anyint
@@ -611,7 +611,7 @@ marks:
       key: field
       vals:
         - filename
-        - relative_path
+        - relative_dirname
         - status
 
 stages:
@@ -683,7 +683,7 @@ stages:
             - details: !anything
               filename: !anystr
               name: !anystr
-              relative_path: !anystr
+              relative_dirname: !anystr
               position: !anyint
               status: !anystr
           total_affected_items: !anyint
@@ -725,7 +725,7 @@ stages:
             - details: !anything
               filename: "{offset_item.filename}"
               name: "{offset_item.name}"
-              relative_path: "{offset_item.relative_path}"
+              relative_dirname: "{offset_item.relative_dirname}"
               position: !int "{offset_item.position}"
               status: "{offset_item.status}"
           total_affected_items: !anyint
@@ -777,7 +777,7 @@ marks:
       vals:
         - filename
         - name
-        - relative_path
+        - relative_dirname
         - position
         - status
 
