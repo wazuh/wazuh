@@ -246,7 +246,6 @@ typedef struct _config {
     long sync_response_timeout;     /* Minimum time between receiving a sync response and starting a new sync session */
     long sync_queue_size;           /* Data synchronization message queue size */
     unsigned max_eps;               /* Maximum events per second. */
-    unsigned send_delay;            /* Time delay after send operation (1 / max_eps) (microseconds) */
 
     /* Windows only registry checking */
 #ifdef WIN32

@@ -262,16 +262,6 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag)
         /* Add entries - look for the last available */
         i = 0;
         while (syscheck->registry && syscheck->registry[i].entry) {
-            int str_len_i;
-            int str_len_dir;
-
-            str_len_dir = strlen(tmp_entry);
-            str_len_i = strlen(syscheck->registry[i].entry);
-
-            if (str_len_dir > str_len_i) {
-                str_len_dir = str_len_i;
-            }
-
             /* Duplicated entry */
             if (syscheck->registry[i].arch == arch && strcmp(syscheck->registry[i].entry, tmp_entry) == 0) {
                 mdebug2("Overwriting the registration entry: %s", syscheck->registry[i].entry);
@@ -424,7 +414,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     opts &= ~ CHECK_ATTRS;
 #endif
                 } else {
-                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);       
+                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
                     goto out_free;
                 }
             }
@@ -616,8 +606,8 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     mwarn("Recursion level '%d' exceeding limit. Setting %d.", recursion_limit, MAX_DEPTH_ALLOWED);
                     recursion_limit = syscheck->max_depth;
                 }
-            } 
-            
+            }
+
             /* Check tag */
             else if (strcmp(*attrs, xml_tag) == 0) {
                 if (tag) {
@@ -1468,7 +1458,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 }
 
                 syscheck->max_eps = value;
-                syscheck->send_delay = 1000000 / value;
             }
         } /* Allow prefilter cmd */
         else if (strcmp(node[i]->element, xml_allow_remote_prefilter_cmd) == 0) {
