@@ -46,7 +46,6 @@ if(NOT WAZUHEXT)
 endif()
 
 add_subdirectory(syscheckd)
-add_subdirectory(wazuh_db)
 add_subdirectory(shared)
 
 # Config files
