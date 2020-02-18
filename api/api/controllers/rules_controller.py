@@ -35,7 +35,7 @@ def get_rules(rule_ids=None, pretty=False, wait_for_complete=False, offset=0, li
     :param status: Filters by rules status.
     :param group: Filters by rule group.
     :param level: Filters by rule level. Can be a single level (4) or an interval (2-4)
-    :param filename: Filters by filename.
+    :param filename: List of filenames to filter by.
     :param relative_dirname: Filters by relative dirname.
     :param pci_dss: Filters by PCI_DSS requirement name.
     :param gdpr: Filters by GDPR requirement.
@@ -160,7 +160,7 @@ def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None,
     ascending or descending order.
     :param search: Looks for elements with the specified string
     :param status: Filters by rules status.
-    :param filename: Filters by filename.
+    :param filename: List of filenames to filter by..
     :param relative_dirname: Filters by relative dirname.
     :return: Data object
     """

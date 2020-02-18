@@ -27,7 +27,7 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
     :param hipaa: Filters the rules by hipaa requirement.
     :param nist_800_53: Filters the rules by nist_800_53 requirement.
     :param relative_dirname: Filters the relative dirname.
-    :param filename: Filters the rules by file name.
+    :param filename: List of filenames to filter by.
     :param level: Filters the rules by level. level=2 or level=2-5.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
@@ -99,7 +99,7 @@ def get_rules_files(status=None, relative_dirname=None, filename=None, offset=0,
 
     :param status: Filters by status: enabled, disabled, all.
     :param relative_dirname: Filters by relative dirname.
-    :param filename: Filters by filename.
+    :param filename: List of filenames to filter by.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
     :param sort_by: Fields to sort the items by

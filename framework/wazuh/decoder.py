@@ -20,7 +20,7 @@ def get_decoders(names=None, status=None, filename=None, relative_dirname=None, 
     """Gets a list of available decoders.
 
     :param names: Filters by decoder name.
-    :param filename: Filters by file.
+    :param filename: List of filenames to filter by.
     :param status: Filters by status: enabled, disabled, all.
     :param relative_dirname: Filters by relative dirname.
     :param parents: Just parent decoders.
@@ -88,7 +88,7 @@ def get_decoders_files(status=None, relative_dirname=None, filename=None, offset
 
     :param status: Filters by status: enabled, disabled, all.
     :param relative_dirname: Filters by relative dirname.
-    :param filename: Filters by filename.
+    :param filename: List of filenames to filter by.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
     :param sort_by: Fields to sort the items by

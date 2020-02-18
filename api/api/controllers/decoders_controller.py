@@ -34,7 +34,7 @@ def get_decoders(decoder_names: list = None, pretty: bool = False, wait_for_comp
     ascending or descending order.
     :param search: Looks for elements with the specified string
     :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
-    :param filename: Filters by filename.
+    :param filename: List of filenames to filter by.
     :param relative_dirname: Filters by relative dirname.
     :param status: Filters by list status.
     :return: Data object
@@ -81,7 +81,7 @@ def get_decoders_files(pretty: bool = False, wait_for_complete: bool = False, of
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
     :param search: Looks for elements with the specified string
-    :param filename: Filters by filename
+    :param filename: List of filenames to filter by.
     :param relative_dirname: Filters by relative dirname
     :param status: Filters by list status
     :return: Data object

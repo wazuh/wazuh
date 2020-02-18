@@ -100,7 +100,7 @@ def test_iterate_lists(only_names, path):
     path : str
         Path to iterate lists from.
     """
-    required_fields = ['path', 'name'] if only_names else ['path', 'items']
+    required_fields = ['relative_dirname', 'filename'] if only_names else ['relative_dirname', 'filename', 'items']
 
     common.reset_context_cache()
     result = iterate_lists(absolute_path=path, only_names=only_names)
