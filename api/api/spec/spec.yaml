@@ -276,6 +276,32 @@ components:
               items:
                 $ref: '#/components/schemas/AgentIdKey'
 
+    AllItemsResponseRules:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/Rule'
+
+    AllItemsResponseRulesFiles:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/RuleFile'
+
     AllItemsResponseDecoders:
       allOf:
         - $ref: '#/components/schemas/AllItemsResponse'
@@ -313,9 +339,7 @@ components:
               type: array
               description: Items that successfully applied the API call action.
               items:
-                oneOf:
-                  - $ref: '#/components/schemas/CDBList'
-                  - $ref: '#/components/schemas/CDBListPair'
+                $ref: '#/components/schemas/CDBList'
 
     AllItemsResponseListsFiles:
       allOf:
@@ -357,32 +381,6 @@ components:
                 oneOf:
                   - $ref: '#/components/schemas/PoliciesResponse'
                   - type: integer
-
-    AllItemsResponseRules:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: Items that successfully applied the API call action.
-              items:
-                $ref: '#/components/schemas/Rules'
-
-    AllItemsResponseRulesFiles:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: Items that successfully applied the API call action.
-              items:
-                $ref: '#/components/schemas/RulesFiles'
 
     AllItemsResponseSyscollectorHardware:
       allOf:
@@ -641,6 +639,34 @@ components:
           description: Server hostname.
         timestamp:
           type: string
+
+    ## Ruleset models
+
+    RulesetFile:
+      type: object
+      required:
+        - filename
+        - relative_dirname
+      properties:
+        filename:
+          type: string
+          description: Name of the file.
+        relative_dirname:
+          type: string
+          format: etc_path
+          description: Folder path where the file is located. This path is relative to the Wazuh installation path.
+
+    RulesetStatus:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          description: Whether the specified rulesetfile is enabled or disabled in Wazuh.
+          enum:
+            - enabled
+            - disabled
 
     ## Active-response models
     ActiveResponseBody:
@@ -1801,25 +1827,14 @@ components:
           description: 'Date when the latest scan started. If no scans have been run, null will be returned.'
 
     # Rules models
-    RulesFiles:
-      type: object
-      properties:
-        filename:
-          type: string
-          description: Filename where the rule is defined.
-        relative_path:
-          type: string
-          description: Path where the file defining the rule is located. The path is relative to the Wazuh install path.
-        status:
-          type: string
-          description: Rule status.
-          enum:
-          - enabled
-          - disabled
-
-    Rules:
+    RuleFile:
       allOf:
-        - $ref: '#/components/schemas/RulesFiles'
+        - $ref: '#/components/schemas/RulesetFile'
+        - $ref: '#/components/schemas/RulesetStatus'
+
+    Rule:
+      allOf:
+        - $ref: '#/components/schemas/RuleFile'
         - type: object
           properties:
             description:
@@ -2055,22 +2070,9 @@ components:
               nullable: true
 
     DecoderFile:
-      type: object
-      required:
-      - filename
-      - status
-      - relative_path
-      properties:
-        filename:
-          type: string
-          description: Filename containing decoder definitions.
-        status:
-          type: string
-          description: Whether the decoders defined in that file are used by Wazuh or not.
-        relative_path:
-          type: string
-          format: ruleset_path
-          description: Decoder file path.
+      allOf:
+        - $ref: '#/components/schemas/RulesetFile'
+        - $ref: '#/components/schemas/RulesetStatus'
 
     # Syscollector models
     SyscollectorHardware:
@@ -2527,35 +2529,14 @@ components:
 
     # Lists models
     CDBList:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            type: object
-            properties:
-              key:
-                type: string
-              value:
-                type: string
-        path:
-          type: string
-          format: etc_path
-          description: Filepath that contains the returned CDB definitions.
-
-    CDBListFile:
-      type: object
-      required:
-        - filename
-        - relative_dirname
-      properties:
-        filename:
-          type: string
-          description: Name of the CDB list file.
-        relative_dirname:
-          type: string
-          format: etc_path
-          description: Folder path of the CDB list. This path is relative to the Wazuh installation path.
+      allOf:
+        - $ref: '#/components/schemas/RulesetFile'
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/CDBListPair'
 
     CDBListPair:
       type: object
@@ -2569,6 +2550,9 @@ components:
         value:
           type: string
           description: Value of the CDB list item value.
+
+    CDBListFile:
+      $ref: '#/components/schemas/RulesetFile'
 
     # Overview models
     OverviewAgents:

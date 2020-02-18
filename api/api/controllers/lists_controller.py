@@ -1,9 +1,10 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
 import logging
+import os
 
 import connexion
 
@@ -32,6 +33,7 @@ def get_lists(pretty: bool = False, wait_for_complete: bool = False, offset: int
     :param relative_dirname: Filters by relative dirname
     :return: Data object
     """
+    path = [os.path.join(relative_dirname, item) for item in filename] if filename and relative_dirname else None
     f_kwargs = {'offset': offset,
                 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['relative_dirname',
@@ -40,7 +42,8 @@ def get_lists(pretty: bool = False, wait_for_complete: bool = False, offset: int
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
                 'filename': filename,
-                'relative_dirname': relative_dirname
+                'relative_dirname': relative_dirname,
+                'path': path
                 }
 
     dapi = DistributedAPI(f=cdb_list.get_lists,
@@ -73,15 +76,18 @@ def get_lists_files(pretty: bool = False, wait_for_complete: bool = False, offse
     :param relative_dirname: Filters by relative dirname
     :return: Data object
     """
+    path = [os.path.join(relative_dirname, item) for item in filename] if filename and relative_dirname else None
     f_kwargs = {'offset': offset,
                 'limit': limit,
-                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['filename'],
+                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['relative_dirname',
+                                                                                             'filename'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
                 'search_in_fields': ['filename', 'relative_dirname'],
                 'filename': filename,
-                'relative_dirname': relative_dirname
+                'relative_dirname': relative_dirname,
+                'path': path
                 }
 
     dapi = DistributedAPI(f=cdb_list.get_path_lists,

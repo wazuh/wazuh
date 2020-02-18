@@ -145,8 +145,6 @@ def test_get_list_from_file_with_errors(error_to_raise, wazuh_error_code):
             get_list_from_file("some_path")
             pytest.fail("No exception was raised hence failing the test")
         except WazuhError as e:
-            # if e._code != wazuh_error_code:
-            #     raise
-            assert e._code == wazuh_error_code
+            assert e.code == wazuh_error_code
         except Exception as e:
             assert e.args == (1, "Random")
