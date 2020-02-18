@@ -83,7 +83,6 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_int_equal(syscheck.send_delay, 5000);
 }
 
-
 void test_Read_Syscheck_Config_invalid(void **state)
 {
     (void) state;
@@ -93,7 +92,6 @@ void test_Read_Syscheck_Config_invalid(void **state)
 
     assert_int_equal(ret, OS_INVALID);
 }
-
 
 void test_Read_Syscheck_Config_undefined(void **state)
 {
@@ -135,7 +133,6 @@ void test_Read_Syscheck_Config_undefined(void **state)
     assert_int_equal(syscheck.send_delay, 5000);
 }
 
-
 void test_Read_Syscheck_Config_unparsed(void **state)
 {
     (void) state;
@@ -176,7 +173,6 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     assert_int_equal(syscheck.max_eps, 200);
     assert_int_equal(syscheck.send_delay, 5000);
 }
-
 
 void test_getSyscheckConfig(void **state)
 {
@@ -244,7 +240,6 @@ void test_getSyscheckConfig(void **state)
     assert_int_equal(synchronization_queue_size->valueint, 64);
 }
 
-
 void test_getSyscheckConfig_no_audit(void **state)
 {
     (void) state;
@@ -311,7 +306,6 @@ void test_getSyscheckConfig_no_audit(void **state)
     assert_int_equal(synchronization_queue_size->valueint, 64);
 }
 
-
 void test_getSyscheckConfig_no_directories(void **state)
 {
     (void) state;
@@ -323,7 +317,6 @@ void test_getSyscheckConfig_no_directories(void **state)
 
     assert_null(ret);
 }
-
 
 void test_getSyscheckInternalOptions(void **state)
 {

@@ -39,6 +39,15 @@ void __wrap__mwarn(const char * file, int line, const char * func, const char *m
     check_expected(formatted_msg);
 }
 
+/* setup/teardowns */
+
+static int teardown_free_fim_entry(void **state) {
+    (void) state;
+
+    rbtree_destroy(syscheck.fim_entry);
+
+    return 0;
+}
 
 /* tests */
 
@@ -80,8 +89,8 @@ void test_read_internal(void **state)
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_fim_initialize),
-        cmocka_unit_test(test_fim_initialize_warn),
+        cmocka_unit_test_teardown(test_fim_initialize, teardown_free_fim_entry),
+        cmocka_unit_test_teardown(test_fim_initialize_warn, teardown_free_fim_entry),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
