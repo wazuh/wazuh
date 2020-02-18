@@ -98,6 +98,10 @@ void *__wrap_rbtree_get(const rb_tree *tree, const char *key) {
     return mock_type(fim_entry_data *);
 }
 
+void *__wrap_rbtree_range() {
+    return mock_type(char *);
+}
+
 int __wrap_OSHash_Add(OSHash *self, const char *key, void *data) {
     check_expected(key);
 
@@ -1403,7 +1407,7 @@ void test_fim_realtime_event_add(void **state)
     // Inside fim_checker
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'test'");
 
-    fim_realtime_event("test");
+    fim_realtime_event("test", NULL);
 }
 
 
@@ -1411,11 +1415,13 @@ void test_fim_realtime_event_deleted(void **state)
 {
     will_return(__wrap_lstat, -1);
 
+    // Inside fim_process_missing_entry
     expect_value(__wrap_rbtree_get, tree, syscheck.fim_entry);
-    expect_string(__wrap_rbtree_get, key, "test");
+    expect_string(__wrap_rbtree_get, key, "/media/test.file");
     will_return(__wrap_rbtree_get, NULL);
+    will_return(__wrap_rbtree_range, NULL);
 
-    fim_realtime_event("test");
+    fim_realtime_event("/media/test.file", NULL);
 }
 
 
@@ -1434,7 +1440,57 @@ void test_fim_realtime_event_deleted_saved(void **state)
     // Inside fim_checker
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'test'");
 
-    fim_realtime_event("test");
+    fim_realtime_event("test", NULL);
+}
+
+
+void test_fim_process_missing_entry_found(void **state)
+{
+    fim_data_t *fim_data = *state;
+
+    expect_value(__wrap_rbtree_get, tree, syscheck.fim_entry);
+    expect_string(__wrap_rbtree_get, key, "test");
+    will_return(__wrap_rbtree_get, fim_data->old_data);
+
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
+    // Inside fim_checker
+    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'test'");
+
+    fim_process_missing_entry("test", FIM_REALTIME, NULL, NULL);
+}
+
+
+void test_fim_process_missing_entry_not_found_path(void **state)
+{
+    expect_value(__wrap_rbtree_get, tree, syscheck.fim_entry);
+    expect_string(__wrap_rbtree_get, key, "/media/test.file");
+    will_return(__wrap_rbtree_get, NULL);
+    will_return(__wrap_rbtree_range, NULL);
+
+    fim_process_missing_entry("/media/test.file", FIM_REALTIME, NULL, NULL);
+}
+
+
+void test_fim_process_missing_entry_is_dir(void **state)
+{
+    char ** path = NULL;
+    path = os_AddStrArray("/media/test.file", path);
+    fim_data_t *fim_data = *state;
+
+    expect_value(__wrap_rbtree_get, tree, syscheck.fim_entry);
+    expect_string(__wrap_rbtree_get, key, "/media");
+    will_return(__wrap_rbtree_get, NULL);
+    will_return(__wrap_rbtree_range, path);
+    expect_value(__wrap_rbtree_get, tree, syscheck.fim_entry);
+    expect_string(__wrap_rbtree_get, key, path[0]);
+    will_return(__wrap_rbtree_get, fim_data->old_data);
+
+    // Inside fim_checker
+    will_return(__wrap_OSHash_Get_ex, NULL);
+    will_return(__wrap_lstat, -1);
+
+    fim_process_missing_entry("/media", FIM_REALTIME, NULL, NULL);
 }
 
 
@@ -1674,6 +1730,11 @@ int main(void) {
         cmocka_unit_test(test_fim_realtime_event_add),
         cmocka_unit_test(test_fim_realtime_event_deleted),
         cmocka_unit_test(test_fim_realtime_event_deleted_saved),
+
+        /* fim_process_missing_entry */
+        cmocka_unit_test(test_fim_process_missing_entry_found),
+        cmocka_unit_test(test_fim_process_missing_entry_not_found_path),
+        cmocka_unit_test(test_fim_process_missing_entry_is_dir),
 
         /* check_deleted_files */
         cmocka_unit_test(test_check_deleted_files),

@@ -300,38 +300,158 @@ int fim_file (char *file, fim_element *item, whodata_evt *w_evt, int report) {
 }
 
 
-void fim_realtime_event(char *file) {
-    char inode_key[OS_SIZE_128];
+void fim_realtime_event(char *file, fim_element *item) {
+
     struct stat file_stat;
 
+    // If the file exist, generate add or modify events.
     if (w_stat(file, &file_stat) >= 0) {
-        // Add and modify events
+
+#ifdef WIN32
+        fim_checker(file, item, NULL, 1);
+#else
+        char inode_key[OS_SIZE_128];
+
         snprintf(inode_key, OS_SIZE_128, "%ld:%ld", (unsigned long)file_stat.st_dev, (unsigned long)file_stat.st_ino);
-    } else {
-        // Deleted file need get inode and dev from saved data
-        w_mutex_lock(&syscheck.fim_entry_mutex);
-        fim_entry_data * saved_data = NULL;
+        fim_audit_inode_event(file, inode_key, FIM_REALTIME, NULL);
+#endif
 
-        if (saved_data = (fim_entry_data *) rbtree_get(syscheck.fim_entry, file), saved_data) {
-            snprintf(inode_key, OS_SIZE_128, "%ld:%ld", (unsigned long)saved_data->dev, (unsigned long)saved_data->inode);
-        } else {
-            w_mutex_unlock(&syscheck.fim_entry_mutex);
-            return;
-        }
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
     }
-    fim_audit_inode_event(file, inode_key, FIM_REALTIME, NULL);
+    else {
+        // It's possible file deleted or directory moved.
+        fim_process_missing_entry(file, FIM_REALTIME, NULL, item);
+    }
 }
-
 
 // LCOV_EXCL_START
-void fim_whodata_event(whodata_evt * w_evt) {
-    char inode_key[OS_SIZE_128];
+void fim_whodata_event(whodata_evt * w_evt, fim_element *item) {
 
-    snprintf(inode_key, OS_SIZE_128, "%s:%s", w_evt->dev, w_evt->inode);
-    fim_audit_inode_event(w_evt->path, inode_key, FIM_WHODATA, w_evt);
+    struct stat file_stat;
+
+    // If the file exist, generate add or modify events.
+    if(w_stat(w_evt->path, &file_stat) >= 0) {
+
+#ifdef WIN32
+        fim_checker(w_evt->path, item, w_evt, 1);
+
+#else
+        char inode_key[OS_SIZE_128];
+
+        snprintf(inode_key, OS_SIZE_128, "%s:%s", w_evt->dev, w_evt->inode);
+        fim_audit_inode_event(w_evt->path, inode_key, FIM_WHODATA, w_evt);
+#endif
+
+    }
+    // It's possible file deleted or directory moved.
+    else {
+        fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt, item);
+    }
 }
+
 // LCOV_EXCL_STOP
+
+
+void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt, fim_element *item) {
+
+    fim_entry_data *saved_data;
+    int found = 0;
+
+#ifndef WIN32
+    char inode_key[OS_SIZE_128];
+    unsigned long dev = 0;
+    unsigned long inode = 0;
+#endif
+
+    // Search path in DB.
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+    saved_data = (fim_entry_data *)rbtree_get(syscheck.fim_entry, pathname);
+
+    if (saved_data) {
+        found = 1;
+
+#ifndef WIN32
+        dev = saved_data->dev;
+        inode = saved_data->inode;
+#endif
+
+    }
+
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    // Exists, create event.
+    if (found) {
+
+#ifdef WIN32
+        fim_checker(pathname, item, w_evt, 1);
+
+#else
+        snprintf(inode_key, OS_SIZE_128, "%ld:%ld", dev, inode);
+        fim_audit_inode_event(pathname, inode_key, mode, w_evt);
+
+#endif
+
+        return;
+    }
+
+    // Since the file doesn't exist, research if it's directory and have files in DB.
+    char **paths;
+    char first_entry[PATH_MAX];
+    char last_entry[PATH_MAX];
+    int config_file;
+    int config_dir;
+
+    config_dir = fim_configuration_directory(pathname, "file");
+
+#ifdef WIN32
+    snprintf(first_entry, PATH_MAX, "%s\\", pathname);
+    snprintf(last_entry, PATH_MAX, "%s]", pathname);
+
+#else
+    snprintf(first_entry, PATH_MAX, "%s/", pathname);
+    snprintf(last_entry, PATH_MAX, "%s0", pathname);
+
+#endif
+
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+    paths = rbtree_range(syscheck.fim_entry, first_entry, last_entry);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    if (paths == NULL) {
+        return;
+    }
+
+    for (int i = 0; paths[i]; i++) {
+
+        config_file = fim_configuration_directory(paths[i], "file");
+
+        if (config_file == config_dir) {
+
+#ifdef WIN32
+            fim_checker(paths[i], item, w_evt, 1);
+
+#else
+            w_mutex_lock(&syscheck.fim_entry_mutex);
+            saved_data = (fim_entry_data *)rbtree_get(syscheck.fim_entry, paths[i]);
+
+            if (saved_data) {
+                found = 1;
+                dev = saved_data->dev;
+                inode = saved_data->inode;
+            }
+            w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+            if (found) {
+                snprintf(inode_key, OS_SIZE_128, "%ld:%ld", dev, inode);
+                fim_audit_inode_event(paths[i], inode_key, mode, w_evt);
+                found = 0;
+            }
+
+#endif
+        }
+    }
+
+    free_strarray(paths);
+}
 
 
 void fim_audit_inode_event(char *file, const char *inode_key, fim_event_mode mode, whodata_evt * w_evt) {

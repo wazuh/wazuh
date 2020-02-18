@@ -147,15 +147,28 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report);
  * @brief Process FIM realtime event
  *
  * @param [in] file Path of the file to check
+ * @param item Pointer to fim_element necesary to call fim_checker function. May be null
  */
-void fim_realtime_event(char *file);
+void fim_realtime_event(char *file, fim_element *item);
 
 /**
  * @brief Process FIM whodata event
  *
  * @param w_evt Whodata event
+ * @param item Pointer to fim_element necesary to call fim_checker function. May be null
  */
-void fim_whodata_event(whodata_evt *w_evt);
+void fim_whodata_event(whodata_evt *w_evt, fim_element *item);
+
+/**
+ * @brief Process a path that has possibly been deleted
+ *
+ * @note On Windows, calls function fim_checker meanwhile, on Linux, calls function fim_audit_inode_event. It's because Windows haven't got inodes.
+ * @param pathname Name of path
+ * @param mode Monitoring FIM mode
+ * @param w_evt Pointer to whodata information
+ * @param item Pointer to fim_element necesary to call fim_checker function. May be null
+ */
+void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt, fim_element *item);
 
 /**
  * @brief Process FIM audit event
@@ -163,7 +176,7 @@ void fim_whodata_event(whodata_evt *w_evt);
  * @param [in] file Path of the file to check
  * @param [in] inode_key Inode key of the file to check
  * @param [in] mode 1 means realtime, 2 means whodata
- * @param [in] w_evt Whodata event
+ * @param [in] w_evt Whodata event, it may be null
  */
 void fim_audit_inode_event(char *file, const char *inode_key, fim_event_mode mode, whodata_evt *w_evt);
 
