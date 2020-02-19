@@ -19,7 +19,7 @@ if(NOT PTHREAD)
 endif()
 
 # Static cmocka
-find_library(STATIC_CMOCKA NAMES libcmocka.a HINTS "/usr/i686-w64-mingw32/sys-root/mingw/lib/")
+find_library(STATIC_CMOCKA NAMES libcmocka.a HINTS "/usr/i686-w64-mingw32/sys-root/mingw/lib/" "/usr/i686-w64-mingw32/lib/")
 if(NOT STATIC_CMOCKA)
   message(FATAL_ERROR "libcmocka.a not found in /usr/i686-w64-mingw32/sys-root/mingw/lib/ Aborting...")
 endif()
