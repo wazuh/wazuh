@@ -91,6 +91,7 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
 
                 if (!OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
                     if (retval = OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
+                        os_free(data);
                         merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
                     } else if (retval == 1) {
                         mdebug2(FIM_REALTIME_HASH_DUP, data);
@@ -185,7 +186,7 @@ void realtime_process()
         char ** paths = rbtree_keys(tree);
 
         for (int i = 0; paths[i] != NULL; i++) {
-            fim_realtime_event(paths[i]);
+            fim_realtime_event(paths[i], NULL);
         }
 
         free_strarray(paths);
@@ -285,12 +286,12 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
 
             Sleep(syscheck.rt_delay);
 
-
             if (index == file_index) {
                 item->mode = FIM_REALTIME;
                 /* Check the change */
-                fim_checker(final_path, item, NULL, 1);
+                fim_realtime_event(final_path, item);
             }
+
         } while (pinfo->NextEntryOffset != 0);
         os_free(item);
     }
