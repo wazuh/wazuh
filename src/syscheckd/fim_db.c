@@ -1154,6 +1154,7 @@ void fim_db_callback_sync_path_range(__attribute__((unused))fdb_t *fim_sql, fim_
 }
 
 int fim_db_get_count_entry_data(fdb_t * fim_sql) {
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_COUNT_DATA);
     int res = sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_COUNT_DATA]);
 
     if(res == SQLITE_ROW) {
@@ -1166,6 +1167,7 @@ int fim_db_get_count_entry_data(fdb_t * fim_sql) {
 }
 
 int fim_db_get_count_entry_path(fdb_t * fim_sql) {
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_COUNT_PATH);
     int res = sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_COUNT_PATH]);
 
     if(res == SQLITE_ROW) {
