@@ -62,7 +62,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.sync_response_timeout = 30;
     syscheck.sync_queue_size = 16384;
     syscheck.sync_max_eps = 10;
-    syscheck.max_eps        = 200;
+    syscheck.max_eps        = 100;
     syscheck.allow_remote_prefilter_cmd  = false;
 
     mdebug1(FIM_CONFIGURATION_FILE, cfgfile);
