@@ -1034,9 +1034,10 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
     mdebug1(FIM_RUNNING_SCAN,
             time_diff(&start, &end),
             (double)(clock() - cputime_start) / CLOCKS_PER_SEC);
-    mdebug1(FIM_ENTRIES_INFO, fim_db_get_count_entry_path(syscheck.database));
 
-#ifndef WIN32
+#ifdef WIN32
+    mdebug1(FIM_ENTRIES_INFO, fim_db_get_count_entry_path(syscheck.database));
+#else
     unsigned inode_items = 0;
     unsigned inode_paths = 0;
 
