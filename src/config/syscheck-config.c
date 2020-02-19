@@ -1486,13 +1486,9 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             char * end;
             long value = strtol(node[i]->content, &end, 10);
 
-            if (value < 1 || value > 1000000 || *end) {
+            if (value < 0 || value > 1000000 || *end) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
-                if (value > 1000000) {
-                    mdebug1("<%s> exceeds the maximum allowed value (1000000). EPS limitation is disabled.", node[i]->element);
-                }
-
                 syscheck->max_eps = value;
             }
         } /* Allow prefilter cmd */
