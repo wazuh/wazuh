@@ -253,12 +253,16 @@ int local_start()
     wm_children_pool_init();
 
     /* Launch rotation thread */
-    w_create_thread(NULL,
-                     0,
-                     (LPTHREAD_START_ROUTINE)state_main,
-                     NULL,
-                     0,
-                     (LPDWORD)&threadID);
+    int rotate_log = getDefine_Int("monitord", "rotate_log", 0, 1);
+
+    if(rotate_log) {
+        w_create_thread(NULL,
+                        0,
+                        (LPTHREAD_START_ROUTINE)state_main,
+                        NULL,
+                        0,
+                        (LPDWORD)&threadID);
+    }
 
     /* Socket connection */
     agt->sock = -1;
