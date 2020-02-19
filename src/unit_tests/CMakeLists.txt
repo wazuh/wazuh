@@ -53,7 +53,7 @@ list(APPEND tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn 
                          -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,realtime_adddir -Wl,--wrap,HasFilesystem \
                          -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_get_paths_from_inode -Wl,--wrap,delete_target_file \
                          -Wl,--wrap,fim_db_insert -Wl,--wrap,OS_MD5_SHA1_SHA256_File -Wl,--wrap,seechanges_addfile\
-                         -Wl,--wrap,fim_db_delete_not_scanned -Wl,--wrap,fim_db_set_all_unscanned \
+                         -Wl,--wrap,fim_db_get_not_scanned -Wl,--wrap,fim_db_delete_not_scanned -Wl,--wrap,fim_db_set_all_unscanned \
                          -Wl,--wrap,fim_db_set_scanned -Wl,--wrap,get_user -Wl,--wrap,get_group \
                          -Wl,--wrap,fim_db_remove_path")
 
@@ -88,7 +88,7 @@ list(APPEND tests_flags "-Wl,--wrap,fim_send_sync_msg -Wl,--wrap,time -Wl,--wrap
                          -Wl,--wrap,fim_db_get_data_checksum -Wl,--wrap,dbsync_check_msg -Wl,--wrap,fim_send_sync_msg \
                          -Wl,--wrap,fim_db_get_count_range -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_entry_json \
                          -Wl,--wrap,fim_db_data_checksum_range -Wl,--wrap,dbsync_state_msg \
-                         -Wl,--wrap,fim_db_sync_path_range")
+                         -Wl,--wrap,fim_db_get_path_range -Wl,--wrap,fim_db_sync_path_range")
 
 list(APPEND tests_names "test_run_check")
 list(APPEND tests_flags "-Wl,--wrap,_minfo")

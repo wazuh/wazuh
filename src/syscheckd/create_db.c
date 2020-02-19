@@ -93,7 +93,7 @@ void fim_scan() {
     fim_send_scan_info(FIM_SCAN_END);
 
     if (isDebug()) {
-        fim_print_info(start, end, cputime_start);
+        fim_print_info(start, end, cputime_start); // LCOV_EXCL_LINE
     }
 }
 
@@ -970,7 +970,6 @@ int fim_check_ignore (const char *file_name) {
 }
 
 
-// LCOV_EXCL_START
 int fim_check_restrict (const char *file_name, OSMatch *restriction) {
     if (file_name == NULL) {
         merror(NULL_ERROR);
@@ -987,7 +986,7 @@ int fim_check_restrict (const char *file_name, OSMatch *restriction) {
 
     return 0;
 }
-// LCOV_EXCL_STOP
+
 
 void free_entry_data(fim_entry_data * data) {
     if (!data) {
@@ -1044,21 +1043,7 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
     mdebug1(FIM_RUNNING_SCAN,
             time_diff(&start, &end),
             (double)(clock() - cputime_start) / CLOCKS_PER_SEC);
-    // SQLite Development
-    //mdebug1(FIM_ENTRIES_INFO, rbtree_size(syscheck.fim_entry));
-
-#ifndef WIN32
-    unsigned inode_items = 0;
-    unsigned inode_paths = 0;
-
-/* SQLite Development
-    for (hash_node = OSHash_Begin(syscheck.fim_inode, &inode_it); hash_node; hash_node = OSHash_Next(syscheck.fim_inode, &inode_it, hash_node)) {
-        inode_paths += ((fim_inode_data*)hash_node->data)->items;
-        inode_items++;
-    }
-*/
-    mdebug1(FIM_INODES_INFO, inode_items, inode_paths);
-#endif
 
     return;
 }
+// LCOV_EXCL_STOP

@@ -159,10 +159,19 @@ char * __wrap_dbsync_state_msg(const char * component, cJSON * data) {
     return mock_type(char*);
 }
 
-int __wrap_fim_db_sync_path_range(fdb_t *fim_sql, char *start, char *top) {
+int __wrap_fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file, int storage) {
     check_expected_ptr(fim_sql);
     check_expected(start);
     check_expected(top);
+    check_expected(storage);
+
+    *file = mock_type(fim_tmp_file *);
+
+    return mock();
+}
+
+int __wrap_fim_db_sync_path_range(fdb_t *fim_sql) {
+    check_expected_ptr(fim_sql);
 
     return mock();
 }
@@ -427,10 +436,12 @@ static void test_fim_sync_checksum_split_range_size_default(void **state) {
 
 /* fim_sync_send_list */
 static void test_fim_sync_send_list_sync_path_range_error(void **state) {
-    expect_value(__wrap_fim_db_sync_path_range, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_sync_path_range, start, "start");
-    expect_string(__wrap_fim_db_sync_path_range, top, "top");
-    will_return(__wrap_fim_db_sync_path_range, FIMDB_ERR);
+    expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path_range, start, "start");
+    expect_string(__wrap_fim_db_get_path_range, top, "top");
+    expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_path_range, NULL);
+    will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
 
     expect_string(__wrap__merror, formatted_msg, FIM_DB_ERROR_SYNC_DB);
 
@@ -438,12 +449,22 @@ static void test_fim_sync_send_list_sync_path_range_error(void **state) {
 }
 
 static void test_fim_sync_send_list_success(void **state) {
+    fim_tmp_file *file = calloc(1, sizeof(fim_tmp_file));
+    file->elements = 1;
+
+    expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path_range, start, "start");
+    expect_string(__wrap_fim_db_get_path_range, top, "top");
+    expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_path_range, file);
+    will_return(__wrap_fim_db_get_path_range, FIMDB_OK);
+
     expect_value(__wrap_fim_db_sync_path_range, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_sync_path_range, start, "start");
-    expect_string(__wrap_fim_db_sync_path_range, top, "top");
     will_return(__wrap_fim_db_sync_path_range, FIMDB_OK);
 
     fim_sync_send_list("start", "top");
+
+    free(file);
 }
 
 /* fim_sync_dispatch */
@@ -552,12 +573,22 @@ static void test_fim_sync_dispatch_no_data(void **state) {
     fim_sync_cur_id = 1234;
 
     // Inside fim_sync_send_list
+    fim_tmp_file *file = calloc(1, sizeof(fim_tmp_file));
+    file->elements = 1;
+
+    expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path_range, start, "start");
+    expect_string(__wrap_fim_db_get_path_range, top, "top");
+    expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_path_range, file);
+    will_return(__wrap_fim_db_get_path_range, FIMDB_OK);
+
     expect_value(__wrap_fim_db_sync_path_range, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_sync_path_range, start, "start");
-    expect_string(__wrap_fim_db_sync_path_range, top, "top");
     will_return(__wrap_fim_db_sync_path_range, FIMDB_OK);
 
     fim_sync_dispatch(payload);
+
+    free(file);
 }
 
 static void test_fim_sync_dispatch_unwknown_command(void **state) {
