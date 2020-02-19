@@ -30,6 +30,19 @@ int __wrap_w_is_file(const char * const file) {
     return mock();
 }
 
+int __wrap_fseek(FILE *stream, long offset, int whence) {
+    return mock();
+}
+
+int __wrap_fgets(char *s, int size, FILE *stream) {
+    strncpy(s, mock_type(char *), size);
+    return mock_type(int);
+}
+
+int __wrap_fclose(FILE *stream) {
+    return 0;
+}
+
 int __wrap_remove(const char *filename) {
     check_expected(filename);
     return mock();
@@ -587,6 +600,7 @@ void test_fim_db_init_failed_cache_memory(void **state) {
     fdb_t* fim_db;
     syscheck.database_store = 1;
     fim_db = fim_db_init(syscheck.database_store);
+    syscheck.database_store = 0;
     assert_null(fim_db);
 }
 
@@ -832,12 +846,12 @@ void test_fim_db_insert_inode_id_nonull(void **state) {
 
 void test_fim_db_insert_inode_id_null(void **state) {
     test_fim_db_insert_data *test_data = *state;
-    will_return(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 2);
+    will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 2);
     will_return_always(__wrap_sqlite3_bind_int, 0);
     will_return_always(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return_count(__wrap_sqlite3_step, SQLITE_DONE, 2);
 
     // Wrap functions for fim_db_insert_data() & fim_db_insert_path()
     int inode_id = 0;
@@ -917,7 +931,7 @@ void test_fim_db_remove_path_one_entry_alert_fail(void **state) {
     will_return(__wrap_sqlite3_column_int, 1);
     expect_value(__wrap_sqlite3_column_int, iCol, 1);
     will_return(__wrap_sqlite3_column_int, 1);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return_count(__wrap_sqlite3_step, SQLITE_DONE, 2);
     will_return(__wrap_fim_configuration_directory, -1);
     wraps_fim_db_check_transaction();
     time_t last_commit =  test_data->fim_sql->transaction.last_commit;
@@ -1102,8 +1116,9 @@ void test_fim_db_get_data_checksum_success(void **state) {
 void test_fim_db_sync_path_range_disk(void **state) {
     test_fim_db_insert_data *test_data = *state;
 
-    // ~~~~ Wrap commented above are for fim_db_process_get_query, adapt them to fim_db_process_read_file
-
+    will_return(__wrap_fseek, 0);
+    will_return(__wrap_fgets, "/tmp/file\n");
+    will_return(__wrap_fgets, 1);
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return_always(__wrap_sqlite3_bind_text, 0);
@@ -1120,6 +1135,8 @@ void test_fim_db_sync_path_range_disk(void **state) {
 
     will_return(__wrap_sqlite3_step, SQLITE_DONE);  // Ending the loop at fim_db_process_get_query()
     wraps_fim_db_check_transaction();
+    expect_string(__wrap_remove, filename, "/tmp/file");
+    will_return(__wrap_remove, 0);
 
     int ret = fim_db_sync_path_range(test_data->fim_sql, &syscheck.fim_entry_mutex, test_data->tmp_file, syscheck.database_store);
     assert_int_equal(FIMDB_OK, ret);
@@ -1594,38 +1611,39 @@ void test_fim_db_process_get_query_error(void **state) {
 }
 /*----------------------------------------------*/
 /*----------fim_db_delete_range()------------------*/
+// ~~~~ Wrap commented above are for fim_db_process_get_query, adapt them to fim_db_process_read_file
 void test_fim_db_delete_range_success(void **state) {
     test_fim_db_insert_data *test_data = *state;
     int ret;
 
-    // Inside fim_db_clean_stmt
-    will_return(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    // // Inside fim_db_clean_stmt
+    // will_return(__wrap_sqlite3_reset, SQLITE_OK);
+    // will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
 
-    // Inside fim_db_bind_range
-    will_return_count(__wrap_sqlite3_bind_text, 0, 2);
+    // // Inside fim_db_bind_range
+    // will_return_count(__wrap_sqlite3_bind_text, 0, 2);
 
-    // Inside fim_db_process_get_query
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    // // Inside fim_db_process_get_query
+    // will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    wraps_fim_db_decode_full_row();
+    // wraps_fim_db_decode_full_row();
 
-    // Inside fim_db_remove_path (callback)
-    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
-    will_return(__wrap_sqlite3_column_int, 5);
-    expect_value(__wrap_sqlite3_column_int, iCol, 1);
-    will_return(__wrap_sqlite3_column_int, 1);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-    wraps_fim_db_check_transaction();
+    // // Inside fim_db_remove_path (callback)
+    // will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
+    // will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    // will_return_always(__wrap_sqlite3_bind_text, 0);
+    // will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    // expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    // will_return(__wrap_sqlite3_column_int, 5);
+    // expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    // will_return(__wrap_sqlite3_column_int, 1);
+    // will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    // wraps_fim_db_check_transaction();
 
-    // Done with fim_db_process_get_query
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    // // Done with fim_db_process_get_query
+    // will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
-    wraps_fim_db_check_transaction();
+    // wraps_fim_db_check_transaction();
 
     ret = fim_db_delete_range(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex, syscheck.database_store);
 
@@ -1636,17 +1654,17 @@ void test_fim_db_delete_range_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
     int ret;
 
-    // Inside fim_db_clean_stmt
-    will_return(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    // // Inside fim_db_clean_stmt
+    // will_return(__wrap_sqlite3_reset, SQLITE_OK);
+    // will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
 
-    // Inside fim_db_bind_range
-    will_return_count(__wrap_sqlite3_bind_text, 0, 2);
+    // // Inside fim_db_bind_range
+    // will_return_count(__wrap_sqlite3_bind_text, 0, 2);
 
-    // Inside fim_db_process_get_query
-    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    // // Inside fim_db_process_get_query
+    // will_return(__wrap_sqlite3_step, SQLITE_ERROR);
 
-    wraps_fim_db_check_transaction();
+    // wraps_fim_db_check_transaction();
 
     ret = fim_db_delete_range(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex, syscheck.database_store);
 
@@ -1659,27 +1677,27 @@ void test_fim_db_delete_not_scanned_success(void **state) {
     test_fim_db_insert_data *test_data = *state;
     int ret;
 
-    // Inside fim_db_process_get_query
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    // // Inside fim_db_process_get_query
+    // will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    wraps_fim_db_decode_full_row();
+    // wraps_fim_db_decode_full_row();
 
-    // Inside fim_db_remove_path (callback)
-    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
-    will_return(__wrap_sqlite3_column_int, 5);
-    expect_value(__wrap_sqlite3_column_int, iCol, 1);
-    will_return(__wrap_sqlite3_column_int, 1);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-    wraps_fim_db_check_transaction();
+    // // Inside fim_db_remove_path (callback)
+    // will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
+    // will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    // will_return_always(__wrap_sqlite3_bind_text, 0);
+    // will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    // expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    // will_return(__wrap_sqlite3_column_int, 5);
+    // expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    // will_return(__wrap_sqlite3_column_int, 1);
+    // will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    // wraps_fim_db_check_transaction();
 
-    // Done with fim_db_process_get_query
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    // // Done with fim_db_process_get_query
+    // will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
-    wraps_fim_db_check_transaction();
+    // wraps_fim_db_check_transaction();
 
     ret = fim_db_delete_not_scanned(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex, syscheck.database_store);
 
@@ -1690,10 +1708,10 @@ void test_fim_db_delete_not_scanned_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
     int ret;
 
-    // Inside fim_db_process_get_query
-    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    // // Inside fim_db_process_get_query
+    // will_return(__wrap_sqlite3_step, SQLITE_ERROR);
 
-    wraps_fim_db_check_transaction();
+    // wraps_fim_db_check_transaction();
 
     ret = fim_db_delete_not_scanned(test_data->fim_sql, test_data->tmp_file, &syscheck.fim_entry_mutex, syscheck.database_store);
 
