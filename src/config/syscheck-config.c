@@ -67,7 +67,13 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
         if (syscheck->dir == NULL) {
             os_calloc(2, sizeof(char *), syscheck->dir);
             os_calloc(strlen(entry) + 2, sizeof(char), syscheck->dir[0]);
-            snprintf(syscheck->dir[0], strlen(entry) + 1, "%s", entry);
+            if (link && !(CHECK_FOLLOW & vals)) {
+                // Taking the link itself if follow_symbolic_link is not enabled
+                snprintf(syscheck->dir[0], strlen(link) + 1, "%s", link);
+            }
+            else {
+                snprintf(syscheck->dir[0], strlen(entry) + 1, "%s", entry);
+            }
             syscheck->dir[1] = NULL;
 
 #ifdef WIN32
@@ -96,7 +102,13 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
             os_realloc(syscheck->dir, (pl + 2) * sizeof(char *), syscheck->dir);
             syscheck->dir[pl + 1] = NULL;
             os_calloc(strlen(entry) + 2, sizeof(char), syscheck->dir[pl]);
-            snprintf(syscheck->dir[pl], strlen(entry) + 1, "%s", entry);
+            if (link && !(CHECK_FOLLOW & vals)) {
+                // Taking the link itself if follow_symbolic_link is not enabled
+                snprintf(syscheck->dir[pl], strlen(link) + 1, "%s", link);
+            }
+            else {
+                snprintf(syscheck->dir[pl], strlen(entry) + 1, "%s", entry);
+            }
 
 #ifdef WIN32
             os_realloc(syscheck->wdata.dirs_status, (pl + 2) * sizeof(whodata_dir_status),

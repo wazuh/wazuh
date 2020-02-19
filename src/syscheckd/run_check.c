@@ -455,7 +455,14 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
                 continue;
             }
 
-            real_path = realpath(syscheck.symbolic_links[i], NULL);
+            if (CHECK_FOLLOW & syscheck.opts[i]) {
+                real_path = realpath(syscheck.symbolic_links[i], NULL);
+            }
+            else {
+                // Taking the link itself if follow_symbolic_link is not enabled
+                os_calloc(strlen(syscheck.symbolic_links[i]) + 1, sizeof(char), real_path);
+                snprintf(real_path, strlen(syscheck.symbolic_links[i]) + 1, "%s", syscheck.symbolic_links[i]);
+            }
 
             if (*syscheck.dir[i]) {
                 if (real_path) {
