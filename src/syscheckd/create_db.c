@@ -144,15 +144,15 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
         }
 
         w_mutex_lock(&syscheck.fim_entry_mutex);
+        saved_entry = fim_db_get_path(syscheck.database, path);
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
 
-        if (saved_entry = fim_db_get_path(syscheck.database, path), saved_entry) {
+        if (saved_entry) {
             json_event = fim_json_event(path, NULL, saved_entry->data, item->index, FIM_DELETE, item->mode, w_evt);
-            fim_db_remove_path(syscheck.database, saved_entry, 0);
+            fim_db_remove_path(syscheck.database, saved_entry, &syscheck.fim_entry_mutex, (void *) (int) 0);
             free_entry(saved_entry);
             saved_entry = NULL;
         }
-
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
 
         if (json_event && report) {
             char *json_formated = cJSON_PrintUnformatted(json_event);
@@ -675,13 +675,22 @@ void fim_get_checksum (fim_entry_data * data) {
 }
 
 void check_deleted_files() {
+    fim_tmp_file *file = NULL;
+
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
-    if (fim_db_delete_not_scanned(syscheck.database) != FIMDB_OK) {
+    if (fim_db_get_not_scanned(syscheck.database, &file, syscheck.database_store) != FIMDB_OK) {
         merror(FIM_DB_ERROR_RM_NOT_SCANNED);
     }
-    fim_db_set_all_unscanned(syscheck.database);
 
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    if (file && file->elements) {
+        fim_db_delete_not_scanned(syscheck.database, file, &syscheck.fim_entry_mutex, syscheck.database_store);
+    }
+
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+    fim_db_set_all_unscanned(syscheck.database);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 }
 
