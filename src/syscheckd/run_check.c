@@ -62,13 +62,17 @@ static void fim_send_msg(char mq, const char * location, const char * msg) {
 // LCOV_EXCL_START
 // Send a data synchronization control message
 
-static unsigned n_msg_sent = 0;
-
 void fim_send_sync_msg(const char * msg) {
     mdebug2(FIM_DBSYNC_SEND, msg);
     fim_send_msg(DBSYNC_MQ, SYSCHECK, msg);
 
-    if (++n_msg_sent == syscheck.max_eps) {
+    if (syscheck.sync_max_eps == 0) {
+        return;
+    }
+
+    static long n_msg_sent = 0;
+
+    if (++n_msg_sent == syscheck.sync_max_eps) {
         sleep(1);
         n_msg_sent = 0;
     }
@@ -82,6 +86,12 @@ void send_syscheck_msg(const char *msg)
 {
     mdebug2(FIM_SEND, msg);
     fim_send_msg(SYSCHECK_MQ, SYSCHECK, msg);
+
+    if (syscheck.max_eps == 0) {
+        return;
+    }
+
+    static unsigned n_msg_sent = 0;
 
     if (++n_msg_sent == syscheck.max_eps) {
         sleep(1);
