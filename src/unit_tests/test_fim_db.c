@@ -22,6 +22,8 @@ int fim_db_process_get_query(fdb_t *fim_sql, int index,
                                     void * arg);
 int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query);
 fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt);
+fim_tmp_file *fim_db_create_temp_file(int storage);
+void fim_db_clean_file(fim_tmp_file **file, int storage);
 
 int test_mode = 0;
 
@@ -45,7 +47,7 @@ int __wrap_fgets(char *s, int size, FILE *stream) {
     return mock_type(int);
 }
 
-int __real_fclose (FILE *__stream);
+int __real_fclose(FILE *__stream);
 int __wrap_fclose(FILE *stream) {
     if (test_mode) {
         return 0;
@@ -53,8 +55,50 @@ int __wrap_fclose(FILE *stream) {
     return __real_fclose(stream);
 }
 
+FILE *__real_fopen(const char * __filename, const char * __modes);
+FILE *__wrap_fopen(const char * __filename, const char * __modes) {
+    if (test_mode) {
+        return mock_type(FILE *);
+    }
+    return __real_fopen(__filename, __modes);
+}
+
+int __wrap_fflush () {
+    return 0;
+}
+
 int __wrap_remove(const char *filename) {
     check_expected(filename);
+    return mock();
+}
+
+unsigned long __wrap_time() {
+    return 192837465;
+}
+
+int __wrap_getpid() {
+    return 2345;
+}
+
+char *__wrap_wstr_escape_json() {
+    char *ret = mock_type(char *);
+    if (ret) {
+        return strdup(ret);
+    }
+    return NULL;
+}
+
+int __wrap_fprintf(FILE *fp, const char *fmt, ...)
+{
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, fmt);
+    vsnprintf(formatted_msg, OS_MAXSTR, fmt, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
+
     return mock();
 }
 
@@ -401,7 +445,7 @@ static int test_fim_db_teardown(void **state) {
     return 0;
 }
 
-static int test_fim_tmp_file_setup(void **state) {
+static int test_fim_tmp_file_setup_disk(void **state) {
     test_fim_db_insert_data *test_data;
     if (test_fim_db_setup((void**)&test_data) != 0) {
         return -1;
@@ -410,6 +454,55 @@ static int test_fim_tmp_file_setup(void **state) {
     test_data->tmp_file->path = strdup("/tmp/file");
 
     *state = test_data;
+    return 0;
+}
+
+static int test_fim_tmp_file_teardown_disk(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    free(test_data->entry->path);
+    free(test_data->entry->data->perm);
+    free(test_data->entry->data->attributes);
+    free(test_data->entry->data->uid);
+    free(test_data->entry->data->gid);
+    free(test_data->entry->data->user_name);
+    free(test_data->entry->data->group_name);
+    free(test_data->entry->data);
+    free(test_data->entry);
+    free(test_data->fim_sql);
+    free(test_data->tmp_file->path);
+    free(test_data->tmp_file);
+    free(test_data);
+    return 0;
+}
+
+static int test_fim_tmp_file_setup_memory(void **state) {
+    test_fim_db_insert_data *test_data;
+    if (test_fim_db_setup((void**)&test_data) != 0) {
+        return -1;
+    }
+    test_data->tmp_file = calloc(1, sizeof(fim_tmp_file));
+    test_data->tmp_file->list = W_Vector_init(1);
+    W_Vector_insert(test_data->tmp_file->list, "/tmp/file");
+
+    *state = test_data;
+    return 0;
+}
+
+static int test_fim_tmp_file_teardown_memory(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    free(test_data->entry->path);
+    free(test_data->entry->data->perm);
+    free(test_data->entry->data->attributes);
+    free(test_data->entry->data->uid);
+    free(test_data->entry->data->gid);
+    free(test_data->entry->data->user_name);
+    free(test_data->entry->data->group_name);
+    free(test_data->entry->data);
+    free(test_data->entry);
+    free(test_data->fim_sql);
+    W_Vector_free(test_data->tmp_file->list);
+    free(test_data->tmp_file);
+    free(test_data);
     return 0;
 }
 
@@ -452,6 +545,20 @@ static int test_fim_db_entry_teardown(void **state) {
     if (entry) {
         free_entry(entry);
     }
+    return 0;
+}
+
+static int teardown_fim_tmp_file_disk(void **state) {
+    fim_tmp_file *file = state[1];
+    expect_string(__wrap_remove, filename, file->path);
+    will_return(__wrap_remove, 1);
+    fim_db_clean_file(&file, FIM_DB_DISK);
+    return 0;
+}
+
+static int teardown_fim_tmp_file_memory(void **state) {
+    fim_tmp_file *file = state[1];
+    fim_db_clean_file(&file, FIM_DB_MEMORY);
     return 0;
 }
 
@@ -716,7 +823,7 @@ void test_fim_db_clean_file_not_removed(void **state) {
     assert_int_equal(ret, FIMDB_ERR);
 }
 
-void test_fim_db_clean_succes(void **state) {
+void test_fim_db_clean_success(void **state) {
     wraps_fim_db_clean();
     int ret =  fim_db_clean();
     assert_int_equal(ret, FIMDB_OK);
@@ -892,6 +999,74 @@ void test_fim_db_insert_inode_id_null(void **state) {
     int ret;
     ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data);
     assert_int_equal(ret, 0);   // Success
+}
+
+void test_fim_db_insert_inode_id_null_error(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 2);
+    will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 2);
+    will_return_always(__wrap_sqlite3_bind_int, 0);
+    will_return_always(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: (1)ERROR MESSAGE");
+
+    int ret;
+    ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data);
+    assert_int_equal(ret, FIMDB_ERR);
+}
+
+void test_fim_db_insert_inode_id_null_delete(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 3);
+    will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 3);
+    will_return_always(__wrap_sqlite3_bind_int, 0);
+    will_return_always(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    wraps_fim_db_check_transaction();
+
+    // Wrap functions for fim_db_insert_data() & fim_db_insert_path()
+    int inode_id = 0;
+    wraps_fim_db_insert_data_success(inode_id);
+    wraps_fim_db_insert_path_success();
+
+    int ret;
+    ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data);
+    assert_int_equal(ret, 0);   // Success
+}
+
+void test_fim_db_insert_inode_id_null_delete_error(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 3);
+    will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 3);
+    will_return_always(__wrap_sqlite3_bind_int, 0);
+    will_return_always(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: ERROR MESSAGE");
+
+    int ret;
+    ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data);
+    assert_int_equal(ret, FIMDB_ERR);
 }
 
 /*-----------------------------------------*/
@@ -1167,6 +1342,29 @@ void test_fim_db_sync_path_range_disk(void **state) {
     will_return(__wrap_remove, 0);
 
     int ret = fim_db_sync_path_range(test_data->fim_sql, &syscheck.fim_entry_mutex, test_data->tmp_file, syscheck.database_store);
+    assert_int_equal(FIMDB_OK, ret);
+}
+
+void test_fim_db_sync_path_range_memory(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+
+    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_bind_text, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    wraps_fim_db_decode_full_row();
+
+    // fim_db_callback_sync_path_range()
+    cJSON *root = cJSON_CreateObject();
+    state[1] = root;
+    will_return(__wrap_fim_entry_json, root);
+    expect_string(__wrap_dbsync_state_msg, component, "syscheck");
+    expect_value(__wrap_dbsync_state_msg, data, root);
+    will_return(__wrap_dbsync_state_msg, strdup("This is the returned JSON"));
+
+    syscheck.database_store = 1;
+    int ret = fim_db_sync_path_range(test_data->fim_sql, &syscheck.fim_entry_mutex, test_data->tmp_file, syscheck.database_store);
+    syscheck.database_store = 0;
     assert_int_equal(FIMDB_OK, ret);
 }
 /*----------------------------------------------*/
@@ -1737,6 +1935,62 @@ void test_fim_db_callback_sync_path_range(void **state) {
 }
 
 /*----------------------------------------------*/
+/*----------fim_db_callback_sync_path_range()------------------*/
+void test_fim_db_callback_save_path_null(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+
+    will_return(__wrap_wstr_escape_json, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "Error escaping '/test/path'");
+
+    fim_db_callback_save_path(test_data->fim_sql, test_data->entry, syscheck.database_store, test_data->tmp_file);
+
+    assert_int_equal(test_data->tmp_file->elements, 0);
+}
+
+void test_fim_db_callback_save_path_disk(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+
+    will_return(__wrap_wstr_escape_json, "/test/path");
+
+    expect_string(__wrap_fprintf, formatted_msg, "/test/path\n");
+    will_return(__wrap_fprintf, 11);
+
+    fim_db_callback_save_path(test_data->fim_sql, test_data->entry, syscheck.database_store, test_data->tmp_file);
+
+    assert_int_equal(test_data->tmp_file->elements, 1);
+}
+
+void test_fim_db_callback_save_path_disk_error(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+
+    will_return(__wrap_wstr_escape_json, "/test/path");
+
+    expect_string(__wrap_fprintf, formatted_msg, "/test/path\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "/test/path - Success");
+
+    fim_db_callback_save_path(test_data->fim_sql, test_data->entry, syscheck.database_store, test_data->tmp_file);
+
+    assert_int_equal(test_data->tmp_file->elements, 0);
+}
+
+void test_fim_db_callback_save_path_memory(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+
+    will_return(__wrap_wstr_escape_json, "/test/path");
+
+    syscheck.database_store = 1;
+    fim_db_callback_save_path(test_data->fim_sql, test_data->entry, syscheck.database_store, test_data->tmp_file);
+    syscheck.database_store = 0;
+
+    assert_non_null(test_data->tmp_file->list->vector);
+    assert_string_equal(test_data->tmp_file->list->vector[1], "/test/path");
+    assert_int_equal(test_data->tmp_file->list->used, 2);
+}
+
+/*----------------------------------------------*/
 /*----------fim_db_callback_calculate_checksum()------------------*/
 void test_fim_db_callback_calculate_checksum(void **state) {
     test_fim_db_ctx_t *data = *state;
@@ -1832,6 +2086,39 @@ void test_fim_db_set_scanned_success(void **state) {
     assert_int_equal(ret, FIMDB_OK);
 }
 
+/*----------------------------------------------------*/
+/*---------------fim_db_create_temp_file()----------------*/
+void test_fim_db_create_temp_file_disk(void **state) {
+    will_return(__wrap_fopen, 1);
+
+    fim_tmp_file *ret = fim_db_create_temp_file(FIM_DB_DISK);
+    state[1] = ret;
+
+    assert_non_null(ret);
+    assert_non_null(ret->fd);
+    assert_string_equal(ret->path, FIM_DB_TMPDIR"tmp_1928374652345");
+}
+
+void test_fim_db_create_temp_file_disk_error(void **state) {
+    will_return(__wrap_fopen, 0);
+    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage '/var/ossec/tmp/tmp_1928374652345'");
+
+    fim_tmp_file *ret = fim_db_create_temp_file(FIM_DB_DISK);
+
+    assert_null(ret);
+}
+
+void test_fim_db_create_temp_file_memory(void **state) {
+    fim_tmp_file *ret = fim_db_create_temp_file(FIM_DB_MEMORY);
+    state[1] = ret;
+
+    assert_non_null(ret);
+    assert_non_null(ret->list);
+    assert_non_null(ret->list->vector);
+    assert_int_equal(ret->list->size, 100);
+    assert_null(ret->path);
+}
+
 /*-----------------------------------------*/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -1853,7 +2140,7 @@ int main(void) {
         // fim_db_clean
         cmocka_unit_test_setup_teardown(test_fim_db_clean_no_db_file, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_clean_file_not_removed, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_clean_succes, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_clean_success, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_insert_data
         cmocka_unit_test_setup_teardown(test_fim_db_insert_data_no_rowid_error, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_insert_data_no_rowid_success, test_fim_db_setup, test_fim_db_teardown),
@@ -1868,6 +2155,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_insert_error, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_insert_inode_id_nonull, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_insert_inode_id_null, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_insert_inode_id_null_error, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_insert_inode_id_null_delete, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_insert_inode_id_null_delete_error, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_remove_path
         cmocka_unit_test_setup_teardown(test_fim_db_remove_path_no_entry, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_remove_path_one_entry, test_fim_db_setup, test_fim_db_teardown),
@@ -1887,7 +2177,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_get_data_checksum_failed, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_get_data_checksum_success, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_sync_path_range
-        cmocka_unit_test_setup_teardown(test_fim_db_sync_path_range_disk, test_fim_tmp_file_setup, test_fim_db_json_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_sync_path_range_disk, test_fim_tmp_file_setup_disk, test_fim_db_json_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_sync_path_range_memory, test_fim_tmp_file_setup_memory, test_fim_db_json_teardown),
         // fim_db_check_transaction
         cmocka_unit_test_setup_teardown(test_fim_db_check_transaction_last_commit_is_0, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_check_transaction_failed, test_fim_db_setup, test_fim_db_teardown),
@@ -1929,12 +2220,17 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_process_get_query_success, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_process_get_query_error, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_delete_range
-        cmocka_unit_test_setup_teardown(test_fim_db_delete_range_success, test_fim_tmp_file_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_delete_range_error, test_fim_tmp_file_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_delete_range_success, test_fim_tmp_file_setup_disk, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_delete_range_error, test_fim_tmp_file_setup_disk, test_fim_db_teardown),
         // fim_db_delete_not_scanned
-        cmocka_unit_test_setup_teardown(test_fim_db_delete_not_scanned, test_fim_tmp_file_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_delete_not_scanned, test_fim_tmp_file_setup_disk, test_fim_db_teardown),
         // fim_db_callback_sync_path_range
         cmocka_unit_test_setup_teardown(test_fim_db_callback_sync_path_range, test_fim_db_setup, test_fim_db_callback_sync_teardown),
+        // fim_db_callback_save_path
+        cmocka_unit_test_setup_teardown(test_fim_db_callback_save_path_null, test_fim_tmp_file_setup_disk, test_fim_tmp_file_teardown_disk),
+        cmocka_unit_test_setup_teardown(test_fim_db_callback_save_path_disk, test_fim_tmp_file_setup_disk, test_fim_tmp_file_teardown_disk),
+        cmocka_unit_test_setup_teardown(test_fim_db_callback_save_path_disk_error, test_fim_tmp_file_setup_disk, test_fim_tmp_file_teardown_disk),
+        cmocka_unit_test_setup_teardown(test_fim_db_callback_save_path_memory, test_fim_tmp_file_setup_memory, test_fim_tmp_file_teardown_memory),
         // fim_db_callback_calculate_checksum
         cmocka_unit_test_setup_teardown(test_fim_db_callback_calculate_checksum, setup_fim_db_with_ctx, teardown_fim_db_with_ctx),
         // fim_db_decode_full_row
@@ -1942,6 +2238,10 @@ int main(void) {
         // fim_db_set_scanned
         cmocka_unit_test_setup_teardown(test_fim_db_set_scanned_error, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_set_scanned_success, test_fim_db_setup, test_fim_db_teardown),
+        // fim_db_create_temp_file
+        cmocka_unit_test_teardown(test_fim_db_create_temp_file_disk, teardown_fim_tmp_file_disk),
+        cmocka_unit_test(test_fim_db_create_temp_file_disk_error),
+        cmocka_unit_test_teardown(test_fim_db_create_temp_file_memory, teardown_fim_tmp_file_memory),
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

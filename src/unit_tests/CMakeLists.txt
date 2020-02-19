@@ -107,7 +107,8 @@ list(APPEND tests_flags "-Wl,--wrap=w_is_file,--wrap=remove,--wrap=sqlite3_open_
                          -Wl,--wrap=sqlite3_column_text,--wrap=printf,--wrap=fim_send_sync_msg,--wrap=dbsync_state_msg \
                          -Wl,--wrap=fim_entry_json,--wrap=sqlite3_last_insert_rowid,--wrap=EVP_DigestUpdate \
                          -Wl,--wrap=fim_configuration_directory,--wrap=fim_json_event,--wrap=send_syscheck_msg,--wrap=delete_target_file \
-                         -Wl,--wrap=fseek -Wl,--wrap=fgets -Wl,--wrap=fclose")
+                         -Wl,--wrap=fseek -Wl,--wrap=fgets -Wl,--wrap=fclose -Wl,--wrap=fopen -Wl,--wrap=time -Wl,--wrap=getpid \
+                         -Wl,--wrap=fflush -Wl,--wrap=fprintf -Wl,--wrap=wstr_escape_json")
 
 list(APPEND tests_names "test_wdb_fim")
 list(APPEND tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,cJSON_Parse -Wl,--wrap,wdb_begin2 \
