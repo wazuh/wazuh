@@ -45,7 +45,8 @@ int __wrap_SendMSG(int queue, const char *message, const char *locmsg, char loc)
 
 static int setup(void ** state) {
     (void) state;
-    syscheck.max_eps = 200;
+    syscheck.max_eps = 100;
+    syscheck.sync_max_eps = 10;
     return 0;
 }
 
@@ -78,28 +79,42 @@ void test_fim_whodata_initialize(void **state)
     assert_int_equal(ret, 0);
 }
 
-void test_fim_send_sync_msg(void ** _state) {
+void test_fim_send_sync_msg_10_eps(void ** _state) {
     (void) _state;
+    syscheck.sync_max_eps = 10;
 
-    // We must not sleep the first 199 times
+    // We must not sleep the first 9 times
 
     state.sleep_seconds = 0;
 
-    for (int i = 1; i < syscheck.max_eps; i++) {
+    for (int i = 1; i < syscheck.sync_max_eps; i++) {
         fim_send_sync_msg("");
         assert_int_equal(state.sleep_seconds, 0);
     }
 
-    // After 200 times, sleep one second
+    // After 10 times, sleep one second
 
     fim_send_sync_msg("");
     assert_int_equal(state.sleep_seconds, 1);
 }
 
-void test_send_syscheck_msg(void ** _state) {
+void test_fim_send_sync_msg_0_eps(void ** _state) {
     (void) _state;
+    syscheck.sync_max_eps = 0;
 
-    // We must not sleep the first 199 times
+    // We must not sleep
+
+    state.sleep_seconds = 0;
+
+    fim_send_sync_msg("");
+    assert_int_equal(state.sleep_seconds, 0);
+}
+
+void test_send_syscheck_msg_10_eps(void ** _state) {
+    (void) _state;
+    syscheck.max_eps = 10;
+
+    // We must not sleep the first 9 times
 
     state.sleep_seconds = 0;
 
@@ -108,10 +123,22 @@ void test_send_syscheck_msg(void ** _state) {
         assert_int_equal(state.sleep_seconds, 0);
     }
 
-    // After 200 times, sleep one second
+    // After 10 times, sleep one second
 
     send_syscheck_msg("");
     assert_int_equal(state.sleep_seconds, 1);
+}
+
+void test_send_syscheck_msg_0_eps(void ** _state) {
+    (void) _state;
+    syscheck.max_eps = 0;
+
+    // We must not sleep
+
+    state.sleep_seconds = 0;
+
+    send_syscheck_msg("");
+    assert_int_equal(state.sleep_seconds, 0);
 }
 
 
@@ -119,8 +146,10 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_log_realtime_status),
         cmocka_unit_test(test_fim_whodata_initialize),
-        cmocka_unit_test(test_fim_send_sync_msg),
-        cmocka_unit_test(test_send_syscheck_msg),
+        cmocka_unit_test(test_fim_send_sync_msg_10_eps),
+        cmocka_unit_test(test_fim_send_sync_msg_0_eps),
+        cmocka_unit_test(test_send_syscheck_msg_10_eps),
+        cmocka_unit_test(test_send_syscheck_msg_0_eps),
     };
 
     return cmocka_run_group_tests(tests, setup, NULL);
