@@ -23,6 +23,8 @@ int fim_db_process_get_query(fdb_t *fim_sql, int index,
 int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query);
 fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt);
 
+int test_mode = 0;
+
 /*--------------WRAPS-----------------------*/
 
 int __wrap_w_is_file(const char * const file) {
@@ -30,8 +32,12 @@ int __wrap_w_is_file(const char * const file) {
     return mock();
 }
 
+int __real_fseek(FILE *stream, long offset, int whence);
 int __wrap_fseek(FILE *stream, long offset, int whence) {
-    return mock();
+    if (test_mode) {
+        return mock();
+    }
+    return __real_fseek(stream, offset, whence);
 }
 
 int __wrap_fgets(char *s, int size, FILE *stream) {
@@ -39,8 +45,12 @@ int __wrap_fgets(char *s, int size, FILE *stream) {
     return mock_type(int);
 }
 
+int __real_fclose (FILE *__stream);
 int __wrap_fclose(FILE *stream) {
-    return 0;
+    if (test_mode) {
+        return 0;
+    }
+    return __real_fclose(stream);
 }
 
 int __wrap_remove(const char *filename) {
@@ -340,6 +350,7 @@ static int setup_group(void **state) {
     Read_Syscheck_Config("test_syscheck.conf");
     syscheck.database_store = 0;
     w_mutex_init(&syscheck.fim_entry_mutex, NULL);
+    test_mode = 1;
     return 0;
 }
 
@@ -347,6 +358,7 @@ static int teardown_group(void **state) {
     (void) state;
     Free_Syscheck(&syscheck);
     w_mutex_destroy(&syscheck.fim_entry_mutex);
+    test_mode = 0;
     return 0;
 }
 
