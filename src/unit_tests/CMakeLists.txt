@@ -47,6 +47,9 @@ list(APPEND tests_flags " ")
 list(APPEND tests_names "test_version_op")
 list(APPEND tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose")
 
+list(APPEND tests_names "test_audit_op")
+list(APPEND tests_flags "-Wl,--wrap,_merror -Wl,--wrap,audit_send")
+
 list(APPEND tests_names "test_create_db")
 list(APPEND tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,lstat \
                          -Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck_msg -Wl,--wrap,readdir \
