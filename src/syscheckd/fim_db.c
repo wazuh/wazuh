@@ -20,7 +20,7 @@ static const char *SQL_STMT[] = {
     [FIMDB_STMT_INSERT_PATH] = "INSERT INTO entry_path (path, inode_id, mode, last_event, entry_type, scanned, options, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
     [FIMDB_STMT_GET_PATH] = "SELECT path, inode_id, mode, last_event, entry_type, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM entry_path INNER JOIN entry_data ON path = ? AND entry_data.rowid = entry_path.inode_id;",
     [FIMDB_STMT_UPDATE_DATA] = "UPDATE entry_data SET size = ?, perm = ?, attributes = ?, uid = ?, gid = ?, user_name = ?, group_name = ?, hash_md5 = ?, hash_sha1 = ?, hash_sha256 = ?, mtime = ? WHERE rowid = ?;",
-    [FIMDB_STMT_UPDATE_PATH] = "UPDATE entry_path SET mode = ?, last_event = ?, entry_type = ?, scanned = ?, options = ?, checksum = ? WHERE inode_id = ?;",
+    [FIMDB_STMT_UPDATE_PATH] = "UPDATE entry_path SET inode_id = ?, mode = ?, last_event = ?, entry_type = ?, scanned = ?, options = ?, checksum = ? WHERE path = ?;",
     [FIMDB_STMT_GET_LAST_PATH] = "SELECT path FROM entry_path ORDER BY path DESC LIMIT 1;",
     [FIMDB_STMT_GET_FIRST_PATH] = "SELECT path FROM entry_path ORDER BY path ASC LIMIT 1;",
     [FIMDB_STMT_GET_ALL_ENTRIES] = "SELECT path, inode_id, mode, last_event, entry_type, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM entry_data INNER JOIN entry_path ON inode_id = entry_data.rowid ORDER BY PATH ASC;",
@@ -155,6 +155,7 @@ static void fim_db_bind_update_data(fdb_t *fim_sql,
  * @param row_id Row id in entry_data table.
  */
 static void fim_db_bind_update_path(fdb_t *fim_sql,
+                                    const char * file_path,
                                     fim_entry_data *entry,
                                     int row_id);
 
@@ -230,7 +231,7 @@ void fim_db_bind_get_inode_id(fdb_t *fim_sql, const char *file_path);
  * @param fim_sql FIM database structure.
  * @param file_path File name of the file to select.
  */
-void fim_db_bind_get_inode(fdb_t *fim_sql, const char *file_path);
+void fim_db_bind_get_path_inode(fdb_t *fim_sql, const char *file_path);
 
 
 fdb_t *fim_db_init(int storage) {
@@ -694,14 +695,15 @@ void fim_db_bind_update_data(fdb_t *fim_sql, fim_entry_data *entry, int *row_id)
 }
 
 /* FIMDB_STMT_UPDATE_ENTRY_PATH */
-void fim_db_bind_update_path(fdb_t *fim_sql, fim_entry_data *entry, int row_id) {
-    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_UPDATE_PATH], 1, entry->mode);
-    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_UPDATE_PATH], 2, entry->last_event);
-    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_UPDATE_PATH], 3, entry->entry_type);
-    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_UPDATE_PATH], 4, entry->scanned);
-    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_UPDATE_PATH], 5, entry->options);
-    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_UPDATE_PATH], 6, entry->checksum, -1, NULL);
-    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_UPDATE_PATH], 7, row_id);
+void fim_db_bind_update_path(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry, int row_id) {
+    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_UPDATE_PATH], 1, row_id);
+    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_UPDATE_PATH], 2, entry->mode);
+    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_UPDATE_PATH], 3, entry->last_event);
+    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_UPDATE_PATH], 4, entry->entry_type);
+    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_UPDATE_PATH], 5, entry->scanned);
+    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_UPDATE_PATH], 6, entry->options);
+    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_UPDATE_PATH], 7, entry->checksum, -1, NULL);
+    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_UPDATE_PATH], 8, file_path, -1, NULL);
 }
 
 /* FIMDB_STMT_DELETE_DATA */
@@ -720,7 +722,7 @@ void fim_db_bind_get_inode_id(fdb_t *fim_sql, const char *file_path) {
 }
 
 /* FIMDB_STMT_GET_INODE */
-void fim_db_bind_get_inode(fdb_t *fim_sql, const char *file_path) {
+void fim_db_bind_get_path_inode(fdb_t *fim_sql, const char *file_path) {
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_GET_INODE], 1, file_path, -1, NULL);
 }
 
@@ -836,7 +838,7 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_entry_data *en
 
     case SQLITE_CONSTRAINT: // If path exist need update
         fim_db_clean_stmt(fim_sql, FIMDB_STMT_UPDATE_PATH);
-        fim_db_bind_update_path(fim_sql, entry, inode_id);
+        fim_db_bind_update_path(fim_sql, file_path, entry, inode_id);
 
         if (res = sqlite3_step(fim_sql->stmt[FIMDB_STMT_UPDATE_PATH]), res != SQLITE_DONE) {
             merror("SQL ERROR: (%d)%s", res, sqlite3_errmsg(fim_sql->db));
@@ -853,7 +855,8 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_entry_data *en
 }
 
 int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) {
-    int inode_id, inode;
+    int inode_id;
+    unsigned long inode;
     int res, res_data, res_path, res_inode, res_inode_id;
 
 #ifdef WIN32
@@ -874,7 +877,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) 
 
     case SQLITE_DONE:
         fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_INODE);
-        fim_db_bind_get_inode(fim_sql, file_path);
+        fim_db_bind_get_path_inode(fim_sql, file_path);
 
         res_inode = sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_INODE]);
 
@@ -915,8 +918,8 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) 
                 }
             }
         }
-        else if (res_inode_id == SQLITE_ERROR) {
-            merror("SQL ERROR: (%d)%s", res_inode_id, sqlite3_errmsg(fim_sql->db));
+        else if (res_inode == SQLITE_ERROR) {
+            merror("SQL ERROR: (%d)%s", res_inode, sqlite3_errmsg(fim_sql->db));
             return FIMDB_ERR;
         }
 
