@@ -11,6 +11,7 @@ set(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../)
 
 include_directories(${SRC_FOLDER}/headers)
 include_directories(${SRC_FOLDER}/external/openssl/include)
+include_directories(${SRC_FOLDER}/external/audit-userspace/lib)
 include_directories(${SRC_FOLDER})
 
 
@@ -27,7 +28,7 @@ endif()
 
 
 # Add compiling flags
-add_compile_options(-ggdb -O0 -g -coverage)
+add_compile_options(-ggdb -O0 -g -coverage -DENABLE_AUDIT)
 
 
 # Enable testing
@@ -48,7 +49,7 @@ list(APPEND tests_names "test_version_op")
 list(APPEND tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose")
 
 list(APPEND tests_names "test_audit_op")
-list(APPEND tests_flags "-Wl,--wrap,_merror -Wl,--wrap,audit_send")
+list(APPEND tests_flags "-Wl,--wrap,_merror -Wl,--wrap,audit_send -Wl,--wrap,select -Wl,--wrap,audit_get_reply")
 
 list(APPEND tests_names "test_create_db")
 list(APPEND tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,lstat \
