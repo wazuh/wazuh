@@ -459,20 +459,9 @@ static int test_fim_tmp_file_setup_disk(void **state) {
 
 static int test_fim_tmp_file_teardown_disk(void **state) {
     test_fim_db_insert_data *test_data = *state;
-    free(test_data->entry->path);
-    free(test_data->entry->data->perm);
-    free(test_data->entry->data->attributes);
-    free(test_data->entry->data->uid);
-    free(test_data->entry->data->gid);
-    free(test_data->entry->data->user_name);
-    free(test_data->entry->data->group_name);
-    free(test_data->entry->data);
-    free(test_data->entry);
-    free(test_data->fim_sql);
     free(test_data->tmp_file->path);
     free(test_data->tmp_file);
-    free(test_data);
-    return 0;
+    return test_fim_db_teardown((void**)&test_data);
 }
 
 static int test_fim_tmp_file_setup_memory(void **state) {
@@ -490,20 +479,9 @@ static int test_fim_tmp_file_setup_memory(void **state) {
 
 static int test_fim_tmp_file_teardown_memory(void **state) {
     test_fim_db_insert_data *test_data = *state;
-    free(test_data->entry->path);
-    free(test_data->entry->data->perm);
-    free(test_data->entry->data->attributes);
-    free(test_data->entry->data->uid);
-    free(test_data->entry->data->gid);
-    free(test_data->entry->data->user_name);
-    free(test_data->entry->data->group_name);
-    free(test_data->entry->data);
-    free(test_data->entry);
-    free(test_data->fim_sql);
     W_Vector_free(test_data->tmp_file->list);
     free(test_data->tmp_file);
-    free(test_data);
-    return 0;
+    return test_fim_db_teardown((void**)&test_data);
 }
 
 static int test_fim_db_paths_teardown(void **state) {
@@ -521,17 +499,6 @@ static int test_fim_db_paths_teardown(void **state) {
 
 static int test_fim_db_json_teardown(void **state) {
     test_fim_db_teardown(state);
-    cJSON *json = state[1];
-    if (json) {
-        cJSON_Delete(json);
-    }
-    return 0;
-}
-
-static int test_fim_db_callback_sync_teardown(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-    free(test_data->fim_sql);
-    free(test_data);
     cJSON *json = state[1];
     if (json) {
         cJSON_Delete(json);
@@ -2298,7 +2265,7 @@ int main(void) {
         // fim_db_delete_not_scanned
         cmocka_unit_test_setup_teardown(test_fim_db_delete_not_scanned, test_fim_tmp_file_setup_disk, test_fim_db_teardown),
         // fim_db_callback_sync_path_range
-        cmocka_unit_test_setup_teardown(test_fim_db_callback_sync_path_range, test_fim_db_setup, test_fim_db_callback_sync_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_callback_sync_path_range, test_fim_db_setup, test_fim_db_json_teardown),
         // fim_db_callback_save_path
         cmocka_unit_test_setup_teardown(test_fim_db_callback_save_path_null, test_fim_tmp_file_setup_disk, test_fim_tmp_file_teardown_disk),
         cmocka_unit_test_setup_teardown(test_fim_db_callback_save_path_disk, test_fim_tmp_file_setup_disk, test_fim_tmp_file_teardown_disk),
