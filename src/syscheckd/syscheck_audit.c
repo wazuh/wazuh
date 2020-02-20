@@ -232,7 +232,11 @@ int add_audit_rules_syscheck(bool first_time) {
                         w_mutex_unlock(&audit_rules_mutex);
                         rules_added++;
                     } else {
-                        merror(FIM_ERROR_WHODATA_ADD_RULE, retval, syscheck.dir[i]);
+                        if (first_time) {
+                            mwarn(FIM_WARN_WHODATA_ADD_RULE, syscheck.dir[i]);
+                        } else {
+                            mdebug1(FIM_WARN_WHODATA_ADD_RULE, syscheck.dir[i]);
+                        }
                     }
                 } else if (found == 1) {
                     w_mutex_lock(&audit_rules_mutex);
@@ -467,12 +471,8 @@ int audit_init(void) {
     // Add Audit rules
     audit_added_rules = W_Vector_init(10);
     audit_added_dirs = W_Vector_init(20);
-    int rules_added = add_audit_rules_syscheck(true);
-    if (rules_added < 1){
-        mdebug1(FIM_AUDIT_NORULES);
-        return (-1);
-    }
 
+    add_audit_rules_syscheck(true);
     atexit(clean_rules);
     auid_err_reported = 0;
 
