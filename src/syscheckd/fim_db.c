@@ -576,6 +576,7 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
             w_mutex_unlock(mutex);
             if (entry != NULL) {
                 callback(fim_sql, entry, mutex, arg);
+                free_entry(entry);
             }
             os_free(path);
         }
@@ -1220,7 +1221,6 @@ void fim_db_callback_sync_path_range(__attribute__((unused))fdb_t *fim_sql, fim_
     char * plain = dbsync_state_msg("syscheck", entry_data);
     mdebug1("Sync Message for %s sent: %s", entry->path, plain);
     fim_send_sync_msg(plain);
-    free_entry(entry);
     os_free(plain);
 }
 
