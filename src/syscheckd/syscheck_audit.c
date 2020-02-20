@@ -233,9 +233,9 @@ int add_audit_rules_syscheck(bool first_time) {
                         rules_added++;
                     } else {
                         if (first_time) {
-                            mwarn(FIM_WARN_WHODATA_ADD_RULE);
+                            mwarn(FIM_WARN_WHODATA_ADD_RULE, syscheck.dir[i]);
                         } else {
-                            mdebug1(FIM_WARN_WHODATA_ADD_RULE);
+                            mdebug1(FIM_WARN_WHODATA_ADD_RULE, syscheck.dir[i]);
                         }
                     }
                 } else if (found == 1) {
