@@ -392,7 +392,7 @@ static void wraps_fim_db_insert_path_success() {
 static int setup_group(void **state) {
     (void) state;
     Read_Syscheck_Config("test_syscheck.conf");
-    syscheck.database_store = 0;
+    syscheck.database_store = 0;    // disk
     w_mutex_init(&syscheck.fim_entry_mutex, NULL);
     test_mode = 1;
     return 0;
@@ -1290,6 +1290,41 @@ void test_fim_db_set_all_unscanned_success(void **state) {
     int ret = fim_db_set_all_unscanned(test_data->fim_sql);
     assert_int_equal(ret, FIMDB_OK);
 }
+
+/*----------------------------------------------*/
+/*----------fim_db_get_data_checksum()------------------*/
+
+void test_fim_db_get_path_range_failed(void **state) {
+
+    test_fim_db_insert_data *test_data = *state;
+    will_return(__wrap_fopen, 0);
+    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage '/var/ossec/tmp/tmp_1928374652345'");
+
+    fim_tmp_file *file = NULL;
+    int ret = fim_db_get_path_range(test_data->fim_sql, "start", "stop", &file, syscheck.database_store);
+    assert_int_equal(ret, FIMDB_ERR);
+}
+
+void test_fim_db_get_path_range_success(void **state) {
+
+    test_fim_db_insert_data *test_data = *state;
+    fim_tmp_file *file = NULL;
+
+    will_return(__wrap_fopen, 1);
+    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    wraps_fim_db_check_transaction();
+
+    expect_string(__wrap_remove, filename, "/var/ossec/tmp/tmp_1928374652345");
+    will_return(__wrap_remove, 0);
+
+    int ret = fim_db_get_path_range(test_data->fim_sql, "start", "stop", &file, syscheck.database_store);
+    assert_int_equal(ret, FIMDB_OK);
+}
+
 /*----------------------------------------------*/
 /*----------fim_db_get_data_checksum()------------------*/
 void test_fim_db_get_data_checksum_failed(void **state) {
@@ -2173,6 +2208,9 @@ int main(void) {
         // fim_db_set_all_unscanned
         cmocka_unit_test_setup_teardown(test_fim_db_set_all_unscanned_failed, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_set_all_unscanned_success, test_fim_db_setup, test_fim_db_teardown),
+        // fim_db_get_path_range
+        cmocka_unit_test_setup_teardown(test_fim_db_get_path_range_failed, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_get_path_range_success, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_get_data_checksum
         cmocka_unit_test_setup_teardown(test_fim_db_get_data_checksum_failed, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_get_data_checksum_success, test_fim_db_setup, test_fim_db_teardown),
