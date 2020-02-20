@@ -40,6 +40,7 @@ typedef enum fdb_stmt {
     FIMDB_STMT_GET_INODE_ID,
     FIMDB_STMT_GET_COUNT_PATH,
     FIMDB_STMT_GET_COUNT_DATA,
+    FIMDB_STMT_GET_INODE,
     FIMDB_STMT_SIZE
 } fdb_stmt;
 
