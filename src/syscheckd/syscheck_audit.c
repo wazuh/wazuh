@@ -232,7 +232,12 @@ int add_audit_rules_syscheck(bool first_time) {
                         w_mutex_unlock(&audit_rules_mutex);
                         rules_added++;
                     } else {
-                        mwarn(FIM_WARN_WHODATA_ADD_RULE, syscheck.dir[i]);
+                        if (first_time) {
+                            mwarn(FIM_WARN_WHODATA_ADD_RULE, syscheck.dir[i]);
+                        } else {
+                            mdebug1(FIM_WARN_WHODATA_ADD_RULE, syscheck.dir[i]);
+                        }
+                        
                     }
                 } else if (found == 1) {
                     w_mutex_lock(&audit_rules_mutex);
