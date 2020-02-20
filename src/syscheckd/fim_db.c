@@ -876,6 +876,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) 
     break;
 
     case SQLITE_DONE:
+#ifndef WIN32
         fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_INODE);
         fim_db_bind_get_path_inode(fim_sql, file_path);
 
@@ -922,6 +923,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) 
             merror("SQL ERROR: (%d)%s", res_inode, sqlite3_errmsg(fim_sql->db));
             return FIMDB_ERR;
         }
+#endif
 
         inode_id = 0;
     break;
