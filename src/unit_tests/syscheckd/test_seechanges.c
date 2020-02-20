@@ -21,6 +21,10 @@
 char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
 #endif
 
+#ifdef TEST_WINAGENT
+char* filter(const char *string);
+#endif
+
 /* redefinitons/wrapping */
 
 #ifdef TEST_AGENT
@@ -70,6 +74,12 @@ static int setup_group(void **state) {
 static int teardown_group(void **state) {
     (void) state;
     Free_Syscheck(&syscheck);
+    return 0;
+}
+
+static int teardown_string(void **state) {
+    char *s = *state;
+    free(s);
     return 0;
 }
 
@@ -146,6 +156,104 @@ void test_is_nodiff_no_nodiff(void **state) {
     assert_int_equal(ret, 0);
 }
 
+#ifdef TEST_WINAGENT
+/* Forbidden windows path characters taken from: */
+/* https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file#naming-conventions */
+
+void test_filter_success(void **state) {
+    char *input = "a/unix/style/path/";
+    char *output;
+
+    output = filter(input);
+
+    *state = output;
+
+    assert_string_equal(output, "a\\unix\\style\\path\\");
+}
+
+void test_filter_unchanged_string(void **state) {
+    char *input = "This string wont change";
+    char *output;
+
+    output = filter(input);
+
+    *state = output;
+
+    assert_string_equal(output, input);
+}
+
+void test_filter_colon_char(void **state) {
+    char *input = "This : is not valid";
+    char *output;
+
+    output = filter(input);
+
+    assert_null(output);
+}
+
+void test_filter_question_mark_char(void **state) {
+    char *input = "This ? is not valid";
+    char *output;
+
+    output = filter(input);
+
+    assert_null(output);
+}
+
+void test_filter_less_than_char(void **state) {
+    char *input = "This < is not valid";
+    char *output;
+
+    output = filter(input);
+
+    assert_null(output);
+}
+
+void test_filter_greater_than_char(void **state) {
+    char *input = "This > is not valid";
+    char *output;
+
+    output = filter(input);
+
+    assert_null(output);
+}
+
+void test_filter_pipe_char(void **state) {
+    char *input = "This | is not valid";
+    char *output;
+
+    output = filter(input);
+
+    assert_null(output);
+}
+
+void test_filter_double_quote_char(void **state) {
+    char *input = "This \" is not valid";
+    char *output;
+
+    output = filter(input);
+
+    assert_null(output);
+}
+
+void test_filter_asterisk_char(void **state) {
+    char *input = "This * is not valid";
+    char *output;
+
+    output = filter(input);
+
+    assert_null(output);
+}
+
+void test_filter_percentage_char(void **state) {
+    char *input = "This % is not valid";
+    char *output;
+
+    output = filter(input);
+
+    assert_null(output);
+}
+#endif
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -154,6 +262,21 @@ int main(void) {
         cmocka_unit_test(test_is_nodiff_regex_true),
         cmocka_unit_test(test_is_nodiff_regex_false),
         cmocka_unit_test(test_is_nodiff_no_nodiff),
+
+        /* Windows specific tests */
+        #ifdef TEST_WINAGENT
+        /* filter */
+        cmocka_unit_test_teardown(test_filter_success, teardown_string),
+        cmocka_unit_test_teardown(test_filter_unchanged_string, teardown_string),
+        cmocka_unit_test(test_filter_colon_char),
+        cmocka_unit_test(test_filter_question_mark_char),
+        cmocka_unit_test(test_filter_less_than_char),
+        cmocka_unit_test(test_filter_greater_than_char),
+        cmocka_unit_test(test_filter_pipe_char),
+        cmocka_unit_test(test_filter_double_quote_char),
+        cmocka_unit_test(test_filter_asterisk_char),
+        cmocka_unit_test(test_filter_percentage_char),
+        #endif
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

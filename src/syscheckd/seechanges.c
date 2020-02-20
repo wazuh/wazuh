@@ -12,6 +12,11 @@
 #include "os_crypto/md5/md5_op.h"
 #include "syscheck.h"
 
+#ifdef UNIT_TESTING
+// Remove static qualifier from tests
+#define static
+#endif
+
 #ifdef WIN32
 #define unlink(x) _unlink(x)
 #endif
