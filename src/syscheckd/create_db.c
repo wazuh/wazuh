@@ -1034,19 +1034,16 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
     mdebug1(FIM_RUNNING_SCAN,
             time_diff(&start, &end),
             (double)(clock() - cputime_start) / CLOCKS_PER_SEC);
-    // SQLite Development
-    //mdebug1(FIM_ENTRIES_INFO, rbtree_size(syscheck.fim_entry));
 
-#ifndef WIN32
+#ifdef WIN32
+    mdebug1(FIM_ENTRIES_INFO, fim_db_get_count_entry_path(syscheck.database));
+#else
     unsigned inode_items = 0;
     unsigned inode_paths = 0;
 
-/* SQLite Development
-    for (hash_node = OSHash_Begin(syscheck.fim_inode, &inode_it); hash_node; hash_node = OSHash_Next(syscheck.fim_inode, &inode_it, hash_node)) {
-        inode_paths += ((fim_inode_data*)hash_node->data)->items;
-        inode_items++;
-    }
-*/
+    inode_items = fim_db_get_count_entry_data(syscheck.database);
+    inode_paths = fim_db_get_count_entry_path(syscheck.database);
+
     mdebug1(FIM_INODES_INFO, inode_items, inode_paths);
 #endif
 

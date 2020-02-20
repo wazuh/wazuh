@@ -40,6 +40,8 @@ static const char *SQL_STMT[] = {
     [FIMDB_STMT_GET_PATHS_INODE_COUNT] = "SELECT count(*) FROM entry_path INNER JOIN entry_data ON entry_data.rowid=entry_path.inode_id WHERE entry_data.inode=? AND entry_data.dev=?;",
     [FIMDB_STMT_SET_SCANNED] = "UPDATE entry_path SET scanned = 1 WHERE path = ?;",
     [FIMDB_STMT_GET_INODE_ID] = "SELECT inode_id FROM entry_path WHERE path = ?",
+    [FIMDB_STMT_GET_COUNT_PATH] = "SELECT count(*) FROM entry_path",
+    [FIMDB_STMT_GET_COUNT_DATA] = "SELECT count(*) FROM entry_data",
 };
 
 
@@ -1149,4 +1151,30 @@ void fim_db_callback_sync_path_range(__attribute__((unused))fdb_t *fim_sql, fim_
     fim_send_sync_msg(plain);
     free_entry(entry);
     os_free(plain);
+}
+
+int fim_db_get_count_entry_data(fdb_t * fim_sql) {
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_COUNT_DATA);
+    int res = sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_COUNT_DATA]);
+
+    if(res == SQLITE_ROW) {
+        return sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_COUNT_DATA], 0);
+    }
+    else {
+        merror("SQL ERROR: (%d)%s", res, sqlite3_errmsg(fim_sql->db));
+        return FIMDB_ERR;
+    }
+}
+
+int fim_db_get_count_entry_path(fdb_t * fim_sql) {
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_COUNT_PATH);
+    int res = sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_COUNT_PATH]);
+
+    if(res == SQLITE_ROW) {
+        return sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_COUNT_PATH], 0);
+    }
+    else {
+        merror("SQL ERROR: (%d)%s", res, sqlite3_errmsg(fim_sql->db));
+        return FIMDB_ERR;
+    }
 }

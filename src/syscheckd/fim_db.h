@@ -323,3 +323,21 @@ int fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top,
  */
 int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file,
                         pthread_mutex_t *mutex, int storage);
+
+/**
+ * @brief Get count of all entries in entry_data table.
+ * 
+ * @param fim_sql FIM database struct.
+ * 
+ * @return Number of entries in entry_data table.
+ */
+int fim_db_get_count_entry_data(fdb_t * fim_sql);
+
+/**
+ * @brief Get count of all entries in entry_path table.
+ * 
+ * @param fim_sql FIM database struct.
+ * 
+ * @return Number of entries in entry_path table.
+ */
+int fim_db_get_count_entry_path(fdb_t * fim_sql);
