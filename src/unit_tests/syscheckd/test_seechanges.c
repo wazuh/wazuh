@@ -23,6 +23,7 @@ char *_read_file(const char *high_name, const char *low_name, const char *define
 
 #ifdef TEST_WINAGENT
 char* filter(const char *string);
+char *adapt_win_fc_output(char *command_output);
 #endif
 
 /* redefinitons/wrapping */
@@ -63,6 +64,19 @@ int __wrap_isChroot() {
 }
 #endif
 
+#ifdef TEST_WINAGENT
+void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
+}
+#endif
+
 /* Setup/teardown */
 
 static int setup_group(void **state) {
@@ -82,6 +96,29 @@ static int teardown_string(void **state) {
     free(s);
     return 0;
 }
+
+#ifdef TEST_WINAGENT
+static int setup_adapt_win_fc_output(void **state) {
+    char **strarray = calloc(2, sizeof(char*));
+
+    if(strarray == NULL)
+        return -1;
+
+    *state = strarray;
+
+    return 0;
+}
+
+static int teardown_adapt_win_fc_output(void **state) {
+    char **strarray = *state;
+
+    free(strarray[0]);
+    free(strarray[1]);
+    free(strarray);
+
+    return 0;
+}
+#endif
 
 /* tests */
 
@@ -253,6 +290,51 @@ void test_filter_percentage_char(void **state) {
 
     assert_null(output);
 }
+
+void test_adapt_win_fc_output_success(void **state) {
+    char **strarray = *state;
+    char *output;
+    char *input = strdup(
+        "***** start.txt\r\n"
+        "    1:  First line\r\n"
+        "***** END.TXT\r\n"
+        "    1:  First Line 123\r\n"
+        "    2:  Last line\r\n"
+        "*****");
+
+    if(input == NULL) fail();
+
+    strarray[0] = input;
+
+    output = adapt_win_fc_output(input);
+
+    assert_non_null(output);
+
+    strarray[1] = output;
+
+    assert_string_equal(output, "> First line\n< First Line 123\n< Last line\n---\n");
+}
+
+void test_adapt_win_fc_output_invalid_input(void **state) {
+    char **strarray = *state;
+    char *output;
+    char *input = strdup("This is invalid");
+
+    if(input == NULL) fail();
+
+    strarray[0] = input;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6667): Unable to find second line of alert string.: This is invalid");
+
+    output = adapt_win_fc_output(input);
+
+    assert_non_null(output);
+
+    strarray[1] = output;
+
+    assert_string_equal(output, input);
+}
+
 #endif
 
 int main(void) {
@@ -276,6 +358,9 @@ int main(void) {
         cmocka_unit_test(test_filter_double_quote_char),
         cmocka_unit_test(test_filter_asterisk_char),
         cmocka_unit_test(test_filter_percentage_char),
+
+        cmocka_unit_test_setup_teardown(test_adapt_win_fc_output_success, setup_adapt_win_fc_output, teardown_adapt_win_fc_output),
+        cmocka_unit_test_setup_teardown(test_adapt_win_fc_output_invalid_input, setup_adapt_win_fc_output, teardown_adapt_win_fc_output),
         #endif
     };
 
