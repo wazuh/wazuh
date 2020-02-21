@@ -304,7 +304,7 @@ void audit_rules_list_append(w_audit_rules_list *wlist, w_audit_rule *element) {
             wlist->size *= 2;
             wlist->list = (w_audit_rule **)realloc(wlist->list, wlist->size * sizeof(w_audit_rule *));
             if (!wlist->list) {
-                merror_exit(MEM_ERROR, errno, strerror(errno));
+                merror_exit(MEM_ERROR, errno, strerror(errno)); //LCOV_EXCL_LINE
             }
         }
         wlist->list[wlist->used++] = element;
