@@ -39,6 +39,17 @@ void __wrap__mdebug1(const char * file, int line, const char * func, const char 
     check_expected(formatted_msg);
 }
 
+void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
+}
+
 #ifdef TEST_AGENT
 char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
 
@@ -159,17 +170,93 @@ void test_set_priority_windows_thread_highest(void **state) {
     set_priority_windows_thread();
 }
 
-void test_set_priority_windows_thread_above_normal(void **state) {}
+void test_set_priority_windows_thread_above_normal(void **state) {
+    syscheck.process_priority = -8;
 
-void test_set_priority_windows_thread_normal(void **state) {}
+    expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '-8'");
 
-void test_set_priority_windows_thread_below_normal(void **state) {}
+    will_return(wrap_GetCurrentThread, (HANDLE)123456);
 
-void test_set_priority_windows_thread_lowest(void **state) {}
+    expect_value(wrap_SetThreadPriority, hThread, (HANDLE)123456);
+    expect_value(wrap_SetThreadPriority, nPriority, THREAD_PRIORITY_ABOVE_NORMAL);
+    will_return(wrap_SetThreadPriority, true);
 
-void test_set_priority_windows_thread_idle(void **state) {}
+    set_priority_windows_thread();
+}
 
-void test_set_priority_windows_thread_error(void **state) {}
+void test_set_priority_windows_thread_normal(void **state) {
+    syscheck.process_priority = 0;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '0'");
+
+    will_return(wrap_GetCurrentThread, (HANDLE)123456);
+
+    expect_value(wrap_SetThreadPriority, hThread, (HANDLE)123456);
+    expect_value(wrap_SetThreadPriority, nPriority, THREAD_PRIORITY_NORMAL);
+    will_return(wrap_SetThreadPriority, true);
+
+    set_priority_windows_thread();
+}
+
+void test_set_priority_windows_thread_below_normal(void **state) {
+    syscheck.process_priority = 2;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '2'");
+
+    will_return(wrap_GetCurrentThread, (HANDLE)123456);
+
+    expect_value(wrap_SetThreadPriority, hThread, (HANDLE)123456);
+    expect_value(wrap_SetThreadPriority, nPriority, THREAD_PRIORITY_BELOW_NORMAL);
+    will_return(wrap_SetThreadPriority, true);
+
+    set_priority_windows_thread();
+}
+
+void test_set_priority_windows_thread_lowest(void **state) {
+    syscheck.process_priority = 7;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '7'");
+
+    will_return(wrap_GetCurrentThread, (HANDLE)123456);
+
+    expect_value(wrap_SetThreadPriority, hThread, (HANDLE)123456);
+    expect_value(wrap_SetThreadPriority, nPriority, THREAD_PRIORITY_LOWEST);
+    will_return(wrap_SetThreadPriority, true);
+
+    set_priority_windows_thread();
+}
+
+void test_set_priority_windows_thread_idle(void **state) {
+    syscheck.process_priority = 20;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '20'");
+
+    will_return(wrap_GetCurrentThread, (HANDLE)123456);
+
+    expect_value(wrap_SetThreadPriority, hThread, (HANDLE)123456);
+    expect_value(wrap_SetThreadPriority, nPriority, THREAD_PRIORITY_IDLE);
+    will_return(wrap_SetThreadPriority, true);
+
+    set_priority_windows_thread();
+}
+
+void test_set_priority_windows_thread_error(void **state) {
+    syscheck.process_priority = 10;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '10'");
+
+    will_return(wrap_GetCurrentThread, (HANDLE)123456);
+
+    expect_value(wrap_SetThreadPriority, hThread, (HANDLE)123456);
+    expect_value(wrap_SetThreadPriority, nPriority, THREAD_PRIORITY_LOWEST);
+    will_return(wrap_SetThreadPriority, false);
+
+    will_return(wrap_GetLastError, 2345);
+
+    expect_string(__wrap__merror, formatted_msg, "Can't set thread priority: 2345");
+
+    set_priority_windows_thread();
+}
 
 #endif
 

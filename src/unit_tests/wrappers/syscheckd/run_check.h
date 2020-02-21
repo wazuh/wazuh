@@ -9,10 +9,12 @@
 #ifndef UNIT_TEST_WRAPPERS_RUN_CHECK
 #define UNIT_TEST_WRAPPERS_RUN_CHECK
 
+#ifdef WIN32
 #include <windows.h>
 
 WINBOOL wrap_SetThreadPriority (HANDLE hThread, int nPriority);
 HANDLE wrap_GetCurrentThread (VOID);
 DWORD wrap_GetLastError (VOID);
+#endif
 
 #endif

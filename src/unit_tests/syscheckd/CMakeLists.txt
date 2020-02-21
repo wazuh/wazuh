@@ -111,7 +111,7 @@ else()
   list(APPEND syscheckd_tests_flags "${FIM_SYNC_BASE_FLAGS}")
 endif()
 
-set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap=_minfo,--wrap=_mdebug1")
+set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap=_minfo,--wrap=_mdebug1,--wrap=_merror")
 
 list(APPEND syscheckd_tests_names "test_run_check")
 if(${TARGET} STREQUAL "agent")
