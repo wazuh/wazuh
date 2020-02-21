@@ -385,7 +385,6 @@ void set_priority_windows_thread() {
 #endif
 
 
-// LCOV_EXCL_START
 int fim_whodata_initialize() {
 #if defined INOTIFY_ENABLED || defined WIN32
 
@@ -418,7 +417,6 @@ int fim_whodata_initialize() {
 
     return 0;
 }
-// LCOV_EXCL_STOP
 
 
 void log_realtime_status(int next) {

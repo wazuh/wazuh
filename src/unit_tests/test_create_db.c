@@ -1998,11 +1998,6 @@ int main(void) {
         cmocka_unit_test_teardown(test_fim_get_data_no_hashes, teardown_local_data),
         cmocka_unit_test(test_fim_get_data_hash_error),
 
-        /* fim_process_missing_entry */
-        cmocka_unit_test(test_fim_process_missing_entry_found),
-        cmocka_unit_test(test_fim_process_missing_entry_not_found_path),
-        cmocka_unit_test(test_fim_process_missing_entry_is_dir),
-
         /* check_deleted_files */
         cmocka_unit_test(test_check_deleted_files),
         cmocka_unit_test(test_check_deleted_files_error),

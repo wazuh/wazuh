@@ -168,7 +168,7 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     assert_int_equal(syscheck.sync_interval, 300);
     assert_int_equal(syscheck.sync_response_timeout, 30);
     assert_int_equal(syscheck.sync_queue_size, 16384);
-    assert_int_equal(syscheck.max_eps, 200);
+    assert_int_equal(syscheck.max_eps, 100);
 }
 
 void test_getSyscheckConfig(void **state)

@@ -28,12 +28,12 @@ int __wrap__minfo(const char * file, int line, const char * func, const char *ms
     return 1;
 }
 
-/* teardown */
+int __wrap_realtime_adddir() {
+    return 1;
+}
 
-static int free_syscheck(void **state)
-{
-    (void) state;
-    Free_Syscheck(&syscheck);
+int __wrap_audit_set_db_consistency() {
+    return 1;
 }
 
 unsigned int __wrap_sleep(unsigned int seconds) {
@@ -56,6 +56,14 @@ static int setup(void ** state) {
     syscheck.max_eps = 100;
     syscheck.sync_max_eps = 10;
     return 0;
+}
+
+/* teardown */
+
+static int free_syscheck(void **state)
+{
+    (void) state;
+    Free_Syscheck(&syscheck);
 }
 
 /* tests */
@@ -157,7 +165,6 @@ void test_send_syscheck_msg_0_eps(void ** _state) {
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_log_realtime_status),
-        cmocka_unit_test_teardown(test_fim_whodata_initialize, free_syscheck),
         cmocka_unit_test(test_fim_whodata_initialize),
         cmocka_unit_test(test_fim_send_sync_msg_10_eps),
         cmocka_unit_test(test_fim_send_sync_msg_0_eps),

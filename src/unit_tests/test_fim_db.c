@@ -988,8 +988,8 @@ void test_fim_db_insert_inode_id_null_error(void **state) {
 
 void test_fim_db_insert_inode_id_null_delete(void **state) {
     test_fim_db_insert_data *test_data = *state;
-    will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 3);
-    will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 3);
+    will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 4);
+    will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 4);
     will_return_always(__wrap_sqlite3_bind_int, 0);
     will_return_always(__wrap_sqlite3_bind_text, 0);
 
@@ -997,7 +997,12 @@ void test_fim_db_insert_inode_id_null_delete(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
-    will_return(__wrap_sqlite3_column_int, 0);
+    will_return(__wrap_sqlite3_column_int, 1);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 1);
 
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
@@ -1015,8 +1020,8 @@ void test_fim_db_insert_inode_id_null_delete(void **state) {
 
 void test_fim_db_insert_inode_id_null_delete_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
-    will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 3);
-    will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 3);
+    will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 4);
+    will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 4);
     will_return_always(__wrap_sqlite3_bind_int, 0);
     will_return_always(__wrap_sqlite3_bind_text, 0);
 
@@ -1024,7 +1029,12 @@ void test_fim_db_insert_inode_id_null_delete_error(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
-    will_return(__wrap_sqlite3_column_int, 0);
+    will_return(__wrap_sqlite3_column_int, 1);
+
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 1);
 
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
 

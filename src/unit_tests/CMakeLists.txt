@@ -98,7 +98,7 @@ list(APPEND tests_flags "-Wl,--wrap,fim_send_sync_msg -Wl,--wrap,time -Wl,--wrap
                          -Wl,--wrap,fim_db_get_path_range -Wl,--wrap,fim_db_sync_path_range")
 
 list(APPEND tests_names "test_run_check")
-list(APPEND tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,sleep -Wl,--wrap,SendMSG")
+list(APPEND tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,sleep -Wl,--wrap,SendMSG -Wl,--wrap,realtime_adddir -Wl,--wrap,audit_set_db_consistency")
 
 list(APPEND tests_names "test_syscheck_op")
 list(APPEND tests_flags "-Wl,--wrap,rmdir_ex -Wl,--wrap,wreaddir -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 \
