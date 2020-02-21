@@ -136,6 +136,11 @@ else()
   list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS}")
 endif()
 
+if(${TARGET} STREQUAL "winagent")
+  list(APPEND syscheckd_tests_names "test_win_registry")
+  list(APPEND syscheckd_tests_flags " ")
+endif()
+
 # Compiling tests
 list(LENGTH syscheckd_tests_names count)
 math(EXPR count "${count} - 1")
