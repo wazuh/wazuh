@@ -50,7 +50,9 @@ list(APPEND tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose")
 
 list(APPEND tests_names "test_audit_op")
 list(APPEND tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,audit_send -Wl,--wrap,select -Wl,--wrap,audit_get_reply \
-                         -Wl,--wrap,wpopenv -Wl,--wrap,fgets -Wl,--wrap,wpclose")
+                         -Wl,--wrap,wpopenv -Wl,--wrap,fgets -Wl,--wrap,wpclose -Wl,--wrap,audit_open -Wl,--wrap,audit_add_watch_dir \
+                         -Wl,--wrap,audit_update_watch_perms -Wl,--wrap,audit_errno_to_name -Wl,--wrap,audit_rule_fieldpair_data \
+                         -Wl,--wrap,audit_add_rule_data -Wl,--wrap,audit_delete_rule_data -Wl,--wrap,audit_close")
 
 list(APPEND tests_names "test_create_db")
 list(APPEND tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,lstat \
