@@ -861,13 +861,16 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_entry_data *en
 
 int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) {
     int inode_id;
-    unsigned long inode;
-    int res, res_data, res_path, res_inode, res_inode_id;
+    int res, res_data, res_path;
 
 #ifdef WIN32
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_DATA_ROW);
     fim_db_bind_path(fim_sql, FIMDB_STMT_GET_DATA_ROW, file_path);
+
 #else
+    unsigned long inode;
+    int res_inode, res_inode_id;
+
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_DATA_ROW);
     fim_db_bind_get_inode(fim_sql, FIMDB_STMT_GET_DATA_ROW, entry->inode, entry->dev);
 
@@ -1123,7 +1126,7 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
         w_mutex_unlock(mutex);
 }
 
-void fim_db_process_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex, __attribute__((unused))void *arg) {
+void fim_db_process_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex, void *arg) {
 
     fim_event_mode mode = (fim_event_mode) arg;
     int conf_file = fim_configuration_directory(entry->path, "file");
@@ -1149,7 +1152,7 @@ void fim_db_process_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mute
             break;
     }
 
-    fim_db_remove_path(fim_sql, entry, mutex, 1);
+    fim_db_remove_path(fim_sql, entry, mutex, (void *) (int) 1);
 }
 
 int fim_db_get_row_path(fdb_t * fim_sql, int mode, char **path) {
