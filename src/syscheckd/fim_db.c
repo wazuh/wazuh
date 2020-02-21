@@ -1016,6 +1016,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
         }
         entry = fim_db_decode_full_row(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]);
         if (i == m && entry->path) {
+            os_free(str_pathuh);
             os_strdup(entry->path, str_pathuh);
         }
         //Type of storage not required
