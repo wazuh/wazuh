@@ -93,7 +93,7 @@ void fim_scan() {
     fim_send_scan_info(FIM_SCAN_END);
 
     if (isDebug()) {
-        fim_print_info(start, end, cputime_start);
+        fim_print_info(start, end, cputime_start); // LCOV_EXCL_LINE
     }
 }
 
@@ -970,7 +970,6 @@ int fim_check_ignore (const char *file_name) {
 }
 
 
-// LCOV_EXCL_START
 int fim_check_restrict (const char *file_name, OSMatch *restriction) {
     if (file_name == NULL) {
         merror(NULL_ERROR);
@@ -987,7 +986,7 @@ int fim_check_restrict (const char *file_name, OSMatch *restriction) {
 
     return 0;
 }
-// LCOV_EXCL_STOP
+
 
 void free_entry_data(fim_entry_data * data) {
     if (!data) {
@@ -1059,3 +1058,4 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
 
     return;
 }
+// LCOV_EXCL_STOP

@@ -11,6 +11,7 @@ set(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../)
 
 include_directories(${SRC_FOLDER}/headers)
 include_directories(${SRC_FOLDER}/external/openssl/include)
+include_directories(${SRC_FOLDER}/external/audit-userspace/lib)
 include_directories(${SRC_FOLDER})
 
 
@@ -27,7 +28,7 @@ endif()
 
 
 # Add compiling flags
-add_compile_options(-ggdb -O0 -g -coverage)
+add_compile_options(-ggdb -O0 -g -coverage -DENABLE_AUDIT)
 
 
 # Enable testing
@@ -47,13 +48,16 @@ list(APPEND tests_flags " ")
 list(APPEND tests_names "test_version_op")
 list(APPEND tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose")
 
+list(APPEND tests_names "test_audit_op")
+list(APPEND tests_flags "-Wl,--wrap,_merror -Wl,--wrap,audit_send -Wl,--wrap,select -Wl,--wrap,audit_get_reply")
+
 list(APPEND tests_names "test_create_db")
 list(APPEND tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,lstat \
                          -Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck_msg -Wl,--wrap,readdir \
                          -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,realtime_adddir -Wl,--wrap,HasFilesystem \
                          -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_get_paths_from_inode -Wl,--wrap,delete_target_file \
                          -Wl,--wrap,fim_db_insert -Wl,--wrap,OS_MD5_SHA1_SHA256_File -Wl,--wrap,seechanges_addfile\
-                         -Wl,--wrap,fim_db_delete_not_scanned -Wl,--wrap,fim_db_set_all_unscanned \
+                         -Wl,--wrap,fim_db_get_not_scanned -Wl,--wrap,fim_db_delete_not_scanned -Wl,--wrap,fim_db_set_all_unscanned \
                          -Wl,--wrap,fim_db_set_scanned -Wl,--wrap,get_user -Wl,--wrap,get_group \
                          -Wl,--wrap,fim_db_remove_path")
 
@@ -88,7 +92,7 @@ list(APPEND tests_flags "-Wl,--wrap,fim_send_sync_msg -Wl,--wrap,time -Wl,--wrap
                          -Wl,--wrap,fim_db_get_data_checksum -Wl,--wrap,dbsync_check_msg -Wl,--wrap,fim_send_sync_msg \
                          -Wl,--wrap,fim_db_get_count_range -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_entry_json \
                          -Wl,--wrap,fim_db_data_checksum_range -Wl,--wrap,dbsync_state_msg \
-                         -Wl,--wrap,fim_db_sync_path_range")
+                         -Wl,--wrap,fim_db_get_path_range -Wl,--wrap,fim_db_sync_path_range")
 
 list(APPEND tests_names "test_run_check")
 list(APPEND tests_flags "-Wl,--wrap,_minfo")
@@ -106,7 +110,9 @@ list(APPEND tests_flags "-Wl,--wrap=w_is_file,--wrap=remove,--wrap=sqlite3_open_
                          -Wl,--wrap=sqlite3_errmsg,--wrap=sqlite3_bind_int,--wrap=sqlite3_bind_text,--wrap=sqlite3_column_int \
                          -Wl,--wrap=sqlite3_column_text,--wrap=printf,--wrap=fim_send_sync_msg,--wrap=dbsync_state_msg \
                          -Wl,--wrap=fim_entry_json,--wrap=sqlite3_last_insert_rowid,--wrap=EVP_DigestUpdate \
-                         -Wl,--wrap=fim_configuration_directory,--wrap=fim_json_event,--wrap=send_syscheck_msg,--wrap=delete_target_file")
+                         -Wl,--wrap=fim_configuration_directory,--wrap=fim_json_event,--wrap=send_syscheck_msg,--wrap=delete_target_file \
+                         -Wl,--wrap=fseek -Wl,--wrap=fgets -Wl,--wrap=fclose -Wl,--wrap=fopen -Wl,--wrap=time -Wl,--wrap=getpid \
+                         -Wl,--wrap=fflush -Wl,--wrap=fprintf -Wl,--wrap=wstr_escape_json")
 
 list(APPEND tests_names "test_wdb_fim")
 list(APPEND tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,cJSON_Parse -Wl,--wrap,wdb_begin2 \
