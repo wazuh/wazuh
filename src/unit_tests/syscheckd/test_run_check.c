@@ -36,8 +36,6 @@ void __wrap__mdebug1(const char * file, int line, const char * func, const char 
     vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
     va_end(args);
 
-    printf("%s:%d - %s: %s\n", file, line, func, formatted_msg);
-
     check_expected(formatted_msg);
 }
 
@@ -80,14 +78,6 @@ int __wrap_isChroot() {
 #endif
 
 #ifdef TEST_WINAGENT
-WINBASEAPI HANDLE WINAPI __wrap_GetCurrentThread (VOID) {
-    return mock_type(HANDLE);
-}
-
-WINBASEAPI DWORD WINAPI _wrap__GetLastError (VOID) {
-    return mock_type(DWORD);
-}
-
 int __wrap_realtime_adddir(const char *dir, int whodata) {
     return 1;
 }
@@ -135,6 +125,12 @@ void test_fim_whodata_initialize(void **state)
 
     #if defined(TEST_AGENT) || defined(TEST_WINAGENT)
     expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck.conf]");
+
+    will_return(wrap_GetCurrentThread, (HANDLE)123456);
+
+    expect_value(wrap_SetThreadPriority, hThread, (HANDLE)123456);
+    expect_value(wrap_SetThreadPriority, nPriority, THREAD_PRIORITY_LOWEST);
+    will_return(wrap_SetThreadPriority, true);
     #endif
 
     #ifdef TEST_WINAGENT
@@ -154,7 +150,7 @@ void test_set_priority_windows_thread_highest(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '-10'");
 
-    will_return(__wrap_GetCurrentThread, (HANDLE)123456);
+    will_return(wrap_GetCurrentThread, (HANDLE)123456);
 
     expect_value(wrap_SetThreadPriority, hThread, (HANDLE)123456);
     expect_value(wrap_SetThreadPriority, nPriority, THREAD_PRIORITY_HIGHEST);

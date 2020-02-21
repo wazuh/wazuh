@@ -30,7 +30,9 @@
 #define STATIC
 
 // Replace windows system calls with wrappers
-#define SetThreadPriority wrap_SetThreadPriority
+#define SetThreadPriority   wrap_SetThreadPriority
+#define GetCurrentThread    wrap_GetCurrentThread
+#define GetLastError        wrap_GetLastError
 #else
 #define STATIC static
 #endif
