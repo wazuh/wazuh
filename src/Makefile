@@ -1543,8 +1543,6 @@ LIBS_TEST=-lcmocka
 wrappers_syscheck_c := $(wildcard unit_tests/wrappers/syscheckd/*.c)
 wrappers_syscheck_o := $(wrappers_syscheck_c:.c=.o)
 
-UNIT_TEST_WRAPPERS:=${wrappers_syscheck_o}
-
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 	OSSEC_CFLAGS+=${CFLAGS_TEST}
 	# OSSEC_CFLAGS+=${CFLAGS_TEST} -Itests
@@ -1552,13 +1550,12 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	OSSEC_LIBS+=${LIBS_TEST}
 
 ifeq (${TARGET},winagent)
-	WINDOWS_UNIT_TEST_WRAPPERS:=${UNIT_TEST_WRAPPERS}
+	WINDOWS_UNIT_TEST_WRAPPERS:=${wrappers_syscheck_o}
 endif
 endif #TEST
 
 unit_tests/wrappers/syscheckd/%.o: unit_tests/wrappers/syscheckd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
-
 
 .PHONY: test run_valgrind_tests run_tests build_tests test_valgrind test_coverage
 
@@ -1759,7 +1756,7 @@ clean-internals:
 	rm -f ${wdb_o}
 	rm -f ${SELINUX_MODULE}
 	rm -f ${SELINUX_POLICY}
-	rm -f ${UNIT_TEST_WRAPPERS}
+	rm -f ${wrappers_syscheck_o}
 
 clean-framework:
 	${MAKE} -C ../framework clean
