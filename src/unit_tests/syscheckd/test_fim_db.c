@@ -112,22 +112,20 @@ extern int __real_fprintf(FILE *fp, const char *fmt, ...);
 int __wrap_fprintf(FILE *fp, const char *fmt, ...)
 {
     int ret;
+    
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, fmt);
     if (test_mode) {
-        char formatted_msg[OS_MAXSTR];
-        va_list args;
-
-        va_start(args, fmt);
         vsnprintf(formatted_msg, OS_MAXSTR, fmt, args);
-        va_end(args);
-
         check_expected(formatted_msg);
-
+    }
+    ret = __real_fprintf(fp, fmt, args);
+    va_end(args);
+    if(test_mode) {
         return mock();
     }
-    va_list argptr;
-    va_start(argptr,fmt);
-    ret = __real_fprintf(fp, fmt, argptr);
-    va_end(argptr);
     return ret;
 }
 
@@ -1500,7 +1498,7 @@ void test_fim_db_cache_failed(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
-    expect_string(__wrap__merror, formatted_msg, "Error in fim_db_cache(): statement(0)'INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);' REASON GOES HERE");
+    expect_string(__wrap__merror, formatted_msg, "Error in fim_db_cache(): statement(0)'INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);' REASON GOES HERE");
     int ret = fim_db_cache(test_data->fim_sql);
     assert_int_equal(ret, FIMDB_ERR);
 }
@@ -1520,7 +1518,7 @@ void test_fim_db_close_failed(void **state) {
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return(__wrap_sqlite3_finalize, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
-    expect_string(__wrap__merror, formatted_msg, "Error in fim_db_finalize_stmt(): statement(0)'INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);' REASON GOES HERE");
+    expect_string(__wrap__merror, formatted_msg, "Error in fim_db_finalize_stmt(): statement(0)'INSERT INTO entry_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);' REASON GOES HERE");
     will_return(__wrap_sqlite3_close_v2, SQLITE_BUSY);
     fim_db_close(test_data->fim_sql);
 }
@@ -2201,7 +2199,12 @@ void test_fim_db_create_temp_file_disk(void **state) {
 
 void test_fim_db_create_temp_file_disk_error(void **state) {
     will_return(__wrap_fopen, 0);
+    #ifdef TEST_WINAGENT
+    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage 'tmp/tmp_1928374652345'");
+    #else
     expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage '/var/ossec/tmp/tmp_1928374652345'");
+    #endif
+    
 
     fim_tmp_file *ret = fim_db_create_temp_file(FIM_DB_DISK);
 

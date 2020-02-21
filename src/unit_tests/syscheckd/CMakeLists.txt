@@ -126,9 +126,9 @@ set(FIM_DB_BASE_FLAGS "-Wl,--wrap=w_is_file,--wrap=remove,--wrap=sqlite3_open_v2
                        -Wl,--wrap=sqlite3_column_text,--wrap=fim_send_sync_msg,--wrap=dbsync_state_msg \
                        -Wl,--wrap=fim_entry_json,--wrap=sqlite3_last_insert_rowid,--wrap=EVP_DigestUpdate \
                        -Wl,--wrap=fim_configuration_directory,--wrap=fim_json_event,--wrap=send_syscheck_msg \
-                       -Wl,--wrap=delete_target_file,--wrap=_minfo,--wrap=_merror,--wrap=_mdebug1,--wrap=_mdebug2 \
+                       -Wl,--wrap=delete_target_file,--wrap=_minfo,--wrap=_mdebug1,--wrap=_mdebug2 \
                        -Wl,--wrap=fseek,--wrap=fclose,--wrap=fopen,--wrap=time,--wrap=getpid,--wrap=fflush \
-                       -Wl,--wrap=fgets,--wrap=fprintf")
+                       -Wl,--wrap=fgets,--wrap=fprintf,--wrap=wstr_escape_json")
 
 list(APPEND syscheckd_tests_names "test_fim_db")
 if(${TARGET} STREQUAL "agent")
