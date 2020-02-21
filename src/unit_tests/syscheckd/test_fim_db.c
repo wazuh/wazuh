@@ -29,7 +29,7 @@ fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt);
 fim_tmp_file *fim_db_create_temp_file(int storage);
 void fim_db_clean_file(fim_tmp_file **file, int storage);
 
-int test_mode = 0;
+static int test_mode = 0;
 
 /*--------------WRAPS-----------------------*/
 
@@ -38,7 +38,7 @@ int __wrap_w_is_file(const char * const file) {
     return mock();
 }
 
-int __real_fseek(FILE *stream, long offset, int whence);
+extern int __real_fseek(FILE *stream, long offset, int whence);
 int __wrap_fseek(FILE *stream, long offset, int whence) {
     if (test_mode) {
         return mock();
@@ -46,12 +46,16 @@ int __wrap_fseek(FILE *stream, long offset, int whence) {
     return __real_fseek(stream, offset, whence);
 }
 
+extern int __real_fgets(char *s, int size, FILE *stream);
 int __wrap_fgets(char *s, int size, FILE *stream) {
-    strncpy(s, mock_type(char *), size);
-    return mock_type(int);
+    if (test_mode) {
+        strncpy(s, mock_type(char *), size);
+        return mock_type(int);
+    }
+    return __real_fgets(s, size, stream);
 }
 
-int __real_fclose(FILE *__stream);
+extern int __real_fclose(FILE *__stream);
 int __wrap_fclose(FILE *stream) {
     if (test_mode) {
         return 0;
@@ -59,7 +63,7 @@ int __wrap_fclose(FILE *stream) {
     return __real_fclose(stream);
 }
 
-FILE *__real_fopen(const char * __filename, const char * __modes);
+extern FILE *__real_fopen(const char * __filename, const char * __modes);
 FILE *__wrap_fopen(const char * __filename, const char * __modes) {
     if (test_mode) {
         return mock_type(FILE *);
@@ -67,8 +71,12 @@ FILE *__wrap_fopen(const char * __filename, const char * __modes) {
     return __real_fopen(__filename, __modes);
 }
 
+extern int __real_fflush();
 int __wrap_fflush () {
-    return 0;
+    if (test_mode) {
+        return 0;
+    }
+    return __real_fflush();
 }
 
 int __wrap_remove(const char *filename) {
@@ -76,12 +84,20 @@ int __wrap_remove(const char *filename) {
     return mock();
 }
 
+extern unsigned long __real_time();
 unsigned long __wrap_time() {
-    return 192837465;
+    if (test_mode) {
+        return 192837465;
+    }
+    return __real_time();
 }
 
+extern int __real_getpid();
 int __wrap_getpid() {
-    return 2345;
+    if (test_mode) {
+        return 2345;
+    }
+    return __real_getpid();
 }
 
 char *__wrap_wstr_escape_json() {
@@ -92,18 +108,27 @@ char *__wrap_wstr_escape_json() {
     return NULL;
 }
 
+extern int __real_fprintf(FILE *fp, const char *fmt, ...);
 int __wrap_fprintf(FILE *fp, const char *fmt, ...)
 {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
+    int ret;
+    if (test_mode) {
+        char formatted_msg[OS_MAXSTR];
+        va_list args;
 
-    va_start(args, fmt);
-    vsnprintf(formatted_msg, OS_MAXSTR, fmt, args);
-    va_end(args);
+        va_start(args, fmt);
+        vsnprintf(formatted_msg, OS_MAXSTR, fmt, args);
+        va_end(args);
 
-    check_expected(formatted_msg);
+        check_expected(formatted_msg);
 
-    return mock();
+        return mock();
+    }
+    va_list argptr;
+    va_start(argptr,fmt);
+    ret = __real_fprintf(fp, fmt, argptr);
+    va_end(argptr);
+    return ret;
 }
 
 int __wrap_sqlite3_open_v2(
@@ -191,11 +216,6 @@ const char *__wrap_sqlite3_column_text(sqlite3_stmt* pStmt, int iCol) {
 
 int __wrap_sqlite3_last_insert_rowid(sqlite3* db){
     return mock();
-}
-
-int __wrap_printf(const char *fmt, ...) {
-    // Printf should not exits, if found test will fail
-    fail();
 }
 
 void __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...)
@@ -648,7 +668,11 @@ void test_fim_db_init_failed_file_creation(void **state) {
     will_return(__wrap_sqlite3_open_v2, NULL);
     will_return(__wrap_sqlite3_open_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    #ifdef TEST_WINAGENT
+    expect_string(__wrap__merror, formatted_msg, "Couldn't create SQLite database 'queue/fim/db/fim.db': ERROR MESSAGE");
+    #else
     expect_string(__wrap__merror, formatted_msg, "Couldn't create SQLite database '/var/ossec/queue/fim/db/fim.db': ERROR MESSAGE");
+    #endif
     will_return(__wrap_sqlite3_close_v2, 0);
     fdb_t* fim_db;
     fim_db = fim_db_init(syscheck.database_store);
