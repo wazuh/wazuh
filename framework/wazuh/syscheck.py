@@ -87,7 +87,7 @@ class WazuhDBQuerySyscheck(WazuhDBQuery):
 
     def _filter_date(self, date_filter, filter_db_name):
         # dates are stored as timestamps
-        date_filter['value'] = int(time.mktime(time.strptime(date_filter['value'], "%Y-%m-%d")))
+        date_filter['value'] = int(datetime.timestamp(datetime.strptime(date_filter['value'], "%Y-%m-%d %H:%M:%S")))
         self.query += "{0} IS NOT NULL AND {0} {1} :{2}".format(self.fields[filter_db_name], date_filter['operator'],
                                                                 date_filter['field'])
         self.request[date_filter['field']] = date_filter['value']
@@ -154,7 +154,7 @@ def last_scan(agent_id):
 
 
 def files(agent_id=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}, q='',
-          summary=False):
+          summary=False, distinct=False):
     """
     Return a list of files from the database that match the filters
 
@@ -165,7 +165,8 @@ def files(agent_id=None, offset=0, limit=common.database_limit, sort=None, searc
     :param limit: Maximum number of items to return.
     :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
     :param search: Looks for items with the specified string.
-    :param query: Query to filter by
+    :param q: Query to filter by
+    :param distinct: Look for distinct values
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     parameters = {"date": "date", "mtime": "mtime", "file": "file", "size": "size", "perm": "perm", "uname": "uname",
@@ -176,7 +177,6 @@ def files(agent_id=None, offset=0, limit=common.database_limit, sort=None, searc
     if 'hash' in filters:
         q = f'(md5={filters["hash"]},sha1={filters["hash"]},sha256={filters["hash"]})' + ('' if not q else ';' + q)
         del filters['hash']
-
     return WazuhDBQuerySyscheck(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
-                                filters=filters, query=q, select=select, table='fim_entry',
+                                filters=filters, query=q, select=select, table='fim_entry', distinct=distinct,
                                 fields=summary_parameters if summary else parameters).run()

@@ -368,11 +368,12 @@ class APIRequestQueue:
     def __init__(self, server):
         self.request_queue = asyncio.Queue()
         self.server = server
-        self.logger = logging.getLogger('wazuh').getChild('dapi')
-        self.logger.addFilter(cluster.ClusterFilter(tag='Cluster', subtag='D API'))
+        self.logger = logging.getLogger('wazuh')
         self.pending_requests = {}
 
     async def run(self):
+        cluster.context_tag.set('Cluster')
+        cluster.context_subtag.set('D API')
         while True:
             # name    -> node name the request must be sent to. None if called from a worker node.
             # id      -> id of the request.

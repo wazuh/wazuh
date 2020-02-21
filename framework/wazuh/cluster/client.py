@@ -34,10 +34,12 @@ class AbstractClientManager:
         self.concurrency_test = concurrency_test
         self.file = file
         self.string = string
-        self.logger = logger.getChild(tag)
+        self.logger = logging.getLogger('wazuh')
         # logging tag
         self.tag = tag
-        self.logger.addFilter(cluster.ClusterFilter(tag=self.tag, subtag="Main"))
+        # modify filter tags with context vars
+        cluster.context_tag.set(self.tag)
+        cluster.context_subtag.set("Main")
         self.tasks = []
         self.handler_class = AbstractClient
         self.client = None

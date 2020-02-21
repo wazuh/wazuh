@@ -59,27 +59,42 @@ static void fim_send_msg(char mq, const char * location, const char * msg) {
 // LCOV_EXCL_STOP
 
 
-// LCOV_EXCL_START
 // Send a data synchronization control message
+
 void fim_send_sync_msg(const char * msg) {
     mdebug2(FIM_DBSYNC_SEND, msg);
     fim_send_msg(DBSYNC_MQ, SYSCHECK, msg);
-    struct timespec timeout = { syscheck.send_delay / 1000000, syscheck.send_delay % 1000000 * 1000 };
-    nanosleep(&timeout, NULL);
+
+    if (syscheck.sync_max_eps == 0) {
+        return;
+    }
+
+    static long n_msg_sent = 0;
+
+    if (++n_msg_sent == syscheck.sync_max_eps) {
+        sleep(1);
+        n_msg_sent = 0;
+    }
 }
-// LCOV_EXCL_STOP
 
 
-// LCOV_EXCL_START
 // Send a message related to syscheck change/addition
 void send_syscheck_msg(const char *msg)
 {
     mdebug2(FIM_SEND, msg);
     fim_send_msg(SYSCHECK_MQ, SYSCHECK, msg);
-    struct timespec timeout = { syscheck.send_delay / 1000000, syscheck.send_delay % 1000000 * 1000 };
-    nanosleep(&timeout, NULL);
+
+    if (syscheck.max_eps == 0) {
+        return;
+    }
+
+    static unsigned n_msg_sent = 0;
+
+    if (++n_msg_sent == syscheck.max_eps) {
+        sleep(1);
+        n_msg_sent = 0;
+    }
 }
-// LCOV_EXCL_STOP
 
 
 // LCOV_EXCL_START
@@ -455,7 +470,14 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
                 continue;
             }
 
-            real_path = realpath(syscheck.symbolic_links[i], NULL);
+            if (CHECK_FOLLOW & syscheck.opts[i]) {
+                real_path = realpath(syscheck.symbolic_links[i], NULL);
+            }
+            else {
+                // Taking the link itself if follow_symbolic_link is not enabled
+                os_calloc(strlen(syscheck.symbolic_links[i]) + 1, sizeof(char), real_path);
+                snprintf(real_path, strlen(syscheck.symbolic_links[i]) + 1, "%s", syscheck.symbolic_links[i]);
+            }
 
             if (*syscheck.dir[i]) {
                 if (real_path) {
