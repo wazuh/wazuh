@@ -13,6 +13,9 @@
 #include "shared.h"
 #include "audit_op.h"
 
+#ifdef UNIT_TESTING
+#define static
+#endif
 
 static w_audit_rules_list *_audit_rules_list;
 
@@ -49,8 +52,8 @@ int audit_print_reply(struct audit_reply *rep) {
             } else if (field == AUDIT_FILTERKEY) {
                 free(key);
                 if (rep->ruledata->values[i]) {
-                    key = strndup(rep->ruledata->buf + offset, rep->ruledata->values[i]);
-                    offset += rep->ruledata->values[i];
+                    key = strndup(rep->ruledata->buf + offset, rep->ruledata->values[i]); //LCOV_EXCL_LINE
+                    offset += rep->ruledata->values[i]; //LCOV_EXCL_LINE
                 } else {
                     key = strdup("");
                 }
