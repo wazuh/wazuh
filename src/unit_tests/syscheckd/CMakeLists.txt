@@ -101,7 +101,7 @@ set(FIM_SYNC_BASE_FLAGS "-Wl,--wrap,fim_send_sync_msg -Wl,--wrap,time -Wl,--wrap
                          -Wl,--wrap,fim_db_get_data_checksum -Wl,--wrap,dbsync_check_msg -Wl,--wrap,fim_send_sync_msg \
                          -Wl,--wrap,fim_db_get_count_range -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_entry_json \
                          -Wl,--wrap,fim_db_data_checksum_range -Wl,--wrap,dbsync_state_msg \
-                         -Wl,--wrap,fim_db_sync_path_range")
+                         -Wl,--wrap,fim_db_sync_path_range -Wl,--wrap,fim_db_get_path_range")
 
 list(APPEND syscheckd_tests_names "test_fim_sync")
 if(${TARGET} STREQUAL "winagent")
