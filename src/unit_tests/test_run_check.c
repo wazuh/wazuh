@@ -16,6 +16,10 @@
 
 #include "../syscheckd/syscheck.h"
 
+struct state {
+    unsigned int sleep_seconds;
+} state;
+
 /* redefinitons/wrapping */
 
 int __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...)
@@ -24,6 +28,26 @@ int __wrap__minfo(const char * file, int line, const char * func, const char *ms
     return 1;
 }
 
+unsigned int __wrap_sleep(unsigned int seconds) {
+    state.sleep_seconds += seconds;
+    return 0;
+}
+
+int __wrap_SendMSG(int queue, const char *message, const char *locmsg, char loc) {
+    (void) queue;
+    (void) message;
+    (void) locmsg;
+    (void) loc;
+    return 0;
+}
+
+/* Setup */
+
+static int setup(void ** state) {
+    (void) state;
+    syscheck.max_eps = 200;
+    return 0;
+}
 
 /* tests */
 
@@ -54,13 +78,50 @@ void test_fim_whodata_initialize(void **state)
     assert_int_equal(ret, 0);
 }
 
+void test_fim_send_sync_msg(void ** _state) {
+    (void) _state;
+
+    // We must not sleep the first 199 times
+
+    state.sleep_seconds = 0;
+
+    for (int i = 1; i < syscheck.max_eps; i++) {
+        fim_send_sync_msg("");
+        assert_int_equal(state.sleep_seconds, 0);
+    }
+
+    // After 200 times, sleep one second
+
+    fim_send_sync_msg("");
+    assert_int_equal(state.sleep_seconds, 1);
+}
+
+void test_send_syscheck_msg(void ** _state) {
+    (void) _state;
+
+    // We must not sleep the first 199 times
+
+    state.sleep_seconds = 0;
+
+    for (int i = 1; i < syscheck.max_eps; i++) {
+        send_syscheck_msg("");
+        assert_int_equal(state.sleep_seconds, 0);
+    }
+
+    // After 200 times, sleep one second
+
+    send_syscheck_msg("");
+    assert_int_equal(state.sleep_seconds, 1);
+}
 
 
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_log_realtime_status),
         cmocka_unit_test(test_fim_whodata_initialize),
+        cmocka_unit_test(test_fim_send_sync_msg),
+        cmocka_unit_test(test_send_syscheck_msg),
     };
 
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, setup, NULL);
 }

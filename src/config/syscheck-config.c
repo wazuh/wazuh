@@ -262,16 +262,6 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag)
         /* Add entries - look for the last available */
         i = 0;
         while (syscheck->registry && syscheck->registry[i].entry) {
-            int str_len_i;
-            int str_len_dir;
-
-            str_len_dir = strlen(tmp_entry);
-            str_len_i = strlen(syscheck->registry[i].entry);
-
-            if (str_len_dir > str_len_i) {
-                str_len_dir = str_len_i;
-            }
-
             /* Duplicated entry */
             if (syscheck->registry[i].arch == arch && strcmp(syscheck->registry[i].entry, tmp_entry) == 0) {
                 mdebug2("Overwriting the registration entry: %s", syscheck->registry[i].entry);
@@ -424,7 +414,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     opts &= ~ CHECK_ATTRS;
 #endif
                 } else {
-                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);       
+                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
                     goto out_free;
                 }
             }
@@ -616,8 +606,8 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     mwarn("Recursion level '%d' exceeding limit. Setting %d.", recursion_limit, MAX_DEPTH_ALLOWED);
                     recursion_limit = syscheck->max_depth;
                 }
-            } 
-            
+            }
+
             /* Check tag */
             else if (strcmp(*attrs, xml_tag) == 0) {
                 if (tag) {
@@ -1482,7 +1472,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 }
 
                 syscheck->max_eps = value;
-                syscheck->send_delay = 1000000 / value;
             }
         } /* Allow prefilter cmd */
         else if (strcmp(node[i]->element, xml_allow_remote_prefilter_cmd) == 0) {
@@ -1594,9 +1583,15 @@ int Test_Syscheck(const char * path){
 void Free_Syscheck(syscheck_config * config) {
     if (config) {
         int i;
-        free(config->opts);
-        free(config->scan_day);
-        free(config->scan_time);
+        if (config->opts) {
+            free(config->opts);
+        }
+        if (config->scan_day) {
+            free(config->scan_day);
+        }
+        if (config->scan_time) {
+            free(config->scan_time);
+        }
         if (config->ignore) {
             for (i=0; config->ignore[i] != NULL; i++) {
                 free(config->ignore[i]);
@@ -1606,6 +1601,7 @@ void Free_Syscheck(syscheck_config * config) {
         if (config->ignore_regex) {
             for (i=0; config->ignore_regex[i] != NULL; i++) {
                 OSMatch_FreePattern(config->ignore_regex[i]);
+                free(config->ignore_regex[i]);
             }
             free(config->ignore_regex);
         }
@@ -1618,22 +1614,37 @@ void Free_Syscheck(syscheck_config * config) {
         if (config->nodiff_regex) {
             for (i=0; config->nodiff_regex[i] != NULL; i++) {
                 OSMatch_FreePattern(config->nodiff_regex[i]);
+                free(config->nodiff_regex[i]);
             }
+            free(config->nodiff_regex);
         }
         if (config->dir) {
             for (i=0; config->dir[i] != NULL; i++) {
                 free(config->dir[i]);
-                if(config->filerestrict[i]) {
+                if(config->filerestrict && config->filerestrict[i]) {
                     OSMatch_FreePattern(config->filerestrict[i]);
                     free(config->filerestrict[i]);
                 }
-                if(config->tag[i]) {
+                if(config->tag && config->tag[i]) {
                     free(config->tag[i]);
                 }
             }
             free(config->dir);
-            free(config->filerestrict);
-            free(config->tag);
+            if (config->filerestrict) {
+                free(config->filerestrict);
+            }
+            if (config->tag) {
+                free(config->tag);
+            }
+        }
+        if (config->symbolic_links) {
+            for (i=0; config->symbolic_links[i] != NULL; i++) {
+                free(config->symbolic_links[i]);
+            }
+            free(config->symbolic_links);
+        }
+        if (config->recursion_level) {
+            free(config->recursion_level);
         }
 
     #ifdef WIN32
@@ -1661,13 +1672,17 @@ void Free_Syscheck(syscheck_config * config) {
     #endif
 
         if (config->realtime) {
-            OSHash_Free(config->realtime->dirtb);
+            if (config->realtime->dirtb) {
+                OSHash_Free(config->realtime->dirtb);
+            }
 #ifdef WIN32
             CloseEventLog(config->realtime->evt);
 #endif
             free(config->realtime);
         }
-        free(config->prefilter_cmd);
+        if (config->prefilter_cmd) {
+            free(config->prefilter_cmd);
+        }
 
         free_strarray(config->audit_key);
     }

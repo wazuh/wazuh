@@ -540,6 +540,10 @@ int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mu
             storage, (void *) (int) 0);
 }
 
+int fim_db_process_missing_entry(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage, fim_event_mode mode) {
+    return fim_db_process_read_file(fim_sql, file, mutex, fim_db_process_path, storage, (void *) (fim_event_mode) mode);
+}
+
 int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex,
     void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *),
     int storage, void * arg) {
@@ -1116,6 +1120,35 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
         w_mutex_lock(mutex);
         fim_db_check_transaction(fim_sql);
         w_mutex_unlock(mutex);
+}
+
+void fim_db_process_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex, __attribute__((unused))void *arg) {
+
+    fim_event_mode mode = (fim_event_mode) arg;
+    int conf_file = fim_configuration_directory(entry->path, "file");
+
+    switch (mode) {
+
+        case FIM_REALTIME:
+            if (!(syscheck.opts[conf_file] & REALTIME_ACTIVE)){
+                return;
+            }
+            break;
+
+        case FIM_WHODATA:
+            if (!(syscheck.opts[conf_file] & WHODATA_ACTIVE)) {
+                return;
+            }
+            break;
+
+        case FIM_SCHEDULED:
+            if (!(syscheck.opts[conf_file] & SCHEDULED_ACTIVE)) {
+                return;
+            }
+            break;
+    }
+
+    fim_db_remove_path(fim_sql, entry, mutex, 1);
 }
 
 int fim_db_get_row_path(fdb_t * fim_sql, int mode, char **path) {

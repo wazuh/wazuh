@@ -301,15 +301,100 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
 }
 
 
-void fim_realtime_event(char *file) {
-    fim_audit_inode_event(file, FIM_REALTIME, NULL);
+void fim_realtime_event(char *file, fim_element *item) {
+
+    struct stat file_stat;
+
+    // If the file exists, generate add or modify events.
+    if (w_stat(file, &file_stat) >= 0) {
+
+#ifdef WIN32
+        fim_checker(file, item, NULL, 1);
+#else
+        fim_audit_inode_event(file, FIM_REALTIME, NULL);
+#endif
+
+    }
+    else {
+        // Otherwise, it could be a file deleted or a directory moved (or renamed).
+        fim_process_missing_entry(file, FIM_REALTIME, NULL, item);
+    }
 }
 
 // LCOV_EXCL_START
-void fim_whodata_event(whodata_evt * w_evt) {
-    fim_audit_inode_event(w_evt->path, FIM_WHODATA, w_evt);
+void fim_whodata_event(whodata_evt * w_evt, fim_element *item) {
+
+    struct stat file_stat;
+
+    // If the file exists, generate add or modify events.
+    if(w_stat(w_evt->path, &file_stat) >= 0) {
+
+#ifdef WIN32
+        fim_checker(w_evt->path, item, w_evt, 1);
+#else
+        fim_audit_inode_event(w_evt->path, FIM_WHODATA, w_evt);
+#endif
+
+    }
+    // Otherwise, it could be a file deleted or a directory moved (or renamed).
+    else {
+        fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt, item);
+    }
 }
+
 // LCOV_EXCL_STOP
+
+
+void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt, fim_element *item) {
+
+    fim_entry *saved_data;
+    int found = 0;
+
+    // Search path in DB.
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+    saved_data = fim_db_get_path(syscheck.database, pathname);
+
+    if (saved_data) {
+        found = 1;
+    }
+
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    // Exists, create event.
+    if (found) {
+
+#ifdef WIN32
+        fim_checker(pathname, item, w_evt, 1);
+#else
+        fim_audit_inode_event(pathname, mode, w_evt);
+#endif
+
+        return;
+    }
+
+    // Since the file doesn't exist, research if it's directory and have files in DB.
+    fim_tmp_file *files = NULL;
+    char first_entry[PATH_MAX];
+    char last_entry[PATH_MAX];
+
+#ifdef WIN32
+    snprintf(first_entry, PATH_MAX, "%s\\", pathname);
+    snprintf(last_entry, PATH_MAX, "%s]", pathname);
+
+#else
+    snprintf(first_entry, PATH_MAX, "%s/", pathname);
+    snprintf(last_entry, PATH_MAX, "%s0", pathname);
+
+#endif
+
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+    fim_db_get_path_range(syscheck.database, first_entry, last_entry, &files, syscheck.database_store);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    if (files && files->elements) {
+        fim_db_process_missing_entry(syscheck.database, files, &syscheck.fim_entry_mutex, syscheck.database_store, mode);
+    }
+}
 
 
 void fim_audit_inode_event(char *file, fim_event_mode mode, whodata_evt * w_evt) {

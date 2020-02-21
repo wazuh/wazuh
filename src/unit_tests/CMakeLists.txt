@@ -49,7 +49,7 @@ list(APPEND tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose")
 list(APPEND tests_names "test_create_db")
 list(APPEND tests_flags "-Wl,--wrap,rbtree_insert -Wl,--wrap,rbtree_get -Wl,--wrap,rbtree_replace -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug2 \
                          -Wl,--wrap,OSHash_Add -Wl,--wrap,lstat -Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck_msg -Wl,--wrap,rbtree_keys -Wl,--wrap,readdir -Wl,--wrap,opendir -Wl,--wrap,closedir \
-                         -Wl,--wrap,rbtree_delete -Wl,--wrap,OSHash_Delete -Wl,--wrap,print_rbtree -Wl,--wrap,realtime_adddir -Wl,--wrap,HasFilesystem")
+                         -Wl,--wrap,rbtree_delete -Wl,--wrap,OSHash_Delete -Wl,--wrap,print_rbtree -Wl,--wrap,realtime_adddir -Wl,--wrap,HasFilesystem -Wl,--wrap,rbtree_range")
 
 list(APPEND tests_names "test_syscheck_audit")
 list(APPEND tests_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,IsSocket -Wl,--wrap,IsFile -Wl,--wrap,IsDir -Wl,--wrap,IsLink -Wl,--wrap,IsFile -Wl,--wrap,audit_restart \
@@ -79,7 +79,7 @@ list(APPEND tests_flags "-Wl,--wrap,rbtree_keys -Wl,--wrap,rbtree_get -Wl,--wrap
                          -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,queue_push_ex")
 
 list(APPEND tests_names "test_run_check")
-list(APPEND tests_flags "-Wl,--wrap,_minfo")
+list(APPEND tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,sleep -Wl,--wrap,SendMSG")
 
 list(APPEND tests_names "test_syscheck_op")
 list(APPEND tests_flags "-Wl,--wrap,rmdir_ex -Wl,--wrap,wreaddir -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 \
