@@ -25,7 +25,7 @@ if(NOT STATIC_CMOCKA)
 endif()
 
 # Add compiling flags
-add_compile_options(-ggdb -O0 -g -coverage -DTEST_WINAGENT -DDEBUG)
+add_compile_options(-ggdb -O0 -g -coverage -DTEST_WINAGENT -DDEBUG -DENABLE_AUDIT)
 
 # Add syscheck objects
 file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/*.o)

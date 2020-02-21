@@ -292,6 +292,11 @@ int __wrap_isChroot() {
     return 1;
 }
 
+int __wrap_fim_db_get_count_entry_path(fdb_t * fim_sql){
+    return mock();
+}
+
+
 #ifdef TEST_WINAGENT
 int __wrap_pthread_mutex_lock (pthread_mutex_t *__mutex) {
     return 0;
@@ -2282,14 +2287,17 @@ static void test_fim_scan(void **state) {
 
     will_return_count(__wrap_HasFilesystem, 0, 10);
 
-    expect_value(__wrap_fim_db_delete_not_scanned, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_delete_not_scanned, FIMDB_OK);
-
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_set_all_unscanned, 0);
 
+    expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_not_scanned, NULL);
+    will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
+
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
+    will_return(__wrap_fim_db_get_count_entry_path, 5);
     fim_scan();
 }
 #endif
