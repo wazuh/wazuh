@@ -348,20 +348,14 @@ void fim_whodata_event(whodata_evt * w_evt, fim_element *item) {
 void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt, fim_element *item) {
 
     fim_entry *saved_data;
-    int found = 0;
 
     // Search path in DB.
     w_mutex_lock(&syscheck.fim_entry_mutex);
     saved_data = fim_db_get_path(syscheck.database, pathname);
-
-    if (saved_data) {
-        found = 1;
-    }
-
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     // Exists, create event.
-    if (found) {
+    if (saved_data) {
 
 #ifdef WIN32
         fim_checker(pathname, item, w_evt, 1);
@@ -369,6 +363,7 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
         fim_audit_inode_event(pathname, mode, w_evt);
 #endif
 
+        free_entry(saved_data);
         return;
     }
 
@@ -392,7 +387,10 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (files && files->elements) {
-        fim_db_process_missing_entry(syscheck.database, files, &syscheck.fim_entry_mutex, syscheck.database_store, mode);
+        if (fim_db_process_missing_entry(syscheck.database, files, &syscheck.fim_entry_mutex,
+            syscheck.database_store, mode) != FIMDB_OK) {
+                merror(FIM_DB_ERROR_RM_RANGE, first_entry, last_entry);
+            }
     }
 }
 
@@ -475,7 +473,7 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
     if ((saved && strcmp(saved->data->hash_sha1, data->hash_sha1) != 0)
         || alert_type == FIM_ADD) {
         if (fim_db_insert(syscheck.database, key, data) == -1) {
-            os_free(saved);
+            free_entry(saved);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
             return OS_INVALID;
         }
@@ -492,7 +490,7 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
         os_free(json_formated);
     }
     cJSON_Delete(json_event);
-    os_free(saved);
+    free_entry(saved);
 
     return result;
 }

@@ -1123,7 +1123,7 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
         w_mutex_unlock(mutex);
 }
 
-void fim_db_process_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex, __attribute__((unused))void *arg) {
+void fim_db_process_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex, void *arg) {
 
     fim_event_mode mode = (fim_event_mode) arg;
     int conf_file = fim_configuration_directory(entry->path, "file");
@@ -1149,7 +1149,7 @@ void fim_db_process_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mute
             break;
     }
 
-    fim_db_remove_path(fim_sql, entry, mutex, 1);
+    fim_db_remove_path(fim_sql, entry, mutex, (void *) (int) 1);
 }
 
 int fim_db_get_row_path(fdb_t * fim_sql, int mode, char **path) {
