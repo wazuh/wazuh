@@ -292,7 +292,10 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
 
     if (!_base_line && item->configuration & CHECK_SEECHANGES) {
         // The first backup is created. It should return NULL.
-        free(seechanges_addfile(file));
+        char *file_changed = seechanges_addfile(file);
+        if (file_changed) {
+            os_free(file_changed);
+        }
     }
 
     if (json_event && _base_line && report) {
@@ -462,6 +465,9 @@ void fim_audit_inode_event(char *file, fim_event_mode mode, whodata_evt * w_evt)
 
 #ifdef WIN32
 int fim_registry_event(char *key, fim_entry_data *data, int pos) {
+
+    assert(data);
+
     cJSON *json_event = NULL;
     fim_entry *saved;
     char *json_formated;
@@ -478,7 +484,7 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
 
     json_event = fim_json_event(key, saved ? saved->data : NULL, data, pos,
                                 alert_type, 0, NULL);
-    if ((saved && strcmp(saved->data->hash_sha1, data->hash_sha1) != 0)
+    if ((saved && saved->data && strcmp(saved->data->hash_sha1, data->hash_sha1) != 0)
         || alert_type == FIM_ADD) {
         if (fim_db_insert(syscheck.database, key, data) == -1) {
             free_entry(saved);
