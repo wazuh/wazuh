@@ -14,9 +14,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <string.h>
 
 #include "../headers/audit_op.h"
 #include "../headers/defs.h"
+#include "../headers/exec_op.h"
 
 extern w_audit_rules_list *_audit_rules_list;
 
@@ -31,6 +33,17 @@ typedef struct __audit_replies {
 /* redefinitons/wrapping */
 
 void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
+}
+
+void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
     char formatted_msg[OS_MAXSTR];
     va_list args;
 
@@ -72,6 +85,19 @@ int __wrap_audit_get_reply(int fd, struct audit_reply *rep, reply_t block, int p
 }
 
 int __wrap_select() {
+    return mock();
+}
+
+int __wrap_fgets(char *s, int size, FILE *stream) {
+    strncpy(s, mock_type(char *), size);
+    return mock();
+}
+
+wfd_t *__wrap_wpopenv() {
+    return mock_type(wfd_t *);
+}
+
+int __wrap_wpclose() {
     return mock();
 }
 
@@ -147,6 +173,30 @@ static int test_teardown_print_reply(void **state) {
     return 0;
 }
 
+static int test_teardown_free_path(void **state) {
+    char *path = *state;
+
+    free(path);
+
+    return 0;
+}
+
+static int test_setup_file(void **state) {
+    wfd_t * wfd = calloc(1, sizeof(wfd_t));
+
+    *state = wfd;
+
+    return 0;
+}
+
+static int test_teardown_file(void **state) {
+    wfd_t * wfd = *state;
+
+    free(wfd);
+
+    return 0;
+}
+
 /* tests */
 
 static void test_audit_get_rule_list_error(void **state) {
@@ -163,7 +213,7 @@ static void test_audit_get_rule_list_error(void **state) {
     assert_int_equal(ret, -1);
 }
 
-static void test_audit_get_rule_list_success(void **state) {
+static void test_audit_get_rule_list(void **state) {
     (void) state;
 
     expect_value(__wrap_audit_send, fd, 0);
@@ -179,6 +229,10 @@ static void test_audit_get_rule_list_success(void **state) {
     int ret = audit_get_rule_list(0);
 
     assert_int_equal(ret, 1);
+    assert_non_null(_audit_rules_list);
+    assert_non_null(_audit_rules_list->list);
+    assert_int_equal(_audit_rules_list->used, 0);
+    assert_int_equal(_audit_rules_list->size, 25);
 }
 
 static void test_kernel_get_reply(void **state) {
@@ -225,15 +279,148 @@ static void test_audit_print_reply(void **state) {
     assert_string_equal(_audit_rules_list->list[0]->path, "");
     assert_string_equal(_audit_rules_list->list[0]->key, "");
     assert_string_equal(_audit_rules_list->list[0]->perm, "rwxa");
+    assert_int_equal(_audit_rules_list->used, 1);
+    assert_int_equal(_audit_rules_list->size, 25);
+}
+
+static void test_audit_clean_path(void **state) {
+    char *path = "../test/file";
+    char *cwd = "/home/folder";
+
+    char *full_path = audit_clean_path(cwd, path);
+
+    *state = full_path;
+
+    assert_string_equal(full_path, "/home/test/file");
+}
+
+static void test_audit_restart(void **state) {
+    wfd_t * wfd = *state;
+
+    will_return(__wrap_wpopenv, wfd);
+
+    will_return(__wrap_fgets, "test");
+    will_return(__wrap_fgets, 1);
+    expect_string(__wrap__mdebug1, formatted_msg, "auditd: test");
+
+    will_return(__wrap_fgets, "");
+    will_return(__wrap_fgets, 0);
+
+    will_return(__wrap_wpclose, 0);
+
+    int ret = audit_restart();
+
+    assert_int_equal(ret, 0);
+}
+
+static void test_audit_restart_open_error(void **state) {
+    will_return(__wrap_wpopenv, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "Could not launch command to restart Auditd: Success (0)");
+
+    int ret = audit_restart();
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_audit_restart_close_exec_error(void **state) {
+    wfd_t * wfd = *state;
+
+    will_return(__wrap_wpopenv, wfd);
+
+    will_return(__wrap_fgets, "test");
+    will_return(__wrap_fgets, 1);
+    expect_string(__wrap__mdebug1, formatted_msg, "auditd: test");
+
+    will_return(__wrap_fgets, "");
+    will_return(__wrap_fgets, 0);
+
+    will_return(__wrap_wpclose, 0x7f00);
+
+    expect_string(__wrap__merror, formatted_msg, "Could not launch command to restart Auditd.");
+
+    int ret = audit_restart();
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_audit_restart_close_error(void **state) {
+    wfd_t * wfd = *state;
+
+    will_return(__wrap_wpopenv, wfd);
+
+    will_return(__wrap_fgets, "test");
+    will_return(__wrap_fgets, 1);
+    expect_string(__wrap__mdebug1, formatted_msg, "auditd: test");
+
+    will_return(__wrap_fgets, "");
+    will_return(__wrap_fgets, 0);
+
+    will_return(__wrap_wpclose, 0xff00);
+
+    expect_string(__wrap__merror, formatted_msg, "Could not restart Auditd service.");
+
+    int ret = audit_restart();
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_audit_rules_list_append(void **state) {
+    (void) state;
+
+    int i;
+    for(i = 0; i < 30; ++i) {
+        w_audit_rule *rule = calloc(1, sizeof(w_audit_rule));
+        rule->path = strdup("/test/file");
+        rule->key = strdup("key");
+        rule->perm = strdup("rw");
+        audit_rules_list_append(_audit_rules_list, rule);
+    }
+
+    assert_int_equal(_audit_rules_list->used, 31);
+    assert_int_equal(_audit_rules_list->size, 50);
+}
+
+static void test_search_audit_rule(void **state) {
+    (void) state;
+
+    int ret = search_audit_rule("/test/file", "rw", "key");
+
+    assert_int_equal(ret, 1);
+}
+
+static void test_search_audit_rule_null(void **state) {
+    (void) state;
+
+    int ret = search_audit_rule(NULL, NULL, NULL);
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_search_audit_rule_not_found(void **state) {
+    (void) state;
+
+    int ret = search_audit_rule("/test/search2", "rwx", "search2");
+
+    assert_int_equal(ret, 0);
 }
 
 
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_audit_get_rule_list_error),
-        cmocka_unit_test(test_audit_get_rule_list_success),
+        cmocka_unit_test(test_audit_get_rule_list),
         cmocka_unit_test_setup_teardown(test_kernel_get_reply, test_setup_kernel_get_reply, test_teardown_kernel_get_reply),
         cmocka_unit_test_setup_teardown(test_audit_print_reply, test_setup_print_reply, test_teardown_print_reply),
+        cmocka_unit_test_teardown(test_audit_clean_path, test_teardown_free_path),
+        cmocka_unit_test_setup_teardown(test_audit_restart, test_setup_file, test_teardown_file),
+        cmocka_unit_test(test_audit_restart_open_error),
+        cmocka_unit_test_setup_teardown(test_audit_restart_close_exec_error, test_setup_file, test_teardown_file),
+        cmocka_unit_test_setup_teardown(test_audit_restart_close_error, test_setup_file, test_teardown_file),
+        cmocka_unit_test(test_audit_rules_list_append),
+        cmocka_unit_test(test_search_audit_rule),
+        cmocka_unit_test(test_search_audit_rule_null),
+        cmocka_unit_test(test_search_audit_rule_not_found),
     };
     return cmocka_run_group_tests(tests, NULL, group_teardown);
 }
