@@ -394,7 +394,9 @@ fim_tmp_file *fim_db_create_temp_file(int storage) {
 void fim_db_clean_file(fim_tmp_file **file, int storage) {
     if (storage == FIM_DB_DISK) {
         fclose((*file)->fd);
-        remove((*file)->path);
+        if (remove((*file)->path) < 0) {
+            merror("Failed to remove '%s'", (*file)->path);
+        }
         os_free((*file)->path);
     } else {
         os_free((*file)->list->vector);
