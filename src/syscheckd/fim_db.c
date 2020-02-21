@@ -550,12 +550,11 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
     void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *),
     int storage, void * arg) {
 
-    char *line = NULL;
+    char line[PATH_MAX + 1];
     char *path = NULL;
     int i = 0;
 
     if (storage == FIM_DB_DISK) {
-        os_calloc(BUFSIZ + 1, sizeof(char), line);
         fseek(file->fd, SEEK_SET, 0);
     }
 
@@ -564,8 +563,19 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
         if (storage == FIM_DB_DISK) {
             /* fgets() adds \n(newline) to the end of the string,
              So it must be removed. */
-            if (fgets(line, BUFSIZ, file->fd)) {
-                line[strlen(line) - 1] = '\0';
+            if (fgets(line, sizeof(line), file->fd)) {
+                size_t len = strlen(line);
+
+                switch (line[len - 1]) {
+                case '\n':
+                    line[len - 1] = '\0';
+                    break;
+
+                default:
+                    merror("Temporary path file '%s' is corrupt: missing line end.", file->path);
+                    continue;
+                }
+
                 path = wstr_unescape_json(line);
             }
         } else {
@@ -587,7 +597,6 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
     } while (i < file->elements);
 
     fim_db_clean_file(&file, storage);
-    os_free(line);
 
     return FIMDB_OK;
 }
@@ -892,7 +901,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) 
 
         res_inode = sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_INODE]);
 
-        /* 
+        /*
             Compares the scanned inode with the stored one. If it is different,
             it will delete it and insert the new one.
          */
@@ -905,7 +914,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) 
 
                 res_inode_id = sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_INODE_ID]);
 
-                /* 
+                /*
                     When the inode of a file changes, it will delete the row from the database
                     and insert the new one (inode is primary key) to have the path pointing to
                     the right inode.
