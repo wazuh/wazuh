@@ -24,11 +24,22 @@
 #include "rootcheck/rootcheck.h"
 #include "fim_db.h"
 
+#ifdef UNIT_TESTING
+#include "unit_tests/wrappers/syscheckd/run_check.h"
+// Remove static qualifier when unit testing
+#define STATIC
+
+// Replace windows system calls with wrappers
+#define SetThreadPriority wrap_SetThreadPriority
+#else
+#define STATIC static
+#endif
+
 // Prototypes
 void * fim_run_realtime(__attribute__((unused)) void * args);
 int fim_whodata_initialize();
 #ifdef WIN32
-static void set_priority_windows_thread();
+STATIC void set_priority_windows_thread();
 #ifdef WIN_WHODATA
 static void set_whodata_mode_changes();
 #endif
