@@ -23,8 +23,12 @@ extern char *os_winreg_sethkey(char *reg_entry);
 void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos);
 
 /**************************************************************************/
-/*******************************WRAPS**************************************/
-
+/*************************WRAPS - GROUP SETUP******************************/
+int test_group_setup(void **state) {
+    int ret;
+    ret = Read_Syscheck_Config("test_syscheck.conf");
+    return ret;
+}
 /**************************************************************************/
 /*************************os_winreg_sethkey********************************/
 void test_os_winreg_sethkek_invalid_subtree(void **state) {
@@ -78,7 +82,35 @@ void test_os_winreg_querykey_invalid_query(void **state) {
     //will_return(__wrap_RegQueryInfoKeyA,__real_RegQueryInfoKeyA);
     os_winreg_querykey(oshkey, subkey, fullname, pos);
 }
+/**************************************************************************/
+/*************************os_winreg_check()*******************************/
+int setup_winreg_check_invalid_subtree(void **state){
+    // Store initial registry pointer
+    *state = syscheck.registry; 
+    registry **reg_array_ptrñ
+    reg_array_ptr = (registry **) calloc(2, sizeof(registry*));
+    registry *new_reg_ptr = reg_array_ptr[0];
+    new_reg_ptr[0] = (registry) malloc(sizeof(registry));
+    new_reg_ptr[1] = NULL;
+    new_reg_ptr[0]->entry = strdup("WRONG_SUBTREE\\Software\\Classes\\batfile");
+    new_reg_ptr[0]->arch = syscheck.registry[0].arch;
+    syscheck.registry = reg_array_ptr;
+    return 0;
+}
 
+int teardown_winreg_check_invalid_subtree(void **state){
+    // free new_reg
+    free(syscheck.registry[0]->entry);
+    free(syscheck.registry[0]);
+    free(syscheck.registry);
+    // Restore registry
+    syscheck.registry = *state;
+    return 0;
+}
+
+void test_os_winreg_check_invalid_subtree(void **state) {
+    
+}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -90,8 +122,10 @@ int main(void) {
         cmocka_unit_test(test_os_winreg_sethkek_valid_current_config),
         cmocka_unit_test(test_os_winreg_sethkek_valid_users),
         /* os_winreg_querykey */
-        cmocka_unit_test(test_os_winreg_querykey_invalid_query)
+        cmocka_unit_test(test_os_winreg_querykey_invalid_query),
+        /* os_winreg_check */
+        cmocka_unit_test_setup_teardown(test_os_winreg_check_invalid_subtree, setup_winreg_check_invalid_subtree, teardown_winreg_check_invalid_subtree)
     };
 
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, test_group_setup, NULL);
 }
