@@ -399,7 +399,6 @@ static int setup_group(void **state) {
     syscheck.file_max_size = 1024;
 
     unit_testing = true;
-    nowDebug();
 
     return 0;
 }
