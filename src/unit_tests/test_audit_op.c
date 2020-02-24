@@ -101,6 +101,46 @@ int __wrap_wpclose() {
     return mock();
 }
 
+int __wrap_audit_open() {
+    return mock();
+}
+
+int __wrap_audit_add_watch_dir(int type, struct audit_rule_data **rulep, const char *path) {
+    check_expected(type);
+    check_expected(path);
+
+    return mock();
+}
+
+int __wrap_audit_update_watch_perms(struct audit_rule_data *rule, int perms) {
+    check_expected(perms);
+
+    return mock();
+}
+
+char *__wrap_audit_errno_to_name() {
+    return mock_type(char *);
+}
+
+int __wrap_audit_rule_fieldpair_data(struct audit_rule_data **rulep, const char *pair, int flags) {
+    check_expected(pair);
+    check_expected(flags);
+
+    return mock();
+}
+
+int __wrap_audit_add_rule_data() {
+    return mock();
+}
+
+int __wrap_audit_delete_rule_data() {
+    return mock();
+}
+
+int __wrap_audit_close() {
+    return mock();
+}
+
 /* setups/teardowns */
 
 static int group_teardown(void **state) {
@@ -405,6 +445,204 @@ static void test_search_audit_rule_not_found(void **state) {
     assert_int_equal(ret, 0);
 }
 
+static void test_audit_add_rule(void **state) {
+    (void) state;
+
+    will_return(__wrap_audit_open, 1);
+
+    expect_value(__wrap_audit_add_watch_dir, type, AUDIT_DIR);
+    expect_string(__wrap_audit_add_watch_dir, path, "/usr/bin");
+    will_return(__wrap_audit_add_watch_dir, 0);
+
+    expect_value(__wrap_audit_update_watch_perms, perms, AUDIT_PERM_WRITE | AUDIT_PERM_ATTR);
+    will_return(__wrap_audit_update_watch_perms, 0);
+
+    expect_string(__wrap_audit_rule_fieldpair_data, pair, "key=bin-folder");
+    expect_value(__wrap_audit_rule_fieldpair_data, flags, AUDIT_FILTER_EXIT & AUDIT_FILTER_MASK);
+    will_return(__wrap_audit_rule_fieldpair_data, 0);
+
+    will_return(__wrap_audit_add_rule_data, 1);
+
+    will_return(__wrap_audit_close, 1);
+
+    int ret = audit_add_rule("/usr/bin", "bin-folder");
+
+    assert_int_equal(ret, 1);
+}
+
+static void test_audit_delete_rule(void **state) {
+    (void) state;
+
+    will_return(__wrap_audit_open, 1);
+
+    expect_value(__wrap_audit_add_watch_dir, type, AUDIT_DIR);
+    expect_string(__wrap_audit_add_watch_dir, path, "/usr/bin");
+    will_return(__wrap_audit_add_watch_dir, 0);
+
+    expect_value(__wrap_audit_update_watch_perms, perms, AUDIT_PERM_WRITE | AUDIT_PERM_ATTR);
+    will_return(__wrap_audit_update_watch_perms, 0);
+
+    expect_string(__wrap_audit_rule_fieldpair_data, pair, "key=bin-folder");
+    expect_value(__wrap_audit_rule_fieldpair_data, flags, AUDIT_FILTER_EXIT & AUDIT_FILTER_MASK);
+    will_return(__wrap_audit_rule_fieldpair_data, 0);
+
+    will_return(__wrap_audit_delete_rule_data, -1);
+
+    will_return(__wrap_audit_errno_to_name, "AUDIT ERROR");
+
+    expect_string(__wrap__mdebug2, formatted_msg, "audit_manage_rules(): Cann't adding/deleting rule (-1) = AUDIT ERROR");
+
+    will_return(__wrap_audit_close, 1);
+
+    int ret = audit_delete_rule("/usr/bin", "bin-folder");
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_audit_manage_rules_open_error(void **state) {
+    (void) state;
+
+    will_return(__wrap_audit_open, -1);
+
+    int ret = audit_manage_rules(ADD_RULE, "/folder/path", "key-test");
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_audit_manage_rules_stat_error(void **state) {
+    (void) state;
+
+    will_return(__wrap_audit_open, 1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6222): Stat() function failed on: '/folder/path' due to [(2)-(No such file or directory)]");
+
+    will_return(__wrap_audit_close, 1);
+
+    int ret = audit_manage_rules(ADD_RULE, "/folder/path", "key-test");
+
+    errno = 0;
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_audit_manage_rules_add_dir_error(void **state) {
+    (void) state;
+
+    will_return(__wrap_audit_open, 1);
+
+    expect_value(__wrap_audit_add_watch_dir, type, AUDIT_DIR);
+    expect_string(__wrap_audit_add_watch_dir, path, "/usr/bin");
+    will_return(__wrap_audit_add_watch_dir, 1);
+
+    will_return(__wrap_audit_errno_to_name, "AUDIT ERROR");
+
+    expect_string(__wrap__mdebug2, formatted_msg, "audit_add_watch_dir = (1) AUDIT ERROR");
+
+    will_return(__wrap_audit_close, 1);
+
+    int ret = audit_manage_rules(ADD_RULE, "/usr/bin", "bin-folder");
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_audit_manage_rules_update_perms_error(void **state) {
+    (void) state;
+
+    will_return(__wrap_audit_open, 1);
+
+    expect_value(__wrap_audit_add_watch_dir, type, AUDIT_DIR);
+    expect_string(__wrap_audit_add_watch_dir, path, "/usr/bin");
+    will_return(__wrap_audit_add_watch_dir, 0);
+
+    expect_value(__wrap_audit_update_watch_perms, perms, AUDIT_PERM_WRITE | AUDIT_PERM_ATTR);
+    will_return(__wrap_audit_update_watch_perms, 1);
+
+    will_return(__wrap_audit_errno_to_name, "AUDIT ERROR");
+
+    expect_string(__wrap__mdebug2, formatted_msg, "audit_update_watch_perms = (1) AUDIT ERROR");
+
+    will_return(__wrap_audit_close, 1);
+
+    int ret = audit_manage_rules(ADD_RULE, "/usr/bin", "bin-folder");
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_audit_manage_rules_key_length_error(void **state) {
+    (void) state;
+
+    char *key = "this is a very long key - this is a very long key - this is a very long key - this is a very long key - this is a very long key -"
+                "this is a very long key - this is a very long key - this is a very long key - this is a very long key - this is a very long key -"
+                "this is a very long key - this is a very long key - this is a very long key - this is a very long key - this is a very long key -"
+                "this is a very long key - this is a very long key - this is a very long key - this is a very long key - this is a very long key -"
+                "this is a very long key - this is a very long key - this is a very long key - this is a very long key - this is a very long key";
+
+    will_return(__wrap_audit_open, 1);
+
+    expect_value(__wrap_audit_add_watch_dir, type, AUDIT_DIR);
+    expect_string(__wrap_audit_add_watch_dir, path, "/usr/bin");
+    will_return(__wrap_audit_add_watch_dir, 0);
+
+    expect_value(__wrap_audit_update_watch_perms, perms, AUDIT_PERM_WRITE | AUDIT_PERM_ATTR);
+    will_return(__wrap_audit_update_watch_perms, 0);
+
+    will_return(__wrap_audit_close, 1);
+
+    int ret = audit_manage_rules(ADD_RULE, "/usr/bin", key);
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_audit_manage_rules_fieldpair_error(void **state) {
+    (void) state;
+
+    will_return(__wrap_audit_open, 1);
+
+    expect_value(__wrap_audit_add_watch_dir, type, AUDIT_DIR);
+    expect_string(__wrap_audit_add_watch_dir, path, "/usr/bin");
+    will_return(__wrap_audit_add_watch_dir, 0);
+
+    expect_value(__wrap_audit_update_watch_perms, perms, AUDIT_PERM_WRITE | AUDIT_PERM_ATTR);
+    will_return(__wrap_audit_update_watch_perms, 0);
+
+    expect_string(__wrap_audit_rule_fieldpair_data, pair, "key=bin-folder");
+    expect_value(__wrap_audit_rule_fieldpair_data, flags, AUDIT_FILTER_EXIT & AUDIT_FILTER_MASK);
+    will_return(__wrap_audit_rule_fieldpair_data, 1);
+
+    will_return(__wrap_audit_errno_to_name, "AUDIT ERROR");
+
+    expect_string(__wrap__mdebug2, formatted_msg, "audit_rule_fieldpair_data = (1) AUDIT ERROR");
+
+    will_return(__wrap_audit_close, 1);
+
+    int ret = audit_manage_rules(ADD_RULE, "/usr/bin", "bin-folder");
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_audit_manage_rules_action_error(void **state) {
+    (void) state;
+
+    will_return(__wrap_audit_open, 1);
+
+    expect_value(__wrap_audit_add_watch_dir, type, AUDIT_DIR);
+    expect_string(__wrap_audit_add_watch_dir, path, "/usr/bin");
+    will_return(__wrap_audit_add_watch_dir, 0);
+
+    expect_value(__wrap_audit_update_watch_perms, perms, AUDIT_PERM_WRITE | AUDIT_PERM_ATTR);
+    will_return(__wrap_audit_update_watch_perms, 0);
+
+    expect_string(__wrap_audit_rule_fieldpair_data, pair, "key=bin-folder");
+    expect_value(__wrap_audit_rule_fieldpair_data, flags, AUDIT_FILTER_EXIT & AUDIT_FILTER_MASK);
+    will_return(__wrap_audit_rule_fieldpair_data, 0);
+
+    will_return(__wrap_audit_close, 1);
+
+    int ret = audit_manage_rules(-1, "/usr/bin", "bin-folder");
+
+    assert_int_equal(ret, -1);
+}
+
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -421,6 +659,15 @@ int main(void) {
         cmocka_unit_test(test_search_audit_rule),
         cmocka_unit_test(test_search_audit_rule_null),
         cmocka_unit_test(test_search_audit_rule_not_found),
+        cmocka_unit_test(test_audit_add_rule),
+        cmocka_unit_test(test_audit_delete_rule),
+        cmocka_unit_test(test_audit_manage_rules_open_error),
+        cmocka_unit_test(test_audit_manage_rules_stat_error),
+        cmocka_unit_test(test_audit_manage_rules_add_dir_error),
+        cmocka_unit_test(test_audit_manage_rules_update_perms_error),
+        cmocka_unit_test(test_audit_manage_rules_key_length_error),
+        cmocka_unit_test(test_audit_manage_rules_fieldpair_error),
+        cmocka_unit_test(test_audit_manage_rules_action_error),
     };
     return cmocka_run_group_tests(tests, NULL, group_teardown);
 }

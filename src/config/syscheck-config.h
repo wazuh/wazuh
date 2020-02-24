@@ -40,6 +40,7 @@ typedef enum fdb_stmt {
     FIMDB_STMT_GET_INODE_ID,
     FIMDB_STMT_GET_COUNT_PATH,
     FIMDB_STMT_GET_COUNT_DATA,
+    FIMDB_STMT_GET_INODE,
     FIMDB_STMT_SIZE
 } fdb_stmt;
 
@@ -298,8 +299,8 @@ typedef struct _config {
     long sync_interval;             /* Synchronization interval (seconds) */
     long sync_response_timeout;     /* Minimum time between receiving a sync response and starting a new sync session */
     long sync_queue_size;           /* Data synchronization message queue size */
+    long sync_max_eps;              /* Maximum events per second for synchronization messages. */
     unsigned max_eps;               /* Maximum events per second. */
-    unsigned send_delay;            /* Time delay after send operation (1 / max_eps) (microseconds) */
 
     /* Windows only registry checking */
 #ifdef WIN32

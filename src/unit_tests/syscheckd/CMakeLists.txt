@@ -110,7 +110,7 @@ else()
   list(APPEND syscheckd_tests_flags "${FIM_SYNC_BASE_FLAGS}")
 endif()
 
-set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,_minfo")
+set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,_minfo -Wl,--wrap,sleep -Wl,--wrap,SendMSG -Wl,--wrap,realtime_adddir -Wl,--wrap,audit_set_db_consistency")
 
 list(APPEND syscheckd_tests_names "test_run_check")
 if(${TARGET} STREQUAL "agent")

@@ -186,7 +186,7 @@ void realtime_process()
         char ** paths = rbtree_keys(tree);
 
         for (int i = 0; paths[i] != NULL; i++) {
-            fim_realtime_event(paths[i]);
+            fim_realtime_event(paths[i], NULL);
         }
 
         free_strarray(paths);
@@ -286,12 +286,12 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
 
             Sleep(syscheck.rt_delay);
 
-
             if (index == file_index) {
                 item->mode = FIM_REALTIME;
                 /* Check the change */
-                fim_checker(final_path, item, NULL, 1);
+                fim_realtime_event(final_path, item);
             }
+
         } while (pinfo->NextEntryOffset != 0);
         os_free(item);
     }

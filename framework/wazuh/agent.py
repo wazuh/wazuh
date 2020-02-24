@@ -52,12 +52,12 @@ def create_exception_dic(id, e):
 class WazuhDBQueryAgents(WazuhDBQuery):
 
     def __init__(self, offset, limit, sort, search, select, count, get_data, query, filters={}, default_sort_field='id',
-                 min_select_fields={'lastKeepAlive', 'version', 'id'}, remove_extra_fields=True):
+                 min_select_fields={'lastKeepAlive', 'version', 'id'}, remove_extra_fields=True, distinct=False):
         backend = SQLiteBackend(common.database_path_global)
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select, filters=filters,
                               fields=Agent.fields, default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
                               min_select_fields=min_select_fields, count=count, get_data=get_data, backend=backend,
-                              date_fields={'lastKeepAlive','dateAdd'}, extra_fields={'internal_key'})
+                              date_fields={'lastKeepAlive','dateAdd'}, extra_fields={'internal_key'}, distinct=distinct)
         self.remove_extra_fields = remove_extra_fields
 
     def _filter_status(self, status_filter):
@@ -175,7 +175,7 @@ class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
         return 'COUNT(DISTINCT a.id)'
 
     def _get_total_items(self):
-        WazuhDBQueryAgents._get_total_items(self)
+        self.total_items = self.backend.execute(self.query.format(self._default_count_query()), self.request, True)
         self.query += ' GROUP BY a.id '
 
 
@@ -814,9 +814,9 @@ class Agent:
         :param q: Query to filter results.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        db_query = WazuhDBQueryDistinctAgents(offset=offset, limit=limit, sort=sort, search=search,
-                                              select={'fields':['os.platform']}, count=True, get_data=True,
-                                              default_sort_field='os_platform', query=q, min_select_fields=set())
+        db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search,
+                                      select={'fields':['os.platform']}, count=True, get_data=True,
+                                      default_sort_field='os_platform', query=q, min_select_fields=set(), distinct=True)
         return db_query.run()
 
 

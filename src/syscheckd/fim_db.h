@@ -227,6 +227,16 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
                          __attribute__((unused))void *arg);
 
 /**
+ * @brief Process missing entries
+ *
+ * @param fim_sql FIM database struct.
+ * @param file_path File path.
+ * @param mutex
+ * @param arg Directory configuration.
+ */
+void fim_db_process_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex, void *arg);
+
+/**
  * @brief Get the last/first row from entry_path.
  *
  * @param mode FIM_FIRST_ROW or FIM_LAST_ROW.
@@ -323,6 +333,21 @@ int fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top,
  */
 int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file,
                         pthread_mutex_t *mutex, int storage);
+
+/**
+ * @brief Remove a range of paths from database if they have a
+ * specific monitoring mode.
+ *
+ * @param fim_sql FIM database struct.
+ * @param file  Structure of the file which contains all the paths.
+ * @param mutex
+ * @param storage 1 Store database in memory, disk otherwise.
+ *
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ */
+int fim_db_process_missing_entry(fdb_t *fim_sql, fim_tmp_file *file,
+                                 pthread_mutex_t *mutex, int storage,
+                                 fim_event_mode mode);
 
 /**
  * @brief Get count of all entries in entry_data table.

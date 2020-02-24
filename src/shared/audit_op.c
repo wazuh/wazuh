@@ -243,9 +243,11 @@ int audit_manage_rules(int action, const char *path, const char *key) {
     os_malloc(sizeof(char) * AUDIT_MAX_KEY_LEN + 1, cmd);
 
     if (snprintf(cmd, AUDIT_MAX_KEY_LEN, "key=%s", key) < 0) {
+        //LCOV_EXCL_START
         free(cmd);
         retval = -1;
         goto end;
+        //LCOV_EXCL_STOP
     } else {
         output = audit_rule_fieldpair_data(&myrule, cmd, flags);
         if (output) {

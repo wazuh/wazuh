@@ -61,8 +61,8 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.max_sync_interval = 3600;
     syscheck.sync_response_timeout = 30;
     syscheck.sync_queue_size = 16384;
-    syscheck.max_eps        = 200;
-    syscheck.send_delay     = 5000; /* 1000000 / max_eps */
+    syscheck.sync_max_eps = 10;
+    syscheck.max_eps        = 100;
     syscheck.allow_remote_prefilter_cmd  = false;
 
     mdebug1(FIM_CONFIGURATION_FILE, cfgfile);
@@ -313,6 +313,7 @@ cJSON *getSyscheckConfig(void) {
     cJSON_AddNumberToObject(synchronization, "interval", syscheck.sync_interval);
     cJSON_AddNumberToObject(synchronization, "response_timeout", syscheck.sync_response_timeout);
     cJSON_AddNumberToObject(synchronization, "queue_size", syscheck.sync_queue_size);
+    cJSON_AddNumberToObject(synchronization, "max_eps", syscheck.sync_max_eps);
     cJSON_AddItemToObject(syscfg, "synchronization", synchronization);
 
     cJSON_AddNumberToObject(syscfg, "max_eps", syscheck.max_eps);

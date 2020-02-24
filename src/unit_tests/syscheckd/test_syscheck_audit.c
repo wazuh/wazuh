@@ -915,6 +915,84 @@ void test_add_audit_rules_syscheck_not_added_new(void **state)
 }
 
 
+void test_add_audit_rules_syscheck_not_added_error(void **state)
+{
+    (void) state;
+
+    char *entry = "/var/test";
+    syscheck.dir = calloc (2, sizeof(char *));
+    syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
+    snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
+    syscheck.opts = calloc (2, sizeof(int *));
+    syscheck.opts[0] |= WHODATA_ACTIVE;
+    syscheck.max_audit_entries = 100;
+
+    // Read loaded rules in Audit
+    will_return(__wrap_audit_get_rule_list, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
+
+    // Audit added rules
+    will_return(__wrap_W_Vector_length, 3);
+
+    // Rule already not added
+    will_return(__wrap_search_audit_rule, 0);
+
+    // Add rule
+    will_return(__wrap_audit_add_rule, -1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6226): Unable to add audit rule for '/var/test'");
+
+    int ret;
+    ret = add_audit_rules_syscheck(0);
+
+    free(syscheck.opts);
+    free(syscheck.dir[0]);
+    free(syscheck.dir);
+
+    assert_int_equal(ret, 0);
+}
+
+
+void test_add_audit_rules_syscheck_not_added_first_error(void **state)
+{
+    (void) state;
+
+    char *entry = "/var/test";
+    syscheck.dir = calloc (2, sizeof(char *));
+    syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
+    snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
+    syscheck.opts = calloc (2, sizeof(int *));
+    syscheck.opts[0] |= WHODATA_ACTIVE;
+    syscheck.max_audit_entries = 100;
+
+    // Read loaded rules in Audit
+    will_return(__wrap_audit_get_rule_list, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
+
+    // Audit added rules
+    will_return(__wrap_W_Vector_length, 3);
+
+    // Rule already not added
+    will_return(__wrap_search_audit_rule, 0);
+
+    // Add rule
+    will_return(__wrap_audit_add_rule, -1);
+
+    expect_string(__wrap__mwarn, formatted_msg, "(6226): Unable to add audit rule for '/var/test'");
+
+    int ret;
+    ret = add_audit_rules_syscheck(1);
+
+    free(syscheck.opts);
+    free(syscheck.dir[0]);
+    free(syscheck.dir);
+
+    assert_int_equal(ret, 0);
+}
+
+
 void test_add_audit_rules_syscheck_added(void **state)
 {
     (void) state;
@@ -2013,6 +2091,8 @@ int main(void) {
         cmocka_unit_test(test_add_audit_rules_syscheck_added),
         cmocka_unit_test(test_add_audit_rules_syscheck_not_added),
         cmocka_unit_test(test_add_audit_rules_syscheck_not_added_new),
+        cmocka_unit_test(test_add_audit_rules_syscheck_not_added_error),
+        cmocka_unit_test(test_add_audit_rules_syscheck_not_added_first_error),
         cmocka_unit_test(test_add_audit_rules_syscheck_max),
         cmocka_unit_test(test_filterkey_audit_events_custom),
         cmocka_unit_test(test_filterkey_audit_events_discard),
