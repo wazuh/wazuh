@@ -17,6 +17,7 @@ get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
 message(Source folder: ${SRC_FOLDER})
 include_directories(${SRC_FOLDER}/headers)
 include_directories(${SRC_FOLDER}/external/openssl/include)
+include_directories(${SRC_FOLDER}/external/audit-userspace/lib)
 include_directories(${SRC_FOLDER})
 
 # Wazuh libraries
@@ -44,6 +45,7 @@ endif()
 if(NOT WAZUHEXT)
   message(FATAL_ERROR "libwazuhext not found! Aborting...")
 endif()
+
 
 add_subdirectory(syscheckd)
 add_subdirectory(shared)

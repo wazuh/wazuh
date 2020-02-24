@@ -20,6 +20,10 @@
 void set_priority_windows_thread();
 #endif
 
+struct state {
+    unsigned int sleep_seconds;
+} state;
+
 /* redefinitons/wrapping */
 
 int __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...)
@@ -87,6 +91,35 @@ int __wrap_isChroot() {
     return 1;
 }
 #endif
+int __wrap_realtime_adddir() {
+    return 1;
+}
+
+int __wrap_audit_set_db_consistency() {
+    return 1;
+}
+
+unsigned int __wrap_sleep(unsigned int seconds) {
+    state.sleep_seconds += seconds;
+    return 0;
+}
+
+int __wrap_SendMSG(int queue, const char *message, const char *locmsg, char loc) {
+    (void) queue;
+    (void) message;
+    (void) locmsg;
+    (void) loc;
+    return 0;
+}
+
+/* Setup */
+
+static int setup(void ** state) {
+    (void) state;
+    syscheck.max_eps = 100;
+    syscheck.sync_max_eps = 10;
+    return 0;
+}
 
 #ifdef TEST_WINAGENT
 int __wrap_realtime_adddir(const char *dir, int whodata) {
@@ -263,6 +296,67 @@ void test_set_priority_windows_thread_error(void **state) {
 }
 
 #endif
+void test_fim_send_sync_msg_10_eps(void ** _state) {
+    (void) _state;
+    syscheck.sync_max_eps = 10;
+
+    // We must not sleep the first 9 times
+
+    state.sleep_seconds = 0;
+
+    for (int i = 1; i < syscheck.sync_max_eps; i++) {
+        fim_send_sync_msg("");
+        assert_int_equal(state.sleep_seconds, 0);
+    }
+
+    // After 10 times, sleep one second
+
+    fim_send_sync_msg("");
+    assert_int_equal(state.sleep_seconds, 1);
+}
+
+void test_fim_send_sync_msg_0_eps(void ** _state) {
+    (void) _state;
+    syscheck.sync_max_eps = 0;
+
+    // We must not sleep
+
+    state.sleep_seconds = 0;
+
+    fim_send_sync_msg("");
+    assert_int_equal(state.sleep_seconds, 0);
+}
+
+void test_send_syscheck_msg_10_eps(void ** _state) {
+    (void) _state;
+    syscheck.max_eps = 10;
+
+    // We must not sleep the first 9 times
+
+    state.sleep_seconds = 0;
+
+    for (int i = 1; i < syscheck.max_eps; i++) {
+        send_syscheck_msg("");
+        assert_int_equal(state.sleep_seconds, 0);
+    }
+
+    // After 10 times, sleep one second
+
+    send_syscheck_msg("");
+    assert_int_equal(state.sleep_seconds, 1);
+}
+
+void test_send_syscheck_msg_0_eps(void ** _state) {
+    (void) _state;
+    syscheck.max_eps = 0;
+
+    // We must not sleep
+
+    state.sleep_seconds = 0;
+
+    send_syscheck_msg("");
+    assert_int_equal(state.sleep_seconds, 0);
+}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -278,7 +372,12 @@ int main(void) {
         cmocka_unit_test(test_set_priority_windows_thread_idle),
         cmocka_unit_test(test_set_priority_windows_thread_error),
         #endif
+
+        cmocka_unit_test(test_fim_send_sync_msg_10_eps),
+        cmocka_unit_test(test_fim_send_sync_msg_0_eps),
+        cmocka_unit_test(test_send_syscheck_msg_10_eps),
+        cmocka_unit_test(test_send_syscheck_msg_0_eps),
     };
 
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, setup, NULL);
 }

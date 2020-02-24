@@ -213,6 +213,15 @@ char *__wrap_seechanges_addfile(const char *filename) {
     return mock_type(char*);
 }
 
+int __wrap_fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
+    check_expected_ptr(fim_sql);
+    check_expected_ptr(storage);
+
+    *file = mock_type(fim_tmp_file *);
+
+    return mock();
+}
+
 int __wrap_fim_db_delete_not_scanned(fdb_t * fim_sql) {
     check_expected_ptr(fim_sql);
 
@@ -282,6 +291,11 @@ int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, i
 int __wrap_isChroot() {
     return 1;
 }
+
+int __wrap_fim_db_get_count_entry_path(fdb_t * fim_sql){
+    return mock();
+}
+
 
 #ifdef TEST_WINAGENT
 int __wrap_pthread_mutex_lock (pthread_mutex_t *__mutex) {
@@ -385,7 +399,6 @@ static int setup_group(void **state) {
     syscheck.file_max_size = 1024;
 
     unit_testing = true;
-    nowDebug();
 
     return 0;
 }
@@ -1893,8 +1906,10 @@ static void test_fim_scan(void **state) {
     expect_string(__wrap_realtime_adddir, dir, "/home");
     expect_string(__wrap_realtime_adddir, dir, "/boot");
 
-    expect_value(__wrap_fim_db_delete_not_scanned, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_delete_not_scanned, FIMDB_OK);
+    expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_not_scanned, NULL);
+    will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
 
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_set_all_unscanned, 0);
@@ -2271,14 +2286,17 @@ static void test_fim_scan(void **state) {
 
     will_return_count(__wrap_HasFilesystem, 0, 10);
 
-    expect_value(__wrap_fim_db_delete_not_scanned, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_delete_not_scanned, FIMDB_OK);
-
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_set_all_unscanned, 0);
 
+    expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_not_scanned, NULL);
+    will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
+
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
+    will_return(__wrap_fim_db_get_count_entry_path, 5);
     fim_scan();
 }
 #endif
@@ -2509,6 +2527,14 @@ static void test_fim_get_data_hash_error(void **state) {
 
 
 static void test_check_deleted_files(void **state) {
+    fim_tmp_file *file = calloc(1, sizeof(fim_tmp_file));
+    file->elements = 1;
+
+    expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_not_scanned, file);
+    will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
+
     expect_value(__wrap_fim_db_delete_not_scanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_delete_not_scanned, FIMDB_OK);
 
@@ -2516,11 +2542,15 @@ static void test_check_deleted_files(void **state) {
     will_return(__wrap_fim_db_set_all_unscanned, 0);
 
     check_deleted_files();
+
+    free(file);
 }
 
 static void test_check_deleted_files_error(void **state) {
-    expect_value(__wrap_fim_db_delete_not_scanned, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_delete_not_scanned, FIMDB_ERR);
+    expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_not_scanned, NULL);
+    will_return(__wrap_fim_db_get_not_scanned, FIMDB_ERR);
 
     expect_string(__wrap__merror, formatted_msg, FIM_DB_ERROR_RM_NOT_SCANNED);
 

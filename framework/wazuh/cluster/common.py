@@ -155,11 +155,12 @@ class Handler(asyncio.Protocol):
         # object use to encrypt and decrypt requests
         self.my_fernet = cryptography.fernet.Fernet(base64.b64encode(fernet_key.encode())) if fernet_key else None
         # logging.Logger object used to write logs
-        self.logger = logger.getChild(tag)
+        self.logger = logging.getLogger('wazuh')
         # logging tag
         self.tag = tag
-        self.logger_filter = cluster.ClusterFilter(tag=self.tag, subtag="Main")
-        self.logger.addFilter(self.logger_filter)
+        # modify filter tags with context vars
+        cluster.context_tag.set(self.tag)
+        cluster.context_subtag.set("Main")
         self.cluster_items = cluster_items
         # transports in asyncio are an abstraction of sockets
         self.transport = None

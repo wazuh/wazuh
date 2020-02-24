@@ -741,26 +741,31 @@ add_whodata_evt:
 
                 if (w_evt = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evt && w_evt->path) {
                     unsigned int mask = w_evt->mask;
+
                     if (!w_evt->scan_directory) {
+
                         if (w_evt->deleted) {
                             // Check if the file has been deleted
                             w_evt->ignore_remove_event = 0;
                         } else if (mask & DELETE) {
                             // The file has been moved or renamed
                             w_evt->ignore_remove_event = 0;
-                        } else if (mask & modify_criteria) {
-                            // Check if the file has been modified
-                        } else {
-                            // At this point the file can be created
                         }
-                        fim_checker(w_evt->path, item, w_evt, 1);
+
+                        fim_whodata_event(w_evt, item);
                     } else if (w_evt->scan_directory == 1) { // Directory scan has been aborted if scan_directory is 2
                         if (mask & DELETE) {
-                            fim_checker(w_evt->path, item, w_evt, 1);
+
+                            fim_whodata_event(w_evt, item);
+
+                            // Find new files
+                            int pos = fim_configuration_directory(w_evt->path, "file");
+                            fim_checker(syscheck.dir[pos], item, NULL, 1);
+
                         } else if ((mask & FILE_WRITE_DATA) && w_evt->path && (w_dir = OSHash_Get(syscheck.wdata.directories, w_evt->path))) {
                             // Check that a new file has been added
                             GetSystemTime(&w_dir->timestamp);
-                            fim_checker(w_evt->path, item, w_evt, 1);
+                            fim_whodata_event(w_evt, item);
 
                             mdebug1(FIM_WHODATA_SCAN, w_evt->path);
                         } else {
