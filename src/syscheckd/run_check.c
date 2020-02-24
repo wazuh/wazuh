@@ -301,12 +301,14 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
     while (1) {
 #ifdef WIN32
         // Directories in Windows configured with real-time add recursive watches
-        int i = 0;
-        while (syscheck.dir[i]) {
+        for (int i = 0; syscheck.dir[i]; i++) {
             if (syscheck.opts[i] & REALTIME_ACTIVE) {
                 realtime_adddir(syscheck.dir[i], 0);
             }
-            i++;
+
+            if (syscheck.opts[i] & WHODATA_ACTIVE) {
+                realtime_adddir(syscheck.dir[i], i + 1);
+            }
         }
 #endif
 #ifdef WIN_WHODATA
