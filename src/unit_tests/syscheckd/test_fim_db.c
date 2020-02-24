@@ -126,11 +126,6 @@ int __wrap_sqlite3_last_insert_rowid(sqlite3* db){
     return mock();
 }
 
-int __wrap_printf(const char *fmt, ...) {
-    // Printf should not exits, if found test will fail
-    fail();
-}
-
 void __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...)
 {
     char formatted_msg[OS_MAXSTR];
