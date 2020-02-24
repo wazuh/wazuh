@@ -3196,6 +3196,35 @@ static void test_decode_fim_event_type_invalid(void **state) {
     assert_int_equal(ret, 0);
 }
 
+static void test_decode_fim_event_null_item(void **state) {
+    Eventinfo *lf = *state;
+    _sdb sdb = {.socket = 10};
+    int ret;
+
+    cJSON *event = cJSON_Parse(lf->log);
+    cJSON_DeleteItemFromObject(event, "data");
+    cJSON *data = cJSON_CreateObject();
+    cJSON_AddStringToObject(data, "test", "test");
+    cJSON_AddItemToObject(event, "data", data);
+
+    free(lf->log);
+    lf->log = cJSON_PrintUnformatted(event);
+
+    cJSON_Delete(event);
+
+    if(lf->agent_id = strdup("007"), lf->agent_id == NULL)
+        fail();
+
+    expect_string(__wrap__mdebug1, formatted_msg, "No member 'type' in Syscheck JSON payload");
+    expect_string(__wrap__merror, formatted_msg, "Can't generate fim alert for event: '"
+        "{\"type\":\"event\","
+        "\"data\":{"
+            "\"test\":\"test\"}}'");
+    ret = decode_fim_event(&sdb, lf);
+
+    assert_int_equal(ret, 0);
+}
+
 static void test_decode_fim_event_no_data(void **state) {
     Eventinfo *lf = *state;
     _sdb sdb = {.socket = 10};
@@ -3438,6 +3467,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_decode_fim_event_type_scan_start, setup_decode_fim_event, teardown_decode_fim_event),
         cmocka_unit_test_setup_teardown(test_decode_fim_event_type_scan_end, setup_decode_fim_event, teardown_decode_fim_event),
         cmocka_unit_test_setup_teardown(test_decode_fim_event_type_invalid, setup_decode_fim_event, teardown_decode_fim_event),
+        cmocka_unit_test_setup_teardown(test_decode_fim_event_null_item, setup_decode_fim_event, teardown_decode_fim_event),
         cmocka_unit_test_setup_teardown(test_decode_fim_event_no_data, setup_decode_fim_event, teardown_decode_fim_event),
         cmocka_unit_test_setup_teardown(test_decode_fim_event_no_type, setup_decode_fim_event, teardown_decode_fim_event),
         cmocka_unit_test_setup_teardown(test_decode_fim_event_invalid_json, setup_decode_fim_event, teardown_decode_fim_event),
