@@ -61,6 +61,10 @@ list(APPEND obj_files ${os_execd_lib})
 file(GLOB win32_files ${SRC_FOLDER}/win32/win_service.o ${SRC_FOLDER}/win32/win_utils.o)
 list(APPEND obj_files ${win32_files})
 
+# Add test wrappers
+file(GLOB test_wrapper_files ${SRC_FOLDER}/unit_tests/wrappers/syscheckd/*.o)
+list(APPEND obj_files ${test_wrapper_files})
+
 add_library(DEPENDENCIES_O STATIC ${obj_files})
 set_source_files_properties(
   ${obj_files}
