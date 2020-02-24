@@ -22,6 +22,7 @@ from itertools import groupby, chain
 from xml.etree.ElementTree import fromstring
 import glob
 import sys
+
 # Python 2/3 compatibility
 if sys.version_info[0] == 3:
     unicode = str
@@ -131,11 +132,13 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
     :param allowed_sort_fields: Check sort_by with allowed_sort_fields (array).
     :return: sorted array.
     """
+
     def check_sort_fields(allowed_sort_fields, sort_by):
         # Check if every element in sort['fields'] is in allowed_sort_fields
         if not sort_by.issubset(allowed_sort_fields):
             incorrect_fields = ', '.join(sort_by - allowed_sort_fields)
-            raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(', '.join(allowed_sort_fields), incorrect_fields))
+            raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(', '.join(allowed_sort_fields),
+                                                                                      incorrect_fields))
 
     if not array:
         return array
@@ -155,11 +158,14 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
             check_sort_fields(set(array[0].keys()), set(sort_by))
 
             return sorted(array,
-                          key=lambda o: tuple(o.get(a).lower() if type(o.get(a)) in (str,unicode) else o.get(a) for a in sort_by),
+                          key=lambda o: tuple(
+                              o.get(a).lower() if type(o.get(a)) in (str, unicode) else o.get(a) for a in sort_by),
                           reverse=order_desc)
         else:
             return sorted(array,
-                          key=lambda o: tuple(getattr(o, a).lower() if type(getattr(o, a)) in (str,unicode) else getattr(o, a) for a in sort_by),
+                          key=lambda o: tuple(
+                              getattr(o, a).lower() if type(getattr(o, a)) in (str, unicode) else getattr(o, a) for a in
+                              sort_by),
                           reverse=order_desc)
     else:
         if type(array) is set or (type(array[0]) is not dict and 'class \'wazuh' not in str(type(array[0]))):
@@ -399,7 +405,7 @@ def mkdir_with_mode(name, mode=0o770):
             # be happy if someone already created the path
             if e.errno != errno.EEXIST:
                 raise
-        if tail == curdir:           # xxx/newdir/. exists if xxx/newdir exists
+        if tail == curdir:  # xxx/newdir/. exists if xxx/newdir exists
             return
     try:
         mkdir(name, mode)
@@ -452,11 +458,12 @@ def get_hash_str(my_str, hash_algorithm='md5'):
 
 
 def get_fields_to_nest(fields, force_fields=[], split_character="_"):
-    nest = {k:set(filter(lambda x: x != k, chain.from_iterable(g)))
-             for k,g in groupby(map(lambda x: x.split(split_character), sorted(fields)),
-             key=lambda x:x[0])}
+    nest = {k: set(filter(lambda x: x != k, chain.from_iterable(g)))
+            for k, g in groupby(map(lambda x: x.split(split_character), sorted(fields)),
+                                key=lambda x: x[0])}
     nested = filter(lambda x: len(x[1]) > 1 or x[0] in force_fields, nest.items())
-    nested = [(field,{(subfield, split_character.join([field,subfield])) for subfield in subfields}) for field, subfields in nested]
+    nested = [(field, {(subfield, split_character.join([field, subfield])) for subfield in subfields}) for
+              field, subfields in nested]
     non_nested = set(filter(lambda x: x.split(split_character)[0] not in map(operator.itemgetter(0), nested), fields))
     return nested, non_nested
 
@@ -495,9 +502,9 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     """
     # separate fields and subfields:
     # nested = {'board': ['serial'], 'cpu': ['cores', 'mhz', 'name'], 'ram': ['free', 'total']}
-    nested = {k:list(filter(lambda x: x != k, chain.from_iterable(g)))
-             for k,g in groupby(map(lambda x: x.split(split_character), sorted(data.keys())),
-             key=lambda x:x[0])}
+    nested = {k: list(filter(lambda x: x != k, chain.from_iterable(g)))
+              for k, g in groupby(map(lambda x: x.split(split_character), sorted(data.keys())),
+                                  key=lambda x: x[0])}
 
     # create a nested dictionary with those fields that have subfields
     # (board_serial won't be added because it only has one subfield)
@@ -512,12 +519,12 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     #           'total': '2045956'
     #       }
     #    }
-    nested_dict = {f:{sf:data['{0}{2}{1}'.format(f,sf,split_character)] for sf in sfl} for f,sfl
-                  in nested.items() if len(sfl) > 1 or f in force_fields}
+    nested_dict = {f: {sf: data['{0}{2}{1}'.format(f, sf, split_character)] for sf in sfl} for f, sfl
+                   in nested.items() if len(sfl) > 1 or f in force_fields}
 
     # create a dictionary with the non nested fields
     # non_nested_dict = {'board_serial': 'BSS-0123456789'}
-    non_nested_dict = {f:data[f] for f in data.keys() if f.split(split_character)[0]
+    non_nested_dict = {f: data[f] for f in data.keys() if f.split(split_character)[0]
                        not in nested_dict.keys()}
 
     # append both dictonaries
@@ -533,7 +540,7 @@ def load_wazuh_xml(xml_path):
     # -- characters are not allowed in XML comments
     xml_comment = re.compile(r"(<!--(.*?)-->)", flags=re.MULTILINE | re.DOTALL)
     for comment in xml_comment.finditer(data):
-        good_comment = comment.group(2).replace('--','..')
+        good_comment = comment.group(2).replace('--', '..')
         data = data.replace(comment.group(2), good_comment)
 
     # < characters should be scaped as &lt; unless < is starting a <tag> or a comment
@@ -605,10 +612,10 @@ class WazuhVersion:
                     if (self.__dev) and not (new_version.__dev):
                         return False
                     elif (self.__dev) and (new_version.__dev):
-                            if ord(self.__dev[0]) < ord(new_version.__dev[0]):
-                                return False
-                            elif ord(self.__dev[0]) == ord(new_version.__dev[0]) and self.__dev_ver < new_version.__dev_ver:
-                                return False
+                        if ord(self.__dev[0]) < ord(new_version.__dev[0]):
+                            return False
+                        elif ord(self.__dev[0]) == ord(new_version.__dev[0]) and self.__dev_ver < new_version.__dev_ver:
+                            return False
 
         return True
 
@@ -634,7 +641,7 @@ def get_timeframe_in_seconds(timeframe):
             raise WazuhException(1411, timeframe)
 
         regex, seconds = re.compile(r'(\d+)(\w)'), 0
-        time_equivalence_seconds = {'d': 86400, 'h': 3600, 'm': 60, 's':1}
+        time_equivalence_seconds = {'d': 86400, 'h': 3600, 'm': 60, 's': 1}
         for time, unit in regex.findall(timeframe):
             # it's not necessarry to check whether the unit is in the dictionary, because it's been validated before.
             seconds += int(time) * time_equivalence_seconds[unit]
@@ -666,9 +673,9 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
         :return: True if operation is satisfied, False otherwise
         """
         operators = {'=': operator.eq,
-                    '!=': operator.ne,
-                    '<': operator.lt,
-                    '>': operator.gt}
+                     '!=': operator.ne,
+                     '<': operator.lt,
+                     '>': operator.gt}
         if op == '~':
             # value1 should be str if operator is '~'
             value1 = str(value1) if type(value1) == int else value1
@@ -698,7 +705,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
                 field_name, op, value = re_get_elements.match(and_clause).groups()
                 # check if a clause is satisfied
                 if field_name in elem and check_clause(elem[field_name], op, value):
-                   continue
+                    continue
                 else:
                     match = False
                     break
@@ -713,6 +720,7 @@ class AbstractDatabaseBackend:
     """
     This class describes an abstract database backend that executes database queries
     """
+
     def __init__(self):
         self.conn = self.connect_to_db()
 
@@ -727,6 +735,7 @@ class SQLiteBackend(AbstractDatabaseBackend):
     """
     This class describes a sqlite database backend that executes database queries
     """
+
     def __init__(self, db_path):
         self.db_path = db_path
         super().__init__()
@@ -748,6 +757,7 @@ class WazuhDBBackend(AbstractDatabaseBackend):
     """
     This class describes a wazuh db backend that executes database queries
     """
+
     def __init__(self, agent_id):
         self.agent_id = agent_id
         super().__init__()
@@ -773,6 +783,7 @@ class WazuhDBQuery(object):
     """
     This class describes a database query for wazuh
     """
+
     def __init__(self, offset, limit, table, sort, search, select, query, fields, default_sort_field, count,
                  get_data, backend, default_sort_order='ASC', filters={}, min_select_fields=set(), date_fields=set(),
                  extra_fields=set(), distinct=False):
@@ -816,20 +827,20 @@ class WazuhDBQuery(object):
         self.data = get_data
         self.total_items = 0
         self.min_select_fields = min_select_fields
-        self.query_operators = {"=":"=", "!=":"!=", "<":"<", ">":">", "~":'LIKE'}
-        self.query_separators = {',':'OR',';':'AND','':''}
+        self.query_operators = {"=": "=", "!=": "!=", "<": "<", ">": ">", "~": 'LIKE'}
+        self.query_separators = {',': 'OR', ';': 'AND', '': ''}
         # To correctly turn a query into SQL, a regex is used. This regex will extract all necessary information:
         # For example, the following regex -> (name!=wazuh;id>5),group=webserver <- would return 3 different matches:
         #   (name != wazuh ;
         #    id   > 5      ),
         #    group=webserver
         self.query_regex = re.compile(
-            r'(\()?' +                                                     # A ( character.
-            r'([\w.]+)' +                                                  # Field name: name of the field to look on DB
-            '([' + ''.join(self.query_operators.keys()) + "]{1,2})" +      # Operator: looks for =, !=, <, > or ~.
-            r"([\w _\-\.:/']+)" +                                          # Value: A string.
-            r"(\))?" +                                                     # A ) character
-            "([" + ''.join(self.query_separators.keys())+"])?"             # Separator: looks for ;, , or nothing.
+            r'(\()?' +  # A ( character.
+            r'([\w.]+)' +  # Field name: name of the field to look on DB
+            '([' + ''.join(self.query_operators.keys()) + "]{1,2})" +  # Operator: looks for =, !=, <, > or ~.
+            r"([\w _\-\.:/']+)" +  # Value: A string.
+            r"(\))?" +  # A ) character
+            "([" + ''.join(self.query_separators.keys()) + "])?"  # Separator: looks for ;, , or nothing.
         )
         self.date_regex = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")
         self.date_fields = date_fields
@@ -870,7 +881,9 @@ class WazuhDBQuery(object):
     def _add_search_to_query(self):
         if self.search:
             self.query += " AND NOT" if bool(self.search['negation']) else ' AND'
-            self.query += " (" + " OR ".join(f'({x.split(" as ")[0]} LIKE :search AND {x.split(" as ")[0]} IS NOT NULL)' for x in self.fields.values()) + ')'
+            self.query += " (" + " OR ".join(
+                f'({x.split(" as ")[0]} LIKE :search AND {x.split(" as ")[0]} IS NOT NULL)' for x in
+                self.fields.values()) + ')'
             self.query = self.query.replace('WHERE  AND', 'WHERE')
             self.request['search'] = "%{0}%".format(self.search['value'])
 
@@ -881,7 +894,8 @@ class WazuhDBQuery(object):
             # if select is empty, it will be a subset of any set
             if not set_select_fields or not set_select_fields.issubset(set_fields_keys):
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}". \
-                                     format(', '.join(self.fields.keys()), ', '.join(set_select_fields - set_fields_keys)))
+                                     format(', '.join(self.fields.keys()),
+                                            ', '.join(set_select_fields - set_fields_keys)))
 
             select_fields['fields'] = set_select_fields
         else:
@@ -911,7 +925,9 @@ class WazuhDBQuery(object):
             if field not in self.fields.keys():
                 raise WazuhException(1408, "Available fields: {}. Field: {}".format(', '.join(self.fields), field))
             if operator not in self.query_operators:
-                raise WazuhException(1409, "Valid operators: {}. Used operator: {}".format(', '.join(self.query_operators), operator))
+                raise WazuhException(1409,
+                                     "Valid operators: {}. Used operator: {}".format(', '.join(self.query_operators),
+                                                                                     operator))
 
             if open_level:
                 level += 1
@@ -930,8 +946,9 @@ class WazuhDBQuery(object):
         Parses legacy filters.
         """
         # some legacy filters can contain multiple values to filter separated by commas. That must split in a list.
-        legacy_filters_as_list = {name: value.split(',') if isinstance(value, str) else (value if isinstance(value, list) else [value])
-                                  for name, value in self.legacy_filters.items()}
+        legacy_filters_as_list = {
+            name: value.split(',') if isinstance(value, str) else (value if isinstance(value, list) else [value])
+            for name, value in self.legacy_filters.items()}
         # each filter is represented using a dictionary containing the following fields:
         #   * Value     -> Value to filter by
         #   * Field     -> Field to filter by. Since there can be multiple filters over the same field, a numeric ID
@@ -964,7 +981,7 @@ class WazuhDBQuery(object):
     def _process_filter(self, field_name, field_filter, q_filter):
         if field_name == "status":
             self._filter_status(q_filter)
-        elif field_name in self.date_fields and not isinstance(q_filter['value'], (int, float)):
+        elif field_name in self.date_fields and re.match("^[0-9]+(\.([0-9]+))?$", q_filter['value']) is None:
             # Filter a date, but only if it is in string (YYYY-MM-DD hh:mm:ss) format.
             # If it matches the same format as DB (timestamp integer), filter directly by value (next if cond).
             self._filter_date(q_filter, field_name)
@@ -974,7 +991,8 @@ class WazuhDBQuery(object):
                     r'([a-zA-Z])([v])', r'\1 \2', q_filter['value'])
                 if q_filter['operator'] == 'LIKE':
                     self.request[field_filter] = "%{}%".format(self.request[field_filter])
-                self.query += '{} {} :{}'.format(self.fields[field_name].split(' as ')[0], q_filter['operator'], field_filter)
+                self.query += '{} {} :{}'.format(self.fields[field_name].split(' as ')[0], q_filter['operator'],
+                                                 field_filter)
                 if not field_filter.isdigit():
                     # filtering without being uppercase/lowercase sensitive
                     self.query += ' COLLATE NOCASE'
@@ -985,8 +1003,8 @@ class WazuhDBQuery(object):
         self._parse_filters()
         curr_level = 0
         for q_filter in self.query_filters:
-            field_name = q_filter['field'].split('$',1)[0]
-            field_filter = q_filter['field'].replace('.','_')
+            field_name = q_filter['field'].split('$', 1)[0]
+            field_filter = q_filter['field'].replace('.', '_')
 
             self.query += '((' if curr_level < q_filter['level'] else '('
 
@@ -1027,7 +1045,8 @@ class WazuhDBQuery(object):
                                                                    query_operator,
                                                                    date_filter['field'])
         elif re.match(r'\d{4}-\d{2}-\d{2}', date_filter['value']):
-            self.query += "{0} IS NOT NULL AND {0} {1} :{2}".format(self.fields[filter_db_name], date_filter['operator'], date_filter['field'])
+            self.query += "{0} IS NOT NULL AND {0} {1} :{2}".format(self.fields[filter_db_name],
+                                                                    date_filter['operator'], date_filter['field'])
             self.request[date_filter['field']] = date_filter['value']
         else:
             raise WazuhException(1412, date_filter['value'])
@@ -1077,16 +1096,14 @@ class WazuhDBQueryDistinct(WazuhDBQuery):
     def _default_query(self):
         return "SELECT DISTINCT {0} FROM " + self.table
 
-
     def _default_count_query(self):
         return "COUNT (DISTINCT {0})".format(','.join(map(lambda x: self.fields[x], self.select['fields'])))
-
 
     def _add_filters_to_query(self):
         WazuhDBQuery._add_filters_to_query(self)
         self.query += ' WHERE ' if not self.q and 'WHERE' not in self.query else ' AND '
-        self.query += ' AND '.join(["{0} IS NOT null AND {0} != ''".format(self.fields[field]) for field in self.select['fields']])
-
+        self.query += ' AND '.join(
+            ["{0} IS NOT null AND {0} != ''".format(self.fields[field]) for field in self.select['fields']])
 
     def _add_select_to_query(self):
         if len(self.select['fields']) > 1:
@@ -1103,10 +1120,10 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
     """
     Retrieves unique values for multiple fields using group by
     """
+
     def __init__(self, filter_fields, *args, **kwargs):
         WazuhDBQuery.__init__(self, *args, **kwargs)
         self.filter_fields = filter_fields
-
 
     def _get_total_items(self):
         # take total items without grouping, and add the group by clause just after getting total items
@@ -1115,7 +1132,6 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
         self.inverse_fields['COUNT(*)'] = 'count'
         self.fields['count'] = 'COUNT(*)'
         self.query += ' GROUP BY ' + ','.join(map(lambda x: self.fields[x], self.filter_fields['fields']))
-
 
     def _add_select_to_query(self):
         WazuhDBQuery._add_select_to_query(self)
