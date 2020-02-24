@@ -132,7 +132,7 @@ int set_winsacl(const char *dir, int position) {
             }
         break;
         case 1:
-            mdebug1(FIM_SCAL_NOCONFIGURE, dir);
+            // It is not necessary to configure the SACL of the directory
             retval = 0;
             goto end;
         case 2:
