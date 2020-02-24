@@ -1,6 +1,13 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.11.4]
+
+## Changed
+
+- Remove chroot in Agentd to allow it resolve DNS at any time. ([#4652](https://github.com/wazuh/wazuh/issues/4652))
+
+
 ## [v3.11.3] - 2020-01-28
 
 ### Fixed
