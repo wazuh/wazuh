@@ -2296,7 +2296,6 @@ static void test_fim_scan(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
-    will_return(__wrap_fim_db_get_count_entry_path, 5);
     fim_scan();
 }
 #endif
