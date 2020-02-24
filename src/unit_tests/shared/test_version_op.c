@@ -16,11 +16,18 @@
 
 #include "../headers/version_op.h"
 
+static int unit_testing;
+
 /* redefinitons/wrapping */
 
+int __real_fopen(const char *filename, const char *mode);
 int __wrap_fopen(const char *filename, const char *mode) {
-    check_expected(filename);
-    return mock();
+    if(unit_testing){
+        check_expected(filename);
+        return mock();
+    } else {
+        return __real_fopen(filename, mode);
+    }
 }
 
 int __wrap_fclose() {
@@ -32,6 +39,16 @@ int __wrap_fgets(char *str, int n, FILE *stream) {
     return mock_type(int);
 }
 
+/* setup/teardowns */
+static int setup_group(void **state) {
+    unit_testing = 1;
+    return 0;
+}
+
+static int teardown_group(void **state) {
+    unit_testing = 0;
+    return 0;
+}
 
 /* tests */
 
@@ -192,5 +209,5 @@ int main(void) {
             //cmocka_unit_test_teardown(test_get_unix_version_fedora_release, delete_os_info),
         #endif
     };
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
