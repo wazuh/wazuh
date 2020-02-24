@@ -312,7 +312,7 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
 }
 
 
-void fim_realtime_event(char *file, fim_element *item) {
+void fim_realtime_event(char *file) {
 
     struct stat file_stat;
 
@@ -320,7 +320,8 @@ void fim_realtime_event(char *file, fim_element *item) {
     if (w_stat(file, &file_stat) >= 0) {
 
 #ifdef WIN32
-        fim_checker(file, item, NULL, 1);
+        fim_element item = { .mode = FIM_REALTIME };
+        fim_checker(file, &item, NULL, 1);
 #else
         fim_audit_inode_event(file, FIM_REALTIME, NULL);
 #endif
@@ -328,12 +329,12 @@ void fim_realtime_event(char *file, fim_element *item) {
     }
     else {
         // Otherwise, it could be a file deleted or a directory moved (or renamed).
-        fim_process_missing_entry(file, FIM_REALTIME, NULL, item);
+        fim_process_missing_entry(file, FIM_REALTIME, NULL);
     }
 }
 
 // LCOV_EXCL_START
-void fim_whodata_event(whodata_evt * w_evt, fim_element *item) {
+void fim_whodata_event(whodata_evt * w_evt) {
 
     struct stat file_stat;
 
@@ -341,7 +342,8 @@ void fim_whodata_event(whodata_evt * w_evt, fim_element *item) {
     if(w_stat(w_evt->path, &file_stat) >= 0) {
 
 #ifdef WIN32
-        fim_checker(w_evt->path, item, w_evt, 1);
+        fim_element item = { .mode = FIM_WHODATA };
+        fim_checker(w_evt->path, &item, w_evt, 1);
 #else
         fim_audit_inode_event(w_evt->path, FIM_WHODATA, w_evt);
 #endif
@@ -349,14 +351,14 @@ void fim_whodata_event(whodata_evt * w_evt, fim_element *item) {
     }
     // Otherwise, it could be a file deleted or a directory moved (or renamed).
     else {
-        fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt, item);
+        fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt);
     }
 }
 
 // LCOV_EXCL_STOP
 
 
-void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt, fim_element *item) {
+void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt) {
 
     fim_entry *saved_data;
 
@@ -369,7 +371,8 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
     if (saved_data) {
 
 #ifdef WIN32
-        fim_checker(pathname, item, w_evt, 1);
+        fim_element item = { .mode = mode };
+        fim_checker(pathname, &item, w_evt, 1);
 #else
         fim_audit_inode_event(pathname, mode, w_evt);
 #endif

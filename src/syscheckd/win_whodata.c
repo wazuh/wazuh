@@ -752,11 +752,11 @@ add_whodata_evt:
                             w_evt->ignore_remove_event = 0;
                         }
 
-                        fim_whodata_event(w_evt, item);
+                        fim_whodata_event(w_evt);
                     } else if (w_evt->scan_directory == 1) { // Directory scan has been aborted if scan_directory is 2
                         if (mask & DELETE) {
 
-                            fim_whodata_event(w_evt, item);
+                            fim_whodata_event(w_evt);
 
                             // Find new files
                             int pos = fim_configuration_directory(w_evt->path, "file");
@@ -765,7 +765,7 @@ add_whodata_evt:
                         } else if ((mask & FILE_WRITE_DATA) && w_evt->path && (w_dir = OSHash_Get(syscheck.wdata.directories, w_evt->path))) {
                             // Check that a new file has been added
                             GetSystemTime(&w_dir->timestamp);
-                            fim_whodata_event(w_evt, item);
+                            fim_whodata_event(w_evt);
 
                             mdebug1(FIM_WHODATA_SCAN, w_evt->path);
                         } else {
