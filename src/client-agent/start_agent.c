@@ -52,14 +52,20 @@ int connect_server(int initial_id)
             // Resolve hostname
             if (!isChroot()) {
                 resolveHostname(&agt->server[rc].rip, 5);
+
+                tmp_str = strchr(agt->server[rc].rip, '/');
+                if(tmp_str) {
+                    tmp_str++;
+                }
+            } else {
+                tmp_str++;
             }
-            tmp_str++;
         } else {
             tmp_str = agt->server[rc].rip;
         }
 
         // The hostname was not resolved correctly
-        if (strlen(tmp_str) == 0) {
+        if (tmp_str == NULL || *tmp_str == '\0') {
             int rip_l = strlen(agt->server[rc].rip);
             mdebug2("Could not resolve hostname '%.*s'", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
             rc++;
