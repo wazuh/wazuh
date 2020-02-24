@@ -8,8 +8,8 @@ cmake_minimum_required(VERSION 3.10)
 
 PROJECT(UnitTests C)
 
-set(TARGET winagent)
-#set(CMAKE_VERBOSE_MAKEFILE ON)
+# set(TARGET winagent)
+# set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # message("${TARGET}")
 get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)

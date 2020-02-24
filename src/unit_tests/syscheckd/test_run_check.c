@@ -136,16 +136,20 @@ void test_fim_whodata_initialize(void **state)
 
     #if defined(TEST_AGENT) || defined(TEST_WINAGENT)
     expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck.conf]");
+    #endif
 
+    #ifdef TEST_WINAGENT
     will_return(wrap_GetCurrentThread, (HANDLE)123456);
 
     expect_value(wrap_SetThreadPriority, hThread, (HANDLE)123456);
     expect_value(wrap_SetThreadPriority, nPriority, THREAD_PRIORITY_LOWEST);
     will_return(wrap_SetThreadPriority, true);
-    #endif
 
-    #ifdef TEST_WINAGENT
     expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '10'");
+    #else
+    expect_string(__wrap__mdebug1, formatted_msg, "(6227): Directory added for real time monitoring: '/etc'");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6227): Directory added for real time monitoring: '/usr/bin'");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6227): Directory added for real time monitoring: '/usr/sbin'");
     #endif
 
     Read_Syscheck_Config("test_syscheck.conf");
