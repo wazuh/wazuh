@@ -455,12 +455,12 @@ void test_getSyscheckConfig_no_directories(void **state)
     cJSON *allow_remote_prefilter_cmd = cJSON_GetObjectItem(sys_items, "allow_remote_prefilter_cmd");
     assert_string_equal(cJSON_GetStringValue(allow_remote_prefilter_cmd), "no");
     cJSON *max_eps = cJSON_GetObjectItem(sys_items, "max_eps");
-    assert_int_equal(max_eps->valueint, 200);
+    assert_int_equal(max_eps->valueint, 100);
     cJSON *process_priority = cJSON_GetObjectItem(sys_items, "process_priority");
     assert_int_equal(process_priority->valueint, 10);
 
     cJSON *synchronization = cJSON_GetObjectItem(sys_items, "synchronization");
-    assert_int_equal(cJSON_GetArraySize(synchronization), 5);
+    assert_int_equal(cJSON_GetArraySize(synchronization), 6);
     cJSON *enabled = cJSON_GetObjectItem(synchronization, "enabled");
     assert_string_equal(cJSON_GetStringValue(enabled), "yes");
     cJSON *max_interval = cJSON_GetObjectItem(synchronization, "max_interval");
@@ -471,6 +471,8 @@ void test_getSyscheckConfig_no_directories(void **state)
     assert_int_equal(response_timeout->valueint, 30);
     cJSON *queue_size = cJSON_GetObjectItem(synchronization, "queue_size");
     assert_int_equal(queue_size->valueint, 16384);
+    cJSON *sync_max_eps = cJSON_GetObjectItem(synchronization, "max_eps");
+    assert_int_equal(sync_max_eps->valueint, 10);
 }
 #endif
 
