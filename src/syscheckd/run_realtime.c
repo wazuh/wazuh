@@ -177,12 +177,6 @@ void realtime_process()
             }
         }
 
-        /* Need a sleep here to avoid triggering on vim
-         * (and finding the file removed)
-         */
-        struct timeval timeout = {0, syscheck.rt_delay * 1000};
-        select(0, NULL, NULL, NULL, &timeout);
-
         char ** paths = rbtree_keys(tree);
 
         for (int i = 0; paths[i] != NULL; i++) {
@@ -283,8 +277,6 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
 
             int index = fim_configuration_directory(wdchar, "file");
             int file_index = fim_configuration_directory(final_path, "file");
-
-            Sleep(syscheck.rt_delay);
 
             if (index == file_index) {
                 item->mode = FIM_REALTIME;
