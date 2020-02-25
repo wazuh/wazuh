@@ -125,17 +125,29 @@ int __wrap_realtime_start(void) {
 
 /* Setup */
 
-static int setup(void ** state) {
+static int setup_group(void ** state) {
     (void) state;
     syscheck.max_eps = 100;
     syscheck.sync_max_eps = 10;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6287): Reading configuration file: 'test_syscheck.conf'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file");
+    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file OK?");
+    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 0");
+
+    #if defined(TEST_AGENT) || defined(TEST_WINAGENT)
+    expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck.conf]");
+    #endif
+
+    if(Read_Syscheck_Config("test_syscheck.conf"))
+        fail();
+
     return 0;
 }
 
 /* teardown */
 
-static int free_syscheck(void **state)
-{
+static int teardown_group(void **state) {
     (void) state;
     Free_Syscheck(&syscheck);
     return 0;
@@ -174,15 +186,6 @@ void test_fim_whodata_initialize(void **state)
     char expanded_dirs[1][OS_SIZE_1024];
     #endif
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6287): Reading configuration file: 'test_syscheck.conf'");
-    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file");
-    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file OK?");
-    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 0");
-
-    #if defined(TEST_AGENT) || defined(TEST_WINAGENT)
-    expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck.conf]");
-    #endif
-
     #ifdef TEST_WINAGENT
     will_return(wrap_GetCurrentThread, (HANDLE)123456);
 
@@ -207,8 +210,6 @@ void test_fim_whodata_initialize(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "(6227): Directory added for real time monitoring: '/usr/bin'");
     expect_string(__wrap__mdebug1, formatted_msg, "(6227): Directory added for real time monitoring: '/usr/sbin'");
     #endif
-
-    Read_Syscheck_Config("test_syscheck.conf");
 
     ret = fim_whodata_initialize();
 
@@ -329,16 +330,6 @@ void test_set_whodata_mode_changes(void **state) {
     };
     char expanded_dirs[3][OS_SIZE_1024];
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6287): Reading configuration file: 'test_syscheck.conf'");
-    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file");
-    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file OK?");
-    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 0");
-
-    expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck.conf]");
-
-    if(Read_Syscheck_Config("test_syscheck.conf") != 0)
-        fail();
-
     // Mark directories to be added in realtime
     syscheck.wdata.dirs_status[6].status |= WD_CHECK_REALTIME;
     syscheck.wdata.dirs_status[6].status &= ~WD_CHECK_WHODATA;
@@ -367,6 +358,39 @@ void test_set_whodata_mode_changes(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "(6225): The 'c:\\programdata\\microsoft\\windows\\start menu\\programs\\startup' directory starts to be monitored in real-time mode.");
 
     set_whodata_mode_changes();
+}
+
+void test_fim_whodata_initialize_eventchannel(void **state) {
+    int ret;
+    int i;
+    char *dirs[] = {
+        "%WINDIR%\\System32\\WindowsPowerShell\\v1.0",
+        NULL
+    };
+    char expanded_dirs[1][OS_SIZE_1024];
+
+    will_return(wrap_GetCurrentThread, (HANDLE)123456);
+
+    expect_value(wrap_SetThreadPriority, hThread, (HANDLE)123456);
+    expect_value(wrap_SetThreadPriority, nPriority, THREAD_PRIORITY_LOWEST);
+    will_return(wrap_SetThreadPriority, true);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '10'");
+
+    // Expand directories
+    for(i = 0; dirs[i]; i++) {
+        if(!ExpandEnvironmentStrings(dirs[i], expanded_dirs[i], OS_SIZE_1024))
+            fail();
+
+        str_lowercase(expanded_dirs[i]);
+        expect_string(__wrap_realtime_adddir, dir, expanded_dirs[i]);
+        expect_value(__wrap_realtime_adddir, whodata, 9);
+        will_return(__wrap_realtime_adddir, 0);
+    }
+
+    ret = fim_whodata_initialize();
+
+    assert_int_equal(ret, 0);
 }
 #endif  // WIN_WHODATA
 #endif
@@ -436,7 +460,7 @@ int main(void) {
     #ifndef WIN_WHODATA
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_log_realtime_status),
-        cmocka_unit_test_teardown(test_fim_whodata_initialize, free_syscheck),
+        cmocka_unit_test(test_fim_whodata_initialize),
 
         #ifdef TEST_WINAGENT
         cmocka_unit_test(test_set_priority_windows_thread_highest),
@@ -454,11 +478,12 @@ int main(void) {
         cmocka_unit_test(test_send_syscheck_msg_0_eps),
     };
 
-    return cmocka_run_group_tests(tests, setup, NULL);
+    return cmocka_run_group_tests(tests, setup_group, teardown_group);
     #else  // WIN_WHODATA
     const struct CMUnitTest eventchannel_tests[] = {
-        cmocka_unit_test_teardown(test_set_whodata_mode_changes, free_syscheck),
+        cmocka_unit_test(test_set_whodata_mode_changes),
+        cmocka_unit_test(test_fim_whodata_initialize_eventchannel),
     };
-    return cmocka_run_group_tests(eventchannel_tests, setup, NULL);
+    return cmocka_run_group_tests(eventchannel_tests, setup_group, teardown_group);
     #endif
 }
