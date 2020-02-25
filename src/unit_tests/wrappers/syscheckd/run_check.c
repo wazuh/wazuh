@@ -13,6 +13,10 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
+#include "./run_check.h"
+
+struct state_t state;
+
 WINBOOL wrap_SetThreadPriority (HANDLE hThread, int nPriority) {
     check_expected(hThread);
     check_expected(nPriority);
@@ -25,4 +29,8 @@ HANDLE wrap_GetCurrentThread (VOID) {
 
 DWORD wrap_GetLastError (VOID) {
     return mock();
+}
+
+VOID wrap_Sleep (DWORD dwMilliseconds) {
+    state.sleep_seconds += dwMilliseconds;
 }

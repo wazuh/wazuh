@@ -29,10 +29,14 @@
 // Remove static qualifier when unit testing
 #define STATIC
 
+#ifdef WIN32
 // Replace windows system calls with wrappers
 #define SetThreadPriority   wrap_SetThreadPriority
 #define GetCurrentThread    wrap_GetCurrentThread
 #define GetLastError        wrap_GetLastError
+#undef  sleep
+#define sleep               wrap_Sleep
+#endif
 #else
 #define STATIC static
 #endif

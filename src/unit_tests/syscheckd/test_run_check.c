@@ -15,15 +15,15 @@
 #include <string.h>
 
 #include "../syscheckd/syscheck.h"
+#include "../wrappers/syscheckd/run_check.h"
 
 #ifdef TEST_WINAGENT
+
 void set_priority_windows_thread();
 void set_whodata_mode_changes();
+#else
+struct state_t state;
 #endif
-
-struct state {
-    unsigned int sleep_seconds;
-} state;
 
 /* redefinitons/wrapping */
 
@@ -97,10 +97,12 @@ int __wrap_audit_set_db_consistency() {
     return 1;
 }
 
+#ifndef TEST_WINAGENT
 unsigned int __wrap_sleep(unsigned int seconds) {
     state.sleep_seconds += seconds;
     return 0;
 }
+#endif
 
 int __wrap_SendMSG(int queue, const char *message, const char *locmsg, char loc) {
     (void) queue;

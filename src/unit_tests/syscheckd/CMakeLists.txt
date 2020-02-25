@@ -143,12 +143,12 @@ else()
   list(APPEND syscheckd_tests_flags "${FIM_SYNC_BASE_FLAGS}")
 endif()
 
-set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap=_minfo,--wrap=_mdebug1,--wrap=_merror,--wrap=sleep,--wrap=SendMSG \
+set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap=_minfo,--wrap=_mdebug1,--wrap=_merror,--wrap=SendMSG \
                           -Wl,--wrap,audit_set_db_consistency")
 
 list(APPEND syscheckd_tests_names "test_run_check")
 if(${TARGET} STREQUAL "agent")
-  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot")
+  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot,--wrap=sleep")
 elseif(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=realtime_adddir,--wrap=realtime_start")
 
@@ -156,7 +156,7 @@ elseif(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_event_tests_names "test_run_check_event")
   list(APPEND syscheckd_event_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=realtime_adddir,--wrap=realtime_start")
 else()
-  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS}")
+  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=sleep")
 endif()
 
 set(FIM_DB_BASE_FLAGS "-Wl,--wrap=w_is_file,--wrap=remove,--wrap=sqlite3_open_v2,--wrap=sqlite3_exec,--wrap=_merror \
