@@ -91,9 +91,6 @@ int __wrap_isChroot() {
     return 1;
 }
 #endif
-int __wrap_realtime_adddir() {
-    return 1;
-}
 
 int __wrap_audit_set_db_consistency() {
     return 1;
