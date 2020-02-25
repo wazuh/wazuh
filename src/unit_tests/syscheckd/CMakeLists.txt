@@ -1,32 +1,63 @@
-if(NOT ${TARGET} STREQUAL "winagent")
-  # Generate syscheck library
-  file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/*.o)
-  list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/syscheckd/main.o)
-  file(GLOB rootfiles ${SRC_FOLDER}/rootcheck/*.o)
+# Generate syscheck library
+file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/*.o)
+list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/syscheckd/main.o)
 
-  add_library(SYSCHECK_O STATIC ${sysfiles})
-  add_library(ROOTCHECK_O STATIC ${rootfiles})
+file(GLOB rootfiles ${SRC_FOLDER}/rootcheck/*.o)
+
+if(${TARGET} STREQUAL "winagent")
+  # Exclude winagent files
+  list(FILTER sysfiles EXCLUDE REGEX ".*-event.o$")
+  list(FILTER rootfiles EXCLUDE REGEX ".*_rk.o$")
+
+  # Add test wrappers
+  file(GLOB test_wrapper_files ${SRC_FOLDER}/unit_tests/wrappers/syscheckd/*.o)
+  list(APPEND sysfiles ${test_wrapper_files})
+endif()
+
+add_library(SYSCHECK_O STATIC ${sysfiles})
+add_library(ROOTCHECK_O STATIC ${rootfiles})
+
+set_source_files_properties(
+  ${sysfiles}
+  ${rootfiles}
+  PROPERTIES
+  EXTERNAL_OBJECT true
+  GENERATED true
+  )
+
+set_target_properties(
+  SYSCHECK_O
+  ROOTCHECK_O
+  PROPERTIES
+  LINKER_LANGUAGE C
+  )
+
+target_link_libraries(SYSCHECK_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+
+# Generate syscheckd-event library
+if(${TARGET} STREQUAL "winagent")
+  file(GLOB syscheck_event_files ${SRC_FOLDER}/syscheckd/*-event.o)
+
+  add_library(SYSCHECK_EVENT_O STATIC ${syscheck_event_files})
 
   set_source_files_properties(
-    ${sysfiles}
-    ${rootfiles}
+    ${syscheck_event_files}
     PROPERTIES
     EXTERNAL_OBJECT true
     GENERATED true
     )
 
   set_target_properties(
-    SYSCHECK_O
+    SYSCHECK_EVENT_O
     ROOTCHECK_O
     PROPERTIES
     LINKER_LANGUAGE C
-    CMAKE_C_COMPILER i686-w64-mingw32-gcc
-    CMAKE_C_LINK_EXECUTABLE "CMAKE_C_COMPILER <FLAGS> <CMAKE_C_LINK_FLAGS> <LINK_FLAGS> <OBJECTS>  -o <TARGET> <LINK_LIBRARIES>"
     )
 
-  target_link_libraries(SYSCHECK_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+  target_link_libraries(SYSCHECK_EVENT_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 endif()
-# Generate Analysisd tests
+
+# Generate Syscheckd tests
 list(APPEND syscheckd_tests_names "test_syscom")
 list(APPEND syscheckd_tests_flags "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap,fim_sync_push_msg \
                                    -Wl,--wrap,_mdebug1")
@@ -119,7 +150,11 @@ list(APPEND syscheckd_tests_names "test_run_check")
 if(${TARGET} STREQUAL "agent")
   list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot")
 elseif(${TARGET} STREQUAL "winagent")
-list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=realtime_adddir")
+  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=realtime_adddir,--wrap=realtime_start")
+
+  # Create event channel tests for run_check
+  list(APPEND syscheckd_event_tests_names "test_run_check_event")
+  list(APPEND syscheckd_event_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=realtime_adddir,--wrap=realtime_start")
 else()
   list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS}")
 endif()
@@ -156,18 +191,11 @@ foreach(counter RANGE ${count})
 
     add_executable(${test_name} ${test_name}.c)
 
-    if(NOT ${TARGET} STREQUAL "winagent")
-      target_link_libraries(
-        ${test_name}
-        SYSCHECK_O
-        ${TEST_DEPS}
-      )
-    else()
-      target_link_libraries(
-        ${test_name}
-        ${TEST_DEPS}
-      )
-    endif()
+    target_link_libraries(
+      ${test_name}
+      SYSCHECK_O
+      ${TEST_DEPS}
+    )
 
     if(NOT test_flags STREQUAL " ")
         target_link_libraries(
@@ -177,3 +205,32 @@ foreach(counter RANGE ${count})
     endif()
     add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()
+
+if(${TARGET} STREQUAL "winagent")
+  # Compile event channel tests
+  list(LENGTH syscheckd_event_tests_names count)
+  math(EXPR count "${count} - 1")
+  foreach(counter RANGE ${count})
+      list(GET syscheckd_event_tests_names ${counter} test_name)
+      list(GET syscheckd_event_tests_flags ${counter} test_flags)
+
+      string(REPLACE "_event" ".c" test_file ${test_name})
+      add_executable(${test_name} ${test_file})
+
+      target_link_libraries(
+        ${test_name}
+        SYSCHECK_EVENT_O
+        ${TEST_EVENT_DEPS}
+      )
+
+      target_compile_definitions(${test_name} PUBLIC WIN_WHODATA)
+
+      if(NOT test_flags STREQUAL " ")
+          target_link_libraries(
+              ${test_name}
+              ${test_flags}
+          )
+      endif()
+      add_test(NAME ${test_name} COMMAND ${test_name})
+  endforeach()
+endif()

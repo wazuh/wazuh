@@ -25,18 +25,8 @@ if(NOT STATIC_CMOCKA)
 endif()
 
 # Add compiling flags
-add_compile_options(-ggdb -O0 -g -coverage -DTEST_WINAGENT -DDEBUG -DENABLE_AUDIT)
-
-# Add syscheck objects
-file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/*.o)
-list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/syscheckd/main.o)
-list(FILTER sysfiles EXCLUDE REGEX ".*-event.o$")
-list(APPEND obj_files ${sysfiles})
-
-
-file(GLOB rootfiles ${SRC_FOLDER}/rootcheck/*.o)
-list(FILTER rootfiles EXCLUDE REGEX ".*_rk.o$")
-list(APPEND obj_files ${rootfiles})
+add_compile_options(-ggdb -O0 -g -coverage)
+add_definitions(-DTEST_WINAGENT -DDEBUG -DENABLE_AUDIT)
 
 # Add logcollector objects
 file(GLOB logcollector_lib ${SRC_FOLDER}/logcollector/*.o)
@@ -61,10 +51,6 @@ list(APPEND obj_files ${os_execd_lib})
 file(GLOB win32_files ${SRC_FOLDER}/win32/win_service.o ${SRC_FOLDER}/win32/win_utils.o)
 list(APPEND obj_files ${win32_files})
 
-# Add test wrappers
-file(GLOB test_wrapper_files ${SRC_FOLDER}/unit_tests/wrappers/syscheckd/*.o)
-list(APPEND obj_files ${test_wrapper_files})
-
 add_library(DEPENDENCIES_O STATIC ${obj_files})
 set_source_files_properties(
   ${obj_files}
@@ -76,12 +62,11 @@ set_target_properties(
   DEPENDENCIES_O
   PROPERTIES
   LINKER_LANGUAGE C
-  CMAKE_C_COMPILER i686-w64-mingw32-gcc
-  CMAKE_C_LINK_EXECUTABLE "CMAKE_C_COMPILER <FLAGS> <CMAKE_C_LINK_FLAGS> <LINK_FLAGS> <OBJECTS>  -o <TARGET> <LINK_LIBRARIES>"
 )
 
-target_link_libraries(DEPENDENCIES_O ${WAZUHLIB} ${WAZUHEXT} ${PTHREAD} ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32)
+target_link_libraries(DEPENDENCIES_O ${WAZUHLIB} ${WAZUHEXT} ${PTHREAD} ${STATIC_CMOCKA} SYSCHECK_O wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32)
 
 # Set tests dependencies
 # Use --start-group and --end-group to handle circular dependencies
 set(TEST_DEPS -Wl,--start-group ${WAZUHLIB} ${WAZUHEXT} DEPENDENCIES_O -Wl,--end-group ${PTHREAD} ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 -fprofile-arcs -ftest-coverage)
+set(TEST_EVENT_DEPS -Wl,--start-group ${WAZUHLIB} ${WAZUHEXT} DEPENDENCIES_O -Wl,--end-group ${PTHREAD} ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 -fprofile-arcs -ftest-coverage)
