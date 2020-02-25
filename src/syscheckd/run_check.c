@@ -43,7 +43,7 @@ int fim_whodata_initialize();
 #ifdef WIN32
 STATIC void set_priority_windows_thread();
 #ifdef WIN_WHODATA
-static void set_whodata_mode_changes();
+STATIC void set_whodata_mode_changes();
 #endif
 #else
 static void *symlink_checker_thread(__attribute__((unused)) void * data);
