@@ -397,7 +397,9 @@ fim_tmp_file *fim_db_create_temp_file(int storage) {
 void fim_db_clean_file(fim_tmp_file **file, int storage) {
     if (storage == FIM_DB_DISK) {
         fclose((*file)->fd);
-        remove((*file)->path);
+        if (remove((*file)->path) < 0) {
+            merror("Failed to remove '%s'. Error: %s", (*file)->path, strerror(errno));
+        }
         os_free((*file)->path);
     } else {
         os_free((*file)->list->vector);
@@ -551,12 +553,11 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
     void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *),
     int storage, void * arg) {
 
-    char *line = NULL;
+    char line[PATH_MAX + 1];
     char *path = NULL;
     int i = 0;
 
     if (storage == FIM_DB_DISK) {
-        os_calloc(BUFSIZ + 1, sizeof(char), line);
         fseek(file->fd, SEEK_SET, 0);
     }
 
@@ -565,8 +566,19 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
         if (storage == FIM_DB_DISK) {
             /* fgets() adds \n(newline) to the end of the string,
              So it must be removed. */
-            if (fgets(line, BUFSIZ, file->fd)) {
-                line[strlen(line) - 1] = '\0';
+            if (fgets(line, sizeof(line), file->fd)) {
+                size_t len = strlen(line);
+
+                switch (line[len - 1]) {
+                case '\n':
+                    line[len - 1] = '\0';
+                    break;
+
+                default:
+                    merror("Temporary path file '%s' is corrupt: missing line end.", file->path);
+                    continue;
+                }
+
                 path = wstr_unescape_json(line);
             }
         } else {
@@ -588,7 +600,6 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
     } while (i < file->elements);
 
     fim_db_clean_file(&file, storage);
-    os_free(line);
 
     return FIMDB_OK;
 }
@@ -1008,6 +1019,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
         }
         entry = fim_db_decode_full_row(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]);
         if (i == m && entry->path) {
+            os_free(str_pathuh);
             os_strdup(entry->path, str_pathuh);
         }
         //Type of storage not required

@@ -847,7 +847,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name)?w_evt->process_name:"");
 
                             if (w_evt->inode) {
-                                fim_whodata_event(w_evt, NULL);
+                                fim_whodata_event(w_evt);
                             }
                         }
                     }
@@ -878,7 +878,7 @@ void audit_parse(char *buffer) {
                             w_evt->path = real_path;
 
                             if (w_evt->inode) {
-                                fim_whodata_event(w_evt, NULL);
+                                fim_whodata_event(w_evt);
                             }
                         }
                     }
@@ -917,7 +917,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name)?w_evt->process_name:"");
 
                             if (w_evt->inode) {
-                                fim_whodata_event(w_evt, NULL);
+                                fim_whodata_event(w_evt);
                             }
                         }
                     }
@@ -977,7 +977,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name)?w_evt->process_name:"");
 
                             if (w_evt->inode) {
-                                fim_whodata_event(w_evt, NULL);
+                                fim_whodata_event(w_evt);
                             }
                             free(file_path1);
                             w_evt->path = NULL;
@@ -999,7 +999,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name)?w_evt->process_name:"");
 
                             if (w_evt->inode) {
-                                fim_whodata_event(w_evt, NULL);
+                                fim_whodata_event(w_evt);
                             }
                         }
                     }
@@ -1041,7 +1041,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name)?w_evt->process_name:"");
 
                             if (w_evt->inode) {
-                                fim_whodata_event(w_evt, NULL);
+                                fim_whodata_event(w_evt);
                             }
                         }
                     }

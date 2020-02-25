@@ -302,7 +302,10 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
 
     if (!_base_line && item->configuration & CHECK_SEECHANGES) {
         // The first backup is created. It should return NULL.
-        free(seechanges_addfile(file));
+        char *file_changed = seechanges_addfile(file);
+        if (file_changed) {
+            os_free(file_changed);
+        }
     }
 
     if (json_event && _base_line && report) {
@@ -319,15 +322,20 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
 }
 
 
-void fim_realtime_event(char *file, fim_element *item) {
+void fim_realtime_event(char *file) {
 
     struct stat file_stat;
 
     // If the file exists, generate add or modify events.
     if (w_stat(file, &file_stat) >= 0) {
+        /* Need a sleep here to avoid triggering on vim
+         * (and finding the file removed)
+         */
+        fim_rt_delay();
 
 #ifdef WIN32
-        fim_checker(file, item, NULL, 1);
+        fim_element item = { .mode = FIM_REALTIME };
+        fim_checker(file, &item, NULL, 1);
 #else
         fim_audit_inode_event(file, FIM_REALTIME, NULL);
 #endif
@@ -335,19 +343,21 @@ void fim_realtime_event(char *file, fim_element *item) {
     }
     else {
         // Otherwise, it could be a file deleted or a directory moved (or renamed).
-        fim_process_missing_entry(file, FIM_REALTIME, NULL, item);
+        fim_process_missing_entry(file, FIM_REALTIME, NULL);
     }
 }
 
-void fim_whodata_event(whodata_evt * w_evt, fim_element *item) {
+void fim_whodata_event(whodata_evt * w_evt) {
 
     struct stat file_stat;
 
     // If the file exists, generate add or modify events.
     if(w_stat(w_evt->path, &file_stat) >= 0) {
+        fim_rt_delay();
 
 #ifdef WIN32
-        fim_checker(w_evt->path, item, w_evt, 1);
+        fim_element item = { .mode = FIM_WHODATA };
+        fim_checker(w_evt->path, &item, w_evt, 1);
 #else
         fim_audit_inode_event(w_evt->path, FIM_WHODATA, w_evt);
 #endif
@@ -355,12 +365,12 @@ void fim_whodata_event(whodata_evt * w_evt, fim_element *item) {
     }
     // Otherwise, it could be a file deleted or a directory moved (or renamed).
     else {
-        fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt, item);
+        fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt);
     }
 }
 
 
-void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt, fim_element *item) {
+void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt) {
 
     fim_entry *saved_data;
 
@@ -373,7 +383,8 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
     if (saved_data) {
 
 #ifdef WIN32
-        fim_checker(pathname, item, w_evt, 1);
+        fim_element item = { .mode = mode };
+        fim_checker(pathname, &item, w_evt, 1);
 #else
         fim_audit_inode_event(pathname, mode, w_evt);
 #endif
@@ -469,6 +480,9 @@ void fim_audit_inode_event(char *file, fim_event_mode mode, whodata_evt * w_evt)
 
 #ifdef WIN32
 int fim_registry_event(char *key, fim_entry_data *data, int pos) {
+
+    assert(data);
+
     cJSON *json_event = NULL;
     fim_entry *saved;
     char *json_formated;
@@ -485,7 +499,7 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
 
     json_event = fim_json_event(key, saved ? saved->data : NULL, data, pos,
                                 alert_type, 0, NULL);
-    if ((saved && strcmp(saved->data->hash_sha1, data->hash_sha1) != 0)
+    if ((saved && saved->data && strcmp(saved->data->hash_sha1, data->hash_sha1) != 0)
         || alert_type == FIM_ADD) {
         if (fim_db_insert(syscheck.database, key, data) == -1) {
             free_entry(saved);
@@ -1146,4 +1160,16 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
 
     return;
 }
+
+// Sleep during rt_delay milliseconds
+
+void fim_rt_delay() {
+#ifdef WIN32
+    Sleep(syscheck.rt_delay);
+#else
+    struct timeval timeout = {0, syscheck.rt_delay * 1000};
+    select(0, NULL, NULL, NULL, &timeout);
+#endif
+}
+
 // LCOV_EXCL_STOP

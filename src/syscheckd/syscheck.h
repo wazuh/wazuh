@@ -156,17 +156,15 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report);
  * @brief Process FIM realtime event
  *
  * @param [in] file Path of the file to check
- * @param item Pointer to fim_element necesary to call fim_checker function. May be null
  */
-void fim_realtime_event(char *file, fim_element *item);
+void fim_realtime_event(char *file);
 
 /**
  * @brief Process FIM whodata event
  *
  * @param w_evt Whodata event
- * @param item Pointer to fim_element necesary to call fim_checker function. May be null
  */
-void fim_whodata_event(whodata_evt *w_evt, fim_element *item);
+void fim_whodata_event(whodata_evt *w_evt);
 
 /**
  * @brief Process a path that has possibly been deleted
@@ -175,9 +173,8 @@ void fim_whodata_event(whodata_evt *w_evt, fim_element *item);
  * @param pathname Name of path
  * @param mode Monitoring FIM mode
  * @param w_evt Pointer to whodata information
- * @param item Pointer to fim_element necesary to call fim_checker function. May be null
  */
-void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt, fim_element *item);
+void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt);
 
 /**
  * @brief Process FIM audit event
@@ -245,6 +242,12 @@ void fim_get_checksum(fim_entry_data *data);
  *
  */
 void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_start);
+
+/**
+ * @brief Sleep during rt_delay milliseconds
+ *
+ */
+void fim_rt_delay();
 
 /**
  * @brief Checks for deleted files, deletes them from the agent's database and sends a deletion event on scheduled scans

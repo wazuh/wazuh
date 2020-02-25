@@ -177,16 +177,10 @@ void realtime_process()
             }
         }
 
-        /* Need a sleep here to avoid triggering on vim
-         * (and finding the file removed)
-         */
-        struct timeval timeout = {0, syscheck.rt_delay * 1000};
-        select(0, NULL, NULL, NULL, &timeout);
-
         char ** paths = rbtree_keys(tree);
 
         for (int i = 0; paths[i] != NULL; i++) {
-            fim_realtime_event(paths[i], NULL);
+            fim_realtime_event(paths[i]);
         }
 
         free_strarray(paths);
@@ -254,8 +248,6 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
     }
 
     if (dwBytes) {
-        fim_element *item;
-        os_calloc(1, sizeof(fim_element), item);
 
         do {
             pinfo = (PFILE_NOTIFY_INFORMATION) &rtlocald->buffer[offset];
@@ -284,16 +276,12 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
             int index = fim_configuration_directory(wdchar, "file");
             int file_index = fim_configuration_directory(final_path, "file");
 
-            Sleep(syscheck.rt_delay);
-
             if (index == file_index) {
-                item->mode = FIM_REALTIME;
                 /* Check the change */
-                fim_realtime_event(final_path, item);
+                fim_realtime_event(final_path);
             }
 
         } while (pinfo->NextEntryOffset != 0);
-        os_free(item);
     }
 
     realtime_win32read(rtlocald);
@@ -379,7 +367,8 @@ int realtime_adddir(const char *dir, int whodata)
         syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_FILE_TYPE;
         syscheck.wdata.dirs_status[whodata - 1].status |= WD_STATUS_EXISTS;
     } else {
-        mwarn(FIM_WARN_REALTIME_OPENFAIL, dir);
+        mdebug1(FIM_WARN_REALTIME_OPENFAIL, dir);
+            
         syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_UNK_TYPE;
         syscheck.wdata.dirs_status[whodata - 1].status &= ~WD_STATUS_EXISTS;
         return 0;
