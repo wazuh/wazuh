@@ -318,6 +318,10 @@ void fim_realtime_event(char *file) {
 
     // If the file exists, generate add or modify events.
     if (w_stat(file, &file_stat) >= 0) {
+        /* Need a sleep here to avoid triggering on vim
+         * (and finding the file removed)
+         */
+        fim_rt_delay();
 
 #ifdef WIN32
         fim_element item = { .mode = FIM_REALTIME };
@@ -340,6 +344,7 @@ void fim_whodata_event(whodata_evt * w_evt) {
 
     // If the file exists, generate add or modify events.
     if(w_stat(w_evt->path, &file_stat) >= 0) {
+        fim_rt_delay();
 
 #ifdef WIN32
         fim_element item = { .mode = FIM_WHODATA };
@@ -1149,3 +1154,18 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
 
     return;
 }
+
+// LCOV_EXCL_START
+
+// Sleep during rt_delay milliseconds
+
+void fim_rt_delay() {
+#ifdef WIN32
+    Sleep(syscheck.rt_delay);
+#else
+    struct timeval timeout = {0, syscheck.rt_delay * 1000};
+    select(0, NULL, NULL, NULL, &timeout);
+#endif
+}
+
+// LCOV_EXCL_STOP
