@@ -375,7 +375,8 @@ int realtime_adddir(const char *dir, int whodata)
         syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_FILE_TYPE;
         syscheck.wdata.dirs_status[whodata - 1].status |= WD_STATUS_EXISTS;
     } else {
-        mwarn(FIM_WARN_REALTIME_OPENFAIL, dir);
+        mdebug1(FIM_WARN_REALTIME_OPENFAIL, dir);
+            
         syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_UNK_TYPE;
         syscheck.wdata.dirs_status[whodata - 1].status &= ~WD_STATUS_EXISTS;
         return 0;
