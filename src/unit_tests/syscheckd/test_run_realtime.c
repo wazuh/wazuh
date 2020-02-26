@@ -19,6 +19,17 @@
 
 #ifdef TEST_WINAGENT
 #include "../wrappers/syscheckd/run_realtime.h"
+
+// This struct should always reflect the one defined in run_realtime.c
+typedef struct _win32rtfim {
+    HANDLE h;
+    OVERLAPPED overlap;
+
+    char *dir;
+    TCHAR buffer[65536];
+} win32rtfim;
+
+int realtime_win32read(win32rtfim *rtlocald);
 #endif
 /* redefinitons/wrapping */
 
@@ -168,7 +179,7 @@ int __wrap_W_Vector_insert_unique(W_Vector *v, const char *element) {
     return mock();
 }
 
-#ifdef TEST_AGENT
+#if defined(TEST_AGENT) || defined(TEST_WINAGENT)
 char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
 
 int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, int max) {
@@ -283,11 +294,11 @@ void test_realtime_start_success(void **state) {
     #if defined(TEST_SERVER) || defined(TEST_AGENT)
     will_return(__wrap_inotify_init, 0);
     #else
-    expect_value(wrap_CreateEvent, lpEventAttributes, NULL);
-    expect_value(wrap_CreateEvent, bManualReset, TRUE);
-    expect_value(wrap_CreateEvent, bInitialState, FALSE);
-    expect_value(wrap_CreateEvent, lpName, NULL);
-    will_return(wrap_CreateEvent, (HANDLE)123456);
+    expect_value(wrap_run_realtime_CreateEvent, lpEventAttributes, NULL);
+    expect_value(wrap_run_realtime_CreateEvent, bManualReset, TRUE);
+    expect_value(wrap_run_realtime_CreateEvent, bInitialState, FALSE);
+    expect_value(wrap_run_realtime_CreateEvent, lpName, NULL);
+    will_return(wrap_run_realtime_CreateEvent, (HANDLE)123456);
     #endif
 
     ret = realtime_start();
@@ -653,6 +664,36 @@ void test_realtime_process_failure(void **state)
 
     realtime_process();
 }
+#else // TEST_WINAGENT
+static void test_realtime_win32read_success(void **state) {
+    win32rtfim rtlocal;
+    int ret;
+
+    will_return(wrap_run_realtime_ReadDirectoryChangesW, 1);
+
+    ret = realtime_win32read(&rtlocal);
+
+    assert_int_equal(ret, 0);
+}
+
+static void test_realtime_win32read_unable_to_read_directory(void **state) {
+    win32rtfim rtlocal;
+    int ret;
+
+    rtlocal.dir = "C:\\a\\path";
+
+    will_return(wrap_run_realtime_ReadDirectoryChangesW, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6323): Unable to set 'ReadDirectoryChangesW' for directory: 'C:\\a\\path'");
+    will_return(__wrap__mdebug1, 1);
+
+    expect_value(wrap_run_realtime_Sleep, dwMilliseconds, 2);
+
+    ret = realtime_win32read(&rtlocal);
+
+    assert_int_equal(ret, 0);
+}
+
 #endif
 
 int main(void) {
@@ -679,6 +720,9 @@ int main(void) {
         cmocka_unit_test(test_realtime_process_overflow),
         cmocka_unit_test(test_realtime_process_delete),
         cmocka_unit_test(test_realtime_process_failure),
+        #else
+        cmocka_unit_test(test_realtime_win32read_success),
+        cmocka_unit_test(test_realtime_win32read_unable_to_read_directory),
         #endif
     };
 
