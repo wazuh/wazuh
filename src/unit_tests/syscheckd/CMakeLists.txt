@@ -112,6 +112,13 @@ set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watc
 list(APPEND syscheckd_tests_names "test_run_realtime")
 if(${TARGET} STREQUAL "agent")
   list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot")
+elseif(${TARGET} STREQUAL "winagent")
+  list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS}")
+
+  # Create event channel tests for run_check
+  list(APPEND syscheckd_event_tests_names "test_run_realtime_event")
+  list(APPEND syscheckd_event_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=whodata_audit_start \
+                                           -Wl,--wrap=check_path_type,--wrap=set_winsacl")
 else()
   list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS}")
 endif()

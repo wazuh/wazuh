@@ -27,6 +27,9 @@ volatile int audit_db_consistency_flag;
 #undef CreateEvent
 #define CreateEvent wrap_run_realtime_CreateEvent
 
+#undef CreateFile
+#define CreateFile wrap_run_realtime_CreateFile
+
 #undef sleep
 #define sleep wrap_run_realtime_Sleep
 

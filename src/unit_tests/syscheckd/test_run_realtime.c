@@ -50,7 +50,17 @@ char *__wrap_OSHash_Get() {
     return mock_type(char *);
 }
 
-int __wrap_OSHash_Add_ex() {
+int __wrap_OSHash_Add_ex(OSHash *self, const char *key, void *data) {
+    #if TEST_WINAGENT
+    if(data) {
+        win32rtfim *rtlocald = data;
+
+        free(rtlocald->dir);
+        free(rtlocald->overlap.Pointer);
+        free(rtlocald);
+    }
+    #endif
+
     return mock();
 }
 
@@ -98,6 +108,8 @@ void __wrap__mwarn(const char * file, int line, const char * func, const char *m
     va_start(args, msg);
     vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
     va_end(args);
+
+    printf("%s\n", formatted_msg);
 
     check_expected(formatted_msg);
 }
@@ -218,6 +230,25 @@ int __wrap_isChroot() {
 }
 #endif
 
+#ifdef WIN_WHODATA
+int __wrap_whodata_audit_start() {
+    return 0;
+}
+
+int __wrap_check_path_type(const char *dir) {
+    check_expected(dir);
+
+    return mock();
+}
+
+int __wrap_set_winsacl(const char *dir, int position) {
+    check_expected(dir);
+    check_expected(position);
+
+    return mock();
+}
+#endif
+
 /* setup/teardown */
 static int setup_group(void **state) {
     will_return_always(__wrap__mdebug1, 0);
@@ -283,6 +314,20 @@ static int teardown_realtime_start(void **state) {
 
     return 0;
 }
+
+#ifdef WIN_WHODATA
+static int setup_realtime_adddir_realtime_start_error(void **state) {
+    *state = syscheck.realtime;
+    syscheck.realtime = NULL;
+    return 0;
+}
+
+static int teardown_realtime_adddir_realtime_start_error(void **state) {
+    syscheck.realtime = *state;
+
+    return 0;
+}
+#endif
 
 /* tests */
 
@@ -728,9 +773,194 @@ void test_free_win32rtfim_data_full_data(void **state) {
 
     free_win32rtfim_data(data);
 }
+
+void test_realtime_adddir_whodata_non_existent_file(void **state) {
+    int ret;
+
+    syscheck.wdata.dirs_status[0].status &= ~WD_CHECK_WHODATA;
+    syscheck.wdata.dirs_status[0].status |= WD_CHECK_REALTIME;
+
+    expect_string(__wrap_check_path_type, dir, "C:\\a\\path");
+    will_return(__wrap_check_path_type, 0);
+
+    expect_string(__wrap__mwarn, formatted_msg, "(6907): 'C:\\a\\path' does not exist. Monitoring discarded.");
+
+    ret = realtime_adddir("C:\\a\\path", 1);
+
+    assert_int_equal(ret, 0);
+    assert_non_null(syscheck.wdata.dirs_status[0].status & WD_CHECK_WHODATA);
+    assert_null(syscheck.wdata.dirs_status[0].status & WD_CHECK_REALTIME);
+    assert_int_equal(syscheck.wdata.dirs_status[0].object_type, WD_STATUS_UNK_TYPE);
+    assert_null(syscheck.wdata.dirs_status[0].status & WD_STATUS_EXISTS);
+}
+
+void test_realtime_adddir_whodata_error_adding_whodata_dir(void **state) {
+    int ret;
+
+    syscheck.wdata.dirs_status[0].status &= ~WD_CHECK_WHODATA;
+    syscheck.wdata.dirs_status[0].status |= WD_CHECK_REALTIME;
+
+    expect_string(__wrap_check_path_type, dir, "C:\\a\\path");
+    will_return(__wrap_check_path_type, 2);
+
+    expect_string(__wrap_set_winsacl, dir, "C:\\a\\path");
+    expect_value(__wrap_set_winsacl, position, 0);
+    will_return(__wrap_set_winsacl, 1);
+
+    expect_string(__wrap__merror, formatted_msg,
+        "(6619): Unable to add directory to whodata real time monitoring: 'C:\\a\\path'.");
+
+    ret = realtime_adddir("C:\\a\\path", 1);
+
+    assert_int_equal(ret, 0);
+    assert_non_null(syscheck.wdata.dirs_status[0].status & WD_CHECK_WHODATA);
+    assert_null(syscheck.wdata.dirs_status[0].status & WD_CHECK_REALTIME);
+    assert_int_equal(syscheck.wdata.dirs_status[0].object_type, WD_STATUS_DIR_TYPE);
+    assert_non_null(syscheck.wdata.dirs_status[0].status & WD_STATUS_EXISTS);
+}
+
+void test_realtime_adddir_whodata_file_success(void **state) {
+    int ret;
+
+    syscheck.wdata.dirs_status[0].status &= ~WD_CHECK_WHODATA;
+    syscheck.wdata.dirs_status[0].status |= WD_CHECK_REALTIME;
+
+    expect_string(__wrap_check_path_type, dir, "C:\\a\\path");
+    will_return(__wrap_check_path_type, 1);
+
+    expect_string(__wrap_set_winsacl, dir, "C:\\a\\path");
+    expect_value(__wrap_set_winsacl, position, 0);
+    will_return(__wrap_set_winsacl, 0);
+
+    ret = realtime_adddir("C:\\a\\path", 1);
+
+    assert_int_equal(ret, 1);
+    assert_non_null(syscheck.wdata.dirs_status[0].status & WD_CHECK_WHODATA);
+    assert_null(syscheck.wdata.dirs_status[0].status & WD_CHECK_REALTIME);
+    assert_int_equal(syscheck.wdata.dirs_status[0].object_type, WD_STATUS_FILE_TYPE);
+    assert_non_null(syscheck.wdata.dirs_status[0].status & WD_STATUS_EXISTS);
+}
+
+void test_realtime_adddir_whodata_dir_success(void **state) {
+    int ret;
+
+    syscheck.wdata.dirs_status[0].status &= ~WD_CHECK_WHODATA;
+    syscheck.wdata.dirs_status[0].status |= WD_CHECK_REALTIME;
+
+    expect_string(__wrap_check_path_type, dir, "C:\\a\\path");
+    will_return(__wrap_check_path_type, 2);
+
+    expect_string(__wrap_set_winsacl, dir, "C:\\a\\path");
+    expect_value(__wrap_set_winsacl, position, 0);
+    will_return(__wrap_set_winsacl, 0);
+
+    ret = realtime_adddir("C:\\a\\path", 1);
+
+    assert_int_equal(ret, 1);
+    assert_non_null(syscheck.wdata.dirs_status[0].status & WD_CHECK_WHODATA);
+    assert_null(syscheck.wdata.dirs_status[0].status & WD_CHECK_REALTIME);
+    assert_int_equal(syscheck.wdata.dirs_status[0].object_type, WD_STATUS_DIR_TYPE);
+    assert_non_null(syscheck.wdata.dirs_status[0].status & WD_STATUS_EXISTS);
+}
+
+void test_realtime_adddir_realtime_start_error(void **state) {
+    int ret;
+    errno = 0;
+
+    will_return(__wrap_OSHash_Create, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "(1102): Could not acquire memory due to [(0)-(Success)].");
+
+    ret = realtime_adddir("C:\\a\\path", 0);
+
+    assert_int_equal(ret, -1);
+}
+
+void test_realtime_adddir_max_limit_reached(void **state) {
+    int ret;
+
+    syscheck.realtime->fd = 1024;
+
+    expect_string(__wrap__merror, formatted_msg,
+        "(6616): Unable to add directory to real time monitoring: 'C:\\a\\path' - Maximum size permitted.");
+
+    ret = realtime_adddir("C:\\a\\path", 0);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_realtime_adddir_duplicate_entry(void **state) {
+    int ret;
+
+    syscheck.realtime->fd = 128;
+
+    will_return(__wrap_OSHash_Get_ex, 1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6224): Entry 'C:\\a\\path' already exists in the RT hash table.");
+
+    ret = realtime_adddir("C:\\a\\path", 0);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_realtime_adddir_handle_error(void **state) {
+    int ret;
+
+    syscheck.realtime->fd = 128;
+
+    will_return(__wrap_OSHash_Get_ex, 0);
+
+    expect_string(wrap_run_realtime_CreateFile, lpFileName, "C:\\a\\path");
+    will_return(wrap_run_realtime_CreateFile, INVALID_HANDLE_VALUE);
+
+    expect_string(__wrap__mdebug1, formatted_msg,
+        "(6290): Unable to add directory to real time monitoring: 'C:\\a\\path'");
+    will_return(__wrap__mdebug1, 1);
+
+    ret = realtime_adddir("C:\\a\\path", 0);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_realtime_adddir_out_of_memory_error(void **state) {
+    int ret;
+
+    will_return(__wrap_OSHash_Get_ex, 0);
+
+    expect_string(wrap_run_realtime_CreateFile, lpFileName, "C:\\a\\path");
+    will_return(wrap_run_realtime_CreateFile, (HANDLE)123456);
+
+    will_return(__wrap_OSHash_Add_ex, NULL);
+
+    expect_string(__wrap__merror_exit, formatted_msg, FIM_CRITICAL_ERROR_OUT_MEM);
+
+    will_return(wrap_run_realtime_ReadDirectoryChangesW, 1);
+
+    ret = realtime_adddir("C:\\a\\path", 0);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_realtime_adddir_success(void **state) {
+    int ret;
+
+    will_return(__wrap_OSHash_Get_ex, 0);
+
+    expect_string(wrap_run_realtime_CreateFile, lpFileName, "C:\\a\\path");
+    will_return(wrap_run_realtime_CreateFile, (HANDLE)123456);
+
+    will_return(__wrap_OSHash_Add_ex, 1);
+
+    will_return(wrap_run_realtime_ReadDirectoryChangesW, 1);
+
+    ret = realtime_adddir("C:\\a\\path", 0);
+
+    assert_int_equal(ret, 1);
+}
 #endif
 
 int main(void) {
+    #ifndef WIN_WHODATA
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_realtime_start_success, setup_realtime_start, teardown_realtime_start),
         cmocka_unit_test_setup_teardown(test_realtime_start_failure_hash, setup_realtime_start, teardown_realtime_start),
@@ -763,6 +993,21 @@ int main(void) {
         cmocka_unit_test(test_free_win32rtfim_data_full_data),
         #endif
     };
+    #else
+    const struct CMUnitTest tests[] = {
+        // realtime_adddir
+        cmocka_unit_test(test_realtime_adddir_whodata_non_existent_file),
+        cmocka_unit_test(test_realtime_adddir_whodata_error_adding_whodata_dir),
+        cmocka_unit_test(test_realtime_adddir_whodata_file_success),
+        cmocka_unit_test(test_realtime_adddir_whodata_dir_success),
+        cmocka_unit_test_setup_teardown(test_realtime_adddir_realtime_start_error, setup_realtime_adddir_realtime_start_error, teardown_realtime_adddir_realtime_start_error),
+        cmocka_unit_test(test_realtime_adddir_max_limit_reached),
+        cmocka_unit_test(test_realtime_adddir_duplicate_entry),
+        cmocka_unit_test(test_realtime_adddir_handle_error),
+        cmocka_unit_test(test_realtime_adddir_out_of_memory_error),
+        cmocka_unit_test(test_realtime_adddir_success),
+    };
+    #endif
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

@@ -42,3 +42,15 @@ WINBOOL wrap_run_realtime_CloseHandle (HANDLE hObject) {
 
     return mock();
 }
+
+HANDLE wrap_run_realtime_CreateFile (LPCSTR lpFileName,
+                                     __UNUSED_PARAM(DWORD dwDesiredAccess),
+                                     __UNUSED_PARAM(DWORD dwShareMode),
+                                     __UNUSED_PARAM(LPSECURITY_ATTRIBUTES lpSecurityAttributes),
+                                     __UNUSED_PARAM(DWORD dwCreationDisposition),
+                                     __UNUSED_PARAM(DWORD dwFlagsAndAttributes),
+                                     __UNUSED_PARAM(HANDLE hTemplateFile)) {
+    check_expected(lpFileName);
+
+    return mock_type(HANDLE);
+}
