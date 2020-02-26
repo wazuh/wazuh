@@ -1,14 +1,17 @@
 # WINAGENT NEEDS TO BE BUILT WITH WIN32 toolchain
 # cmake ../ -DCMAKE_TOOLCHAIN_FILE=../Toolchain-win32.cmake
 
+set(CMAKE_FIND_LIBRARY_SUFFIXES ".a;.dll")
+
 if(NOT CMAKE_CROSSCOMPILING)
   message(FATAL_ERROR "Cross compiling tools not enabled. Try running cmake as: \n cmake ../ -DCMAKE_TOOLCHAIN_FILE=../Toolchain-win32.cmake")
 endif()
 
 # Setup the compiling toolchain
 # Find the wazuh shared library
-find_library(WAZUHEXT NAMES libwazuhext.dll HINTS "${SRC_FOLDER}")
+find_library(WAZUHEXT NAMES wazuhext HINTS "${SRC_FOLDER}")
 if(NOT WAZUHEXT)
+  message(FATAL_ERROR "WAZUHEXT is set to '${WAZUHEXT}', but did not find any file matching ${SRC_FOLDER}/${CMAKE_FIND_LIBRARY_PREFIXES}wazuhext${CMAKE_FIND_LIBRARY_SUFFIXES}")
   message(FATAL_ERROR "libwazuhext not found in ${SRC_FOLDER} Aborting...")
 endif()
 
