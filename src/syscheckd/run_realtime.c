@@ -25,7 +25,16 @@ volatile int audit_db_consistency_flag;
 #include "unit_tests/wrappers/syscheckd/run_realtime.h"
 
 #undef CreateEvent
-#define CreateEvent wrap_CreateEvent
+#define CreateEvent wrap_run_realtime_CreateEvent
+
+#undef CreateFile
+#define CreateFile wrap_run_realtime_CreateFile
+
+#undef sleep
+#define sleep wrap_run_realtime_Sleep
+
+#define ReadDirectoryChangesW wrap_run_realtime_ReadDirectoryChangesW
+#define CloseHandle wrap_run_realtime_CloseHandle
 #endif
 
 #ifdef INOTIFY_ENABLED
