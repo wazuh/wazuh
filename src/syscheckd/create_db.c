@@ -407,7 +407,7 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
 
     if (files && files->elements) {
         if (fim_db_process_missing_entry(syscheck.database, files, &syscheck.fim_entry_mutex,
-            syscheck.database_store, mode) != FIMDB_OK) {
+            syscheck.database_store, mode, w_evt) != FIMDB_OK) {
                 merror(FIM_DB_ERROR_RM_RANGE, first_entry, last_entry);
             }
     }
