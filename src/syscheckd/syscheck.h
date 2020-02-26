@@ -244,6 +244,12 @@ void fim_get_checksum(fim_entry_data *data);
 void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_start);
 
 /**
+ * @brief Sleep during rt_delay milliseconds
+ *
+ */
+void fim_rt_delay();
+
+/**
  * @brief Checks for deleted files, deletes them from the agent's database and sends a deletion event on scheduled scans
  *
  */
