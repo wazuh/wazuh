@@ -35,3 +35,10 @@ WINBOOL wrap_run_realtime_ReadDirectoryChangesW (__UNUSED_PARAM(HANDLE hDirector
                                                  __UNUSED_PARAM(LPOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine)) {
     return mock();
 }
+
+
+WINBOOL wrap_run_realtime_CloseHandle (HANDLE hObject) {
+    check_expected_ptr(hObject);
+
+    return mock();
+}

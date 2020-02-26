@@ -30,6 +30,7 @@ typedef struct _win32rtfim {
 } win32rtfim;
 
 int realtime_win32read(win32rtfim *rtlocald);
+void free_win32rtfim_data(win32rtfim *data);
 #endif
 /* redefinitons/wrapping */
 
@@ -665,7 +666,7 @@ void test_realtime_process_failure(void **state)
     realtime_process();
 }
 #else // TEST_WINAGENT
-static void test_realtime_win32read_success(void **state) {
+void test_realtime_win32read_success(void **state) {
     win32rtfim rtlocal;
     int ret;
 
@@ -676,7 +677,7 @@ static void test_realtime_win32read_success(void **state) {
     assert_int_equal(ret, 0);
 }
 
-static void test_realtime_win32read_unable_to_read_directory(void **state) {
+void test_realtime_win32read_unable_to_read_directory(void **state) {
     win32rtfim rtlocal;
     int ret;
 
@@ -694,6 +695,39 @@ static void test_realtime_win32read_unable_to_read_directory(void **state) {
     assert_int_equal(ret, 0);
 }
 
+void test_free_win32rtfim_data_null_input(void **state) {
+    // Nothing to check on this condition
+    free_win32rtfim_data(NULL);
+}
+
+void test_free_win32rtfim_data_full_data(void **state) {
+    win32rtfim *data = calloc(1, sizeof(win32rtfim));
+
+    if(data == NULL)
+        fail();
+
+    data->h = (HANDLE)123456;
+
+    data->overlap.Pointer = calloc(1, sizeof(PVOID));
+
+    if(data->overlap.Pointer == NULL) {
+        free(data);
+        fail();
+    }
+
+    data->dir = strdup("c:\\a\\path");
+
+    if(data->dir == NULL) {
+        free(data->overlap.Pointer);
+        free(data);
+        fail();
+    }
+
+    expect_value(wrap_run_realtime_CloseHandle, hObject, (HANDLE)123456);
+    will_return(wrap_run_realtime_CloseHandle, 1);
+
+    free_win32rtfim_data(data);
+}
 #endif
 
 int main(void) {
@@ -721,8 +755,12 @@ int main(void) {
         cmocka_unit_test(test_realtime_process_delete),
         cmocka_unit_test(test_realtime_process_failure),
         #else
+        // realtime_win32read
         cmocka_unit_test(test_realtime_win32read_success),
         cmocka_unit_test(test_realtime_win32read_unable_to_read_directory),
+        // free_win32rtfim_data
+        cmocka_unit_test(test_free_win32rtfim_data_null_input),
+        cmocka_unit_test(test_free_win32rtfim_data_full_data),
         #endif
     };
 

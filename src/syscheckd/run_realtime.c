@@ -31,6 +31,7 @@ volatile int audit_db_consistency_flag;
 #define sleep wrap_run_realtime_Sleep
 
 #define ReadDirectoryChangesW wrap_run_realtime_ReadDirectoryChangesW
+#define CloseHandle wrap_run_realtime_CloseHandle
 #endif
 
 #ifdef INOTIFY_ENABLED

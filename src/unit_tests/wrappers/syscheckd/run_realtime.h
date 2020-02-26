@@ -15,6 +15,7 @@
 HANDLE wrap_run_realtime_CreateEvent (LPSECURITY_ATTRIBUTES lpEventAttributes, WINBOOL bManualReset, WINBOOL bInitialState, LPCSTR lpName);
 VOID wrap_run_realtime_Sleep (DWORD dwMilliseconds);
 WINBOOL wrap_run_realtime_ReadDirectoryChangesW (HANDLE hDirectory, LPVOID lpBuffer, DWORD nBufferLength, WINBOOL bWatchSubtree, DWORD dwNotifyFilter, LPDWORD lpBytesReturned, LPOVERLAPPED lpOverlapped, LPOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine);
+WINBOOL wrap_run_realtime_CloseHandle (HANDLE hObject);
 
 #endif
 #endif
