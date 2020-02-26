@@ -13,6 +13,8 @@
 
 char *searchAndReplace(const char *orig, const char *search, const char *value)
 {
+    assert(orig);
+
     char *p;
     const size_t orig_len = strlen(orig);
     const size_t search_len = strlen(search);
@@ -102,7 +104,7 @@ char *escape_newlines(const char *orig)
         ptr++;
     }
 
-    ret = (char *) malloc (size);
+    os_malloc (size, ret);
     ptr = orig;
     retptr = ret;
     while (*ptr) {

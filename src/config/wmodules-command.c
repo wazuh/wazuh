@@ -27,6 +27,8 @@ static const char *XML_SKIP_VERIFICATION = "skip_verification";
 
 int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
 {
+    assert(WM_COMMAND_CONTEXT.name);
+
     int i;
     int empty = 0;
     wm_command_t * command;

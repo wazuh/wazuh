@@ -169,6 +169,9 @@ char * w_strtrim(char * string) {
 
 // Add a dynamic field with object nesting
 void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
+
+    assert(key);
+
     cJSON *object;
     char *current;
     char *nest = strchr(key, '.');
