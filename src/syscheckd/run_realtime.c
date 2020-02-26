@@ -21,6 +21,13 @@ volatile int audit_db_consistency_flag;
 #include "syscheck.h"
 #include "syscheck_op.h"
 
+#ifdef UNIT_TESTING
+#include "unit_tests/wrappers/syscheckd/run_realtime.h"
+
+#undef CreateEvent
+#define CreateEvent wrap_CreateEvent
+#endif
+
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
 
