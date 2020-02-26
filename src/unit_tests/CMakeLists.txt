@@ -62,7 +62,7 @@ list(APPEND tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn 
                          -Wl,--wrap,fim_db_insert -Wl,--wrap,OS_MD5_SHA1_SHA256_File -Wl,--wrap,seechanges_addfile\
                          -Wl,--wrap,fim_db_get_not_scanned -Wl,--wrap,fim_db_delete_not_scanned -Wl,--wrap,fim_db_set_all_unscanned \
                          -Wl,--wrap,fim_db_set_scanned -Wl,--wrap,get_user -Wl,--wrap,get_group \
-                         -Wl,--wrap,fim_db_remove_path")
+                         -Wl,--wrap,fim_db_remove_path -Wl,--wrap,fim_db_get_path_range -Wl,--wrap,fim_db_process_missing_entry")
 
 list(APPEND tests_names "test_syscheck_audit")
 list(APPEND tests_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,IsSocket -Wl,--wrap,IsFile -Wl,--wrap,IsDir -Wl,--wrap,IsLink -Wl,--wrap,IsFile -Wl,--wrap,audit_restart \
