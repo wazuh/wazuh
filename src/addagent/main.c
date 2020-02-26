@@ -18,9 +18,14 @@ static int setenv(const char *name, const char *val, __attribute__((unused)) int
     assert(val);
 
     int len = strlen(name) + strlen(val) + 2;
-    char *str = (char *)malloc(len);
+    char *str;
+    os_malloc(len, str);
+
     snprintf(str, len, "%s=%s", name, val);
     putenv(str);
+
+    os_free(str);
+
     return 0;
 }
 #endif
