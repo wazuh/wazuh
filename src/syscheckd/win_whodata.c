@@ -1275,7 +1275,7 @@ int get_volume_names() {
 }
 
 int get_drive_names(wchar_t *volume_name, char *device) {
-    char *convert_name;
+
     wchar_t *names = NULL;
     wchar_t *nameit = NULL;
     unsigned long char_count = MAX_PATH + 1;
@@ -1308,10 +1308,10 @@ int get_drive_names(wchar_t *volume_name, char *device) {
 
     if (success) {
         // Save information in FIM whodata structure
-        os_calloc(MAX_PATH, sizeof(char), convert_name);
+        char convert_name[MAX_PATH] = "";
 
         for (nameit = names; nameit[0] != L'\0'; nameit += wcslen(nameit) + 1) {
-            wcstombs(convert_name, nameit, strlen(nameit));
+            wcstombs(convert_name, nameit, sizeof(nameit));
             mdebug1(FIM_WHODATA_DEVICE_LETTER, device, convert_name);
 
             if(syscheck.wdata.device) {
@@ -1343,7 +1343,6 @@ int get_drive_names(wchar_t *volume_name, char *device) {
                 syscheck.wdata.drive[1] = NULL;
             }
         }
-        os_free(convert_name);
     }
     os_free(names);
 
