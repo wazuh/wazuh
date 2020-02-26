@@ -16,6 +16,8 @@
 
 #include "../headers/file_op.h"
 
+static int unit_testing;
+
 /* redefinitons/wrapping */
 
 int __wrap_isChroot() {
@@ -70,17 +72,26 @@ int __wrap__mferror(const char * file, int line, const char * func, const char *
 
 extern FILE* __real_fopen(const char* path, const char* mode);
 FILE* __wrap_fopen(const char* path, const char* mode) {
-    switch (mock_type(int)){
-        case 0:
-            return __real_fopen(path, mode);
-        default:
-            check_expected_ptr(path);
-            check_expected(mode);
-            return mock_ptr_type(FILE*);
+    if(unit_testing) {
+        check_expected_ptr(path);
+        check_expected(mode);
+        return mock_ptr_type(FILE*);
+    } else {
+        return __real_fopen(path, mode);
     }
 }
 
 /* setups/teardowns */
+static int setup_group(void **state) {
+    unit_testing = 1;
+    return 0;
+}
+
+static int teardown_group(void **state) {
+    unit_testing = 0;
+    return 0;
+}
+
 static int CreatePID_teardown(void **state) {
     remove("./test_file.tmp");
 
@@ -107,7 +118,6 @@ void test_CreatePID_success(void **state)
 
     expect_string(__wrap_fopen, path, "/var/run/test-42.pid");
     expect_string(__wrap_fopen, mode, "a");
-    will_return(__wrap_fopen, 1); // Use mock fopen
     will_return(__wrap_fopen, fp);
 
     ret = CreatePID("test", 42);
@@ -140,7 +150,6 @@ void test_CreatePID_failure_chmod(void **state)
 
     expect_string(__wrap_fopen, path, "/var/run/test-42.pid");
     expect_string(__wrap_fopen, mode, "a");
-    will_return(__wrap_fopen, 1);
     will_return(__wrap_fopen, fp);
 
     ret = CreatePID("test", 42);
@@ -156,7 +165,6 @@ void test_CreatePID_failure_fopen(void **state)
 
     expect_string(__wrap_fopen, path, "/var/run/test-42.pid");
     expect_string(__wrap_fopen, mode, "a");
-    will_return(__wrap_fopen, 1);
     will_return(__wrap_fopen, NULL);
 
     ret = CreatePID("test", 42);
@@ -199,5 +207,5 @@ int main(void) {
         cmocka_unit_test(test_DeletePID_success),
         cmocka_unit_test(test_DeletePID_failure),
     };
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

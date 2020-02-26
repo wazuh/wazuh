@@ -21,6 +21,13 @@ volatile int audit_db_consistency_flag;
 #include "syscheck.h"
 #include "syscheck_op.h"
 
+#ifdef UNIT_TESTING
+#include "unit_tests/wrappers/syscheckd/run_realtime.h"
+
+#undef CreateEvent
+#define CreateEvent wrap_CreateEvent
+#endif
+
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
 
@@ -186,7 +193,7 @@ void realtime_process()
         char ** paths = rbtree_keys(tree);
 
         for (int i = 0; paths[i] != NULL; i++) {
-            fim_realtime_event(paths[i]);
+            fim_realtime_event(paths[i], NULL);
         }
 
         free_strarray(paths);
@@ -286,12 +293,12 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
 
             Sleep(syscheck.rt_delay);
 
-
             if (index == file_index) {
                 item->mode = FIM_REALTIME;
                 /* Check the change */
-                fim_checker(final_path, item, NULL, 1);
+                fim_realtime_event(final_path, item);
             }
+
         } while (pinfo->NextEntryOffset != 0);
         os_free(item);
     }

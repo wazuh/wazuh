@@ -13,6 +13,9 @@
 #include "shared.h"
 #include "audit_op.h"
 
+#ifdef UNIT_TESTING
+#define static
+#endif
 
 static w_audit_rules_list *_audit_rules_list;
 
@@ -49,8 +52,8 @@ int audit_print_reply(struct audit_reply *rep) {
             } else if (field == AUDIT_FILTERKEY) {
                 free(key);
                 if (rep->ruledata->values[i]) {
-                    key = strndup(rep->ruledata->buf + offset, rep->ruledata->values[i]);
-                    offset += rep->ruledata->values[i];
+                    key = strndup(rep->ruledata->buf + offset, rep->ruledata->values[i]); //LCOV_EXCL_LINE
+                    offset += rep->ruledata->values[i]; //LCOV_EXCL_LINE
                 } else {
                     key = strdup("");
                 }
@@ -240,9 +243,11 @@ int audit_manage_rules(int action, const char *path, const char *key) {
     os_malloc(sizeof(char) * AUDIT_MAX_KEY_LEN + 1, cmd);
 
     if (snprintf(cmd, AUDIT_MAX_KEY_LEN, "key=%s", key) < 0) {
+        //LCOV_EXCL_START
         free(cmd);
         retval = -1;
         goto end;
+        //LCOV_EXCL_STOP
     } else {
         output = audit_rule_fieldpair_data(&myrule, cmd, flags);
         if (output) {
@@ -301,7 +306,7 @@ void audit_rules_list_append(w_audit_rules_list *wlist, w_audit_rule *element) {
             wlist->size *= 2;
             wlist->list = (w_audit_rule **)realloc(wlist->list, wlist->size * sizeof(w_audit_rule *));
             if (!wlist->list) {
-                merror_exit(MEM_ERROR, errno, strerror(errno));
+                merror_exit(MEM_ERROR, errno, strerror(errno)); //LCOV_EXCL_LINE
             }
         }
         wlist->list[wlist->used++] = element;

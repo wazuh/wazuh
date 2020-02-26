@@ -47,13 +47,13 @@
     ```
 - Modfify `DefineOptions.cmake` file and set `BUILD_SHARED_LIBS` to `OFF` (Only needed if building for Win32)
 - Build CMocka for Win32 (winagent):
-  
+
     ```
     mkdir build
     cd build
     cmake -DCMAKE_C_COMPILER=i686-w64-mingw32-gcc -DCMAKE_C_LINK_EXECUTABLE=i686-w64-mingw32-ld -DCMAKE_INSTALL_PREFIX=/usr/i686-w64-mingw32/ -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_BUILD_TYPE=Release ..
     make
-    sudo make install 
+    sudo make install
     ```
 - Build CMocka for Server and Linux agent:
     ```
@@ -63,7 +63,7 @@
     cd build
     cmake -DCMAKE_BUILD_TYPE=Release ..
     make
-    sudo make install 
+    sudo make install
     ```
 
 ### Compile and run tests:
@@ -74,7 +74,7 @@
     make TARGET={winagent|agent|server} DEBUG=1 TEST=1
     ```
 
-2. Compile tests: 
+2. Compile tests:
    ```
     cd unit_tests
     mkdir build
@@ -85,7 +85,17 @@
     cmake ../
    ```
 
-3. Run tests:
+3. Configure wine
+
+    In order for tests to run, wine needs to be configured in 32 bit mode and the paths to libwazuhext.dll and libwinpthread-1.dll must be provided.
+    ```
+    export WINEPATH="/path/to/mingw/lib;/path/to/wazuh/src"
+    export WINEARCH=win32
+    ```
+    The previous statements can be added to the users .bashrc file so it's not necessary to configure them after every login.
+    In case a message stating wine architecture is set for 32 bits but it is 64 bits, remove `~/.wine` and re-run wine.
+
+4. Run tests:
    ```
     # Full suite
     ctest

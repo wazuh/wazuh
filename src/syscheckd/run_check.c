@@ -24,13 +24,30 @@
 #include "rootcheck/rootcheck.h"
 #include "fim_db.h"
 
+#ifdef UNIT_TESTING
+#include "unit_tests/wrappers/syscheckd/run_check.h"
+// Remove static qualifier when unit testing
+#define STATIC
+
+#ifdef WIN32
+// Replace windows system calls with wrappers
+#define SetThreadPriority   wrap_SetThreadPriority
+#define GetCurrentThread    wrap_GetCurrentThread
+#define GetLastError        wrap_GetLastError
+#undef  sleep
+#define sleep               wrap_Sleep
+#endif
+#else
+#define STATIC static
+#endif
+
 // Prototypes
 void * fim_run_realtime(__attribute__((unused)) void * args);
 int fim_whodata_initialize();
 #ifdef WIN32
-static void set_priority_windows_thread();
+STATIC void set_priority_windows_thread();
 #ifdef WIN_WHODATA
-static void set_whodata_mode_changes();
+STATIC void set_whodata_mode_changes();
 #endif
 #else
 static void *symlink_checker_thread(__attribute__((unused)) void * data);
@@ -59,27 +76,42 @@ static void fim_send_msg(char mq, const char * location, const char * msg) {
 // LCOV_EXCL_STOP
 
 
-// LCOV_EXCL_START
 // Send a data synchronization control message
+
 void fim_send_sync_msg(const char * msg) {
     mdebug2(FIM_DBSYNC_SEND, msg);
     fim_send_msg(DBSYNC_MQ, SYSCHECK, msg);
-    struct timespec timeout = { syscheck.send_delay / 1000000, syscheck.send_delay % 1000000 * 1000 };
-    nanosleep(&timeout, NULL);
+
+    if (syscheck.sync_max_eps == 0) {
+        return;
+    }
+
+    static long n_msg_sent = 0;
+
+    if (++n_msg_sent == syscheck.sync_max_eps) {
+        sleep(1);
+        n_msg_sent = 0;
+    }
 }
-// LCOV_EXCL_STOP
 
 
-// LCOV_EXCL_START
 // Send a message related to syscheck change/addition
 void send_syscheck_msg(const char *msg)
 {
     mdebug2(FIM_SEND, msg);
     fim_send_msg(SYSCHECK_MQ, SYSCHECK, msg);
-    struct timespec timeout = { syscheck.send_delay / 1000000, syscheck.send_delay % 1000000 * 1000 };
-    nanosleep(&timeout, NULL);
+
+    if (syscheck.max_eps == 0) {
+        return;
+    }
+
+    static unsigned n_msg_sent = 0;
+
+    if (++n_msg_sent == syscheck.max_eps) {
+        sleep(1);
+        n_msg_sent = 0;
+    }
 }
-// LCOV_EXCL_STOP
 
 
 // LCOV_EXCL_START
@@ -370,7 +402,6 @@ void set_priority_windows_thread() {
 #endif
 
 
-// LCOV_EXCL_START
 int fim_whodata_initialize() {
 #if defined INOTIFY_ENABLED || defined WIN32
 
@@ -403,7 +434,6 @@ int fim_whodata_initialize() {
 
     return 0;
 }
-// LCOV_EXCL_STOP
 
 
 void log_realtime_status(int next) {
@@ -455,7 +485,14 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
                 continue;
             }
 
-            real_path = realpath(syscheck.symbolic_links[i], NULL);
+            if (CHECK_FOLLOW & syscheck.opts[i]) {
+                real_path = realpath(syscheck.symbolic_links[i], NULL);
+            }
+            else {
+                // Taking the link itself if follow_symbolic_link is not enabled
+                os_calloc(strlen(syscheck.symbolic_links[i]) + 1, sizeof(char), real_path);
+                snprintf(real_path, strlen(syscheck.symbolic_links[i]) + 1, "%s", syscheck.symbolic_links[i]);
+            }
 
             if (*syscheck.dir[i]) {
                 if (real_path) {
@@ -594,17 +631,27 @@ static void fim_delete_realtime_watches(__attribute__((unused)) int pos) {
 static void fim_link_delete_range(int pos) {
     char first_entry[PATH_MAX] = {0};
     char last_entry[PATH_MAX]  = {0};
+    fim_tmp_file * file = NULL;
 
     snprintf(first_entry, PATH_MAX, "%s/", syscheck.dir[pos]);
     snprintf(last_entry, PATH_MAX, "%s0", syscheck.dir[pos]);
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
-    if (fim_db_delete_range(syscheck.database, (char*)first_entry, (char*)last_entry) != FIMDB_OK) {
+    if (fim_db_get_path_range(syscheck.database, first_entry,
+        last_entry, &file, syscheck.database_store) != FIMDB_OK) {
         merror(FIM_DB_ERROR_RM_RANGE, first_entry, last_entry);
     }
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+
+    if (file && file->elements) {
+        if (fim_db_delete_range(syscheck.database, file,
+            &syscheck.fim_entry_mutex, syscheck.database_store) != FIMDB_OK) {
+            merror(FIM_DB_ERROR_RM_RANGE, first_entry, last_entry);
+        }
+    }
 }
 // LCOV_EXCL_STOP
 

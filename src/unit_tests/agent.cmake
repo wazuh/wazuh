@@ -6,7 +6,7 @@ if(NOT WAZUHEXT)
 endif()
 
 # Add compiling flags
-add_compile_options(-ggdb -O0 -g -coverage -DTEST_AGENT)
+add_compile_options(-ggdb -O0 -g -coverage -DTEST_AGENT -DENABLE_AUDIT)
 
 # Set tests dependencies
 set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -lcmocka -fprofile-arcs -ftest-coverage)

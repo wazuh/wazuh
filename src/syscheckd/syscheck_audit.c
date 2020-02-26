@@ -24,7 +24,7 @@
 #define PLUGINS_DIR_AUDIT_3 "/etc/audit/plugins.d"
 #define AUDIT_CONF_LINK "af_wazuh.conf"
 #define AUDIT_SOCKET DEFAULTDIR "/queue/ossec/audit"
-#define BUF_SIZE 6144
+#define BUF_SIZE OS_MAXSTR
 #define AUDIT_KEY "wazuh_fim"
 #define AUDIT_LOAD_RETRIES 5 // Max retries to reload Audit rules
 #define MAX_CONN_RETRIES 5 // Max retries to reconnect to Audit socket
@@ -232,7 +232,11 @@ int add_audit_rules_syscheck(bool first_time) {
                         w_mutex_unlock(&audit_rules_mutex);
                         rules_added++;
                     } else {
-                        merror(FIM_ERROR_WHODATA_ADD_RULE, retval, syscheck.dir[i]);
+                        if (first_time) {
+                            mwarn(FIM_WARN_WHODATA_ADD_RULE, syscheck.dir[i]);
+                        } else {
+                            mdebug1(FIM_WARN_WHODATA_ADD_RULE, syscheck.dir[i]);
+                        }
                     }
                 } else if (found == 1) {
                     w_mutex_lock(&audit_rules_mutex);
@@ -467,12 +471,8 @@ int audit_init(void) {
     // Add Audit rules
     audit_added_rules = W_Vector_init(10);
     audit_added_dirs = W_Vector_init(20);
-    int rules_added = add_audit_rules_syscheck(true);
-    if (rules_added < 1){
-        mdebug1(FIM_AUDIT_NORULES);
-        return (-1);
-    }
 
+    add_audit_rules_syscheck(true);
     atexit(clean_rules);
     auid_err_reported = 0;
 
@@ -847,7 +847,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name)?w_evt->process_name:"");
 
                             if (w_evt->inode) {
-                                fim_whodata_event(w_evt);
+                                fim_whodata_event(w_evt, NULL);
                             }
                         }
                     }
@@ -878,7 +878,7 @@ void audit_parse(char *buffer) {
                             w_evt->path = real_path;
 
                             if (w_evt->inode) {
-                                fim_whodata_event(w_evt);
+                                fim_whodata_event(w_evt, NULL);
                             }
                         }
                     }
@@ -917,7 +917,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name)?w_evt->process_name:"");
 
                             if (w_evt->inode) {
-                                fim_whodata_event(w_evt);
+                                fim_whodata_event(w_evt, NULL);
                             }
                         }
                     }
@@ -977,7 +977,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name)?w_evt->process_name:"");
 
                             if (w_evt->inode) {
-                                fim_whodata_event(w_evt);
+                                fim_whodata_event(w_evt, NULL);
                             }
                             free(file_path1);
                             w_evt->path = NULL;
@@ -999,7 +999,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name)?w_evt->process_name:"");
 
                             if (w_evt->inode) {
-                                fim_whodata_event(w_evt);
+                                fim_whodata_event(w_evt, NULL);
                             }
                         }
                     }
@@ -1041,7 +1041,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name)?w_evt->process_name:"");
 
                             if (w_evt->inode) {
-                                fim_whodata_event(w_evt);
+                                fim_whodata_event(w_evt, NULL);
                             }
                         }
                     }

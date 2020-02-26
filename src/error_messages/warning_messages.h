@@ -38,5 +38,6 @@
 #define FIM_WARN_SKIP_EVENT                     "(6923): Unable to process file '%s'"
 #define FIM_AUDIT_NORUNNING                     "(6224): Who-data engine cannot start because Auditd is not running."
 #define FIM_INVALID_OPTION_SKIP                 "(6225): Invalid option '%s' for attribute '%s'. The paths '%s' not be monitored."
+#define FIM_WARN_WHODATA_ADD_RULE               "(6226): Unable to add audit rule for '%s'"
 
 #endif /* WARN_MESSAGES_H */

@@ -67,7 +67,13 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
         if (syscheck->dir == NULL) {
             os_calloc(2, sizeof(char *), syscheck->dir);
             os_calloc(strlen(entry) + 2, sizeof(char), syscheck->dir[0]);
-            snprintf(syscheck->dir[0], strlen(entry) + 1, "%s", entry);
+            if (link && !(CHECK_FOLLOW & vals)) {
+                // Taking the link itself if follow_symbolic_link is not enabled
+                snprintf(syscheck->dir[0], strlen(link) + 1, "%s", link);
+            }
+            else {
+                snprintf(syscheck->dir[0], strlen(entry) + 1, "%s", entry);
+            }
             syscheck->dir[1] = NULL;
 
 #ifdef WIN32
@@ -96,7 +102,13 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
             os_realloc(syscheck->dir, (pl + 2) * sizeof(char *), syscheck->dir);
             syscheck->dir[pl + 1] = NULL;
             os_calloc(strlen(entry) + 2, sizeof(char), syscheck->dir[pl]);
-            snprintf(syscheck->dir[pl], strlen(entry) + 1, "%s", entry);
+            if (link && !(CHECK_FOLLOW & vals)) {
+                // Taking the link itself if follow_symbolic_link is not enabled
+                snprintf(syscheck->dir[pl], strlen(link) + 1, "%s", link);
+            }
+            else {
+                snprintf(syscheck->dir[pl], strlen(entry) + 1, "%s", entry);
+            }
 
 #ifdef WIN32
             os_realloc(syscheck->wdata.dirs_status, (pl + 2) * sizeof(whodata_dir_status),
@@ -262,16 +274,6 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag)
         /* Add entries - look for the last available */
         i = 0;
         while (syscheck->registry && syscheck->registry[i].entry) {
-            int str_len_i;
-            int str_len_dir;
-
-            str_len_dir = strlen(tmp_entry);
-            str_len_i = strlen(syscheck->registry[i].entry);
-
-            if (str_len_dir > str_len_i) {
-                str_len_dir = str_len_i;
-            }
-
             /* Duplicated entry */
             if (syscheck->registry[i].arch == arch && strcmp(syscheck->registry[i].entry, tmp_entry) == 0) {
                 mdebug2("Overwriting the registration entry: %s", syscheck->registry[i].entry);
@@ -424,7 +426,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     opts &= ~ CHECK_ATTRS;
 #endif
                 } else {
-                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);       
+                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
                     goto out_free;
                 }
             }
@@ -616,8 +618,8 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     mwarn("Recursion level '%d' exceeding limit. Setting %d.", recursion_limit, MAX_DEPTH_ALLOWED);
                     recursion_limit = syscheck->max_depth;
                 }
-            } 
-            
+            }
+
             /* Check tag */
             else if (strcmp(*attrs, xml_tag) == 0) {
                 if (tag) {
@@ -806,6 +808,7 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
     const char *xml_max_sync_interval = "max_interval";
     const char *xml_response_timeout = "response_timeout";
     const char *xml_sync_queue_size = "queue_size";
+    const char *xml_max_eps = "max_eps";
 
     for (int i = 0; node[i]; i++) {
         if (strcmp(node[i]->element, xml_enabled) == 0) {
@@ -848,6 +851,15 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
                 syscheck->sync_queue_size = value;
+            }
+        } else if (strcmp(node[i]->element, xml_max_eps) == 0) {
+            char * end;
+            long value = strtol(node[i]->content, &end, 10);
+
+            if (value < 0 || value > 1000000 || *end) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                syscheck->sync_max_eps = value;
             }
         } else {
             mwarn(XML_INVELEM, node[i]->element);
@@ -1474,15 +1486,10 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             char * end;
             long value = strtol(node[i]->content, &end, 10);
 
-            if (value < 1 || value > 1000000 || *end) {
+            if (value < 0 || value > 1000000 || *end) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
-                if (value > 1000000) {
-                    mdebug1("<%s> exceeds the maximum allowed value (1000000). EPS limitation is disabled.", node[i]->element);
-                }
-
                 syscheck->max_eps = value;
-                syscheck->send_delay = 1000000 / value;
             }
         } /* Allow prefilter cmd */
         else if (strcmp(node[i]->element, xml_allow_remote_prefilter_cmd) == 0) {

@@ -93,7 +93,7 @@ void fim_scan() {
     fim_send_scan_info(FIM_SCAN_END);
 
     if (isDebug()) {
-        fim_print_info(start, end, cputime_start);
+        fim_print_info(start, end, cputime_start); // LCOV_EXCL_LINE
     }
 }
 
@@ -103,6 +103,14 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
     cJSON *json_event = NULL;
     int node;
     int depth;
+
+#ifdef WIN_WHODATA
+    if (w_evt && w_evt->scan_directory == 1) {
+        if (w_update_sacl(path)) {
+            mdebug1(FIM_SCAL_NOREFRESH, path);
+            }
+        }
+#endif
 
     if (item->mode == FIM_SCHEDULED) {
         // If the directory have another configuration will come back
@@ -144,15 +152,15 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
         }
 
         w_mutex_lock(&syscheck.fim_entry_mutex);
+        saved_entry = fim_db_get_path(syscheck.database, path);
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
 
-        if (saved_entry = fim_db_get_path(syscheck.database, path), saved_entry) {
+        if (saved_entry) {
             json_event = fim_json_event(path, NULL, saved_entry->data, item->index, FIM_DELETE, item->mode, w_evt);
-            fim_db_remove_path(syscheck.database, saved_entry, 0);
+            fim_db_remove_path(syscheck.database, saved_entry, &syscheck.fim_entry_mutex, (void *) (int) 0);
             free_entry(saved_entry);
             saved_entry = NULL;
         }
-
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
 
         if (json_event && report) {
             char *json_formated = cJSON_PrintUnformatted(json_event);
@@ -311,15 +319,95 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
 }
 
 
-// LCOV_EXCL_START
-void fim_realtime_event(char *file) {
-    fim_audit_inode_event(file, FIM_REALTIME, NULL);
+void fim_realtime_event(char *file, fim_element *item) {
+
+    struct stat file_stat;
+
+    // If the file exists, generate add or modify events.
+    if (w_stat(file, &file_stat) >= 0) {
+
+#ifdef WIN32
+        fim_checker(file, item, NULL, 1);
+#else
+        fim_audit_inode_event(file, FIM_REALTIME, NULL);
+#endif
+
+    }
+    else {
+        // Otherwise, it could be a file deleted or a directory moved (or renamed).
+        fim_process_missing_entry(file, FIM_REALTIME, NULL, item);
+    }
 }
 
-void fim_whodata_event(whodata_evt * w_evt) {
-    fim_audit_inode_event(w_evt->path, FIM_WHODATA, w_evt);
+void fim_whodata_event(whodata_evt * w_evt, fim_element *item) {
+
+    struct stat file_stat;
+
+    // If the file exists, generate add or modify events.
+    if(w_stat(w_evt->path, &file_stat) >= 0) {
+
+#ifdef WIN32
+        fim_checker(w_evt->path, item, w_evt, 1);
+#else
+        fim_audit_inode_event(w_evt->path, FIM_WHODATA, w_evt);
+#endif
+
+    }
+    // Otherwise, it could be a file deleted or a directory moved (or renamed).
+    else {
+        fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt, item);
+    }
 }
-// LCOV_EXCL_STOP
+
+
+void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt, fim_element *item) {
+
+    fim_entry *saved_data;
+
+    // Search path in DB.
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+    saved_data = fim_db_get_path(syscheck.database, pathname);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    // Exists, create event.
+    if (saved_data) {
+
+#ifdef WIN32
+        fim_checker(pathname, item, w_evt, 1);
+#else
+        fim_audit_inode_event(pathname, mode, w_evt);
+#endif
+
+        free_entry(saved_data);
+        return;
+    }
+
+    // Since the file doesn't exist, research if it's directory and have files in DB.
+    fim_tmp_file *files = NULL;
+    char first_entry[PATH_MAX];
+    char last_entry[PATH_MAX];
+
+#ifdef WIN32
+    snprintf(first_entry, PATH_MAX, "%s\\", pathname);
+    snprintf(last_entry, PATH_MAX, "%s]", pathname);
+
+#else
+    snprintf(first_entry, PATH_MAX, "%s/", pathname);
+    snprintf(last_entry, PATH_MAX, "%s0", pathname);
+
+#endif
+
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+    fim_db_get_path_range(syscheck.database, first_entry, last_entry, &files, syscheck.database_store);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    if (files && files->elements) {
+        if (fim_db_process_missing_entry(syscheck.database, files, &syscheck.fim_entry_mutex,
+            syscheck.database_store, mode) != FIMDB_OK) {
+                merror(FIM_DB_ERROR_RM_RANGE, first_entry, last_entry);
+            }
+    }
+}
 
 
 void fim_audit_inode_event(char *file, fim_event_mode mode, whodata_evt * w_evt) {
@@ -400,7 +488,7 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
     if ((saved && strcmp(saved->data->hash_sha1, data->hash_sha1) != 0)
         || alert_type == FIM_ADD) {
         if (fim_db_insert(syscheck.database, key, data) == -1) {
-            os_free(saved);
+            free_entry(saved);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
             return OS_INVALID;
         }
@@ -417,7 +505,7 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
         os_free(json_formated);
     }
     cJSON_Delete(json_event);
-    os_free(saved);
+    free_entry(saved);
 
     return result;
 }
@@ -675,13 +763,22 @@ void fim_get_checksum (fim_entry_data * data) {
 }
 
 void check_deleted_files() {
+    fim_tmp_file *file = NULL;
+
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
-    if (fim_db_delete_not_scanned(syscheck.database) != FIMDB_OK) {
+    if (fim_db_get_not_scanned(syscheck.database, &file, syscheck.database_store) != FIMDB_OK) {
         merror(FIM_DB_ERROR_RM_NOT_SCANNED);
     }
-    fim_db_set_all_unscanned(syscheck.database);
 
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    if (file && file->elements) {
+        fim_db_delete_not_scanned(syscheck.database, file, &syscheck.fim_entry_mutex, syscheck.database_store);
+    }
+
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+    fim_db_set_all_unscanned(syscheck.database);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 }
 
@@ -961,7 +1058,6 @@ int fim_check_ignore (const char *file_name) {
 }
 
 
-// LCOV_EXCL_START
 int fim_check_restrict (const char *file_name, OSMatch *restriction) {
     if (file_name == NULL) {
         merror(NULL_ERROR);
@@ -978,7 +1074,7 @@ int fim_check_restrict (const char *file_name, OSMatch *restriction) {
 
     return 0;
 }
-// LCOV_EXCL_STOP
+
 
 void free_entry_data(fim_entry_data * data) {
     if (!data) {
@@ -1035,21 +1131,19 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
     mdebug1(FIM_RUNNING_SCAN,
             time_diff(&start, &end),
             (double)(clock() - cputime_start) / CLOCKS_PER_SEC);
-    // SQLite Development
-    //mdebug1(FIM_ENTRIES_INFO, rbtree_size(syscheck.fim_entry));
 
-#ifndef WIN32
+#ifdef WIN32
+    mdebug1(FIM_ENTRIES_INFO, fim_db_get_count_entry_path(syscheck.database));
+#else
     unsigned inode_items = 0;
     unsigned inode_paths = 0;
 
-/* SQLite Development
-    for (hash_node = OSHash_Begin(syscheck.fim_inode, &inode_it); hash_node; hash_node = OSHash_Next(syscheck.fim_inode, &inode_it, hash_node)) {
-        inode_paths += ((fim_inode_data*)hash_node->data)->items;
-        inode_items++;
-    }
-*/
+    inode_items = fim_db_get_count_entry_data(syscheck.database);
+    inode_paths = fim_db_get_count_entry_path(syscheck.database);
+
     mdebug1(FIM_INODES_INFO, inode_items, inode_paths);
 #endif
 
     return;
 }
+// LCOV_EXCL_STOP
