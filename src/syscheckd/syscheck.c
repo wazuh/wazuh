@@ -49,7 +49,6 @@ void init_magic(magic_t *cookie_ptr)
 }
 #endif /* USE_MAGIC */
 
-// LCOV_EXCL_START
 /* Read syscheck internal options */
 void read_internal(int debug_level)
 {
@@ -76,7 +75,6 @@ void read_internal(int debug_level)
 
     return;
 }
-// LCOV_EXCL_STOP
 
 
 void fim_initialize() {
