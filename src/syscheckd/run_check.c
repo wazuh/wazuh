@@ -43,7 +43,6 @@ static void fim_delete_realtime_watches(int pos);
 #endif
 
 // Send a message
-// LCOV_EXCL_START
 static void fim_send_msg(char mq, const char * location, const char * msg) {
     if (SendMSG(syscheck.queue, msg, location, mq) < 0) {
         merror(QUEUE_SEND);
@@ -56,8 +55,6 @@ static void fim_send_msg(char mq, const char * location, const char * msg) {
         SendMSG(syscheck.queue, msg, location, mq);
     }
 }
-// LCOV_EXCL_STOP
-
 
 // Send a data synchronization control message
 
@@ -96,8 +93,6 @@ void send_syscheck_msg(const char *msg)
     }
 }
 
-
-// LCOV_EXCL_START
 // Send a scan info event
 void fim_send_scan_info(fim_scan_event event) {
     cJSON * json = fim_scan_info_json(event, time(NULL));
@@ -108,7 +103,6 @@ void fim_send_scan_info(fim_scan_event event) {
     free(plain);
     cJSON_Delete(json);
 }
-// LCOV_EXCL_STOP
 
 
 // LCOV_EXCL_START
@@ -453,8 +447,8 @@ void log_realtime_status(int next) {
 }
 
 
-// LCOV_EXCL_START
 #ifndef WIN32
+// LCOV_EXCL_START
 static void *symlink_checker_thread(__attribute__((unused)) void * data) {
     char *real_path;
     int i;
@@ -518,7 +512,6 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
 }
 // LCOV_EXCL_STOP
 
-// LCOV_EXCL_START
 static void fim_link_update(int pos, char *new_path) {
     int i;
 
@@ -542,9 +535,7 @@ static void fim_link_update(int pos, char *new_path) {
     // Add new entries without alert.
     fim_link_silent_scan(new_path, pos);
 }
-// LCOV_EXCL_STOP
 
-// LCOV_EXCL_START
 static void fim_link_check_delete(int pos) {
     struct stat statbuf;
 
@@ -563,9 +554,7 @@ static void fim_link_check_delete(int pos) {
         *syscheck.dir[pos] = '\0';
     }
 }
-// LCOV_EXCL_STOP
 
-// LCOV_EXCL_START
 static void fim_delete_realtime_watches(__attribute__((unused)) int pos) {
 #ifdef INOTIFY_ENABLED
     OSHashNode *hash_node;
@@ -611,9 +600,7 @@ static void fim_delete_realtime_watches(__attribute__((unused)) int pos) {
 #endif
     return;
 }
-// LCOV_EXCL_STOP
 
-// LCOV_EXCL_START
 static void fim_link_delete_range(int pos) {
     char first_entry[PATH_MAX] = {0};
     char last_entry[PATH_MAX]  = {0};
@@ -639,9 +626,7 @@ static void fim_link_delete_range(int pos) {
         }
     }
 }
-// LCOV_EXCL_STOP
 
-// LCOV_EXCL_START
 static void fim_link_silent_scan(char *path, int pos) {
     struct fim_element *item;
 
@@ -656,9 +641,7 @@ static void fim_link_silent_scan(char *path, int pos) {
     fim_checker(path, item, NULL, 0);
     os_free(item);
 }
-// LCOV_EXCL_STOP
 
-// LCOV_EXCL_START
 static void fim_link_reload_broken_link(char *path, int index) {
     int element;
     int found = 0;
@@ -680,7 +663,7 @@ static void fim_link_reload_broken_link(char *path, int index) {
         fim_link_silent_scan(path, index);
     }
 }
-// LCOV_EXCL_STOP
+
 #endif
 #ifdef WIN_WHODATA
 void set_whodata_mode_changes() {

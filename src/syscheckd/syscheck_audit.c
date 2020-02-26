@@ -1207,7 +1207,6 @@ void * audit_main(int *audit_sock) {
 // LCOV_EXCL_STOP
 
 
-// LCOV_EXCL_START
 void audit_read_events(int *audit_sock, int mode) {
     size_t byteRead;
     char * cache;
@@ -1344,10 +1343,8 @@ void audit_read_events(int *audit_sock, int mode) {
     free(cache);
     free(buffer);
 }
-// LCOV_EXCL_STOP
 
 
-// LCOV_EXCL_START
 void clean_rules(void) {
     int i;
     w_mutex_lock(&audit_mutex);
@@ -1363,7 +1360,6 @@ void clean_rules(void) {
     }
     w_mutex_unlock(&audit_mutex);
 }
-// LCOV_EXCL_STOP
 
 
 int filterkey_audit_events(char *buffer) {
