@@ -747,7 +747,7 @@ cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_da
 
         paths = fim_db_get_paths_from_inode(syscheck.database, old_data->inode, old_data->dev);
 
-        if(paths[1]){
+        if(paths[0] && paths[1]){
             cJSON *hard_links = cJSON_CreateArray();
             int i;
             for(i = 0; paths[i]; i++) {
