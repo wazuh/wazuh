@@ -1055,7 +1055,7 @@ int decode_fim_event(_sdb *sdb, Eventinfo *lf) {
      *   type:                  "event"
      *   data: {
      *     path:                string
-     *     hard_links:          string
+     *     hard_links:          array
      *     mode:                "scheduled"|"real-time"|"whodata"
      *     type:                "added"|"deleted"|"modified"
      *     timestamp:           number
@@ -1438,16 +1438,18 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
     char changed_attributes[OS_SIZE_256];
     snprintf(changed_attributes, OS_SIZE_256, "Changed attributes: %s\n", lf->fields[FIM_CHFIELDS].value);
 
-    cJSON *tmp = cJSON_Parse(lf->fields[FIM_HARD_LINKS].value);
-    cJSON *item;
-    char * hard_links_tmp = NULL;
-    cJSON_ArrayForEach(item, tmp) {
-        wm_strcat(&hard_links_tmp, item->valuestring, ',');
-    }
-
     char hard_links[OS_SIZE_256];
-    snprintf(hard_links, OS_SIZE_256, "Hard links: %s\n", hard_links_tmp);
-    os_free(hard_links_tmp);
+    cJSON *tmp = cJSON_Parse(lf->fields[FIM_HARD_LINKS].value);
+    if (lf->fields[FIM_HARD_LINKS].value) {
+        cJSON *item;
+        char * hard_links_tmp = NULL;
+        cJSON_ArrayForEach(item, tmp) {
+            wm_strcat(&hard_links_tmp, item->valuestring, ',');
+        }
+
+        snprintf(hard_links, OS_SIZE_256, "Hard links: %s\n", hard_links_tmp);
+        os_free(hard_links_tmp);
+    }
 
     snprintf(lf->full_log, OS_MAXSTR,
             "File '%.756s' %s\n"
@@ -1474,7 +1476,6 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
             //lf->fields[FIM_SYM_PATH].value
     );
 
-    cJSON_Delete(item);
     cJSON_Delete(tmp);
 
     return 0;

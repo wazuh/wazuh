@@ -756,10 +756,13 @@ cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_da
                 }
                 os_free(paths[i]);
             }
-            os_free(paths);
 
             cJSON_AddItemToObject(data, "hard_links", hard_links);
+        } else {
+            os_free(paths[0]);
         }
+
+        os_free(paths);
     }
 
 #endif
