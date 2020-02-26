@@ -12,6 +12,10 @@
 #include "os_crypto/md5/md5_op.h"
 #include "syscheck.h"
 
+#ifdef UNIT_TESTING
+#define static
+#endif
+
 #ifdef WIN32
 #define unlink(x) _unlink(x)
 #endif
@@ -47,7 +51,7 @@ static char* filter(const char *string) {
         clen = strcspn(ptr + 1, "\"\\$`");
         out = realloc(out, len + clen + 3);
         if(!out){
-            merror_exit(MEM_ERROR, errno, strerror(errno));
+            merror_exit(MEM_ERROR, errno, strerror(errno)); // LCOV_EXCL_LINE
         }
         out[len] = '\\';
         out[len + 1] = *ptr;
