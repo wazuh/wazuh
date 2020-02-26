@@ -16,7 +16,11 @@
 #include "../syscheckd/fim_db.h"
 
 #ifdef TEST_WINAGENT
-    #define __mode_t int
+#include "../wrappers/syscheckd/fim_db.h"
+
+#define __mode_t int
+#else
+static int test_mode = 0;
 #endif
 
 extern const char *SQL_STMT[];
@@ -29,7 +33,6 @@ fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt);
 fim_tmp_file *fim_db_create_temp_file(int storage);
 void fim_db_clean_file(fim_tmp_file **file, int storage);
 
-static int test_mode = 0;
 
 /*--------------WRAPS-----------------------*/
 
@@ -108,6 +111,7 @@ char *__wrap_wstr_escape_json() {
     return NULL;
 }
 
+#ifndef TEST_WINAGENT
 extern int __real_fprintf(FILE *fp, const char *fmt, ...);
 int __wrap_fprintf(FILE *fp, const char *fmt, ...)
 {
@@ -130,6 +134,7 @@ int __wrap_fprintf(FILE *fp, const char *fmt, ...)
     }
     return ret;
 }
+#endif
 
 int __wrap_sqlite3_open_v2(
   const char *filename,   /* Database filename (UTF-8) */

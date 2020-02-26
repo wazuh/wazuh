@@ -11,6 +11,12 @@
 #include "fim_db.h"
 
 #ifdef UNIT_TESTING
+#ifdef WIN32
+#include "unit_tests/wrappers/syscheckd/fim_db.h"
+
+#define fprintf wrap_fprintf
+#endif
+
 #define static
 #endif
 

@@ -168,13 +168,15 @@ set(FIM_DB_BASE_FLAGS "-Wl,--wrap=w_is_file,--wrap=remove,--wrap=sqlite3_open_v2
                        -Wl,--wrap=fim_configuration_directory,--wrap=fim_json_event,--wrap=send_syscheck_msg \
                        -Wl,--wrap=delete_target_file,--wrap=_minfo,--wrap=_mdebug1,--wrap=_mdebug2 \
                        -Wl,--wrap=fseek,--wrap=fclose,--wrap=fopen,--wrap=time,--wrap=getpid,--wrap=fflush \
-                       -Wl,--wrap=fgets,--wrap=fprintf,--wrap=wstr_escape_json")
+                       -Wl,--wrap=fgets,--wrap=wstr_escape_json")
 
 list(APPEND syscheckd_tests_names "test_fim_db")
 if(${TARGET} STREQUAL "agent")
-  list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot")
-else()
+  list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot,--wrap=fprintf")
+elseif(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS}")
+else()
+list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS} -Wl,--wrap=fprintf")
 endif()
 
 if(${TARGET} STREQUAL "winagent")
