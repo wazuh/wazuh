@@ -30,6 +30,17 @@ int test_group_setup(void **state) {
     return ret;
 }
 
+
+void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
+}
 /**************************************************************************/
 /*************************os_winreg_sethkey********************************/
 void test_os_winreg_sethkek_invalid_subtree(void **state) {
@@ -116,6 +127,44 @@ void test_os_winreg_querykey_success_subkey_p_key(void **state) {
 
     os_winreg_querykey(oshkey, subkey, fullname, pos);
 }
+
+void test_os_winreg_querykey_ignored_registry(void **state) {
+    HKEY oshkey;
+    int pos = 0;
+    char *subkey = strdup("command");
+    char *fullname = syscheck.registry_ignore[pos].entry;
+
+    will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
+    will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
+    will_return(wrap_RegQueryInfoKey, 0); // subkey_count 
+    will_return(wrap_RegQueryInfoKey, 0); // value_count
+    will_return(wrap_RegQueryInfoKey, 0); // file_time 
+    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+
+    char debug_msg[OS_MAXSTR];
+    snprintf(debug_msg, OS_MAXSTR, "(6204): Ignoring 'registry' '%s' due to '%s'", fullname, fullname);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+    os_winreg_querykey(oshkey, subkey, fullname, pos);
+}
+
+void test_os_winreg_querykey_ignored_regex(void **state) {
+    HKEY oshkey;
+    int pos = 0;
+    char *subkey = strdup("command");
+    char *fullname = strdup("HKEY_LOCAL_MACHINE\\Security\\Enum"); // <registry_ignore type="sregex">\Enum$</registry_ignore>
+
+    will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
+    will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
+    will_return(wrap_RegQueryInfoKey, 0); // subkey_count 
+    will_return(wrap_RegQueryInfoKey, 0); // value_count
+    will_return(wrap_RegQueryInfoKey, 0); // file_time 
+    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+
+    char debug_msg[OS_MAXSTR];
+    snprintf(debug_msg, OS_MAXSTR,"(6205): Ignoring 'registry' '%s' due to sregex '\\Enum$'", fullname, fullname);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+    os_winreg_querykey(oshkey, subkey, fullname, pos);
+}
 /**************************************************************************/
 /*************************os_winreg_check()*******************************/
 int setup_winreg_check_invalid_subtree(void **state){
@@ -157,6 +206,8 @@ int main(void) {
         cmocka_unit_test(test_os_winreg_querykey_invalid_query),
         cmocka_unit_test(test_os_winreg_querykey_success_no_subkey),
         cmocka_unit_test(test_os_winreg_querykey_success_subkey_p_key),
+        cmocka_unit_test(test_os_winreg_querykey_ignored_registry),
+        cmocka_unit_test(test_os_winreg_querykey_ignored_regex),
         /* os_winreg_check */
         //cmocka_unit_test_setup_teardown(test_os_winreg_check_invalid_subtree, setup_winreg_check_invalid_subtree, teardown_winreg_check_invalid_subtree)
     };
