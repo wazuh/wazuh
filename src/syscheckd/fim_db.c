@@ -191,7 +191,7 @@ static int fim_db_create_file(const char *path, const char *source, const int st
  *
  */
  static int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex,
-        void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *), int storage, void * mode, void * w_evt);
+        void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *), int storage, void * mode, void * w_evt);
 
 
 /**
@@ -546,11 +546,11 @@ int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mu
 int fim_db_process_missing_entry(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage,
                                     fim_event_mode mode, whodata_evt * w_evt) {
     return fim_db_process_read_file(fim_sql, file, mutex, fim_db_process_path, storage, (void *) (fim_event_mode) mode,
-                                    (void *) (whodata_evt) * w_evt);
+                                    (void *) w_evt);
 }
 
 int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex,
-    void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *),
+    void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *),
     int storage, void * mode, void * w_evt) {
 
     char line[PATH_MAX + 1];
@@ -1062,9 +1062,11 @@ end:
 }
 
 void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex,
-     __attribute__((unused))void *alert, void *fim_ev_mode, void *w_evt) {
+     __attribute__((unused))void *alert,
+     __attribute__((unused))void *fim_ev_mode,
+     __attribute__((unused))void *w_evt) {
 
-    int *alert = (int *) alert;
+    int *send_alert = (int *) alert;
     int rows = 0;
 
     w_mutex_lock(mutex);
@@ -1105,9 +1107,9 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
     w_mutex_unlock(mutex);
 
 
-    if (alert && rows >= 1) {
+    if (send_alert && rows >= 1) {
         fim_event_mode mode = (fim_event_mode) fim_ev_mode;
-        whodata_evt whodata = (whodata_evt) w_evt;
+        whodata_evt *whodata_event = (whodata_evt *) w_evt;
         cJSON * json_event      = NULL;
         char * json_formated    = NULL;
         int pos = 0;
@@ -1120,7 +1122,7 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
         }
 
         json_event = fim_json_event(entry->path, NULL, entry->data, pos,
-                                                FIM_DELETE, fim_ev_mode, w_evt);
+                                                FIM_DELETE, mode, whodata_event);
 
         if (!strcmp(FIM_ENTRY_TYPE[entry->data->entry_type], "file") &&
             syscheck.opts[pos] & CHECK_SEECHANGES) {

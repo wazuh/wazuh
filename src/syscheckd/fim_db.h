@@ -220,11 +220,16 @@ int fim_db_get_count_range(fdb_t *fim_sql, char *start, char *top, int *counter)
  * @param fim_sql FIM database struct.
  * @param file_path File path.
  * @param mutex
- * @param arg 0 No send alert, 1 send delete alert.
+ * @param alert False don't send alert, True send delete alert.
+ * @param fim_ev_mode FIM Mode (scheduled/realtime/whodata)
+ * @param w_evt Whodata information
+ * 
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex,
-                         __attribute__((unused))void *arg);
+                        __attribute__((unused))void *alert,
+                        __attribute__((unused))void *fim_ev_mode,
+                        __attribute__((unused))void *w_evt);
 
 /**
  * @brief Process missing entries
@@ -232,9 +237,11 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
  * @param fim_sql FIM database struct.
  * @param file_path File path.
  * @param mutex
- * @param arg Directory configuration.
+ * @param fim_ev_mode Directory configuration.
+ * @param w_evt Whodata information.
+ * 
  */
-void fim_db_process_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex, void *arg);
+void fim_db_process_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex, void *fim_ev_mode, void *w_evt);
 
 /**
  * @brief Get the last/first row from entry_path.

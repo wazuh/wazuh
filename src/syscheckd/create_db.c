@@ -147,7 +147,8 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
 
         if (saved_entry) {
             json_event = fim_json_event(path, NULL, saved_entry->data, item->index, FIM_DELETE, item->mode, w_evt);
-            fim_db_remove_path(syscheck.database, saved_entry, &syscheck.fim_entry_mutex, (void *) (int) 0);
+            fim_db_remove_path(syscheck.database, saved_entry, &syscheck.fim_entry_mutex, (void *) (int) false,
+                                (void *) (fim_event_mode) item->mode, (void *) w_evt);
             free_entry(saved_entry);
             saved_entry = NULL;
         }
