@@ -87,7 +87,7 @@ list(APPEND tests_names "test_syscheck_config")
 list(APPEND tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1")
 
 list(APPEND tests_names "test_syscheck")
-list(APPEND tests_flags "-Wl,--wrap,_mwarn -Wl,--wrap,fim_db_init")
+list(APPEND tests_flags "-Wl,--wrap,_mwarn -Wl,--wrap,_merror_exit -Wl,--wrap,fim_db_init -Wl,--wrap,getDefine_Int")
 
 list(APPEND tests_names "test_fim_sync")
 list(APPEND tests_flags "-Wl,--wrap,fim_send_sync_msg -Wl,--wrap,time -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 \

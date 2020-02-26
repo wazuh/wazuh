@@ -82,7 +82,7 @@ void fim_initialize() {
     syscheck.database = fim_db_init(syscheck.database_store);
 
     if (!syscheck.database) {
-        merror_exit(FIM_CRITICAL_DATA_CREATE, "sqlite3 db"); // LCOV_EXCL_LINE
+        merror_exit(FIM_CRITICAL_DATA_CREATE, "sqlite3 db");
     }
 
     w_mutex_init(&syscheck.fim_entry_mutex, NULL);
