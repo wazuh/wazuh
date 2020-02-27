@@ -37,6 +37,7 @@ LONG WINAPI wrap_RegEnumValue(HKEY hKey,DWORD dwIndex,LPSTR lpValueName,LPDWORD 
     *lpcchValueName = mock_type(long);
     *lpType = mock_type(long);
     *lpcbData = mock_type(long);
-    memcpy(lpData, mock_ptr_type(char *), sizeof(char *) * (*lpcbData));
+    const void *data = mock_ptr_type(void *);
+    memcpy(lpData, data, sizeof(char) * (*lpcbData));
     return mock();
 }  
