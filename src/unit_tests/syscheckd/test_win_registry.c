@@ -23,8 +23,24 @@ extern char *os_winreg_sethkey(char *reg_entry);
 void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos);
 
 /**************************************************************************/
-/*******************************WRAPS**************************************/
+/*************************WRAPS - GROUP SETUP******************************/
+int test_group_setup(void **state) {
+    int ret;
+    ret = Read_Syscheck_Config("test_syscheck.conf");
+    return ret;
+}
 
+
+void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
+}
 /**************************************************************************/
 /*************************os_winreg_sethkey********************************/
 void test_os_winreg_sethkek_invalid_subtree(void **state) {
@@ -63,22 +79,119 @@ void test_os_winreg_sethkek_valid_users(void **state) {
 }
 /**************************************************************************/
 /*************************os_winreg_querykey*******************************/
-int setup_os_winreg_querykey(void **state){
-    int ret = Read_Syscheck_Config("test_syscheck.conf");
-    return ret;
-}
-
 void test_os_winreg_querykey_invalid_query(void **state) {
     HKEY oshkey;
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command");
     int pos = 0;
 
-    //will_return_count(__wrap_RegQueryInfoKeyA, NULL, 5);
-    //will_return(__wrap_RegQueryInfoKeyA,__real_RegQueryInfoKeyA);
+    will_return_count(wrap_RegQueryInfoKey, NULL, 5);
+    will_return(wrap_RegQueryInfoKey,-1);
     os_winreg_querykey(oshkey, subkey, fullname, pos);
 }
 
+void test_os_winreg_querykey_success_no_subkey(void **state) {
+    HKEY oshkey;
+    char *subkey = strdup("command");
+    char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command");
+    int pos = 0;
+
+    will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
+    will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
+    will_return(wrap_RegQueryInfoKey, 0); // subkey_count 
+    will_return(wrap_RegQueryInfoKey, 0); // value_count
+    will_return(wrap_RegQueryInfoKey, 0); // file_time 
+    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+    os_winreg_querykey(oshkey, subkey, fullname, pos);
+}
+
+void test_os_winreg_querykey_success_subkey_p_key(void **state) {
+    HKEY oshkey;
+    char *subkey = strdup("command");
+    char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command");
+    int pos = 0;
+
+    will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
+    will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
+    will_return(wrap_RegQueryInfoKey, 1); // subkey_count 
+    will_return(wrap_RegQueryInfoKey, 0); // value_count
+    will_return(wrap_RegQueryInfoKey, 0); // file_time 
+    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+
+    will_return(wrap_RegEnumKeyEx, "SUBKEY_NAME");
+    will_return(wrap_RegEnumKeyEx, strlen("SUBKEY_NAME"));
+    will_return(wrap_RegEnumKeyEx, ERROR_SUCCESS);
+
+    // Shutdown os_winreg_open_key
+    will_return(wrap_RegOpenKeyEx, -1);
+
+    os_winreg_querykey(oshkey, subkey, fullname, pos);
+}
+
+void test_os_winreg_querykey_ignored_registry(void **state) {
+    HKEY oshkey;
+    int pos = 0;
+    char *subkey = strdup("command");
+    char *fullname = syscheck.registry_ignore[pos].entry;
+
+    will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
+    will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
+    will_return(wrap_RegQueryInfoKey, 0); // subkey_count 
+    will_return(wrap_RegQueryInfoKey, 0); // value_count
+    will_return(wrap_RegQueryInfoKey, 0); // file_time 
+    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+
+    char debug_msg[OS_MAXSTR];
+    snprintf(debug_msg, OS_MAXSTR, "(6204): Ignoring 'registry' '%s' due to '%s'", fullname, fullname);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+    os_winreg_querykey(oshkey, subkey, fullname, pos);
+}
+
+void test_os_winreg_querykey_ignored_regex(void **state) {
+    HKEY oshkey;
+    int pos = 0;
+    char *subkey = strdup("command");
+    char *fullname = strdup("HKEY_LOCAL_MACHINE\\Security\\Enum"); // <registry_ignore type="sregex">\Enum$</registry_ignore>
+
+    will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
+    will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
+    will_return(wrap_RegQueryInfoKey, 0); // subkey_count 
+    will_return(wrap_RegQueryInfoKey, 0); // value_count
+    will_return(wrap_RegQueryInfoKey, 0); // file_time 
+    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+
+    char debug_msg[OS_MAXSTR];
+    snprintf(debug_msg, OS_MAXSTR,"(6205): Ignoring 'registry' '%s' due to sregex '\\Enum$'", fullname, fullname);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+    os_winreg_querykey(oshkey, subkey, fullname, pos);
+}
+/**************************************************************************/
+/*************************os_winreg_check()*******************************/
+int setup_winreg_check_invalid_subtree(void **state){
+    // Store initial registry pointer
+    *state = syscheck.registry; 
+    registry **reg_array_ptr;
+    reg_array_ptr = (registry **) calloc(2, sizeof(registry*));
+    registry *new_reg_ptr = reg_array_ptr[0];
+    new_reg_ptr = (registry*) malloc(sizeof(registry));
+    new_reg_ptr->entry = strdup("WRONG_SUBTREE\\Software\\Classes\\batfile");
+    new_reg_ptr->arch = syscheck.registry[0].arch;
+    syscheck.registry = reg_array_ptr[0];
+    return 0;
+}
+
+int teardown_winreg_check_invalid_subtree(void **state){
+    // free new_reg
+    free(syscheck.registry->entry);
+    free(syscheck.registry);
+    // Restore registry
+    syscheck.registry = *state;
+    return 0;
+}
+
+void test_os_winreg_check_invalid_subtree(void **state) {
+    
+}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -90,8 +203,14 @@ int main(void) {
         cmocka_unit_test(test_os_winreg_sethkek_valid_current_config),
         cmocka_unit_test(test_os_winreg_sethkek_valid_users),
         /* os_winreg_querykey */
-        cmocka_unit_test(test_os_winreg_querykey_invalid_query)
+        cmocka_unit_test(test_os_winreg_querykey_invalid_query),
+        cmocka_unit_test(test_os_winreg_querykey_success_no_subkey),
+        cmocka_unit_test(test_os_winreg_querykey_success_subkey_p_key),
+        cmocka_unit_test(test_os_winreg_querykey_ignored_registry),
+        cmocka_unit_test(test_os_winreg_querykey_ignored_regex),
+        /* os_winreg_check */
+        //cmocka_unit_test_setup_teardown(test_os_winreg_check_invalid_subtree, setup_winreg_check_invalid_subtree, teardown_winreg_check_invalid_subtree)
     };
 
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, test_group_setup, NULL);
 }
