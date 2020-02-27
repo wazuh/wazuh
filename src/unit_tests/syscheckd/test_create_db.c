@@ -2791,6 +2791,98 @@ static void test_fim_process_missing_entry_data_exists(void **state) {
     fim_process_missing_entry("/test", FIM_WHODATA, fim_data->w_evt);
 }
 
+// Windows specific tests
+#ifdef TEST_WINAGENT
+static void test_fim_registry_event_null_data(void **state) {
+    expect_assert_failure(fim_registry_event("HKEY_LOCAL_MACHINE\\Software\\Classes\\cmdfile", NULL, 0));
+}
+
+static void test_fim_registry_event_invalid_add(void **state) {
+    fim_data_t *fim_data = *state;
+    int ret;
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "HKEY_LOCAL_MACHINE\\Software\\Classes\\cmdfile");
+    will_return(__wrap_fim_db_get_path, NULL);
+
+    expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_insert, file_path, "HKEY_LOCAL_MACHINE\\Software\\Classes\\cmdfile");
+    will_return(__wrap_fim_db_insert, -1);
+
+    ret = fim_registry_event("HKEY_LOCAL_MACHINE\\Software\\Classes\\cmdfile", fim_data->local_data, 0);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+static void test_fim_registry_event_invalid_modification(void **state) {
+    fim_data_t *fim_data = *state;
+    int ret;
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "HKEY_LOCAL_MACHINE\\Software\\Classes\\cmdfile");
+    will_return(__wrap_fim_db_get_path, fim_data->fentry);
+
+    expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_insert, file_path, "HKEY_LOCAL_MACHINE\\Software\\Classes\\cmdfile");
+    will_return(__wrap_fim_db_insert, -1);
+
+    ret = fim_registry_event("HKEY_LOCAL_MACHINE\\Software\\Classes\\cmdfile", fim_data->new_data, 0);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+static void test_fim_registry_event_valid_add(void **state) {
+    fim_data_t *fim_data = *state;
+    int ret;
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "HKEY_LOCAL_MACHINE\\Software\\Classes\\cmdfile");
+    will_return(__wrap_fim_db_get_path, NULL);
+
+    expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_insert, file_path, "HKEY_LOCAL_MACHINE\\Software\\Classes\\cmdfile");
+    will_return(__wrap_fim_db_insert, 0);
+
+    ret = fim_registry_event("HKEY_LOCAL_MACHINE\\Software\\Classes\\cmdfile", fim_data->local_data, 0);
+
+    assert_int_equal(ret, 1);
+}
+
+static void test_fim_registry_event_valid_modification(void **state) {
+    fim_data_t *fim_data = *state;
+    int ret;
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "HKEY_LOCAL_MACHINE\\Software\\Classes\\cmdfile");
+    will_return(__wrap_fim_db_get_path, fim_data->fentry);
+
+    expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_insert, file_path, "HKEY_LOCAL_MACHINE\\Software\\Classes\\cmdfile");
+    will_return(__wrap_fim_db_insert, 0);
+
+    ret = fim_registry_event("HKEY_LOCAL_MACHINE\\Software\\Classes\\cmdfile", fim_data->new_data, 0);
+
+    assert_int_equal(ret, 1);
+}
+
+static void test_fim_registry_event_already_scanned(void **state) {
+    fim_data_t *fim_data = *state;
+    int ret;
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "HKEY_LOCAL_MACHINE\\Software\\Classes\\cmdfile");
+    will_return(__wrap_fim_db_get_path, fim_data->fentry);
+
+    expect_value(__wrap_fim_db_set_scanned, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_set_scanned, path, "HKEY_LOCAL_MACHINE\\Software\\Classes\\cmdfile");
+    will_return(__wrap_fim_db_set_scanned, 0);
+
+    ret = fim_registry_event("HKEY_LOCAL_MACHINE\\Software\\Classes\\cmdfile", fim_data->local_data, 0);
+
+    assert_int_equal(ret, 0);
+}
+#endif
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* fim_json_event */
@@ -2911,6 +3003,15 @@ int main(void) {
         cmocka_unit_test(test_fim_process_missing_entry_failure),
         cmocka_unit_test_setup(test_fim_process_missing_entry_data_exists, setup_fim_entry),
 
+        #ifdef TEST_WINAGENT
+        /* fim_registry_event */
+        cmocka_unit_test(test_fim_registry_event_null_data),
+        cmocka_unit_test_setup_teardown(test_fim_registry_event_invalid_add, setup_fim_entry, teardown_fim_entry),
+        cmocka_unit_test_setup(test_fim_registry_event_invalid_modification, setup_fim_entry),
+        cmocka_unit_test_setup(test_fim_registry_event_valid_add, setup_fim_entry),
+        cmocka_unit_test_setup(test_fim_registry_event_valid_modification, setup_fim_entry),
+        cmocka_unit_test_setup(test_fim_registry_event_already_scanned, setup_fim_entry),
+        #endif
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
