@@ -2622,12 +2622,16 @@ static void test_fim_realtime_event_file_exists(void **state) {
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
 
+    #ifndef TEST_WINAGENT
     will_return(__wrap_lstat, 0);
     will_return(__wrap_lstat, -1);
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "/test");
     will_return(__wrap_fim_db_get_path, NULL);
+    #else
+    will_return(__wrap_stat, 0);
+    #endif
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test'");
 
@@ -2636,7 +2640,11 @@ static void test_fim_realtime_event_file_exists(void **state) {
 
 static void test_fim_realtime_event_file_missing(void **state) {
 
+    #ifndef TEST_WINAGENT
     will_return(__wrap_lstat, -1);
+    #else
+    will_return(__wrap_stat, -1);
+    #endif
     errno = ENOENT;
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
@@ -2656,12 +2664,16 @@ static void test_fim_whodata_event_file_exists(void **state) {
 
     fim_data_t *fim_data = *state;
 
+    #ifndef TEST_WINAGENT
     will_return(__wrap_lstat, 0);
 
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
     will_return(__wrap_fim_db_get_paths_from_inode, NULL);
+    #else
+    will_return(__wrap_stat, 0);
+    #endif
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'./test/test.file'");
 
@@ -2669,9 +2681,13 @@ static void test_fim_whodata_event_file_exists(void **state) {
 }
 
 static void test_fim_whodata_event_file_missing(void **state) {
-
     fim_data_t *fim_data = *state;
+
+    #ifndef TEST_WINAGENT
     will_return(__wrap_lstat, -1);
+    #else
+    will_return(__wrap_stat, -1);
+    #endif
     errno = ENOENT;
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
@@ -2721,7 +2737,11 @@ static void test_fim_process_missing_entry_failure(void **state) {
     expect_value(__wrap_fim_db_process_missing_entry, mode, FIM_REALTIME);
     will_return(__wrap_fim_db_process_missing_entry, FIMDB_ERR);
 
+    #ifndef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg, "(6708): Failed to delete a range of paths between '/test/' and '/test0'");
+    #else
+    expect_string(__wrap__merror, formatted_msg, "(6708): Failed to delete a range of paths between '/test\\' and '/test]'");
+    #endif
 
     fim_process_missing_entry("/test", FIM_REALTIME, NULL);
 
@@ -2759,10 +2779,12 @@ static void test_fim_process_missing_entry_data_exists(void **state) {
     expect_string(__wrap_fim_db_get_path, file_path, "/test");
     will_return(__wrap_fim_db_get_path, fim_data->fentry);
 
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
     will_return(__wrap_fim_db_get_paths_from_inode, NULL);
+    #endif
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test'");
 
