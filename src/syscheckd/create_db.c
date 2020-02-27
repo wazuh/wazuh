@@ -56,7 +56,7 @@ void fim_scan() {
         item->index = it;
 #ifndef WIN32
         if (syscheck.opts[it] & REALTIME_ACTIVE) {
-            realtime_adddir(syscheck.dir[it], 0);
+            realtime_adddir(syscheck.dir[it], 0, (syscheck.opts[it] & CHECK_FOLLOW) ? 1 : 0);
         }
 #endif
         fim_checker(syscheck.dir[it], item, NULL, 1);
@@ -188,7 +188,7 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
     case FIM_DIRECTORY:
 #ifndef WIN32
         if (item->configuration & REALTIME_ACTIVE) {
-            realtime_adddir(path, 0);
+            realtime_adddir(path, 0, (item->configuration & CHECK_FOLLOW) ? 1 : 0);
         }
 #endif
         fim_directory(path, item, w_evt, report);

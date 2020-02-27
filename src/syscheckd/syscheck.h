@@ -326,9 +326,10 @@ int realtime_start(void);
  *
  * @param dir Path to file or directory
  * @param whodata If the path is configured with whodata option
+ * @param followsl If the path is configured with follow sym link option
  * @return 0 on success, -1 on error
  */
-int realtime_adddir(const char *dir, int whodata) __attribute__((nonnull(1)));
+int realtime_adddir(const char *dir, int whodata, int followsl) __attribute__((nonnull(1)));
 
 /**
  * @brief Process events in the real time queue
