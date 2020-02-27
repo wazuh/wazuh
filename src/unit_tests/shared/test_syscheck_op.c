@@ -226,118 +226,119 @@ static int teardown_string(void **state) {
     return 0;
 }
 #if defined(TEST_SERVER)
-    static int setup_sk_decode(void **state) {
-        sk_decode_data_t *data = calloc(1, sizeof(sk_decode_data_t));
+static int setup_sk_decode(void **state) {
+    sk_decode_data_t *data = calloc(1, sizeof(sk_decode_data_t));
 
-        if(!data) {
-            return -1;
-        }
-
-        *state = data;
-        return 0;
+    if(!data) {
+        return -1;
     }
 
-    static int teardown_sk_decode(void **state) {
-        sk_decode_data_t *data = *state;
+    *state = data;
+    return 0;
+}
 
-        if(data) {
-            sk_sum_clean(&data->sum);
+static int teardown_sk_decode(void **state) {
+    sk_decode_data_t *data = *state;
 
-            if(data->c_sum)
-                free(data->c_sum);
+    if(data) {
+        sk_sum_clean(&data->sum);
 
-            if(data->w_sum)
-                free(data->w_sum);
+        if(data->c_sum)
+            free(data->c_sum);
 
-            free(data);
-        }
-        return 0;
+        if(data->w_sum)
+            free(data->w_sum);
+
+        free(data);
+    }
+    return 0;
+}
+
+
+static int setup_sk_fill_event(void **state) {
+    sk_fill_event_t* data = calloc(1, sizeof(sk_fill_event_t));
+
+    if(!data) {
+        return -1;
     }
 
-
-    static int setup_sk_fill_event(void **state) {
-        sk_fill_event_t* data = calloc(1, sizeof(sk_fill_event_t));
-
-        if(!data) {
-            return -1;
-        }
-
-        if(data->lf = calloc(1, sizeof(Eventinfo)), data->lf == NULL) {
-            return -1;
-        }
-
-        if(data->lf->fields = calloc(FIM_NFIELDS, sizeof(DynamicField)), !data->lf->fields)
-            return -1;
-
-        data->lf->nfields = FIM_NFIELDS;
-
-        if(data->sum = calloc(1, sizeof(sk_sum_t)), data->sum == NULL) {
-            return -1;
-        }
-
-        *state = data;
-        return 0;
+    if(data->lf = calloc(1, sizeof(Eventinfo)), data->lf == NULL) {
+        return -1;
     }
 
-    static int teardown_sk_fill_event(void **state) {
-        sk_fill_event_t* data = *state;
+    if(data->lf->fields = calloc(FIM_NFIELDS, sizeof(DynamicField)), !data->lf->fields)
+        return -1;
 
-        if(data){
-            free(data->f_name);
+    data->lf->nfields = FIM_NFIELDS;
 
-            free(data->sum);
-            // sk_sum_clean(&data->sum);
-            Free_Eventinfo(data->lf);
-            free(data);
-        }
-        return 0;
+    if(data->sum = calloc(1, sizeof(sk_sum_t)), data->sum == NULL) {
+        return -1;
     }
 
-    static int setup_sk_build_sum(void **state) {
-        sk_build_sum_t* data = calloc(1, sizeof(sk_build_sum_t));
+    *state = data;
+    return 0;
+}
 
-        if(!data) {
-            return -1;
-        }
+static int teardown_sk_fill_event(void **state) {
+    sk_fill_event_t* data = *state;
 
-        if(data->output = calloc(OS_MAXSTR, sizeof(char)), !data->output)
-            return -1;
+    if(data){
+        free(data->f_name);
 
-        *state = data;
-        return 0;
+        free(data->sum);
+        // sk_sum_clean(&data->sum);
+        Free_Eventinfo(data->lf);
+        free(data);
+    }
+    return 0;
+}
+
+static int setup_sk_build_sum(void **state) {
+    sk_build_sum_t* data = calloc(1, sizeof(sk_build_sum_t));
+
+    if(!data) {
+        return -1;
     }
 
-    static int teardown_sk_build_sum(void **state) {
-        sk_build_sum_t* data = *state;
+    if(data->output = calloc(OS_MAXSTR, sizeof(char)), !data->output)
+        return -1;
 
-        if(data){
-            free(data->output);
-            // sk_sum_clean(&data->sum);
+    *state = data;
+    return 0;
+}
 
-            free(data);
-        }
-        return 0;
+static int teardown_sk_build_sum(void **state) {
+    sk_build_sum_t* data = *state;
+
+    if(data){
+        free(data->output);
+        // sk_sum_clean(&data->sum);
+
+        free(data);
     }
-#elif defined(TEST_AGENT)
-    static int setup_unescape_syscheck_field(void **state) {
-        *state = calloc(1, sizeof(unescape_syscheck_field_data_t));
+    return 0;
+}
+#endif
+#ifndef TEST_WINAGENT
+static int setup_unescape_syscheck_field(void **state) {
+    *state = calloc(1, sizeof(unescape_syscheck_field_data_t));
 
-        if(!*state) {
-            return -1;
-        }
-        return 0;
+    if(!*state) {
+        return -1;
     }
+    return 0;
+}
 
-    static int teardown_unescape_syscheck_field(void **state) {
-        unescape_syscheck_field_data_t *data = *state;
+static int teardown_unescape_syscheck_field(void **state) {
+    unescape_syscheck_field_data_t *data = *state;
 
-        if(data) {
-            free(data->input);
-            free(data->output);
-            free(data);
-        }
-        return 0;
+    if(data) {
+        free(data->input);
+        free(data->output);
+        free(data);
     }
+    return 0;
+}
 #endif
 
 static int teardown_cjson(void **state) {
@@ -655,1513 +656,1514 @@ static void test_remove_empty_folders_error_removing_dir(void **state) {
 }
 
 #if defined(TEST_SERVER)
-    /* sk_decode_sum tests */
-    static void test_sk_decode_sum_no_decode(void **state) {
-        sk_decode_data_t *data = *state;
+/* sk_decode_sum tests */
+static void test_sk_decode_sum_no_decode(void **state) {
+    sk_decode_data_t *data = *state;
 
-        int ret = sk_decode_sum(&data->sum, "-1", NULL);
+    int ret = sk_decode_sum(&data->sum, "-1", NULL);
 
-        assert_int_equal(ret, 1);
-    }
+    assert_int_equal(ret, 1);
+}
 
-    static void test_sk_decode_sum_deleted_file(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
+static void test_sk_decode_sum_deleted_file(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
 
-        data->c_sum = strdup("-1");
+    data->c_sum = strdup("-1");
 
-        ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
+    ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
 
-        assert_int_equal(ret, 1);
-    }
+    assert_int_equal(ret, 1);
+}
 
-    static void test_sk_decode_sum_no_perm(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
+static void test_sk_decode_sum_no_perm(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
 
-        data->c_sum = strdup("size");
+    data->c_sum = strdup("size");
 
-        ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
+    ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
 
-        assert_int_equal(ret, -1);
-        assert_ptr_equal(data->sum.size, data->c_sum);
-    }
+    assert_int_equal(ret, -1);
+    assert_ptr_equal(data->sum.size, data->c_sum);
+}
 
-    static void test_sk_decode_sum_missing_separator(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
+static void test_sk_decode_sum_missing_separator(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
 
-        data->c_sum = strdup("size:");
+    data->c_sum = strdup("size:");
 
-        ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
+    ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
 
-        assert_int_equal(ret, -1);
-        assert_string_equal(data->sum.size, data->c_sum);
-    }
+    assert_int_equal(ret, -1);
+    assert_string_equal(data->sum.size, data->c_sum);
+}
 
-    static void test_sk_decode_sum_no_uid(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
+static void test_sk_decode_sum_no_uid(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
 
-        data->c_sum = strdup("size::");
+    data->c_sum = strdup("size::");
 
-        ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
+    ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
 
-        assert_int_equal(ret, -1);
-        assert_string_equal(data->sum.size, "size");
-    }
+    assert_int_equal(ret, -1);
+    assert_string_equal(data->sum.size, "size");
+}
 
-    static void test_sk_decode_sum_no_gid(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
+static void test_sk_decode_sum_no_gid(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
 
-        data->c_sum = strdup("size:1234:uid");
+    data->c_sum = strdup("size:1234:uid");
 
-        ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
+    ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
 
-        assert_int_equal(ret, -1);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-    }
+    assert_int_equal(ret, -1);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+}
 
-    static void test_sk_decode_sum_no_md5(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
+static void test_sk_decode_sum_no_md5(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
 
-        data->c_sum = strdup("size:1234:uid:gid");
+    data->c_sum = strdup("size:1234:uid:gid");
 
-        ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
+    ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
 
-        assert_int_equal(ret, -1);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-    }
+    assert_int_equal(ret, -1);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+}
 
-    static void test_sk_decode_sum_no_sha1(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
+static void test_sk_decode_sum_no_sha1(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
 
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d");
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d");
 
-        ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
+    ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
 
-        assert_int_equal(ret, -1);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-    }
-
-    static void test_sk_decode_sum_no_new_fields(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
-
-        assert_int_equal(ret, 0);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-    }
-
-    static void test_sk_decode_sum_win_perm_string(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:win_perm:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
-
-        assert_int_equal(ret, 0);
-        assert_string_equal(data->sum.size, "size");
-        assert_string_equal(data->sum.win_perm, "win_perm");
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-
-    }
-
-    static void test_sk_decode_sum_win_perm_encoded(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:|account,0,4:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
-
-        assert_int_equal(ret, 0);
-        assert_string_equal(data->sum.size, "size");
-        assert_string_equal(data->sum.win_perm, "account (allowed): append_data");
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-    }
-
-    static void test_sk_decode_sum_no_gname(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b:");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
-
-        assert_int_equal(ret, -1);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-    }
-
-    static void test_sk_decode_sum_no_uname(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b:"
-                            ":gname");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
-
-        assert_int_equal(ret, -1);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        assert_string_equal(data->sum.gname, "gname");
-    }
-
-    static void test_sk_decode_sum_no_mtime(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b:"
-                            "uname:gname");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
-
-        assert_int_equal(ret, -1);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        assert_string_equal(data->sum.gname, "gname");
-        assert_string_equal(data->sum.uname, "uname");
-    }
-
-    static void test_sk_decode_sum_no_inode(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b:"
-                            "uname:gname:2345");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
-
-        assert_int_equal(ret, -1);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        assert_string_equal(data->sum.gname, "gname");
-        assert_string_equal(data->sum.uname, "uname");
-    }
-
-    static void test_sk_decode_sum_no_sha256(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b:"
-                            "uname:gname:2345:3456");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
-
-        assert_int_equal(ret, 0);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        assert_string_equal(data->sum.gname, "gname");
-        assert_string_equal(data->sum.uname, "uname");
-        assert_null(data->sum.sha256);
-    }
-
-    static void test_sk_decode_sum_empty_sha256(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b:"
-                            "uname:gname:2345:3456::");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
-
-        assert_int_equal(ret, 0);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        assert_string_equal(data->sum.gname, "gname");
-        assert_string_equal(data->sum.uname, "uname");
-        assert_string_equal(data->sum.sha256, "");
-        assert_int_equal(data->sum.mtime, 2345);
-        assert_int_equal(data->sum.inode, 3456);
-    }
-
-    static void test_sk_decode_sum_no_attributes(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b:"
-                            "uname:gname:2345:3456:"
-                            "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
-
-        assert_int_equal(ret, 0);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        assert_string_equal(data->sum.gname, "gname");
-        assert_string_equal(data->sum.uname, "uname");
-        assert_string_equal(data->sum.sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
-        assert_int_equal(data->sum.mtime, 2345);
-        assert_int_equal(data->sum.inode, 3456);
-    }
-
-    static void test_sk_decode_sum_non_numeric_attributes(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b:"
-                            "uname:gname:2345:3456:"
-                            "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40:"
-                            "attributes");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
-
-        assert_int_equal(ret, 0);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        assert_string_equal(data->sum.gname, "gname");
-        assert_string_equal(data->sum.uname, "uname");
-        assert_string_equal(data->sum.sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
-        assert_int_equal(data->sum.mtime, 2345);
-        assert_int_equal(data->sum.inode, 3456);
-        assert_string_equal(data->sum.attributes, "attributes");
-    }
-
-    static void test_sk_decode_sum_win_encoded_attributes(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b:"
-                            "uname:gname:2345:3456:"
-                            "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40:"
-                            "1");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
-
-        assert_int_equal(ret, 0);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        assert_string_equal(data->sum.gname, "gname");
-        assert_string_equal(data->sum.uname, "uname");
-        assert_string_equal(data->sum.sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
-        assert_int_equal(data->sum.mtime, 2345);
-        assert_int_equal(data->sum.inode, 3456);
-        assert_string_equal(data->sum.attributes, "READONLY");
-    }
-
-    static void test_sk_decode_sum_extra_data_empty(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        data->w_sum = strdup("");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
-
-        assert_int_equal(ret, -1);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-    }
-
-    static void test_sk_decode_sum_extra_data_no_user_name(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        data->w_sum = strdup("user_id");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
-
-        assert_int_equal(ret, -1);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        assert_string_equal(data->sum.wdata.user_id, "user_id");
-    }
-
-    static void test_sk_decode_sum_extra_data_no_group_id(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        data->w_sum = strdup("user_id:user_name");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
-
-        assert_int_equal(ret, -1);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        assert_string_equal(data->sum.wdata.user_id, "user_id");
-        assert_null(data->sum.wdata.user_name);
-    }
-
-    static void test_sk_decode_sum_extra_data_no_group_name(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        data->w_sum = strdup("user_id:user_name:group_id");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
-
-        assert_int_equal(ret, -1);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        assert_string_equal(data->sum.wdata.user_id, "user_id");
-        assert_null(data->sum.wdata.user_name);
-        assert_string_equal(data->sum.wdata.group_id, "group_id");
-    }
-
-    static void test_sk_decode_sum_extra_data_no_process_name(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        data->w_sum = strdup("user_id:user_name:group_id:group_name");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
-
-        assert_int_equal(ret, -1);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        assert_string_equal(data->sum.wdata.user_id, "user_id");
-        assert_null(data->sum.wdata.user_name);
-        assert_string_equal(data->sum.wdata.group_id, "group_id");
-        assert_string_equal(data->sum.wdata.group_name, "group_name");
-    }
-
-    static void test_sk_decode_sum_extra_data_no_audit_uid(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
-
-        assert_int_equal(ret, -1);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        assert_string_equal(data->sum.wdata.user_id, "user_id");
-        assert_null(data->sum.wdata.user_name);
-        assert_string_equal(data->sum.wdata.group_id, "group_id");
-        assert_string_equal(data->sum.wdata.group_name, "group_name");
-        assert_null(data->sum.wdata.process_name);
-    }
-
-    static void test_sk_decode_sum_extra_data_no_audit_name(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name:"
-                            "audit_uid");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
-
-        assert_int_equal(ret, -1);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        assert_string_equal(data->sum.wdata.user_id, "user_id");
-        assert_null(data->sum.wdata.user_name);
-        assert_string_equal(data->sum.wdata.group_id, "group_id");
-        assert_string_equal(data->sum.wdata.group_name, "group_name");
-        assert_null(data->sum.wdata.process_name);
-        assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
-    }
-
-    static void test_sk_decode_sum_extra_data_no_effective_uid(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name:"
-                            "audit_uid:audit_name");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
-
-        assert_int_equal(ret, -1);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        assert_string_equal(data->sum.wdata.user_id, "user_id");
-        assert_null(data->sum.wdata.user_name);
-        assert_string_equal(data->sum.wdata.group_id, "group_id");
-        assert_string_equal(data->sum.wdata.group_name, "group_name");
-        assert_null(data->sum.wdata.process_name);
-        assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
-        assert_string_equal(data->sum.wdata.audit_name, "audit_name");
-    }
-
-    static void test_sk_decode_sum_extra_data_no_effective_name(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name:"
-                            "audit_uid:audit_name:effective_uid");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
-
-        assert_int_equal(ret, -1);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        assert_string_equal(data->sum.wdata.user_id, "user_id");
-        assert_null(data->sum.wdata.user_name);
-        assert_string_equal(data->sum.wdata.group_id, "group_id");
-        assert_string_equal(data->sum.wdata.group_name, "group_name");
-        assert_null(data->sum.wdata.process_name);
-        assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
-        assert_string_equal(data->sum.wdata.audit_name, "audit_name");
-        assert_string_equal(data->sum.wdata.effective_uid, "effective_uid");
-    }
-
-    static void test_sk_decode_sum_extra_data_no_ppid(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name:"
-                            "audit_uid:audit_name:effective_uid:effective_name");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
-
-        assert_int_equal(ret, -1);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        assert_string_equal(data->sum.wdata.user_id, "user_id");
-        assert_null(data->sum.wdata.user_name);
-        assert_string_equal(data->sum.wdata.group_id, "group_id");
-        assert_string_equal(data->sum.wdata.group_name, "group_name");
-        assert_null(data->sum.wdata.process_name);
-        assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
-        assert_string_equal(data->sum.wdata.audit_name, "audit_name");
-        assert_string_equal(data->sum.wdata.effective_uid, "effective_uid");
-        assert_string_equal(data->sum.wdata.effective_name, "effective_name");
-    }
-
-    static void test_sk_decode_sum_extra_data_no_process_id(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name:"
-                            "audit_uid:audit_name:effective_uid:effective_name:ppid");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
-
-        assert_int_equal(ret, -1);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        assert_string_equal(data->sum.wdata.user_id, "user_id");
-        assert_null(data->sum.wdata.user_name);
-        assert_string_equal(data->sum.wdata.group_id, "group_id");
-        assert_string_equal(data->sum.wdata.group_name, "group_name");
-        assert_null(data->sum.wdata.process_name);
-        assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
-        assert_string_equal(data->sum.wdata.audit_name, "audit_name");
-        assert_string_equal(data->sum.wdata.effective_uid, "effective_uid");
-        assert_string_equal(data->sum.wdata.effective_name, "effective_name");
-        assert_string_equal(data->sum.wdata.ppid, "ppid");
-    }
-
-    static void test_sk_decode_sum_extra_data_no_tag(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name:"
-                            "audit_uid:audit_name:effective_uid:effective_name:ppid:process_id");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
-
-        assert_int_equal(ret, 0);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        assert_string_equal(data->sum.wdata.user_id, "user_id");
-        assert_string_equal(data->sum.wdata.user_name, "user_name");
-        assert_string_equal(data->sum.wdata.group_id, "group_id");
-        assert_string_equal(data->sum.wdata.group_name, "group_name");
-        assert_string_equal(data->sum.wdata.process_name, "process_name");
-        assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
-        assert_string_equal(data->sum.wdata.audit_name, "audit_name");
-        assert_string_equal(data->sum.wdata.effective_uid, "effective_uid");
-        assert_string_equal(data->sum.wdata.effective_name, "effective_name");
-        assert_string_equal(data->sum.wdata.ppid, "ppid");
-        assert_string_equal(data->sum.wdata.process_id, "process_id");
-        assert_null(data->sum.tag);
-        assert_null(data->sum.symbolic_path);
-    }
-
-    static void test_sk_decode_sum_extra_data_no_symbolic_path(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name:"
-                            "audit_uid:audit_name:effective_uid:effective_name:"
-                            "ppid:process_id:tag");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
-
-        assert_int_equal(ret, 0);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        assert_string_equal(data->sum.wdata.user_id, "user_id");
-        assert_string_equal(data->sum.wdata.user_name, "user_name");
-        assert_string_equal(data->sum.wdata.group_id, "group_id");
-        assert_string_equal(data->sum.wdata.group_name, "group_name");
-        assert_string_equal(data->sum.wdata.process_name, "process_name");
-        assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
-        assert_string_equal(data->sum.wdata.audit_name, "audit_name");
-        assert_string_equal(data->sum.wdata.effective_uid, "effective_uid");
-        assert_string_equal(data->sum.wdata.effective_name, "effective_name");
-        assert_string_equal(data->sum.wdata.ppid, "ppid");
-        assert_string_equal(data->sum.wdata.process_id, "process_id");
-        assert_string_equal(data->sum.tag, "tag");
-        assert_null(data->sum.symbolic_path);
-    }
-
-    static void test_sk_decode_sum_extra_data_no_inode(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name:"
-                            "audit_uid:audit_name:effective_uid:effective_name:"
-                            "ppid:process_id:tag:symbolic_path");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
-
-        assert_int_equal(ret, 0);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        assert_string_equal(data->sum.wdata.user_id, "user_id");
-        assert_string_equal(data->sum.wdata.user_name, "user_name");
-        assert_string_equal(data->sum.wdata.group_id, "group_id");
-        assert_string_equal(data->sum.wdata.group_name, "group_name");
-        assert_string_equal(data->sum.wdata.process_name, "process_name");
-        assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
-        assert_string_equal(data->sum.wdata.audit_name, "audit_name");
-        assert_string_equal(data->sum.wdata.effective_uid, "effective_uid");
-        assert_string_equal(data->sum.wdata.effective_name, "effective_name");
-        assert_string_equal(data->sum.wdata.ppid, "ppid");
-        assert_string_equal(data->sum.wdata.process_id, "process_id");
-        assert_string_equal(data->sum.tag, "tag");
-        assert_string_equal(data->sum.symbolic_path, "symbolic_path");
-    }
-
-    static void test_sk_decode_sum_extra_data_all_fields(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name:"
-                            "audit_uid:audit_name:effective_uid:effective_name:"
-                            "ppid:process_id:tag:symbolic_path:-");
-
-        data->sum.silent = 0;
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
-
-        assert_int_equal(ret, 0);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        assert_string_equal(data->sum.wdata.user_id, "user_id");
-        assert_string_equal(data->sum.wdata.user_name, "user_name");
-        assert_string_equal(data->sum.wdata.group_id, "group_id");
-        assert_string_equal(data->sum.wdata.group_name, "group_name");
-        assert_string_equal(data->sum.wdata.process_name, "process_name");
-        assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
-        assert_string_equal(data->sum.wdata.audit_name, "audit_name");
-        assert_string_equal(data->sum.wdata.effective_uid, "effective_uid");
-        assert_string_equal(data->sum.wdata.effective_name, "effective_name");
-        assert_string_equal(data->sum.wdata.ppid, "ppid");
-        assert_string_equal(data->sum.wdata.process_id, "process_id");
-        assert_string_equal(data->sum.tag, "tag");
-        assert_string_equal(data->sum.symbolic_path, "symbolic_path");
-        assert_int_equal(data->sum.silent, 0);
-    }
-
-    static void test_sk_decode_sum_extra_data_all_fields_silent(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name:"
-                            "audit_uid:audit_name:effective_uid:effective_name:"
-                            "ppid:process_id:tag:symbolic_path:+");
-
-        data->sum.silent = 0;
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
-
-        assert_int_equal(ret, 0);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        assert_string_equal(data->sum.wdata.user_id, "user_id");
-        assert_string_equal(data->sum.wdata.user_name, "user_name");
-        assert_string_equal(data->sum.wdata.group_id, "group_id");
-        assert_string_equal(data->sum.wdata.group_name, "group_name");
-        assert_string_equal(data->sum.wdata.process_name, "process_name");
-        assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
-        assert_string_equal(data->sum.wdata.audit_name, "audit_name");
-        assert_string_equal(data->sum.wdata.effective_uid, "effective_uid");
-        assert_string_equal(data->sum.wdata.effective_name, "effective_name");
-        assert_string_equal(data->sum.wdata.ppid, "ppid");
-        assert_string_equal(data->sum.wdata.process_id, "process_id");
-        assert_string_equal(data->sum.tag, "tag");
-        assert_string_equal(data->sum.symbolic_path, "symbolic_path");
-        assert_int_equal(data->sum.silent, 1);
-    }
-
-    static void test_sk_decode_sum_extra_data_null_ppid(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 123456789;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name:"
-                            "audit_uid:audit_name:effective_uid:effective_name:"
-                            "-:process_id:tag:symbolic_path:+");
-
-        ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
-
-        assert_int_equal(ret, 0);
-        assert_string_equal(data->sum.size, "size");
-        assert_int_equal(data->sum.perm, 1234);
-        assert_string_equal(data->sum.uid, "uid");
-        assert_string_equal(data->sum.gid, "gid");
-        assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
-        assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-        assert_string_equal(data->sum.wdata.user_id, "user_id");
-        assert_string_equal(data->sum.wdata.user_name, "user_name");
-        assert_string_equal(data->sum.wdata.group_id, "group_id");
-        assert_string_equal(data->sum.wdata.group_name, "group_name");
-        assert_string_equal(data->sum.wdata.process_name, "process_name");
-        assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
-        assert_string_equal(data->sum.wdata.audit_name, "audit_name");
-        assert_string_equal(data->sum.wdata.effective_uid, "effective_uid");
-        assert_string_equal(data->sum.wdata.effective_name, "effective_name");
-        assert_null(data->sum.wdata.ppid);
-        assert_string_equal(data->sum.wdata.process_id, "process_id");
-        assert_string_equal(data->sum.tag, "tag");
-        assert_string_equal(data->sum.symbolic_path, "symbolic_path");
-        assert_int_equal(data->sum.silent, 1);
-    }
-
-    // TODO: Validate this condition is required to be tested
-    static void test_sk_decode_sum_extra_data_null_sum(void **state) {
-        sk_decode_data_t *data = *state;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-
-        expect_assert_failure(sk_decode_sum(NULL, data->c_sum, NULL));
-    }
-
-    // TODO: Validate this condition is required to be tested
-    static void test_sk_decode_sum_extra_data_null_c_sum(void **state) {
-        sk_decode_data_t *data = *state;
-
-        expect_assert_failure(sk_decode_sum(&data->sum, NULL, NULL));
-    }
-
-    /* sk_decode_extradata tests */
-    static void test_sk_decode_extradata_null_sum(void **state) {
-        sk_decode_data_t *data = *state;
-        data->c_sum = strdup("some string");
-
-        expect_assert_failure(sk_decode_extradata(NULL, data->c_sum));
-    }
-
-    static void test_sk_decode_extradata_null_c_sum(void **state) {
-        sk_decode_data_t *data = *state;
-
-        expect_assert_failure(sk_decode_extradata(&data->sum, NULL));
-    }
-
-    static void test_sk_decode_extradata_no_changes(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 12345;
-
-        data->c_sum = strdup("some string");
-
-        ret = sk_decode_extradata(&data->sum, data->c_sum);
-
-        assert_int_equal(ret, 0);
-        assert_string_equal(data->c_sum, "some string");
-    }
-
-    static void test_sk_decode_extradata_no_date_alert(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 12345;
-
-        data->c_sum = strdup("some string!15");
-
-        ret = sk_decode_extradata(&data->sum, data->c_sum);
-
-        assert_int_equal(ret, 0);
-        assert_string_equal(data->c_sum, "some string");
-        assert_string_equal(data->c_sum + 12, "15");
-    }
-
-    static void test_sk_decode_extradata_no_sym_path(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 12345;
-
-        data->c_sum = strdup("some string!15:20");
-
-        data->sum.symbolic_path = NULL;
-
-        ret = sk_decode_extradata(&data->sum, data->c_sum);
-
-        assert_int_equal(ret, 1);
-        assert_string_equal(data->c_sum, "some string");
-        assert_string_equal(data->c_sum + 12, "15");
-        assert_string_equal(data->c_sum + 15, "20");
-        assert_int_equal(data->sum.changes, 15);
-        assert_int_equal(data->sum.date_alert, 20);
-        assert_null(data->sum.symbolic_path);
-    }
-
-    static void test_sk_decode_extradata_all_fields(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret = 12345;
-
-        data->c_sum = strdup("some string!15:20:a symbolic path");
-
-        data->sum.symbolic_path = NULL;
-
-        ret = sk_decode_extradata(&data->sum, data->c_sum);
-
-        assert_int_equal(ret, 1);
-        assert_string_equal(data->c_sum, "some string");
-        assert_string_equal(data->c_sum + 12, "15");
-        assert_string_equal(data->c_sum + 15, "20");
-        assert_int_equal(data->sum.changes, 15);
-        assert_int_equal(data->sum.date_alert, 20);
-        assert_string_equal(data->sum.symbolic_path, "a symbolic path");
-    }
-
-    /* sk_fill_event tests */
-    static void test_sk_fill_event_full_event(void **state) {
-        sk_fill_event_t *data = *state;
-
-        data->f_name = strdup("f_name");
-
-        data->sum->size = "size";
-        data->sum->perm = 123456; // 361100 in octal
-        data->sum->uid = "uid";
-        data->sum->gid = "gid";
-        data->sum->md5 = "md5";
-        data->sum->sha1 = "sha1";
-        data->sum->uname = "uname";
-        data->sum->gname = "gname";
-        data->sum->mtime = 2345678;
-        data->sum->inode = 3456789;
-        data->sum->sha256 = "sha256";
-        data->sum->attributes = "attributes";
-        data->sum->wdata.user_id = "user_id";
-        data->sum->wdata.user_name = "user_name";
-        data->sum->wdata.group_id = "group_id";
-        data->sum->wdata.group_name = "group_name";
-        data->sum->wdata.process_name = "process_name";
-        data->sum->wdata.audit_uid = "audit_uid";
-        data->sum->wdata.audit_name = "audit_name";
-        data->sum->wdata.effective_uid = "effective_uid";
-        data->sum->wdata.effective_name = "effective_name";
-        data->sum->wdata.ppid = "ppid";
-        data->sum->wdata.process_id = "process_id";
-        data->sum->tag = "tag";
-        data->sum->symbolic_path = "symbolic_path";
-
-        sk_fill_event(data->lf, data->f_name, data->sum);
-
-        assert_string_equal(data->lf->filename, "f_name");
-        assert_string_equal(data->lf->fields[FIM_FILE].value, "f_name");
-        assert_string_equal(data->lf->fields[FIM_SIZE].value, "size");
-        assert_string_equal(data->lf->fields[FIM_PERM].value, "361100");
-        assert_string_equal(data->lf->fields[FIM_UID].value, "uid");
-        assert_string_equal(data->lf->fields[FIM_GID].value, "gid");
-        assert_string_equal(data->lf->fields[FIM_MD5].value, "md5");
-        assert_string_equal(data->lf->fields[FIM_SHA1].value, "sha1");
-        assert_string_equal(data->lf->fields[FIM_UNAME].value, "uname");
-        assert_string_equal(data->lf->fields[FIM_GNAME].value, "gname");
-        assert_int_equal(data->lf->mtime_after, data->sum->mtime);
-        assert_string_equal(data->lf->fields[FIM_MTIME].value, "2345678");
-        assert_int_equal(data->lf->inode_after, data->sum->inode);
-        assert_string_equal(data->lf->fields[FIM_INODE].value, "3456789");
-        assert_string_equal(data->lf->fields[FIM_SHA256].value, "sha256");
-        assert_string_equal(data->lf->fields[FIM_ATTRS].value, "attributes");
-
-        assert_string_equal(data->lf->user_id, "user_id");
-        assert_string_equal(data->lf->fields[FIM_USER_ID].value, "user_id");
-
-        assert_string_equal(data->lf->user_name, "user_name");
-        assert_string_equal(data->lf->fields[FIM_USER_NAME].value, "user_name");
-
-        assert_string_equal(data->lf->group_id, "group_id");
-        assert_string_equal(data->lf->fields[FIM_GROUP_ID].value, "group_id");
-
-        assert_string_equal(data->lf->group_name, "group_name");
-        assert_string_equal(data->lf->fields[FIM_GROUP_NAME].value, "group_name");
-
-        assert_string_equal(data->lf->process_name, "process_name");
-        assert_string_equal(data->lf->fields[FIM_PROC_NAME].value, "process_name");
-
-        assert_string_equal(data->lf->audit_uid, "audit_uid");
-        assert_string_equal(data->lf->fields[FIM_AUDIT_ID].value, "audit_uid");
-
-        assert_string_equal(data->lf->audit_name, "audit_name");
-        assert_string_equal(data->lf->fields[FIM_AUDIT_NAME].value, "audit_name");
-
-        assert_string_equal(data->lf->effective_uid, "effective_uid");
-        assert_string_equal(data->lf->fields[FIM_EFFECTIVE_UID].value, "effective_uid");
-
-        assert_string_equal(data->lf->effective_name, "effective_name");
-        assert_string_equal(data->lf->fields[FIM_EFFECTIVE_NAME].value, "effective_name");
-
-        assert_string_equal(data->lf->ppid, "ppid");
-        assert_string_equal(data->lf->fields[FIM_PPID].value, "ppid");
-
-        assert_string_equal(data->lf->process_id, "process_id");
-        assert_string_equal(data->lf->fields[FIM_PROC_ID].value, "process_id");
-
-        assert_string_equal(data->lf->sk_tag, "tag");
-        assert_string_equal(data->lf->fields[FIM_TAG].value, "tag");
-
-        assert_string_equal(data->lf->sym_path, "symbolic_path");
-        assert_string_equal(data->lf->fields[FIM_SYM_PATH].value, "symbolic_path");
-    }
-
-    static void test_sk_fill_event_empty_event(void **state) {
-        sk_fill_event_t *data = *state;
-
-        data->f_name = strdup("f_name");
-
-        sk_fill_event(data->lf, data->f_name, data->sum);
-
-        assert_string_equal(data->lf->filename, "f_name");
-        assert_string_equal(data->lf->fields[FIM_FILE].value, "f_name");
-        assert_null(data->lf->fields[FIM_SIZE].value);
-        assert_null(data->lf->fields[FIM_PERM].value);
-        assert_null(data->lf->fields[FIM_UID].value);
-        assert_null(data->lf->fields[FIM_GID].value);
-        assert_null(data->lf->fields[FIM_MD5].value);
-        assert_null(data->lf->fields[FIM_SHA1].value);
-        assert_null(data->lf->fields[FIM_UNAME].value);
-        assert_null(data->lf->fields[FIM_GNAME].value);
-        assert_int_equal(data->lf->mtime_after, data->sum->mtime);
-        assert_null(data->lf->fields[FIM_MTIME].value);
-        assert_int_equal(data->lf->inode_after, data->sum->inode);
-        assert_null(data->lf->fields[FIM_INODE].value);
-        assert_null(data->lf->fields[FIM_SHA256].value);
-        assert_null(data->lf->fields[FIM_ATTRS].value);
-
-        assert_null(data->lf->user_id);
-        assert_null(data->lf->fields[FIM_USER_ID].value);
-
-        assert_null(data->lf->user_name);
-        assert_null(data->lf->fields[FIM_USER_NAME].value);
-
-        assert_null(data->lf->group_id);
-        assert_null(data->lf->fields[FIM_GROUP_ID].value);
-
-        assert_null(data->lf->group_name);
-        assert_null(data->lf->fields[FIM_GROUP_NAME].value);
-
-        assert_null(data->lf->process_name);
-        assert_null(data->lf->fields[FIM_PROC_NAME].value);
-
-        assert_null(data->lf->audit_uid);
-        assert_null(data->lf->fields[FIM_AUDIT_ID].value);
-
-        assert_null(data->lf->audit_name);
-        assert_null(data->lf->fields[FIM_AUDIT_NAME].value);
-
-        assert_null(data->lf->effective_uid);
-        assert_null(data->lf->fields[FIM_EFFECTIVE_UID].value);
-
-        assert_null(data->lf->effective_name);
-        assert_null(data->lf->fields[FIM_EFFECTIVE_NAME].value);
-
-        assert_null(data->lf->ppid);
-        assert_null(data->lf->fields[FIM_PPID].value);
-
-        assert_null(data->lf->process_id);
-        assert_null(data->lf->fields[FIM_PROC_ID].value);
-
-        assert_null(data->lf->sk_tag);
-        assert_null(data->lf->fields[FIM_TAG].value);
-
-        assert_null(data->lf->sym_path);
-        assert_null(data->lf->fields[FIM_SYM_PATH].value);
-    }
-
-    static void test_sk_fill_event_win_perm(void **state) {
-        sk_fill_event_t *data = *state;
-
-        data->f_name = strdup("f_name");
-
-        data->sum->win_perm = "win_perm";
-
-        sk_fill_event(data->lf, data->f_name, data->sum);
-
-        assert_string_equal(data->lf->filename, "f_name");
-        assert_string_equal(data->lf->fields[FIM_FILE].value, "f_name");
-        assert_null(data->lf->fields[FIM_SIZE].value);
-        assert_string_equal(data->lf->fields[FIM_PERM].value, "win_perm");
-        assert_null(data->lf->fields[FIM_UID].value);
-        assert_null(data->lf->fields[FIM_GID].value);
-        assert_null(data->lf->fields[FIM_MD5].value);
-        assert_null(data->lf->fields[FIM_SHA1].value);
-        assert_null(data->lf->fields[FIM_UNAME].value);
-        assert_null(data->lf->fields[FIM_GNAME].value);
-        assert_int_equal(data->lf->mtime_after, data->sum->mtime);
-        assert_null(data->lf->fields[FIM_MTIME].value);
-        assert_int_equal(data->lf->inode_after, data->sum->inode);
-        assert_null(data->lf->fields[FIM_INODE].value);
-        assert_null(data->lf->fields[FIM_SHA256].value);
-        assert_null(data->lf->fields[FIM_ATTRS].value);
-
-        assert_null(data->lf->user_id);
-        assert_null(data->lf->fields[FIM_USER_ID].value);
-
-        assert_null(data->lf->user_name);
-        assert_null(data->lf->fields[FIM_USER_NAME].value);
-
-        assert_null(data->lf->group_id);
-        assert_null(data->lf->fields[FIM_GROUP_ID].value);
-
-        assert_null(data->lf->group_name);
-        assert_null(data->lf->fields[FIM_GROUP_NAME].value);
-
-        assert_null(data->lf->process_name);
-        assert_null(data->lf->fields[FIM_PROC_NAME].value);
-
-        assert_null(data->lf->audit_uid);
-        assert_null(data->lf->fields[FIM_AUDIT_ID].value);
-
-        assert_null(data->lf->audit_name);
-        assert_null(data->lf->fields[FIM_AUDIT_NAME].value);
-
-        assert_null(data->lf->effective_uid);
-        assert_null(data->lf->fields[FIM_EFFECTIVE_UID].value);
-
-        assert_null(data->lf->effective_name);
-        assert_null(data->lf->fields[FIM_EFFECTIVE_NAME].value);
-
-        assert_null(data->lf->ppid);
-        assert_null(data->lf->fields[FIM_PPID].value);
-
-        assert_null(data->lf->process_id);
-        assert_null(data->lf->fields[FIM_PROC_ID].value);
-
-        assert_null(data->lf->sk_tag);
-        assert_null(data->lf->fields[FIM_TAG].value);
-
-        assert_null(data->lf->sym_path);
-        assert_null(data->lf->fields[FIM_SYM_PATH].value);
-    }
-
-    static void test_sk_fill_event_null_eventinfo(void **state) {
-        sk_fill_event_t *data = *state;
-
-        data->f_name = strdup("f_name");
-
-        data->sum->win_perm = "win_perm";
-
-        expect_assert_failure(sk_fill_event(NULL, data->f_name, data->sum));
-    }
-
-    static void test_sk_fill_event_null_f_name(void **state) {
-        sk_fill_event_t *data = *state;
-
-        data->sum->win_perm = "win_perm";
-
-        expect_assert_failure(sk_fill_event(data->lf, NULL, data->sum));
-    }
-
-    // TODO: Validate this condition is required to be tested
-    static void test_sk_fill_event_null_sum(void **state) {
-        sk_fill_event_t *data = *state;
-
-        data->f_name = strdup("f_name");
-
-        expect_assert_failure(sk_fill_event(data->lf, data->f_name, NULL));
-    }
-
-    /* sk_build_sum tests */
-    static void test_sk_build_sum_full_message(void **state) {
-        sk_build_sum_t *data = *state;
-        int ret;
-
-        data->sum.size = "size";
-        data->sum.perm = 123456;
-        data->sum.win_perm = NULL;
-        data->sum.uid = "uid";
-        data->sum.gid = "gid";
-        data->sum.md5 = "md5";
-        data->sum.sha1 = "sha1";
-        data->sum.uname = "username";
-        data->sum.gname = "gname";
-        data->sum.mtime = 234567;
-        data->sum.inode = 345678;
-        data->sum.sha256 = "sha256";
-        data->sum.attributes = "attributes";
-        data->sum.changes = 456789;
-        data->sum.date_alert = 567890;
-
-        ret = sk_build_sum(&data->sum, data->output, OS_MAXSTR);
-
-        assert_int_equal(ret, 0);
-        assert_string_equal(data->output,
-                            "size:123456:uid:gid:md5:sha1:username:gname:234567:345678:sha256:attributes!456789:567890");
-    }
-
-    static void test_sk_build_sum_skip_fields_message(void **state) {
-        sk_build_sum_t *data = *state;
-        int ret;
-
-        data->sum.size = "size";
-        data->sum.perm = 0;
-        data->sum.win_perm = NULL;
-        data->sum.uid = "uid";
-        data->sum.gid = "gid";
-        data->sum.md5 = "md5";
-        data->sum.sha1 = "sha1";
-        data->sum.uname = NULL;
-        data->sum.gname = NULL;
-        data->sum.mtime = 0;
-        data->sum.inode = 0;
-        data->sum.sha256 = NULL;
-        data->sum.attributes = NULL;
-        data->sum.changes = 0;
-        data->sum.date_alert = 0;
-
-        ret = sk_build_sum(&data->sum, data->output, OS_MAXSTR);
-
-        assert_int_equal(ret, 0);
-        assert_string_equal(data->output, "size::uid:gid:md5:sha1::::::!0:0");
-    }
-
-    static void test_sk_build_sum_win_perm(void **state) {
-        sk_build_sum_t *data = *state;
-        int ret;
-
-        data->sum.size = "size";
-        data->sum.perm = 0;
-        data->sum.win_perm = "win_perm";
-        data->sum.uid = "uid";
-        data->sum.gid = "gid";
-        data->sum.md5 = "md5";
-        data->sum.sha1 = "sha1";
-        data->sum.uname = NULL;
-        data->sum.gname = NULL;
-        data->sum.mtime = 0;
-        data->sum.inode = 0;
-        data->sum.sha256 = NULL;
-        data->sum.attributes = NULL;
-        data->sum.changes = 0;
-        data->sum.date_alert = 0;
-
-        ret = sk_build_sum(&data->sum, data->output, OS_MAXSTR);
-
-        assert_int_equal(ret, 0);
-        assert_string_equal(data->output, "size:win_perm:uid:gid:md5:sha1::::::!0:0");
-    }
-
-    static void test_sk_build_sum_insufficient_buffer_size(void **state) {
-        sk_build_sum_t *data = *state;
-        int ret;
-
-        data->sum.size = "size";
-        data->sum.perm = 0;
-        data->sum.win_perm = "win_perm";
-        data->sum.uid = "uid";
-        data->sum.gid = "gid";
-        data->sum.md5 = "md5";
-        data->sum.sha1 = "sha1";
-        data->sum.uname = NULL;
-        data->sum.gname = NULL;
-        data->sum.mtime = 0;
-        data->sum.inode = 0;
-        data->sum.sha256 = NULL;
-        data->sum.attributes = NULL;
-        data->sum.changes = 0;
-        data->sum.date_alert = 0;
-
-        ret = sk_build_sum(&data->sum, data->output, 10);
-
-        assert_int_equal(ret, -1);
-        assert_string_equal(data->output, "size:win_");
-    }
-
-    static void test_sk_build_sum_null_sum(void **state) {
-        sk_build_sum_t *data = *state;
-
-        expect_assert_failure(sk_build_sum(NULL, data->output, OS_MAXSTR));
-    }
-
-    static void test_sk_build_sum_null_output(void **state) {
-        sk_build_sum_t *data = *state;
-
-        expect_assert_failure(sk_build_sum(&data->sum, NULL, OS_MAXSTR));
-    }
-
-    /* sk_sum_clean tests */
-    static void test_sk_sum_clean_full_message(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b:"
-                            "uname:gname:2345:3456:"
-                            "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40:"
-                            "1");
-        data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name:"
-                            "audit_uid:audit_name:effective_uid:effective_name:"
-                            "ppid:process_id:tag:symbolic_path:-");
-
-        // Fill sum with as many info as possible
-        ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
-        assert_int_equal(ret, 0);
-
-        // And free it
-        sk_sum_clean(&data->sum);
-
-        assert_null(data->sum.symbolic_path);
-        assert_null(data->sum.attributes);
-        assert_null(data->sum.wdata.user_name);
-        assert_null(data->sum.wdata.process_name);
-        assert_null(data->sum.uname);
-        assert_null(data->sum.win_perm);
-    }
-
-    static void test_sk_sum_clean_shortest_valid_message(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret;
-
-        data->c_sum = strdup("size:1234:uid:gid:"
-                            "3691689a513ace7e508297b583d7050d:"
-                            "07f05add1049244e7e71ad0f54f24d8094cd8f8b:"
-                            "uname:gname:2345:3456");
-
-        // Fill sum with as many info as possible
-        ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
-        assert_int_equal(ret, 0);
-
-        // And free it
-        sk_sum_clean(&data->sum);
-
-        assert_null(data->sum.symbolic_path);
-        assert_null(data->sum.attributes);
-        assert_null(data->sum.wdata.user_name);
-        assert_null(data->sum.wdata.process_name);
-        assert_null(data->sum.uname);
-        assert_null(data->sum.win_perm);
-    }
-
-    static void test_sk_sum_clean_invalid_message(void **state) {
-        sk_decode_data_t *data = *state;
-        int ret;
-
-        data->c_sum = strdup("This is not a valid syscheck message");
-
-        // Fill sum with as many info as possible
-        ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
-        assert_int_equal(ret, -1);
-
-        // And free it
-        sk_sum_clean(&data->sum);
-
-        assert_null(data->sum.symbolic_path);
-        assert_null(data->sum.attributes);
-        assert_null(data->sum.wdata.user_name);
-        assert_null(data->sum.wdata.process_name);
-        assert_null(data->sum.uname);
-        assert_null(data->sum.win_perm);
-    }
-
-    // TODO: Validate this condition is required to be tested
-    static void test_sk_sum_clean_null_sum(void **state) {
-        expect_assert_failure(sk_sum_clean(NULL));
-    }
-#elif defined(TEST_AGENT)
-    /* unescape_syscheck_field tests */
-    static void test_unescape_syscheck_field_escaped_chars(void **state) {
-        unescape_syscheck_field_data_t *data = *state;
-
-        data->input = strdup("Hi\\!! This\\ is\\ a string with\\: escaped chars:");
-
-        data->output = unescape_syscheck_field(data->input);
-
-        assert_string_equal(data->output, "Hi!! This is a string with: escaped chars:");
-    }
-
-    static void test_unescape_syscheck_field_no_escaped_chars(void **state) {
-        unescape_syscheck_field_data_t *data = *state;
-
-        data->input = strdup("Hi!! This is a string without: escaped chars:");
-
-        data->output = unescape_syscheck_field(data->input);
-
-        assert_string_equal(data->output, "Hi!! This is a string without: escaped chars:");
-    }
-
-    static void test_unescape_syscheck_null_input(void **state) {
-        unescape_syscheck_field_data_t *data = *state;
-
-        data->input = NULL;
-
-        data->output = unescape_syscheck_field(data->input);
-
-        assert_null(data->output);
-    }
-
-    static void test_unescape_syscheck_empty_string(void **state) {
-        unescape_syscheck_field_data_t *data = *state;
-
-        data->input = strdup("");
-
-        data->output = unescape_syscheck_field(data->input);
-
-        assert_null(data->output);
-    }
-
-    /* get_user tests */
-    static void test_get_user_success(void **state) {
-        char *user;
-
-        will_return(__wrap_getpwuid_r, "user_name");
-        will_return(__wrap_getpwuid_r, 1);
-        #ifndef SOLARIS
-        will_return(__wrap_getpwuid_r, 0);
-        #endif
-
-        user = get_user(NULL, 1, NULL);
-
-        *state = user;
-
-        assert_string_equal(user, "user_name");
-    }
-
-    static void test_get_user_uid_not_found(void **state) {
-        char *user;
-
-        will_return(__wrap_getpwuid_r, "user_name");
-        will_return(__wrap_getpwuid_r, NULL);
-        #ifndef SOLARIS
-        will_return(__wrap_getpwuid_r, 0);
-        #endif
-
-        expect_string(__wrap__mdebug2, msg, "User with uid '%d' not found.\n");
-        expect_value(__wrap__mdebug2, param1, 1);
-
-        user = get_user(NULL, 1, NULL);
-
-        *state = user;
-
-        assert_null(user);
-    }
-
-    static void test_get_user_error(void **state) {
-        char *user;
-
-        will_return(__wrap_getpwuid_r, "user_name");
-        will_return(__wrap_getpwuid_r, NULL);
-        #ifndef SOLARIS
-        will_return(__wrap_getpwuid_r, ENOENT);
-        #endif
-
-        expect_string(__wrap__mdebug2, msg, "Failed getting user_name (%d): '%s'\n");
-        expect_value(__wrap__mdebug2, param1, ENOENT);
-        expect_string(__wrap__mdebug2, param2, "No such file or directory");
-
-        user = get_user(NULL, 1, NULL);
-
-        *state = user;
-
-        assert_null(user);
-    }
+    assert_int_equal(ret, -1);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+}
+
+static void test_sk_decode_sum_no_new_fields(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+}
+
+static void test_sk_decode_sum_win_perm_string(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:win_perm:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(data->sum.size, "size");
+    assert_string_equal(data->sum.win_perm, "win_perm");
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+
+}
+
+static void test_sk_decode_sum_win_perm_encoded(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:|account,0,4:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(data->sum.size, "size");
+    assert_string_equal(data->sum.win_perm, "account (allowed): append_data");
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+}
+
+static void test_sk_decode_sum_no_gname(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b:");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+}
+
+static void test_sk_decode_sum_no_uname(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b:"
+                        ":gname");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    assert_string_equal(data->sum.gname, "gname");
+}
+
+static void test_sk_decode_sum_no_mtime(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b:"
+                        "uname:gname");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    assert_string_equal(data->sum.gname, "gname");
+    assert_string_equal(data->sum.uname, "uname");
+}
+
+static void test_sk_decode_sum_no_inode(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b:"
+                        "uname:gname:2345");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    assert_string_equal(data->sum.gname, "gname");
+    assert_string_equal(data->sum.uname, "uname");
+}
+
+static void test_sk_decode_sum_no_sha256(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b:"
+                        "uname:gname:2345:3456");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    assert_string_equal(data->sum.gname, "gname");
+    assert_string_equal(data->sum.uname, "uname");
+    assert_null(data->sum.sha256);
+}
+
+static void test_sk_decode_sum_empty_sha256(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b:"
+                        "uname:gname:2345:3456::");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    assert_string_equal(data->sum.gname, "gname");
+    assert_string_equal(data->sum.uname, "uname");
+    assert_string_equal(data->sum.sha256, "");
+    assert_int_equal(data->sum.mtime, 2345);
+    assert_int_equal(data->sum.inode, 3456);
+}
+
+static void test_sk_decode_sum_no_attributes(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b:"
+                        "uname:gname:2345:3456:"
+                        "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    assert_string_equal(data->sum.gname, "gname");
+    assert_string_equal(data->sum.uname, "uname");
+    assert_string_equal(data->sum.sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
+    assert_int_equal(data->sum.mtime, 2345);
+    assert_int_equal(data->sum.inode, 3456);
+}
+
+static void test_sk_decode_sum_non_numeric_attributes(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b:"
+                        "uname:gname:2345:3456:"
+                        "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40:"
+                        "attributes");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    assert_string_equal(data->sum.gname, "gname");
+    assert_string_equal(data->sum.uname, "uname");
+    assert_string_equal(data->sum.sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
+    assert_int_equal(data->sum.mtime, 2345);
+    assert_int_equal(data->sum.inode, 3456);
+    assert_string_equal(data->sum.attributes, "attributes");
+}
+
+static void test_sk_decode_sum_win_encoded_attributes(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b:"
+                        "uname:gname:2345:3456:"
+                        "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40:"
+                        "1");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, NULL);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    assert_string_equal(data->sum.gname, "gname");
+    assert_string_equal(data->sum.uname, "uname");
+    assert_string_equal(data->sum.sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
+    assert_int_equal(data->sum.mtime, 2345);
+    assert_int_equal(data->sum.inode, 3456);
+    assert_string_equal(data->sum.attributes, "READONLY");
+}
+
+static void test_sk_decode_sum_extra_data_empty(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    data->w_sum = strdup("");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+}
+
+static void test_sk_decode_sum_extra_data_no_user_name(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    data->w_sum = strdup("user_id");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    assert_string_equal(data->sum.wdata.user_id, "user_id");
+}
+
+static void test_sk_decode_sum_extra_data_no_group_id(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    data->w_sum = strdup("user_id:user_name");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    assert_string_equal(data->sum.wdata.user_id, "user_id");
+    assert_null(data->sum.wdata.user_name);
+}
+
+static void test_sk_decode_sum_extra_data_no_group_name(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    data->w_sum = strdup("user_id:user_name:group_id");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    assert_string_equal(data->sum.wdata.user_id, "user_id");
+    assert_null(data->sum.wdata.user_name);
+    assert_string_equal(data->sum.wdata.group_id, "group_id");
+}
+
+static void test_sk_decode_sum_extra_data_no_process_name(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    data->w_sum = strdup("user_id:user_name:group_id:group_name");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    assert_string_equal(data->sum.wdata.user_id, "user_id");
+    assert_null(data->sum.wdata.user_name);
+    assert_string_equal(data->sum.wdata.group_id, "group_id");
+    assert_string_equal(data->sum.wdata.group_name, "group_name");
+}
+
+static void test_sk_decode_sum_extra_data_no_audit_uid(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    assert_string_equal(data->sum.wdata.user_id, "user_id");
+    assert_null(data->sum.wdata.user_name);
+    assert_string_equal(data->sum.wdata.group_id, "group_id");
+    assert_string_equal(data->sum.wdata.group_name, "group_name");
+    assert_null(data->sum.wdata.process_name);
+}
+
+static void test_sk_decode_sum_extra_data_no_audit_name(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name:"
+                        "audit_uid");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    assert_string_equal(data->sum.wdata.user_id, "user_id");
+    assert_null(data->sum.wdata.user_name);
+    assert_string_equal(data->sum.wdata.group_id, "group_id");
+    assert_string_equal(data->sum.wdata.group_name, "group_name");
+    assert_null(data->sum.wdata.process_name);
+    assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
+}
+
+static void test_sk_decode_sum_extra_data_no_effective_uid(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name:"
+                        "audit_uid:audit_name");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    assert_string_equal(data->sum.wdata.user_id, "user_id");
+    assert_null(data->sum.wdata.user_name);
+    assert_string_equal(data->sum.wdata.group_id, "group_id");
+    assert_string_equal(data->sum.wdata.group_name, "group_name");
+    assert_null(data->sum.wdata.process_name);
+    assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
+    assert_string_equal(data->sum.wdata.audit_name, "audit_name");
+}
+
+static void test_sk_decode_sum_extra_data_no_effective_name(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name:"
+                        "audit_uid:audit_name:effective_uid");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    assert_string_equal(data->sum.wdata.user_id, "user_id");
+    assert_null(data->sum.wdata.user_name);
+    assert_string_equal(data->sum.wdata.group_id, "group_id");
+    assert_string_equal(data->sum.wdata.group_name, "group_name");
+    assert_null(data->sum.wdata.process_name);
+    assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
+    assert_string_equal(data->sum.wdata.audit_name, "audit_name");
+    assert_string_equal(data->sum.wdata.effective_uid, "effective_uid");
+}
+
+static void test_sk_decode_sum_extra_data_no_ppid(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name:"
+                        "audit_uid:audit_name:effective_uid:effective_name");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    assert_string_equal(data->sum.wdata.user_id, "user_id");
+    assert_null(data->sum.wdata.user_name);
+    assert_string_equal(data->sum.wdata.group_id, "group_id");
+    assert_string_equal(data->sum.wdata.group_name, "group_name");
+    assert_null(data->sum.wdata.process_name);
+    assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
+    assert_string_equal(data->sum.wdata.audit_name, "audit_name");
+    assert_string_equal(data->sum.wdata.effective_uid, "effective_uid");
+    assert_string_equal(data->sum.wdata.effective_name, "effective_name");
+}
+
+static void test_sk_decode_sum_extra_data_no_process_id(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name:"
+                        "audit_uid:audit_name:effective_uid:effective_name:ppid");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    assert_string_equal(data->sum.wdata.user_id, "user_id");
+    assert_null(data->sum.wdata.user_name);
+    assert_string_equal(data->sum.wdata.group_id, "group_id");
+    assert_string_equal(data->sum.wdata.group_name, "group_name");
+    assert_null(data->sum.wdata.process_name);
+    assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
+    assert_string_equal(data->sum.wdata.audit_name, "audit_name");
+    assert_string_equal(data->sum.wdata.effective_uid, "effective_uid");
+    assert_string_equal(data->sum.wdata.effective_name, "effective_name");
+    assert_string_equal(data->sum.wdata.ppid, "ppid");
+}
+
+static void test_sk_decode_sum_extra_data_no_tag(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name:"
+                        "audit_uid:audit_name:effective_uid:effective_name:ppid:process_id");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    assert_string_equal(data->sum.wdata.user_id, "user_id");
+    assert_string_equal(data->sum.wdata.user_name, "user_name");
+    assert_string_equal(data->sum.wdata.group_id, "group_id");
+    assert_string_equal(data->sum.wdata.group_name, "group_name");
+    assert_string_equal(data->sum.wdata.process_name, "process_name");
+    assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
+    assert_string_equal(data->sum.wdata.audit_name, "audit_name");
+    assert_string_equal(data->sum.wdata.effective_uid, "effective_uid");
+    assert_string_equal(data->sum.wdata.effective_name, "effective_name");
+    assert_string_equal(data->sum.wdata.ppid, "ppid");
+    assert_string_equal(data->sum.wdata.process_id, "process_id");
+    assert_null(data->sum.tag);
+    assert_null(data->sum.symbolic_path);
+}
+
+static void test_sk_decode_sum_extra_data_no_symbolic_path(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name:"
+                        "audit_uid:audit_name:effective_uid:effective_name:"
+                        "ppid:process_id:tag");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    assert_string_equal(data->sum.wdata.user_id, "user_id");
+    assert_string_equal(data->sum.wdata.user_name, "user_name");
+    assert_string_equal(data->sum.wdata.group_id, "group_id");
+    assert_string_equal(data->sum.wdata.group_name, "group_name");
+    assert_string_equal(data->sum.wdata.process_name, "process_name");
+    assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
+    assert_string_equal(data->sum.wdata.audit_name, "audit_name");
+    assert_string_equal(data->sum.wdata.effective_uid, "effective_uid");
+    assert_string_equal(data->sum.wdata.effective_name, "effective_name");
+    assert_string_equal(data->sum.wdata.ppid, "ppid");
+    assert_string_equal(data->sum.wdata.process_id, "process_id");
+    assert_string_equal(data->sum.tag, "tag");
+    assert_null(data->sum.symbolic_path);
+}
+
+static void test_sk_decode_sum_extra_data_no_inode(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name:"
+                        "audit_uid:audit_name:effective_uid:effective_name:"
+                        "ppid:process_id:tag:symbolic_path");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    assert_string_equal(data->sum.wdata.user_id, "user_id");
+    assert_string_equal(data->sum.wdata.user_name, "user_name");
+    assert_string_equal(data->sum.wdata.group_id, "group_id");
+    assert_string_equal(data->sum.wdata.group_name, "group_name");
+    assert_string_equal(data->sum.wdata.process_name, "process_name");
+    assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
+    assert_string_equal(data->sum.wdata.audit_name, "audit_name");
+    assert_string_equal(data->sum.wdata.effective_uid, "effective_uid");
+    assert_string_equal(data->sum.wdata.effective_name, "effective_name");
+    assert_string_equal(data->sum.wdata.ppid, "ppid");
+    assert_string_equal(data->sum.wdata.process_id, "process_id");
+    assert_string_equal(data->sum.tag, "tag");
+    assert_string_equal(data->sum.symbolic_path, "symbolic_path");
+}
+
+static void test_sk_decode_sum_extra_data_all_fields(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name:"
+                        "audit_uid:audit_name:effective_uid:effective_name:"
+                        "ppid:process_id:tag:symbolic_path:-");
+
+    data->sum.silent = 0;
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    assert_string_equal(data->sum.wdata.user_id, "user_id");
+    assert_string_equal(data->sum.wdata.user_name, "user_name");
+    assert_string_equal(data->sum.wdata.group_id, "group_id");
+    assert_string_equal(data->sum.wdata.group_name, "group_name");
+    assert_string_equal(data->sum.wdata.process_name, "process_name");
+    assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
+    assert_string_equal(data->sum.wdata.audit_name, "audit_name");
+    assert_string_equal(data->sum.wdata.effective_uid, "effective_uid");
+    assert_string_equal(data->sum.wdata.effective_name, "effective_name");
+    assert_string_equal(data->sum.wdata.ppid, "ppid");
+    assert_string_equal(data->sum.wdata.process_id, "process_id");
+    assert_string_equal(data->sum.tag, "tag");
+    assert_string_equal(data->sum.symbolic_path, "symbolic_path");
+    assert_int_equal(data->sum.silent, 0);
+}
+
+static void test_sk_decode_sum_extra_data_all_fields_silent(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name:"
+                        "audit_uid:audit_name:effective_uid:effective_name:"
+                        "ppid:process_id:tag:symbolic_path:+");
+
+    data->sum.silent = 0;
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    assert_string_equal(data->sum.wdata.user_id, "user_id");
+    assert_string_equal(data->sum.wdata.user_name, "user_name");
+    assert_string_equal(data->sum.wdata.group_id, "group_id");
+    assert_string_equal(data->sum.wdata.group_name, "group_name");
+    assert_string_equal(data->sum.wdata.process_name, "process_name");
+    assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
+    assert_string_equal(data->sum.wdata.audit_name, "audit_name");
+    assert_string_equal(data->sum.wdata.effective_uid, "effective_uid");
+    assert_string_equal(data->sum.wdata.effective_name, "effective_name");
+    assert_string_equal(data->sum.wdata.ppid, "ppid");
+    assert_string_equal(data->sum.wdata.process_id, "process_id");
+    assert_string_equal(data->sum.tag, "tag");
+    assert_string_equal(data->sum.symbolic_path, "symbolic_path");
+    assert_int_equal(data->sum.silent, 1);
+}
+
+static void test_sk_decode_sum_extra_data_null_ppid(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 123456789;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name:"
+                        "audit_uid:audit_name:effective_uid:effective_name:"
+                        "-:process_id:tag:symbolic_path:+");
+
+    ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(data->sum.size, "size");
+    assert_int_equal(data->sum.perm, 1234);
+    assert_string_equal(data->sum.uid, "uid");
+    assert_string_equal(data->sum.gid, "gid");
+    assert_string_equal(data->sum.md5, "3691689a513ace7e508297b583d7050d");
+    assert_string_equal(data->sum.sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    assert_string_equal(data->sum.wdata.user_id, "user_id");
+    assert_string_equal(data->sum.wdata.user_name, "user_name");
+    assert_string_equal(data->sum.wdata.group_id, "group_id");
+    assert_string_equal(data->sum.wdata.group_name, "group_name");
+    assert_string_equal(data->sum.wdata.process_name, "process_name");
+    assert_string_equal(data->sum.wdata.audit_uid, "audit_uid");
+    assert_string_equal(data->sum.wdata.audit_name, "audit_name");
+    assert_string_equal(data->sum.wdata.effective_uid, "effective_uid");
+    assert_string_equal(data->sum.wdata.effective_name, "effective_name");
+    assert_null(data->sum.wdata.ppid);
+    assert_string_equal(data->sum.wdata.process_id, "process_id");
+    assert_string_equal(data->sum.tag, "tag");
+    assert_string_equal(data->sum.symbolic_path, "symbolic_path");
+    assert_int_equal(data->sum.silent, 1);
+}
+
+// TODO: Validate this condition is required to be tested
+static void test_sk_decode_sum_extra_data_null_sum(void **state) {
+    sk_decode_data_t *data = *state;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+
+    expect_assert_failure(sk_decode_sum(NULL, data->c_sum, NULL));
+}
+
+// TODO: Validate this condition is required to be tested
+static void test_sk_decode_sum_extra_data_null_c_sum(void **state) {
+    sk_decode_data_t *data = *state;
+
+    expect_assert_failure(sk_decode_sum(&data->sum, NULL, NULL));
+}
+
+/* sk_decode_extradata tests */
+static void test_sk_decode_extradata_null_sum(void **state) {
+    sk_decode_data_t *data = *state;
+    data->c_sum = strdup("some string");
+
+    expect_assert_failure(sk_decode_extradata(NULL, data->c_sum));
+}
+
+static void test_sk_decode_extradata_null_c_sum(void **state) {
+    sk_decode_data_t *data = *state;
+
+    expect_assert_failure(sk_decode_extradata(&data->sum, NULL));
+}
+
+static void test_sk_decode_extradata_no_changes(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 12345;
+
+    data->c_sum = strdup("some string");
+
+    ret = sk_decode_extradata(&data->sum, data->c_sum);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(data->c_sum, "some string");
+}
+
+static void test_sk_decode_extradata_no_date_alert(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 12345;
+
+    data->c_sum = strdup("some string!15");
+
+    ret = sk_decode_extradata(&data->sum, data->c_sum);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(data->c_sum, "some string");
+    assert_string_equal(data->c_sum + 12, "15");
+}
+
+static void test_sk_decode_extradata_no_sym_path(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 12345;
+
+    data->c_sum = strdup("some string!15:20");
+
+    data->sum.symbolic_path = NULL;
+
+    ret = sk_decode_extradata(&data->sum, data->c_sum);
+
+    assert_int_equal(ret, 1);
+    assert_string_equal(data->c_sum, "some string");
+    assert_string_equal(data->c_sum + 12, "15");
+    assert_string_equal(data->c_sum + 15, "20");
+    assert_int_equal(data->sum.changes, 15);
+    assert_int_equal(data->sum.date_alert, 20);
+    assert_null(data->sum.symbolic_path);
+}
+
+static void test_sk_decode_extradata_all_fields(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret = 12345;
+
+    data->c_sum = strdup("some string!15:20:a symbolic path");
+
+    data->sum.symbolic_path = NULL;
+
+    ret = sk_decode_extradata(&data->sum, data->c_sum);
+
+    assert_int_equal(ret, 1);
+    assert_string_equal(data->c_sum, "some string");
+    assert_string_equal(data->c_sum + 12, "15");
+    assert_string_equal(data->c_sum + 15, "20");
+    assert_int_equal(data->sum.changes, 15);
+    assert_int_equal(data->sum.date_alert, 20);
+    assert_string_equal(data->sum.symbolic_path, "a symbolic path");
+}
+
+/* sk_fill_event tests */
+static void test_sk_fill_event_full_event(void **state) {
+    sk_fill_event_t *data = *state;
+
+    data->f_name = strdup("f_name");
+
+    data->sum->size = "size";
+    data->sum->perm = 123456; // 361100 in octal
+    data->sum->uid = "uid";
+    data->sum->gid = "gid";
+    data->sum->md5 = "md5";
+    data->sum->sha1 = "sha1";
+    data->sum->uname = "uname";
+    data->sum->gname = "gname";
+    data->sum->mtime = 2345678;
+    data->sum->inode = 3456789;
+    data->sum->sha256 = "sha256";
+    data->sum->attributes = "attributes";
+    data->sum->wdata.user_id = "user_id";
+    data->sum->wdata.user_name = "user_name";
+    data->sum->wdata.group_id = "group_id";
+    data->sum->wdata.group_name = "group_name";
+    data->sum->wdata.process_name = "process_name";
+    data->sum->wdata.audit_uid = "audit_uid";
+    data->sum->wdata.audit_name = "audit_name";
+    data->sum->wdata.effective_uid = "effective_uid";
+    data->sum->wdata.effective_name = "effective_name";
+    data->sum->wdata.ppid = "ppid";
+    data->sum->wdata.process_id = "process_id";
+    data->sum->tag = "tag";
+    data->sum->symbolic_path = "symbolic_path";
+
+    sk_fill_event(data->lf, data->f_name, data->sum);
+
+    assert_string_equal(data->lf->filename, "f_name");
+    assert_string_equal(data->lf->fields[FIM_FILE].value, "f_name");
+    assert_string_equal(data->lf->fields[FIM_SIZE].value, "size");
+    assert_string_equal(data->lf->fields[FIM_PERM].value, "361100");
+    assert_string_equal(data->lf->fields[FIM_UID].value, "uid");
+    assert_string_equal(data->lf->fields[FIM_GID].value, "gid");
+    assert_string_equal(data->lf->fields[FIM_MD5].value, "md5");
+    assert_string_equal(data->lf->fields[FIM_SHA1].value, "sha1");
+    assert_string_equal(data->lf->fields[FIM_UNAME].value, "uname");
+    assert_string_equal(data->lf->fields[FIM_GNAME].value, "gname");
+    assert_int_equal(data->lf->mtime_after, data->sum->mtime);
+    assert_string_equal(data->lf->fields[FIM_MTIME].value, "2345678");
+    assert_int_equal(data->lf->inode_after, data->sum->inode);
+    assert_string_equal(data->lf->fields[FIM_INODE].value, "3456789");
+    assert_string_equal(data->lf->fields[FIM_SHA256].value, "sha256");
+    assert_string_equal(data->lf->fields[FIM_ATTRS].value, "attributes");
+
+    assert_string_equal(data->lf->user_id, "user_id");
+    assert_string_equal(data->lf->fields[FIM_USER_ID].value, "user_id");
+
+    assert_string_equal(data->lf->user_name, "user_name");
+    assert_string_equal(data->lf->fields[FIM_USER_NAME].value, "user_name");
+
+    assert_string_equal(data->lf->group_id, "group_id");
+    assert_string_equal(data->lf->fields[FIM_GROUP_ID].value, "group_id");
+
+    assert_string_equal(data->lf->group_name, "group_name");
+    assert_string_equal(data->lf->fields[FIM_GROUP_NAME].value, "group_name");
+
+    assert_string_equal(data->lf->process_name, "process_name");
+    assert_string_equal(data->lf->fields[FIM_PROC_NAME].value, "process_name");
+
+    assert_string_equal(data->lf->audit_uid, "audit_uid");
+    assert_string_equal(data->lf->fields[FIM_AUDIT_ID].value, "audit_uid");
+
+    assert_string_equal(data->lf->audit_name, "audit_name");
+    assert_string_equal(data->lf->fields[FIM_AUDIT_NAME].value, "audit_name");
+
+    assert_string_equal(data->lf->effective_uid, "effective_uid");
+    assert_string_equal(data->lf->fields[FIM_EFFECTIVE_UID].value, "effective_uid");
+
+    assert_string_equal(data->lf->effective_name, "effective_name");
+    assert_string_equal(data->lf->fields[FIM_EFFECTIVE_NAME].value, "effective_name");
+
+    assert_string_equal(data->lf->ppid, "ppid");
+    assert_string_equal(data->lf->fields[FIM_PPID].value, "ppid");
+
+    assert_string_equal(data->lf->process_id, "process_id");
+    assert_string_equal(data->lf->fields[FIM_PROC_ID].value, "process_id");
+
+    assert_string_equal(data->lf->sk_tag, "tag");
+    assert_string_equal(data->lf->fields[FIM_TAG].value, "tag");
+
+    assert_string_equal(data->lf->sym_path, "symbolic_path");
+    assert_string_equal(data->lf->fields[FIM_SYM_PATH].value, "symbolic_path");
+}
+
+static void test_sk_fill_event_empty_event(void **state) {
+    sk_fill_event_t *data = *state;
+
+    data->f_name = strdup("f_name");
+
+    sk_fill_event(data->lf, data->f_name, data->sum);
+
+    assert_string_equal(data->lf->filename, "f_name");
+    assert_string_equal(data->lf->fields[FIM_FILE].value, "f_name");
+    assert_null(data->lf->fields[FIM_SIZE].value);
+    assert_null(data->lf->fields[FIM_PERM].value);
+    assert_null(data->lf->fields[FIM_UID].value);
+    assert_null(data->lf->fields[FIM_GID].value);
+    assert_null(data->lf->fields[FIM_MD5].value);
+    assert_null(data->lf->fields[FIM_SHA1].value);
+    assert_null(data->lf->fields[FIM_UNAME].value);
+    assert_null(data->lf->fields[FIM_GNAME].value);
+    assert_int_equal(data->lf->mtime_after, data->sum->mtime);
+    assert_null(data->lf->fields[FIM_MTIME].value);
+    assert_int_equal(data->lf->inode_after, data->sum->inode);
+    assert_null(data->lf->fields[FIM_INODE].value);
+    assert_null(data->lf->fields[FIM_SHA256].value);
+    assert_null(data->lf->fields[FIM_ATTRS].value);
+
+    assert_null(data->lf->user_id);
+    assert_null(data->lf->fields[FIM_USER_ID].value);
+
+    assert_null(data->lf->user_name);
+    assert_null(data->lf->fields[FIM_USER_NAME].value);
+
+    assert_null(data->lf->group_id);
+    assert_null(data->lf->fields[FIM_GROUP_ID].value);
+
+    assert_null(data->lf->group_name);
+    assert_null(data->lf->fields[FIM_GROUP_NAME].value);
+
+    assert_null(data->lf->process_name);
+    assert_null(data->lf->fields[FIM_PROC_NAME].value);
+
+    assert_null(data->lf->audit_uid);
+    assert_null(data->lf->fields[FIM_AUDIT_ID].value);
+
+    assert_null(data->lf->audit_name);
+    assert_null(data->lf->fields[FIM_AUDIT_NAME].value);
+
+    assert_null(data->lf->effective_uid);
+    assert_null(data->lf->fields[FIM_EFFECTIVE_UID].value);
+
+    assert_null(data->lf->effective_name);
+    assert_null(data->lf->fields[FIM_EFFECTIVE_NAME].value);
+
+    assert_null(data->lf->ppid);
+    assert_null(data->lf->fields[FIM_PPID].value);
+
+    assert_null(data->lf->process_id);
+    assert_null(data->lf->fields[FIM_PROC_ID].value);
+
+    assert_null(data->lf->sk_tag);
+    assert_null(data->lf->fields[FIM_TAG].value);
+
+    assert_null(data->lf->sym_path);
+    assert_null(data->lf->fields[FIM_SYM_PATH].value);
+}
+
+static void test_sk_fill_event_win_perm(void **state) {
+    sk_fill_event_t *data = *state;
+
+    data->f_name = strdup("f_name");
+
+    data->sum->win_perm = "win_perm";
+
+    sk_fill_event(data->lf, data->f_name, data->sum);
+
+    assert_string_equal(data->lf->filename, "f_name");
+    assert_string_equal(data->lf->fields[FIM_FILE].value, "f_name");
+    assert_null(data->lf->fields[FIM_SIZE].value);
+    assert_string_equal(data->lf->fields[FIM_PERM].value, "win_perm");
+    assert_null(data->lf->fields[FIM_UID].value);
+    assert_null(data->lf->fields[FIM_GID].value);
+    assert_null(data->lf->fields[FIM_MD5].value);
+    assert_null(data->lf->fields[FIM_SHA1].value);
+    assert_null(data->lf->fields[FIM_UNAME].value);
+    assert_null(data->lf->fields[FIM_GNAME].value);
+    assert_int_equal(data->lf->mtime_after, data->sum->mtime);
+    assert_null(data->lf->fields[FIM_MTIME].value);
+    assert_int_equal(data->lf->inode_after, data->sum->inode);
+    assert_null(data->lf->fields[FIM_INODE].value);
+    assert_null(data->lf->fields[FIM_SHA256].value);
+    assert_null(data->lf->fields[FIM_ATTRS].value);
+
+    assert_null(data->lf->user_id);
+    assert_null(data->lf->fields[FIM_USER_ID].value);
+
+    assert_null(data->lf->user_name);
+    assert_null(data->lf->fields[FIM_USER_NAME].value);
+
+    assert_null(data->lf->group_id);
+    assert_null(data->lf->fields[FIM_GROUP_ID].value);
+
+    assert_null(data->lf->group_name);
+    assert_null(data->lf->fields[FIM_GROUP_NAME].value);
+
+    assert_null(data->lf->process_name);
+    assert_null(data->lf->fields[FIM_PROC_NAME].value);
+
+    assert_null(data->lf->audit_uid);
+    assert_null(data->lf->fields[FIM_AUDIT_ID].value);
+
+    assert_null(data->lf->audit_name);
+    assert_null(data->lf->fields[FIM_AUDIT_NAME].value);
+
+    assert_null(data->lf->effective_uid);
+    assert_null(data->lf->fields[FIM_EFFECTIVE_UID].value);
+
+    assert_null(data->lf->effective_name);
+    assert_null(data->lf->fields[FIM_EFFECTIVE_NAME].value);
+
+    assert_null(data->lf->ppid);
+    assert_null(data->lf->fields[FIM_PPID].value);
+
+    assert_null(data->lf->process_id);
+    assert_null(data->lf->fields[FIM_PROC_ID].value);
+
+    assert_null(data->lf->sk_tag);
+    assert_null(data->lf->fields[FIM_TAG].value);
+
+    assert_null(data->lf->sym_path);
+    assert_null(data->lf->fields[FIM_SYM_PATH].value);
+}
+
+static void test_sk_fill_event_null_eventinfo(void **state) {
+    sk_fill_event_t *data = *state;
+
+    data->f_name = strdup("f_name");
+
+    data->sum->win_perm = "win_perm";
+
+    expect_assert_failure(sk_fill_event(NULL, data->f_name, data->sum));
+}
+
+static void test_sk_fill_event_null_f_name(void **state) {
+    sk_fill_event_t *data = *state;
+
+    data->sum->win_perm = "win_perm";
+
+    expect_assert_failure(sk_fill_event(data->lf, NULL, data->sum));
+}
+
+// TODO: Validate this condition is required to be tested
+static void test_sk_fill_event_null_sum(void **state) {
+    sk_fill_event_t *data = *state;
+
+    data->f_name = strdup("f_name");
+
+    expect_assert_failure(sk_fill_event(data->lf, data->f_name, NULL));
+}
+
+/* sk_build_sum tests */
+static void test_sk_build_sum_full_message(void **state) {
+    sk_build_sum_t *data = *state;
+    int ret;
+
+    data->sum.size = "size";
+    data->sum.perm = 123456;
+    data->sum.win_perm = NULL;
+    data->sum.uid = "uid";
+    data->sum.gid = "gid";
+    data->sum.md5 = "md5";
+    data->sum.sha1 = "sha1";
+    data->sum.uname = "username";
+    data->sum.gname = "gname";
+    data->sum.mtime = 234567;
+    data->sum.inode = 345678;
+    data->sum.sha256 = "sha256";
+    data->sum.attributes = "attributes";
+    data->sum.changes = 456789;
+    data->sum.date_alert = 567890;
+
+    ret = sk_build_sum(&data->sum, data->output, OS_MAXSTR);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(data->output,
+                        "size:123456:uid:gid:md5:sha1:username:gname:234567:345678:sha256:attributes!456789:567890");
+}
+
+static void test_sk_build_sum_skip_fields_message(void **state) {
+    sk_build_sum_t *data = *state;
+    int ret;
+
+    data->sum.size = "size";
+    data->sum.perm = 0;
+    data->sum.win_perm = NULL;
+    data->sum.uid = "uid";
+    data->sum.gid = "gid";
+    data->sum.md5 = "md5";
+    data->sum.sha1 = "sha1";
+    data->sum.uname = NULL;
+    data->sum.gname = NULL;
+    data->sum.mtime = 0;
+    data->sum.inode = 0;
+    data->sum.sha256 = NULL;
+    data->sum.attributes = NULL;
+    data->sum.changes = 0;
+    data->sum.date_alert = 0;
+
+    ret = sk_build_sum(&data->sum, data->output, OS_MAXSTR);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(data->output, "size::uid:gid:md5:sha1::::::!0:0");
+}
+
+static void test_sk_build_sum_win_perm(void **state) {
+    sk_build_sum_t *data = *state;
+    int ret;
+
+    data->sum.size = "size";
+    data->sum.perm = 0;
+    data->sum.win_perm = "win_perm";
+    data->sum.uid = "uid";
+    data->sum.gid = "gid";
+    data->sum.md5 = "md5";
+    data->sum.sha1 = "sha1";
+    data->sum.uname = NULL;
+    data->sum.gname = NULL;
+    data->sum.mtime = 0;
+    data->sum.inode = 0;
+    data->sum.sha256 = NULL;
+    data->sum.attributes = NULL;
+    data->sum.changes = 0;
+    data->sum.date_alert = 0;
+
+    ret = sk_build_sum(&data->sum, data->output, OS_MAXSTR);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(data->output, "size:win_perm:uid:gid:md5:sha1::::::!0:0");
+}
+
+static void test_sk_build_sum_insufficient_buffer_size(void **state) {
+    sk_build_sum_t *data = *state;
+    int ret;
+
+    data->sum.size = "size";
+    data->sum.perm = 0;
+    data->sum.win_perm = "win_perm";
+    data->sum.uid = "uid";
+    data->sum.gid = "gid";
+    data->sum.md5 = "md5";
+    data->sum.sha1 = "sha1";
+    data->sum.uname = NULL;
+    data->sum.gname = NULL;
+    data->sum.mtime = 0;
+    data->sum.inode = 0;
+    data->sum.sha256 = NULL;
+    data->sum.attributes = NULL;
+    data->sum.changes = 0;
+    data->sum.date_alert = 0;
+
+    ret = sk_build_sum(&data->sum, data->output, 10);
+
+    assert_int_equal(ret, -1);
+    assert_string_equal(data->output, "size:win_");
+}
+
+static void test_sk_build_sum_null_sum(void **state) {
+    sk_build_sum_t *data = *state;
+
+    expect_assert_failure(sk_build_sum(NULL, data->output, OS_MAXSTR));
+}
+
+static void test_sk_build_sum_null_output(void **state) {
+    sk_build_sum_t *data = *state;
+
+    expect_assert_failure(sk_build_sum(&data->sum, NULL, OS_MAXSTR));
+}
+
+/* sk_sum_clean tests */
+static void test_sk_sum_clean_full_message(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b:"
+                        "uname:gname:2345:3456:"
+                        "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40:"
+                        "1");
+    data->w_sum = strdup("user_id:user_name:group_id:group_name:process_name:"
+                        "audit_uid:audit_name:effective_uid:effective_name:"
+                        "ppid:process_id:tag:symbolic_path:-");
+
+    // Fill sum with as many info as possible
+    ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
+    assert_int_equal(ret, 0);
+
+    // And free it
+    sk_sum_clean(&data->sum);
+
+    assert_null(data->sum.symbolic_path);
+    assert_null(data->sum.attributes);
+    assert_null(data->sum.wdata.user_name);
+    assert_null(data->sum.wdata.process_name);
+    assert_null(data->sum.uname);
+    assert_null(data->sum.win_perm);
+}
+
+static void test_sk_sum_clean_shortest_valid_message(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret;
+
+    data->c_sum = strdup("size:1234:uid:gid:"
+                        "3691689a513ace7e508297b583d7050d:"
+                        "07f05add1049244e7e71ad0f54f24d8094cd8f8b:"
+                        "uname:gname:2345:3456");
+
+    // Fill sum with as many info as possible
+    ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
+    assert_int_equal(ret, 0);
+
+    // And free it
+    sk_sum_clean(&data->sum);
+
+    assert_null(data->sum.symbolic_path);
+    assert_null(data->sum.attributes);
+    assert_null(data->sum.wdata.user_name);
+    assert_null(data->sum.wdata.process_name);
+    assert_null(data->sum.uname);
+    assert_null(data->sum.win_perm);
+}
+
+static void test_sk_sum_clean_invalid_message(void **state) {
+    sk_decode_data_t *data = *state;
+    int ret;
+
+    data->c_sum = strdup("This is not a valid syscheck message");
+
+    // Fill sum with as many info as possible
+    ret = sk_decode_sum(&data->sum, data->c_sum, data->w_sum);
+    assert_int_equal(ret, -1);
+
+    // And free it
+    sk_sum_clean(&data->sum);
+
+    assert_null(data->sum.symbolic_path);
+    assert_null(data->sum.attributes);
+    assert_null(data->sum.wdata.user_name);
+    assert_null(data->sum.wdata.process_name);
+    assert_null(data->sum.uname);
+    assert_null(data->sum.win_perm);
+}
+
+// TODO: Validate this condition is required to be tested
+static void test_sk_sum_clean_null_sum(void **state) {
+    expect_assert_failure(sk_sum_clean(NULL));
+}
+#endif
+#ifndef TEST_WINAGENT
+/* unescape_syscheck_field tests */
+static void test_unescape_syscheck_field_escaped_chars(void **state) {
+    unescape_syscheck_field_data_t *data = *state;
+
+    data->input = strdup("Hi\\!! This\\ is\\ a string with\\: escaped chars:");
+
+    data->output = unescape_syscheck_field(data->input);
+
+    assert_string_equal(data->output, "Hi!! This is a string with: escaped chars:");
+}
+
+static void test_unescape_syscheck_field_no_escaped_chars(void **state) {
+    unescape_syscheck_field_data_t *data = *state;
+
+    data->input = strdup("Hi!! This is a string without: escaped chars:");
+
+    data->output = unescape_syscheck_field(data->input);
+
+    assert_string_equal(data->output, "Hi!! This is a string without: escaped chars:");
+}
+
+static void test_unescape_syscheck_null_input(void **state) {
+    unescape_syscheck_field_data_t *data = *state;
+
+    data->input = NULL;
+
+    data->output = unescape_syscheck_field(data->input);
+
+    assert_null(data->output);
+}
+
+static void test_unescape_syscheck_empty_string(void **state) {
+    unescape_syscheck_field_data_t *data = *state;
+
+    data->input = strdup("");
+
+    data->output = unescape_syscheck_field(data->input);
+
+    assert_null(data->output);
+}
+
+/* get_user tests */
+static void test_get_user_success(void **state) {
+    char *user;
+
+    will_return(__wrap_getpwuid_r, "user_name");
+    will_return(__wrap_getpwuid_r, 1);
+    #ifndef SOLARIS
+    will_return(__wrap_getpwuid_r, 0);
+    #endif
+
+    user = get_user(NULL, 1, NULL);
+
+    *state = user;
+
+    assert_string_equal(user, "user_name");
+}
+
+static void test_get_user_uid_not_found(void **state) {
+    char *user;
+
+    will_return(__wrap_getpwuid_r, "user_name");
+    will_return(__wrap_getpwuid_r, NULL);
+    #ifndef SOLARIS
+    will_return(__wrap_getpwuid_r, 0);
+    #endif
+
+    expect_string(__wrap__mdebug2, msg, "User with uid '%d' not found.\n");
+    expect_value(__wrap__mdebug2, param1, 1);
+
+    user = get_user(NULL, 1, NULL);
+
+    *state = user;
+
+    assert_null(user);
+}
+
+static void test_get_user_error(void **state) {
+    char *user;
+
+    will_return(__wrap_getpwuid_r, "user_name");
+    will_return(__wrap_getpwuid_r, NULL);
+    #ifndef SOLARIS
+    will_return(__wrap_getpwuid_r, ENOENT);
+    #endif
+
+    expect_string(__wrap__mdebug2, msg, "Failed getting user_name (%d): '%s'\n");
+    expect_value(__wrap__mdebug2, param1, ENOENT);
+    expect_string(__wrap__mdebug2, param2, "No such file or directory");
+
+    user = get_user(NULL, 1, NULL);
+
+    *state = user;
+
+    assert_null(user);
+}
 #endif
 
 #if defined(TEST_WINAGENT)
@@ -2473,7 +2475,7 @@ static void test_attrs_to_json_single_attribute(void **state) {
     char *string;
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-    
+
     output = attrs_to_json(input);
 
     *state = output;
@@ -2488,7 +2490,7 @@ static void test_attrs_to_json_multiple_attributes(void **state) {
     char *attr1, *attr2, *attr3;
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-    
+
     output = attrs_to_json(input);
 
     *state = output;
@@ -2535,7 +2537,7 @@ static void test_win_perm_to_json_all_permissions(void **state) {
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-    
+
     will_return_always(__wrap_wstr_split, 1);  // use real wstr_split
 
     output = win_perm_to_json(input);
@@ -2643,7 +2645,7 @@ static void test_win_perm_to_json_no_permissions(void **state) {
     cJSON *output;
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-    
+
     expect_string(__wrap__mdebug1, msg, "Uncontrolled condition when parsing a Windows permission from '%s'.");
     expect_string(__wrap__mdebug1, param1, "account (allowed)");
 
@@ -2667,7 +2669,7 @@ static void test_win_perm_to_json_allowed_denied_permissions(void **state) {
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-    
+
     will_return_always(__wrap_wstr_split, 1);  // use real wstr_split
 
     output = win_perm_to_json(input);
@@ -2742,7 +2744,7 @@ static void test_win_perm_to_json_multiple_accounts(void **state) {
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-    
+
     will_return_always(__wrap_wstr_split, 1);  // use real wstr_split
 
     output = win_perm_to_json(input);
@@ -2828,7 +2830,7 @@ static void test_win_perm_to_json_fragmented_acl(void **state) {
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-    
+
     will_return_always(__wrap_wstr_split, 1);  // use real wstr_split
 
     expect_string(__wrap__mdebug1, msg, "ACL [%s] fragmented. All permissions may not be displayed.");
@@ -2912,7 +2914,7 @@ static void test_win_perm_to_json_incorrect_permission_format(void **state) {
     cJSON *output;
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-    
+
     expect_string(__wrap__mdebug1, msg, "Uncontrolled condition when parsing a Windows permission from '%s'.");
     expect_string(__wrap__mdebug1, param1, "This format is incorrect");
 
@@ -2925,7 +2927,7 @@ static void test_win_perm_to_json_incorrect_permission_format_2(void **state) {
     cJSON *output;
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-    
+
     expect_string(__wrap__mdebug1, msg, "Uncontrolled condition when parsing a Windows permission from '%s'.");
     expect_string(__wrap__mdebug1, param1, "This format is incorrect (too");
 
@@ -2942,7 +2944,7 @@ static void test_win_perm_to_json_error_splitting_permissions(void **state) {
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-    
+
     will_return_always(__wrap_wstr_split, 0);  // fail to split string
 
     expect_string(__wrap__mdebug1, msg, "Uncontrolled condition when parsing a Windows permission from '%s'.");
@@ -2979,102 +2981,99 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test(test_remove_empty_folders_error_removing_dir),
 
         #if defined(TEST_SERVER)
-            /* sk_decode_sum tests */
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_decode, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_deleted_file, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_perm, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_missing_separator, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_uid, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_gid, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_md5, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_sha1, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_new_fields, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_win_perm_string, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_win_perm_encoded, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_gname, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_uname, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_mtime, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_inode, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_sha256, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_empty_sha256, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_attributes, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_non_numeric_attributes, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_win_encoded_attributes, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_empty, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_no_user_name, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_no_group_id, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_no_group_name, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_no_process_name, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_no_audit_uid, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_no_audit_name, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_no_effective_uid, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_no_effective_name, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_no_ppid, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_no_process_id, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_no_tag, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_no_symbolic_path, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_no_inode, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_all_fields, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_all_fields_silent, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_null_ppid, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_null_sum, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_null_c_sum, setup_sk_decode, teardown_sk_decode),
+        /* sk_decode_sum tests */
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_decode, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_deleted_file, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_perm, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_missing_separator, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_uid, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_gid, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_md5, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_sha1, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_new_fields, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_win_perm_string, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_win_perm_encoded, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_gname, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_uname, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_mtime, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_inode, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_sha256, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_empty_sha256, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_attributes, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_non_numeric_attributes, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_win_encoded_attributes, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_empty, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_no_user_name, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_no_group_id, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_no_group_name, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_no_process_name, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_no_audit_uid, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_no_audit_name, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_no_effective_uid, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_no_effective_name, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_no_ppid, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_no_process_id, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_no_tag, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_no_symbolic_path, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_no_inode, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_all_fields, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_all_fields_silent, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_null_ppid, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_null_sum, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_sum_extra_data_null_c_sum, setup_sk_decode, teardown_sk_decode),
 
-            /* sk_decode_extradata tests */
-            cmocka_unit_test_setup_teardown(test_sk_decode_extradata_null_sum, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_extradata_null_c_sum, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_extradata_no_changes, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_extradata_no_date_alert, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_extradata_no_sym_path, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_decode_extradata_all_fields, setup_sk_decode, teardown_sk_decode),
+        /* sk_decode_extradata tests */
+        cmocka_unit_test_setup_teardown(test_sk_decode_extradata_null_sum, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_extradata_null_c_sum, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_extradata_no_changes, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_extradata_no_date_alert, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_extradata_no_sym_path, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_decode_extradata_all_fields, setup_sk_decode, teardown_sk_decode),
 
-            /* sk_fill_event tests */
-            cmocka_unit_test_setup_teardown(test_sk_fill_event_full_event, setup_sk_fill_event, teardown_sk_fill_event),
-            cmocka_unit_test_setup_teardown(test_sk_fill_event_empty_event, setup_sk_fill_event, teardown_sk_fill_event),
-            cmocka_unit_test_setup_teardown(test_sk_fill_event_win_perm, setup_sk_fill_event, teardown_sk_fill_event),
-            cmocka_unit_test_setup_teardown(test_sk_fill_event_null_eventinfo, setup_sk_fill_event, teardown_sk_fill_event),
-            cmocka_unit_test_setup_teardown(test_sk_fill_event_null_f_name, setup_sk_fill_event, teardown_sk_fill_event),
-            cmocka_unit_test_setup_teardown(test_sk_fill_event_null_sum, setup_sk_fill_event, teardown_sk_fill_event),
+        /* sk_fill_event tests */
+        cmocka_unit_test_setup_teardown(test_sk_fill_event_full_event, setup_sk_fill_event, teardown_sk_fill_event),
+        cmocka_unit_test_setup_teardown(test_sk_fill_event_empty_event, setup_sk_fill_event, teardown_sk_fill_event),
+        cmocka_unit_test_setup_teardown(test_sk_fill_event_win_perm, setup_sk_fill_event, teardown_sk_fill_event),
+        cmocka_unit_test_setup_teardown(test_sk_fill_event_null_eventinfo, setup_sk_fill_event, teardown_sk_fill_event),
+        cmocka_unit_test_setup_teardown(test_sk_fill_event_null_f_name, setup_sk_fill_event, teardown_sk_fill_event),
+        cmocka_unit_test_setup_teardown(test_sk_fill_event_null_sum, setup_sk_fill_event, teardown_sk_fill_event),
 
-            /* sk_build_sum tests */
-            cmocka_unit_test_setup_teardown(test_sk_build_sum_full_message, setup_sk_build_sum, teardown_sk_build_sum),
-            cmocka_unit_test_setup_teardown(test_sk_build_sum_skip_fields_message, setup_sk_build_sum, teardown_sk_build_sum),
-            cmocka_unit_test_setup_teardown(test_sk_build_sum_win_perm, setup_sk_build_sum, teardown_sk_build_sum),
-            cmocka_unit_test_setup_teardown(test_sk_build_sum_insufficient_buffer_size, setup_sk_build_sum, teardown_sk_build_sum),
-            cmocka_unit_test_setup_teardown(test_sk_build_sum_null_sum, setup_sk_build_sum, teardown_sk_build_sum),
-            cmocka_unit_test_setup_teardown(test_sk_build_sum_null_output, setup_sk_build_sum, teardown_sk_build_sum),
+        /* sk_build_sum tests */
+        cmocka_unit_test_setup_teardown(test_sk_build_sum_full_message, setup_sk_build_sum, teardown_sk_build_sum),
+        cmocka_unit_test_setup_teardown(test_sk_build_sum_skip_fields_message, setup_sk_build_sum, teardown_sk_build_sum),
+        cmocka_unit_test_setup_teardown(test_sk_build_sum_win_perm, setup_sk_build_sum, teardown_sk_build_sum),
+        cmocka_unit_test_setup_teardown(test_sk_build_sum_insufficient_buffer_size, setup_sk_build_sum, teardown_sk_build_sum),
+        cmocka_unit_test_setup_teardown(test_sk_build_sum_null_sum, setup_sk_build_sum, teardown_sk_build_sum),
+        cmocka_unit_test_setup_teardown(test_sk_build_sum_null_output, setup_sk_build_sum, teardown_sk_build_sum),
 
-            /* sk_sum_clean tests */
-            cmocka_unit_test_setup_teardown(test_sk_sum_clean_full_message, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_sum_clean_shortest_valid_message, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_sum_clean_invalid_message, setup_sk_decode, teardown_sk_decode),
-            cmocka_unit_test_setup_teardown(test_sk_sum_clean_null_sum, setup_sk_decode, teardown_sk_decode),
-        #elif defined(TEST_AGENT)
-            /* unescape_syscheck_field tests */
-            cmocka_unit_test_setup_teardown(test_unescape_syscheck_field_escaped_chars, setup_unescape_syscheck_field, teardown_unescape_syscheck_field),
-            cmocka_unit_test_setup_teardown(test_unescape_syscheck_field_no_escaped_chars, setup_unescape_syscheck_field, teardown_unescape_syscheck_field),
-            cmocka_unit_test_setup_teardown(test_unescape_syscheck_null_input, setup_unescape_syscheck_field, teardown_unescape_syscheck_field),
-            cmocka_unit_test_setup_teardown(test_unescape_syscheck_empty_string, setup_unescape_syscheck_field, teardown_unescape_syscheck_field),
-
-            /* get_user tests */
-            cmocka_unit_test_teardown(test_get_user_success, teardown_string),
-            cmocka_unit_test_teardown(test_get_user_uid_not_found, teardown_string),
-            cmocka_unit_test_teardown(test_get_user_error, teardown_string),
+        /* sk_sum_clean tests */
+        cmocka_unit_test_setup_teardown(test_sk_sum_clean_full_message, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_sum_clean_shortest_valid_message, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_sum_clean_invalid_message, setup_sk_decode, teardown_sk_decode),
+        cmocka_unit_test_setup_teardown(test_sk_sum_clean_null_sum, setup_sk_decode, teardown_sk_decode),
         #endif
-        /* get_group tests */
         #ifndef TEST_WINAGENT
+        /* unescape_syscheck_field tests */
+        cmocka_unit_test_setup_teardown(test_unescape_syscheck_field_escaped_chars, setup_unescape_syscheck_field, teardown_unescape_syscheck_field),
+        cmocka_unit_test_setup_teardown(test_unescape_syscheck_field_no_escaped_chars, setup_unescape_syscheck_field, teardown_unescape_syscheck_field),
+        cmocka_unit_test_setup_teardown(test_unescape_syscheck_null_input, setup_unescape_syscheck_field, teardown_unescape_syscheck_field),
+        cmocka_unit_test_setup_teardown(test_unescape_syscheck_empty_string, setup_unescape_syscheck_field, teardown_unescape_syscheck_field),
+
+        /* get_user tests */
+        cmocka_unit_test_teardown(test_get_user_success, teardown_string),
+        cmocka_unit_test_teardown(test_get_user_uid_not_found, teardown_string),
+        cmocka_unit_test_teardown(test_get_user_error, teardown_string),
+
+        /* get_group tests */
         cmocka_unit_test(test_get_group_success),
         cmocka_unit_test(test_get_group_failure),
-        #else
-        cmocka_unit_test(test_get_group),
-        #endif
 
         /* ag_send_syscheck tests */
-        #ifndef TEST_WINAGENT
         cmocka_unit_test(test_ag_send_syscheck_success),
         cmocka_unit_test(test_ag_send_syscheck_unable_to_connect),
         cmocka_unit_test(test_ag_send_syscheck_error_sending_message),
         #else
+        cmocka_unit_test(test_get_group),
         cmocka_unit_test(test_ag_send_syscheck),
         #endif
 
