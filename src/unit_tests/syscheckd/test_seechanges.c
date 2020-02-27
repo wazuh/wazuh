@@ -21,6 +21,10 @@
 char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
 #endif
 
+#ifdef TEST_WINAGENT
+#define __mode_t int
+#endif
+
 /* redefinitons/wrapping */
 
 #ifdef TEST_AGENT
@@ -209,6 +213,7 @@ void test_filter(void **state) {
     assert_string_equal(out, "\\$file.test");
 }
 
+#ifndef TEST_WINAGENT
 void test_symlink_to_dir(void **state) {
     (void) state;
     int ret;
@@ -295,6 +300,7 @@ void test_symlink_to_dir_stat_error(void **state) {
 
     assert_int_equal(ret, 0);
 }
+#endif
 
 void test_is_nodiff_true(void **state) {
     int ret;
@@ -664,31 +670,37 @@ void test_seechanges_createpath_mkdir_error(void **state) {
 
 int main(void) {
     const struct CMUnitTest tests[] = {
+        #ifndef TEST_WINAGENT
         cmocka_unit_test_teardown(test_filter, teardown_free_string),
         cmocka_unit_test(test_symlink_to_dir),
         cmocka_unit_test(test_symlink_to_dir_no_link),
         cmocka_unit_test(test_symlink_to_dir_no_dir),
         cmocka_unit_test(test_symlink_to_dir_lstat_error),
         cmocka_unit_test(test_symlink_to_dir_stat_error),
+        #endif
         cmocka_unit_test(test_is_nodiff_true),
         cmocka_unit_test(test_is_nodiff_false),
         cmocka_unit_test(test_is_nodiff_regex_true),
         cmocka_unit_test(test_is_nodiff_regex_false),
         cmocka_unit_test(test_is_nodiff_no_nodiff),
+        #ifndef TEST_WINAGENT
         cmocka_unit_test_teardown(test_gen_diff_alert, teardown_free_string),
         cmocka_unit_test_teardown(test_gen_diff_alert_big_size, teardown_free_string),
         cmocka_unit_test(test_gen_diff_alert_abspath_error),
         cmocka_unit_test(test_gen_diff_alert_fopen_error),
         cmocka_unit_test(test_gen_diff_alert_fread_error),
         cmocka_unit_test_teardown(test_gen_diff_alert_compress_error, teardown_free_string),
+        #endif
         cmocka_unit_test(test_seechanges_dupfile),
         cmocka_unit_test(test_seechanges_dupfile_fopen_error1),
         cmocka_unit_test(test_seechanges_dupfile_fopen_error2),
         cmocka_unit_test(test_seechanges_dupfile_fwrite_error),
+        #ifndef TEST_WINAGENT
         cmocka_unit_test(test_seechanges_createpath),
         cmocka_unit_test(test_seechanges_createpath_invalid_path),
         cmocka_unit_test(test_seechanges_createpath_mkdir),
         cmocka_unit_test(test_seechanges_createpath_mkdir_error),
+        #endif
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
