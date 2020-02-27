@@ -73,7 +73,8 @@ list(APPEND tests_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,IsSocket -Wl
 
 list(APPEND tests_names "test_seechanges")
 list(APPEND tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,lstat -Wl,--wrap,stat -Wl,--wrap,abspath -Wl,--wrap,fopen -Wl,--wrap,fread \
-                         -Wl,--wrap,fclose -Wl,--wrap,fwrite -Wl,--wrap,unlink -Wl,--wrap,w_compress_gzfile -Wl,--wrap,IsDir -Wl,--wrap,mkdir")
+                         -Wl,--wrap,fclose -Wl,--wrap,fwrite -Wl,--wrap,unlink -Wl,--wrap,w_compress_gzfile -Wl,--wrap,IsDir -Wl,--wrap,mkdir \
+                         -Wl,--wrap,w_uncompress_gzfile -Wl,--wrap,OS_MD5_File -Wl,--wrap,File_DateofChange -Wl,--wrap,rename -Wl,--wrap,system")
 
 list(APPEND tests_names "test_syscom")
 list(APPEND tests_flags "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap,fim_sync_push_msg \
