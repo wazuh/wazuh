@@ -132,7 +132,7 @@ int set_winsacl(const char *dir, int position) {
             }
         break;
         case 1:
-            mdebug1(FIM_SCAL_NOCONFIGURE, dir);
+            // It is not necessary to configure the SACL of the directory
             retval = 0;
             goto end;
         case 2:
@@ -752,11 +752,11 @@ add_whodata_evt:
                             w_evt->ignore_remove_event = 0;
                         }
 
-                        fim_whodata_event(w_evt, item);
+                        fim_whodata_event(w_evt);
                     } else if (w_evt->scan_directory == 1) { // Directory scan has been aborted if scan_directory is 2
                         if (mask & DELETE) {
 
-                            fim_whodata_event(w_evt, item);
+                            fim_whodata_event(w_evt);
 
                             // Find new files
                             int pos = fim_configuration_directory(w_evt->path, "file");
@@ -765,7 +765,7 @@ add_whodata_evt:
                         } else if ((mask & FILE_WRITE_DATA) && w_evt->path && (w_dir = OSHash_Get(syscheck.wdata.directories, w_evt->path))) {
                             // Check that a new file has been added
                             GetSystemTime(&w_dir->timestamp);
-                            fim_whodata_event(w_evt, item);
+                            fim_whodata_event(w_evt);
 
                             mdebug1(FIM_WHODATA_SCAN, w_evt->path);
                         } else {
@@ -1311,7 +1311,7 @@ int get_drive_names(wchar_t *volume_name, char *device) {
         os_calloc(MAX_PATH, sizeof(char), convert_name);
 
         for (nameit = names; nameit[0] != L'\0'; nameit += wcslen(nameit) + 1) {
-            wcstombs(convert_name, nameit, ARRAYSIZE(nameit));
+            wcstombs(convert_name, nameit, strlen(nameit));
             mdebug1(FIM_WHODATA_DEVICE_LETTER, device, convert_name);
 
             if(syscheck.wdata.device) {

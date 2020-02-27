@@ -222,6 +222,24 @@ int __wrap_fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int stor
     return mock();
 }
 
+int __wrap_fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file, int storage) {
+    check_expected_ptr(fim_sql);
+    check_expected_ptr(storage);
+
+    *file = mock_type(fim_tmp_file *);
+
+    return mock();
+}
+
+int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage, fim_event_mode mode) {
+    check_expected_ptr(fim_sql);
+    check_expected_ptr(file);
+    check_expected_ptr(storage);
+    check_expected_ptr(mode);
+
+    return mock();
+}
+
 int __wrap_fim_db_delete_not_scanned(fdb_t * fim_sql) {
     check_expected_ptr(fim_sql);
 
@@ -2577,6 +2595,179 @@ static void test_free_inode_data_null(void **state) {
     assert_null(inode_data);
 }
 
+static void test_fim_realtime_event_file_exists(void **state) {
+
+    fim_data_t *fim_data = *state;
+
+    fim_data->fentry->path = strdup("file");
+    fim_data->fentry->data = fim_data->local_data;
+
+    fim_data->local_data->size = 1500;
+    fim_data->local_data->perm = strdup("0664");
+    fim_data->local_data->attributes = strdup("r--r--r--");
+    fim_data->local_data->uid = strdup("100");
+    fim_data->local_data->gid = strdup("1000");
+    fim_data->local_data->user_name = strdup("test");
+    fim_data->local_data->group_name = strdup("testing");
+    fim_data->local_data->mtime = 1570184223;
+    fim_data->local_data->inode = 606060;
+    strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
+    strcpy(fim_data->local_data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
+    fim_data->local_data->mode = FIM_REALTIME;
+    fim_data->local_data->last_event = 1570184220;
+    fim_data->local_data->entry_type = FIM_TYPE_FILE;
+    fim_data->local_data->dev = 12345678;
+    fim_data->local_data->scanned = 123456;
+    fim_data->local_data->options = 511;
+    strcpy(fim_data->local_data->checksum, "");
+
+    will_return(__wrap_lstat, 0);
+    will_return(__wrap_lstat, -1);
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "/test");
+    will_return(__wrap_fim_db_get_path, NULL);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test'");
+
+    fim_realtime_event("/test");
+}
+
+static void test_fim_realtime_event_file_missing(void **state) {
+
+    will_return(__wrap_lstat, -1);
+    errno = ENOENT;
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "/test");
+    will_return(__wrap_fim_db_get_path, NULL);
+
+    expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_path_range, NULL);
+    will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
+
+    fim_realtime_event("/test");
+    errno = 0;
+}
+
+static void test_fim_whodata_event_file_exists(void **state) {
+
+    fim_data_t *fim_data = *state;
+
+    will_return(__wrap_lstat, 0);
+
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
+    will_return(__wrap_fim_db_get_paths_from_inode, NULL);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'./test/test.file'");
+
+    fim_whodata_event(fim_data->w_evt);
+}
+
+static void test_fim_whodata_event_file_missing(void **state) {
+
+    fim_data_t *fim_data = *state;
+    will_return(__wrap_lstat, -1);
+    errno = ENOENT;
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "./test/test.file");
+    will_return(__wrap_fim_db_get_path, NULL);
+
+    expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_path_range, NULL);
+    will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
+
+    fim_whodata_event(fim_data->w_evt);
+    errno = 0;
+}
+
+static void test_fim_process_missing_entry_no_data(void **state) {
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "/test");
+    will_return(__wrap_fim_db_get_path, NULL);
+
+    expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_path_range, NULL);
+    will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
+
+    fim_process_missing_entry("/test", FIM_REALTIME, NULL);
+}
+
+static void test_fim_process_missing_entry_failure(void **state) {
+
+    fim_tmp_file *file = calloc(1, sizeof(fim_tmp_file));
+    file->elements = 1;
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "/test");
+    will_return(__wrap_fim_db_get_path, NULL);
+
+    expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_path_range, file);
+    will_return(__wrap_fim_db_get_path_range, FIMDB_OK);
+
+    expect_value(__wrap_fim_db_process_missing_entry, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_process_missing_entry, file, file);
+    expect_value(__wrap_fim_db_process_missing_entry, storage, FIM_DB_DISK);
+    expect_value(__wrap_fim_db_process_missing_entry, mode, FIM_REALTIME);
+    will_return(__wrap_fim_db_process_missing_entry, FIMDB_ERR);
+
+    expect_string(__wrap__merror, formatted_msg, "(6708): Failed to delete a range of paths between '/test/' and '/test0'");
+
+    fim_process_missing_entry("/test", FIM_REALTIME, NULL);
+
+    free(file);
+}
+
+static void test_fim_process_missing_entry_data_exists(void **state) {
+
+    fim_data_t *fim_data = *state;
+
+    fim_data->fentry->path = strdup("file");
+    fim_data->fentry->data = fim_data->local_data;
+
+    fim_data->local_data->size = 1500;
+    fim_data->local_data->perm = strdup("0664");
+    fim_data->local_data->attributes = strdup("r--r--r--");
+    fim_data->local_data->uid = strdup("100");
+    fim_data->local_data->gid = strdup("1000");
+    fim_data->local_data->user_name = strdup("test");
+    fim_data->local_data->group_name = strdup("testing");
+    fim_data->local_data->mtime = 1570184223;
+    fim_data->local_data->inode = 606060;
+    strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
+    strcpy(fim_data->local_data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
+    fim_data->local_data->mode = FIM_REALTIME;
+    fim_data->local_data->last_event = 1570184220;
+    fim_data->local_data->entry_type = FIM_TYPE_FILE;
+    fim_data->local_data->dev = 12345678;
+    fim_data->local_data->scanned = 123456;
+    fim_data->local_data->options = 511;
+    strcpy(fim_data->local_data->checksum, "");
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "/test");
+    will_return(__wrap_fim_db_get_path, fim_data->fentry);
+
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
+    will_return(__wrap_fim_db_get_paths_from_inode, NULL);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test'");
+
+    fim_process_missing_entry("/test", FIM_WHODATA, fim_data->w_evt);
+}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -2684,6 +2875,20 @@ int main(void) {
         /* free_inode */
         cmocka_unit_test(test_free_inode_data),
         cmocka_unit_test(test_free_inode_data_null),
+
+        /* fim_realtime_event */
+        cmocka_unit_test_setup_teardown(test_fim_realtime_event_file_exists, setup_fim_entry, teardown_fim_entry),
+        cmocka_unit_test(test_fim_realtime_event_file_missing),
+
+        /* fim_whodata_event */
+        cmocka_unit_test(test_fim_whodata_event_file_exists),
+        cmocka_unit_test(test_fim_whodata_event_file_missing),
+
+        /* fim_process_missing_entry */
+        cmocka_unit_test(test_fim_process_missing_entry_no_data),
+        cmocka_unit_test(test_fim_process_missing_entry_failure),
+        cmocka_unit_test_setup(test_fim_process_missing_entry_data_exists, setup_fim_entry),
+
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

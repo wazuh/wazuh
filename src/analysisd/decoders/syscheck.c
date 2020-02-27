@@ -1150,6 +1150,7 @@ int decode_fim_event(_sdb *sdb, Eventinfo *lf) {
         if (strcmp(type, "event") == 0) {
             if (fim_process_alert(sdb, lf, data) == -1) {
                 merror("Can't generate fim alert for event: '%s'", lf->log);
+                cJSON_Delete(root_json);
                 return retval;
             }
 
@@ -1161,6 +1162,7 @@ int decode_fim_event(_sdb *sdb, Eventinfo *lf) {
         }
     } else {
         merror("Invalid FIM event");
+        cJSON_Delete(root_json);
         return retval;
     }
 
