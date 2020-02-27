@@ -161,7 +161,7 @@ int __wrap_closedir() {
     return 1;
 }
 
-int __wrap_realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
+int __wrap_realtime_adddir(const char *dir, __attribute__((unused)) int whodata, __attribute__((unused))int followsl)
 {
     check_expected(dir);
 
