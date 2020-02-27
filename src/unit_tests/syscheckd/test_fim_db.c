@@ -1317,7 +1317,11 @@ void test_fim_db_remove_path_failed_path(void **state) {
 void test_fim_db_process_path_realtime_active(void **state) {
     test_fim_db_insert_data *test_data = *state;
 
+    #ifndef TEST_WINAGENT
     will_return(__wrap_fim_configuration_directory, 3);
+    #else
+    will_return(__wrap_fim_configuration_directory, 6);
+    #endif
 
     // Inside fim_db_remove_path()
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
@@ -1352,7 +1356,11 @@ void test_fim_db_process_path_realtime_not_active(void **state) {
 void test_fim_db_process_path_whodata_active(void **state) {
     test_fim_db_insert_data *test_data = *state;
 
+    #ifndef TEST_WINAGENT
     will_return(__wrap_fim_configuration_directory, 0);
+    #else
+    will_return(__wrap_fim_configuration_directory, 8);
+    #endif
 
     // Inside fim_db_remove_path()
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
@@ -1387,7 +1395,11 @@ void test_fim_db_process_path_whodata_not_active(void **state) {
 void test_fim_db_process_path_scheduled_active(void **state) {
     test_fim_db_insert_data *test_data = *state;
 
+    #ifndef TEST_WINAGENT
     will_return(__wrap_fim_configuration_directory, 6);
+    #else
+    will_return(__wrap_fim_configuration_directory, 5);
+    #endif
 
     // Inside fim_db_remove_path()
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
@@ -1410,7 +1422,11 @@ void test_fim_db_process_path_scheduled_active(void **state) {
 void test_fim_db_process_path_scheduled_not_active(void **state) {
     test_fim_db_insert_data *test_data = *state;
 
+    #ifndef TEST_WINAGENT
     will_return(__wrap_fim_configuration_directory, 0);
+    #else
+    will_return(__wrap_fim_configuration_directory, 8);
+    #endif
 
     time_t last_commit =  test_data->fim_sql->transaction.last_commit;
 
@@ -2240,7 +2256,11 @@ void test_fim_db_process_missing_entry(void **state) {
     wraps_fim_db_decode_full_row();
 
     // Inside fim_db_process_path()
+    #ifndef TEST_WINAGENT
     will_return(__wrap_fim_configuration_directory, 3);
+    #else
+    will_return(__wrap_fim_configuration_directory, 6);
+    #endif
 
     // Inside fim_db_remove_path (callback)
     // Its return value is not checked so force the error is the simplest way to wrap it
