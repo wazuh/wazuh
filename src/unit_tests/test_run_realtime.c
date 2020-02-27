@@ -211,7 +211,7 @@ void test_realtime_adddir_whodata(void **state) {
     expect_string(__wrap_W_Vector_insert_unique, element, "/etc/folder");
     will_return(__wrap_W_Vector_insert_unique, 1);
 
-    ret = realtime_adddir(path, 1);
+    ret = realtime_adddir(path, 1, 0);
 
     assert_int_equal(ret, 1);
 }
@@ -226,7 +226,7 @@ void test_realtime_adddir_realtime_failure(void **state)
 
     syscheck.realtime->fd = -1;
 
-    ret = realtime_adddir(path, 0);
+    ret = realtime_adddir(path, 0), 0;
 
     assert_int_equal(ret, -1);
 }
@@ -244,7 +244,7 @@ void test_realtime_adddir_realtime_add(void **state)
     will_return(__wrap_OSHash_Get_ex, 0);
     will_return(__wrap_OSHash_Add_ex, 1);
 
-    ret = realtime_adddir(path, 0);
+    ret = realtime_adddir(path, 0, 0);
 
     assert_int_equal(ret, 1);
 }
@@ -262,7 +262,7 @@ void test_realtime_adddir_realtime_update(void **state)
     will_return(__wrap_OSHash_Get_ex, 1);
     will_return(__wrap_OSHash_Update_ex, 1);
 
-    ret = realtime_adddir(path, 0);
+    ret = realtime_adddir(path, 0, 0);
 
     assert_int_equal(ret, 1);
 }
@@ -282,7 +282,7 @@ void test_realtime_adddir_realtime_update_failure(void **state)
 
     expect_string(__wrap__merror, formatted_msg, "Unable to update 'dirtb'. Directory not found: '/etc/folder'");
 
-    ret = realtime_adddir(path, 0);
+    ret = realtime_adddir(path, 0, 0);
 
     assert_int_equal(ret, -1);
 }

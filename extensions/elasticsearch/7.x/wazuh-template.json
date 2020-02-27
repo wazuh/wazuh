@@ -558,6 +558,9 @@
           "path": {
             "type": "keyword"
           },
+          "hard_links": {
+            "type": "keyword"
+          },
           "sha1_before": {
             "type": "keyword"
           },

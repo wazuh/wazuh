@@ -317,7 +317,7 @@ void os_winreg_check()
 
         rk = os_winreg_sethkey(syscheck.registry[i].entry);
         if (sub_tree == NULL) {
-            mwarn(FIM_INV_REG, syscheck.registry[i].entry, syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "[x32]");
+            mdebug1(FIM_INV_REG, syscheck.registry[i].entry, syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "[x32]");
             *syscheck.registry[i].entry = '\0';
             i++;
             continue;
