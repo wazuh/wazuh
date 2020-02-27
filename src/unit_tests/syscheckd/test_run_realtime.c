@@ -109,8 +109,6 @@ void __wrap__mwarn(const char * file, int line, const char * func, const char *m
     vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
     va_end(args);
 
-    printf("%s\n", formatted_msg);
-
     check_expected(formatted_msg);
 }
 
