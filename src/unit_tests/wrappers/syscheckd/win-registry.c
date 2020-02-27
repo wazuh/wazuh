@@ -23,7 +23,7 @@ LONG WINAPI wrap_RegQueryInfoKey(HKEY hKey,LPSTR lpClass,LPDWORD lpcchClass,LPDW
 }
 
 LONG WINAPI wrap_RegEnumKeyEx(HKEY hKey,DWORD dwIndex,LPSTR lpName,LPDWORD lpcchName,LPDWORD lpReserved,LPSTR lpClass,LPDWORD lpcchClass,PFILETIME lpftLastWriteTime) {
-    lpName = mock_ptr_type(char *);
+    strcpy(lpName, mock_ptr_type(char *));
     *lpcchName = mock_type(long);
     return mock();
 }
@@ -31,3 +31,12 @@ LONG WINAPI wrap_RegEnumKeyEx(HKEY hKey,DWORD dwIndex,LPSTR lpName,LPDWORD lpcch
 LONG WINAPI wrap_RegOpenKeyEx(HKEY hKey,LPCSTR lpSubKey,DWORD ulOptions,REGSAM samDesired,PHKEY phkResult) {
     return mock();
 }
+
+LONG WINAPI wrap_RegEnumValue(HKEY hKey,DWORD dwIndex,LPSTR lpValueName,LPDWORD lpcchValueName,LPDWORD lpReserved,LPDWORD lpType,LPBYTE lpData,LPDWORD lpcbData) {
+    strcpy(lpValueName, mock_ptr_type(char *));
+    *lpcchValueName = mock_type(long);
+    *lpType = mock_type(long);
+    *lpcbData = mock_type(long);
+    memcpy(lpData, mock_ptr_type(char *), sizeof(char *) * (*lpcbData));
+    return mock();
+}  

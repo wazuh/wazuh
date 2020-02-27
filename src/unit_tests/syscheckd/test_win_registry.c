@@ -16,6 +16,7 @@
 #include <windows.h>
 #include <wtypes.h> /* HKEY */
 #include<libloaderapi.h>
+#include <openssl/evp.h>
 
 #include "syscheckd/syscheck.h"
 
@@ -40,6 +41,17 @@ void __wrap__mdebug2(const char * file, int line, const char * func, const char 
     va_end(args);
 
     check_expected(formatted_msg);
+}
+
+int __wrap_fim_registry_event(char *key, fim_entry_data *data, int pos) {
+    return mock();
+}
+
+int __wrap_EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data, size_t count)
+{
+   check_expected(data);
+   check_expected(count);
+   return mock();
 }
 /**************************************************************************/
 /*************************os_winreg_sethkey********************************/
@@ -165,9 +177,81 @@ void test_os_winreg_querykey_ignored_regex(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
     os_winreg_querykey(oshkey, subkey, fullname, pos);
 }
+
+void test_os_winreg_querykey_values_string(void **state) {
+    HKEY oshkey;
+    int pos = 0;
+    char *subkey = strdup("command");
+    char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command"); // <registry_ignore type="sregex">\Enum$</registry_ignore>
+
+    will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
+    will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
+    will_return(wrap_RegQueryInfoKey, 0); // subkey_count 
+    will_return(wrap_RegQueryInfoKey, 1); // value_count
+    will_return(wrap_RegQueryInfoKey, 0); // file_time 
+    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+
+    will_return(wrap_RegEnumValue, "REG_VALUE");
+    will_return(wrap_RegEnumValue, strlen("REG_VALUE"));
+    will_return(wrap_RegEnumValue, REG_SZ);
+    will_return(wrap_RegEnumValue, strlen("REG_DATA"));
+    will_return(wrap_RegEnumValue, "REG_DATA");
+    will_return(wrap_RegEnumValue, ERROR_SUCCESS);
+
+    expect_string(__wrap_EVP_DigestUpdate, data, "REG_VALUE");
+    expect_value(__wrap_EVP_DigestUpdate, count, strlen("REG_VALUE"));
+    will_return(__wrap_EVP_DigestUpdate, 0);
+
+    expect_string(__wrap_EVP_DigestUpdate, data, "REG_DATA");
+    expect_value(__wrap_EVP_DigestUpdate, count, strlen("REG_DATA"));
+    will_return(__wrap_EVP_DigestUpdate, 0);
+
+    will_return(__wrap_fim_registry_event, 0);
+
+    os_winreg_querykey(oshkey, subkey, fullname, pos);
+}
+
+void test_os_winreg_querykey_values_multi_string(void **state) {
+    HKEY oshkey;
+    int pos = 0;
+    char *subkey = strdup("command");
+    char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command"); // <registry_ignore type="sregex">\Enum$</registry_ignore>
+
+    will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
+    will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
+    will_return(wrap_RegQueryInfoKey, 0); // subkey_count 
+    will_return(wrap_RegQueryInfoKey, 1); // value_count
+    will_return(wrap_RegQueryInfoKey, 0); // file_time 
+    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+
+    will_return(wrap_RegEnumValue, "REG_VALUE");
+    will_return(wrap_RegEnumValue, strlen("REG_VALUE"));
+    will_return(wrap_RegEnumValue, REG_MULTI_SZ);
+    will_return(wrap_RegEnumValue, (strlen("REG_DATA_1")*3)+3);
+    will_return(wrap_RegEnumValue, "REG_DATA_1\0REG_DATA_2\0REG_DATA_3\0");
+    will_return(wrap_RegEnumValue, ERROR_SUCCESS);
+
+    expect_string(__wrap_EVP_DigestUpdate, data, "REG_VALUE");
+    expect_value(__wrap_EVP_DigestUpdate, count, strlen("REG_VALUE"));
+    will_return(__wrap_EVP_DigestUpdate, 0);
+
+    expect_string(__wrap_EVP_DigestUpdate, data, "REG_DATA_1");
+    expect_value(__wrap_EVP_DigestUpdate, count, strlen("REG_DATA_1"));
+    will_return(__wrap_EVP_DigestUpdate, 0);
+    expect_string(__wrap_EVP_DigestUpdate, data, "REG_DATA_2");
+    expect_value(__wrap_EVP_DigestUpdate, count, strlen("REG_DATA_2"));
+    will_return(__wrap_EVP_DigestUpdate, 0);
+    expect_string(__wrap_EVP_DigestUpdate, data, "REG_DATA_3");
+    expect_value(__wrap_EVP_DigestUpdate, count, strlen("REG_DATA_3"));
+    will_return(__wrap_EVP_DigestUpdate, 0);
+
+    will_return(__wrap_fim_registry_event, 0);
+
+    os_winreg_querykey(oshkey, subkey, fullname, pos);
+}
 /**************************************************************************/
 /*************************os_winreg_check()*******************************/
-int setup_winreg_check_invalid_subtree(void **state){
+int setup_winreg_check_invalid_subtree(void **state) {
     // Store initial registry pointer
     *state = syscheck.registry; 
     registry **reg_array_ptr;
@@ -208,6 +292,8 @@ int main(void) {
         cmocka_unit_test(test_os_winreg_querykey_success_subkey_p_key),
         cmocka_unit_test(test_os_winreg_querykey_ignored_registry),
         cmocka_unit_test(test_os_winreg_querykey_ignored_regex),
+        cmocka_unit_test(test_os_winreg_querykey_values_string),
+        cmocka_unit_test(test_os_winreg_querykey_values_multi_string),
         /* os_winreg_check */
         //cmocka_unit_test_setup_teardown(test_os_winreg_check_invalid_subtree, setup_winreg_check_invalid_subtree, teardown_winreg_check_invalid_subtree)
     };

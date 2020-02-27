@@ -26,7 +26,8 @@
 #define RegEnumKeyEx wrap_RegEnumKeyEx
 #undef RegOpenKeyEx
 #define RegOpenKeyEx wrap_RegOpenKeyEx
-
+#undef RegEnumValue
+#define RegEnumValue wrap_RegEnumValue
 #endif
 
 /* Default values */
