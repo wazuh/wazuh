@@ -323,8 +323,10 @@ int realtime_win32read(win32rtfim *rtlocald)
                                rtlocald->buffer,
                                sizeof(rtlocald->buffer) / sizeof(TCHAR),
                                TRUE,
-                               FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME | FILE_NOTIFY_CHANGE_SIZE |
-                               FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_SECURITY,
+                               FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_FILE_NAME | 
+                               FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_SIZE | 
+                               FILE_NOTIFY_CHANGE_SIZE | FILE_NOTIFY_CHANGE_LAST_ACCESS | 
+                               FILE_NOTIFY_CHANGE_CREATION | FILE_NOTIFY_CHANGE_SECURITY,
                                0,
                                &rtlocald->overlap,
                                RTCallBack);
@@ -402,6 +404,17 @@ int realtime_adddir(const char *dir, int whodata, int followsl)
     wdchar[260] = '\0';
     snprintf(wdchar, 260, "%s", dir);
     if(OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
+        struct stat statbuf;
+#ifdef WIN32
+
+        minfo("Stat check of : %s ", wdchar);
+        // Probar con open y capturar el error
+        if (w_stat(wdchar, &statbuf) == -1) {
+            minfo("Delete key: %s from hash table", wdchar);
+            rtlocald = OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar);
+            free_win32rtfim_data(rtlocald);
+        }
+ #endif
         mdebug2(FIM_REALTIME_HASH_DUP, wdchar);
         w_mutex_unlock(&adddir_mutex);
     }
