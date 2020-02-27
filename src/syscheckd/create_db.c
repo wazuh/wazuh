@@ -322,7 +322,7 @@ void fim_realtime_event(char *file) {
          * (and finding the file removed)
          */
         fim_rt_delay();
-      
+
         fim_element item = { .mode = FIM_REALTIME };
         fim_checker(file, &item, NULL, 1);
     }
@@ -416,8 +416,6 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
         alert_type = FIM_MODIFICATION;
     }
 
-    json_event = fim_json_event(key, saved ? saved->data : NULL, data, pos,
-                                alert_type, 0, NULL);
     if ((saved && saved->data && strcmp(saved->data->hash_sha1, data->hash_sha1) != 0)
         || alert_type == FIM_ADD) {
         if (fim_db_insert(syscheck.database, key, data) == -1) {
@@ -431,6 +429,9 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
     }
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    json_event = fim_json_event(key, saved ? saved->data : NULL, data, pos,
+                                alert_type, 0, NULL);
 
     if (json_event && _base_line) {
         json_formated = cJSON_PrintUnformatted(json_event);
