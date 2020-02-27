@@ -23,11 +23,13 @@
 extern char *os_winreg_sethkey(char *reg_entry);
 void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos);
 
+static int test_has_started = 0;
 /**************************************************************************/
 /*************************WRAPS - GROUP SETUP******************************/
 int test_group_setup(void **state) {
     int ret;
     ret = Read_Syscheck_Config("test_syscheck.conf");
+    test_has_started = 1;
     return ret;
 }
 
@@ -41,6 +43,19 @@ void __wrap__mdebug2(const char * file, int line, const char * func, const char 
     va_end(args);
 
     check_expected(formatted_msg);
+}
+
+void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    if (test_has_started) {
+        check_expected(formatted_msg);
+    }
 }
 
 int __wrap_fim_registry_event(char *key, fim_entry_data *data, int pos) {
@@ -137,6 +152,7 @@ void test_os_winreg_querykey_success_subkey_p_key(void **state) {
     // Shutdown os_winreg_open_key
     will_return(wrap_RegOpenKeyEx, -1);
 
+    expect_string(__wrap__mdebug1, formatted_msg, "(6920): Unable to open registry key: 'command\\SUBKEY_NAME' arch: '[x32]'.");
     os_winreg_querykey(oshkey, subkey, fullname, pos);
 }
 
@@ -349,6 +365,67 @@ void test_os_winreg_querykey_values_binary(void **state) {
 
     os_winreg_querykey(oshkey, subkey, fullname, pos);
 }
+
+void test_os_winreg_querykey_values_none(void **state) {
+    HKEY oshkey;
+    int pos = 0;
+    char *subkey = strdup("command");
+    char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command"); // <registry_ignore type="sregex">\Enum$</registry_ignore>
+
+    will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
+    will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
+    will_return(wrap_RegQueryInfoKey, 0); // subkey_count 
+    will_return(wrap_RegQueryInfoKey, 1); // value_count
+    will_return(wrap_RegQueryInfoKey, 0); // file_time 
+    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+
+    will_return(wrap_RegEnumValue, "REG_VALUE");
+    will_return(wrap_RegEnumValue, strlen("REG_VALUE"));
+    will_return(wrap_RegEnumValue, REG_NONE);
+    will_return(wrap_RegEnumValue, NULL);
+    will_return(wrap_RegEnumValue, 0);
+    will_return(wrap_RegEnumValue, ERROR_SUCCESS);
+
+    expect_string(__wrap_EVP_DigestUpdate, data, "REG_VALUE");
+    expect_value(__wrap_EVP_DigestUpdate, count, strlen("REG_VALUE"));
+    will_return(__wrap_EVP_DigestUpdate, 0);
+
+    will_return(__wrap_fim_registry_event, 0);
+
+    os_winreg_querykey(oshkey, subkey, fullname, pos);
+}
+
+void test_os_winreg_querykey_registry_event_fail(void **state) {
+    HKEY oshkey;
+    int pos = 0;
+    char *subkey = strdup("command");
+    char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command"); // <registry_ignore type="sregex">\Enum$</registry_ignore>
+
+    will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
+    will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
+    will_return(wrap_RegQueryInfoKey, 0); // subkey_count 
+    will_return(wrap_RegQueryInfoKey, 1); // value_count
+    will_return(wrap_RegQueryInfoKey, 0); // file_time 
+    will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
+
+    will_return(wrap_RegEnumValue, "REG_VALUE");
+    will_return(wrap_RegEnumValue, strlen("REG_VALUE"));
+    will_return(wrap_RegEnumValue, REG_NONE);
+    will_return(wrap_RegEnumValue, NULL);
+    will_return(wrap_RegEnumValue, 0);
+    will_return(wrap_RegEnumValue, ERROR_SUCCESS);
+
+    expect_string(__wrap_EVP_DigestUpdate, data, "REG_VALUE");
+    expect_value(__wrap_EVP_DigestUpdate, count, strlen("REG_VALUE"));
+    will_return(__wrap_EVP_DigestUpdate, 0);
+
+    will_return(__wrap_fim_registry_event, OS_INVALID);
+    char debug_msg[OS_MAXSTR];
+    snprintf(debug_msg, OS_MAXSTR, "(6329): Unable to save registry key: '[x32] %s'", fullname);
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
+
+    os_winreg_querykey(oshkey, subkey, fullname, pos);
+}
 /**************************************************************************/
 /*************************os_winreg_check()*******************************/
 int setup_winreg_check_invalid_subtree(void **state) {
@@ -396,6 +473,8 @@ int main(void) {
         cmocka_unit_test(test_os_winreg_querykey_values_multi_string),
         cmocka_unit_test(test_os_winreg_querykey_values_number),
         cmocka_unit_test(test_os_winreg_querykey_values_binary),
+        cmocka_unit_test(test_os_winreg_querykey_values_none),
+        cmocka_unit_test(test_os_winreg_querykey_registry_event_fail),
         /* os_winreg_check */
         //cmocka_unit_test_setup_teardown(test_os_winreg_check_invalid_subtree, setup_winreg_check_invalid_subtree, teardown_winreg_check_invalid_subtree)
     };
