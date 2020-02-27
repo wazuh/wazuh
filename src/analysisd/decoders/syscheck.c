@@ -118,6 +118,7 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
     os_calloc(Config.decoder_order_size, sizeof(char *), fim_decoder->fields);
     fim_decoder->fields[FIM_FILE] = "file";
     fim_decoder->fields[FIM_SIZE] = "size";
+    fim_decoder->fields[FIM_HARD_LINKS] = "hard_links";
     fim_decoder->fields[FIM_PERM] = "perm";
     fim_decoder->fields[FIM_UID] = "uid";
     fim_decoder->fields[FIM_GID] = "gid";
@@ -1055,6 +1056,7 @@ int decode_fim_event(_sdb *sdb, Eventinfo *lf) {
      *   type:                  "event"
      *   data: {
      *     path:                string
+     *     hard_links:          array
      *     mode:                "scheduled"|"real-time"|"whodata"
      *     type:                "added"|"deleted"|"modified"
      *     timestamp:           number
@@ -1210,6 +1212,8 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
                 cJSON_ArrayForEach(item, object) {
                     wm_strcat(&lf->fields[FIM_CHFIELDS].value, item->valuestring, ',');
                 }
+            } else if (strcmp(object->string, "hard_links") == 0) {
+                lf->fields[FIM_HARD_LINKS].value = cJSON_PrintUnformatted(object);
             }
 
             break;
@@ -1275,6 +1279,7 @@ void fim_send_db_save(_sdb * sdb, const char * agent_id, cJSON * data) {
     cJSON_DeleteItemFromObject(data, "tags");
     cJSON_DeleteItemFromObject(data, "content_changes");
     cJSON_DeleteItemFromObject(data, "changed_attributes");
+    cJSON_DeleteItemFromObject(data, "hard_links");
     cJSON_DeleteItemFromObject(data, "old_attributes");
     cJSON_DeleteItemFromObject(data, "audit");
 
@@ -1434,12 +1439,27 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
     char changed_attributes[OS_SIZE_256];
     snprintf(changed_attributes, OS_SIZE_256, "Changed attributes: %s\n", lf->fields[FIM_CHFIELDS].value);
 
+    char hard_links[OS_SIZE_256];
+    cJSON *tmp = cJSON_Parse(lf->fields[FIM_HARD_LINKS].value);
+    if (lf->fields[FIM_HARD_LINKS].value) {
+        cJSON *item;
+        char * hard_links_tmp = NULL;
+        cJSON_ArrayForEach(item, tmp) {
+            wm_strcat(&hard_links_tmp, item->valuestring, ',');
+        }
+
+        snprintf(hard_links, OS_SIZE_256, "Hard links: %s\n", hard_links_tmp);
+        os_free(hard_links_tmp);
+    }
+
     snprintf(lf->full_log, OS_MAXSTR,
             "File '%.756s' %s\n"
+            "%s"
             "Mode: %s\n"
             "%s"
             "%s%s%s%s%s%s%s%s%s%s%s%s",
             lf->fields[FIM_FILE].value, event_type,
+            lf->fields[FIM_HARD_LINKS].value ? hard_links : "",
             mode,
             lf->fields[FIM_CHFIELDS].value ? changed_attributes : "",
             change_size,
@@ -1456,6 +1476,8 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
             change_win_attributes
             //lf->fields[FIM_SYM_PATH].value
     );
+
+    cJSON_Delete(tmp);
 
     return 0;
 }

@@ -253,6 +253,8 @@ static int setup_fim_data(void **state) {
 
     if(data->lf->decoder_info->fields[FIM_FILE] = strdup("file"), data->lf->decoder_info->fields[FIM_FILE] == NULL)
         return -1;
+    if(data->lf->decoder_info->fields[FIM_HARD_LINKS] = strdup("hard_links"), data->lf->decoder_info->fields[FIM_HARD_LINKS] == NULL)
+        return -1;
     if(data->lf->decoder_info->fields[FIM_SIZE] = strdup("size"), data->lf->decoder_info->fields[FIM_SIZE] == NULL)
         return -1;
     if(data->lf->decoder_info->fields[FIM_PERM] = strdup("perm"), data->lf->decoder_info->fields[FIM_PERM] == NULL)
@@ -404,6 +406,8 @@ static int setup_decode_fim_event(void **state) {
         return -1;
 
     if(data->decoder_info->fields[FIM_FILE] = strdup("file"), data->decoder_info->fields[FIM_FILE] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_HARD_LINKS] = strdup("hard_links"), data->decoder_info->fields[FIM_HARD_LINKS] == NULL)
         return -1;
     if(data->decoder_info->fields[FIM_SIZE] = strdup("size"), data->decoder_info->fields[FIM_SIZE] == NULL)
         return -1;

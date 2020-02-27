@@ -1191,7 +1191,7 @@ void * audit_main(int *audit_sock) {
                 syscheck.opts[pos] &= ~ WHODATA_ACTIVE;
                 syscheck.opts[pos] |= REALTIME_ACTIVE;
 
-                realtime_adddir(path, 0);
+                realtime_adddir(path, 0, (syscheck.opts[pos] & CHECK_FOLLOW) ? 1 : 0);
             }
             os_free(path);
         }

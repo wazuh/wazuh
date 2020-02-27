@@ -412,6 +412,11 @@ static int teardown_struct_dirent(void **state) {
 static void test_fim_json_event(void **state) {
     fim_data_t *fim_data = *state;
 
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
+    will_return(__wrap_fim_db_get_paths_from_inode, NULL);
+
     fim_data->json = fim_json_event(
                     "test.file",
                     fim_data->old_data,
@@ -455,6 +460,11 @@ static void test_fim_json_event_whodata(void **state) {
     fim_data_t *fim_data = *state;
 
     syscheck.opts[1] |= CHECK_SEECHANGES;
+
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
+    will_return(__wrap_fim_db_get_paths_from_inode, NULL);
 
     expect_string(__wrap_seechanges_addfile, filename, "test.file");
     will_return(__wrap_seechanges_addfile, strdup("diff"));
@@ -953,176 +963,6 @@ static void test_init_fim_data_entry(void **state) {
     assert_int_equal(fim_data->local_data->hash_sha256[0], 0);
 }
 
-static void test_fim_audit_inode_whodata_add(void **state) {
-    fim_data_t *fim_data = *state;
-
-    char * file = "/test/test.file2";
-    char **paths = calloc(2, sizeof(char*));
-
-    if(paths == NULL)
-        fail();
-
-    paths[0] = strdup("/test/test.file");
-    paths[1] = NULL;
-
-    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
-    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
-    will_return(__wrap_fim_db_get_paths_from_inode, paths);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test/test.file2'");
-    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test/test.file'");
-
-    fim_audit_inode_event(file, FIM_WHODATA, fim_data->w_evt);
-}
-
-static void test_fim_audit_inode_whodata_add_empty_paths(void **state) {
-    fim_data_t *fim_data = *state;
-
-    char * file = "/test/test.file2";
-    char **paths = calloc(2, sizeof(char*));
-
-    if(paths == NULL)
-        fail();
-
-    paths[0] = NULL;
-
-    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
-    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
-    will_return(__wrap_fim_db_get_paths_from_inode, paths);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test/test.file2'");
-
-    fim_audit_inode_event(file, FIM_WHODATA, fim_data->w_evt);
-}
-
-static void test_fim_audit_inode_whodata_modify(void **state) {
-    fim_data_t *data = *state;
-
-    char * file = "/test/test.file2";
-    char **paths = calloc(2, sizeof(char*));
-
-    if(paths == NULL)
-        fail();
-
-    paths[0] = strdup(file);
-    paths[1] = NULL;
-
-    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
-    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
-    will_return(__wrap_fim_db_get_paths_from_inode, paths);
-
-    // Inside fim_checker
-    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test/test.file2'");
-
-    fim_audit_inode_event(file, FIM_WHODATA, data->w_evt);
-}
-
-static void test_fim_audit_inode_event_realtime_add(void **state) {
-    fim_data_t *fim_data = *state;
-
-    char * file = "/test/test.file2";
-    char **paths = calloc(2, sizeof(char*));
-
-    if(paths == NULL)
-        fail();
-
-    paths[0] = strdup("/test/test.file");
-    paths[1] = NULL;
-
-    will_return(__wrap_lstat, 0);
-
-    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 999);
-    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 1);
-    will_return(__wrap_fim_db_get_paths_from_inode, paths);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test/test.file2'");
-    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test/test.file'");
-
-    fim_audit_inode_event(file, FIM_REALTIME, fim_data->w_evt);
-}
-
-static void test_fim_audit_inode_event_realtime_add_empty_paths(void **state) {
-    fim_data_t *fim_data = *state;
-
-    fim_data->fentry->path = strdup("file");
-    fim_data->fentry->data = fim_data->local_data;
-
-    fim_data->local_data->size = 1500;
-    fim_data->local_data->perm = strdup("0664");
-    fim_data->local_data->attributes = strdup("r--r--r--");
-    fim_data->local_data->uid = strdup("100");
-    fim_data->local_data->gid = strdup("1000");
-    fim_data->local_data->user_name = strdup("test");
-    fim_data->local_data->group_name = strdup("testing");
-    fim_data->local_data->mtime = 1570184223;
-    fim_data->local_data->inode = 606060;
-    strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
-    strcpy(fim_data->local_data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-    strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
-    fim_data->local_data->mode = FIM_REALTIME;
-    fim_data->local_data->last_event = 1570184220;
-    fim_data->local_data->entry_type = FIM_TYPE_FILE;
-    fim_data->local_data->dev = 12345678;
-    fim_data->local_data->scanned = 123456;
-    fim_data->local_data->options = 511;
-    strcpy(fim_data->local_data->checksum, "");
-
-    char * file = "/test/test.file2";
-    char **paths = calloc(2, sizeof(char*));
-
-    if(paths == NULL)
-        fail();
-
-    paths[0] = NULL;
-
-    will_return(__wrap_lstat, -1);
-    errno = EACCES;
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "/test/test.file2");
-    will_return(__wrap_fim_db_get_path, fim_data->fentry);
-
-    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
-    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
-    will_return(__wrap_fim_db_get_paths_from_inode, paths);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test/test.file2'");
-
-    fim_audit_inode_event(file, FIM_REALTIME, fim_data->w_evt);
-
-    errno = 0;
-}
-
-static void test_fim_audit_inode_event_realtime_modify(void **state) {
-    fim_data_t *data = *state;
-
-    char * file = "/test/test.file2";
-    char **paths = calloc(2, sizeof(char*));
-
-    if(paths == NULL)
-        fail();
-
-    paths[0] = strdup(file);
-    paths[1] = NULL;
-
-    will_return(__wrap_lstat, 0);
-
-    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 999);
-    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 1);
-    will_return(__wrap_fim_db_get_paths_from_inode, paths);
-
-    // Inside fim_checker
-    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test/test.file2'");
-
-    fim_audit_inode_event(file, FIM_REALTIME, data->w_evt);
-}
-
 static void test_fim_file_add(void **state) {
     fim_data_t *fim_data = *state;
     int ret;
@@ -1243,6 +1083,11 @@ static void test_fim_file_modify(void **state) {
     expect_string(__wrap_fim_db_get_path, file_path, "file");
     will_return(__wrap_fim_db_get_path, fim_data->fentry);
 
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
+    will_return(__wrap_fim_db_get_paths_from_inode, NULL);
+
     expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_insert, file_path, "file");
     will_return(__wrap_fim_db_insert, 0);
@@ -1338,6 +1183,11 @@ static void test_fim_file_error_on_insert(void **state) {
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "file");
     will_return(__wrap_fim_db_get_path, fim_data->fentry);
+
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
+    will_return(__wrap_fim_db_get_paths_from_inode, NULL);
 
     expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_insert, file_path, "file");
@@ -1946,11 +1796,6 @@ static void test_fim_realtime_event_file_exists(void **state) {
     strcpy(fim_data->local_data->checksum, "");
 
     will_return(__wrap_lstat, 0);
-    will_return(__wrap_lstat, -1);
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "/test");
-    will_return(__wrap_fim_db_get_path, NULL);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test'");
 
@@ -1980,11 +1825,6 @@ static void test_fim_whodata_event_file_exists(void **state) {
     fim_data_t *fim_data = *state;
 
     will_return(__wrap_lstat, 0);
-
-    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
-    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
-    will_return(__wrap_fim_db_get_paths_from_inode, NULL);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'./test/test.file'");
 
@@ -2082,11 +1922,6 @@ static void test_fim_process_missing_entry_data_exists(void **state) {
     expect_string(__wrap_fim_db_get_path, file_path, "/test");
     will_return(__wrap_fim_db_get_path, fim_data->fentry);
 
-    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
-    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
-    will_return(__wrap_fim_db_get_paths_from_inode, NULL);
-
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test'");
 
     fim_process_missing_entry("/test", FIM_WHODATA, fim_data->w_evt);
@@ -2146,14 +1981,6 @@ int main(void) {
 
         /* init_fim_data_entry */
         cmocka_unit_test_setup_teardown(test_init_fim_data_entry, setup_fim_entry, teardown_fim_entry),
-
-        /* fim_audit_inode_event */
-        cmocka_unit_test(test_fim_audit_inode_whodata_add),
-        cmocka_unit_test(test_fim_audit_inode_whodata_add_empty_paths),
-        cmocka_unit_test_setup_teardown(test_fim_audit_inode_whodata_modify, setup_inode_data, teardown_inode_data),
-        cmocka_unit_test(test_fim_audit_inode_event_realtime_add),
-        cmocka_unit_test_setup(test_fim_audit_inode_event_realtime_add_empty_paths, setup_fim_entry),
-        cmocka_unit_test_setup_teardown(test_fim_audit_inode_event_realtime_modify, setup_inode_data, teardown_inode_data),
 
         /* fim_file */
         cmocka_unit_test(test_fim_file_add),
