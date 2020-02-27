@@ -781,7 +781,8 @@ void test_realtime_adddir_whodata_non_existent_file(void **state) {
     expect_string(__wrap_check_path_type, dir, "C:\\a\\path");
     will_return(__wrap_check_path_type, 0);
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6907): 'C:\\a\\path' does not exist. Monitoring discarded.");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6907): 'C:\\a\\path' does not exist. Monitoring discarded.");
+    will_return(__wrap__mdebug1, 1);
 
     ret = realtime_adddir("C:\\a\\path", 1);
 
