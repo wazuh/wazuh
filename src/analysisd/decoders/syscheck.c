@@ -1415,7 +1415,7 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
         fim_generate_comment(change_size, sizeof(change_size), "Size changed from '%s' to '%s'\n", lf->size_before, lf->fields[FIM_SIZE].value);
         size_t size = fim_generate_comment(change_perm, sizeof(change_perm), "Permissions changed from '%s' to '%s'\n", lf->perm_before, lf->fields[FIM_PERM].value);
         if (size >= sizeof(change_perm)) {
-            snprintf(change_perm, sizeof(change_perm), "Permissions changed.\n");
+            snprintf(change_perm, sizeof(change_perm), "Permissions changed.\n"); //LCOV_EXCL_LINE
         }
         fim_generate_comment(change_owner, sizeof(change_owner), "Ownership was '%s', now it is '%s'\n", lf->owner_before, lf->fields[FIM_UID].value);
         fim_generate_comment(change_user, sizeof(change_owner), "User name was '%s', now it is '%s'\n", lf->uname_before, lf->fields[FIM_UNAME].value);
@@ -1579,7 +1579,7 @@ int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state) {
             } else if (strcmp(attr_it->string, "hash_sha256") == 0) {
                 dst_data = new_state ? &lf->fields[FIM_SHA256].value : &lf->sha256_before;
             } else if (strcmp(attr_it->string, "attributes") == 0) {
-                dst_data = new_state ? &lf->fields[FIM_ATTRS].value : &lf->attributes_before;
+                dst_data = new_state ? &lf->fields[FIM_ATTRS].value : &lf->attributes_before; //LCOV_EXCL_LINE
             } else if (new_state && strcmp(attr_it->string, "symlink_path") == 0) {
                 dst_data = &lf->fields[FIM_SYM_PATH].value;
             }

@@ -184,6 +184,9 @@ static int setup_fim_data(void **state) {
                 "\"user_name\",\"gid\",\"group_name\","
                 "\"mtime\",\"inode\",\"md5\",\"sha1\",\"sha256\"],"
             "\"tags\":\"tags\","
+            "\"hard_links\":["
+                "\"/a/hard1.file\","
+                "\"/b/hard2.file\"],"
             "\"content_changes\":\"some_changes\","
             "\"old_attributes\":{"
                 "\"type\":\"file\","
@@ -347,6 +350,9 @@ static int setup_decode_fim_event(void **state) {
                 "\"user_name\",\"gid\",\"group_name\","
                 "\"mtime\",\"inode\",\"md5\",\"sha1\",\"sha256\"],"
             "\"tags\":\"tags\","
+            "\"hard_links\":["
+                "\"/a/hard1.file\","
+                "\"/b/hard2.file\"],"
             "\"content_changes\":\"some_changes\","
             "\"old_attributes\":{"
                 "\"type\":\"file\","
@@ -1250,6 +1256,9 @@ static void test_fim_generate_alert_full_alert(void **state) {
     if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL)
         fail();
 
+    if(input->lf->fields[FIM_HARD_LINKS].value = strdup("[\"/a/hard1.file\",\"/b/hard2.file\"]"), input->lf->fields[FIM_HARD_LINKS].value == NULL)
+        fail();
+
     cJSON_ArrayForEach(array_it, changed_attributes) {
         wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
     }
@@ -1305,6 +1314,7 @@ static void test_fim_generate_alert_full_alert(void **state) {
     /* Assert actual output */
     assert_string_equal(input->lf->full_log,
         "File '/a/file' fim_event_type\n"
+        "Hard links: /a/hard1.file,/b/hard2.file\n"
         "Mode: fim_mode\n"
         "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n"
         "Size changed from '1234' to '4567'\n"
@@ -1956,6 +1966,7 @@ static void test_fim_process_alert_added_success(void **state) {
 
     assert_string_equal(input->lf->full_log,
         "File '/a/path' added\n"
+        "Hard links: /a/hard1.file,/b/hard2.file\n"
         "Mode: whodata\n"
         "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n");
 
@@ -2054,6 +2065,7 @@ static void test_fim_process_alert_modified_success(void **state) {
 
     assert_string_equal(input->lf->full_log,
         "File '/a/path' modified\n"
+        "Hard links: /a/hard1.file,/b/hard2.file\n"
         "Mode: whodata\n"
         "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n"
         "Size changed from '1234' to '4567'\n"
@@ -2148,6 +2160,7 @@ static void test_fim_process_alert_deleted_success(void **state) {
 
     assert_string_equal(input->lf->full_log,
         "File '/a/path' deleted\n"
+        "Hard links: /a/hard1.file,/b/hard2.file\n"
         "Mode: whodata\n"
         "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n");
 
@@ -2306,6 +2319,103 @@ static void test_fim_process_alert_no_path(void **state) {
 
     assert_string_equal(input->lf->full_log,
         "File '(null)' added\n"
+        "Hard links: /a/hard1.file,/b/hard2.file\n"
+        "Mode: whodata\n"
+        "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n");
+
+    /* Assert actual output */
+    assert_int_equal(input->lf->event_type, FIM_ADDED);
+    assert_string_equal(input->lf->decoder_info->name, SYSCHECK_NEW);
+    assert_int_equal(input->lf->decoder_info->id, 0);
+}
+
+static void test_fim_process_alert_no_hard_links(void **state) {
+    fim_data_t *input = *state;
+    _sdb sdb = {.socket = 10};
+    const char *result = "This is a mock query result, it wont go anywhere";
+    int ret;
+
+    cJSON *data = cJSON_GetObjectItem(input->event, "data");
+    cJSON_DeleteItemFromObject(data, "hard_links");
+
+    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
+        fail();
+
+    /* Inside fim_send_db_save */
+    expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
+        "{\"path\":\"/a/path\","
+        "\"timestamp\":123456789,"
+        "\"attributes\":{"
+            "\"type\":\"file\","
+            "\"size\":4567,"
+            "\"perm\":\"perm\","
+            "\"user_name\":\"user_name\","
+            "\"group_name\":\"group_name\","
+            "\"uid\":\"uid\","
+            "\"gid\":\"gid\","
+            "\"inode\":5678,"
+            "\"mtime\":6789,"
+            "\"hash_md5\":\"hash_md5\","
+            "\"hash_sha1\":\"hash_sha1\","
+            "\"hash_sha256\":\"hash_sha256\","
+            "\"win_attributes\":\"win_attributes\","
+            "\"symlink_path\":\"symlink_path\","
+            "\"checksum\":\"checksum\"}}");
+    will_return(__wrap_wdbc_query_ex, result);
+    will_return(__wrap_wdbc_query_ex, 0);
+
+    expect_string(__wrap_wdbc_parse_result, result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    ret = fim_process_alert(&sdb, input->lf, data);
+
+    assert_int_equal(ret, 0);
+
+    // Assert fim_generate_alert
+    /* assert new attributes */
+    assert_string_equal(input->lf->fields[FIM_SIZE].value, "4567");
+    assert_string_equal(input->lf->fields[FIM_INODE].value, "5678");
+    assert_int_equal(input->lf->inode_after, 5678);
+    assert_string_equal(input->lf->fields[FIM_MTIME].value, "6789");
+    assert_int_equal(input->lf->mtime_after, 6789);
+    assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
+    assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
+    assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
+    assert_string_equal(input->lf->fields[FIM_UID].value, "uid");
+    assert_string_equal(input->lf->fields[FIM_GID].value, "gid");
+    assert_string_equal(input->lf->fields[FIM_MD5].value, "hash_md5");
+    assert_string_equal(input->lf->fields[FIM_SHA1].value, "hash_sha1");
+    assert_string_equal(input->lf->fields[FIM_SHA256].value, "hash_sha256");
+    assert_string_equal(input->lf->fields[FIM_SYM_PATH].value, "symlink_path");
+
+    /* assert old attributes */
+    assert_string_equal(input->lf->size_before, "1234");
+    assert_int_equal(input->lf->inode_before, 2345);
+    assert_int_equal(input->lf->mtime_before, 3456);
+    assert_string_equal(input->lf->perm_before, "old_perm");
+    assert_string_equal(input->lf->uname_before, "old_user_name");
+    assert_string_equal(input->lf->gname_before, "old_group_name");
+    assert_string_equal(input->lf->owner_before, "old_uid");
+    assert_string_equal(input->lf->gowner_before, "old_gid");
+    assert_string_equal(input->lf->md5_before, "old_hash_md5");
+    assert_string_equal(input->lf->sha1_before, "old_hash_sha1");
+    assert_string_equal(input->lf->sha256_before, "old_hash_sha256");
+
+    /* Assert values gotten from audit */
+    assert_string_equal(input->lf->fields[FIM_PPID].value, "12345");
+    assert_string_equal(input->lf->fields[FIM_PROC_ID].value, "23456");
+    assert_string_equal(input->lf->fields[FIM_USER_ID].value, "user_id");
+    assert_string_equal(input->lf->fields[FIM_USER_NAME].value, "user_name");
+    assert_string_equal(input->lf->fields[FIM_GROUP_ID].value, "group_id");
+    assert_string_equal(input->lf->fields[FIM_GROUP_NAME].value, "group_name");
+    assert_string_equal(input->lf->fields[FIM_PROC_NAME].value, "process_name");
+    assert_string_equal(input->lf->fields[FIM_AUDIT_ID].value, "audit_uid");
+    assert_string_equal(input->lf->fields[FIM_AUDIT_NAME].value, "audit_name");
+    assert_string_equal(input->lf->fields[FIM_EFFECTIVE_UID].value, "effective_uid");
+    assert_string_equal(input->lf->fields[FIM_EFFECTIVE_NAME].value, "effective_name");
+
+    assert_string_equal(input->lf->full_log,
+        "File '/a/path' added\n"
         "Mode: whodata\n"
         "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n");
 
@@ -2402,6 +2512,7 @@ static void test_fim_process_alert_no_mode(void **state) {
 
     assert_string_equal(input->lf->full_log,
         "File '/a/path' added\n"
+        "Hard links: /a/hard1.file,/b/hard2.file\n"
         "Mode: (null)\n"
         "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n");
 
@@ -2498,6 +2609,7 @@ static void test_fim_process_alert_no_tags(void **state) {
 
     assert_string_equal(input->lf->full_log,
         "File '/a/path' added\n"
+        "Hard links: /a/hard1.file,/b/hard2.file\n"
         "Mode: whodata\n"
         "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n");
 
@@ -2596,6 +2708,7 @@ static void test_fim_process_alert_no_content_changes(void **state) {
 
     assert_string_equal(input->lf->full_log,
         "File '/a/path' added\n"
+        "Hard links: /a/hard1.file,/b/hard2.file\n"
         "Mode: whodata\n"
         "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n");
 
@@ -2693,6 +2806,7 @@ static void test_fim_process_alert_no_changed_attributes(void **state) {
 
     assert_string_equal(input->lf->full_log,
         "File '/a/path' added\n"
+        "Hard links: /a/hard1.file,/b/hard2.file\n"
         "Mode: whodata\n");
 
     /* Assert actual output */
@@ -2775,6 +2889,7 @@ static void test_fim_process_alert_no_attributes(void **state) {
 
     assert_string_equal(input->lf->full_log,
         "File '/a/path' modified\n"
+        "Hard links: /a/hard1.file,/b/hard2.file\n"
         "Mode: whodata\n"
         "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n"
         "Size changed from '1234' to ''\n"
@@ -2887,6 +3002,7 @@ static void test_fim_process_alert_no_old_attributes(void **state) {
 
     assert_string_equal(input->lf->full_log,
         "File '/a/path' modified\n"
+        "Hard links: /a/hard1.file,/b/hard2.file\n"
         "Mode: whodata\n"
         "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n"
         "Size changed from '' to '4567'\n"
@@ -2997,6 +3113,7 @@ static void test_fim_process_alert_no_audit(void **state) {
 
     assert_string_equal(input->lf->full_log,
         "File '/a/path' added\n"
+        "Hard links: /a/hard1.file,/b/hard2.file\n"
         "Mode: whodata\n"
         "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n");
 
@@ -3107,6 +3224,7 @@ static void test_decode_fim_event_type_event(void **state) {
 
     assert_string_equal(lf->full_log,
         "File '/a/path' added\n"
+        "Hard links: /a/hard1.file,/b/hard2.file\n"
         "Mode: whodata\n"
         "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n");
 
@@ -3457,6 +3575,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_process_alert_invalid_event_type, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_process_alert_invalid_object, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_process_alert_no_path, setup_fim_data, teardown_fim_data),
+        cmocka_unit_test_setup_teardown(test_fim_process_alert_no_hard_links, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_process_alert_no_mode, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_process_alert_no_tags, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_process_alert_no_content_changes, setup_fim_data, teardown_fim_data),

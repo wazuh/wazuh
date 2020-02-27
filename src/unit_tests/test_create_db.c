@@ -443,6 +443,8 @@ static void test_fim_json_event(void **state) {
     assert_int_equal(timestamp->valueint, 1570184221);
     cJSON *tags = cJSON_GetObjectItem(data, "tags");
     assert_string_equal(cJSON_GetStringValue(tags), "tag1,tag2");
+    cJSON *hard_links = cJSON_GetObjectItem(data, "hard_links");
+    assert_null(hard_links);
     cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
     cJSON *changed_attributes = cJSON_GetObjectItem(data, "changed_attributes");
@@ -497,6 +499,8 @@ static void test_fim_json_event_whodata(void **state) {
     assert_int_equal(timestamp->valueint, 1570184221);
     cJSON *tags = cJSON_GetObjectItem(data, "tags");
     assert_string_equal(cJSON_GetStringValue(tags), "tag1,tag2");
+    cJSON *hard_links = cJSON_GetObjectItem(data, "hard_links");
+    assert_null(hard_links);
     cJSON *audit = cJSON_GetObjectItem(data, "audit");
     assert_non_null(audit);
     assert_int_equal(cJSON_GetArraySize(audit), 12);
@@ -519,6 +523,114 @@ static void test_fim_json_event_no_changes(void **state) {
                     );
 
     assert_null(fim_data->json);
+}
+
+
+static void test_fim_json_event_hardlink_one_path(void **state) {
+    fim_data_t *fim_data = *state;
+
+    char **paths = calloc(2, sizeof(char *));
+    paths[0] = strdup("test.file");
+    paths[1] = NULL;
+
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
+    will_return(__wrap_fim_db_get_paths_from_inode, paths);
+
+    fim_data->json = fim_json_event(
+                    "test.file",
+                    fim_data->old_data,
+                    fim_data->new_data,
+                    1,
+                    FIM_MODIFICATION,
+                    FIM_REALTIME,
+                    NULL
+                );
+
+    assert_non_null(fim_data->json);
+    cJSON *type = cJSON_GetObjectItem(fim_data->json, "type");
+    assert_string_equal(cJSON_GetStringValue(type), "event");
+    cJSON *data = cJSON_GetObjectItem(fim_data->json, "data");
+    assert_non_null(data);
+    cJSON *path = cJSON_GetObjectItem(data, "path");
+    assert_string_equal(cJSON_GetStringValue(path), "test.file");
+    cJSON *mode = cJSON_GetObjectItem(data, "mode");
+    assert_string_equal(cJSON_GetStringValue(mode), "real-time");
+    cJSON *data_type = cJSON_GetObjectItem(data, "type");
+    assert_string_equal(cJSON_GetStringValue(data_type), "modified");
+    cJSON *timestamp = cJSON_GetObjectItem(data, "timestamp");
+    assert_non_null(timestamp);
+    assert_int_equal(timestamp->valueint, 1570184221);
+    cJSON *tags = cJSON_GetObjectItem(data, "tags");
+    assert_string_equal(cJSON_GetStringValue(tags), "tag1,tag2");
+    cJSON *hard_links = cJSON_GetObjectItem(data, "hard_links");
+    assert_null(hard_links);
+    cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
+    assert_non_null(attributes);
+    cJSON *changed_attributes = cJSON_GetObjectItem(data, "changed_attributes");
+    assert_non_null(changed_attributes);
+    cJSON *old_attributes = cJSON_GetObjectItem(data, "old_attributes");
+    assert_non_null(old_attributes);
+
+    assert_int_equal(cJSON_GetArraySize(changed_attributes), 11);
+    assert_int_equal(cJSON_GetArraySize(attributes), 13);
+    assert_int_equal(cJSON_GetArraySize(old_attributes), 13);
+}
+
+
+static void test_fim_json_event_hardlink_two_paths(void **state) {
+    fim_data_t *fim_data = *state;
+
+    char **paths = calloc(3, sizeof(char *));
+    paths[0] = strdup("test.file");
+    paths[1] = strdup("hard_link.file");
+    paths[2] = NULL;
+
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
+    will_return(__wrap_fim_db_get_paths_from_inode, paths);
+
+    fim_data->json = fim_json_event(
+                    "test.file",
+                    fim_data->old_data,
+                    fim_data->new_data,
+                    1,
+                    FIM_MODIFICATION,
+                    FIM_REALTIME,
+                    NULL
+                );
+
+    assert_non_null(fim_data->json);
+    cJSON *type = cJSON_GetObjectItem(fim_data->json, "type");
+    assert_string_equal(cJSON_GetStringValue(type), "event");
+    cJSON *data = cJSON_GetObjectItem(fim_data->json, "data");
+    assert_non_null(data);
+    cJSON *path = cJSON_GetObjectItem(data, "path");
+    assert_string_equal(cJSON_GetStringValue(path), "test.file");
+    cJSON *mode = cJSON_GetObjectItem(data, "mode");
+    assert_string_equal(cJSON_GetStringValue(mode), "real-time");
+    cJSON *data_type = cJSON_GetObjectItem(data, "type");
+    assert_string_equal(cJSON_GetStringValue(data_type), "modified");
+    cJSON *timestamp = cJSON_GetObjectItem(data, "timestamp");
+    assert_non_null(timestamp);
+    assert_int_equal(timestamp->valueint, 1570184221);
+    cJSON *tags = cJSON_GetObjectItem(data, "tags");
+    assert_string_equal(cJSON_GetStringValue(tags), "tag1,tag2");
+    cJSON *hard_links = cJSON_GetObjectItem(data, "hard_links");
+    assert_non_null(hard_links);
+    cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
+    assert_non_null(attributes);
+    cJSON *changed_attributes = cJSON_GetObjectItem(data, "changed_attributes");
+    assert_non_null(changed_attributes);
+    cJSON *old_attributes = cJSON_GetObjectItem(data, "old_attributes");
+    assert_non_null(old_attributes);
+
+    assert_int_equal(cJSON_GetArraySize(hard_links), 1);
+    assert_int_equal(cJSON_GetArraySize(changed_attributes), 11);
+    assert_int_equal(cJSON_GetArraySize(attributes), 13);
+    assert_int_equal(cJSON_GetArraySize(old_attributes), 13);
 }
 
 
@@ -1933,6 +2045,8 @@ int main(void) {
         cmocka_unit_test_teardown(test_fim_json_event, teardown_delete_json),
         cmocka_unit_test_teardown(test_fim_json_event_whodata, teardown_delete_json),
         cmocka_unit_test_teardown(test_fim_json_event_no_changes, teardown_delete_json),
+        cmocka_unit_test_teardown(test_fim_json_event_hardlink_one_path, teardown_delete_json),
+        cmocka_unit_test_teardown(test_fim_json_event_hardlink_two_paths, teardown_delete_json),
 
         /* fim_attributes_json */
         cmocka_unit_test_teardown(test_fim_attributes_json, teardown_delete_json),
