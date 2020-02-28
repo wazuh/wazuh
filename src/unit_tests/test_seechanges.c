@@ -143,7 +143,7 @@ int __wrap_OS_MD5_File(const char *fname, os_md5 output, int mode) {
     check_expected(mode);
 
     char *md5 = mock_type(char *);
-    strncpy(output, md5, 32);
+    strncpy(output, md5, sizeof(os_md5) - 1);
 
     return mock();
 }
