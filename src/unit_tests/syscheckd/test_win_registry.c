@@ -21,7 +21,8 @@
 #include "syscheckd/syscheck.h"
 
 extern char *os_winreg_sethkey(char *reg_entry);
-void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos);
+extern void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos);
+extern void os_winreg_open_key(char *subkey, char *fullkey_name, int pos);
 
 static int test_has_started = 0;
 /**************************************************************************/
@@ -509,6 +510,24 @@ void test_os_winreg_check_valid_subtree(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
     os_winreg_check();
 }
+/**************************************************************************/
+/*************************os_winreg_open()*******************************/
+void test_os_winreg_open_fail(void **state) {
+    will_return(wrap_RegOpenKeyEx, -1);
+    char debug_msg2[OS_MAXSTR];
+    snprintf(debug_msg2, OS_MAXSTR, "(6920): Unable to open registry key: 'Software\\Classes\\batfile' arch: '%s'.", syscheck.registry[0].arch == ARCH_64BIT ? "[x64]" : "[x32]");
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg2);
+    os_winreg_open_key("Software\\Classes\\batfile", "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", 0);
+}
+
+void test_os_winreg_open_success(void **state) {
+    will_return(wrap_RegOpenKeyEx, 0);
+    // Promptly exit from os_winreg_querykey
+    will_return_count(wrap_RegQueryInfoKey, NULL, 5);
+    will_return(wrap_RegQueryInfoKey,-1);
+
+    os_winreg_open_key("Software\\Classes\\batfile", "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", 0);
+}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -534,6 +553,9 @@ int main(void) {
         /* os_winreg_check */
         cmocka_unit_test_setup_teardown(test_os_winreg_check_invalid_subtree, setup_winreg_check_invalid_subtree, teardown_winreg_check_invalid_subtree),
         cmocka_unit_test_setup_teardown(test_os_winreg_check_valid_subtree, setup_winreg_check_valid_subtree, teardown_winreg_check_valid_subtree),
+        /* os_winreg_open */
+        cmocka_unit_test(test_os_winreg_open_fail),
+        cmocka_unit_test(test_os_winreg_open_success),
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, NULL);

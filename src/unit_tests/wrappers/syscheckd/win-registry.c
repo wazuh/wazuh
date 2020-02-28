@@ -41,3 +41,7 @@ LONG WINAPI wrap_RegEnumValue(HKEY hKey,DWORD dwIndex,LPSTR lpValueName,LPDWORD 
     memcpy(lpData, data, sizeof(char) * (*lpcbData));
     return mock();
 }  
+
+LONG WINAPI wrap_RegCloseKey(HKEY hKey) {
+    return 0;
+}
