@@ -35,16 +35,36 @@ int __wrap__mwarn(const char * file, int line, const char * func, const char *ms
     return 1;
 }
 
-int __wrap__merror(const char * file, int line, const char * func, const char *msg, ...)
+int __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...)
 {
     check_expected(msg);
     return 1;
 }
 
-int __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...)
+void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...)
 {
-    check_expected(msg);
-    return 1;
+    if (mock()) {
+       char formatted_msg[OS_MAXSTR];
+        va_list args;
+
+        va_start(args, msg);
+        vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+        va_end(args);
+
+        check_expected(formatted_msg);
+    }
+}
+
+void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...)
+{
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
 }
 
 void __wrap__merror_exit(const char * file, int line, const char * func, const char *msg, ...)
@@ -86,6 +106,40 @@ int __wrap_audit_set_db_consistency() {
 }
 
 int __wrap_time() {
+    return 1;
+}
+
+int __wrap_lstat(const char *filename, struct stat *buf) {
+    check_expected(filename);
+    return mock();
+}
+
+void __wrap_fim_checker(char *path) {
+    check_expected(path);
+}
+
+int __wrap_fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file, int storage) {
+    check_expected_ptr(fim_sql);
+    check_expected_ptr(storage);
+
+    *file = mock_type(fim_tmp_file *);
+
+    return mock();
+}
+
+int __wrap_fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {
+    check_expected_ptr(fim_sql);
+    check_expected_ptr(storage);
+    check_expected_ptr(file);
+
+    return mock();
+}
+
+int __wrap_fim_configuration_directory() {
+    return mock();
+}
+
+int __wrap_inotify_rm_watch() {
     return mock();
 }
 
@@ -93,9 +147,35 @@ int __wrap_time() {
 
 static int setup(void ** state) {
     (void) state;
+
+    will_return_always(__wrap__mdebug1, 0);
+
     Read_Syscheck_Config("test_syscheck.conf");
+
     syscheck.max_eps = 100;
     syscheck.sync_max_eps = 10;
+
+    syscheck.realtime = (rtfim *) calloc(1, sizeof(rtfim));
+    if(syscheck.realtime == NULL) {
+        return -1;
+    }
+
+    syscheck.realtime->dirtb = OSHash_Create();
+    if (syscheck.realtime->dirtb == NULL) {
+        return -1;
+    }
+
+    OSHash_Add_ex(syscheck.realtime->dirtb, "key", strdup("data"));
+
+    return 0;
+}
+
+static int setup_tmp_file(void **state) {
+    fim_tmp_file *tmp_file = calloc(1, sizeof(fim_tmp_file));
+    tmp_file->elements = 1;
+
+    *state = tmp_file;
+
     return 0;
 }
 
@@ -103,7 +183,16 @@ static int setup(void ** state) {
 
 static int free_syscheck(void **state) {
     (void) state;
+
     Free_Syscheck(&syscheck);
+
+    return 0;
+}
+
+static int teardown_tmp_file(void **state) {
+    fim_tmp_file *tmp_file = *state;
+    free(tmp_file);
+
     return 0;
 }
 
@@ -156,7 +245,7 @@ void test_fim_send_msg_retry(void **state) {
     expect_value(__wrap_SendMSG, loc, SYSCHECK_MQ);
     will_return(__wrap_SendMSG, -1);
 
-    expect_string(__wrap__merror, msg, QUEUE_SEND);
+    expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
 
     expect_string(__wrap_StartMQ, path, DEFAULTQPATH);
     expect_value(__wrap_StartMQ, type, WRITE);
@@ -178,7 +267,7 @@ void test_fim_send_msg_retry_error(void **state) {
     expect_value(__wrap_SendMSG, loc, SYSCHECK_MQ);
     will_return(__wrap_SendMSG, -1);
 
-    expect_string(__wrap__merror, msg, QUEUE_SEND);
+    expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
 
     expect_string(__wrap_StartMQ, path, DEFAULTQPATH);
     expect_value(__wrap_StartMQ, type, WRITE);
@@ -294,15 +383,202 @@ void test_send_syscheck_msg_0_eps(void ** _state) {
 }
 
 void test_fim_send_scan_info(void **state) {
-    will_return(__wrap_time, 12345);
+    (void) state;
 
     expect_string(__wrap__mdebug2, msg, FIM_SEND);
-    expect_string(__wrap_SendMSG, message, "{\"type\":\"scan_start\",\"data\":{\"timestamp\":12345}}");
+    expect_string(__wrap_SendMSG, message, "{\"type\":\"scan_start\",\"data\":{\"timestamp\":1}}");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, SYSCHECK_MQ);
     will_return(__wrap_SendMSG, 0);
 
     fim_send_scan_info(FIM_SCAN_START);
+}
+
+void test_fim_link_update(void **state) {
+    (void) state;
+
+    int pos = 0;
+    char *link_path = "/folder/test";
+
+    expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_path_range, NULL);
+    will_return(__wrap_fim_db_get_path_range, FIMDB_OK);
+
+    expect_string(__wrap_fim_checker, path, link_path);
+
+    fim_link_update(pos, link_path);
+
+    assert_string_equal(syscheck.dir[pos], link_path);
+}
+
+void test_fim_link_update_already_added(void **state) {
+    (void) state;
+
+    int pos = 0;
+    char *link_path = "/folder/test";
+
+    expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_path_range, NULL);
+    will_return(__wrap_fim_db_get_path_range, FIMDB_OK);
+
+    will_return(__wrap__mdebug1, 1);
+    expect_string(__wrap__mdebug1, formatted_msg, "(6234): Directory '/folder/test' already monitored, ignoring link '(null)'");
+
+    fim_link_update(pos, link_path);
+
+    assert_string_equal(syscheck.dir[pos], "");
+}
+
+void test_fim_link_check_delete(void **state) {
+    (void) state;
+
+    int pos = 1;
+    char *link_path = "/usr/bin";
+
+    expect_string(__wrap_lstat, filename, link_path);
+    will_return(__wrap_lstat, 0);
+
+    expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_path_range, NULL);
+    will_return(__wrap_fim_db_get_path_range, FIMDB_OK);
+
+    will_return(__wrap_fim_configuration_directory, -1);
+
+    fim_link_check_delete(pos);
+
+    assert_string_equal(syscheck.dir[pos], "");
+}
+
+void test_fim_link_check_delete_lstat_error(void **state) {
+    (void) state;
+
+    int pos = 2;
+    char *link_path = "/usr/sbin";
+
+    expect_string(__wrap_lstat, filename, link_path);
+    will_return(__wrap_lstat, -1);
+
+    will_return(__wrap__mdebug1, 1);
+    expect_string(__wrap__mdebug1, formatted_msg, "(6222): Stat() function failed on: '/usr/sbin' due to [(0)-(Success)]");
+
+    fim_link_check_delete(pos);
+
+    assert_string_equal(syscheck.dir[pos], link_path);
+}
+
+void test_fim_link_check_delete_noentry_error(void **state) {
+    (void) state;
+
+    int pos = 2;
+    char *link_path = "/usr/sbin";
+
+    expect_string(__wrap_lstat, filename, link_path);
+    will_return(__wrap_lstat, -1);
+
+    errno = ENOENT;
+
+    fim_link_check_delete(pos);
+
+    errno = 0;
+
+    assert_string_equal(syscheck.dir[pos], "");
+}
+
+void test_fim_delete_realtime_watches(void **state) {
+    (void) state;
+
+    int pos = 1;
+
+    will_return(__wrap_fim_configuration_directory, 0);
+
+    will_return(__wrap_fim_configuration_directory, 0);
+
+    will_return(__wrap_inotify_rm_watch, 1);
+
+    fim_delete_realtime_watches(pos);
+
+    assert_null(OSHash_Begin(syscheck.realtime->dirtb, &pos));
+}
+
+void test_fim_link_delete_range(void **state) {
+    int pos = 3;
+
+    fim_tmp_file *tmp_file = *state;
+
+    expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_path_range, tmp_file);
+    will_return(__wrap_fim_db_get_path_range, FIMDB_OK);
+
+    expect_value(__wrap_fim_db_delete_range, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_delete_range, storage, FIM_DB_DISK);
+    expect_memory(__wrap_fim_db_delete_range, file, tmp_file, sizeof(tmp_file));
+    will_return(__wrap_fim_db_delete_range, FIMDB_OK);
+
+    fim_link_delete_range(pos);
+}
+
+void test_fim_link_delete_range_error(void **state) {
+    int pos = 3;
+
+    fim_tmp_file *tmp_file = *state;
+
+    expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_path_range, tmp_file);
+    will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
+
+    expect_string(__wrap__merror, formatted_msg, "(6708): Failed to delete a range of paths between '/media/' and '/media0'");
+
+    expect_value(__wrap_fim_db_delete_range, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_delete_range, storage, FIM_DB_DISK);
+    expect_memory(__wrap_fim_db_delete_range, file, tmp_file, sizeof(tmp_file));
+    will_return(__wrap_fim_db_delete_range, FIMDB_ERR);
+
+    expect_string(__wrap__merror, formatted_msg, "(6708): Failed to delete a range of paths between '/media/' and '/media0'");
+
+    fim_link_delete_range(pos);
+}
+
+void test_fim_link_silent_scan(void **state) {
+    (void) state;
+
+    int pos = 3;
+    char *link_path = "/folder/test";
+
+    expect_string(__wrap_fim_checker, path, link_path);
+
+    fim_link_silent_scan(link_path, pos);
+}
+
+void test_fim_link_reload_broken_link_already_monitored(void **state) {
+    (void) state;
+
+    int pos = 4;
+    char *link_path = "/home";
+
+    will_return(__wrap__mdebug1, 1);
+    expect_string(__wrap__mdebug1, formatted_msg, "(6234): Directory '/home' already monitored, ignoring link '(null)'");
+
+    fim_link_reload_broken_link(link_path, pos);
+
+    assert_string_equal(syscheck.dir[pos], link_path);
+}
+
+void test_fim_link_reload_broken_link_reload_broken(void **state) {
+    (void) state;
+
+    int pos = 5;
+    char *link_path = "/test";
+
+    expect_string(__wrap_fim_checker, path, link_path);
+
+    fim_link_reload_broken_link(link_path, pos);
+
+    assert_string_equal(syscheck.dir[pos], link_path);
 }
 
 
@@ -318,6 +594,17 @@ int main(void) {
         cmocka_unit_test(test_send_syscheck_msg_10_eps),
         cmocka_unit_test(test_send_syscheck_msg_0_eps),
         cmocka_unit_test(test_fim_send_scan_info),
+        cmocka_unit_test(test_fim_link_update),
+        cmocka_unit_test(test_fim_link_update_already_added),
+        cmocka_unit_test(test_fim_link_check_delete),
+        cmocka_unit_test(test_fim_link_check_delete_lstat_error),
+        cmocka_unit_test(test_fim_link_check_delete_noentry_error),
+        cmocka_unit_test(test_fim_delete_realtime_watches),
+        cmocka_unit_test_setup_teardown(test_fim_link_delete_range, setup_tmp_file, teardown_tmp_file),
+        cmocka_unit_test_setup_teardown(test_fim_link_delete_range_error, setup_tmp_file, teardown_tmp_file),
+        cmocka_unit_test(test_fim_link_silent_scan),
+        cmocka_unit_test(test_fim_link_reload_broken_link_already_monitored),
+        cmocka_unit_test(test_fim_link_reload_broken_link_reload_broken),
     };
 
     return cmocka_run_group_tests(tests, setup, free_syscheck);
