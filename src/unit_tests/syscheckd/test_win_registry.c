@@ -58,6 +58,19 @@ void __wrap__mdebug1(const char * file, int line, const char * func, const char 
     }
 }
 
+void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...) {
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    if (test_has_started) {
+        check_expected(formatted_msg);
+    }
+}
+
 int __wrap_fim_registry_event(char *key, fim_entry_data *data, int pos) {
     return mock();
 }
@@ -431,13 +444,11 @@ void test_os_winreg_querykey_registry_event_fail(void **state) {
 int setup_winreg_check_invalid_subtree(void **state) {
     // Store initial registry pointer
     *state = syscheck.registry; 
-    registry **reg_array_ptr;
-    reg_array_ptr = (registry **) calloc(2, sizeof(registry*));
-    registry *new_reg_ptr = reg_array_ptr[0];
-    new_reg_ptr = (registry*) malloc(sizeof(registry));
-    new_reg_ptr->entry = strdup("WRONG_SUBTREE\\Software\\Classes\\batfile");
-    new_reg_ptr->arch = syscheck.registry[0].arch;
-    syscheck.registry = reg_array_ptr[0];
+    registry *reg_array_ptr;
+    reg_array_ptr = (registry *) calloc(2, sizeof(registry));
+    reg_array_ptr->entry = strdup("WRONG_SUBTREE\\Software\\Classes\\batfile");
+    reg_array_ptr->arch = syscheck.registry[0].arch;
+    syscheck.registry = reg_array_ptr;
     return 0;
 }
 
@@ -450,8 +461,53 @@ int teardown_winreg_check_invalid_subtree(void **state){
     return 0;
 }
 
+int setup_winreg_check_valid_subtree(void **state) {
+    // Store initial registry pointer
+    *state = syscheck.registry; 
+    registry *reg_array_ptr;
+    reg_array_ptr = (registry *) calloc(2, sizeof(registry));
+    reg_array_ptr->entry = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile");
+    reg_array_ptr->arch = syscheck.registry[0].arch;
+    syscheck.registry = reg_array_ptr;
+    return 0;
+}
+
+int teardown_winreg_check_valid_subtree(void **state){
+    // free new_reg
+    free(syscheck.registry->entry);
+    free(syscheck.registry);
+    // Restore registry
+    syscheck.registry = *state;
+    return 0;
+}
+
+
 void test_os_winreg_check_invalid_subtree(void **state) {
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_START);
+    char debug_msg[OS_MAXSTR];
+    snprintf(debug_msg, OS_MAXSTR, FIM_READING_REGISTRY, syscheck.registry[0].arch == ARCH_64BIT ? "[x64] " : "[x32] ", syscheck.registry[0].entry);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+    char warn_msg[OS_MAXSTR];
+    snprintf(warn_msg, OS_MAXSTR, "(6919): Invalid syscheck registry entry: '%s' arch: '%s'.", syscheck.registry[0].entry, syscheck.registry[0].arch == ARCH_64BIT ? "[x64]" : "[x32]");
+    expect_string(__wrap__mwarn, formatted_msg, warn_msg);
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
+    os_winreg_check();
+}
+
+void test_os_winreg_check_valid_subtree(void **state) {
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_START);
+    char debug_msg[OS_MAXSTR];
+    snprintf(debug_msg, OS_MAXSTR, FIM_READING_REGISTRY, syscheck.registry[0].arch == ARCH_64BIT ? "[x64] " : "[x32] ", syscheck.registry[0].entry);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
     
+    // If os_winreg check tries to call os_winreg_open_key then subtree is valid
+    will_return(wrap_RegOpenKeyEx, -1);
+    char debug_msg2[OS_MAXSTR];
+    snprintf(debug_msg2, OS_MAXSTR, "(6920): Unable to open registry key: 'Software\\Classes\\batfile' arch: '%s'.", syscheck.registry[0].arch == ARCH_64BIT ? "[x64]" : "[x32]");
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg2);
+
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
+    os_winreg_check();
 }
 
 int main(void) {
@@ -476,7 +532,8 @@ int main(void) {
         cmocka_unit_test(test_os_winreg_querykey_values_none),
         cmocka_unit_test(test_os_winreg_querykey_registry_event_fail),
         /* os_winreg_check */
-        //cmocka_unit_test_setup_teardown(test_os_winreg_check_invalid_subtree, setup_winreg_check_invalid_subtree, teardown_winreg_check_invalid_subtree)
+        cmocka_unit_test_setup_teardown(test_os_winreg_check_invalid_subtree, setup_winreg_check_invalid_subtree, teardown_winreg_check_invalid_subtree),
+        cmocka_unit_test_setup_teardown(test_os_winreg_check_valid_subtree, setup_winreg_check_valid_subtree, teardown_winreg_check_valid_subtree),
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, NULL);
