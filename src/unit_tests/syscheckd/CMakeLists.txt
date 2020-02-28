@@ -193,6 +193,9 @@ if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_names "test_win_registry")
   list(APPEND syscheckd_tests_flags "-Wl,--wrap=_mdebug2,--wrap=fim_registry_event,--wrap=EVP_DigestUpdate,--wrap=_mdebug1 \
                                      -Wl,--wrap=_mwarn")
+
+  list(APPEND syscheckd_tests_names "test_win_whodata")
+  list(APPEND syscheckd_tests_flags " ")
 endif()
 
 # Compiling tests
