@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (C) 2015-2019, Wazuh Inc.
 # March 13, 2018.
 #
@@ -11,6 +11,8 @@ import json
 import sys
 import time
 import os
+import pathlib
+import re
 
 try:
     import requests
@@ -32,6 +34,15 @@ debug_enabled = False
 pwd = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 json_alert = {}
 now = time.strftime("%a %b %d %H:%M:%S %Z %Y")
+
+proxies = {}
+
+proxy_file = pathlib.Path('/var/ossec/integrations/params.sh')
+if proxy_file.exists():
+    for line in proxy_file.read_text().split('\n'):
+        r = re.search(r'(https?)_proxy=(\w+):(\d+)', line, flags=re.IGNORECASE)
+        if r:
+            proxies[r.group(1)]='{}:{}'.format(r.group(2), r.group(3))
 
 # Set paths
 log_file = '{0}/logs/integrations.log'.format(pwd)
@@ -117,8 +128,12 @@ def generate_msg(alert):
 
 
 def send_msg(msg, url):
+    global proxies
     headers = {'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
-    res = requests.post(url, data=msg, headers=headers)
+    if proxies == {}:
+        res = requests.post(url, data=msg, headers=headers)
+    else:
+        res = requests.post(url, data=msg, headers=headers, proxies=proxies)
     debug(res)
 
 
