@@ -71,10 +71,18 @@ WINBOOL wrap_syscheck_op_LookupAccountSid (__UNUSED_PARAM(LPCSTR lpSystemName),
                                            __UNUSED_PARAM(PSID Sid),
                                            LPSTR Name,
                                            LPDWORD cchName,
-                                           __UNUSED_PARAM(LPSTR ReferencedDomainName),
-                                           __UNUSED_PARAM(LPDWORD cchReferencedDomainName),
+                                           LPSTR ReferencedDomainName,
+                                           LPDWORD cchReferencedDomainName,
                                            __UNUSED_PARAM(PSID_NAME_USE peUse)) {
-    strncpy(Name, mock_type(char*), *cchName);
+    if(Name != NULL)
+        strncpy(Name, mock_type(char*), *cchName);
+    else
+        *cchName = mock();
+
+    if(ReferencedDomainName != NULL)
+        strncpy(ReferencedDomainName, mock_type(char*), *cchReferencedDomainName);
+    else
+        *cchReferencedDomainName = mock();
 
     return mock();
 }

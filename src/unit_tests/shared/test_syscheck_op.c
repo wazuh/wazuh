@@ -3061,6 +3061,7 @@ static void test_get_user_LookupAccountSid_error(void **state) {
     will_return(wrap_syscheck_op_ConvertSidToStringSid, 1);
 
     will_return(wrap_syscheck_op_LookupAccountSid, "accountName");
+    will_return(wrap_syscheck_op_LookupAccountSid, "domainName");
     will_return(wrap_syscheck_op_LookupAccountSid, 0);
 
     will_return(wrap_syscheck_op_GetLastError, ERROR_INVALID_SID);
@@ -3088,6 +3089,7 @@ static void test_get_user_LookupAccountSid_error_none_mapped(void **state) {
     will_return(wrap_syscheck_op_ConvertSidToStringSid, 1);
 
     will_return(wrap_syscheck_op_LookupAccountSid, "accountName");
+    will_return(wrap_syscheck_op_LookupAccountSid, "domainName");
     will_return(wrap_syscheck_op_LookupAccountSid, 0);
 
     will_return(wrap_syscheck_op_GetLastError, ERROR_NONE_MAPPED);
@@ -3115,12 +3117,72 @@ static void test_get_user_success(void **state) {
     will_return(wrap_syscheck_op_ConvertSidToStringSid, 1);
 
     will_return(wrap_syscheck_op_LookupAccountSid, "accountName");
+    will_return(wrap_syscheck_op_LookupAccountSid, "domainName");
     will_return(wrap_syscheck_op_LookupAccountSid, 1);
 
     array[0] = get_user("C:\\a\\path", 0, &array[1]);
 
     assert_string_equal(array[0], "accountName");
     assert_string_equal(array[1], "sid");
+}
+
+void test_w_get_account_info_LookupAccountSid_error_insufficient_buffer(void **state) {
+    char **array = *state;
+    int ret;
+    SID input;
+
+    will_return(wrap_syscheck_op_LookupAccountSid, OS_SIZE_1024);   // Name size
+    will_return(wrap_syscheck_op_LookupAccountSid, OS_SIZE_1024);   // Domain size
+    will_return(wrap_syscheck_op_LookupAccountSid, 0);
+
+    will_return(wrap_syscheck_op_GetLastError, ERROR_INVALID_NAME);
+    will_return(wrap_syscheck_op_GetLastError, ERROR_INVALID_NAME);
+
+    ret = w_get_account_info(&input, &array[0], &array[1]);
+
+    assert_int_equal(ret, ERROR_INVALID_NAME);
+}
+
+void test_w_get_account_info_LookupAccountSid_error_second_call(void **state) {
+    char **array = *state;
+    int ret;
+    SID input;
+
+    will_return(wrap_syscheck_op_LookupAccountSid, OS_SIZE_1024);   // Name size
+    will_return(wrap_syscheck_op_LookupAccountSid, OS_SIZE_1024);   // Domain size
+    will_return(wrap_syscheck_op_LookupAccountSid, 0);
+
+    will_return(wrap_syscheck_op_GetLastError, ERROR_INSUFFICIENT_BUFFER);
+
+    will_return(wrap_syscheck_op_LookupAccountSid, "accountName");
+    will_return(wrap_syscheck_op_LookupAccountSid, "domainName");
+    will_return(wrap_syscheck_op_LookupAccountSid, 0);
+
+    will_return(wrap_syscheck_op_GetLastError, ERROR_INSUFFICIENT_BUFFER);
+
+    ret = w_get_account_info(&input, &array[0], &array[1]);
+
+    assert_int_equal(ret, ERROR_INSUFFICIENT_BUFFER);
+}
+
+void test_w_get_account_info_success(void **state) {
+    char **array = *state;
+    int ret;
+    SID input;
+
+    will_return(wrap_syscheck_op_LookupAccountSid, OS_SIZE_1024);   // Name size
+    will_return(wrap_syscheck_op_LookupAccountSid, OS_SIZE_1024);   // Domain size
+    will_return(wrap_syscheck_op_LookupAccountSid, 1);
+
+    will_return(wrap_syscheck_op_LookupAccountSid, "accountName");
+    will_return(wrap_syscheck_op_LookupAccountSid, "domainName");
+    will_return(wrap_syscheck_op_LookupAccountSid, 1);
+
+    ret = w_get_account_info(&input, &array[0], &array[1]);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(array[0], "accountName");
+    assert_string_equal(array[1], "domainName");
 }
 #endif
 
@@ -3289,6 +3351,10 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_setup_teardown(test_get_user_LookupAccountSid_error, setup_string_array, teardown_string_array),
         cmocka_unit_test_setup_teardown(test_get_user_LookupAccountSid_error_none_mapped, setup_string_array, teardown_string_array),
         cmocka_unit_test_setup_teardown(test_get_user_success, setup_string_array, teardown_string_array),
+
+        cmocka_unit_test_setup_teardown(test_w_get_account_info_LookupAccountSid_error_insufficient_buffer, setup_string_array, teardown_string_array),
+        cmocka_unit_test_setup_teardown(test_w_get_account_info_LookupAccountSid_error_second_call, setup_string_array, teardown_string_array),
+        cmocka_unit_test_setup_teardown(test_w_get_account_info_success, setup_string_array, teardown_string_array),
         #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
