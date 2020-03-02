@@ -72,7 +72,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
             if (strlen(nodes[i]->content) == 0) {
                 mwarn("Empty content for tag '%s' at module '%s'.", XML_TAG, WM_COMMAND_CONTEXT.name);
                 command_tag_length = strlen(WM_COMMAND_CONTEXT.name) + 2;
-                command_tag = malloc(sizeof(char) * command_tag_length);
+                os_malloc(sizeof(char) * command_tag_length, command_tag);
                 snprintf(command_tag, command_tag_length, "%s", WM_COMMAND_CONTEXT.name);
                 empty = 1;
             }
