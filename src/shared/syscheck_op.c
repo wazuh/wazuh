@@ -616,6 +616,7 @@ void ag_send_syscheck(char * message) {
 
 char *get_user(const char *path, __attribute__((unused)) int uid, char **sid) {
     DWORD dwRtnCode = 0;
+    DWORD dwSecurityInfoErrorCode = 0;
     PSID pSidOwner = NULL;
     BOOL bRtnBool = TRUE;
     char AcctName[BUFFER_LEN];
@@ -674,6 +675,10 @@ char *get_user(const char *path, __attribute__((unused)) int uid, char **sid) {
                                 NULL,
                                 &pSD);
 
+    if (dwRtnCode != ERROR_SUCCESS) {
+        dwSecurityInfoErrorCode = GetLastError();
+    }
+
     CloseHandle(hFile);
 
     char *aux;
@@ -687,10 +692,7 @@ char *get_user(const char *path, __attribute__((unused)) int uid, char **sid) {
 
     // Check GetLastError for GetSecurityInfo error condition.
     if (dwRtnCode != ERROR_SUCCESS) {
-        DWORD dwErrorCode = 0;
-
-        dwErrorCode = GetLastError();
-        merror("GetSecurityInfo error = %lu", dwErrorCode);
+        merror("GetSecurityInfo error = %lu", dwSecurityInfoErrorCode);
         *AcctName = '\0';
         goto end;
     }
