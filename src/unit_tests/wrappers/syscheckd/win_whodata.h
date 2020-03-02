@@ -12,13 +12,21 @@
 #ifdef WIN32
 #include <windows.h>
 
-BOOL WINAPI wrap_OpenProcessToken(
+BOOL WINAPI wrap_win_whodata_OpenProcessToken(
   HANDLE  ProcessHandle,
   DWORD   DesiredAccess,
   PHANDLE TokenHandle
 );
 
-DWORD WINAPI wrap_GetLastError();
+DWORD WINAPI wrap_win_whodata_GetLastError();
+
+BOOL WINAPI wrap_win_whodata_LookupPrivilegeValue(
+  LPCSTR lpSystemName,
+  LPCSTR lpName,
+  PLUID  lpLuid
+);
+
+WINBOOL WINAPI wrap_win_whodata_CloseHandle(HANDLE hObject);
 
 #endif
 #endif

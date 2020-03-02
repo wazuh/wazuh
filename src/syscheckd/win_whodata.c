@@ -35,9 +35,13 @@
 #include "unit_tests/wrappers/syscheckd/win_whodata.h"
 
 #undef OpenProcessToken
-#define OpenProcessToken wrap_OpenProcessToken
+#define OpenProcessToken wrap_win_whodata_OpenProcessToken
 #undef GetLastError
-#define GetLastError wrap_GetLastError
+#define GetLastError wrap_win_whodata_GetLastError
+#undef LookupPrivilegeValue
+#define LookupPrivilegeValue wrap_win_whodata_LookupPrivilegeValue
+#undef CloseHandle
+#define CloseHandle wrap_win_whodata_CloseHandle
 #endif
 
 // Variables whodata

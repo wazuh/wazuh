@@ -48,24 +48,47 @@ void __wrap__merror(const char * file, int line, const char * func, const char *
 }
 /**************************************************************************/
 /***************************set_winsacl************************************/
-void test_set_winsacl_opened_failed(void **state) {
+void test_set_winsacl_failed_opening(void **state) {
     char debug_msg[OS_MAXSTR];
     snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, syscheck.dir[0]);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
-    expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
-    will_return(wrap_OpenProcessToken, 0); 
+    expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_win_whodata_OpenProcessToken, 0); 
 
-    will_return(wrap_GetLastError, (unsigned int) 500);
+    will_return(wrap_win_whodata_GetLastError, (unsigned int) 500);
     expect_string(__wrap__merror, formatted_msg, "(6648): OpenProcessToken() failed. Error '500'.");
 
+    set_winsacl(syscheck.dir[0], 0);
+}
+
+void test_set_winsacl_failed_privileges(void **state) {
+    char debug_msg[OS_MAXSTR];
+    snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, syscheck.dir[0]);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+
+    expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_win_whodata_OpenProcessToken, 1); 
+
+    expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+    will_return(wrap_win_whodata_LookupPrivilegeValue, 0);
+    will_return(wrap_win_whodata_LookupPrivilegeValue, 0); // Fail lookup privilege
+
+    will_return(wrap_win_whodata_GetLastError, (unsigned int) 500);
+    expect_string(__wrap__merror, formatted_msg,  "(6647): Could not find the 'SeSecurityPrivilege' privilege. Error: 500");
+
+    will_return(wrap_win_whodata_GetLastError, (unsigned int) 501);
+    expect_string(__wrap__merror, formatted_msg,  "(6659): The privilege could not be activated. Error: '501'.");
+
+    will_return(wrap_win_whodata_CloseHandle, 0);
     set_winsacl(syscheck.dir[0], 0);
 }
 /**************************************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* set_winsacl */
-        cmocka_unit_test(test_set_winsacl_opened_failed),
+        cmocka_unit_test(test_set_winsacl_failed_opening),
+        cmocka_unit_test(test_set_winsacl_failed_privileges),
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, NULL);
