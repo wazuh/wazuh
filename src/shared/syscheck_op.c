@@ -17,6 +17,23 @@ extern void mock_assert(const int result, const char* const expression,
 #undef assert
 #define assert(expression) \
     mock_assert((int)(expression), #expression, __FILE__, __LINE__);
+
+#ifdef WIN32
+#include "unit_tests/wrappers/shared/syscheck_op.h"
+
+#undef  CreateFile
+#define CreateFile      wrap_syscheck_op_CreateFile
+#define CloseHandle     wrap_syscheck_op_CloseHandle
+#define GetLastError    wrap_syscheck_op_GetLastError
+#undef  FormatMessage
+#define FormatMessage   wrap_syscheck_op_FormatMessage
+#define LocalFree       wrap_syscheck_op_LocalFree
+#define GetSecurityInfo wrap_syscheck_op_GetSecurityInfo
+#undef  ConvertSidToStringSid
+#define ConvertSidToStringSid   wrap_syscheck_op_ConvertSidToStringSid
+#undef  LookupAccountSid
+#define LookupAccountSid        wrap_syscheck_op_LookupAccountSid
+#endif
 #endif
 
 int delete_target_file(const char *path) {

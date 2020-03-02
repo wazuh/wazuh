@@ -10,7 +10,10 @@ if(${TARGET} STREQUAL "winagent")
   list(FILTER rootfiles EXCLUDE REGEX ".*_rk.o$")
 
   # Add test wrappers
-  file(GLOB test_wrapper_files ${SRC_FOLDER}/unit_tests/wrappers/syscheckd/*.o)
+  file(GLOB test_wrapper_files
+       ${SRC_FOLDER}/unit_tests/wrappers/syscheckd/*.o
+       ${SRC_FOLDER}/unit_tests/wrappers/shared/*.o
+       )
   list(APPEND sysfiles ${test_wrapper_files})
 endif()
 

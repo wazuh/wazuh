@@ -940,6 +940,16 @@ os_net/%.o: os_net/%.c
 
 #### Shared ##########
 
+
+wrappers_shared_c := $(wildcard unit_tests/wrappers/shared/*.c)
+wrappers_shared_o := $(wrappers_shared_c:.c=.o)
+
+ifneq (,$(filter ${TEST},YES yes y Y 1))
+ifeq (${TARGET},winagent)
+	WINDOWS_SHARED_WRAPPERS:=${wrappers_syscheck_o}
+endif
+endif
+
 shared_c := $(wildcard shared/*.c)
 shared_o := $(shared_c:.c=.o)
 
@@ -1086,7 +1096,7 @@ crypto_o := ${crypto_blowfish_o} \
 
 #### libwazuh #########
 
-libwazuh.a: ${config_o} ${wmodules_dep} ${crypto_o} ${shared_o} ${os_net_o} ${os_regex_o} ${os_xml_o} ${os_zlib_o}
+libwazuh.a: ${config_o} ${wmodules_dep} ${crypto_o} ${shared_o} ${os_net_o} ${os_regex_o} ${os_xml_o} ${os_zlib_o} ${WINDOWS_SHARED_WRAPPERS}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
 
@@ -1551,10 +1561,14 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 
 ifeq (${TARGET},winagent)
 	WINDOWS_UNIT_TEST_WRAPPERS:=${wrappers_syscheck_o}
+	WINDOWS_UNIT_TEST_WRAPPERS+=${wrappers_shared_o}
 endif
 endif #TEST
 
 unit_tests/wrappers/syscheckd/%.o: unit_tests/wrappers/syscheckd/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+
+unit_tests/wrappers/shared/%.o: unit_tests/wrappers/shared/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
 .PHONY: test run_valgrind_tests run_tests build_tests test_valgrind test_coverage
@@ -1757,6 +1771,7 @@ clean-internals:
 	rm -f ${SELINUX_MODULE}
 	rm -f ${SELINUX_POLICY}
 	rm -f ${wrappers_syscheck_o}
+	rm -f ${wrappers_shared_o}
 
 clean-framework:
 	${MAKE} -C ../framework clean
