@@ -13,8 +13,6 @@
 
 char *searchAndReplace(const char *orig, const char *search, const char *value)
 {
-    assert(orig);
-
     char *p;
     const size_t orig_len = strlen(orig);
     const size_t search_len = strlen(search);
@@ -40,7 +38,7 @@ char *searchAndReplace(const char *orig, const char *search, const char *value)
     /* Copy content before first match, if any */
     if (inx_start > 0) {
         total_bytes_allocated = inx_start + 1;
-        tmp = (char *) malloc(sizeof(char) * total_bytes_allocated);
+        os_malloc(sizeof(char) * total_bytes_allocated, tmp);
         strncpy(tmp, orig, inx_start);
         tmp_offset = inx_start;
     }

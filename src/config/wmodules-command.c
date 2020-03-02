@@ -27,7 +27,6 @@ static const char *XML_SKIP_VERIFICATION = "skip_verification";
 
 int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
 {
-    assert(WM_COMMAND_CONTEXT.name);
 
     int i;
     int empty = 0;
@@ -83,7 +82,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
 
             if (!empty) {
                 command_tag_length = strlen(WM_COMMAND_CONTEXT.name) + strlen(command->tag) + 2;
-                command_tag = malloc(sizeof(char) * command_tag_length);
+                os_malloc(sizeof(char) * command_tag_length, command_tag);
                 snprintf(command_tag, command_tag_length, "%s:%s", WM_COMMAND_CONTEXT.name, command->tag);
             }
 

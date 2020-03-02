@@ -2459,7 +2459,7 @@ char ** wreaddir(const char * name) {
         return NULL;
     }
 
-    files = malloc(sizeof(char *));
+    os_malloc(sizeof(char *), files);
 
     while (dirent = readdir(dir), dirent) {
         // Skip "." and ".."

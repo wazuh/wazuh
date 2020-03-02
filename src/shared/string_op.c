@@ -170,8 +170,6 @@ char * w_strtrim(char * string) {
 // Add a dynamic field with object nesting
 void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
 
-    assert(key);
-
     cJSON *object;
     char *current;
     char *nest = strchr(key, '.');
@@ -179,7 +177,7 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
 
     if (nest) {
         length = nest - key;
-        current = malloc(length + 1);
+        os_malloc(length + 1, current);
         strncpy(current, key, length);
         current[length] = '\0';
 
