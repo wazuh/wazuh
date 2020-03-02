@@ -31,6 +31,15 @@
 #define criteria (DELETE | modify_criteria)
 #define WHODATA_DIR_REMOVE_INTERVAL 2
 
+#ifdef UNIT_TESTING
+#include "unit_tests/wrappers/syscheckd/win_whodata.h"
+
+#undef OpenProcessToken
+#define OpenProcessToken wrap_OpenProcessToken
+#undef GetLastError
+#define GetLastError wrap_GetLastError
+#endif
+
 // Variables whodata
 static char sys_64 = 1;
 static PSID everyone_sid = NULL;

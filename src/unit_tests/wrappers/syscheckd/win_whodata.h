@@ -18,5 +18,7 @@ BOOL WINAPI wrap_OpenProcessToken(
   PHANDLE TokenHandle
 );
 
+DWORD WINAPI wrap_GetLastError();
+
 #endif
 #endif
