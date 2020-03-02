@@ -20,3 +20,7 @@ BOOL WINAPI wrap_OpenProcessToken(
     check_expected(DesiredAccess);
     return mock();
 }
+
+DWORD WINAPI wrap_GetLastError() {
+  return mock();
+}
