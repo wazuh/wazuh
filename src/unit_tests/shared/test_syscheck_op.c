@@ -61,16 +61,14 @@ char ** __wrap_wreaddir(const char * name) {
 }
 
 void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
-    char *param1;
+    char formatted_msg[OS_MAXSTR];
     va_list args;
 
     va_start(args, msg);
-    param1 = va_arg(args, char*);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
     va_end(args);
 
-    check_expected(msg);
-    check_expected(param1);
-    return;
+    check_expected(formatted_msg);
 }
 
 void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
@@ -103,32 +101,25 @@ void __wrap__mdebug2(const char * file, int line, const char * func, const char 
 }
 
 void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...) {
-    char *param1, *param2;
+    char formatted_msg[OS_MAXSTR];
     va_list args;
 
     va_start(args, msg);
-    param1 = va_arg(args, char*);
-    param2 = va_arg(args, char*);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
     va_end(args);
 
-    check_expected(msg);
-    check_expected(param1);
-    check_expected(param2);
+    check_expected(formatted_msg);
 }
 
 void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    char *param1;
-    int param2;
+    char formatted_msg[OS_MAXSTR];
     va_list args;
 
     va_start(args, msg);
-    param1 = va_arg(args, char*);
-    param2 = va_arg(args, int);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
     va_end(args);
 
-    check_expected(msg);
-    check_expected(param1);
-    check_expected(param2);
+    check_expected(formatted_msg);
 }
 
 struct group *__wrap_getgrgid(gid_t gid) {
@@ -225,6 +216,26 @@ static int teardown_string(void **state) {
     free(*state);
     return 0;
 }
+
+static int setup_string_array(void **state) {
+    char **array = calloc(10, sizeof(char*));
+
+    if(array == NULL)
+        return -1;
+
+    *state = array;
+
+    return 0;
+}
+
+static int teardown_string_array(void **state) {
+    char **array = *state;
+
+    free_strarray(array);
+
+    return 0;
+}
+
 #if defined(TEST_SERVER)
 static int setup_sk_decode(void **state) {
     sk_decode_data_t *data = calloc(1, sizeof(sk_decode_data_t));
@@ -387,8 +398,7 @@ static void test_delete_target_file_success(void **state) {
     expect_string(__wrap_wreaddir, name, "queue/diff\\local\\c");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, msg, "Removing empty directory '%s'.");
-    expect_string(__wrap__mdebug1, param1, "queue/diff\\local\\c");
+    expect_string(__wrap__mdebug1, formatted_msg, "Removing empty directory 'queue/diff\\local\\c'.");
 
     expect_string(__wrap_rmdir_ex, name, "queue/diff\\local\\c");
     will_return(__wrap_rmdir_ex, 0);
@@ -472,12 +482,13 @@ static void test_remove_empty_folders_success(void **state) {
     char *first_subdir = "queue/diff\\local\\test-dir";
     #endif
     int ret = -1;
+    char message[OS_SIZE_1024];
 
     expect_string(__wrap_wreaddir, name, first_subdir);
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, msg, "Removing empty directory '%s'.");
-    expect_string(__wrap__mdebug1, param1, first_subdir);
+    snprintf(message, OS_SIZE_1024, "Removing empty directory '%s'.", first_subdir);
+    expect_string(__wrap__mdebug1, formatted_msg, message);
 
     expect_string(__wrap_rmdir_ex, name, first_subdir);
     will_return(__wrap_rmdir_ex, 0);
@@ -501,14 +512,17 @@ static void test_remove_empty_folders_recursive_success(void **state) {
         "queue/diff\\local\\dir1"
     };
     #endif
+    char messages[2][OS_SIZE_1024];
     int ret = -1;
+
+    snprintf(messages[0], OS_SIZE_1024, "Removing empty directory '%s'.", parent_dirs[0]);
+    snprintf(messages[1], OS_SIZE_1024, "Removing empty directory '%s'.", parent_dirs[1]);
 
     // Remove dir2
     expect_string(__wrap_wreaddir, name, parent_dirs[0]);
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, msg, "Removing empty directory '%s'.");
-    expect_string(__wrap__mdebug1, param1, parent_dirs[0]);
+    expect_string(__wrap__mdebug1, formatted_msg, messages[0]);
 
     expect_string(__wrap_rmdir_ex, name, parent_dirs[0]);
     will_return(__wrap_rmdir_ex, 0);
@@ -517,8 +531,7 @@ static void test_remove_empty_folders_recursive_success(void **state) {
     expect_string(__wrap_wreaddir, name, parent_dirs[1]);
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, msg, "Removing empty directory '%s'.");
-    expect_string(__wrap__mdebug1, param1, parent_dirs[1]);
+    expect_string(__wrap__mdebug1, formatted_msg, messages[1]);
 
     expect_string(__wrap_rmdir_ex, name, parent_dirs[1]);
     will_return(__wrap_rmdir_ex, 0);
@@ -541,17 +554,21 @@ static void test_remove_empty_folders_relative_path(void **state) {
     char *input = ".\\local\\test-dir\\";
     const static char *parent_dirs[] = {".\\local\\test-dir", ".\\local", "."};
     #endif
+    char messages[3][OS_SIZE_1024];
     int ret = -1;
+
+    snprintf(messages[0], OS_SIZE_1024, "Removing empty directory '%s'.", parent_dirs[0]);
+    snprintf(messages[1], OS_SIZE_1024, "Removing empty directory '%s'.", parent_dirs[1]);
+    snprintf(messages[2], OS_SIZE_1024, "Removing empty directory '%s'.", parent_dirs[2]);
 
     expect_string(__wrap_wreaddir, name, parent_dirs[0]);
     expect_string(__wrap_wreaddir, name, parent_dirs[1]);
     expect_string(__wrap_wreaddir, name, parent_dirs[2]);
     will_return_always(__wrap_wreaddir, NULL);
 
-    expect_string_count(__wrap__mdebug1, msg, "Removing empty directory '%s'.", 3);
-    expect_string(__wrap__mdebug1, param1, parent_dirs[0]);
-    expect_string(__wrap__mdebug1, param1, parent_dirs[1]);
-    expect_string(__wrap__mdebug1, param1, parent_dirs[2]);
+    expect_string(__wrap__mdebug1, formatted_msg, messages[0]);
+    expect_string(__wrap__mdebug1, formatted_msg, messages[1]);
+    expect_string(__wrap__mdebug1, formatted_msg, messages[2]);
 
     expect_string(__wrap_rmdir_ex, name, parent_dirs[0]);
     expect_string(__wrap_rmdir_ex, name, parent_dirs[1]);
@@ -581,16 +598,20 @@ static void test_remove_empty_folders_absolute_path(void **state) {
         "c:"
     };
     #endif
+    char messages[3][OS_SIZE_1024];
+
+    snprintf(messages[0], OS_SIZE_1024, "Removing empty directory '%s'.", parent_dirs[0]);
+    snprintf(messages[1], OS_SIZE_1024, "Removing empty directory '%s'.", parent_dirs[1]);
+    snprintf(messages[2], OS_SIZE_1024, "Removing empty directory '%s'.", parent_dirs[2]);
 
     expect_string(__wrap_wreaddir, name, parent_dirs[0]);
     expect_string(__wrap_wreaddir, name, parent_dirs[1]);
     expect_string(__wrap_wreaddir, name, parent_dirs[2]);
     will_return_always(__wrap_wreaddir, NULL);
 
-    expect_string_count(__wrap__mdebug1, msg, "Removing empty directory '%s'.", 3);
-    expect_string(__wrap__mdebug1, param1, parent_dirs[0]);
-    expect_string(__wrap__mdebug1, param1, parent_dirs[1]);
-    expect_string(__wrap__mdebug1, param1, parent_dirs[2]);
+    expect_string(__wrap__mdebug1, formatted_msg, messages[0]);
+    expect_string(__wrap__mdebug1, formatted_msg, messages[1]);
+    expect_string(__wrap__mdebug1, formatted_msg, messages[2]);
 
     expect_string(__wrap_rmdir_ex, name, parent_dirs[0]);
     expect_string(__wrap_rmdir_ex, name, parent_dirs[1]);
@@ -636,19 +657,21 @@ static void test_remove_empty_folders_error_removing_dir(void **state) {
     static const char *parent_dir = "queue/diff\\local\\test-dir";
     #endif
     int ret = -1;
+    char remove_dir_message[OS_SIZE_1024];
+    char dir_not_deleted_message[OS_SIZE_1024];
 
     expect_string(__wrap_wreaddir, name, parent_dir);
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, msg, "Removing empty directory '%s'.");
-    expect_string(__wrap__mdebug1, param1, parent_dir);
+    snprintf(remove_dir_message, OS_SIZE_1024, "Removing empty directory '%s'.", parent_dir);
+    expect_string(__wrap__mdebug1, formatted_msg, remove_dir_message);
 
     expect_string(__wrap_rmdir_ex, name, parent_dir);
     will_return(__wrap_rmdir_ex, -1);
 
-    expect_string(__wrap__mwarn, msg, "Empty directory '%s' couldn't be deleted. ('%s')");
-    expect_string(__wrap__mwarn, param1, parent_dir);
-    expect_string(__wrap__mwarn, param2, "Directory not empty");
+    snprintf(dir_not_deleted_message, OS_SIZE_1024,
+        "Empty directory '%s' couldn't be deleted. ('Directory not empty')", parent_dir);
+    expect_string(__wrap__mwarn, formatted_msg, dir_not_deleted_message);
 
     ret = remove_empty_folders(input);
 
@@ -2233,9 +2256,7 @@ static void test_ag_send_syscheck_unable_to_connect(void **state) {
 
     errno = EADDRNOTAVAIL;
 
-    expect_string(__wrap__merror, msg, "dbsync: cannot connect to syscheck: %s (%d)");
-    expect_string(__wrap__merror, param1, "Cannot assign requested address");
-    expect_value(__wrap__merror, param2, EADDRNOTAVAIL);
+    expect_string(__wrap__merror, formatted_msg, "dbsync: cannot connect to syscheck: Cannot assign requested address (99)");
 
     ag_send_syscheck(input);
 
@@ -2258,9 +2279,7 @@ static void test_ag_send_syscheck_error_sending_message(void **state) {
 
     errno = EWOULDBLOCK;
 
-    expect_string(__wrap__merror, msg, "Cannot send message to syscheck: %s (%d)");
-    expect_string(__wrap__merror, param1, "Resource temporarily unavailable");
-    expect_value(__wrap__merror, param2, EWOULDBLOCK);
+    expect_string(__wrap__merror, formatted_msg, "Cannot send message to syscheck: Resource temporarily unavailable (11)");
 
     ag_send_syscheck(input);
 
@@ -2431,8 +2450,7 @@ static void test_decode_win_permissions_fail_no_account_name(void **state) {
     char *raw_perm = "|this wont pass";
     char *output;
 
-    expect_string(__wrap__mdebug1, msg, "The file permissions could not be decoded: '%s'.");
-    expect_string(__wrap__mdebug1, param1, "|this wont pass");
+    expect_string(__wrap__mdebug1, formatted_msg, "The file permissions could not be decoded: '|this wont pass'.");
 
     output = decode_win_permissions(raw_perm);
 
@@ -2445,8 +2463,7 @@ static void test_decode_win_permissions_fail_no_access_type(void **state) {
     char *raw_perm = strdup("|account,this wont pass");
     char *output;
 
-    expect_string(__wrap__mdebug1, msg, "The file permissions could not be decoded: '%s'.");
-    expect_string(__wrap__mdebug1, param1, "|account,this wont pass");
+    expect_string(__wrap__mdebug1, formatted_msg, "The file permissions could not be decoded: '|account,this wont pass'.");
 
     output = decode_win_permissions(raw_perm);
 
@@ -2504,7 +2521,6 @@ static void test_attrs_to_json_multiple_attributes(void **state) {
     assert_string_equal(attr3, "attr3");
 }
 
-#ifndef TEST_WINAGENT
 static void test_attrs_to_json_unable_to_create_json_array(void **state)  {
     char *input = "attr1, attr2, attr3";
     cJSON *output;
@@ -2517,7 +2533,6 @@ static void test_attrs_to_json_unable_to_create_json_array(void **state)  {
 
     assert_null(output);
 }
-#endif
 
 // TODO: Validate this condition is required to be tested
 static void test_attrs_to_json_null_attributes(void **state)  {
@@ -2646,8 +2661,8 @@ static void test_win_perm_to_json_no_permissions(void **state) {
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
 
-    expect_string(__wrap__mdebug1, msg, "Uncontrolled condition when parsing a Windows permission from '%s'.");
-    expect_string(__wrap__mdebug1, param1, "account (allowed)");
+    expect_string(__wrap__mdebug1, formatted_msg,
+        "Uncontrolled condition when parsing a Windows permission from 'account (allowed)'.");
 
     output = win_perm_to_json(input);
 
@@ -2833,8 +2848,9 @@ static void test_win_perm_to_json_fragmented_acl(void **state) {
 
     will_return_always(__wrap_wstr_split, 1);  // use real wstr_split
 
-    expect_string(__wrap__mdebug1, msg, "ACL [%s] fragmented. All permissions may not be displayed.");
-    expect_string(__wrap__mdebug1, param1, input);
+    expect_string(__wrap__mdebug1, formatted_msg,
+        "ACL [first (allowed): generic_read|generic_write|generic_execute, "
+        "first (allowed): generic_all|delete|read_control|write_dac|write_owner,] fragmented. All permissions may not be displayed.");
 
     output = win_perm_to_json(input);
 
@@ -2863,7 +2879,6 @@ static void test_win_perm_to_json_null_input(void **state) {
     expect_assert_failure(win_perm_to_json(NULL));
 }
 
-#ifndef TEST_WINAGENT
 static void test_win_perm_to_json_unable_to_create_main_array(void **state) {
     char *input = "first (allowed): generic_read|generic_write|generic_execute,";
     cJSON *output;
@@ -2884,8 +2899,8 @@ static void test_win_perm_to_json_unable_to_create_sub_array(void **state) {
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_cJSON_CreateArray, NULL);
 
-    expect_string(__wrap__mdebug1, msg, "Uncontrolled condition when parsing a Windows permission from '%s'.");
-    expect_string(__wrap__mdebug1, param1, "first (allowed): generic_read|generic_write|generic_execute,");
+    expect_string(__wrap__mdebug1, formatted_msg,
+        "Uncontrolled condition when parsing a Windows permission from 'first (allowed): generic_read|generic_write|generic_execute,'.");
 
     output = win_perm_to_json(input);
 
@@ -2900,14 +2915,13 @@ static void test_win_perm_to_json_unable_to_create_user_object(void **state) {
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
 
-    expect_string(__wrap__mdebug1, msg, "Uncontrolled condition when parsing a Windows permission from '%s'.");
-    expect_string(__wrap__mdebug1, param1, "first (allowed): generic_read|generic_write|generic_execute,");
+    expect_string(__wrap__mdebug1, formatted_msg,
+        "Uncontrolled condition when parsing a Windows permission from 'first (allowed): generic_read|generic_write|generic_execute,'.");
 
     output = win_perm_to_json(input);
 
     assert_null(output);
 }
-#endif
 
 static void test_win_perm_to_json_incorrect_permission_format(void **state) {
     char *input = "This format is incorrect";
@@ -2915,8 +2929,8 @@ static void test_win_perm_to_json_incorrect_permission_format(void **state) {
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
 
-    expect_string(__wrap__mdebug1, msg, "Uncontrolled condition when parsing a Windows permission from '%s'.");
-    expect_string(__wrap__mdebug1, param1, "This format is incorrect");
+    expect_string(__wrap__mdebug1, formatted_msg,
+        "Uncontrolled condition when parsing a Windows permission from 'This format is incorrect'.");
 
     output = win_perm_to_json(input);
 
@@ -2928,8 +2942,8 @@ static void test_win_perm_to_json_incorrect_permission_format_2(void **state) {
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
 
-    expect_string(__wrap__mdebug1, msg, "Uncontrolled condition when parsing a Windows permission from '%s'.");
-    expect_string(__wrap__mdebug1, param1, "This format is incorrect (too");
+    expect_string(__wrap__mdebug1, formatted_msg,
+        "Uncontrolled condition when parsing a Windows permission from 'This format is incorrect (too'.");
 
     output = win_perm_to_json(input);
 
@@ -2947,13 +2961,168 @@ static void test_win_perm_to_json_error_splitting_permissions(void **state) {
 
     will_return_always(__wrap_wstr_split, 0);  // fail to split string
 
-    expect_string(__wrap__mdebug1, msg, "Uncontrolled condition when parsing a Windows permission from '%s'.");
-    expect_string(__wrap__mdebug1, param1, "first (allowed): generic_read|generic_write|generic_execute,");
+    expect_string(__wrap__mdebug1, formatted_msg,
+        "Uncontrolled condition when parsing a Windows permission from 'first (allowed): generic_read|generic_write|generic_execute,'.");
 
     output = win_perm_to_json(input);
 
     assert_null(output);
 }
+
+#ifdef TEST_WINAGENT
+static void test_get_user_CreateFile_error_access_denied(void **state) {
+    char **array = *state;
+
+    expect_string(wrap_syscheck_op_CreateFile, lpFileName, "C:\\a\\path");
+    will_return(wrap_syscheck_op_CreateFile, INVALID_HANDLE_VALUE);
+
+    will_return(wrap_syscheck_op_GetLastError, ERROR_ACCESS_DENIED);
+
+    will_return(wrap_syscheck_op_FormatMessage, "An error message");
+
+    expect_string(__wrap__mdebug1, formatted_msg, "At get_user(C:\\a\\path): CreateFile(): An error message (5)");
+
+    array[0] = get_user("C:\\a\\path", 0, &array[1]);
+
+    assert_string_equal(array[0], "");
+}
+
+static void test_get_user_CreateFile_error_sharing_violation(void **state) {
+    char **array = *state;
+
+    expect_string(wrap_syscheck_op_CreateFile, lpFileName, "C:\\a\\path");
+    will_return(wrap_syscheck_op_CreateFile, INVALID_HANDLE_VALUE);
+
+    will_return(wrap_syscheck_op_GetLastError, ERROR_SHARING_VIOLATION);
+
+    will_return(wrap_syscheck_op_FormatMessage, "An error message");
+
+    expect_string(__wrap__mdebug1, formatted_msg, "At get_user(C:\\a\\path): CreateFile(): An error message (32)");
+
+    array[0] = get_user("C:\\a\\path", 0, &array[1]);
+
+    assert_string_equal(array[0], "");
+}
+
+static void test_get_user_CreateFile_error_generic(void **state) {
+    char **array = *state;
+
+    expect_string(wrap_syscheck_op_CreateFile, lpFileName, "C:\\a\\path");
+    will_return(wrap_syscheck_op_CreateFile, INVALID_HANDLE_VALUE);
+
+    will_return(wrap_syscheck_op_GetLastError, 127);
+
+    will_return(wrap_syscheck_op_FormatMessage, "An error message");
+
+    expect_string(__wrap__mwarn, formatted_msg, "At get_user(C:\\a\\path): CreateFile(): An error message (127)");
+
+    array[0] = get_user("C:\\a\\path", 0, &array[1]);
+
+    assert_string_equal(array[0], "");
+}
+
+static void test_get_user_GetSecurityInfo_error(void **state) {
+    char **array = *state;
+
+    expect_string(wrap_syscheck_op_CreateFile, lpFileName, "C:\\a\\path");
+    will_return(wrap_syscheck_op_CreateFile, (HANDLE)123456);
+
+    will_return(wrap_syscheck_op_GetSecurityInfo, ERROR_PATH_NOT_FOUND);
+
+    expect_value(wrap_syscheck_op_CloseHandle, hObject, (HANDLE)123456);
+    will_return(wrap_syscheck_op_CloseHandle, 0);
+
+    will_return(wrap_syscheck_op_ConvertSidToStringSid, NULL);
+    will_return(wrap_syscheck_op_ConvertSidToStringSid, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "The user's SID could not be extracted.");
+
+    will_return(wrap_syscheck_op_GetLastError, ERROR_INVALID_SID);
+
+    expect_string(__wrap__merror, formatted_msg, "GetSecurityInfo error = 1337");
+
+    array[0] = get_user("C:\\a\\path", 0, &array[1]);
+
+    assert_string_equal(array[0], "");
+}
+
+static void test_get_user_LookupAccountSid_error(void **state) {
+    char **array = *state;
+
+    expect_string(wrap_syscheck_op_CreateFile, lpFileName, "C:\\a\\path");
+    will_return(wrap_syscheck_op_CreateFile, (HANDLE)123456);
+
+    will_return(wrap_syscheck_op_GetSecurityInfo, ERROR_SUCCESS);
+
+    expect_value(wrap_syscheck_op_CloseHandle, hObject, (HANDLE)123456);
+    will_return(wrap_syscheck_op_CloseHandle, 0);
+
+    will_return(wrap_syscheck_op_ConvertSidToStringSid, "sid");
+    will_return(wrap_syscheck_op_ConvertSidToStringSid, 1);
+
+    will_return(wrap_syscheck_op_LookupAccountSid, "accountName");
+    will_return(wrap_syscheck_op_LookupAccountSid, 0);
+
+    will_return(wrap_syscheck_op_GetLastError, ERROR_INVALID_SID);
+
+    expect_string(__wrap__merror, formatted_msg, "Error in LookupAccountSid.");
+
+    array[0] = get_user("C:\\a\\path", 0, &array[1]);
+
+    assert_string_equal(array[0], "");
+    assert_string_equal(array[1], "sid");
+}
+
+static void test_get_user_LookupAccountSid_error_none_mapped(void **state) {
+    char **array = *state;
+
+    expect_string(wrap_syscheck_op_CreateFile, lpFileName, "C:\\a\\path");
+    will_return(wrap_syscheck_op_CreateFile, (HANDLE)123456);
+
+    will_return(wrap_syscheck_op_GetSecurityInfo, ERROR_SUCCESS);
+
+    expect_value(wrap_syscheck_op_CloseHandle, hObject, (HANDLE)123456);
+    will_return(wrap_syscheck_op_CloseHandle, 0);
+
+    will_return(wrap_syscheck_op_ConvertSidToStringSid, "sid");
+    will_return(wrap_syscheck_op_ConvertSidToStringSid, 1);
+
+    will_return(wrap_syscheck_op_LookupAccountSid, "accountName");
+    will_return(wrap_syscheck_op_LookupAccountSid, 0);
+
+    will_return(wrap_syscheck_op_GetLastError, ERROR_NONE_MAPPED);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Account owner not found for file 'C:\\a\\path'");
+
+    array[0] = get_user("C:\\a\\path", 0, &array[1]);
+
+    assert_string_equal(array[0], "");
+    assert_string_equal(array[1], "sid");
+}
+
+static void test_get_user_success(void **state) {
+    char **array = *state;
+
+    expect_string(wrap_syscheck_op_CreateFile, lpFileName, "C:\\a\\path");
+    will_return(wrap_syscheck_op_CreateFile, (HANDLE)123456);
+
+    will_return(wrap_syscheck_op_GetSecurityInfo, ERROR_SUCCESS);
+
+    expect_value(wrap_syscheck_op_CloseHandle, hObject, (HANDLE)123456);
+    will_return(wrap_syscheck_op_CloseHandle, 0);
+
+    will_return(wrap_syscheck_op_ConvertSidToStringSid, "sid");
+    will_return(wrap_syscheck_op_ConvertSidToStringSid, 1);
+
+    will_return(wrap_syscheck_op_LookupAccountSid, "accountName");
+    will_return(wrap_syscheck_op_LookupAccountSid, 1);
+
+    array[0] = get_user("C:\\a\\path", 0, &array[1]);
+
+    assert_string_equal(array[0], "accountName");
+    assert_string_equal(array[1], "sid");
+}
+#endif
 
 
 int main(int argc, char *argv[]) {
@@ -3094,9 +3263,7 @@ int main(int argc, char *argv[]) {
         /* attrs_to_json tests */
         cmocka_unit_test_teardown(test_attrs_to_json_single_attribute, teardown_cjson),
         cmocka_unit_test_teardown(test_attrs_to_json_multiple_attributes, teardown_cjson),
-        #ifndef TEST_WINAGENT
         cmocka_unit_test_teardown(test_attrs_to_json_unable_to_create_json_array, teardown_cjson),
-        #endif
         cmocka_unit_test_teardown(test_attrs_to_json_null_attributes, teardown_cjson),
 
         /* win_perm_to_json tests*/
@@ -3107,14 +3274,22 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_teardown(test_win_perm_to_json_multiple_accounts, teardown_cjson),
         cmocka_unit_test_teardown(test_win_perm_to_json_fragmented_acl, teardown_cjson),
         cmocka_unit_test_teardown(test_win_perm_to_json_null_input, teardown_cjson),
-        #ifndef TEST_WINAGENT
         cmocka_unit_test_teardown(test_win_perm_to_json_unable_to_create_main_array, teardown_cjson),
         cmocka_unit_test_teardown(test_win_perm_to_json_unable_to_create_sub_array, teardown_cjson),
         cmocka_unit_test_teardown(test_win_perm_to_json_unable_to_create_user_object, teardown_cjson),
-        #endif
         cmocka_unit_test_teardown(test_win_perm_to_json_incorrect_permission_format, teardown_cjson),
         cmocka_unit_test_teardown(test_win_perm_to_json_incorrect_permission_format_2, teardown_cjson),
         cmocka_unit_test_teardown(test_win_perm_to_json_error_splitting_permissions, teardown_cjson),
+
+        #ifdef TEST_WINAGENT
+        cmocka_unit_test_setup_teardown(test_get_user_CreateFile_error_access_denied, setup_string_array, teardown_string_array),
+        cmocka_unit_test_setup_teardown(test_get_user_CreateFile_error_sharing_violation, setup_string_array, teardown_string_array),
+        cmocka_unit_test_setup_teardown(test_get_user_CreateFile_error_generic, setup_string_array, teardown_string_array),
+        cmocka_unit_test_setup_teardown(test_get_user_GetSecurityInfo_error, setup_string_array, teardown_string_array),
+        cmocka_unit_test_setup_teardown(test_get_user_LookupAccountSid_error, setup_string_array, teardown_string_array),
+        cmocka_unit_test_setup_teardown(test_get_user_LookupAccountSid_error_none_mapped, setup_string_array, teardown_string_array),
+        cmocka_unit_test_setup_teardown(test_get_user_success, setup_string_array, teardown_string_array),
+        #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
