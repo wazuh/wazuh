@@ -86,3 +86,7 @@ WINBOOL wrap_syscheck_op_LookupAccountSid (__UNUSED_PARAM(LPCSTR lpSystemName),
 
     return mock();
 }
+
+WINBOOL wrap_syscheck_op_IsValidSid (__UNUSED_PARAM(PSID pSid)) {
+    return mock();
+}

@@ -72,32 +72,14 @@ void __wrap__mdebug1(const char * file, int line, const char * func, const char 
 }
 
 void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
-    int param1;
-    char *param2;
+    char formatted_msg[OS_MAXSTR];
     va_list args;
-    const char *aux = msg;
-    int i = 0;
 
     va_start(args, msg);
-
-    while(aux = strchr(aux, '%'), aux) {
-        i++;
-        aux++;
-    }
-
-    if(i) {
-        param1 = va_arg(args, int);
-        check_expected(param1);
-        i--;
-    }
-    if(i) {
-        param2 = va_arg(args, char*);
-        check_expected(param2);
-    }
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
     va_end(args);
 
-    check_expected(msg);
-    return;
+    check_expected(formatted_msg);
 }
 
 void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...) {
@@ -2158,8 +2140,7 @@ static void test_get_user_uid_not_found(void **state) {
     will_return(__wrap_getpwuid_r, 0);
     #endif
 
-    expect_string(__wrap__mdebug2, msg, "User with uid '%d' not found.\n");
-    expect_value(__wrap__mdebug2, param1, 1);
+    expect_string(__wrap__mdebug2, formatted_msg, "User with uid '1' not found.\n");
 
     user = get_user(NULL, 1, NULL);
 
@@ -2177,9 +2158,7 @@ static void test_get_user_error(void **state) {
     will_return(__wrap_getpwuid_r, ENOENT);
     #endif
 
-    expect_string(__wrap__mdebug2, msg, "Failed getting user_name (%d): '%s'\n");
-    expect_value(__wrap__mdebug2, param1, ENOENT);
-    expect_string(__wrap__mdebug2, param2, "No such file or directory");
+    expect_string(__wrap__mdebug2, formatted_msg, "Failed getting user_name (2): 'No such file or directory'\n");
 
     user = get_user(NULL, 1, NULL);
 
@@ -3184,6 +3163,90 @@ void test_w_get_account_info_success(void **state) {
     assert_string_equal(array[0], "accountName");
     assert_string_equal(array[1], "domainName");
 }
+
+void test_copy_ace_info_invalid_ace(void **state) {
+    int ret;
+    char perm[OS_SIZE_1024];
+    ACCESS_ALLOWED_ACE ace = {
+        .Header.AceType = SYSTEM_AUDIT_ACE_TYPE,
+    };
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Invalid ACE type.");
+
+    ret = copy_ace_info(&ace, perm, OS_SIZE_1024);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_copy_ace_info_invalid_sid(void **state) {
+    int ret;
+    char perm[OS_SIZE_1024];
+    ACCESS_ALLOWED_ACE ace = {
+        .Header.AceType = ACCESS_DENIED_ACE_TYPE,
+    };
+
+    will_return(wrap_syscheck_op_IsValidSid, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Invalid SID found in ACE.");
+
+    ret = copy_ace_info(&ace, perm, OS_SIZE_1024);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_copy_ace_info_no_information_from_account_or_sid(void **state) {
+    int ret;
+    char perm[OS_SIZE_1024];
+    ACCESS_ALLOWED_ACE ace = {
+        .Header.AceType = ACCESS_ALLOWED_ACE_TYPE,
+    };
+
+    will_return(wrap_syscheck_op_IsValidSid, 1);
+
+    // Inside w_get_account_info
+    will_return(wrap_syscheck_op_LookupAccountSid, OS_SIZE_1024);   // Name size
+    will_return(wrap_syscheck_op_LookupAccountSid, OS_SIZE_1024);   // Domain size
+    will_return(wrap_syscheck_op_LookupAccountSid, 0);
+
+    will_return(wrap_syscheck_op_GetLastError, ERROR_INVALID_NAME);
+    will_return(wrap_syscheck_op_GetLastError, ERROR_INVALID_NAME);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "No information could be extracted from the account linked to the SID. Error: 123.");
+
+    will_return(wrap_syscheck_op_ConvertSidToStringSid, NULL);
+    will_return(wrap_syscheck_op_ConvertSidToStringSid, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Could not extract the SID.");
+
+    ret = copy_ace_info(&ace, perm, OS_SIZE_1024);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_copy_ace_info_success(void **state) {
+    int ret;
+    char perm[OS_SIZE_1024];
+    ACCESS_ALLOWED_ACE ace = {
+        .Header.AceType = ACCESS_ALLOWED_ACE_TYPE,
+        .Mask = 123456,
+    };
+
+    will_return(wrap_syscheck_op_IsValidSid, 1);
+
+    // Inside w_get_account_info
+    will_return(wrap_syscheck_op_LookupAccountSid, OS_SIZE_1024);   // Name size
+    will_return(wrap_syscheck_op_LookupAccountSid, OS_SIZE_1024);   // Domain size
+    will_return(wrap_syscheck_op_LookupAccountSid, 1);
+
+    will_return(wrap_syscheck_op_LookupAccountSid, "accountName");
+    will_return(wrap_syscheck_op_LookupAccountSid, "domainName");
+    will_return(wrap_syscheck_op_LookupAccountSid, 1);
+
+    ret = copy_ace_info(&ace, perm, OS_SIZE_1024);
+
+    assert_int_equal(ret, 21);
+    assert_string_equal(perm, "|accountName,0,123456");
+}
 #endif
 
 
@@ -3355,6 +3418,11 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_setup_teardown(test_w_get_account_info_LookupAccountSid_error_insufficient_buffer, setup_string_array, teardown_string_array),
         cmocka_unit_test_setup_teardown(test_w_get_account_info_LookupAccountSid_error_second_call, setup_string_array, teardown_string_array),
         cmocka_unit_test_setup_teardown(test_w_get_account_info_success, setup_string_array, teardown_string_array),
+
+        cmocka_unit_test(test_copy_ace_info_invalid_ace),
+        cmocka_unit_test(test_copy_ace_info_invalid_sid),
+        cmocka_unit_test(test_copy_ace_info_no_information_from_account_or_sid),
+        cmocka_unit_test(test_copy_ace_info_success),
         #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -21,6 +21,6 @@ HLOCAL wrap_syscheck_op_LocalFree (HLOCAL hMem);
 DWORD wrap_syscheck_op_GetSecurityInfo (HANDLE handle, SE_OBJECT_TYPE ObjectType, SECURITY_INFORMATION SecurityInfo, PSID *ppsidOwner, PSID *ppsidGroup, PACL *ppDacl, PACL *ppSacl, PSECURITY_DESCRIPTOR *ppSecurityDescriptor);
 WINBOOL wrap_syscheck_op_ConvertSidToStringSid(PSID Sid,LPSTR *StringSid);
 WINBOOL wrap_syscheck_op_LookupAccountSid (LPCSTR lpSystemName, PSID Sid, LPSTR Name, LPDWORD cchName, LPSTR ReferencedDomainName, LPDWORD cchReferencedDomainName, PSID_NAME_USE peUse);
-
+WINBOOL wrap_syscheck_op_IsValidSid (PSID pSid);
 #endif
 #endif

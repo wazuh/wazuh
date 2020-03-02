@@ -33,6 +33,7 @@ extern void mock_assert(const int result, const char* const expression,
 #define ConvertSidToStringSid   wrap_syscheck_op_ConvertSidToStringSid
 #undef  LookupAccountSid
 #define LookupAccountSid        wrap_syscheck_op_LookupAccountSid
+#define IsValidSid      wrap_syscheck_op_IsValidSid
 #endif
 #endif
 
