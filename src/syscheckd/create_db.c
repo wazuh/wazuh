@@ -15,6 +15,16 @@
 #include "time_op.h"
 #include "fim_db.h"
 
+#ifdef UNIT_TESTING
+/* Replace assert with mock_assert */
+extern void mock_assert(const int result, const char* const expression,
+                        const char * const file, const int line);
+
+#undef assert
+#define assert(expression) \
+    mock_assert((int)(expression), #expression, __FILE__, __LINE__);
+#endif
+
 // Global variables
 static int _base_line = 0;
 
@@ -83,7 +93,7 @@ void fim_scan() {
     fim_send_scan_info(FIM_SCAN_END);
 
     if (isDebug()) {
-        fim_print_info(start, end, cputime_start);
+        fim_print_info(start, end, cputime_start); // LCOV_EXCL_LINE
     }
 }
 
@@ -332,7 +342,6 @@ void fim_realtime_event(char *file) {
     }
 }
 
-// LCOV_EXCL_START
 void fim_whodata_event(whodata_evt * w_evt) {
 
     struct stat file_stat;
@@ -349,8 +358,6 @@ void fim_whodata_event(whodata_evt * w_evt) {
         fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt);
     }
 }
-
-// LCOV_EXCL_STOP
 
 
 void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt) {
@@ -747,22 +754,24 @@ cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_da
 
         paths = fim_db_get_paths_from_inode(syscheck.database, old_data->inode, old_data->dev);
 
-        if(paths[0] && paths[1]){
-            cJSON *hard_links = cJSON_CreateArray();
-            int i;
-            for(i = 0; paths[i]; i++) {
-                if(strcmp(file_name, paths[i])) {
-                    cJSON_AddItemToArray(hard_links, cJSON_CreateString(paths[i]));
+        if (paths) {
+            if(paths[0] && paths[1]) {
+                cJSON *hard_links = cJSON_CreateArray();
+                int i;
+                for(i = 0; paths[i]; i++) {
+                    if(strcmp(file_name, paths[i])) {
+                        cJSON_AddItemToArray(hard_links, cJSON_CreateString(paths[i]));
+                    }
+                    os_free(paths[i]);
                 }
-                os_free(paths[i]);
+
+                cJSON_AddItemToObject(data, "hard_links", hard_links);
+            } else if (paths[0]) {
+                os_free(paths[0]);
             }
 
-            cJSON_AddItemToObject(data, "hard_links", hard_links);
-        } else {
-            os_free(paths[0]);
+            os_free(paths);
         }
-
-        os_free(paths);
     }
 
 #endif
@@ -873,8 +882,8 @@ cJSON * fim_attributes_json(const fim_entry_data * data) {
 // Create file entry JSON from a FIM entry structure
 
 cJSON * fim_entry_json(const char * path, fim_entry_data * data) {
-    assert(data);
-    assert(path);
+    assert(data != NULL);
+    assert(path != NULL);
 
     cJSON * root = cJSON_CreateObject();
 
@@ -1017,7 +1026,6 @@ int fim_check_ignore (const char *file_name) {
 }
 
 
-// LCOV_EXCL_START
 int fim_check_restrict (const char *file_name, OSMatch *restriction) {
     if (file_name == NULL) {
         merror(NULL_ERROR);
@@ -1034,7 +1042,7 @@ int fim_check_restrict (const char *file_name, OSMatch *restriction) {
 
     return 0;
 }
-// LCOV_EXCL_STOP
+
 
 void free_entry_data(fim_entry_data * data) {
     if (!data) {
@@ -1086,7 +1094,7 @@ void free_inode_data(fim_inode_data **data) {
     os_free(*data);
 }
 
-
+// LCOV_EXCL_START
 void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_start) {
     mdebug1(FIM_RUNNING_SCAN,
             time_diff(&start, &end),
@@ -1106,8 +1114,6 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
 
     return;
 }
-
-// LCOV_EXCL_START
 
 // Sleep during rt_delay milliseconds
 

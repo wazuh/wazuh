@@ -49,7 +49,6 @@ void init_magic(magic_t *cookie_ptr)
 }
 #endif /* USE_MAGIC */
 
-// LCOV_EXCL_START
 /* Read syscheck internal options */
 void read_internal(int debug_level)
 {
@@ -76,7 +75,6 @@ void read_internal(int debug_level)
 
     return;
 }
-// LCOV_EXCL_STOP
 
 
 void fim_initialize() {
@@ -84,7 +82,7 @@ void fim_initialize() {
     syscheck.database = fim_db_init(syscheck.database_store);
 
     if (!syscheck.database) {
-        merror_exit(FIM_CRITICAL_DATA_CREATE, "sqlite3 db"); // LCOV_EXCL_LINE
+        merror_exit(FIM_CRITICAL_DATA_CREATE, "sqlite3 db");
     }
 
     w_mutex_init(&syscheck.fim_entry_mutex, NULL);
