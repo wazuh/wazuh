@@ -28,5 +28,13 @@ BOOL WINAPI wrap_win_whodata_LookupPrivilegeValue(
 
 WINBOOL WINAPI wrap_win_whodata_CloseHandle(HANDLE hObject);
 
+WINBOOL WINAPI wrap_win_whodata_AdjustTokenPrivileges(
+  HANDLE TokenHandle,
+  WINBOOL DisableAllPrivileges,
+  __attribute__ ((unused)) PTOKEN_PRIVILEGES NewState,
+  __attribute__ ((unused)) DWORD BufferLength,
+  __attribute__ ((unused)) PTOKEN_PRIVILEGES PreviousState,
+  __attribute__ ((unused)) PDWORD ReturnLength
+);
 #endif
 #endif

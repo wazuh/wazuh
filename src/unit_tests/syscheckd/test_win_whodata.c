@@ -12,10 +12,10 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-#define WIN_WHODATA 1
 #include "syscheckd/syscheck.h"
 
 extern int set_winsacl(const char *dir, int position);
+extern int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 /**************************************************************************/
 /*************************WRAPS - GROUP SETUP******************************/
 int test_group_setup(void **state) {
@@ -54,7 +54,7 @@ void test_set_winsacl_failed_opening(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
     expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
-    will_return(wrap_win_whodata_OpenProcessToken, 0); 
+    will_return(wrap_win_whodata_OpenProcessToken, 0);
 
     will_return(wrap_win_whodata_GetLastError, (unsigned int) 500);
     expect_string(__wrap__merror, formatted_msg, "(6648): OpenProcessToken() failed. Error '500'.");
@@ -68,7 +68,7 @@ void test_set_winsacl_failed_privileges(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
     expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
-    will_return(wrap_win_whodata_OpenProcessToken, 1); 
+    will_return(wrap_win_whodata_OpenProcessToken, 1);
 
     expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
     will_return(wrap_win_whodata_LookupPrivilegeValue, 0);
@@ -83,12 +83,92 @@ void test_set_winsacl_failed_privileges(void **state) {
     will_return(wrap_win_whodata_CloseHandle, 0);
     set_winsacl(syscheck.dir[0], 0);
 }
+
+
+void test_set_privilege_lookup_error (void **state) {
+    int ret;
+
+    expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+    will_return(wrap_win_whodata_LookupPrivilegeValue, 0);
+    will_return(wrap_win_whodata_LookupPrivilegeValue, 0);
+
+    will_return(wrap_win_whodata_GetLastError, ERROR_ACCESS_DENIED);
+
+    expect_string(__wrap__merror, formatted_msg, "(6647): Could not find the 'SeSecurityPrivilege' privilege. Error: 5");
+
+    ret = set_privilege((HANDLE)123456, "SeSecurityPrivilege", 0);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_set_privilege_adjust_token_error (void **state) {
+    int ret;
+
+    expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+    will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+    will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+    expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+    expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+    will_return(wrap_win_whodata_AdjustTokenPrivileges, 0);
+
+    will_return(wrap_win_whodata_GetLastError, ERROR_ACCESS_DENIED);
+
+    expect_string(__wrap__merror, formatted_msg, "(6634): AdjustTokenPrivileges() failed. Error: '5'");
+
+    ret = set_privilege((HANDLE)123456, "SeSecurityPrivilege", 0);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_set_privilege_elevate_privilege (void **state) {
+    int ret;
+
+    expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+    will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+    will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+    expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+    expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+    will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+
+    ret = set_privilege((HANDLE)123456, "SeSecurityPrivilege", 1);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_set_privilege_reduce_privilege (void **state) {
+    int ret;
+
+    expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+    will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+    will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+    expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+    expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+    will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+
+    ret = set_privilege((HANDLE)123456, "SeSecurityPrivilege", 0);
+
+    assert_int_equal(ret, 0);
+}
+
 /**************************************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* set_winsacl */
         cmocka_unit_test(test_set_winsacl_failed_opening),
         cmocka_unit_test(test_set_winsacl_failed_privileges),
+
+        /* set_privilege */
+        cmocka_unit_test(test_set_privilege_lookup_error),
+        cmocka_unit_test(test_set_privilege_adjust_token_error),
+        cmocka_unit_test(test_set_privilege_elevate_privilege),
+        cmocka_unit_test(test_set_privilege_reduce_privilege),
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, NULL);

@@ -42,6 +42,7 @@
 #define LookupPrivilegeValue wrap_win_whodata_LookupPrivilegeValue
 #undef CloseHandle
 #define CloseHandle wrap_win_whodata_CloseHandle
+#define AdjustTokenPrivileges wrap_win_whodata_AdjustTokenPrivileges
 #endif
 
 // Variables whodata

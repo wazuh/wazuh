@@ -38,3 +38,17 @@ BOOL WINAPI wrap_win_whodata_LookupPrivilegeValue(
 WINBOOL WINAPI wrap_win_whodata_CloseHandle(  __attribute__ ((unused)) HANDLE hObject) {
   return mock();
 }
+
+WINBOOL WINAPI wrap_win_whodata_AdjustTokenPrivileges(
+  HANDLE TokenHandle,
+  WINBOOL DisableAllPrivileges,
+  __attribute__ ((unused)) PTOKEN_PRIVILEGES NewState,
+  __attribute__ ((unused)) DWORD BufferLength,
+  __attribute__ ((unused)) PTOKEN_PRIVILEGES PreviousState,
+  __attribute__ ((unused)) PDWORD ReturnLength
+) {
+  check_expected(TokenHandle);
+  check_expected(DisableAllPrivileges);
+
+  return mock();
+}
