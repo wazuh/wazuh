@@ -338,9 +338,9 @@ int realtime_win32read(win32rtfim *rtlocald)
     return (0);
 }
 
-int DirectoryExists(const char * szPath)
+int directory_exists(const char *dir)
 {
-  DWORD dwAttrib = GetFileAttributes(szPath);
+  DWORD dwAttrib = GetFileAttributes(dir);
 
   return (dwAttrib != INVALID_FILE_ATTRIBUTES && 
          (dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
@@ -412,7 +412,7 @@ int realtime_adddir(const char *dir, int whodata, int followsl)
     wdchar[260] = '\0';
     snprintf(wdchar, 260, "%s", dir);
       if(OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
-        if (!DirectoryExists(wdchar)) {
+        if (!directory_exists(wdchar)) {
             rtlocald = OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar);
             free_win32rtfim_data(rtlocald);
         }
