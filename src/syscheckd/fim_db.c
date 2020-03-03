@@ -569,12 +569,9 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
             if (fgets(line, sizeof(line), file->fd)) {
                 size_t len = strlen(line);
 
-                switch (line[len - 1]) {
-                case '\n':
+                if (len > 2 && line[len - 1] == '\n') {
                     line[len - 1] = '\0';
-                    break;
-
-                default:
+                } else {
                     merror("Temporary path file '%s' is corrupt: missing line end.", file->path);
                     continue;
                 }
