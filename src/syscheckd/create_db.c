@@ -98,9 +98,6 @@ void fim_scan() {
 }
 
 void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) {
-    // SQLite Development
-    // fim_entry_data *saved_data;
-    cJSON *json_event = NULL;
     int node;
     int depth;
 
