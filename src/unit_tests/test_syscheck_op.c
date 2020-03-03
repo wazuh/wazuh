@@ -190,6 +190,10 @@ int __wrap_getpwuid_r(uid_t uid, struct passwd *pwd,
 }
 #endif
 
+int __wrap_sysconf() {
+    return mock();
+}
+
 /* setup/teardown */
 static int teardown_string(void **state) {
     free(*state);
@@ -1993,6 +1997,8 @@ static void test_unescape_syscheck_empty_string(void **state) {
 static void test_get_user_success(void **state) {
     char *user;
 
+    will_return(__wrap_sysconf, 16384);
+
     will_return(__wrap_getpwuid_r, "user_name");
     will_return(__wrap_getpwuid_r, 1);
     #ifndef SOLARIS
@@ -2008,6 +2014,8 @@ static void test_get_user_success(void **state) {
 
 static void test_get_user_uid_not_found(void **state) {
     char *user;
+
+    will_return(__wrap_sysconf, 16384);
 
     will_return(__wrap_getpwuid_r, "user_name");
     will_return(__wrap_getpwuid_r, NULL);
@@ -2027,6 +2035,8 @@ static void test_get_user_uid_not_found(void **state) {
 
 static void test_get_user_error(void **state) {
     char *user;
+
+    will_return(__wrap_sysconf, -1);
 
     will_return(__wrap_getpwuid_r, "user_name");
     will_return(__wrap_getpwuid_r, NULL);

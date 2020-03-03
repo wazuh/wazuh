@@ -15,51 +15,24 @@
 #include <string.h>
 
 #include "../syscheckd/syscheck.h"
-
-/* Replace assert with mock_assert */
-extern void mock_assert(const int result, const char* const expression,
-                        const char * const file, const int line);
-#undef assert
-#define assert(expression) \
-    mock_assert((int)(expression), #expression, __FILE__, __LINE__);
+#include "../syscheckd/fim_db.h"
 
 /* Globals */
+extern long fim_sync_cur_id;
 extern w_queue_t * fim_sync_queue;
 
+/* Auxiliar structs */
+typedef struct __json_payload_s {
+    cJSON *payload;
+    char *printed_payload;
+} json_payload_t;
+
 /* redefinitons/wrapping */
-
-fim_entry_data *__wrap_rbtree_get() {
-    fim_entry_data *data = mock_type(fim_entry_data *);
-    return data;
-}
-
-
-char ** __wrap_rbtree_keys() {
-    return mock_type(char **);
-}
-
-
-char ** __wrap_rbtree_range(const rb_tree * tree, const char * min, const char * max) {
-    // This asserts come from the real rbtree_range, if modified please adjust it here.
-    assert(tree != NULL);
-    assert(min != NULL);
-    assert(max != NULL);
-
-    return mock_type(char **);
-}
-
-
-int __wrap_fim_send_sync_msg(char * msg) {
-    check_expected(msg);
-    return 1;
-}
-
-int __wrap_time(){
+int __wrap_time() {
     return 1572521857;
 }
 
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...)
-{
+void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...) {
     char formatted_msg[OS_MAXSTR];
     va_list args;
 
@@ -70,8 +43,7 @@ void __wrap__mwarn(const char * file, int line, const char * func, const char *m
     check_expected(formatted_msg);
 }
 
-void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...)
-{
+void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
     char formatted_msg[OS_MAXSTR];
     va_list args;
 
@@ -82,8 +54,18 @@ void __wrap__mdebug1(const char * file, int line, const char * func, const char 
     check_expected(formatted_msg);
 }
 
-void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...)
-{
+void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
+}
+
+void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
     char formatted_msg[OS_MAXSTR];
     va_list args;
 
@@ -106,13 +88,95 @@ int __wrap_queue_push_ex(w_queue_t * queue, void * data) {
     return retval;
 }
 
-/* setup/teardown */
-static int setup_group(void **state) {
-    fim_initialize();
+int __wrap_fim_db_get_row_path(fdb_t * fim_sql, int mode, char **path) {
+    check_expected_ptr(fim_sql);
+    check_expected(mode);
 
-    return 0;
+    *path = mock_type(char*);
+
+    return mock();
 }
 
+int __wrap_fim_db_get_data_checksum(fdb_t *fim_sql, void * arg) {
+    check_expected_ptr(fim_sql);
+
+    return mock();
+}
+
+char * __wrap_dbsync_check_msg(const char * component, dbsync_msg msg, long id, const char * start, const char * top, const char * tail, const char * checksum) {
+    check_expected(component);
+    check_expected(msg);
+    check_expected(id);
+    check_expected(start);
+    check_expected(top);
+    check_expected(tail);
+
+    return mock_type(char*);
+}
+
+void __wrap_fim_send_sync_msg(const char * msg) {
+    check_expected(msg);
+}
+
+
+int __wrap_fim_db_get_count_range(fdb_t *fim_sql, char *start, char *top, int *count) {
+    check_expected_ptr(fim_sql);
+    check_expected(start);
+    check_expected(top);
+
+    *count = mock();
+    return mock();
+}
+
+fim_entry *__wrap_fim_db_get_path(fdb_t *fim_sql, const char *file_path) {
+    check_expected_ptr(fim_sql);
+    check_expected(file_path);
+
+    return mock_type(fim_entry*);
+}
+
+cJSON *__wrap_fim_entry_json(const char * path, fim_entry_data * data) {
+    check_expected(path);
+
+    return mock_type(cJSON*);
+}
+
+int __wrap_fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *top,
+                                      const long id, const int n) {
+    check_expected_ptr(fim_sql);
+    check_expected(start);
+    check_expected(top);
+    check_expected(id);
+    check_expected(n);
+
+    return mock();
+}
+
+char * __wrap_dbsync_state_msg(const char * component, cJSON * data) {
+    check_expected(component);
+    check_expected_ptr(data);
+
+    return mock_type(char*);
+}
+
+int __wrap_fim_db_get_path_range(fdb_t *fim_sql, char *start, char *top, fim_tmp_file **file, int storage) {
+    check_expected_ptr(fim_sql);
+    check_expected(start);
+    check_expected(top);
+    check_expected(storage);
+
+    *file = mock_type(fim_tmp_file *);
+
+    return mock();
+}
+
+int __wrap_fim_db_sync_path_range(fdb_t *fim_sql) {
+    check_expected_ptr(fim_sql);
+
+    return mock();
+}
+
+/* setup/teardown */
 static int setup_fim_sync_queue(void **state) {
     fim_sync_queue = queue_init(10);
 
@@ -127,15 +191,45 @@ static int teardown_fim_sync_queue(void **state) {
     return 0;
 }
 
-static int teardown_free_fim_entry_mutex(void **state) {
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
+static int setup_json_payload(void **state) {
+    json_payload_t *json_payload = calloc(1, sizeof(json_payload_t));
+    const static char *text_payload =
+        "{"
+            "\"id\": 1234,"
+            "\"begin\": \"start\","
+            "\"end\": \"top\""
+        "}";
+
+    if(json_payload == NULL)
+        return -1;
+
+    json_payload->payload = cJSON_Parse(text_payload);
+
+    if(json_payload->payload == NULL)
+        return -1;
+
+    json_payload->printed_payload = cJSON_PrintUnformatted(json_payload->payload);
+
+    if(json_payload->printed_payload == NULL)
+        return -1;
+
+    *state = json_payload;
+    return 0;
+}
+
+static int teardown_json_payload(void **state) {
+    json_payload_t *json_payload = *state;
+
+    cJSON_Delete(json_payload->payload);
+    free(json_payload->printed_payload);
+    free(json_payload);
 
     return 0;
 }
 
 /* tests */
-
-void test_fim_sync_push_msg_success(void **state) {
+/* fim_sync_push_msg */
+static void test_fim_sync_push_msg_success(void **state) {
     char *msg = "This is a mock message, it won't go anywhere";
 
     expect_value(__wrap_queue_push_ex, queue, fim_sync_queue);
@@ -145,7 +239,7 @@ void test_fim_sync_push_msg_success(void **state) {
     fim_sync_push_msg(msg);
 }
 
-void test_fim_sync_push_msg_queue_full(void **state) {
+static void test_fim_sync_push_msg_queue_full(void **state) {
     char *msg = "This is a mock message, it won't go anywhere";
 
     expect_value(__wrap_queue_push_ex, queue, fim_sync_queue);
@@ -157,306 +251,396 @@ void test_fim_sync_push_msg_queue_full(void **state) {
     fim_sync_push_msg(msg);
 }
 
-void test_fim_sync_push_msg_no_response(void **state)
-{
-    (void) state;
-
+static void test_fim_sync_push_msg_no_response(void **state) {
     expect_string(__wrap__mwarn, formatted_msg,
         "A data synchronization response was received before sending the first message.");
 
     fim_sync_push_msg("test");
 }
 
-void test_fim_sync_checksum(void **state)
-{
-    (void) state;
-    char ** keys = NULL;
-    keys = os_AddStrArray("test1", keys);
-    keys = os_AddStrArray("test2", keys);
+/* fim_sync_checksum */
+static void test_fim_sync_checksum_first_row_error(void **state) {
+    expect_value(__wrap_fim_db_get_row_path, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_row_path, mode, FIM_FIRST_ROW);
+    will_return(__wrap_fim_db_get_row_path, NULL);
+    will_return(__wrap_fim_db_get_row_path, FIMDB_ERR);
 
-    will_return(__wrap_rbtree_keys, keys);
-
-    fim_entry_data *data1 = calloc(1, sizeof(fim_entry_data));
-    strcpy(data1->checksum, "455c1767e123a76d6af511024d2fc883ae656bef");
-    fim_entry_data *data2 = calloc(1, sizeof(fim_entry_data));
-    strcpy(data2->checksum, "84f86d40933996a154c687e498433c3bc6ed0697");
-
-    will_return(__wrap_rbtree_get, data1);
-    will_return(__wrap_rbtree_get, data2);
-
-    char * expected = "{\"component\":\"syscheck\",\"type\":\"integrity_check_global\",\"data\":{\"id\":1572521857,\"begin\":\"test1\",\"end\":\"test2\",\"checksum\":\"9f9756ed5d4acf61c9d674463c8460a61b9618fb\"}}";
-    expect_string(__wrap_fim_send_sync_msg, msg, expected);
+    expect_string(__wrap__merror, formatted_msg, "(6706): Couldn't get FIRST row's path.");
 
     fim_sync_checksum();
 }
 
-void test_fim_sync_checksum_clear(void **state)
-{
-    (void) state;
-    char ** keys = malloc(2 * sizeof(char *));
-    keys[0] = NULL;
+static void test_fim_sync_checksum_last_row_error(void **state) {
+    expect_value_count(__wrap_fim_db_get_row_path, fim_sql, syscheck.database, 2);
+    expect_value(__wrap_fim_db_get_row_path, mode, FIM_FIRST_ROW);
+    expect_value(__wrap_fim_db_get_row_path, mode, FIM_LAST_ROW);
+    will_return(__wrap_fim_db_get_row_path, NULL);
+    will_return(__wrap_fim_db_get_row_path, FIMDB_OK);
+    will_return(__wrap_fim_db_get_row_path, NULL);
+    will_return(__wrap_fim_db_get_row_path, FIMDB_ERR);
 
-    will_return(__wrap_rbtree_keys, keys);
-
-    char * expected = "{\"component\":\"syscheck\",\"type\":\"integrity_clear\",\"data\":{\"id\":1572521857}}";
-    expect_string(__wrap_fim_send_sync_msg, msg, expected);
+    expect_string(__wrap__merror, formatted_msg, "(6706): Couldn't get LAST row's path.");
 
     fim_sync_checksum();
 }
 
-void test_fim_sync_checksum_null_rbtree(void **state)
-{
-    (void) state;
-    char ** keys = NULL;
-    keys = os_AddStrArray("test1", keys);
-    keys = os_AddStrArray("test2", keys);
+static void test_fim_sync_checksum_checksum_error(void **state) {
+    expect_value_count(__wrap_fim_db_get_row_path, fim_sql, syscheck.database, 2);
+    expect_value(__wrap_fim_db_get_row_path, mode, FIM_FIRST_ROW);
+    expect_value(__wrap_fim_db_get_row_path, mode, FIM_LAST_ROW);
+    will_return(__wrap_fim_db_get_row_path, NULL);
+    will_return(__wrap_fim_db_get_row_path, FIMDB_OK);
+    will_return(__wrap_fim_db_get_row_path, NULL);
+    will_return(__wrap_fim_db_get_row_path, FIMDB_OK);
 
-    will_return(__wrap_rbtree_keys, keys);
+    expect_value(__wrap_fim_db_get_data_checksum, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_get_data_checksum, FIMDB_ERR);
 
-    will_return(__wrap_rbtree_get, NULL);
+    expect_string(__wrap__merror, formatted_msg, FIM_DB_ERROR_CALC_CHECKSUM);
 
-    expect_assert_failure(fim_sync_checksum());
+    fim_sync_checksum();
 }
 
-void test_fim_sync_checksum_split_unary(void **state)
-{
-    (void) state;
-    char ** keys = NULL;
-    keys = os_AddStrArray("test", keys);
+static void test_fim_sync_checksum_empty_db(void **state) {
+    expect_value_count(__wrap_fim_db_get_row_path, fim_sql, syscheck.database, 2);
+    expect_value(__wrap_fim_db_get_row_path, mode, FIM_FIRST_ROW);
+    expect_value(__wrap_fim_db_get_row_path, mode, FIM_LAST_ROW);
+    will_return(__wrap_fim_db_get_row_path, NULL);
+    will_return(__wrap_fim_db_get_row_path, FIMDB_OK);
+    will_return(__wrap_fim_db_get_row_path, NULL);
+    will_return(__wrap_fim_db_get_row_path, FIMDB_OK);
 
-    will_return(__wrap_rbtree_range, keys);
+    expect_value(__wrap_fim_db_get_data_checksum, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_get_data_checksum, FIMDB_OK);
 
-    fim_entry_data *data = calloc(1, sizeof(fim_entry_data));
-    strcpy(data->checksum, "455c1767e123a76d6af511024d2fc883ae656bef");
+    expect_string(__wrap_dbsync_check_msg, component, "syscheck");
+    expect_value(__wrap_dbsync_check_msg, msg, INTEGRITY_CLEAR);
+    expect_value(__wrap_dbsync_check_msg, id, 1572521857);
+    expect_value(__wrap_dbsync_check_msg, start, NULL);
+    expect_value(__wrap_dbsync_check_msg, top, NULL);
+    expect_value(__wrap_dbsync_check_msg, tail, NULL);
+    will_return(__wrap_dbsync_check_msg, strdup("A mock message"));
 
-    will_return(__wrap_rbtree_get, data);
+    expect_string(__wrap_fim_send_sync_msg, msg, "A mock message");
 
-    char * expected = "{\"component\":\"syscheck\",\"type\":\"state\",\"data\":{\"path\":\"test\",\"timestamp\":0,\"attributes\":{\"checksum\":\"455c1767e123a76d6af511024d2fc883ae656bef\"}}}";
-    expect_string(__wrap_fim_send_sync_msg, msg, expected);
+    fim_sync_checksum();
+}
+static void test_fim_sync_checksum_success(void **state) {
+    expect_value_count(__wrap_fim_db_get_row_path, fim_sql, syscheck.database, 2);
+    expect_value(__wrap_fim_db_get_row_path, mode, FIM_FIRST_ROW);
+    expect_value(__wrap_fim_db_get_row_path, mode, FIM_LAST_ROW);
+    will_return(__wrap_fim_db_get_row_path, strdup("start"));
+    will_return(__wrap_fim_db_get_row_path, FIMDB_OK);
+    will_return(__wrap_fim_db_get_row_path, strdup("stop"));
+    will_return(__wrap_fim_db_get_row_path, FIMDB_OK);
 
-    fim_sync_checksum_split("init", "end", 1);
+    expect_value(__wrap_fim_db_get_data_checksum, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_get_data_checksum, FIMDB_OK);
+
+    expect_string(__wrap_dbsync_check_msg, component, "syscheck");
+    expect_value(__wrap_dbsync_check_msg, msg, INTEGRITY_CHECK_GLOBAL);
+    expect_value(__wrap_dbsync_check_msg, id, 1572521857);
+    expect_string(__wrap_dbsync_check_msg, start, "start");
+    expect_string(__wrap_dbsync_check_msg, top, "stop");
+    expect_value(__wrap_dbsync_check_msg, tail, NULL);
+    will_return(__wrap_dbsync_check_msg, strdup("A mock message"));
+
+    expect_string(__wrap_fim_send_sync_msg, msg, "A mock message");
+
+    fim_sync_checksum();
 }
 
-void test_fim_sync_checksum_split_list(void **state)
-{
-    (void) state;
-    char ** keys = NULL;
-    keys = os_AddStrArray("test1", keys);
-    keys = os_AddStrArray("test2", keys);
+/* fim_sync_checksum_split */
+static void test_fim_sync_checksum_split_get_count_range_error(void **state) {
+    expect_value(__wrap_fim_db_get_count_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_count_range, start, "start");
+    expect_string(__wrap_fim_db_get_count_range, top, "top");
+    will_return(__wrap_fim_db_get_count_range, 0);
+    will_return(__wrap_fim_db_get_count_range, FIMDB_ERR);
 
-    will_return(__wrap_rbtree_range, keys);
+    expect_string(__wrap__merror, formatted_msg, "(6703): Couldn't get range size between 'start' and 'top'");
 
-    fim_entry_data *data1 = calloc(1, sizeof(fim_entry_data));
-    strcpy(data1->checksum, "455c1767e123a76d6af511024d2fc883ae656bef");
-    fim_entry_data *data2 = calloc(1, sizeof(fim_entry_data));
-    strcpy(data2->checksum, "84f86d40933996a154c687e498433c3bc6ed0697");
-
-    will_return(__wrap_rbtree_get, data1);
-    will_return(__wrap_rbtree_get, data2);
-
-    char * expected1 = "{\"component\":\"syscheck\",\"type\":\"integrity_check_left\",\"data\":{\"id\":1,\"begin\":\"test1\",\"end\":\"test1\",\"tail\":\"test2\",\"checksum\":\"645e24a2f8b66719fa604868846a8d85ef9e2d70\"}}";
-    expect_string(__wrap_fim_send_sync_msg, msg, expected1);
-    char * expected2 = "{\"component\":\"syscheck\",\"type\":\"integrity_check_right\",\"data\":{\"id\":1,\"begin\":\"test2\",\"end\":\"test2\",\"checksum\":\"18433571887b0ae750d1b749b0859b82ab8f90d7\"}}";
-    expect_string(__wrap_fim_send_sync_msg, msg, expected2);
-
-    fim_sync_checksum_split("init", "end", 1);
+    fim_sync_checksum_split("start", "top", 1234);
 }
 
-void test_fim_sync_checksum_split_null_start(void **state)
-{
-    expect_assert_failure(fim_sync_checksum_split(NULL, "end", 1));
+static void test_fim_sync_checksum_split_range_size_0(void **state) {
+    expect_value(__wrap_fim_db_get_count_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_count_range, start, "start");
+    expect_string(__wrap_fim_db_get_count_range, top, "top");
+    will_return(__wrap_fim_db_get_count_range, 0);
+    will_return(__wrap_fim_db_get_count_range, FIMDB_OK);
+
+    fim_sync_checksum_split("start", "top", 1234);
 }
 
-void test_fim_sync_checksum_split_null_stop(void **state)
-{
-    expect_assert_failure(fim_sync_checksum_split("init", NULL, 1));
+static void test_fim_sync_checksum_split_range_size_1(void **state) {
+    fim_entry *mock_entry = calloc(1, sizeof(fim_entry)); // To be freed by fim_sync_checksum_split
+
+    if(mock_entry == NULL)
+        fail();
+
+    expect_value(__wrap_fim_db_get_count_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_count_range, start, "start");
+    expect_string(__wrap_fim_db_get_count_range, top, "top");
+    will_return(__wrap_fim_db_get_count_range, 1);
+    will_return(__wrap_fim_db_get_count_range, FIMDB_OK);
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "start");
+    will_return(__wrap_fim_db_get_path, mock_entry);
+
+    expect_string(__wrap_fim_entry_json, path, "start");
+    will_return(__wrap_fim_entry_json, (cJSON*)2345);
+
+    expect_string(__wrap_dbsync_state_msg, component, "syscheck");
+    expect_value(__wrap_dbsync_state_msg, data, 2345);
+    will_return(__wrap_dbsync_state_msg, strdup("A mock message"));
+
+    expect_string(__wrap_fim_send_sync_msg, msg, "A mock message");
+
+    fim_sync_checksum_split("start", "top", 1234);
 }
 
-void test_fim_sync_send_list(void **state)
-{
-    (void) state;
-    char ** keys = NULL;
-    keys = os_AddStrArray("test1", keys);
-    keys = os_AddStrArray("test2", keys);
+static void test_fim_sync_checksum_split_range_size_1_get_path_error(void **state) {
+    expect_value(__wrap_fim_db_get_count_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_count_range, start, "start");
+    expect_string(__wrap_fim_db_get_count_range, top, "top");
+    will_return(__wrap_fim_db_get_count_range, 1);
+    will_return(__wrap_fim_db_get_count_range, FIMDB_OK);
 
-    will_return(__wrap_rbtree_range, keys);
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "start");
+    will_return(__wrap_fim_db_get_path, NULL);
 
-    fim_entry_data *data1 = calloc(1, sizeof(fim_entry_data));
-    strcpy(data1->checksum, "455c1767e123a76d6af511024d2fc883ae656bef");
-    fim_entry_data *data2 = calloc(1, sizeof(fim_entry_data));
-    strcpy(data2->checksum, "84f86d40933996a154c687e498433c3bc6ed0697");
+    expect_string(__wrap__merror, formatted_msg, "(6704): Couldn't get path of 'start'");
 
-    will_return(__wrap_rbtree_get, data1);
-    will_return(__wrap_rbtree_get, data2);
+    fim_sync_checksum_split("start", "top", 1234);
+}
 
-    char * expected1 = "{\"component\":\"syscheck\",\"type\":\"state\",\"data\":{\"path\":\"test1\",\"timestamp\":0,\"attributes\":{\"checksum\":\"455c1767e123a76d6af511024d2fc883ae656bef\"}}}";
-    expect_string(__wrap_fim_send_sync_msg, msg, expected1);
-    char * expected2 = "{\"component\":\"syscheck\",\"type\":\"state\",\"data\":{\"path\":\"test2\",\"timestamp\":0,\"attributes\":{\"checksum\":\"84f86d40933996a154c687e498433c3bc6ed0697\"}}}";
-    expect_string(__wrap_fim_send_sync_msg, msg, expected2);
+static void test_fim_sync_checksum_split_range_size_default(void **state) {
+    expect_value(__wrap_fim_db_get_count_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_count_range, start, "start");
+    expect_string(__wrap_fim_db_get_count_range, top, "top");
+    will_return(__wrap_fim_db_get_count_range, 2);
+    will_return(__wrap_fim_db_get_count_range, FIMDB_OK);
+
+    expect_value(__wrap_fim_db_data_checksum_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_data_checksum_range, start, "start");
+    expect_string(__wrap_fim_db_data_checksum_range, top, "top");
+    expect_value(__wrap_fim_db_data_checksum_range, id, 1234);
+    expect_value(__wrap_fim_db_data_checksum_range, n, 2);
+    will_return(__wrap_fim_db_data_checksum_range, 0);
+
+    fim_sync_checksum_split("start", "top", 1234);
+}
+
+/* fim_sync_send_list */
+static void test_fim_sync_send_list_sync_path_range_error(void **state) {
+    expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path_range, start, "start");
+    expect_string(__wrap_fim_db_get_path_range, top, "top");
+    expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_path_range, NULL);
+    will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
+
+    expect_string(__wrap__merror, formatted_msg, FIM_DB_ERROR_SYNC_DB);
 
     fim_sync_send_list("start", "top");
 }
 
+static void test_fim_sync_send_list_success(void **state) {
+    fim_tmp_file *file = calloc(1, sizeof(fim_tmp_file));
+    file->elements = 1;
 
-void test_fim_sync_send_list_null(void **state)
-{
-    (void) state;
-    char ** keys = NULL;
-    keys = os_AddStrArray("test1", keys);
-    keys = os_AddStrArray("test2", keys);
+    expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path_range, start, "start");
+    expect_string(__wrap_fim_db_get_path_range, top, "top");
+    expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_path_range, file);
+    will_return(__wrap_fim_db_get_path_range, FIMDB_OK);
 
-    will_return(__wrap_rbtree_range, keys);
-
-    will_return_always(__wrap_rbtree_get, NULL);
+    expect_value(__wrap_fim_db_sync_path_range, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_sync_path_range, FIMDB_OK);
 
     fim_sync_send_list("start", "top");
+
+    free(file);
 }
 
-void test_fim_sync_send_list_null_start(void **state)
-{
-    expect_assert_failure(fim_sync_send_list(NULL, "top"));
+/* fim_sync_dispatch */
+static void test_fim_sync_dispatch_null_payload(void **state) {
+    expect_assert_failure(fim_sync_dispatch(NULL));
 }
 
-void test_fim_sync_send_list_null_top(void **state)
-{
-    expect_assert_failure(fim_sync_send_list("start", NULL));
+static void test_fim_sync_dispatch_no_argument(void **state) {
+    expect_string(__wrap__mdebug1, formatted_msg, "(6312): Data synchronization command 'no_argument' with no argument.");
+
+    fim_sync_dispatch("no_argument");
 }
 
-void test_fim_sync_dispatch_noarg(void **state)
-{
-    (void) state;
+static void test_fim_sync_dispatch_invalid_argument(void **state) {
+    json_payload_t *json_payload = *state;
+    char payload[OS_MAXSTR];
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6312): Data synchronization command 'payload' with no argument.");
+    snprintf(payload, OS_MAXSTR, "invalid_json %.3s", json_payload->printed_payload);
 
-    fim_sync_dispatch("payload");
-}
-
-
-void test_fim_sync_dispatch_invalidarg(void **state)
-{
-    (void) state;
-    char payload[] = "test payload";
-
-    expect_string(__wrap__mdebug1, formatted_msg, "(6314): Invalid data synchronization argument: 'payload'");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6314): Invalid data synchronization argument: '{\"i'");
 
     fim_sync_dispatch(payload);
 }
 
-void test_fim_sync_dispatch_invalid_id(void **state)
-{
-    (void) state;
+static void test_fim_sync_dispatch_id_not_number(void **state) {
+    json_payload_t *json_payload = *state;
+    char payload[OS_MAXSTR];
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6314): Invalid data synchronization argument: '{\"id\":\"1\"}'");
+    cJSON_DeleteItemFromObject(json_payload->payload, "id");
+    cJSON_AddStringToObject(json_payload->payload, "id", "invalid");
 
-    char payload[] = "msg {\"id\":\"1\"}";
+    free(json_payload->printed_payload);
 
-    fim_sync_dispatch(payload);
-}
+    json_payload->printed_payload = cJSON_PrintUnformatted(json_payload->payload);
 
-void test_fim_sync_dispatch_id(void **state)
-{
-    (void) state;
+    if(json_payload->printed_payload == NULL)
+        fail();
 
-    char payload[] = "msg {\"id\":1}";
+    snprintf(payload, OS_MAXSTR, "invalid_id %s", json_payload->printed_payload);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6315): Setting global ID back to lower message ID (1)");
-    expect_string(__wrap__mdebug1, formatted_msg, "(6314): Invalid data synchronization argument: '{\"id\":1}'");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6314): Invalid data synchronization argument: '{\"begin\":\"start\",\"end\":\"top\",\"id\":\"invalid\"}'");
 
     fim_sync_dispatch(payload);
 }
 
-void test_fim_sync_dispatch_checksum(void **state)
-{
-    (void) state;
-    char ** keys = NULL;
-    keys = os_AddStrArray("test", keys);
+static void test_fim_sync_dispatch_drop_message(void **state) {
+    json_payload_t *json_payload = *state;
+    char payload[OS_MAXSTR];
 
-    // In fim_sync_checksum_split
-    will_return(__wrap_rbtree_range, keys);
+    snprintf(payload, OS_MAXSTR, "drop_message %s", json_payload->printed_payload);
 
-    fim_entry_data *data = calloc(1, sizeof(fim_entry_data));
-    strcpy(data->checksum, "455c1767e123a76d6af511024d2fc883ae656bef");
+    fim_sync_cur_id = 0;
 
-    will_return(__wrap_rbtree_get, data);
-
-    char * expected = "{\"component\":\"syscheck\",\"type\":\"state\",\"data\":{\"path\":\"test\",\"timestamp\":0,\"attributes\":{\"checksum\":\"455c1767e123a76d6af511024d2fc883ae656bef\"}}}";
-    expect_string(__wrap_fim_send_sync_msg, msg, expected);
-
-    char payload[] = "checksum_fail {\"id\":1,\"begin\":\"test_begin\",\"end\":\"test_end\"}";
+    expect_string(__wrap__mdebug1, formatted_msg, "(6316): Dropping message with id (1234) greater than global id (0)");
 
     fim_sync_dispatch(payload);
 }
 
+static void test_fim_sync_dispatch_no_begin_object(void **state) {
+    json_payload_t *json_payload = *state;
+    char payload[OS_MAXSTR];
 
-void test_fim_sync_dispatch_no_data(void **state)
-{
-    (void) state;
-    char ** keys = NULL;
-    keys = os_AddStrArray("test", keys);
+    cJSON_DeleteItemFromObject(json_payload->payload, "begin");
 
-    // In fim_sync_checksum_split
-    will_return(__wrap_rbtree_range, keys);
+    free(json_payload->printed_payload);
 
-    fim_entry_data *data = calloc(1, sizeof(fim_entry_data));
-    strcpy(data->checksum, "455c1767e123a76d6af511024d2fc883ae656bef");
+    json_payload->printed_payload = cJSON_PrintUnformatted(json_payload->payload);
 
-    will_return(__wrap_rbtree_get, data);
+    if(json_payload->printed_payload == NULL)
+        fail();
 
-    char * expected = "{\"component\":\"syscheck\",\"type\":\"state\",\"data\":{\"path\":\"test\",\"timestamp\":0,\"attributes\":{\"checksum\":\"455c1767e123a76d6af511024d2fc883ae656bef\"}}}";
-    expect_string(__wrap_fim_send_sync_msg, msg, expected);
+    snprintf(payload, OS_MAXSTR, "no_begin %s", json_payload->printed_payload);
 
-    char payload[] = "no_data {\"id\":1,\"begin\":\"test_begin\",\"end\":\"test_end\"}";
+    fim_sync_cur_id = 1235;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6315): Setting global ID back to lower message ID (1234)");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6314): Invalid data synchronization argument: '{\"id\":1234,\"end\":\"top\"}'");
 
     fim_sync_dispatch(payload);
 }
 
+static void test_fim_sync_dispatch_checksum_fail(void **state) {
+    json_payload_t *json_payload = *state;
+    char payload[OS_MAXSTR];
 
-void test_fim_sync_dispatch_unknown(void **state)
-{
-    (void) state;
-    char ** keys = NULL;
-    keys = os_AddStrArray("test", keys);
+    snprintf(payload, OS_MAXSTR, "checksum_fail %s", json_payload->printed_payload);
 
-    char payload[] = "unknown {\"id\":1,\"begin\":\"test_begin\",\"end\":\"test_end\"}";
+    fim_sync_cur_id = 1234;
 
+    // Inside fim_sync_checksum_split
+    expect_value(__wrap_fim_db_get_count_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_count_range, start, "start");
+    expect_string(__wrap_fim_db_get_count_range, top, "top");
+    will_return(__wrap_fim_db_get_count_range, 0);
+    will_return(__wrap_fim_db_get_count_range, FIMDB_OK);
+
+    fim_sync_dispatch(payload);
+}
+
+static void test_fim_sync_dispatch_no_data(void **state) {
+    json_payload_t *json_payload = *state;
+    char payload[OS_MAXSTR];
+
+    snprintf(payload, OS_MAXSTR, "no_data %s", json_payload->printed_payload);
+
+    fim_sync_cur_id = 1234;
+
+    // Inside fim_sync_send_list
+    fim_tmp_file *file = calloc(1, sizeof(fim_tmp_file));
+    file->elements = 1;
+
+    expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path_range, start, "start");
+    expect_string(__wrap_fim_db_get_path_range, top, "top");
+    expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_path_range, file);
+    will_return(__wrap_fim_db_get_path_range, FIMDB_OK);
+
+    expect_value(__wrap_fim_db_sync_path_range, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_sync_path_range, FIMDB_OK);
+
+    fim_sync_dispatch(payload);
+
+    free(file);
+}
+
+static void test_fim_sync_dispatch_unwknown_command(void **state) {
+    json_payload_t *json_payload = *state;
+    char payload[OS_MAXSTR];
+
+    snprintf(payload, OS_MAXSTR, "unknown %s", json_payload->printed_payload);
+
+    fim_sync_cur_id = 1234;
+
+    // Inside fim_sync_send_list
     expect_string(__wrap__mdebug1, formatted_msg, "(6313): Unknown data synchronization command: 'unknown'");
 
     fim_sync_dispatch(payload);
 }
 
-void test_fim_sync_dispatch_null_payload(void **state)
-{
-    (void) state;
-
-    expect_assert_failure(fim_sync_dispatch(NULL));
-}
-
-
 int main(void) {
     const struct CMUnitTest tests[] = {
+        /* fim_sync_push */
         cmocka_unit_test_setup_teardown(test_fim_sync_push_msg_success, setup_fim_sync_queue, teardown_fim_sync_queue),
         cmocka_unit_test_setup_teardown(test_fim_sync_push_msg_queue_full, setup_fim_sync_queue, teardown_fim_sync_queue),
         cmocka_unit_test(test_fim_sync_push_msg_no_response),
-        cmocka_unit_test(test_fim_sync_checksum),
-        cmocka_unit_test(test_fim_sync_checksum_clear),
-        cmocka_unit_test_teardown(test_fim_sync_checksum_null_rbtree, teardown_free_fim_entry_mutex),
-        cmocka_unit_test(test_fim_sync_checksum_split_unary),
-        cmocka_unit_test_teardown(test_fim_sync_checksum_split_null_start, teardown_free_fim_entry_mutex),
-        cmocka_unit_test_teardown(test_fim_sync_checksum_split_null_stop, teardown_free_fim_entry_mutex),
-        cmocka_unit_test(test_fim_sync_checksum_split_list),
-        cmocka_unit_test(test_fim_sync_send_list),
-        cmocka_unit_test(test_fim_sync_send_list_null),
-        cmocka_unit_test_teardown(test_fim_sync_send_list_null_start, teardown_free_fim_entry_mutex),
-        cmocka_unit_test_teardown(test_fim_sync_send_list_null_top, teardown_free_fim_entry_mutex),
-        cmocka_unit_test(test_fim_sync_dispatch_noarg),
-        cmocka_unit_test(test_fim_sync_dispatch_invalidarg),
-        cmocka_unit_test(test_fim_sync_dispatch_invalid_id),
-        cmocka_unit_test(test_fim_sync_dispatch_id),
-        cmocka_unit_test(test_fim_sync_dispatch_checksum),
-        cmocka_unit_test(test_fim_sync_dispatch_no_data),
-        cmocka_unit_test(test_fim_sync_dispatch_unknown),
+
+        /* fim_sync_checksum */
+        cmocka_unit_test(test_fim_sync_checksum_first_row_error),
+        cmocka_unit_test(test_fim_sync_checksum_last_row_error),
+        cmocka_unit_test(test_fim_sync_checksum_checksum_error),
+        cmocka_unit_test(test_fim_sync_checksum_empty_db),
+        cmocka_unit_test(test_fim_sync_checksum_success),
+
+        /* fim_sync_checksum_split */
+        cmocka_unit_test(test_fim_sync_checksum_split_get_count_range_error),
+        cmocka_unit_test(test_fim_sync_checksum_split_range_size_0),
+        cmocka_unit_test(test_fim_sync_checksum_split_range_size_1),
+        cmocka_unit_test(test_fim_sync_checksum_split_range_size_1_get_path_error),
+        cmocka_unit_test(test_fim_sync_checksum_split_range_size_default),
+
+        /* fim_sync_send_list */
+        cmocka_unit_test(test_fim_sync_send_list_sync_path_range_error),
+        cmocka_unit_test(test_fim_sync_send_list_success),
+
+        /* fim_sync_dispatch */
         cmocka_unit_test(test_fim_sync_dispatch_null_payload),
+        cmocka_unit_test(test_fim_sync_dispatch_no_argument),
+        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_invalid_argument, setup_json_payload, teardown_json_payload),
+        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_id_not_number, setup_json_payload, teardown_json_payload),
+        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_drop_message, setup_json_payload, teardown_json_payload),
+        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_no_begin_object, setup_json_payload, teardown_json_payload),
+        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_checksum_fail, setup_json_payload, teardown_json_payload),
+        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_no_data, setup_json_payload, teardown_json_payload),
+        cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_unwknown_command, setup_json_payload, teardown_json_payload),
     };
 
-    return cmocka_run_group_tests(tests, setup_group, NULL);
+    return cmocka_run_group_tests(tests, NULL, NULL);
 }

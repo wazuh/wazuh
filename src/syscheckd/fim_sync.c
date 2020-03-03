@@ -139,8 +139,7 @@ void fim_sync_checksum() {
         os_free(plain);
     }
 
-    end:
-        os_free(start);
+end:    os_free(start);
         os_free(top);
         EVP_MD_CTX_destroy(ctx);
 }
