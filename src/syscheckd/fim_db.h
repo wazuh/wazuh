@@ -232,18 +232,6 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
                         __attribute__((unused))void *w_evt);
 
 /**
- * @brief Process missing entries
- *
- * @param fim_sql FIM database struct.
- * @param file_path File path.
- * @param mutex
- * @param fim_ev_mode Directory configuration.
- * @param w_evt Whodata information.
- * 
- */
-void fim_db_process_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex, void *fim_ev_mode, void *w_evt);
-
-/**
  * @brief Get the last/first row from entry_path.
  *
  * @param mode FIM_FIRST_ROW or FIM_LAST_ROW.
@@ -299,8 +287,8 @@ void fim_db_callback_save_path(fdb_t *fim_sql, fim_entry *entry, int storage, vo
  * @param w_event Unused argument.
  */
 void fim_db_callback_sync_path_range(__attribute__((unused))fdb_t *fim_sql, fim_entry *entry,
-    __attribute__((unused))pthread_mutex_t *mutex, __attribute__((unused))void *mode,
-    __attribute__((unused))void *w_event);
+    __attribute__((unused))pthread_mutex_t *mutex, __attribute__((unused))void *alert,
+    __attribute__((unused))void *mode, __attribute__((unused))void *w_event);
 
 /**
  * @brief Delete not scanned entries from database.

@@ -194,7 +194,7 @@ static int fim_db_create_file(const char *path, const char *source, const int st
  *
  */
  static int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex,
-        void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *), int storage, void * mode, void * w_evt);
+        void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *), int storage, void * alert, void * mode, void * w_evt);
 
 
 /**
@@ -533,23 +533,22 @@ int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query) {
 
 int fim_db_sync_path_range(fdb_t * fim_sql, pthread_mutex_t *mutex, fim_tmp_file *file, int storage) {
     return fim_db_process_read_file(fim_sql, file, mutex, fim_db_callback_sync_path_range, storage,
-                                    NULL, NULL);
+                                    NULL, NULL, NULL);
 }
 
 int fim_db_delete_not_scanned(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {
-    return fim_db_process_read_file(fim_sql, file, mutex, fim_db_process_path, storage,
-                                    (void *) (int) FIM_SCHEDULED, NULL);
+    return fim_db_process_read_file(fim_sql, file, mutex, fim_db_remove_path, storage,
+                                    (void *) true, (void *) FIM_SCHEDULED, NULL);
 }
 
 int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {
-    return fim_db_process_read_file(fim_sql, file, mutex, fim_db_process_path, storage,
-                                    (void *) (int) FIM_SCHEDULED, NULL);
+    return fim_db_process_read_file(fim_sql, file, mutex, fim_db_remove_path, storage,
+                                    (void *) false, (void *) FIM_SCHEDULED, NULL);
 }
 
-int fim_db_process_missing_entry(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage,
-                                    fim_event_mode mode, whodata_evt * w_evt) {
-    return fim_db_process_read_file(fim_sql, file, mutex, fim_db_process_path, storage, (void *) (fim_event_mode) mode,
-                                    (void *) w_evt);
+int fim_db_process_missing_entry(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage, fim_event_mode mode, whodata_evt * w_evt) {
+    return fim_db_process_read_file(fim_sql, file, mutex, fim_db_remove_path, storage,
+                                    (void *) true, (void *) (fim_event_mode) mode, (void *) w_evt);
 }
 
 
@@ -559,8 +558,8 @@ int fim_db_process_missing_entry(fdb_t *fim_sql, fim_tmp_file *file, pthread_mut
          the functions that don't need them.
   */
 int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex,
-    void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *),
-    int storage, void * mode, void * w_evt) {
+    void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
+    int storage, void * alert, void * mode, void * w_evt) {
 
     char line[PATH_MAX + 1];
     char *path = NULL;
@@ -599,7 +598,7 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
             fim_entry *entry = fim_db_get_path(fim_sql, path);
             w_mutex_unlock(mutex);
             if (entry != NULL) {
-                callback(fim_sql, entry, mutex, mode, w_evt);
+                callback(fim_sql, entry, mutex, alert, mode, w_evt);
                 free_entry(entry);
             }
             os_free(path);
@@ -1074,7 +1073,37 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
      __attribute__((unused))void *w_evt) {
 
     int *send_alert = (int *) alert;
+    fim_event_mode mode = (fim_event_mode) fim_ev_mode;
     int rows = 0;
+    int conf_file = fim_configuration_directory(entry->path, "file");
+
+    if (conf_file < 0) {
+        return;
+    }
+
+    switch (mode) {
+        /*
+            Don't send alert if received mode and mode in configuration aren't the same
+        */
+
+        case FIM_REALTIME:
+            if (!(syscheck.opts[conf_file] & REALTIME_ACTIVE)){
+                return;
+            }
+            break;
+
+        case FIM_WHODATA:
+            if (!(syscheck.opts[conf_file] & WHODATA_ACTIVE)) {
+                return;
+            }
+            break;
+
+        case FIM_SCHEDULED:
+            if (!(syscheck.opts[conf_file] & SCHEDULED_ACTIVE)) {
+                return;
+            }
+            break;
+    }
 
     w_mutex_lock(mutex);
 
@@ -1115,18 +1144,12 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
 
 
     if (send_alert && rows >= 1) {
-        fim_event_mode mode = (fim_event_mode) fim_ev_mode;
         whodata_evt *whodata_event = (whodata_evt *) w_evt;
         cJSON * json_event      = NULL;
         char * json_formated    = NULL;
         int pos = 0;
 
          const char *FIM_ENTRY_TYPE[] = { "file", "registry"};
-
-        if (pos = fim_configuration_directory(entry->path,
-            FIM_ENTRY_TYPE[entry->data->entry_type]), pos < 0) {
-            goto end;
-        }
 
         json_event = fim_json_event(entry->path, NULL, entry->data, pos,
                                                 FIM_DELETE, mode, whodata_event);
@@ -1150,39 +1173,6 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
         w_mutex_lock(mutex);
         fim_db_check_transaction(fim_sql);
         w_mutex_unlock(mutex);
-}
-
-void fim_db_process_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex, void *fim_ev_mode, void *w_evt) {
-
-    fim_event_mode mode = (fim_event_mode) fim_ev_mode;
-    int conf_file = fim_configuration_directory(entry->path, "file");
-    int64_t send_alert = true;
-
-    switch (mode) {
-        /*
-            Don't send alert if received mode and mode in configuration aren't the same
-        */
-
-        case FIM_REALTIME:
-            if (!(syscheck.opts[conf_file] & REALTIME_ACTIVE)){
-                send_alert = false;
-            }
-            break;
-
-        case FIM_WHODATA:
-            if (!(syscheck.opts[conf_file] & WHODATA_ACTIVE)) {
-                send_alert = false;
-            }
-            break;
-
-        case FIM_SCHEDULED:
-            if (!(syscheck.opts[conf_file] & SCHEDULED_ACTIVE)) {
-                send_alert = false;
-            }
-            break;
-    }
-
-    fim_db_remove_path(fim_sql, entry, mutex, (void *) (int64_t) send_alert, (void *) mode, w_evt);
 }
 
 int fim_db_get_row_path(fdb_t * fim_sql, int mode, char **path) {
@@ -1248,8 +1238,8 @@ void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry
 }
 
 void fim_db_callback_sync_path_range(__attribute__((unused))fdb_t *fim_sql, fim_entry *entry,
-    __attribute__((unused))pthread_mutex_t *mutex, __attribute__((unused))void *mode,
-    __attribute__((unused))void *w_event) {
+    __attribute__((unused))pthread_mutex_t *mutex, __attribute__((unused))void *alert,
+    __attribute__((unused))void *mode, __attribute__((unused))void *w_event) {
 
     cJSON * entry_data = fim_entry_json(entry->path, entry->data);
     char * plain = dbsync_state_msg("syscheck", entry_data);
