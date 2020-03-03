@@ -15,9 +15,10 @@
 BOOL WINAPI wrap_win_whodata_OpenProcessToken(
   __attribute__ ((unused)) HANDLE  ProcessHandle,
   DWORD   DesiredAccess,
-  __attribute__ ((unused))  PHANDLE TokenHandle
+  PHANDLE TokenHandle
 ) {
     check_expected(DesiredAccess);
+    *TokenHandle = mock_type(HANDLE);
     return mock();
 }
 
@@ -50,5 +51,23 @@ WINBOOL WINAPI wrap_win_whodata_AdjustTokenPrivileges(
   check_expected(TokenHandle);
   check_expected(DisableAllPrivileges);
 
+  return mock();
+}
+
+DWORD WINAPI wrap_win_whodata_GetNamedSecurityInfo(
+  LPCSTR               pObjectName,
+  SE_OBJECT_TYPE       ObjectType,
+  SECURITY_INFORMATION SecurityInfo,
+  __attribute__ ((unused)) PSID                 *ppsidOwner,
+  __attribute__ ((unused)) PSID                 *ppsidGroup,
+  __attribute__ ((unused)) PACL                 *ppDacl,
+  PACL                 *ppSacl,
+  PSECURITY_DESCRIPTOR *ppSecurityDescriptor
+) {
+  check_expected(pObjectName);
+  check_expected(ObjectType);
+  check_expected(SecurityInfo);
+  ppSacl = mock();
+  ppSecurityDescriptor = mock();
   return mock();
 }

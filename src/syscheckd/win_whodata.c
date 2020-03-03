@@ -43,6 +43,8 @@
 #undef CloseHandle
 #define CloseHandle wrap_win_whodata_CloseHandle
 #define AdjustTokenPrivileges wrap_win_whodata_AdjustTokenPrivileges
+#undef GetNamedSecurityInfo
+#define GetNamedSecurityInfo wrap_win_whodata_GetNamedSecurityInfo
 #endif
 
 // Variables whodata

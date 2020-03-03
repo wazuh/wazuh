@@ -11,6 +11,7 @@
 
 #ifdef WIN32
 #include <windows.h>
+#include <accctrl.h>
 
 BOOL WINAPI wrap_win_whodata_OpenProcessToken(
   HANDLE  ProcessHandle,
@@ -36,5 +37,17 @@ WINBOOL WINAPI wrap_win_whodata_AdjustTokenPrivileges(
   __attribute__ ((unused)) PTOKEN_PRIVILEGES PreviousState,
   __attribute__ ((unused)) PDWORD ReturnLength
 );
+
+DWORD WINAPI wrap_win_whodata_GetNamedSecurityInfo(
+  LPCSTR               pObjectName,
+  SE_OBJECT_TYPE       ObjectType,
+  SECURITY_INFORMATION SecurityInfo,
+  PSID                 *ppsidOwner,
+  PSID                 *ppsidGroup,
+  PACL                 *ppDacl,
+  PACL                 *ppSacl,
+  PSECURITY_DESCRIPTOR *ppSecurityDescriptor
+);
+
 #endif
 #endif

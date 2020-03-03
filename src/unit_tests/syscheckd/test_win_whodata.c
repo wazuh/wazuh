@@ -54,6 +54,7 @@ void test_set_winsacl_failed_opening(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
     expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_win_whodata_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_win_whodata_OpenProcessToken, 0);
 
     will_return(wrap_win_whodata_GetLastError, (unsigned int) 500);
@@ -68,6 +69,7 @@ void test_set_winsacl_failed_privileges(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
     expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_win_whodata_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_win_whodata_OpenProcessToken, 1);
 
     expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
@@ -84,6 +86,48 @@ void test_set_winsacl_failed_privileges(void **state) {
     set_winsacl(syscheck.dir[0], 0);
 }
 
+void test_set_winsacl_failed_security_descriptor(void **state) {
+    char debug_msg[OS_MAXSTR];
+    snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, syscheck.dir[0]);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+
+    expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_win_whodata_OpenProcessToken, (HANDLE)123456);
+    will_return(wrap_win_whodata_OpenProcessToken, 1); 
+
+    expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+    will_return(wrap_win_whodata_LookupPrivilegeValue, 0);
+    will_return(wrap_win_whodata_LookupPrivilegeValue, 1); 
+
+    // Increase privileges
+    expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+    expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+    will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+
+    // GetNamedSecurity
+    expect_string(wrap_win_whodata_GetNamedSecurityInfo, pObjectName, syscheck.dir[0]);
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, NULL);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, NULL);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, -1);
+    expect_string(__wrap__merror, formatted_msg, "(6650): GetNamedSecurityInfo() failed. Error '-1'");
+
+    // Reduce Privilege
+    expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+    will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+    will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+    expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+    expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+    will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+
+    will_return(wrap_win_whodata_CloseHandle, 0);
+
+    set_winsacl(syscheck.dir[0], 0);
+}
+/**************************************************************************/
 
 void test_set_privilege_lookup_error (void **state) {
     int ret;
@@ -156,14 +200,13 @@ void test_set_privilege_reduce_privilege (void **state) {
 
     assert_int_equal(ret, 0);
 }
-
 /**************************************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* set_winsacl */
         cmocka_unit_test(test_set_winsacl_failed_opening),
         cmocka_unit_test(test_set_winsacl_failed_privileges),
-
+        cmocka_unit_test(test_set_winsacl_failed_security_descriptor),
         /* set_privilege */
         cmocka_unit_test(test_set_privilege_lookup_error),
         cmocka_unit_test(test_set_privilege_adjust_token_error),
