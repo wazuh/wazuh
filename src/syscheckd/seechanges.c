@@ -12,6 +12,10 @@
 #include "os_crypto/md5/md5_op.h"
 #include "syscheck.h"
 
+#ifdef UNIT_TESTING
+#define static
+#endif
+
 #ifdef WIN32
 #define unlink(x) _unlink(x)
 #endif
@@ -32,7 +36,6 @@ static const char *STR_MORE_CHANGES = "More changes...";
 #define PATH_OFFSET 0
 #endif
 
-// LCOV_EXCL_START
 static char* filter(const char *string) {
 #ifndef WIN32
     /* Unix version: we'll escape expansion symbols */
@@ -48,7 +51,7 @@ static char* filter(const char *string) {
         clen = strcspn(ptr + 1, "\"\\$`");
         out = realloc(out, len + clen + 3);
         if(!out){
-            merror_exit(MEM_ERROR, errno, strerror(errno));
+            merror_exit(MEM_ERROR, errno, strerror(errno)); // LCOV_EXCL_LINE
         }
         out[len] = '\\';
         out[len + 1] = *ptr;
@@ -79,7 +82,6 @@ static char* filter(const char *string) {
         return s;
 #endif
 }
-// LCOV_EXCL_STOP
 
 #ifdef USE_MAGIC
 #include <magic.h>
@@ -107,7 +109,6 @@ int is_text(magic_t cookie, const void *buf, size_t len)
 #endif
 
 #ifndef WIN32
-// LCOV_EXCL_START
 /* Return TRUE if the filename is symlink to an directory */
 int symlink_to_dir (const char *filename) {
     struct stat buf;
@@ -121,7 +122,6 @@ int symlink_to_dir (const char *filename) {
         return (FALSE);
     }
 }
-// LCOV_EXCL_STOP
 #endif
 
 int is_nodiff(const char *filename){
@@ -145,7 +145,6 @@ int is_nodiff(const char *filename){
     return (FALSE);
 }
 
-// LCOV_EXCL_START
 /* Generate diffs alerts */
 static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
 {
@@ -232,9 +231,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
 
     return diff_str;
 }
-// LCOV_EXCL_STOP
 
-// LCOV_EXCL_START
 static int seechanges_dupfile(const char *old, const char *current)
 {
     size_t n;
@@ -278,9 +275,7 @@ cleanup:
     fclose(fpw);
     return (1);
 }
-// LCOV_EXCL_STOP
 
-// LCOV_EXCL_START
 static int seechanges_createpath(const char *filename)
 {
     char *buffer = NULL;
@@ -327,10 +322,7 @@ static int seechanges_createpath(const char *filename)
     free(buffer);
     return (1);
 }
-// LCOV_EXCL_STOP
 
-
-// LCOV_EXCL_START
 /* Check if the file has changed */
 char *seechanges_addfile(const char *filename)
 {
@@ -484,8 +476,8 @@ char *seechanges_addfile(const char *filename)
         diff_location_filtered = filter(diff_location);
 
         if (!(tmp_location_filtered && old_location_filtered && diff_location_filtered)) {
-            mdebug1(FIM_DIFF_SKIPPED);
-            goto cleanup;
+            mdebug1(FIM_DIFF_SKIPPED); //LCOV_EXCL_LINE
+            goto cleanup; //LCOV_EXCL_LINE
         }
 
         snprintf(
@@ -531,7 +523,6 @@ cleanup:
     /* Generate alert */
     return (gen_diff_alert(filename, new_date_of_change));
 }
-// LCOV_EXCL_STOP
 
 
 #ifdef WIN32

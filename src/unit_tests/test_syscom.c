@@ -47,6 +47,17 @@ static int delete_string(void **state)
     return 0;
 }
 
+void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
+}
+
 
 /* tests */
 
@@ -58,6 +69,8 @@ void test_syscom_dispatch_getconfig(void **state)
 
     char command[] = "getconfig args";
     char * output;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6283): At SYSCOM getconfig: Could not get 'args' section.");
 
     ret = syscom_dispatch(command, &output);
     *state = output;
@@ -74,6 +87,8 @@ void test_syscom_dispatch_getconfig_noargs(void **state)
 
     char command[] = "getconfig";
     char * output;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6281): SYSCOM getconfig needs arguments.");
 
     ret = syscom_dispatch(command, &output);
     *state = output;
@@ -107,6 +122,8 @@ void test_syscom_dispatch_dbsync_noargs(void **state)
     char command[] = "dbsync";
     char *output;
 
+    expect_string(__wrap__mdebug1, formatted_msg, "(6281): SYSCOM dbsync needs arguments.");
+
     ret = syscom_dispatch(command, &output);
 
     assert_int_equal(ret, 0);
@@ -134,6 +151,8 @@ void test_syscom_dispatch_getconfig_unrecognized(void **state)
 
     char command[] = "invalid";
     char * output;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6282): SYSCOM Unrecognized command 'invalid'");
 
     ret = syscom_dispatch(command, &output);
     *state = output;
@@ -185,6 +204,8 @@ void test_syscom_getconfig_syscheck_failure(void **state)
     char * output;
 
     will_return(__wrap_getSyscheckConfig, NULL);
+    expect_string(__wrap__mdebug1, formatted_msg, "(6283): At SYSCOM getconfig: Could not get 'syscheck' section.");
+
     ret = syscom_getconfig(section, &output);
     *state = output;
 
@@ -222,6 +243,8 @@ void test_syscom_getconfig_rootcheck_failure(void **state)
     char * output;
 
     will_return(__wrap_getRootcheckConfig, NULL);
+    expect_string(__wrap__mdebug1, formatted_msg, "(6283): At SYSCOM getconfig: Could not get 'rootcheck' section.");
+
     ret = syscom_getconfig(section, &output);
     *state = output;
 
@@ -259,6 +282,8 @@ void test_syscom_getconfig_internal_failure(void **state)
     char * output;
 
     will_return(__wrap_getSyscheckInternalOptions, NULL);
+    expect_string(__wrap__mdebug1, formatted_msg, "(6283): At SYSCOM getconfig: Could not get 'internal' section.");
+
     ret = syscom_getconfig(section, &output);
     *state = output;
 

@@ -10,6 +10,9 @@
 
 #include "fim_db.h"
 
+#ifdef UNIT_TESTING
+#define static
+#endif
 
 static const char *SQL_STMT[] = {
 #ifdef WIN32
@@ -277,7 +280,7 @@ fdb_t *fim_db_init(int storage) {
 
 free_fim:
     if (fim->db){
-        sqlite3_close(fim->db);
+        sqlite3_close_v2(fim->db);
     }
     os_free(fim);
     return NULL;
@@ -783,7 +786,7 @@ char **fim_db_get_paths_from_inode(fdb_t *fim_sql, const unsigned long int inode
 
         while (result = sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE]), result == SQLITE_ROW) {
             if (i >= rows) {
-                minfo("The count returned is smaller than the actual elements. This shouldn't happen.\n");
+                minfo("The count returned is smaller than the actual elements. This shouldn't happen.");
                 break;
             }
             os_strdup((char *)sqlite3_column_text(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE], 0), paths[i]);
@@ -1012,7 +1015,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
         if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]) != SQLITE_ROW) {
             merror("SQL ERROR: %s", sqlite3_errmsg(fim_sql->db));
             w_mutex_unlock(mutex);
-            goto end1;
+            goto end;
         }
         entry = fim_db_decode_full_row(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]);
         if (i == m && entry->path) {
@@ -1028,7 +1031,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
 
     if (!str_pathlh || !str_pathuh) {
         merror("Failed to obtain required paths in order to form message");
-        goto end1;
+        goto end;
     }
 
     // Send message with checksum of first half
@@ -1048,13 +1051,11 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
 
     retval = FIMDB_OK;
 
-end1:
+end:
+    EVP_MD_CTX_destroy(ctx_left);
     EVP_MD_CTX_destroy(ctx_right);
     os_free(str_pathlh);
     os_free(str_pathuh);
-
-end:
-    EVP_MD_CTX_destroy(ctx_left);
     return retval;
 }
 
