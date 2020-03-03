@@ -3485,6 +3485,32 @@ void test_w_get_file_permissions_copy_ace_info_error(void **state) {
     assert_int_equal(ret, 0);
     assert_string_equal(permissions, "");
 }
+
+void test_w_get_file_attrs_error(void **state) {
+    int ret;
+
+    expect_string(wrap_syscheck_op_GetFileAttributesA, lpFileName, "C:\\a\\path");
+    will_return(wrap_syscheck_op_GetFileAttributesA, INVALID_FILE_ATTRIBUTES);
+
+    will_return(wrap_syscheck_op_GetLastError, ERROR_ACCESS_DENIED);
+
+    expect_string(__wrap__merror, formatted_msg, "The attributes for 'C:\\a\\path' could not be obtained. Error '5'.");
+
+    ret = w_get_file_attrs("C:\\a\\path");
+
+    assert_int_equal(ret, 0);
+}
+
+void test_w_get_file_attrs_success(void **state) {
+    int ret;
+
+    expect_string(wrap_syscheck_op_GetFileAttributesA, lpFileName, "C:\\a\\path");
+    will_return(wrap_syscheck_op_GetFileAttributesA, 123456);
+
+    ret = w_get_file_attrs("C:\\a\\path");
+
+    assert_int_equal(ret, 123456);
+}
 #endif
 
 
@@ -3670,6 +3696,9 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test(test_w_get_file_permissions_GetAce_error),
         cmocka_unit_test(test_w_get_file_permissions_success),
         cmocka_unit_test(test_w_get_file_permissions_copy_ace_info_error),
+
+        cmocka_unit_test(test_w_get_file_attrs_error),
+        cmocka_unit_test(test_w_get_file_attrs_success),
         #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

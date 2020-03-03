@@ -141,3 +141,9 @@ WINBOOL wrap_syscheck_op_GetAce (__UNUSED_PARAM(PACL pAcl),
 
     return mock();
 }
+
+DWORD wrap_syscheck_op_GetFileAttributesA (LPCSTR lpFileName) {
+    check_expected(lpFileName);
+
+    return mock();
+}
