@@ -139,8 +139,19 @@ else()
   list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS}")
 endif()
 
+set(SYSCHECK_BASE_FLAGS "-Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror_exit -Wl,--wrap,_minfo -Wl,--wrap,fim_db_init -Wl,--wrap,getDefine_Int")
 list(APPEND syscheckd_tests_names "test_syscheck")
-list(APPEND syscheckd_tests_flags "-Wl,--wrap,_mwarn -Wl,--wrap,_merror_exit -Wl,--wrap,fim_db_init  -Wl,--wrap,getDefine_Int")
+if(${TARGET} STREQUAL "winagent")
+  list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS} \
+                                    -Wl,--wrap=Read_Syscheck_Config \
+                                    -Wl,--wrap=os_wait \
+                                    -Wl,--wrap=rootcheck_init \
+                                    -Wl,--wrap=start_daemon \
+                                    -Wl,--wrap=File_DateofChange")
+
+else()
+  list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS}")
+endif()
 
 set(FIM_SYNC_BASE_FLAGS "-Wl,--wrap,fim_send_sync_msg -Wl,--wrap,time -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 \
                          -Wl,--wrap,_merror -Wl,--wrap,_mdebug2 -Wl,--wrap,queue_push_ex -Wl,--wrap,fim_db_get_row_path \
