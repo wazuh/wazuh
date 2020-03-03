@@ -596,7 +596,6 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
         i++;
     } while (i < file->elements);
 
-    fim_db_force_commit(fim_sql);
     fim_db_clean_file(&file, storage);
 
     return FIMDB_OK;
@@ -957,7 +956,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) 
     res_data = fim_db_insert_data(fim_sql, entry, &inode_id);
     res_path = fim_db_insert_path(fim_sql, file_path, entry, inode_id);
 
-    fim_db_force_commit(fim_sql);
+    fim_db_check_transaction(fim_sql);
 
     return res_data && res_path;
 }
@@ -1204,7 +1203,7 @@ int fim_db_set_scanned(fdb_t *fim_sql, char *path) {
         return FIMDB_ERR;
     }
 
-    fim_db_force_commit(fim_sql);
+    fim_db_check_transaction(fim_sql);
 
     return FIMDB_OK;
 }
