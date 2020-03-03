@@ -16,6 +16,10 @@
 #include "../headers/syscheck_op.h"
 #include "../analysisd/eventinfo.h"
 
+#ifdef TEST_WINAGENT
+#include "unit_tests/wrappers/shared/syscheck_op.h"
+#endif
+
 /* Auxiliar structs */
 
 typedef struct __sk_decode_data_s {
@@ -3247,6 +3251,240 @@ void test_copy_ace_info_success(void **state) {
     assert_int_equal(ret, 21);
     assert_string_equal(perm, "|accountName,0,123456");
 }
+
+void test_w_get_file_permissions_GetFileSecurity_error_on_size(void **state) {
+    char permissions[OS_SIZE_1024];
+    int ret;
+
+    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_syscheck_op_GetFileSecurity, 0);
+    will_return(wrap_syscheck_op_GetFileSecurity, 0);
+
+    will_return(wrap_syscheck_op_GetLastError, ERROR_ACCESS_DENIED);
+    will_return(wrap_syscheck_op_GetLastError, ERROR_ACCESS_DENIED);
+
+    ret = w_get_file_permissions("C:\\a\\path", permissions, OS_SIZE_1024);
+
+    assert_int_equal(ret, ERROR_ACCESS_DENIED);
+}
+
+void test_w_get_file_permissions_GetFileSecurity_error(void **state) {
+    char permissions[OS_SIZE_1024];
+    int ret;
+
+    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_syscheck_op_GetFileSecurity, OS_SIZE_1024);
+    will_return(wrap_syscheck_op_GetFileSecurity, 1);
+
+    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_syscheck_op_GetFileSecurity, NULL);
+    will_return(wrap_syscheck_op_GetFileSecurity, 0);
+
+    will_return(wrap_syscheck_op_GetLastError, ERROR_ACCESS_DENIED);
+
+    ret = w_get_file_permissions("C:\\a\\path", permissions, OS_SIZE_1024);
+
+    assert_int_equal(ret, ERROR_ACCESS_DENIED);
+}
+
+void test_w_get_file_permissions_GetSecurityDescriptorDacl_error(void **state) {
+    char permissions[OS_SIZE_1024];
+    int ret;
+    SECURITY_DESCRIPTOR sec_desc;
+
+    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_syscheck_op_GetFileSecurity, OS_SIZE_1024);
+    will_return(wrap_syscheck_op_GetFileSecurity, 1);
+
+    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_syscheck_op_GetFileSecurity, &sec_desc);
+    will_return(wrap_syscheck_op_GetFileSecurity, 1);
+
+    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, FALSE);
+    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "The DACL of the file could not be obtained.");
+
+    will_return(wrap_syscheck_op_GetLastError, ERROR_ACCESS_DENIED);
+
+    ret = w_get_file_permissions("C:\\a\\path", permissions, OS_SIZE_1024);
+
+    assert_int_equal(ret, ERROR_ACCESS_DENIED);
+}
+
+void test_w_get_file_permissions_no_dacl(void **state) {
+    char permissions[OS_SIZE_1024];
+    int ret;
+    SECURITY_DESCRIPTOR sec_desc;
+
+    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_syscheck_op_GetFileSecurity, OS_SIZE_1024);
+    will_return(wrap_syscheck_op_GetFileSecurity, 1);
+
+    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_syscheck_op_GetFileSecurity, &sec_desc);
+    will_return(wrap_syscheck_op_GetFileSecurity, 1);
+
+    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, FALSE);
+    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "'C:\\a\\path' has no DACL, so no permits can be extracted.");
+
+    ret = w_get_file_permissions("C:\\a\\path", permissions, OS_SIZE_1024);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_w_get_file_permissions_GetAclInformation_error(void **state) {
+    char permissions[OS_SIZE_1024];
+    int ret;
+    SECURITY_DESCRIPTOR sec_desc;
+
+    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_syscheck_op_GetFileSecurity, OS_SIZE_1024);
+    will_return(wrap_syscheck_op_GetFileSecurity, 1);
+
+    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_syscheck_op_GetFileSecurity, &sec_desc);
+    will_return(wrap_syscheck_op_GetFileSecurity, 1);
+
+    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, TRUE);
+    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, (PACL)123456);
+    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, 1);
+
+    will_return(wrap_syscheck_op_GetAclInformation, NULL);
+    will_return(wrap_syscheck_op_GetAclInformation, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "No information could be obtained from the ACL.");
+
+    will_return(wrap_syscheck_op_GetLastError, ERROR_ACCESS_DENIED);
+
+    ret = w_get_file_permissions("C:\\a\\path", permissions, OS_SIZE_1024);
+
+    assert_int_equal(ret, ERROR_ACCESS_DENIED);
+}
+
+void test_w_get_file_permissions_GetAce_error(void **state) {
+    char permissions[OS_SIZE_1024];
+    int ret;
+    SECURITY_DESCRIPTOR sec_desc;
+    ACL_SIZE_INFORMATION acl_size;
+
+    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_syscheck_op_GetFileSecurity, OS_SIZE_1024);
+    will_return(wrap_syscheck_op_GetFileSecurity, 1);
+
+    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_syscheck_op_GetFileSecurity, &sec_desc);
+    will_return(wrap_syscheck_op_GetFileSecurity, 1);
+
+    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, TRUE);
+    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, (PACL)123456);
+    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, 1);
+
+    will_return(wrap_syscheck_op_GetAclInformation, &acl_size);
+    will_return(wrap_syscheck_op_GetAclInformation, 1);
+
+    will_return(wrap_syscheck_op_GetAce, NULL);
+    will_return(wrap_syscheck_op_GetAce, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "ACE number 0 could not be obtained.");
+
+    ret = w_get_file_permissions("C:\\a\\path", permissions, OS_SIZE_1024);
+
+    assert_int_equal(ret, -2);
+    assert_string_equal(permissions, "");
+}
+
+void test_w_get_file_permissions_success(void **state) {
+    char permissions[OS_SIZE_1024];
+    int ret;
+    SECURITY_DESCRIPTOR sec_desc;
+    ACL_SIZE_INFORMATION acl_size = {
+        .AceCount = 1,
+    };
+    ACCESS_ALLOWED_ACE ace = {
+        .Header.AceType = ACCESS_ALLOWED_ACE_TYPE,
+    };
+
+    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_syscheck_op_GetFileSecurity, OS_SIZE_1024);
+    will_return(wrap_syscheck_op_GetFileSecurity, 1);
+
+    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_syscheck_op_GetFileSecurity, &sec_desc);
+    will_return(wrap_syscheck_op_GetFileSecurity, 1);
+
+    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, TRUE);
+    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, (PACL)123456);
+    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, 1);
+
+    will_return(wrap_syscheck_op_GetAclInformation, &acl_size);
+    will_return(wrap_syscheck_op_GetAclInformation, 1);
+
+    will_return(wrap_syscheck_op_GetAce, &ace);
+    will_return(wrap_syscheck_op_GetAce, 1);
+
+    // Inside copy_ace_info
+    {
+        will_return(wrap_syscheck_op_IsValidSid, 1);
+
+        // Inside w_get_account_info
+        will_return(wrap_syscheck_op_LookupAccountSid, OS_SIZE_1024);   // Name size
+        will_return(wrap_syscheck_op_LookupAccountSid, OS_SIZE_1024);   // Domain size
+        will_return(wrap_syscheck_op_LookupAccountSid, 1);
+
+        will_return(wrap_syscheck_op_LookupAccountSid, "accountName");
+        will_return(wrap_syscheck_op_LookupAccountSid, "domainName");
+        will_return(wrap_syscheck_op_LookupAccountSid, 1);
+    }
+
+    ret = w_get_file_permissions("C:\\a\\path", permissions, OS_SIZE_1024);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(permissions, "|accountName,0,0");
+}
+
+void test_w_get_file_permissions_copy_ace_info_error(void **state) {
+    char permissions[OS_SIZE_1024];
+    int ret;
+    SECURITY_DESCRIPTOR sec_desc;
+    ACL_SIZE_INFORMATION acl_size = {
+        .AceCount = 1,
+    };
+    ACCESS_ALLOWED_ACE ace = {
+        .Header.AceType = SYSTEM_AUDIT_ACE_TYPE,
+    };
+
+    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_syscheck_op_GetFileSecurity, OS_SIZE_1024);
+    will_return(wrap_syscheck_op_GetFileSecurity, 1);
+
+    expect_string(wrap_syscheck_op_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_syscheck_op_GetFileSecurity, &sec_desc);
+    will_return(wrap_syscheck_op_GetFileSecurity, 1);
+
+    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, TRUE);
+    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, (PACL)123456);
+    will_return(wrap_syscheck_op_GetSecurityDescriptorDacl, 1);
+
+    will_return(wrap_syscheck_op_GetAclInformation, &acl_size);
+    will_return(wrap_syscheck_op_GetAclInformation, 1);
+
+    will_return(wrap_syscheck_op_GetAce, &ace);
+    will_return(wrap_syscheck_op_GetAce, 1);
+
+    // Inside copy_ace_info
+    expect_string(__wrap__mdebug2, formatted_msg, "Invalid ACE type.");
+
+    expect_string(__wrap__mdebug1, formatted_msg,
+        "The parameters of ACE number 0 from 'C:\\a\\path' could not be extracted. 1024 bytes remaining.");
+
+    ret = w_get_file_permissions("C:\\a\\path", permissions, OS_SIZE_1024);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(permissions, "");
+}
 #endif
 
 
@@ -3423,6 +3661,15 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test(test_copy_ace_info_invalid_sid),
         cmocka_unit_test(test_copy_ace_info_no_information_from_account_or_sid),
         cmocka_unit_test(test_copy_ace_info_success),
+
+        cmocka_unit_test(test_w_get_file_permissions_GetFileSecurity_error_on_size),
+        cmocka_unit_test(test_w_get_file_permissions_GetFileSecurity_error),
+        cmocka_unit_test(test_w_get_file_permissions_GetSecurityDescriptorDacl_error),
+        cmocka_unit_test(test_w_get_file_permissions_no_dacl),
+        cmocka_unit_test(test_w_get_file_permissions_GetAclInformation_error),
+        cmocka_unit_test(test_w_get_file_permissions_GetAce_error),
+        cmocka_unit_test(test_w_get_file_permissions_success),
+        cmocka_unit_test(test_w_get_file_permissions_copy_ace_info_error),
         #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

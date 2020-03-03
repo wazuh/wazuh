@@ -90,3 +90,54 @@ WINBOOL wrap_syscheck_op_LookupAccountSid (__UNUSED_PARAM(LPCSTR lpSystemName),
 WINBOOL wrap_syscheck_op_IsValidSid (__UNUSED_PARAM(PSID pSid)) {
     return mock();
 }
+
+WINBOOL wrap_syscheck_op_GetFileSecurity (LPCSTR lpFileName,
+                                          __UNUSED_PARAM(SECURITY_INFORMATION RequestedInformation),
+                                          PSECURITY_DESCRIPTOR pSecurityDescriptor,
+                                          DWORD nLength,
+                                          LPDWORD lpnLengthNeeded) {
+    check_expected(lpFileName);
+
+    if(!nLength) {
+        *lpnLengthNeeded = mock();
+    } else {
+        PSECURITY_DESCRIPTOR sec_desc = mock_type(PSECURITY_DESCRIPTOR);
+
+        if(sec_desc)
+            memcpy(pSecurityDescriptor, sec_desc, nLength);
+    }
+
+    return mock();
+}
+
+WINBOOL wrap_syscheck_op_GetSecurityDescriptorDacl (__UNUSED_PARAM(PSECURITY_DESCRIPTOR pSecurityDescriptor),
+                                                    LPBOOL lpbDaclPresent,
+                                                    PACL *pDacl,
+                                                    __UNUSED_PARAM(LPBOOL lpbDaclDefaulted)) {
+    *lpbDaclPresent = mock();
+
+    if(*lpbDaclPresent == TRUE)
+        *pDacl = mock_type(PACL);
+
+    return mock();
+}
+
+WINBOOL wrap_syscheck_op_GetAclInformation (__UNUSED_PARAM(PACL pAcl),
+                                            LPVOID pAclInformation,
+                                            DWORD nAclInformationLength,
+                                            __UNUSED_PARAM(ACL_INFORMATION_CLASS dwAclInformationClass)) {
+    LPVOID acl_information = mock_type(LPVOID);
+
+    if(acl_information != NULL)
+        memcpy(pAclInformation, acl_information, nAclInformationLength);
+
+    return mock();
+}
+
+WINBOOL wrap_syscheck_op_GetAce (__UNUSED_PARAM(PACL pAcl),
+                                 __UNUSED_PARAM(DWORD dwAceIndex),
+                                LPVOID *pAce) {
+    *pAce = mock_type(LPVOID);
+
+    return mock();
+}

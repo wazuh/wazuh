@@ -34,6 +34,11 @@ extern void mock_assert(const int result, const char* const expression,
 #undef  LookupAccountSid
 #define LookupAccountSid        wrap_syscheck_op_LookupAccountSid
 #define IsValidSid      wrap_syscheck_op_IsValidSid
+#undef  GetFileSecurity
+#define GetFileSecurity wrap_syscheck_op_GetFileSecurity
+#define GetSecurityDescriptorDacl   wrap_syscheck_op_GetSecurityDescriptorDacl
+#define GetAclInformation           wrap_syscheck_op_GetAclInformation
+#define GetAce          wrap_syscheck_op_GetAce
 #endif
 #endif
 
