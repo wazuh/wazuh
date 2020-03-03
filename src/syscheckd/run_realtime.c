@@ -338,6 +338,14 @@ int realtime_win32read(win32rtfim *rtlocald)
     return (0);
 }
 
+int DirectoryExists(const char * szPath)
+{
+  DWORD dwAttrib = GetFileAttributes(szPath);
+
+  return (dwAttrib != INVALID_FILE_ATTRIBUTES && 
+         (dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
+}
+
 // In Windows the whodata parameter contains the directory position + 1 to be able to reference it
 int realtime_adddir(const char *dir, int whodata, int followsl)
 {
@@ -403,22 +411,18 @@ int realtime_adddir(const char *dir, int whodata, int followsl)
     /* Set key for hash */
     wdchar[260] = '\0';
     snprintf(wdchar, 260, "%s", dir);
-    if(OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
-        struct stat statbuf;
-#ifdef WIN32
-
-        minfo("Stat check of : %s ", wdchar);
-        // Probar con open y capturar el error
-        if (w_stat(wdchar, &statbuf) == -1) {
+      if(OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
+        minfo("The entry %s exists", wdchar);
+        if (!DirectoryExists(wdchar)) {
             minfo("Delete key: %s from hash table", wdchar);
             rtlocald = OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar);
             free_win32rtfim_data(rtlocald);
         }
- #endif
         mdebug2(FIM_REALTIME_HASH_DUP, wdchar);
         w_mutex_unlock(&adddir_mutex);
     }
     else {
+        minfo("The entry: %s doesn`t exists");
         os_calloc(1, sizeof(win32rtfim), rtlocald);
 
         rtlocald->h = CreateFile(dir,
