@@ -412,9 +412,7 @@ int realtime_adddir(const char *dir, int whodata, int followsl)
     wdchar[260] = '\0';
     snprintf(wdchar, 260, "%s", dir);
       if(OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
-        minfo("The entry %s exists", wdchar);
         if (!DirectoryExists(wdchar)) {
-            minfo("Delete key: %s from hash table", wdchar);
             rtlocald = OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar);
             free_win32rtfim_data(rtlocald);
         }
@@ -422,7 +420,6 @@ int realtime_adddir(const char *dir, int whodata, int followsl)
         w_mutex_unlock(&adddir_mutex);
     }
     else {
-        minfo("The entry: %s doesn`t exists");
         os_calloc(1, sizeof(win32rtfim), rtlocald);
 
         rtlocald->h = CreateFile(dir,
