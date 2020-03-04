@@ -551,12 +551,6 @@ int fim_db_process_missing_entry(fdb_t *fim_sql, fim_tmp_file *file, pthread_mut
                                     (void *) true, (void *) (fim_event_mode) mode, (void *) w_evt);
 }
 
-
-/* 
-     TODO:
-         - Move mode, w_evt and send_alert to an array to not send so many unused variables to
-         the functions that don't need them.
-  */
 int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex,
     void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
     int storage, void * alert, void * mode, void * w_evt) {
