@@ -336,14 +336,6 @@ int realtime_win32read(win32rtfim *rtlocald)
     return (0);
 }
 
-int directory_exists(const char *dir)
-{
-  DWORD dwAttrib = GetFileAttributes(dir);
-
-  return (dwAttrib != INVALID_FILE_ATTRIBUTES && 
-         (dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
-}
-
 // In Windows the whodata parameter contains the directory position + 1 to be able to reference it
 int realtime_adddir(const char *dir, int whodata, int followsl)
 {
@@ -410,7 +402,7 @@ int realtime_adddir(const char *dir, int whodata, int followsl)
     wdchar[260] = '\0';
     snprintf(wdchar, 260, "%s", dir);
       if(OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
-        if (!directory_exists(wdchar)) {
+        if (!w_directory_exists(wdchar)) {
             rtlocald = OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar);
             free_win32rtfim_data(rtlocald);
         }
