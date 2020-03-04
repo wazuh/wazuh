@@ -34,6 +34,9 @@
 #ifdef UNIT_TESTING
 #include "unit_tests/wrappers/syscheckd/win_whodata.h"
 
+// Remove static qualifier when unit testing
+#define STATIC
+
 #undef OpenProcessToken
 #define OpenProcessToken wrap_win_whodata_OpenProcessToken
 #undef GetLastError
@@ -45,12 +48,24 @@
 #define AdjustTokenPrivileges wrap_win_whodata_AdjustTokenPrivileges
 #undef GetNamedSecurityInfo
 #define GetNamedSecurityInfo wrap_win_whodata_GetNamedSecurityInfo
+#define AllocateAndInitializeSid wrap_win_whodata_AllocateAndInitializeSid
+#define GetAclInformation wrap_win_whodata_GetAclInformation
+#undef win_alloc
+#define win_alloc wrap_win_whodata_win_alloc
+#define InitializeAcl wrap_win_whodata_InitializeAcl
+#define LocalFree wrap_win_whodata_LocalFree
+#define CopySid wrap_win_whodata_CopySid
+#define GetAce wrap_win_whodata_GetAce
+#define AddAce wrap_win_whodata_AddAce
+#define SetNamedSecurityInfo wrap_win_whodata_SetNamedSecurityInfo
+#else
+#define STATIC static
 #endif
 
 // Variables whodata
 static char sys_64 = 1;
-static PSID everyone_sid = NULL;
-static size_t ev_sid_size = 0;
+STATIC PSID everyone_sid = NULL;
+STATIC size_t ev_sid_size = 0;
 static unsigned short inherit_flag = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE; //SUB_CONTAINERS_AND_OBJECTS_INHERIT
 static EVT_HANDLE context;
 static const wchar_t* event_fields[] = {

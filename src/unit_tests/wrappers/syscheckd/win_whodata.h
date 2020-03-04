@@ -49,5 +49,64 @@ DWORD WINAPI wrap_win_whodata_GetNamedSecurityInfo(
   PSECURITY_DESCRIPTOR *ppSecurityDescriptor
 );
 
+WINBOOL WINAPI wrap_win_whodata_AllocateAndInitializeSid(
+  PSID_IDENTIFIER_AUTHORITY pIdentifierAuthority,
+  BYTE nSubAuthorityCount,
+  DWORD nSubAuthority0,
+  DWORD nSubAuthority1,
+  DWORD nSubAuthority2,
+  DWORD nSubAuthority3,
+  DWORD nSubAuthority4,
+  DWORD nSubAuthority5,
+  DWORD nSubAuthority6,
+  DWORD nSubAuthority7,
+  PSID *pSid
+);
+
+WINBOOL WINAPI wrap_win_whodata_GetAclInformation(
+  __attribute__ ((unused)) PACL pAcl,
+  LPVOID pAclInformation,
+  DWORD nAclInformationLength,
+  __attribute__ ((unused)) ACL_INFORMATION_CLASS dwAclInformationClass
+);
+
+LPVOID wrap_win_whodata_win_alloc(SIZE_T size);
+
+WINBOOL WINAPI wrap_win_whodata_InitializeAcl(
+  PACL pAcl,
+  DWORD nAclLength,
+  DWORD dwAclRevision
+);
+
+HLOCAL WINAPI wrap_win_whodata_LocalFree(HLOCAL hMem);
+WINBOOL WINAPI wrap_win_whodata_CopySid(
+  DWORD nDestinationSidLength,
+  PSID pDestinationSid,
+  PSID pSourceSid
+);
+
+WINBOOL WINAPI wrap_win_whodata_GetAce(
+  __attribute__ ((unused)) PACL pAcl,
+  __attribute__ ((unused)) DWORD dwAceIndex,
+  LPVOID *pAce
+);
+
+WINBOOL WINAPI wrap_win_whodata_AddAce(
+  PACL pAcl,
+  __attribute__ ((unused)) DWORD dwAceRevision,
+  __attribute__ ((unused)) DWORD dwStartingAceIndex,
+  __attribute__ ((unused)) LPVOID pAceList,
+  __attribute__ ((unused)) DWORD nAceListLength
+);
+
+DWORD WINAPI wrap_win_whodata_SetNamedSecurityInfo(
+  LPSTR pObjectName,
+  SE_OBJECT_TYPE ObjectType,
+  SECURITY_INFORMATION SecurityInfo,
+  PSID psidOwner,
+  PSID psidGroup,
+  PACL pDacl,
+  PACL pSacl
+);
 #endif
 #endif
