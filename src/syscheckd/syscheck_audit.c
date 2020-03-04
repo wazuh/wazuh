@@ -821,7 +821,7 @@ void audit_parse(char *buffer) {
                     snprintf(w_evt->dev, OS_SIZE_64, "%s%s", dev, aux);
                     snprintf(w_evt->dev, OS_SIZE_64, "%ld", strtol(w_evt->dev, NULL, 16));
                 } else {
-                    merror("Couldn't decode device chunk of audit log: colon not found in this string: \"%s\".", dev);
+                    merror("Couldn't decode device chunk of audit log: colon not found in this string: \"%s\".", dev); // LCOV_EXCL_LINE
                 }
 
                 free(dev);
@@ -870,8 +870,8 @@ void audit_parse(char *buffer) {
                             char *real_path = NULL;
                             os_calloc(PATH_MAX + 2, sizeof(char), real_path);
                             if (realpath(w_evt->path, real_path), !real_path) {
-                                mdebug1(FIM_CHECK_LINK_REALPATH, w_evt->path);
-                                break;
+                                mdebug1(FIM_CHECK_LINK_REALPATH, w_evt->path); // LCOV_EXCL_LINE
+                                break; // LCOV_EXCL_LINE
                             }
 
                             free(file_path);
@@ -1207,7 +1207,6 @@ void * audit_main(int *audit_sock) {
 // LCOV_EXCL_STOP
 
 
-// LCOV_EXCL_START
 void audit_read_events(int *audit_sock, int mode) {
     size_t byteRead;
     char * cache;
@@ -1344,10 +1343,8 @@ void audit_read_events(int *audit_sock, int mode) {
     free(cache);
     free(buffer);
 }
-// LCOV_EXCL_STOP
 
 
-// LCOV_EXCL_START
 void clean_rules(void) {
     int i;
     w_mutex_lock(&audit_mutex);
@@ -1363,7 +1360,6 @@ void clean_rules(void) {
     }
     w_mutex_unlock(&audit_mutex);
 }
-// LCOV_EXCL_STOP
 
 
 int filterkey_audit_events(char *buffer) {

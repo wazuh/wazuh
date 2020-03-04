@@ -142,7 +142,7 @@ static void dispatch_check(dbsync_context_t * ctx, const char * command) {
         dispatch_answer(ctx, arg);
     }
 
-end:
+end: // LCOV_EXCL_LINE
     free(data_plain);
     free(query);
     free(response);
