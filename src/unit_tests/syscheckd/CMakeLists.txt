@@ -64,7 +64,8 @@ else()
 endif()
 
 set(SEECHANGES_BASE_FLAGS "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,lstat -Wl,--wrap,stat -Wl,--wrap,abspath -Wl,--wrap,fopen -Wl,--wrap,fread \
-                           -Wl,--wrap,fclose -Wl,--wrap,fwrite -Wl,--wrap,unlink -Wl,--wrap,w_compress_gzfile -Wl,--wrap,IsDir -Wl,--wrap,mkdir")
+                           -Wl,--wrap,fclose -Wl,--wrap,fwrite -Wl,--wrap,unlink -Wl,--wrap,w_compress_gzfile -Wl,--wrap,IsDir -Wl,--wrap,mkdir \
+                           -Wl,--wrap,w_uncompress_gzfile -Wl,--wrap,OS_MD5_File -Wl,--wrap,File_DateofChange -Wl,--wrap,rename -Wl,--wrap,system")
 
 list(APPEND syscheckd_tests_names "test_seechanges")
 if(${TARGET} STREQUAL "agent")
@@ -113,7 +114,10 @@ else()
   list(APPEND syscheckd_tests_flags "${FIM_SYNC_BASE_FLAGS}")
 endif()
 
-set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,_minfo -Wl,--wrap,sleep -Wl,--wrap,SendMSG -Wl,--wrap,realtime_adddir -Wl,--wrap,audit_set_db_consistency")
+set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,_minfo -Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,_merror_exit \
+                          -Wl,--wrap,sleep -Wl,--wrap,SendMSG -Wl,--wrap,StartMQ -Wl,--wrap,realtime_adddir -Wl,--wrap,audit_set_db_consistency \
+                          -Wl,--wrap,time -Wl,--wrap,fim_checker -Wl,--wrap,fim_db_get_path_range -Wl,--wrap,fim_db_delete_range -Wl,--wrap,lstat \
+                          -Wl,--wrap,fim_configuration_directory -Wl,--wrap,inotify_rm_watch")
 
 list(APPEND syscheckd_tests_names "test_run_check")
 if(${TARGET} STREQUAL "agent")

@@ -218,6 +218,10 @@ size_t __wrap_syscom_dispatch(char * command, char ** output) {
     *output = mock_type(char*);
     return mock();
 }
+#else
+int __wrap_sysconf() {
+    return mock();
+}
 #endif
 
 /* setup/teardown */
@@ -2111,6 +2115,8 @@ static void test_remove_empty_folders_error_removing_dir(void **state) {
     static void test_get_user_success(void **state) {
         char *user;
 
+        will_return(__wrap_sysconf, 16384);
+
         will_return(__wrap_getpwuid_r, "user_name");
         will_return(__wrap_getpwuid_r, 1);
         #ifndef SOLARIS
@@ -2126,6 +2132,8 @@ static void test_remove_empty_folders_error_removing_dir(void **state) {
 
     static void test_get_user_uid_not_found(void **state) {
         char *user;
+
+        will_return(__wrap_sysconf, 16384);
 
         will_return(__wrap_getpwuid_r, "user_name");
         will_return(__wrap_getpwuid_r, NULL);
@@ -2145,6 +2153,8 @@ static void test_remove_empty_folders_error_removing_dir(void **state) {
 
     static void test_get_user_error(void **state) {
         char *user;
+
+        will_return(__wrap_sysconf, -1);
 
         will_return(__wrap_getpwuid_r, "user_name");
         will_return(__wrap_getpwuid_r, NULL);
@@ -2473,7 +2483,7 @@ static void test_attrs_to_json_single_attribute(void **state) {
     char *string;
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-    
+
     output = attrs_to_json(input);
 
     *state = output;
@@ -2488,7 +2498,7 @@ static void test_attrs_to_json_multiple_attributes(void **state) {
     char *attr1, *attr2, *attr3;
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-    
+
     output = attrs_to_json(input);
 
     *state = output;
@@ -2535,7 +2545,7 @@ static void test_win_perm_to_json_all_permissions(void **state) {
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-    
+
     will_return_always(__wrap_wstr_split, 1);  // use real wstr_split
 
     output = win_perm_to_json(input);
@@ -2643,7 +2653,7 @@ static void test_win_perm_to_json_no_permissions(void **state) {
     cJSON *output;
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-    
+
     expect_string(__wrap__mdebug1, msg, "Uncontrolled condition when parsing a Windows permission from '%s'.");
     expect_string(__wrap__mdebug1, param1, "account (allowed)");
 
@@ -2667,7 +2677,7 @@ static void test_win_perm_to_json_allowed_denied_permissions(void **state) {
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-    
+
     will_return_always(__wrap_wstr_split, 1);  // use real wstr_split
 
     output = win_perm_to_json(input);
@@ -2742,7 +2752,7 @@ static void test_win_perm_to_json_multiple_accounts(void **state) {
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-    
+
     will_return_always(__wrap_wstr_split, 1);  // use real wstr_split
 
     output = win_perm_to_json(input);
@@ -2828,7 +2838,7 @@ static void test_win_perm_to_json_fragmented_acl(void **state) {
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-    
+
     will_return_always(__wrap_wstr_split, 1);  // use real wstr_split
 
     expect_string(__wrap__mdebug1, msg, "ACL [%s] fragmented. All permissions may not be displayed.");
@@ -2912,7 +2922,7 @@ static void test_win_perm_to_json_incorrect_permission_format(void **state) {
     cJSON *output;
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-    
+
     expect_string(__wrap__mdebug1, msg, "Uncontrolled condition when parsing a Windows permission from '%s'.");
     expect_string(__wrap__mdebug1, param1, "This format is incorrect");
 
@@ -2925,7 +2935,7 @@ static void test_win_perm_to_json_incorrect_permission_format_2(void **state) {
     cJSON *output;
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-    
+
     expect_string(__wrap__mdebug1, msg, "Uncontrolled condition when parsing a Windows permission from '%s'.");
     expect_string(__wrap__mdebug1, param1, "This format is incorrect (too");
 
@@ -2942,7 +2952,7 @@ static void test_win_perm_to_json_error_splitting_permissions(void **state) {
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-    
+
     will_return_always(__wrap_wstr_split, 0);  // fail to split string
 
     expect_string(__wrap__mdebug1, msg, "Uncontrolled condition when parsing a Windows permission from '%s'.");

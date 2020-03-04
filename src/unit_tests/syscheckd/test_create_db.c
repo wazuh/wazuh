@@ -512,6 +512,11 @@ static int teardown_struct_dirent(void **state) {
 static void test_fim_json_event(void **state) {
     fim_data_t *fim_data = *state;
 
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
+    will_return(__wrap_fim_db_get_paths_from_inode, NULL);
+
     fim_data->json = fim_json_event(
                     "test.file",
                     fim_data->old_data,
@@ -538,6 +543,8 @@ static void test_fim_json_event(void **state) {
     assert_int_equal(timestamp->valueint, 1570184221);
     cJSON *tags = cJSON_GetObjectItem(data, "tags");
     assert_string_equal(cJSON_GetStringValue(tags), "tag1,tag2");
+    cJSON *hard_links = cJSON_GetObjectItem(data, "hard_links");
+    assert_null(hard_links);
     cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
     cJSON *changed_attributes = cJSON_GetObjectItem(data, "changed_attributes");
@@ -560,6 +567,11 @@ static void test_fim_json_event_whodata(void **state) {
     fim_data_t *fim_data = *state;
 
     syscheck.opts[1] |= CHECK_SEECHANGES;
+
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
+    will_return(__wrap_fim_db_get_paths_from_inode, NULL);
 
     expect_string(__wrap_seechanges_addfile, filename, "test.file");
     will_return(__wrap_seechanges_addfile, strdup("diff"));
@@ -592,6 +604,8 @@ static void test_fim_json_event_whodata(void **state) {
     assert_int_equal(timestamp->valueint, 1570184221);
     cJSON *tags = cJSON_GetObjectItem(data, "tags");
     assert_string_equal(cJSON_GetStringValue(tags), "tag1,tag2");
+    cJSON *hard_links = cJSON_GetObjectItem(data, "hard_links");
+    assert_null(hard_links);
     cJSON *audit = cJSON_GetObjectItem(data, "audit");
     assert_non_null(audit);
     #ifdef TEST_WINAGENT
@@ -618,6 +632,114 @@ static void test_fim_json_event_no_changes(void **state) {
                     );
 
     assert_null(fim_data->json);
+}
+
+
+static void test_fim_json_event_hardlink_one_path(void **state) {
+    fim_data_t *fim_data = *state;
+
+    char **paths = calloc(2, sizeof(char *));
+    paths[0] = strdup("test.file");
+    paths[1] = NULL;
+
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
+    will_return(__wrap_fim_db_get_paths_from_inode, paths);
+
+    fim_data->json = fim_json_event(
+                    "test.file",
+                    fim_data->old_data,
+                    fim_data->new_data,
+                    1,
+                    FIM_MODIFICATION,
+                    FIM_REALTIME,
+                    NULL
+                );
+
+    assert_non_null(fim_data->json);
+    cJSON *type = cJSON_GetObjectItem(fim_data->json, "type");
+    assert_string_equal(cJSON_GetStringValue(type), "event");
+    cJSON *data = cJSON_GetObjectItem(fim_data->json, "data");
+    assert_non_null(data);
+    cJSON *path = cJSON_GetObjectItem(data, "path");
+    assert_string_equal(cJSON_GetStringValue(path), "test.file");
+    cJSON *mode = cJSON_GetObjectItem(data, "mode");
+    assert_string_equal(cJSON_GetStringValue(mode), "real-time");
+    cJSON *data_type = cJSON_GetObjectItem(data, "type");
+    assert_string_equal(cJSON_GetStringValue(data_type), "modified");
+    cJSON *timestamp = cJSON_GetObjectItem(data, "timestamp");
+    assert_non_null(timestamp);
+    assert_int_equal(timestamp->valueint, 1570184221);
+    cJSON *tags = cJSON_GetObjectItem(data, "tags");
+    assert_string_equal(cJSON_GetStringValue(tags), "tag1,tag2");
+    cJSON *hard_links = cJSON_GetObjectItem(data, "hard_links");
+    assert_null(hard_links);
+    cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
+    assert_non_null(attributes);
+    cJSON *changed_attributes = cJSON_GetObjectItem(data, "changed_attributes");
+    assert_non_null(changed_attributes);
+    cJSON *old_attributes = cJSON_GetObjectItem(data, "old_attributes");
+    assert_non_null(old_attributes);
+
+    assert_int_equal(cJSON_GetArraySize(changed_attributes), 11);
+    assert_int_equal(cJSON_GetArraySize(attributes), 13);
+    assert_int_equal(cJSON_GetArraySize(old_attributes), 13);
+}
+
+
+static void test_fim_json_event_hardlink_two_paths(void **state) {
+    fim_data_t *fim_data = *state;
+
+    char **paths = calloc(3, sizeof(char *));
+    paths[0] = strdup("test.file");
+    paths[1] = strdup("hard_link.file");
+    paths[2] = NULL;
+
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
+    will_return(__wrap_fim_db_get_paths_from_inode, paths);
+
+    fim_data->json = fim_json_event(
+                    "test.file",
+                    fim_data->old_data,
+                    fim_data->new_data,
+                    1,
+                    FIM_MODIFICATION,
+                    FIM_REALTIME,
+                    NULL
+                );
+
+    assert_non_null(fim_data->json);
+    cJSON *type = cJSON_GetObjectItem(fim_data->json, "type");
+    assert_string_equal(cJSON_GetStringValue(type), "event");
+    cJSON *data = cJSON_GetObjectItem(fim_data->json, "data");
+    assert_non_null(data);
+    cJSON *path = cJSON_GetObjectItem(data, "path");
+    assert_string_equal(cJSON_GetStringValue(path), "test.file");
+    cJSON *mode = cJSON_GetObjectItem(data, "mode");
+    assert_string_equal(cJSON_GetStringValue(mode), "real-time");
+    cJSON *data_type = cJSON_GetObjectItem(data, "type");
+    assert_string_equal(cJSON_GetStringValue(data_type), "modified");
+    cJSON *timestamp = cJSON_GetObjectItem(data, "timestamp");
+    assert_non_null(timestamp);
+    assert_int_equal(timestamp->valueint, 1570184221);
+    cJSON *tags = cJSON_GetObjectItem(data, "tags");
+    assert_string_equal(cJSON_GetStringValue(tags), "tag1,tag2");
+    cJSON *hard_links = cJSON_GetObjectItem(data, "hard_links");
+    assert_non_null(hard_links);
+    cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
+    assert_non_null(attributes);
+    cJSON *changed_attributes = cJSON_GetObjectItem(data, "changed_attributes");
+    assert_non_null(changed_attributes);
+    cJSON *old_attributes = cJSON_GetObjectItem(data, "old_attributes");
+    assert_non_null(old_attributes);
+
+    assert_int_equal(cJSON_GetArraySize(hard_links), 1);
+    assert_int_equal(cJSON_GetArraySize(changed_attributes), 11);
+    assert_int_equal(cJSON_GetArraySize(attributes), 13);
+    assert_int_equal(cJSON_GetArraySize(old_attributes), 13);
 }
 
 
@@ -1125,200 +1247,6 @@ static void test_init_fim_data_entry(void **state) {
     assert_int_equal(fim_data->local_data->hash_sha256[0], 0);
 }
 
-static void test_fim_audit_inode_whodata_add(void **state) {
-    fim_data_t *fim_data = *state;
-
-    #ifndef TEST_WINAGENT
-    char * file = "/test/test.file2";
-    #else
-    char * file = "C:\\test\\file2.exe";
-    #endif
-    char **paths = calloc(2, sizeof(char*));
-    char debug_msg[2][OS_MAXSTR];
-
-    if(paths == NULL)
-        fail();
-
-    #ifndef TEST_WINAGENT
-    paths[0] = strdup("/test/test.file");
-    #else
-    paths[0] = strdup("C:\\test\\file.exe");
-    #endif
-    paths[1] = NULL;
-
-    snprintf(debug_msg[0], OS_MAXSTR, "(6319): No configuration found for (file):'%s'", file);
-    snprintf(debug_msg[1], OS_MAXSTR, "(6319): No configuration found for (file):'%s'", paths[0]);
-
-    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
-    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
-    will_return(__wrap_fim_db_get_paths_from_inode, paths);
-
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg[0]);
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg[1]);
-
-    fim_audit_inode_event(file, FIM_WHODATA, fim_data->w_evt);
-}
-
-static void test_fim_audit_inode_whodata_add_empty_paths(void **state) {
-    fim_data_t *fim_data = *state;
-
-    char * file = "/test/test.file2";
-    char **paths = calloc(2, sizeof(char*));
-
-    if(paths == NULL)
-        fail();
-
-    paths[0] = NULL;
-
-    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
-    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
-    will_return(__wrap_fim_db_get_paths_from_inode, paths);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test/test.file2'");
-
-    fim_audit_inode_event(file, FIM_WHODATA, fim_data->w_evt);
-}
-
-static void test_fim_audit_inode_whodata_modify(void **state) {
-    fim_data_t *data = *state;
-
-    char * file = "/test/test.file2";
-    char **paths = calloc(2, sizeof(char*));
-
-    if(paths == NULL)
-        fail();
-
-    paths[0] = strdup(file);
-    paths[1] = NULL;
-
-    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
-    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
-    will_return(__wrap_fim_db_get_paths_from_inode, paths);
-
-    // Inside fim_checker
-    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test/test.file2'");
-
-    fim_audit_inode_event(file, FIM_WHODATA, data->w_evt);
-}
-
-static void test_fim_audit_inode_event_realtime_add(void **state) {
-    fim_data_t *fim_data = *state;
-
-    char * file = "/test/test.file2";
-    char **paths = calloc(2, sizeof(char*));
-
-    if(paths == NULL)
-        fail();
-
-    paths[0] = strdup("/test/test.file");
-    paths[1] = NULL;
-
-    #ifndef TEST_WINAGENT
-    will_return(__wrap_lstat, 0);
-    #else
-    will_return(__wrap_stat, 0);
-    #endif
-
-    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 999);
-    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 1);
-    will_return(__wrap_fim_db_get_paths_from_inode, paths);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test/test.file2'");
-    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test/test.file'");
-
-    fim_audit_inode_event(file, FIM_REALTIME, fim_data->w_evt);
-}
-
-static void test_fim_audit_inode_event_realtime_add_empty_paths(void **state) {
-    fim_data_t *fim_data = *state;
-
-    fim_data->fentry->path = strdup("file");
-    fim_data->fentry->data = fim_data->local_data;
-
-    fim_data->local_data->size = 1500;
-    fim_data->local_data->perm = strdup("0664");
-    fim_data->local_data->attributes = strdup("r--r--r--");
-    fim_data->local_data->uid = strdup("100");
-    fim_data->local_data->gid = strdup("1000");
-    fim_data->local_data->user_name = strdup("test");
-    fim_data->local_data->group_name = strdup("testing");
-    fim_data->local_data->mtime = 1570184223;
-    fim_data->local_data->inode = 606060;
-    strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
-    strcpy(fim_data->local_data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-    strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
-    fim_data->local_data->mode = FIM_REALTIME;
-    fim_data->local_data->last_event = 1570184220;
-    fim_data->local_data->entry_type = FIM_TYPE_FILE;
-    fim_data->local_data->dev = 12345678;
-    fim_data->local_data->scanned = 123456;
-    fim_data->local_data->options = 511;
-    strcpy(fim_data->local_data->checksum, "");
-
-    char * file = "/test/test.file2";
-    char **paths = calloc(2, sizeof(char*));
-
-    if(paths == NULL)
-        fail();
-
-    paths[0] = NULL;
-
-    #ifndef TEST_WINAGENT
-    will_return(__wrap_lstat, -1);
-    #else
-    will_return(__wrap_stat, -1);
-    #endif
-    errno = EACCES;
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "/test/test.file2");
-    will_return(__wrap_fim_db_get_path, fim_data->fentry);
-
-    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
-    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
-    will_return(__wrap_fim_db_get_paths_from_inode, paths);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test/test.file2'");
-
-    fim_audit_inode_event(file, FIM_REALTIME, fim_data->w_evt);
-
-    errno = 0;
-}
-
-static void test_fim_audit_inode_event_realtime_modify(void **state) {
-    fim_data_t *data = *state;
-
-    char * file = "/test/test.file2";
-    char **paths = calloc(2, sizeof(char*));
-
-    if(paths == NULL)
-        fail();
-
-    paths[0] = strdup(file);
-    paths[1] = NULL;
-
-    #ifndef TEST_WINAGENT
-    will_return(__wrap_lstat, 0);
-    #else
-    will_return(__wrap_stat, 0);
-    #endif
-
-    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 999);
-    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 1);
-    will_return(__wrap_fim_db_get_paths_from_inode, paths);
-
-    // Inside fim_checker
-    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test/test.file2'");
-
-    fim_audit_inode_event(file, FIM_REALTIME, data->w_evt);
-}
-
 static void test_fim_file_add(void **state) {
     fim_data_t *fim_data = *state;
     int ret;
@@ -1465,6 +1393,11 @@ static void test_fim_file_modify(void **state) {
     expect_string(__wrap_fim_db_get_path, file_path, "file");
     will_return(__wrap_fim_db_get_path, fim_data->fentry);
 
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
+    will_return(__wrap_fim_db_get_paths_from_inode, NULL);
+
     expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_insert, file_path, "file");
     will_return(__wrap_fim_db_insert, 0);
@@ -1586,6 +1519,11 @@ static void test_fim_file_error_on_insert(void **state) {
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "file");
     will_return(__wrap_fim_db_get_path, fim_data->fentry);
+
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
+    will_return(__wrap_fim_db_get_paths_from_inode, NULL);
 
     expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_insert, file_path, "file");
@@ -2624,11 +2562,6 @@ static void test_fim_realtime_event_file_exists(void **state) {
 
     #ifndef TEST_WINAGENT
     will_return(__wrap_lstat, 0);
-    will_return(__wrap_lstat, -1);
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "/test");
-    will_return(__wrap_fim_db_get_path, NULL);
     #else
     will_return(__wrap_stat, 0);
     #endif
@@ -2666,11 +2599,6 @@ static void test_fim_whodata_event_file_exists(void **state) {
 
     #ifndef TEST_WINAGENT
     will_return(__wrap_lstat, 0);
-
-    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
-    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
-    will_return(__wrap_fim_db_get_paths_from_inode, NULL);
     #else
     will_return(__wrap_stat, 0);
     #endif
@@ -2779,13 +2707,6 @@ static void test_fim_process_missing_entry_data_exists(void **state) {
     expect_string(__wrap_fim_db_get_path, file_path, "/test");
     will_return(__wrap_fim_db_get_path, fim_data->fentry);
 
-    #ifndef TEST_WINAGENT
-    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
-    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
-    will_return(__wrap_fim_db_get_paths_from_inode, NULL);
-    #endif
-
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test'");
 
     fim_process_missing_entry("/test", FIM_WHODATA, fim_data->w_evt);
@@ -2797,6 +2718,8 @@ int main(void) {
         cmocka_unit_test_teardown(test_fim_json_event, teardown_delete_json),
         cmocka_unit_test_teardown(test_fim_json_event_whodata, teardown_delete_json),
         cmocka_unit_test_teardown(test_fim_json_event_no_changes, teardown_delete_json),
+        cmocka_unit_test_teardown(test_fim_json_event_hardlink_one_path, teardown_delete_json),
+        cmocka_unit_test_teardown(test_fim_json_event_hardlink_two_paths, teardown_delete_json),
 
         /* fim_attributes_json */
         cmocka_unit_test_teardown(test_fim_attributes_json, teardown_delete_json),
@@ -2845,14 +2768,6 @@ int main(void) {
 
         /* init_fim_data_entry */
         cmocka_unit_test_setup_teardown(test_init_fim_data_entry, setup_fim_entry, teardown_fim_entry),
-
-        /* fim_audit_inode_event */
-        cmocka_unit_test(test_fim_audit_inode_whodata_add),
-        cmocka_unit_test(test_fim_audit_inode_whodata_add_empty_paths),
-        cmocka_unit_test_setup_teardown(test_fim_audit_inode_whodata_modify, setup_inode_data, teardown_inode_data),
-        cmocka_unit_test(test_fim_audit_inode_event_realtime_add),
-        cmocka_unit_test_setup(test_fim_audit_inode_event_realtime_add_empty_paths, setup_fim_entry),
-        cmocka_unit_test_setup_teardown(test_fim_audit_inode_event_realtime_modify, setup_inode_data, teardown_inode_data),
 
         /* fim_file */
         cmocka_unit_test(test_fim_file_add),

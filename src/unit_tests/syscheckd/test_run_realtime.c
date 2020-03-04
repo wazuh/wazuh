@@ -328,7 +328,7 @@ void test_realtime_start_failure_hash(void **state) {
         expect_string(__wrap_W_Vector_insert_unique, element, "/etc/folder");
         will_return(__wrap_W_Vector_insert_unique, 1);
 
-        ret = realtime_adddir(path, 1);
+        ret = realtime_adddir(path, 1, 0);
 
         assert_int_equal(ret, 1);
     }
@@ -347,21 +347,25 @@ void test_realtime_start_failure_hash(void **state) {
         expect_string(__wrap__mdebug1, formatted_msg, "(6230): Monitoring with Audit: '/etc/folder'");
         will_return(__wrap__mdebug1, 1);
 
-        ret = realtime_adddir(path, 1);
+        ret = realtime_adddir(path, 1, 0);
 
         assert_int_equal(ret, 1);
     }
 
     void test_realtime_adddir_realtime_failure(void **state)
     {
-        (void) state;
+        OSHash *hash = *state;
         int ret;
 
         const char * path = "/etc/folder";
 
-        syscheck.realtime->fd = -1;
+        syscheck.realtime = NULL;
+        will_return(__wrap_OSHash_Create, hash);
+        will_return(__wrap_inotify_init, -1);
 
-        ret = realtime_adddir(path, 0);
+        expect_string(__wrap__merror, formatted_msg, FIM_ERROR_INOTIFY_INITIALIZE);
+
+        ret = realtime_adddir(path, 0, 0);
 
         assert_int_equal(ret, -1);
     }
@@ -377,10 +381,10 @@ void test_realtime_start_failure_hash(void **state) {
         syscheck.realtime->fd = 1;
         will_return(__wrap_inotify_add_watch, -1);
         expect_string(__wrap__merror, formatted_msg, "(6700): Unable to add inotify watch to real time monitoring: '/etc/folder'. '-1' '28': "
-                                                    "The maximum limit of inotify watches has been reached.");
+                                                     "The maximum limit of inotify watches has been reached.");
         errno = 28;
 
-        ret = realtime_adddir(path, 0);
+        ret = realtime_adddir(path, 0, 0);
 
         errno = 0;
 
@@ -400,7 +404,7 @@ void test_realtime_start_failure_hash(void **state) {
         expect_string(__wrap__mdebug1, formatted_msg, "(6272): Unable to add inotify watch to real time monitoring: '/etc/folder'. '-1' '0':'Success'");
         will_return(__wrap__mdebug1, 1);
 
-        ret = realtime_adddir(path, 0);
+        ret = realtime_adddir(path, 0, 0);
 
         assert_int_equal(ret, 1);
     }
@@ -421,7 +425,7 @@ void test_realtime_start_failure_hash(void **state) {
         expect_string(__wrap__mdebug1, formatted_msg, "(6227): Directory added for real time monitoring: '/etc/folder'");
         will_return(__wrap__mdebug1, 1);
 
-        ret = realtime_adddir(path, 0);
+        ret = realtime_adddir(path, 0, 0);
 
         assert_int_equal(ret, 1);
     }
@@ -441,7 +445,7 @@ void test_realtime_start_failure_hash(void **state) {
         expect_string(__wrap__merror_exit, formatted_msg, "(6697): Out of memory. Exiting.");
         will_return_always(__wrap__mdebug1, 0);
 
-        ret = realtime_adddir(path, 0);
+        ret = realtime_adddir(path, 0, 0);
 
         assert_int_equal(ret, 1);
     }
@@ -459,7 +463,7 @@ void test_realtime_start_failure_hash(void **state) {
         will_return(__wrap_OSHash_Get_ex, 1);
         will_return(__wrap_OSHash_Update_ex, 1);
 
-        ret = realtime_adddir(path, 0);
+        ret = realtime_adddir(path, 0, 0);
 
         assert_int_equal(ret, 1);
     }
@@ -479,7 +483,7 @@ void test_realtime_start_failure_hash(void **state) {
 
         expect_string(__wrap__merror, formatted_msg, "Unable to update 'dirtb'. Directory not found: '/etc/folder'");
 
-        ret = realtime_adddir(path, 0);
+        ret = realtime_adddir(path, 0, 0);
 
         assert_int_equal(ret, -1);
     }
@@ -649,7 +653,7 @@ int main(void) {
             cmocka_unit_test_setup_teardown(test_realtime_start_failure_inotify, setup_realtime_start, teardown_realtime_start),
             cmocka_unit_test_setup_teardown(test_realtime_adddir_whodata, setup_w_vector, teardown_w_vector),
             cmocka_unit_test_setup_teardown(test_realtime_adddir_whodata_new_directory, setup_w_vector, teardown_w_vector),
-            cmocka_unit_test(test_realtime_adddir_realtime_failure),
+            cmocka_unit_test_setup_teardown(test_realtime_adddir_realtime_failure, setup_realtime_start, teardown_realtime_start),
             cmocka_unit_test(test_realtime_adddir_realtime_watch_max_reached_failure),
             cmocka_unit_test(test_realtime_adddir_realtime_watch_generic_failure),
             cmocka_unit_test(test_realtime_adddir_realtime_add),

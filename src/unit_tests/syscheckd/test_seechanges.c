@@ -166,6 +166,12 @@ int __wrap_w_compress_gzfile(const char *filesrc, const char *filedst) {
     return mock();
 }
 
+int __wrap_w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst) {
+    check_expected(gzfilesrc);
+    check_expected(gzfiledst);
+    return mock();
+}
+
 int __wrap_IsDir(const char *file) {
     check_expected(file);
     return mock();
@@ -174,6 +180,31 @@ int __wrap_IsDir(const char *file) {
 int __wrap_mkdir(const char *__path, __mode_t __mode) {
     check_expected(__path);
     check_expected(__mode);
+    return mock();
+}
+
+int __wrap_OS_MD5_File(const char *fname, os_md5 output, int mode) {
+    check_expected(fname);
+    check_expected(mode);
+
+    char *md5 = mock_type(char *);
+    strncpy(output, md5, sizeof(os_md5) - 1);
+
+    return mock();
+}
+
+int __wrap_File_DateofChange(const char *file) {
+    return 1;
+}
+
+int __wrap_rename(const char *__old, const char *__new) {
+    check_expected(__old);
+    check_expected(__new);
+    return mock();
+}
+
+int __wrap_system(const char *__command) {
+    check_expected(__command);
     return mock();
 }
 
@@ -667,6 +698,558 @@ void test_seechanges_createpath_mkdir_error(void **state) {
     assert_int_equal(ret, 0);
 }
 
+void test_seechanges_addfile(void **state) {
+    (void) state;
+
+    const char * file_name = "/folder/test";
+
+    expect_string(__wrap_abspath, path, file_name);
+    will_return(__wrap_abspath, 1);
+
+    expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, "/var/ossec/queue/diff/local/folder/test/last-entry.gz");
+    expect_string(__wrap_w_uncompress_gzfile, gzfiledst, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    will_return(__wrap_w_uncompress_gzfile, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
+    will_return(__wrap_OS_MD5_File, "3c183a30cffcda1408daf1c61d47b274");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "/folder/test");
+    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
+    will_return(__wrap_OS_MD5_File, "636fd4d56b21e95c6bde60277ed355ea");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_rename, __old, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    expect_string(__wrap_rename, __new, "/var/ossec/queue/diff/local/folder/test/state.1");
+    will_return(__wrap_rename, 1);
+
+    // seechanges_dupfile()
+    expect_string(__wrap_fopen, __filename, "/folder/test");
+    expect_string(__wrap_fopen, __modes, "rb");
+    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_fopen, __filename, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    expect_string(__wrap_fopen, __modes, "wb");
+    will_return(__wrap_fopen, 1);
+    will_return(__wrap_fread, "test");
+    will_return(__wrap_fread, 13);
+    will_return(__wrap_fwrite, 13);
+    will_return(__wrap_fread, "");
+    will_return(__wrap_fread, 0);
+    will_return(__wrap_fclose, 1);
+    will_return(__wrap_fclose, 1);
+
+    // symlink_to_dir()
+    expect_string(__wrap_lstat, filename, file_name);
+    will_return(__wrap_lstat, 0120000);
+    will_return(__wrap_lstat, 0);
+    expect_string(__wrap_stat, __file, file_name);
+    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, 0);
+
+    expect_string(__wrap_fopen, __filename, "/var/ossec/queue/diff/local/folder/test/diff.1");
+    expect_string(__wrap_fopen, __modes, "wb");
+    will_return(__wrap_fopen, 1);
+
+    will_return(__wrap_fwrite, 1);
+
+    will_return(__wrap_fclose, 1);
+
+    // gen_diff_alert()
+    expect_string(__wrap_abspath, path, file_name);
+    will_return(__wrap_abspath, 1);
+    expect_string(__wrap_fopen, __filename, "/var/ossec/queue/diff/local/folder/test/diff.1");
+    expect_string(__wrap_fopen, __modes, "rb");
+    will_return(__wrap_fopen, 1);
+    will_return(__wrap_fread, "test diff");
+    will_return(__wrap_fread, 9);
+    will_return(__wrap_fclose, 1);
+    expect_string(__wrap_w_compress_gzfile, filesrc, "/folder/test");
+    expect_string(__wrap_w_compress_gzfile, filedst, "/var/ossec/queue/diff/local/folder/test/last-entry.gz");
+    will_return(__wrap_w_compress_gzfile, 0);
+
+    char * diff = seechanges_addfile(file_name);
+
+    *state = diff;
+
+    assert_string_equal(diff, "test diff");
+}
+
+void test_seechanges_addfile_run_diff(void **state) {
+    (void) state;
+
+    const char * file_name = "/folder/test";
+
+    expect_string(__wrap_abspath, path, file_name);
+    will_return(__wrap_abspath, 1);
+
+    expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, "/var/ossec/queue/diff/local/folder/test/last-entry.gz");
+    expect_string(__wrap_w_uncompress_gzfile, gzfiledst, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    will_return(__wrap_w_uncompress_gzfile, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
+    will_return(__wrap_OS_MD5_File, "3c183a30cffcda1408daf1c61d47b274");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "/folder/test");
+    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
+    will_return(__wrap_OS_MD5_File, "636fd4d56b21e95c6bde60277ed355ea");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_rename, __old, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    expect_string(__wrap_rename, __new, "/var/ossec/queue/diff/local/folder/test/state.1");
+    will_return(__wrap_rename, 1);
+
+    // seechanges_dupfile()
+    expect_string(__wrap_fopen, __filename, "/folder/test");
+    expect_string(__wrap_fopen, __modes, "rb");
+    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_fopen, __filename, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    expect_string(__wrap_fopen, __modes, "wb");
+    will_return(__wrap_fopen, 1);
+    will_return(__wrap_fread, "test");
+    will_return(__wrap_fread, 13);
+    will_return(__wrap_fwrite, 13);
+    will_return(__wrap_fread, "");
+    will_return(__wrap_fread, 0);
+    will_return(__wrap_fclose, 1);
+    will_return(__wrap_fclose, 1);
+
+    // symlink_to_dir()
+    expect_string(__wrap_lstat, filename, file_name);
+    will_return(__wrap_lstat, 0);
+    will_return(__wrap_lstat, 0);
+
+    expect_string(__wrap_system, __command, "diff \"/var/ossec/queue/diff/local/folder/test/state.1\" "
+                                            "\"/var/ossec/queue/diff/local/folder/test/last-entry\" > "
+                                            "\"/var/ossec/queue/diff/local/folder/test/diff.1\" 2> "
+                                            "/dev/null");
+    will_return(__wrap_system, 256);
+
+    // gen_diff_alert()
+    expect_string(__wrap_abspath, path, file_name);
+    will_return(__wrap_abspath, 1);
+    expect_string(__wrap_fopen, __filename, "/var/ossec/queue/diff/local/folder/test/diff.1");
+    expect_string(__wrap_fopen, __modes, "rb");
+    will_return(__wrap_fopen, 1);
+    will_return(__wrap_fread, "test diff");
+    will_return(__wrap_fread, 9);
+    will_return(__wrap_fclose, 1);
+    expect_string(__wrap_w_compress_gzfile, filesrc, "/folder/test");
+    expect_string(__wrap_w_compress_gzfile, filedst, "/var/ossec/queue/diff/local/folder/test/last-entry.gz");
+    will_return(__wrap_w_compress_gzfile, 0);
+
+    char * diff = seechanges_addfile(file_name);
+
+    *state = diff;
+
+    assert_string_equal(diff, "test diff");
+}
+
+void test_seechanges_addfile_create_gz_file(void **state) {
+    (void) state;
+
+    const char * file_name = "/folder/test";
+
+    expect_string(__wrap_abspath, path, file_name);
+    will_return(__wrap_abspath, 1);
+
+    expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, "/var/ossec/queue/diff/local/folder/test/last-entry.gz");
+    expect_string(__wrap_w_uncompress_gzfile, gzfiledst, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    will_return(__wrap_w_uncompress_gzfile, -1);
+
+    // seechanges_createpath()
+    expect_string(__wrap_IsDir, file, "/var");
+    will_return(__wrap_IsDir, 0);
+    expect_string(__wrap_IsDir, file, "/var/ossec");
+    will_return(__wrap_IsDir, 0);
+    expect_string(__wrap_IsDir, file, "/var/ossec/queue");
+    will_return(__wrap_IsDir, 0);
+    expect_string(__wrap_IsDir, file, "/var/ossec/queue/diff");
+    will_return(__wrap_IsDir, 0);
+    expect_string(__wrap_IsDir, file, "/var/ossec/queue/diff/local");
+    will_return(__wrap_IsDir, 0);
+    expect_string(__wrap_IsDir, file, "/var/ossec/queue/diff/local/folder");
+    will_return(__wrap_IsDir, 0);
+    expect_string(__wrap_IsDir, file, "/var/ossec/queue/diff/local/folder/test");
+    will_return(__wrap_IsDir, 0);
+
+    expect_string(__wrap_w_compress_gzfile, filesrc, "/folder/test");
+    expect_string(__wrap_w_compress_gzfile, filedst, "/var/ossec/queue/diff/local/folder/test/last-entry.gz");
+    will_return(__wrap_w_compress_gzfile, -1);
+
+    expect_string(__wrap__mwarn, formatted_msg, "(6914): Cannot create a snapshot of file '/folder/test'");
+
+    char * diff = seechanges_addfile(file_name);
+
+    assert_null(diff);
+}
+
+void test_seechanges_addfile_same_md5(void **state) {
+    (void) state;
+
+    const char * file_name = "/folder/test";
+
+    expect_string(__wrap_abspath, path, file_name);
+    will_return(__wrap_abspath, 1);
+
+    expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, "/var/ossec/queue/diff/local/folder/test/last-entry.gz");
+    expect_string(__wrap_w_uncompress_gzfile, gzfiledst, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    will_return(__wrap_w_uncompress_gzfile, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
+    will_return(__wrap_OS_MD5_File, "3c183a30cffcda1408daf1c61d47b274");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "/folder/test");
+    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
+    will_return(__wrap_OS_MD5_File, "3c183a30cffcda1408daf1c61d47b274");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    char * diff = seechanges_addfile(file_name);
+
+    assert_null(diff);
+}
+
+void test_seechanges_addfile_abspath_error(void **state) {
+    (void) state;
+
+    const char * file_name = "/folder/test";
+
+    expect_string(__wrap_abspath, path, file_name);
+    will_return(__wrap_abspath, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "Cannot get absolute path of '/folder/test': Success (0)");
+
+    char * diff = seechanges_addfile(file_name);
+
+    assert_null(diff);
+}
+
+void test_seechanges_addfile_md5_error1(void **state) {
+    (void) state;
+
+    const char * file_name = "/folder/test";
+
+    expect_string(__wrap_abspath, path, file_name);
+    will_return(__wrap_abspath, 1);
+
+    expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, "/var/ossec/queue/diff/local/folder/test/last-entry.gz");
+    expect_string(__wrap_w_uncompress_gzfile, gzfiledst, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    will_return(__wrap_w_uncompress_gzfile, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
+    will_return(__wrap_OS_MD5_File, "3c183a30cffcda1408daf1c61d47b274");
+    will_return(__wrap_OS_MD5_File, -1);
+
+    char * diff = seechanges_addfile(file_name);
+
+    assert_null(diff);
+}
+
+void test_seechanges_addfile_md5_error2(void **state) {
+    (void) state;
+
+    const char * file_name = "/folder/test";
+
+    expect_string(__wrap_abspath, path, file_name);
+    will_return(__wrap_abspath, 1);
+
+    expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, "/var/ossec/queue/diff/local/folder/test/last-entry.gz");
+    expect_string(__wrap_w_uncompress_gzfile, gzfiledst, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    will_return(__wrap_w_uncompress_gzfile, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
+    will_return(__wrap_OS_MD5_File, "3c183a30cffcda1408daf1c61d47b274");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "/folder/test");
+    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
+    will_return(__wrap_OS_MD5_File, "636fd4d56b21e95c6bde60277ed355ea");
+    will_return(__wrap_OS_MD5_File, -1);
+
+    char * diff = seechanges_addfile(file_name);
+
+    assert_null(diff);
+}
+
+void test_seechanges_addfile_rename_error(void **state) {
+    (void) state;
+
+    const char * file_name = "/folder/test";
+
+    expect_string(__wrap_abspath, path, file_name);
+    will_return(__wrap_abspath, 1);
+
+    expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, "/var/ossec/queue/diff/local/folder/test/last-entry.gz");
+    expect_string(__wrap_w_uncompress_gzfile, gzfiledst, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    will_return(__wrap_w_uncompress_gzfile, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
+    will_return(__wrap_OS_MD5_File, "3c183a30cffcda1408daf1c61d47b274");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "/folder/test");
+    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
+    will_return(__wrap_OS_MD5_File, "636fd4d56b21e95c6bde60277ed355ea");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_rename, __old, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    expect_string(__wrap_rename, __new, "/var/ossec/queue/diff/local/folder/test/state.1");
+    will_return(__wrap_rename, -1);
+
+    expect_string(__wrap__merror, formatted_msg, "(1124): Could not rename file '/var/ossec/queue/diff/local/folder/test/last-entry' to '/var/ossec/queue/diff/local/folder/test/state.1' due to [(0)-(Success)].");
+
+    char * diff = seechanges_addfile(file_name);
+
+    assert_null(diff);
+}
+
+void test_seechanges_addfile_dupfile_error(void **state) {
+    (void) state;
+
+    const char * file_name = "/folder/test";
+
+    expect_string(__wrap_abspath, path, file_name);
+    will_return(__wrap_abspath, 1);
+
+    expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, "/var/ossec/queue/diff/local/folder/test/last-entry.gz");
+    expect_string(__wrap_w_uncompress_gzfile, gzfiledst, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    will_return(__wrap_w_uncompress_gzfile, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
+    will_return(__wrap_OS_MD5_File, "3c183a30cffcda1408daf1c61d47b274");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "/folder/test");
+    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
+    will_return(__wrap_OS_MD5_File, "636fd4d56b21e95c6bde60277ed355ea");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_rename, __old, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    expect_string(__wrap_rename, __new, "/var/ossec/queue/diff/local/folder/test/state.1");
+    will_return(__wrap_rename, 1);
+
+    // seechanges_dupfile()
+    expect_string(__wrap_fopen, __filename, "/folder/test");
+    expect_string(__wrap_fopen, __modes, "rb");
+    will_return(__wrap_fopen, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "(6670): Unable to create snapshot for '/folder/test'");
+
+    char * diff = seechanges_addfile(file_name);
+
+    assert_null(diff);
+}
+
+void test_seechanges_addfile_fopen_error(void **state) {
+    (void) state;
+
+    const char * file_name = "/folder/test";
+
+    expect_string(__wrap_abspath, path, file_name);
+    will_return(__wrap_abspath, 1);
+
+    expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, "/var/ossec/queue/diff/local/folder/test/last-entry.gz");
+    expect_string(__wrap_w_uncompress_gzfile, gzfiledst, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    will_return(__wrap_w_uncompress_gzfile, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
+    will_return(__wrap_OS_MD5_File, "3c183a30cffcda1408daf1c61d47b274");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "/folder/test");
+    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
+    will_return(__wrap_OS_MD5_File, "636fd4d56b21e95c6bde60277ed355ea");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_rename, __old, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    expect_string(__wrap_rename, __new, "/var/ossec/queue/diff/local/folder/test/state.1");
+    will_return(__wrap_rename, 1);
+
+    // seechanges_dupfile()
+    expect_string(__wrap_fopen, __filename, "/folder/test");
+    expect_string(__wrap_fopen, __modes, "rb");
+    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_fopen, __filename, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    expect_string(__wrap_fopen, __modes, "wb");
+    will_return(__wrap_fopen, 1);
+    will_return(__wrap_fread, "test");
+    will_return(__wrap_fread, 13);
+    will_return(__wrap_fwrite, 13);
+    will_return(__wrap_fread, "");
+    will_return(__wrap_fread, 0);
+    will_return(__wrap_fclose, 1);
+    will_return(__wrap_fclose, 1);
+
+    // symlink_to_dir()
+    expect_string(__wrap_lstat, filename, file_name);
+    will_return(__wrap_lstat, 0120000);
+    will_return(__wrap_lstat, 0);
+    expect_string(__wrap_stat, __file, file_name);
+    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, 0);
+
+    expect_string(__wrap_fopen, __filename, "/var/ossec/queue/diff/local/folder/test/diff.1");
+    expect_string(__wrap_fopen, __modes, "wb");
+    will_return(__wrap_fopen, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "(6671): Unable to open file for writing '/var/ossec/queue/diff/local/folder/test/diff.1'");
+
+    char * diff = seechanges_addfile(file_name);
+
+    assert_null(diff);
+}
+
+void test_seechanges_addfile_fwrite_error(void **state) {
+    (void) state;
+
+    const char * file_name = "/folder/test";
+
+    expect_string(__wrap_abspath, path, file_name);
+    will_return(__wrap_abspath, 1);
+
+    expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, "/var/ossec/queue/diff/local/folder/test/last-entry.gz");
+    expect_string(__wrap_w_uncompress_gzfile, gzfiledst, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    will_return(__wrap_w_uncompress_gzfile, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
+    will_return(__wrap_OS_MD5_File, "3c183a30cffcda1408daf1c61d47b274");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "/folder/test");
+    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
+    will_return(__wrap_OS_MD5_File, "636fd4d56b21e95c6bde60277ed355ea");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_rename, __old, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    expect_string(__wrap_rename, __new, "/var/ossec/queue/diff/local/folder/test/state.1");
+    will_return(__wrap_rename, 1);
+
+    // seechanges_dupfile()
+    expect_string(__wrap_fopen, __filename, "/folder/test");
+    expect_string(__wrap_fopen, __modes, "rb");
+    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_fopen, __filename, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    expect_string(__wrap_fopen, __modes, "wb");
+    will_return(__wrap_fopen, 1);
+    will_return(__wrap_fread, "test");
+    will_return(__wrap_fread, 13);
+    will_return(__wrap_fwrite, 13);
+    will_return(__wrap_fread, "");
+    will_return(__wrap_fread, 0);
+    will_return(__wrap_fclose, 1);
+    will_return(__wrap_fclose, 1);
+
+    // symlink_to_dir()
+    expect_string(__wrap_lstat, filename, file_name);
+    will_return(__wrap_lstat, 0120000);
+    will_return(__wrap_lstat, 0);
+    expect_string(__wrap_stat, __file, file_name);
+    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, 0);
+
+    expect_string(__wrap_fopen, __filename, "/var/ossec/queue/diff/local/folder/test/diff.1");
+    expect_string(__wrap_fopen, __modes, "wb");
+    will_return(__wrap_fopen, 1);
+
+    will_return(__wrap_fwrite, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "(6668): Unable to write data on file '/var/ossec/queue/diff/local/folder/test/diff.1'");
+
+    will_return(__wrap_fclose, 1);
+
+    // gen_diff_alert()
+    expect_string(__wrap_abspath, path, file_name);
+    will_return(__wrap_abspath, 1);
+    expect_string(__wrap_fopen, __filename, "/var/ossec/queue/diff/local/folder/test/diff.1");
+    expect_string(__wrap_fopen, __modes, "rb");
+    will_return(__wrap_fopen, 1);
+    will_return(__wrap_fread, "test diff");
+    will_return(__wrap_fread, 9);
+    will_return(__wrap_fclose, 1);
+    expect_string(__wrap_w_compress_gzfile, filesrc, "/folder/test");
+    expect_string(__wrap_w_compress_gzfile, filedst, "/var/ossec/queue/diff/local/folder/test/last-entry.gz");
+    will_return(__wrap_w_compress_gzfile, 0);
+
+    char * diff = seechanges_addfile(file_name);
+
+    *state = diff;
+
+    assert_string_equal(diff, "test diff");
+}
+
+void test_seechanges_addfile_run_diff_system_error(void **state) {
+    (void) state;
+
+    const char * file_name = "/folder/test";
+
+    expect_string(__wrap_abspath, path, file_name);
+    will_return(__wrap_abspath, 1);
+
+    expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, "/var/ossec/queue/diff/local/folder/test/last-entry.gz");
+    expect_string(__wrap_w_uncompress_gzfile, gzfiledst, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    will_return(__wrap_w_uncompress_gzfile, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
+    will_return(__wrap_OS_MD5_File, "3c183a30cffcda1408daf1c61d47b274");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "/folder/test");
+    expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
+    will_return(__wrap_OS_MD5_File, "636fd4d56b21e95c6bde60277ed355ea");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_rename, __old, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    expect_string(__wrap_rename, __new, "/var/ossec/queue/diff/local/folder/test/state.1");
+    will_return(__wrap_rename, 1);
+
+    // seechanges_dupfile()
+    expect_string(__wrap_fopen, __filename, "/folder/test");
+    expect_string(__wrap_fopen, __modes, "rb");
+    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_fopen, __filename, "/var/ossec/queue/diff/local/folder/test/last-entry");
+    expect_string(__wrap_fopen, __modes, "wb");
+    will_return(__wrap_fopen, 1);
+    will_return(__wrap_fread, "test");
+    will_return(__wrap_fread, 13);
+    will_return(__wrap_fwrite, 13);
+    will_return(__wrap_fread, "");
+    will_return(__wrap_fread, 0);
+    will_return(__wrap_fclose, 1);
+    will_return(__wrap_fclose, 1);
+
+    // symlink_to_dir()
+    expect_string(__wrap_lstat, filename, file_name);
+    will_return(__wrap_lstat, 0);
+    will_return(__wrap_lstat, 0);
+
+    expect_string(__wrap_system, __command, "diff \"/var/ossec/queue/diff/local/folder/test/state.1\" "
+                                            "\"/var/ossec/queue/diff/local/folder/test/last-entry\" > "
+                                            "\"/var/ossec/queue/diff/local/folder/test/diff.1\" 2> "
+                                            "/dev/null");
+    will_return(__wrap_system, -1);
+
+
+    expect_string(__wrap__merror, formatted_msg, "(6609): Unable to run diff command 'diff \"/var/ossec/queue/diff/local/folder/test/state.1\" "
+                                                                                    "\"/var/ossec/queue/diff/local/folder/test/last-entry\" > "
+                                                                                    "\"/var/ossec/queue/diff/local/folder/test/diff.1\" 2> "
+                                                                                    "/dev/null'");
+
+    char * diff = seechanges_addfile(file_name);
+
+    assert_null(diff);
+}
+
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -701,6 +1284,18 @@ int main(void) {
         cmocka_unit_test(test_seechanges_createpath_mkdir),
         cmocka_unit_test(test_seechanges_createpath_mkdir_error),
         #endif
+        cmocka_unit_test_teardown(test_seechanges_addfile, teardown_free_string),
+        cmocka_unit_test_teardown(test_seechanges_addfile_run_diff, teardown_free_string),
+        cmocka_unit_test(test_seechanges_addfile_create_gz_file),
+        cmocka_unit_test(test_seechanges_addfile_same_md5),
+        cmocka_unit_test(test_seechanges_addfile_abspath_error),
+        cmocka_unit_test(test_seechanges_addfile_md5_error1),
+        cmocka_unit_test(test_seechanges_addfile_md5_error2),
+        cmocka_unit_test(test_seechanges_addfile_rename_error),
+        cmocka_unit_test(test_seechanges_addfile_dupfile_error),
+        cmocka_unit_test(test_seechanges_addfile_fopen_error),
+        cmocka_unit_test_teardown(test_seechanges_addfile_fwrite_error, teardown_free_string),
+        cmocka_unit_test(test_seechanges_addfile_run_diff_system_error),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

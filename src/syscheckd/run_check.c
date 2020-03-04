@@ -303,11 +303,11 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
         // Directories in Windows configured with real-time add recursive watches
         for (int i = 0; syscheck.dir[i]; i++) {
             if (syscheck.opts[i] & REALTIME_ACTIVE) {
-                realtime_adddir(syscheck.dir[i], 0);
+                realtime_adddir(syscheck.dir[i], 0, (syscheck.opts[i] & CHECK_FOLLOW) ? 1 : 0);
             }
 
             if (syscheck.opts[i] & WHODATA_ACTIVE) {
-                realtime_adddir(syscheck.dir[i], i + 1);
+                realtime_adddir(syscheck.dir[i], i + 1, (syscheck.opts[i] & CHECK_FOLLOW) ? 1 : 0);
             }
         }
 #endif
@@ -391,7 +391,7 @@ int fim_whodata_initialize() {
 
     for (int i = 0; syscheck.dir[i]; i++) {
         if (syscheck.opts[i] & WHODATA_ACTIVE) {
-            realtime_adddir(syscheck.dir[i], i + 1);
+            realtime_adddir(syscheck.dir[i], i + 1, (syscheck.opts[i] & CHECK_FOLLOW) ? 1 : 0);
         }
     }
 
@@ -635,7 +635,7 @@ static void fim_link_silent_scan(char *path, int pos) {
     item->mode = FIM_SCHEDULED;
 
     if (syscheck.opts[pos] & REALTIME_ACTIVE) {
-        realtime_adddir(path, 0);
+        realtime_adddir(path, 0, (syscheck.opts[pos] & CHECK_FOLLOW) ? 1 : 0);
     }
 
     fim_checker(path, item, NULL, 0);
@@ -679,7 +679,7 @@ void set_whodata_mode_changes() {
             // At this point the directories in whodata mode that have been deconfigured are added to realtime
             syscheck.wdata.dirs_status[i].status &= ~WD_CHECK_REALTIME;
             syscheck.opts[i] |= REALTIME_ACTIVE;
-            if (realtime_adddir(syscheck.dir[i], 0) != 1) {
+            if (realtime_adddir(syscheck.dir[i], 0, (syscheck.opts[i] & CHECK_FOLLOW) ? 1 : 0) != 1) {
                 merror(FIM_ERROR_REALTIME_ADDDIR_FAILED, syscheck.dir[i]);
             } else {
                 mdebug1(FIM_REALTIME_MONITORING, syscheck.dir[i]);
