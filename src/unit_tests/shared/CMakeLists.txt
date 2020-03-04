@@ -14,7 +14,7 @@ list(APPEND shared_tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fcl
 
 set(SYSCHECK_OP_BASE_FLAGS "-Wl,--wrap,rmdir_ex -Wl,--wrap,wreaddir -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 \
                             -Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,getpwuid_r -Wl,--wrap,getgrgid \
-                            -Wl,--wrap,wstr_split -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP")
+                            -Wl,--wrap,wstr_split -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP,--wrap=sysconf")
 
 list(APPEND shared_tests_names "test_syscheck_op")
 if(${TARGET} STREQUAL "winagent")
