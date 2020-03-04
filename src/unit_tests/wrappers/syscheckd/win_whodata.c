@@ -176,3 +176,44 @@ DWORD WINAPI wrap_win_whodata_SetNamedSecurityInfo(
 
   return mock();
 }
+
+LONG WINAPI wrap_win_whodata_RegOpenKeyEx(
+  HKEY hKey,
+  LPCSTR lpSubKey,
+  DWORD ulOptions,
+  REGSAM samDesired,
+  PHKEY phkResult
+) {
+  PHKEY key;
+
+  check_expected(hKey);
+  check_expected(lpSubKey);
+  check_expected(ulOptions);
+  check_expected(samDesired);
+
+  if(key = mock_type(PHKEY), key) {
+    memcpy(phkResult, key, sizeof(HKEY));
+  }
+
+  return mock();
+}
+
+LONG WINAPI wrap_win_whodata_RegQueryValueEx(
+  __attribute__ ((unused)) HKEY hKey,
+  LPCSTR lpValueName,
+  LPDWORD lpReserved,
+  LPDWORD lpType,
+  LPBYTE lpData,
+  LPDWORD lpcbData
+) {
+  LPBYTE data;
+
+  check_expected(lpValueName);
+  check_expected(lpReserved);
+  check_expected(lpType);
+
+  if(data = mock_type(LPBYTE), data) {
+    memcpy(lpData, data, *lpcbData);
+  }
+  return mock();
+}

@@ -57,13 +57,18 @@
 #define CopySid wrap_win_whodata_CopySid
 #define GetAce wrap_win_whodata_GetAce
 #define AddAce wrap_win_whodata_AddAce
+#undef SetNamedSecurityInfo
 #define SetNamedSecurityInfo wrap_win_whodata_SetNamedSecurityInfo
+#undef RegOpenKeyEx
+#define RegOpenKeyEx wrap_win_whodata_RegOpenKeyEx
+#undef RegQueryValueEx
+#define RegQueryValueEx wrap_win_whodata_RegQueryValueEx
 #else
 #define STATIC static
 #endif
 
 // Variables whodata
-static char sys_64 = 1;
+STATIC char sys_64 = 1;
 STATIC PSID everyone_sid = NULL;
 STATIC size_t ev_sid_size = 0;
 static unsigned short inherit_flag = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE; //SUB_CONTAINERS_AND_OBJECTS_INHERIT

@@ -108,5 +108,22 @@ DWORD WINAPI wrap_win_whodata_SetNamedSecurityInfo(
   PACL pDacl,
   PACL pSacl
 );
+
+LONG WINAPI wrap_win_whodata_RegOpenKeyEx(
+  HKEY hKey,
+  LPCSTR lpSubKey,
+  DWORD ulOptions,
+  REGSAM samDesired,
+  PHKEY phkResult
+);
+
+LONG WINAPI wrap_win_whodata_RegQueryValueEx(
+  HKEY hKey,
+  LPCSTR lpValueName,
+  LPDWORD lpReserved,
+  LPDWORD lpType,
+  LPBYTE lpData,
+  LPDWORD lpcbData
+);
 #endif
 #endif

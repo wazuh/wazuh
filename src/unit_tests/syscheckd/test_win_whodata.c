@@ -13,10 +13,13 @@
 #include <cmocka.h>
 
 #include "syscheckd/syscheck.h"
+#include "unit_tests/wrappers/syscheckd/win_whodata.h"
 
 extern int set_winsacl(const char *dir, int position);
 extern int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
+extern int whodata_check_arch();
 
+extern char sys_64;
 extern PSID everyone_sid;
 extern size_t ev_sid_size;
 /**************************************************************************/
@@ -1259,6 +1262,175 @@ void test_w_update_sacl_success(void **state) {
     assert_int_equal(ret, 0);
 }
 
+void test_whodata_check_arch_open_registry_key_error(void **state) {
+    int ret;
+
+    expect_value(wrap_win_whodata_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
+    expect_string(wrap_win_whodata_RegOpenKeyEx, lpSubKey,
+        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+    expect_value(wrap_win_whodata_RegOpenKeyEx, ulOptions, 0);
+    expect_value(wrap_win_whodata_RegOpenKeyEx, samDesired, KEY_READ);
+    will_return(wrap_win_whodata_RegOpenKeyEx, NULL);
+    will_return(wrap_win_whodata_RegOpenKeyEx, ERROR_ACCESS_DENIED);
+
+    expect_string(__wrap__merror, formatted_msg,
+        "(1758): Unable to open registry key: 'System\\CurrentControlSet\\Control\\Session Manager\\Environment'.");
+
+    ret = whodata_check_arch();
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_whodata_check_arch_query_key_value_error(void **state) {
+    int ret;
+    HKEY key;
+
+    expect_value(wrap_win_whodata_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
+    expect_string(wrap_win_whodata_RegOpenKeyEx, lpSubKey,
+        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+    expect_value(wrap_win_whodata_RegOpenKeyEx, ulOptions, 0);
+    expect_value(wrap_win_whodata_RegOpenKeyEx, samDesired, KEY_READ);
+    will_return(wrap_win_whodata_RegOpenKeyEx, &key);
+    will_return(wrap_win_whodata_RegOpenKeyEx, ERROR_SUCCESS);
+
+    expect_string(wrap_win_whodata_RegQueryValueEx, lpValueName, "PROCESSOR_ARCHITECTURE");
+    expect_value(wrap_win_whodata_RegQueryValueEx, lpReserved, NULL);
+    expect_value(wrap_win_whodata_RegQueryValueEx, lpType, NULL);
+    will_return(wrap_win_whodata_RegQueryValueEx, NULL);
+    will_return(wrap_win_whodata_RegQueryValueEx, ERROR_OUTOFMEMORY);
+
+    expect_string(__wrap__merror, formatted_msg,
+        "(6682): Error reading 'Architecture' from Windows registry. (Error 14)");
+
+    ret = whodata_check_arch();
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_whodata_check_arch_not_supported_arch(void **state) {
+    int ret;
+    HKEY key;
+    const BYTE data[64] = "N/A";
+
+    expect_value(wrap_win_whodata_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
+    expect_string(wrap_win_whodata_RegOpenKeyEx, lpSubKey,
+        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+    expect_value(wrap_win_whodata_RegOpenKeyEx, ulOptions, 0);
+    expect_value(wrap_win_whodata_RegOpenKeyEx, samDesired, KEY_READ);
+    will_return(wrap_win_whodata_RegOpenKeyEx, &key);
+    will_return(wrap_win_whodata_RegOpenKeyEx, ERROR_SUCCESS);
+
+    expect_string(wrap_win_whodata_RegQueryValueEx, lpValueName, "PROCESSOR_ARCHITECTURE");
+    expect_value(wrap_win_whodata_RegQueryValueEx, lpReserved, NULL);
+    expect_value(wrap_win_whodata_RegQueryValueEx, lpType, NULL);
+    will_return(wrap_win_whodata_RegQueryValueEx, data);
+    will_return(wrap_win_whodata_RegQueryValueEx, ERROR_SUCCESS);
+
+    ret = whodata_check_arch();
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_whodata_check_arch_x86(void **state) {
+    int ret;
+    HKEY key;
+    const BYTE data[64] = "x86";
+
+    expect_value(wrap_win_whodata_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
+    expect_string(wrap_win_whodata_RegOpenKeyEx, lpSubKey,
+        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+    expect_value(wrap_win_whodata_RegOpenKeyEx, ulOptions, 0);
+    expect_value(wrap_win_whodata_RegOpenKeyEx, samDesired, KEY_READ);
+    will_return(wrap_win_whodata_RegOpenKeyEx, &key);
+    will_return(wrap_win_whodata_RegOpenKeyEx, ERROR_SUCCESS);
+
+    expect_string(wrap_win_whodata_RegQueryValueEx, lpValueName, "PROCESSOR_ARCHITECTURE");
+    expect_value(wrap_win_whodata_RegQueryValueEx, lpReserved, NULL);
+    expect_value(wrap_win_whodata_RegQueryValueEx, lpType, NULL);
+    will_return(wrap_win_whodata_RegQueryValueEx, data);
+    will_return(wrap_win_whodata_RegQueryValueEx, ERROR_SUCCESS);
+
+    ret = whodata_check_arch();
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(sys_64, 0);
+}
+
+void test_whodata_check_arch_amd64(void **state) {
+    int ret;
+    HKEY key;
+    const BYTE data[64] = "AMD64";
+
+    expect_value(wrap_win_whodata_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
+    expect_string(wrap_win_whodata_RegOpenKeyEx, lpSubKey,
+        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+    expect_value(wrap_win_whodata_RegOpenKeyEx, ulOptions, 0);
+    expect_value(wrap_win_whodata_RegOpenKeyEx, samDesired, KEY_READ);
+    will_return(wrap_win_whodata_RegOpenKeyEx, &key);
+    will_return(wrap_win_whodata_RegOpenKeyEx, ERROR_SUCCESS);
+
+    expect_string(wrap_win_whodata_RegQueryValueEx, lpValueName, "PROCESSOR_ARCHITECTURE");
+    expect_value(wrap_win_whodata_RegQueryValueEx, lpReserved, NULL);
+    expect_value(wrap_win_whodata_RegQueryValueEx, lpType, NULL);
+    will_return(wrap_win_whodata_RegQueryValueEx, data);
+    will_return(wrap_win_whodata_RegQueryValueEx, ERROR_SUCCESS);
+
+    ret = whodata_check_arch();
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(sys_64, 1);
+}
+
+void test_whodata_check_arch_ia64(void **state) {
+    int ret;
+    HKEY key;
+    const BYTE data[64] = "IA64";
+
+    expect_value(wrap_win_whodata_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
+    expect_string(wrap_win_whodata_RegOpenKeyEx, lpSubKey,
+        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+    expect_value(wrap_win_whodata_RegOpenKeyEx, ulOptions, 0);
+    expect_value(wrap_win_whodata_RegOpenKeyEx, samDesired, KEY_READ);
+    will_return(wrap_win_whodata_RegOpenKeyEx, &key);
+    will_return(wrap_win_whodata_RegOpenKeyEx, ERROR_SUCCESS);
+
+    expect_string(wrap_win_whodata_RegQueryValueEx, lpValueName, "PROCESSOR_ARCHITECTURE");
+    expect_value(wrap_win_whodata_RegQueryValueEx, lpReserved, NULL);
+    expect_value(wrap_win_whodata_RegQueryValueEx, lpType, NULL);
+    will_return(wrap_win_whodata_RegQueryValueEx, data);
+    will_return(wrap_win_whodata_RegQueryValueEx, ERROR_SUCCESS);
+
+    ret = whodata_check_arch();
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(sys_64, 1);
+}
+
+void test_whodata_check_arch_arm64(void **state) {
+    int ret;
+    HKEY key;
+    const BYTE data[64] = "ARM64";
+
+    expect_value(wrap_win_whodata_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
+    expect_string(wrap_win_whodata_RegOpenKeyEx, lpSubKey,
+        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+    expect_value(wrap_win_whodata_RegOpenKeyEx, ulOptions, 0);
+    expect_value(wrap_win_whodata_RegOpenKeyEx, samDesired, KEY_READ);
+    will_return(wrap_win_whodata_RegOpenKeyEx, &key);
+    will_return(wrap_win_whodata_RegOpenKeyEx, ERROR_SUCCESS);
+
+    expect_string(wrap_win_whodata_RegQueryValueEx, lpValueName, "PROCESSOR_ARCHITECTURE");
+    expect_value(wrap_win_whodata_RegQueryValueEx, lpReserved, NULL);
+    expect_value(wrap_win_whodata_RegQueryValueEx, lpType, NULL);
+    will_return(wrap_win_whodata_RegQueryValueEx, data);
+    will_return(wrap_win_whodata_RegQueryValueEx, ERROR_SUCCESS);
+
+    ret = whodata_check_arch();
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(sys_64, 1);
+}
+
 /**************************************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -1271,7 +1443,7 @@ int main(void) {
         cmocka_unit_test(test_set_privilege_adjust_token_error),
         cmocka_unit_test(test_set_privilege_elevate_privilege),
         cmocka_unit_test(test_set_privilege_reduce_privilege),
-
+        /* w_update_sacl */
         cmocka_unit_test(test_w_update_sacl_AllocateAndInitializeSid_error),
         cmocka_unit_test(test_w_update_sacl_OpenProcessToken_error),
         cmocka_unit_test(test_w_update_sacl_add_privilege_error),
@@ -1287,6 +1459,14 @@ int main(void) {
         cmocka_unit_test(test_w_update_sacl_SetNamedSecurityInfo_error),
         cmocka_unit_test(test_w_update_sacl_remove_privilege_error),
         cmocka_unit_test(test_w_update_sacl_success),
+        /* whodata_check_arch */
+        cmocka_unit_test(test_whodata_check_arch_open_registry_key_error),
+        cmocka_unit_test(test_whodata_check_arch_query_key_value_error),
+        cmocka_unit_test(test_whodata_check_arch_not_supported_arch),
+        cmocka_unit_test(test_whodata_check_arch_x86),
+        cmocka_unit_test(test_whodata_check_arch_amd64),
+        cmocka_unit_test(test_whodata_check_arch_ia64),
+        cmocka_unit_test(test_whodata_check_arch_arm64),
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, NULL);
