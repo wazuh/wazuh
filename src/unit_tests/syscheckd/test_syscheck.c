@@ -171,7 +171,7 @@ void __wrap_read_internal(int debug_level)
     function_called();
 }
 
-void test_Start_win32_Syscheck_start_fail(void **state)
+void test_Start_win32_Syscheck_no_config_file(void **state)
 {
     (void) state;
     
@@ -186,15 +186,14 @@ void test_Start_win32_Syscheck_start_fail(void **state)
     expect_string(__wrap__minfo, formatted_msg, "(6678): No directory provided for syscheck to monitor.");
     expect_string(__wrap__minfo, formatted_msg, "(6001): File integrity monitoring disabled.");
 
+    /* Conf file not found */
     will_return_always(__wrap_getDefine_Int, 1);
     expect_string(__wrap_File_DateofChange, file, "ossec.conf");
-    
     will_return(__wrap_File_DateofChange, -1);
     expect_string(__wrap__merror_exit, formatted_msg, "(1239): Configuration file not found: 'ossec.conf'.");
 
     expect_string(__wrap_Read_Syscheck_Config, file, "ossec.conf");
     will_return(__wrap_Read_Syscheck_Config, -1);
-
     expect_string(__wrap__merror_exit, formatted_msg, "(1202): Configuration error at 'ossec.conf'.");
     
     will_return(__wrap_rootcheck_init, 1);
@@ -210,7 +209,7 @@ void test_Start_win32_Syscheck_start_fail(void **state)
     Start_win32_Syscheck();
 }
 
-void test_Start_win32_Syscheck_start_success(void **state)
+void test_Start_win32_Syscheck_success(void **state)
 {
     (void) state;
     
@@ -223,12 +222,9 @@ void test_Start_win32_Syscheck_start_success(void **state)
     char info_msg[OS_MAXSTR];
   
     expect_string(__wrap__mdebug1, formatted_msg, "Starting ...");
-    snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
-    
-    expect_string(__wrap__minfo, formatted_msg, info_msg);
 
     will_return_always(__wrap_getDefine_Int, 1);
-    
+
     expect_string(__wrap_File_DateofChange, file, "ossec.conf");
     will_return(__wrap_File_DateofChange, 0);
 
@@ -241,6 +237,91 @@ void test_Start_win32_Syscheck_start_success(void **state)
     will_return(__wrap_fim_db_init, NULL);
 
     expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
+
+    snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
+    expect_string(__wrap__minfo, formatted_msg, info_msg);
+
+    expect_function_call(__wrap_os_wait);
+
+    expect_function_call(__wrap_start_daemon);
+
+    Start_win32_Syscheck();
+}
+
+void test_Start_win32_Syscheck_syscheck_disabled_1(void **state)
+{
+    (void) state;
+
+    syscheck.dir = NULL;
+    syscheck.ignore = NULL;
+    syscheck.registry = NULL;
+
+    char info_msg[OS_MAXSTR];
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Starting ...");
+
+    will_return_always(__wrap_getDefine_Int, 1);
+
+    expect_string(__wrap_File_DateofChange, file, "ossec.conf");
+    will_return(__wrap_File_DateofChange, 0);
+
+    expect_string(__wrap_Read_Syscheck_Config, file, "ossec.conf");
+    will_return(__wrap_Read_Syscheck_Config, 1);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6678): No directory provided for syscheck to monitor.");
+
+    expect_string(__wrap__minfo, formatted_msg, "(6001): File integrity monitoring disabled.");
+
+    will_return(__wrap_rootcheck_init, 0);
+    
+    expect_value(__wrap_fim_db_init, memory, 0);
+    will_return(__wrap_fim_db_init, NULL);
+
+    expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
+
+    snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
+    expect_string(__wrap__minfo, formatted_msg, info_msg);
+
+    expect_function_call(__wrap_os_wait);
+
+    expect_function_call(__wrap_start_daemon);
+
+    Start_win32_Syscheck();
+}
+
+void test_Start_win32_Syscheck_syscheck_disabled_2(void **state)
+{
+    (void) state;
+
+    char *SYSCHECK_EMPTY[] = { NULL };
+
+    syscheck.dir = SYSCHECK_EMPTY;
+
+    char info_msg[OS_MAXSTR];
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Starting ...");
+
+    will_return_always(__wrap_getDefine_Int, 1);
+    
+    expect_string(__wrap_File_DateofChange, file, "ossec.conf");
+    will_return(__wrap_File_DateofChange, 0);
+
+    expect_string(__wrap_Read_Syscheck_Config, file, "ossec.conf");
+    will_return(__wrap_Read_Syscheck_Config, 1);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6678): No directory provided for syscheck to monitor.");
+
+    expect_string(__wrap__minfo, formatted_msg, "(6001): File integrity monitoring disabled.");
+
+    will_return(__wrap_rootcheck_init, 0);
+
+    expect_value(__wrap_fim_db_init, memory, 0);
+    will_return(__wrap_fim_db_init, NULL);
+
+    expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
+
+    snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
+    expect_string(__wrap__minfo, formatted_msg, info_msg);
 
     expect_function_call(__wrap_os_wait);
 
@@ -260,8 +341,10 @@ int main(void) {
             cmocka_unit_test(test_read_internal_debug),
         /* Windows specific tests */
         #ifdef TEST_WINAGENT
-            cmocka_unit_test(test_Start_win32_Syscheck_start_fail),
-            cmocka_unit_test(test_Start_win32_Syscheck_start_success),
+            cmocka_unit_test(test_Start_win32_Syscheck_no_config_file),
+            cmocka_unit_test(test_Start_win32_Syscheck_success),
+            cmocka_unit_test(test_Start_win32_Syscheck_syscheck_disabled_1),
+            cmocka_unit_test(test_Start_win32_Syscheck_syscheck_disabled_2),
         #endif
     };
 
