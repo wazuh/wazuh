@@ -291,6 +291,14 @@ const char *get_group(int gid);
 char *get_user(const char *path, __attribute__((unused)) int uid, char **sid);
 
 /**
+ * @brief Check if a directory exists
+ *
+ * @param path Path of the directory to check
+ * @return The FILE_ATTRIBUTE_DIRECTORY bit mask on success, 0 on failure
+ */
+unsigned int w_directory_exists(const char *path);
+
+/**
  * @brief Retrieves the attributes of a specific file (Windows)
  *
  * @param file_path The path of the file to check the attributes of

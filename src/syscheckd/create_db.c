@@ -98,9 +98,6 @@ void fim_scan() {
 }
 
 void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) {
-    // SQLite Development
-    // fim_entry_data *saved_data;
-    cJSON *json_event = NULL;
     int node;
     int depth;
 
@@ -156,18 +153,11 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
         w_mutex_unlock(&syscheck.fim_entry_mutex);
 
         if (saved_entry) {
-            json_event = fim_json_event(path, NULL, saved_entry->data, item->index, FIM_DELETE, item->mode, w_evt);
-            fim_db_remove_path(syscheck.database, saved_entry, &syscheck.fim_entry_mutex, (void *) (int) 0);
+            fim_db_remove_path(syscheck.database, saved_entry, &syscheck.fim_entry_mutex, (void *) (int) true,
+                                (void *) (fim_event_mode) item->mode, (void *) w_evt);
             free_entry(saved_entry);
             saved_entry = NULL;
         }
-
-        if (json_event && report) {
-            char *json_formated = cJSON_PrintUnformatted(json_event);
-            send_syscheck_msg(json_formated);
-            os_free(json_formated);
-        }
-        cJSON_Delete(json_event);
 
         return;
     }
@@ -398,7 +388,7 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
 
     if (files && files->elements) {
         if (fim_db_process_missing_entry(syscheck.database, files, &syscheck.fim_entry_mutex,
-            syscheck.database_store, mode) != FIMDB_OK) {
+            syscheck.database_store, mode, w_evt) != FIMDB_OK) {
                 merror(FIM_DB_ERROR_RM_RANGE, first_entry, last_entry);
             }
     }
