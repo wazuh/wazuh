@@ -1311,7 +1311,7 @@ int get_drive_names(wchar_t *volume_name, char *device) {
         os_calloc(MAX_PATH, sizeof(char), convert_name);
 
         for (nameit = names; nameit[0] != L'\0'; nameit += wcslen(nameit) + 1) {
-            wcstombs(convert_name, nameit, strlen(nameit));
+            wcstombs(convert_name, nameit, strlen((char*)nameit));
             mdebug1(FIM_WHODATA_DEVICE_LETTER, device, convert_name);
 
             if(syscheck.wdata.device) {

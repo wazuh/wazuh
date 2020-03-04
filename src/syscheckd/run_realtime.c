@@ -337,7 +337,7 @@ int realtime_win32read(win32rtfim *rtlocald)
 }
 
 // In Windows the whodata parameter contains the directory position + 1 to be able to reference it
-int realtime_adddir(const char *dir, int whodata, int followsl)
+int realtime_adddir(const char *dir, int whodata, __attribute__((unused)) int followsl)
 {
     char wdchar[260 + 1];
     win32rtfim *rtlocald;

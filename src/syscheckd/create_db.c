@@ -322,7 +322,7 @@ void fim_realtime_event(char *file) {
          * (and finding the file removed)
          */
         fim_rt_delay();
-      
+
         fim_element item = { .mode = FIM_REALTIME };
         fim_checker(file, &item, NULL, 1);
     }
@@ -413,8 +413,6 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
         alert_type = FIM_MODIFICATION;
     }
 
-    json_event = fim_json_event(key, saved ? saved->data : NULL, data, pos,
-                                alert_type, 0, NULL);
     if ((saved && saved->data && strcmp(saved->data->hash_sha1, data->hash_sha1) != 0)
         || alert_type == FIM_ADD) {
         if (fim_db_insert(syscheck.database, key, data) == -1) {
@@ -422,6 +420,9 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
             w_mutex_unlock(&syscheck.fim_entry_mutex);
             return OS_INVALID;
         }
+
+        json_event = fim_json_event(key, saved->data, data, pos,
+                                    alert_type, 0, NULL);
     } else {
         fim_db_set_scanned(syscheck.database, key);
         result = 0;
@@ -742,10 +743,8 @@ cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_da
     if (old_data != NULL) {
         char** paths = NULL;
 
-        paths = fim_db_get_paths_from_inode(syscheck.database, old_data->inode, old_data->dev);
-
-        if (paths) {
-            if(paths[0] && paths[1]) {
+        if(paths = fim_db_get_paths_from_inode(syscheck.database, old_data->inode, old_data->dev), paths){
+            if(paths[0] && paths[1]){
                 cJSON *hard_links = cJSON_CreateArray();
                 int i;
                 for(i = 0; paths[i]; i++) {
@@ -754,12 +753,10 @@ cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_da
                     }
                     os_free(paths[i]);
                 }
-
                 cJSON_AddItemToObject(data, "hard_links", hard_links);
-            } else if (paths[0]) {
+            } else {
                 os_free(paths[0]);
             }
-
             os_free(paths);
         }
     }

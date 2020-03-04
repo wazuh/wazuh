@@ -797,6 +797,7 @@ char **fim_db_get_paths_from_inode(fdb_t *fim_sql, const unsigned long int inode
     }
 
     fim_db_check_transaction(fim_sql);
+
     return paths;
 }
 
@@ -959,6 +960,8 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) 
 
     res_data = fim_db_insert_data(fim_sql, entry, &inode_id);
     res_path = fim_db_insert_path(fim_sql, file_path, entry, inode_id);
+
+    fim_db_check_transaction(fim_sql);
 
     return res_data && res_path;
 }
@@ -1140,7 +1143,7 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
     if (send_alert && rows >= 1) {
         whodata_evt *whodata_event = (whodata_evt *) w_evt;
         cJSON * json_event      = NULL;
-        char * json_formated    = NULL;
+        char * json_formatted    = NULL;
         int pos = 0;
 
          const char *FIM_ENTRY_TYPE[] = { "file", "registry"};
@@ -1155,18 +1158,18 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
 
         if (json_event) {
             mdebug2(FIM_FILE_MSG_DELETE, entry->path);
-            json_formated = cJSON_PrintUnformatted(json_event);
-            send_syscheck_msg(json_formated);
+            json_formatted = cJSON_PrintUnformatted(json_event);
+            send_syscheck_msg(json_formatted);
 
-            os_free(json_formated);
+            os_free(json_formatted);
             cJSON_Delete(json_event);
         }
     }
 
-   end:
-        w_mutex_lock(mutex);
-        fim_db_check_transaction(fim_sql);
-        w_mutex_unlock(mutex);
+end:
+    w_mutex_lock(mutex);
+    fim_db_check_transaction(fim_sql);
+    w_mutex_unlock(mutex);
 }
 
 int fim_db_get_row_path(fdb_t * fim_sql, int mode, char **path) {
@@ -1203,6 +1206,8 @@ int fim_db_set_scanned(fdb_t *fim_sql, char *path) {
         return FIMDB_ERR;
     }
 
+    fim_db_check_transaction(fim_sql);
+
     return FIMDB_OK;
 }
 
@@ -1227,8 +1232,8 @@ void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry
 
     ((fim_tmp_file *) arg)->elements++;
 
-    end:
-        os_free(base);
+end:
+    os_free(base);
 }
 
 void fim_db_callback_sync_path_range(__attribute__((unused))fdb_t *fim_sql, fim_entry *entry,

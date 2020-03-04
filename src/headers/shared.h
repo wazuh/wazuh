@@ -244,6 +244,7 @@ extern const char *__local_name;
 #include "utf8_op.h"
 #include "shared.h"
 #include "log_builder.h"
+#include "client-agent/agentd.h"
 
 #include "os_xml/os_xml.h"
 #include "os_regex/os_regex.h"
