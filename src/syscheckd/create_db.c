@@ -430,15 +430,15 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
             w_mutex_unlock(&syscheck.fim_entry_mutex);
             return OS_INVALID;
         }
+
+        json_event = fim_json_event(key, saved->data, data, pos,
+                                    alert_type, 0, NULL);
     } else {
         fim_db_set_scanned(syscheck.database, key);
         result = 0;
     }
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-    json_event = fim_json_event(key, saved ? saved->data : NULL, data, pos,
-                                alert_type, 0, NULL);
 
     if (json_event && _base_line) {
         json_formated = cJSON_PrintUnformatted(json_event);
