@@ -401,7 +401,11 @@ int realtime_adddir(const char *dir, int whodata, int followsl)
     /* Set key for hash */
     wdchar[260] = '\0';
     snprintf(wdchar, 260, "%s", dir);
-    if(OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
+      if(OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
+        if (!w_directory_exists(wdchar)) {
+            rtlocald = OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar);
+            free_win32rtfim_data(rtlocald);
+        }
         mdebug2(FIM_REALTIME_HASH_DUP, wdchar);
         w_mutex_unlock(&adddir_mutex);
     }

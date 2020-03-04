@@ -879,12 +879,21 @@ int w_get_account_info(SID *sid, char **account_name, char **account_domain) {
     return 0;
 }
 
+unsigned int w_directory_exists(const char *path){
+    if (path != NULL){
+        unsigned int attrs = w_get_file_attrs(path);
+        return attrs & FILE_ATTRIBUTE_DIRECTORY;
+    }
+
+    return 0;
+}
+
 unsigned int w_get_file_attrs(const char *file_path) {
     unsigned int attrs;
 
     if (attrs = GetFileAttributesA(file_path), attrs == INVALID_FILE_ATTRIBUTES) {
         attrs = 0;
-        merror("The attributes for '%s' could not be obtained. Error '%ld'.", file_path, GetLastError());
+        mdebug2("The attributes for '%s' could not be obtained. Error '%ld'.", file_path, GetLastError());
     }
 
     return attrs;
