@@ -1166,7 +1166,11 @@ void test_fim_db_insert_inode_id_null_delete_row_error(void **state) {
 /*----------fim_db_remove_path------------------*/
 void test_fim_db_remove_path_no_entry(void **state) {
     test_fim_db_insert_data *test_data = *state;
+    #ifndef TEST_WINAGENT
     will_return(__wrap_fim_configuration_directory, 0);
+    #else
+    will_return(__wrap_fim_configuration_directory, 8);
+    #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return_always(__wrap_sqlite3_bind_text, 0);
@@ -1184,7 +1188,11 @@ void test_fim_db_remove_path_no_entry(void **state) {
 
 void test_fim_db_remove_path_one_entry(void **state) {
     test_fim_db_insert_data *test_data = *state;
+    #ifndef TEST_WINAGENT
     will_return(__wrap_fim_configuration_directory, 0);
+    #else
+    will_return(__wrap_fim_configuration_directory, 8);
+    #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return_always(__wrap_sqlite3_bind_int, 0);
@@ -1204,7 +1212,11 @@ void test_fim_db_remove_path_one_entry(void **state) {
 
 void test_fim_db_remove_path_one_entry_step_fail(void **state) {
     test_fim_db_insert_data *test_data = *state;
+    #ifndef TEST_WINAGENT
     will_return(__wrap_fim_configuration_directory, 0);
+    #else
+    will_return(__wrap_fim_configuration_directory, 8);
+    #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return_always(__wrap_sqlite3_bind_int, 0);
@@ -1226,7 +1238,11 @@ void test_fim_db_remove_path_one_entry_alert_fail(void **state) {
     test_fim_db_insert_data *test_data = *state;
     cJSON * json = cJSON_CreateObject();
 
+    #ifndef TEST_WINAGENT
     will_return(__wrap_fim_configuration_directory, 0);
+    #else
+    will_return(__wrap_fim_configuration_directory, 8);
+    #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return_always(__wrap_sqlite3_bind_int, 0);
@@ -1248,7 +1264,11 @@ void test_fim_db_remove_path_one_entry_alert_fail(void **state) {
 
 void test_fim_db_remove_path_one_entry_alert_success(void **state) {
     test_fim_db_insert_data *test_data = *state;
+    #ifndef TEST_WINAGENT
     will_return(__wrap_fim_configuration_directory, 0);
+    #else
+    will_return(__wrap_fim_configuration_directory, 8);
+    #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return_always(__wrap_sqlite3_bind_int, 0);
@@ -1273,7 +1293,11 @@ void test_fim_db_remove_path_one_entry_alert_success(void **state) {
 
 void test_fim_db_remove_path_multiple_entry(void **state) {
     test_fim_db_insert_data *test_data = *state;
+    #ifndef TEST_WINAGENT
     will_return(__wrap_fim_configuration_directory, 0);
+    #else
+    will_return(__wrap_fim_configuration_directory, 8);
+    #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return_always(__wrap_sqlite3_bind_text, 0);
@@ -1292,7 +1316,11 @@ void test_fim_db_remove_path_multiple_entry(void **state) {
 
 void test_fim_db_remove_path_multiple_entry_step_fail(void **state) {
     test_fim_db_insert_data *test_data = *state;
+    #ifndef TEST_WINAGENT
     will_return(__wrap_fim_configuration_directory, 0);
+    #else
+    will_return(__wrap_fim_configuration_directory, 8);
+    #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return_always(__wrap_sqlite3_bind_text, 0);
@@ -1311,7 +1339,11 @@ void test_fim_db_remove_path_multiple_entry_step_fail(void **state) {
 
 void test_fim_db_remove_path_failed_path(void **state) {
     test_fim_db_insert_data *test_data = *state;
+    #ifndef TEST_WINAGENT
     will_return(__wrap_fim_configuration_directory, 0);
+    #else
+    will_return(__wrap_fim_configuration_directory, 8);
+    #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return_maybe(__wrap_sqlite3_bind_int, 0);
@@ -2045,7 +2077,11 @@ void test_fim_db_delete_range_success(void **state) {
     wraps_fim_db_decode_full_row();
 
     // Inside fim_db_remove_path (callback)
+    #ifndef TEST_WINAGENT
     will_return(__wrap_fim_configuration_directory, 6);
+    #else
+    will_return(__wrap_fim_configuration_directory, 0);
+    #endif
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, 5);
@@ -2076,7 +2112,11 @@ void test_fim_db_delete_range_error(void **state) {
     wraps_fim_db_decode_full_row();
 
     // Inside fim_db_remove_path (callback)
+    #ifndef TEST_WINAGENT
     will_return(__wrap_fim_configuration_directory, 6);
+    #else
+    will_return(__wrap_fim_configuration_directory, 0);
+    #endif
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     wraps_fim_db_check_transaction();
 
@@ -2123,7 +2163,11 @@ void test_fim_db_delete_not_scanned(void **state) {
 
     // Inside fim_db_remove_path (callback)
     // Its return value is not checked so force the error is the simplest way to wrap it
+    #ifndef TEST_WINAGENT
     will_return(__wrap_fim_configuration_directory, 6);
+    #else
+    will_return(__wrap_fim_configuration_directory, 0);
+    #endif
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     wraps_fim_db_check_transaction();
 
