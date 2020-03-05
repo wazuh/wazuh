@@ -253,6 +253,11 @@ void test_fim_whodata_initialize(void **state)
     (void) state;
     int ret;
 
+    #ifdef TEST_WINAGENT
+    will_return(__wrap__mdebug1, 1);
+    expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '10'");
+    #endif
+
     ret = fim_whodata_initialize();
 
     assert_int_equal(ret, 0);
