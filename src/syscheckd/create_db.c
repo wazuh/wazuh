@@ -300,7 +300,7 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
-    if (!_base_line && strlen(file) > 0 && item->configuration & CHECK_SEECHANGES) {
+    if (!_base_line && item->configuration & CHECK_SEECHANGES) {
         // The first backup is created. It should return NULL.
         char *file_changed = seechanges_addfile(file);
         os_free(file_changed);
@@ -330,7 +330,7 @@ void fim_realtime_event(char *file) {
          * (and finding the file removed)
          */
         fim_rt_delay();
-      
+
         fim_element item = { .mode = FIM_REALTIME };
         fim_checker(file, &item, NULL, 1);
     }
