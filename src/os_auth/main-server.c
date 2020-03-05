@@ -951,7 +951,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 use_client_ip = 1;
             } else if(!config.flags.use_source_ip) {
                 // use_source-ip = 0 and no -I argument in agent
-                memcpy(srcip,"any",IPSIZE);
+                memcpy(srcip, "any", 3);
             }
             // else -> agent IP is already on srcip
 
