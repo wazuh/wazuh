@@ -47,20 +47,6 @@ def test_add_detail(detail, value, details):
     assert value in details[detail]
 
 
-@pytest.mark.parametrize('src_list, element', [
-    (['wazuh', 'ossec'], 'rbac'),
-    (['wazuh', 'ossec', 'rbac'], ['new']),
-])
-def test_add_unique_element(src_list, element):
-    """Test add_unique_element rule core function."""
-    rule.add_unique_element(src_list, element)
-    if isinstance(element, list):
-        for e in element:
-            assert e in src_list
-    else:
-        assert element in src_list
-
-
 @pytest.mark.parametrize('status, expected_result', [
     ('enabled', 'enabled'),
     ('disabled', 'disabled'),
@@ -93,8 +79,8 @@ def test_load_rules_from_file(rule_file, rule_path, rule_status, exception):
     try:
         result = rule.load_rules_from_file(rule_file, rule_path, rule_status)
         for r in result:
-            assert r['file'] == rule_file
-            assert r['path'] == rule_path
+            assert r['filename'] == rule_file
+            assert r['relative_dirname'] == rule_path
             assert r['status'] == rule_status
     except WazuhError as e:
         assert e.code == exception.code
@@ -116,24 +102,24 @@ def test_load_rules_from_file_unknown(mock_load):
 
 @pytest.mark.parametrize('tmp_data, parameters, expected_result', [
     ([
-         {'file': 'one.xml', 'status': 'all'},
-         {'file': 'two.xml', 'status': 'disabled'},
-         {'file': 'three.xml', 'status': None},
-         {'file': 'four.xml', 'status': 'enabled'}
+         {'filename': 'one.xml', 'status': 'all'},
+         {'filename': 'two.xml', 'status': 'disabled'},
+         {'filename': 'three.xml', 'status': None},
+         {'filename': 'four.xml', 'status': 'enabled'}
      ],
      {'status': 'disabled'},
      [
-         {'file': 'two.xml', 'status': 'disabled'},
+         {'filename': 'two.xml', 'status': 'disabled'},
      ]),
     ([
-         {'file': 'one.xml', 'exists': False},
-         {'file': 'two.xml', 'exists': 'true'},
-         {'file': 'three.xml', 'exists': True},
-         {'file': 'four.xml', 'exists': 'false'}
+         {'filename': 'one.xml', 'exists': False},
+         {'filename': 'two.xml', 'exists': 'true'},
+         {'filename': 'three.xml', 'exists': True},
+         {'filename': 'four.xml', 'exists': 'false'}
      ],
      {'exists': 'true'},
      [
-         {'file': 'two.xml', 'exists': 'true'},
+         {'filename': 'two.xml', 'exists': 'true'},
      ])
 ])
 def test_remove_files(tmp_data, parameters, expected_result):
@@ -149,7 +135,21 @@ def test_remove_files(tmp_data, parameters, expected_result):
 def test_format_rule_decoder_file(rule_file, rule_path, rule_status):
     """Test format_rule_decoder_file rule core function."""
     result = rule.format_rule_decoder_file(
-        ruleset_conf, {'status': rule_status, 'path': rule_path, 'file': rule_file},
+        ruleset_conf, {'status': rule_status, 'relative_dirname': rule_path, 'filename': rule_file},
         ['rule_include', 'rule_exclude', 'rule_dir'])
 
-    assert result == [{'file': rule_file, 'path': rule_path, 'status': rule_status}]
+    assert result == [{'filename': rule_file, 'relative_dirname': rule_path, 'status': rule_status}]
+
+
+@pytest.mark.parametrize('groups, general_groups', [
+    (['virus', 'pci_dss_5.1', 'pci_dss_5.2', 'pci_dss_10.6.1', 'pci_dss_11.4', 'gpg13_4.2', 'gdpr_IV_35.7.d',
+      'hipaa_164.312.b', 'nist_800_53_SI.3', 'nist_800_53_AU.6', 'nist_800_53_SI.4'], ['mcafee'])
+])
+def test_set_groups(groups, general_groups):
+    """Test set_groups rule core function."""
+    empty_rule = {'pci_dss': [], 'gdpr': [], 'hipaa': [], 'nist_800_53': [], 'gpg13': [], 'groups': []}
+    expected_result = {'pci_dss': ['5.1', '5.2', '10.6.1', '11.4'], 'gdpr': ['IV_35.7.d'], 'hipaa': ['164.312.b'],
+                       'nist_800_53': ['SI.3', 'AU.6', 'SI.4'], 'gpg13': ['4.2'], 'groups': ['virus', 'mcafee']}
+    rule.set_groups(groups, general_groups, empty_rule)
+
+    assert empty_rule == expected_result

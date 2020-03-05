@@ -1,8 +1,9 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
+import os
 import re
 from collections import defaultdict
 from functools import wraps
@@ -66,16 +67,21 @@ def _expand_resource(resource):
             return users_system
         elif resource_type == 'rule:file':
             tags = ['rule_include', 'rule_exclude', 'rule_dir']
-            format_rules = format_rule_decoder_file(get_ossec_conf(section='ruleset')['ruleset'],
-                                                    {'status': Status.S_ALL.value, 'path': None, 'file': None}, tags)
-            return {rule['file'] for rule in format_rules}
+            format_rules = format_rule_decoder_file(
+                get_ossec_conf(section='ruleset')['ruleset'],
+                {'status': Status.S_ALL.value, 'relative_dirname': None, 'filename': None},
+                tags)
+            return {rule['filename'] for rule in format_rules}
         elif resource_type == 'decoder:file':
             tags = ['decoder_include', 'decoder_exclude', 'decoder_dir']
-            format_decoders = format_rule_decoder_file(get_ossec_conf(section='ruleset')['ruleset'],
-                                                       {'status': Status.S_ALL.value, 'path': None, 'file': None}, tags)
-            return {decoder['file'] for decoder in format_decoders}
+            format_decoders = format_rule_decoder_file(
+                get_ossec_conf(section='ruleset')['ruleset'],
+                {'status': Status.S_ALL.value, 'relative_dirname': None, 'filename': None},
+                tags)
+            return {decoder['filename'] for decoder in format_decoders}
         elif resource_type == 'list:path':
-            return {cdb_list['path'] for cdb_list in iterate_lists(only_names=True)}
+            return {os.path.join(cdb_list['relative_dirname'], cdb_list['filename'])
+                    for cdb_list in iterate_lists(only_names=True)}
         elif resource_type == 'node:id':
             return set(cluster_nodes.get())
         elif resource_type == 'file:path':

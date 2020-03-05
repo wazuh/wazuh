@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -19,8 +19,8 @@ logger = logging.getLogger('wazuh')
 @exception_handler
 @flask_cached
 def get_rules(rule_ids=None, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None,
-              q=None, status=None, group=None, level=None, file=None, path=None, pci=None, gdpr=None, gpg13=None,
-              hipaa=None):
+              q=None, status=None, group=None, level=None, filename=None, relative_dirname=None, pci_dss=None, gdpr=None,
+              gpg13=None, hipaa=None):
     """Get information about all Wazuh rules.
 
     :param rule_ids: Filters by rule ID
@@ -35,9 +35,9 @@ def get_rules(rule_ids=None, pretty=False, wait_for_complete=False, offset=0, li
     :param status: Filters by rules status.
     :param group: Filters by rule group.
     :param level: Filters by rule level. Can be a single level (4) or an interval (2-4)
-    :param file: Filters by filename.
-    :param path: Filters by rule path.
-    :param pci: Filters by PCI requirement name.
+    :param filename: List of filenames to filter by.
+    :param relative_dirname: Filters by relative dirname.
+    :param pci_dss: Filters by PCI_DSS requirement name.
     :param gdpr: Filters by GDPR requirement.
     :param gpg13: Filters by GPG13 requirement.
     :param hipaa: Filters by HIPAA requirement.
@@ -52,9 +52,9 @@ def get_rules(rule_ids=None, pretty=False, wait_for_complete=False, offset=0, li
                 'status': status,
                 'group': group,
                 'level': level,
-                'file': file,
-                'path': path,
-                'pci': pci,
+                'filename': filename,
+                'relative_dirname': relative_dirname,
+                'pci_dss': pci_dss,
                 'gdpr': gdpr,
                 'gpg13': gpg13,
                 'hipaa': hipaa,
@@ -114,7 +114,7 @@ def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None
 @flask_cached
 def get_rules_requirement(requirement=None, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
                           search=None):
-    """Get all PCI requirements
+    """Get all specified requirements
 
     :param requirement: Get the specified requirement in all rules in the system.
     :param pretty: Show results in human-readable format
@@ -149,7 +149,7 @@ def get_rules_requirement(requirement=None, pretty=False, wait_for_complete=Fals
 @exception_handler
 @flask_cached
 def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None,
-                    status=None, file=None, path=None):
+                    status=None, filename=None, relative_dirname=None):
     """Get all files which defines rules
 
     :param pretty: Show results in human-readable format
@@ -160,17 +160,19 @@ def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None,
     ascending or descending order.
     :param search: Looks for elements with the specified string
     :param status: Filters by rules status.
-    :param file: Filters by filename.
-    :param path: Filters by rule path.
+    :param filename: List of filenames to filter by..
+    :param relative_dirname: Filters by relative dirname.
     :return: Data object
     """
-    f_kwargs = {'offset': offset, 'limit': limit,
-                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['file'],
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['filename'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
-                'status': status, 'file': file,
-                'path': path}
+                'status': status,
+                'filename': filename,
+                'relative_dirname': relative_dirname}
 
     dapi = DistributedAPI(f=rule_framework.get_rules_files,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -188,15 +190,15 @@ def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None,
 
 @exception_handler
 @flask_cached
-def get_download_file(pretty: bool = False, wait_for_complete: bool = False, file: str = None):
+def get_download_file(pretty: bool = False, wait_for_complete: bool = False, filename: str = None):
     """Download an specified decoder file.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param file: File name to download.
+    :param filename: Filename to download.
     :return: Raw XML file
     """
-    f_kwargs = {'filename': file}
+    f_kwargs = {'filename': filename}
 
     dapi = DistributedAPI(f=rule_framework.get_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
