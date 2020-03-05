@@ -98,19 +98,8 @@ void fim_scan() {
 }
 
 void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) {
-    // SQLite Development
-    // fim_entry_data *saved_data;
-    cJSON *json_event = NULL;
     int node;
     int depth;
-
-#ifdef WIN_WHODATA
-    if (w_evt && w_evt->scan_directory == 1) {
-        if (w_update_sacl(path)) {
-            mdebug1(FIM_SCAL_NOREFRESH, path);
-            }
-        }
-#endif
 
     if (item->mode == FIM_SCHEDULED) {
         // If the directory have another configuration will come back
@@ -156,21 +145,22 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
         w_mutex_unlock(&syscheck.fim_entry_mutex);
 
         if (saved_entry) {
-            json_event = fim_json_event(path, NULL, saved_entry->data, item->index, FIM_DELETE, item->mode, w_evt);
-            fim_db_remove_path(syscheck.database, saved_entry, &syscheck.fim_entry_mutex, (void *) (int) 0);
+            fim_db_remove_path(syscheck.database, saved_entry, &syscheck.fim_entry_mutex, (void *) (int) true,
+                                (void *) (fim_event_mode) item->mode, (void *) w_evt);
             free_entry(saved_entry);
             saved_entry = NULL;
         }
 
-        if (json_event && report) {
-            char *json_formated = cJSON_PrintUnformatted(json_event);
-            send_syscheck_msg(json_formated);
-            os_free(json_formated);
-        }
-        cJSON_Delete(json_event);
-
         return;
     }
+
+#ifdef WIN_WHODATA
+    if (w_evt && w_evt->scan_directory == 1) {
+        if (w_update_sacl(path)) {
+            mdebug1(FIM_SCAL_NOREFRESH, path);
+            }
+        }
+#endif
 
     if (HasFilesystem(path, syscheck.skip_fs)) {
         return;
@@ -303,9 +293,7 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
     if (!_base_line && item->configuration & CHECK_SEECHANGES) {
         // The first backup is created. It should return NULL.
         char *file_changed = seechanges_addfile(file);
-        if (file_changed) {
-            os_free(file_changed);
-        }
+        os_free(file_changed);
     }
 
     if (json_event && _base_line && report) {
@@ -332,7 +320,7 @@ void fim_realtime_event(char *file) {
          * (and finding the file removed)
          */
         fim_rt_delay();
-      
+
         fim_element item = { .mode = FIM_REALTIME };
         fim_checker(file, &item, NULL, 1);
     }
@@ -398,7 +386,7 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
 
     if (files && files->elements) {
         if (fim_db_process_missing_entry(syscheck.database, files, &syscheck.fim_entry_mutex,
-            syscheck.database_store, mode) != FIMDB_OK) {
+            syscheck.database_store, mode, w_evt) != FIMDB_OK) {
                 merror(FIM_DB_ERROR_RM_RANGE, first_entry, last_entry);
             }
     }
@@ -423,8 +411,6 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
         alert_type = FIM_MODIFICATION;
     }
 
-    json_event = fim_json_event(key, saved ? saved->data : NULL, data, pos,
-                                alert_type, 0, NULL);
     if ((saved && saved->data && strcmp(saved->data->hash_sha1, data->hash_sha1) != 0)
         || alert_type == FIM_ADD) {
         if (fim_db_insert(syscheck.database, key, data) == -1) {
@@ -432,6 +418,9 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
             w_mutex_unlock(&syscheck.fim_entry_mutex);
             return OS_INVALID;
         }
+
+        json_event = fim_json_event(key, saved->data, data, pos,
+                                    alert_type, 0, NULL);
     } else {
         fim_db_set_scanned(syscheck.database, key);
         result = 0;
@@ -752,10 +741,8 @@ cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_da
     if (old_data != NULL) {
         char** paths = NULL;
 
-        paths = fim_db_get_paths_from_inode(syscheck.database, old_data->inode, old_data->dev);
-
-        if (paths) {
-            if(paths[0] && paths[1]) {
+        if(paths = fim_db_get_paths_from_inode(syscheck.database, old_data->inode, old_data->dev), paths){
+            if(paths[0] && paths[1]){
                 cJSON *hard_links = cJSON_CreateArray();
                 int i;
                 for(i = 0; paths[i]; i++) {
@@ -764,12 +751,10 @@ cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_da
                     }
                     os_free(paths[i]);
                 }
-
                 cJSON_AddItemToObject(data, "hard_links", hard_links);
-            } else if (paths[0]) {
+            } else {
                 os_free(paths[0]);
             }
-
             os_free(paths);
         }
     }

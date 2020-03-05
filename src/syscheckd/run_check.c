@@ -312,10 +312,6 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
             if (syscheck.opts[i] & REALTIME_ACTIVE) {
                 realtime_adddir(syscheck.dir[i], 0, (syscheck.opts[i] & CHECK_FOLLOW) ? 1 : 0);
             }
-
-            if (syscheck.opts[i] & WHODATA_ACTIVE) {
-                realtime_adddir(syscheck.dir[i], i + 1, (syscheck.opts[i] & CHECK_FOLLOW) ? 1 : 0);
-            }
         }
 #endif
 #ifdef WIN_WHODATA

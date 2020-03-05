@@ -353,8 +353,6 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         char **values = NULL;
 
         tmp_dir = *dir;
-        restrictfile = NULL;
-        tag = NULL;
 
         /* Remove spaces at the beginning */
         while (*tmp_dir == ' ') {
@@ -595,10 +593,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             }
             /* Check file restriction */
             else if (strcmp(*attrs, xml_restrict) == 0) {
-                if (restrictfile) {
-                    free(restrictfile);
-                    restrictfile = NULL;
-                }
+                os_free(restrictfile);
                 os_strdup(*values, restrictfile);
 #ifdef WIN32
                 str_lowercase(restrictfile);
@@ -622,10 +617,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
             /* Check tag */
             else if (strcmp(*attrs, xml_tag) == 0) {
-                if (tag) {
-                    free(tag);
-                    tag = NULL;
-                }
+                os_free(tag);
                 os_strdup(*values, tag);
             }
             /* Check follow symbolic links */
@@ -655,25 +647,23 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
         if (tag) {
             if (clean_tag = os_strip_char(tag, ' '), !clean_tag) {
-                merror("Processing tag '%s'.", tag);
+                merror("Processing tag '%s'", tag);
                 goto out_free;
             } else {
-                free(tag);
-                tag = NULL;
+                os_free(tag);
                 os_strdup(clean_tag, tag);
-                free(clean_tag);
+                os_free(clean_tag);
             }
             if (clean_tag = os_strip_char(tag, '!'), !clean_tag) {
-                merror("Processing tag '%s'.", tag);
+                merror("Processing tag '%s'", tag);
                 goto out_free;
             } else {
-                free(tag);
-                tag = NULL;
+                os_free(tag);
                 os_strdup(clean_tag, tag);
-                free(clean_tag);
+                os_free(clean_tag);
             }
             if (clean_tag = os_strip_char(tag, ':'), !clean_tag) {
-                merror("Processing tag '%s'.", tag);
+                merror("Processing tag '%s'", tag);
                 goto out_free;
             }
         }
@@ -719,12 +709,16 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
             if (glob(tmp_dir, 0, NULL, &g) != 0) {
                 merror(GLOB_ERROR, real_path);
+                os_free(restrictfile);
+                os_free(tag);
                 dir++;
                 continue;
             }
 
             if (g.gl_pathv[0] == NULL) {
                 merror(GLOB_NFOUND, real_path);
+                os_free(restrictfile);
+                os_free(tag);
                 dir++;
                 continue;
             }
@@ -766,18 +760,9 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL);
 #endif
 
-        if (restrictfile) {
-            free(restrictfile);
-            restrictfile = NULL;
-        }
-
-        if (tag) {
-            free(tag);
-            if (clean_tag)
-                free(clean_tag);
-            tag = NULL;
-            clean_tag = NULL;
-        }
+        os_free(restrictfile);
+        os_free(tag);
+        os_free(clean_tag);
 
         /* Next entry */
         dir++;
@@ -791,13 +776,9 @@ out_free:
     }
 
     free(dir_org);
-    free(restrictfile);
-    if (tag) {
-        free(tag);
-    }
-    if (clean_tag) {
-        free(clean_tag);
-    }
+    os_free(restrictfile);
+    os_free(tag);
+    os_free(clean_tag);
 
     return 1;
 }
@@ -1054,7 +1035,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 syscheck->database_store = FIM_DB_MEMORY;
             }
             else if (strcmp(node[i]->content, "disk") == 0){
-                syscheck->database_store = FIM_DB_DISK; 
+                syscheck->database_store = FIM_DB_DISK;
             }
         }
 

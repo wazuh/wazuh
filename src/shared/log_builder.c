@@ -16,6 +16,7 @@
  */
 
 #include "shared.h"
+#include "client-agent/agentd.h"
 
 /**
  * @brief Update the hostname value
