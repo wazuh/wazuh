@@ -101,14 +101,6 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
     int node;
     int depth;
 
-#ifdef WIN_WHODATA
-    if (w_evt && w_evt->scan_directory == 1) {
-        if (w_update_sacl(path)) {
-            mdebug1(FIM_SCAL_NOREFRESH, path);
-            }
-        }
-#endif
-
     if (item->mode == FIM_SCHEDULED) {
         // If the directory have another configuration will come back
         if (node = fim_configuration_directory(path, "file"), node < 0 || item->index != node) {
@@ -161,6 +153,14 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
 
         return;
     }
+
+#ifdef WIN_WHODATA
+    if (w_evt && w_evt->scan_directory == 1) {
+        if (w_update_sacl(path)) {
+            mdebug1(FIM_SCAL_NOREFRESH, path);
+            }
+        }
+#endif
 
     if (HasFilesystem(path, syscheck.skip_fs)) {
         return;
@@ -293,9 +293,7 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
     if (!_base_line && item->configuration & CHECK_SEECHANGES) {
         // The first backup is created. It should return NULL.
         char *file_changed = seechanges_addfile(file);
-        if (file_changed) {
-            os_free(file_changed);
-        }
+        os_free(file_changed);
     }
 
     if (json_event && _base_line && report) {
