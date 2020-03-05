@@ -512,10 +512,12 @@ static int teardown_struct_dirent(void **state) {
 static void test_fim_json_event(void **state) {
     fim_data_t *fim_data = *state;
 
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
     will_return(__wrap_fim_db_get_paths_from_inode, NULL);
+    #endif
 
     fim_data->json = fim_json_event(
                     "test.file",
@@ -543,8 +545,10 @@ static void test_fim_json_event(void **state) {
     assert_int_equal(timestamp->valueint, 1570184221);
     cJSON *tags = cJSON_GetObjectItem(data, "tags");
     assert_string_equal(cJSON_GetStringValue(tags), "tag1,tag2");
+    #ifndef TEST_WINAGENT
     cJSON *hard_links = cJSON_GetObjectItem(data, "hard_links");
     assert_null(hard_links);
+    #endif
     cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
     cJSON *changed_attributes = cJSON_GetObjectItem(data, "changed_attributes");
@@ -568,10 +572,12 @@ static void test_fim_json_event_whodata(void **state) {
 
     syscheck.opts[1] |= CHECK_SEECHANGES;
 
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
     will_return(__wrap_fim_db_get_paths_from_inode, NULL);
+    #endif
 
     expect_string(__wrap_seechanges_addfile, filename, "test.file");
     will_return(__wrap_seechanges_addfile, strdup("diff"));
@@ -604,8 +610,10 @@ static void test_fim_json_event_whodata(void **state) {
     assert_int_equal(timestamp->valueint, 1570184221);
     cJSON *tags = cJSON_GetObjectItem(data, "tags");
     assert_string_equal(cJSON_GetStringValue(tags), "tag1,tag2");
+    #ifndef TEST_WINAGENT
     cJSON *hard_links = cJSON_GetObjectItem(data, "hard_links");
     assert_null(hard_links);
+    #endif
     cJSON *audit = cJSON_GetObjectItem(data, "audit");
     assert_non_null(audit);
     #ifdef TEST_WINAGENT
@@ -642,10 +650,12 @@ static void test_fim_json_event_hardlink_one_path(void **state) {
     paths[0] = strdup("test.file");
     paths[1] = NULL;
 
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
     will_return(__wrap_fim_db_get_paths_from_inode, paths);
+    #endif
 
     fim_data->json = fim_json_event(
                     "test.file",
@@ -673,8 +683,10 @@ static void test_fim_json_event_hardlink_one_path(void **state) {
     assert_int_equal(timestamp->valueint, 1570184221);
     cJSON *tags = cJSON_GetObjectItem(data, "tags");
     assert_string_equal(cJSON_GetStringValue(tags), "tag1,tag2");
+    #ifndef TEST_WINAGENT
     cJSON *hard_links = cJSON_GetObjectItem(data, "hard_links");
     assert_null(hard_links);
+    #endif
     cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
     cJSON *changed_attributes = cJSON_GetObjectItem(data, "changed_attributes");
@@ -682,7 +694,11 @@ static void test_fim_json_event_hardlink_one_path(void **state) {
     cJSON *old_attributes = cJSON_GetObjectItem(data, "old_attributes");
     assert_non_null(old_attributes);
 
+    #ifndef TEST_WINAGENT
     assert_int_equal(cJSON_GetArraySize(changed_attributes), 11);
+    #else
+    assert_int_equal(cJSON_GetArraySize(changed_attributes), 10);
+    #endif
     assert_int_equal(cJSON_GetArraySize(attributes), 13);
     assert_int_equal(cJSON_GetArraySize(old_attributes), 13);
 }
@@ -696,10 +712,12 @@ static void test_fim_json_event_hardlink_two_paths(void **state) {
     paths[1] = strdup("hard_link.file");
     paths[2] = NULL;
 
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
     will_return(__wrap_fim_db_get_paths_from_inode, paths);
+    #endif
 
     fim_data->json = fim_json_event(
                     "test.file",
@@ -727,8 +745,10 @@ static void test_fim_json_event_hardlink_two_paths(void **state) {
     assert_int_equal(timestamp->valueint, 1570184221);
     cJSON *tags = cJSON_GetObjectItem(data, "tags");
     assert_string_equal(cJSON_GetStringValue(tags), "tag1,tag2");
+    #ifndef TEST_WINAGENT
     cJSON *hard_links = cJSON_GetObjectItem(data, "hard_links");
     assert_non_null(hard_links);
+    #endif
     cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
     cJSON *changed_attributes = cJSON_GetObjectItem(data, "changed_attributes");
@@ -736,8 +756,12 @@ static void test_fim_json_event_hardlink_two_paths(void **state) {
     cJSON *old_attributes = cJSON_GetObjectItem(data, "old_attributes");
     assert_non_null(old_attributes);
 
+    #ifndef TEST_WINAGENT
     assert_int_equal(cJSON_GetArraySize(hard_links), 1);
     assert_int_equal(cJSON_GetArraySize(changed_attributes), 11);
+    #else
+    assert_int_equal(cJSON_GetArraySize(changed_attributes), 10);
+    #endif
     assert_int_equal(cJSON_GetArraySize(attributes), 13);
     assert_int_equal(cJSON_GetArraySize(old_attributes), 13);
 }
@@ -1393,10 +1417,12 @@ static void test_fim_file_modify(void **state) {
     expect_string(__wrap_fim_db_get_path, file_path, "file");
     will_return(__wrap_fim_db_get_path, fim_data->fentry);
 
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
     will_return(__wrap_fim_db_get_paths_from_inode, NULL);
+    #endif
 
     expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_insert, file_path, "file");
@@ -1520,10 +1546,12 @@ static void test_fim_file_error_on_insert(void **state) {
     expect_string(__wrap_fim_db_get_path, file_path, "file");
     will_return(__wrap_fim_db_get_path, fim_data->fentry);
 
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
     will_return(__wrap_fim_db_get_paths_from_inode, NULL);
+    #endif
 
     expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_insert, file_path, "file");
