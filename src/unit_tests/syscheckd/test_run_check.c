@@ -15,11 +15,23 @@
 #include <string.h>
 
 #include "../syscheckd/syscheck.h"
-#include "../syscheckd/run_check.c"
+#include "../syscheckd/fim_db.h"
 
 struct state {
     unsigned int sleep_seconds;
 } state;
+
+/* External 'static' functions prototypes */
+void fim_send_msg(char mq, const char * location, const char * msg);
+
+#ifndef TEST_WINAGENT
+void fim_link_update(int pos, char *new_path);
+void fim_link_check_delete(int pos);
+void fim_link_delete_range(int pos);
+void fim_link_silent_scan(char *path, int pos);
+void fim_link_reload_broken_link(char *path, int index);
+void fim_delete_realtime_watches(int pos);
+#endif
 
 /* redefinitons/wrapping */
 
@@ -432,6 +444,7 @@ void test_fim_send_scan_info(void **state) {
     fim_send_scan_info(FIM_SCAN_START);
 }
 
+#ifndef TEST_WINAGENT
 void test_fim_link_update(void **state) {
     (void) state;
 
@@ -618,6 +631,7 @@ void test_fim_link_reload_broken_link_reload_broken(void **state) {
 
     assert_string_equal(syscheck.dir[pos], link_path);
 }
+#endif
 
 
 int main(void) {
@@ -632,6 +646,7 @@ int main(void) {
         cmocka_unit_test(test_send_syscheck_msg_10_eps),
         cmocka_unit_test(test_send_syscheck_msg_0_eps),
         cmocka_unit_test(test_fim_send_scan_info),
+        #ifndef TEST_WINAGENT
         cmocka_unit_test(test_fim_link_update),
         cmocka_unit_test(test_fim_link_update_already_added),
         cmocka_unit_test(test_fim_link_check_delete),
@@ -643,6 +658,7 @@ int main(void) {
         cmocka_unit_test(test_fim_link_silent_scan),
         cmocka_unit_test(test_fim_link_reload_broken_link_already_monitored),
         cmocka_unit_test(test_fim_link_reload_broken_link_reload_broken),
+        #endif
     };
 
     return cmocka_run_group_tests(tests, setup, free_syscheck);
