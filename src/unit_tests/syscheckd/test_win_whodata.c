@@ -21,6 +21,7 @@ extern char *get_whodata_path(const short unsigned int *win_path);
 extern int whodata_path_filter(char **path);
 extern void whodata_adapt_path(char **path);
 extern int whodata_check_arch();
+extern int is_valid_sacl(PACL sacl, int is_file);
 
 extern char sys_64;
 extern PSID everyone_sid;
@@ -1614,6 +1615,42 @@ void test_get_whodata_path_success(void **state) {
     assert_string_equal(ret, "C:\\another\\path.file");
 }
 
+void test_is_valid_sacl_sid_error(void **state) {
+    int ret = 0;
+    PACL sacl = NULL;
+    everyone_sid = NULL;
+
+    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+
+    expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+    expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+    will_return(wrap_win_whodata_AllocateAndInitializeSid, 0);
+
+    will_return(wrap_win_whodata_GetLastError, (unsigned int) 700);
+
+    expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+
+    ret = is_valid_sacl(sacl, 0);
+    assert_int_equal(ret, 0);
+}
+
+void test_is_valid_sacl_sacl_not_found(void **state) {
+    int ret = 0;
+    PACL sacl = NULL;
+    everyone_sid = NULL;
+
+    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+
+    expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+    expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+    will_return(wrap_win_whodata_AllocateAndInitializeSid, 1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6267): No SACL found on target. A new one will be created.");
+
+    ret = is_valid_sacl(sacl, 0);
+    assert_int_equal(ret, 2);
+}
+
 /**************************************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -1662,6 +1699,9 @@ int main(void) {
         cmocka_unit_test(test_get_whodata_path_error_determining_buffer_size),
         cmocka_unit_test(test_get_whodata_path_error_copying_buffer),
         cmocka_unit_test_teardown(test_get_whodata_path_success, teardown_string),
+        /* is_valid_sacl */
+        cmocka_unit_test(test_is_valid_sacl_sid_error),
+        cmocka_unit_test(test_is_valid_sacl_sacl_not_found),
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, NULL);
