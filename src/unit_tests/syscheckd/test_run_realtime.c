@@ -784,7 +784,7 @@ void test_realtime_adddir_whodata_non_existent_file(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "(6907): 'C:\\a\\path' does not exist. Monitoring discarded.");
     will_return(__wrap__mdebug1, 1);
 
-    ret = realtime_adddir("C:\\a\\path", 1);
+    ret = realtime_adddir("C:\\a\\path", 1, 0);
 
     assert_int_equal(ret, 0);
     assert_non_null(syscheck.wdata.dirs_status[0].status & WD_CHECK_WHODATA);
@@ -809,7 +809,7 @@ void test_realtime_adddir_whodata_error_adding_whodata_dir(void **state) {
     expect_string(__wrap__merror, formatted_msg,
         "(6619): Unable to add directory to whodata real time monitoring: 'C:\\a\\path'.");
 
-    ret = realtime_adddir("C:\\a\\path", 1);
+    ret = realtime_adddir("C:\\a\\path", 1, 0);
 
     assert_int_equal(ret, 0);
     assert_non_null(syscheck.wdata.dirs_status[0].status & WD_CHECK_WHODATA);
@@ -831,7 +831,7 @@ void test_realtime_adddir_whodata_file_success(void **state) {
     expect_value(__wrap_set_winsacl, position, 0);
     will_return(__wrap_set_winsacl, 0);
 
-    ret = realtime_adddir("C:\\a\\path", 1);
+    ret = realtime_adddir("C:\\a\\path", 1, 0);
 
     assert_int_equal(ret, 1);
     assert_non_null(syscheck.wdata.dirs_status[0].status & WD_CHECK_WHODATA);
@@ -853,7 +853,7 @@ void test_realtime_adddir_whodata_dir_success(void **state) {
     expect_value(__wrap_set_winsacl, position, 0);
     will_return(__wrap_set_winsacl, 0);
 
-    ret = realtime_adddir("C:\\a\\path", 1);
+    ret = realtime_adddir("C:\\a\\path", 1, 0);
 
     assert_int_equal(ret, 1);
     assert_non_null(syscheck.wdata.dirs_status[0].status & WD_CHECK_WHODATA);
@@ -870,7 +870,7 @@ void test_realtime_adddir_realtime_start_error(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "(1102): Could not acquire memory due to [(0)-(Success)].");
 
-    ret = realtime_adddir("C:\\a\\path", 0);
+    ret = realtime_adddir("C:\\a\\path", 0, 0);
 
     assert_int_equal(ret, -1);
 }
@@ -883,7 +883,7 @@ void test_realtime_adddir_max_limit_reached(void **state) {
     expect_string(__wrap__merror, formatted_msg,
         "(6616): Unable to add directory to real time monitoring: 'C:\\a\\path' - Maximum size permitted.");
 
-    ret = realtime_adddir("C:\\a\\path", 0);
+    ret = realtime_adddir("C:\\a\\path", 0, 0);
 
     assert_int_equal(ret, 0);
 }
@@ -897,7 +897,7 @@ void test_realtime_adddir_duplicate_entry(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6224): Entry 'C:\\a\\path' already exists in the RT hash table.");
 
-    ret = realtime_adddir("C:\\a\\path", 0);
+    ret = realtime_adddir("C:\\a\\path", 0, 0);
 
     assert_int_equal(ret, 1);
 }
@@ -916,7 +916,7 @@ void test_realtime_adddir_handle_error(void **state) {
         "(6290): Unable to add directory to real time monitoring: 'C:\\a\\path'");
     will_return(__wrap__mdebug1, 1);
 
-    ret = realtime_adddir("C:\\a\\path", 0);
+    ret = realtime_adddir("C:\\a\\path", 0, 0);
 
     assert_int_equal(ret, 0);
 }
@@ -935,7 +935,7 @@ void test_realtime_adddir_out_of_memory_error(void **state) {
 
     will_return(wrap_run_realtime_ReadDirectoryChangesW, 1);
 
-    ret = realtime_adddir("C:\\a\\path", 0);
+    ret = realtime_adddir("C:\\a\\path", 0, 0);
 
     assert_int_equal(ret, 1);
 }
@@ -952,7 +952,7 @@ void test_realtime_adddir_success(void **state) {
 
     will_return(wrap_run_realtime_ReadDirectoryChangesW, 1);
 
-    ret = realtime_adddir("C:\\a\\path", 0);
+    ret = realtime_adddir("C:\\a\\path", 0, 0);
 
     assert_int_equal(ret, 1);
 }

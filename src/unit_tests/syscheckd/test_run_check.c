@@ -144,10 +144,6 @@ int __wrap_StartMQ(const char *path, short int type) {
     return mock();
 }
 
-int __wrap_realtime_adddir() {
-    return 1;
-}
-
 int __wrap_audit_set_db_consistency() {
     return 1;
 }
