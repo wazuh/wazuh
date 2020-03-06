@@ -245,6 +245,12 @@ int __wrap_set_winsacl(const char *dir, int position) {
 
     return mock();
 }
+
+unsigned int __wrap_w_directory_exists(const char *path) {
+    check_expected(path);
+
+    return mock();
+}
 #endif
 
 /* setup/teardown */
@@ -894,6 +900,9 @@ void test_realtime_adddir_duplicate_entry(void **state) {
     syscheck.realtime->fd = 128;
 
     will_return(__wrap_OSHash_Get_ex, 1);
+
+    expect_string(__wrap_w_directory_exists, path, "C:\\a\\path");
+    will_return(__wrap_w_directory_exists, 1);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6224): Entry 'C:\\a\\path' already exists in the RT hash table.");
 
