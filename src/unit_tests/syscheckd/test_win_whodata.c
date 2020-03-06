@@ -17,6 +17,7 @@
 
 extern int set_winsacl(const char *dir, int position);
 extern int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
+extern void whodata_adapt_path(char **path);
 extern int whodata_check_arch();
 
 extern char sys_64;
@@ -52,6 +53,15 @@ void __wrap__merror(const char * file, int line, const char * func, const char *
 
     check_expected(formatted_msg);
 }
+
+char *__wrap_wstr_replace(const char * string, const char * search, const char * replace) {
+    check_expected(string);
+    check_expected(search);
+    check_expected(replace);
+
+    return mock_type(char*);
+}
+
 /**************************************************************************/
 /***************************set_winsacl************************************/
 void test_set_winsacl_failed_opening(void **state) {
@@ -1431,6 +1441,46 @@ void test_whodata_check_arch_arm64(void **state) {
     assert_int_equal(sys_64, 1);
 }
 
+void test_whodata_adapt_path_no_changes (void **state) {
+    char *path = "C:\\a\\path\\not\\replaced";
+
+    whodata_adapt_path(&path);
+
+    assert_string_equal(path, "C:\\a\\path\\not\\replaced");
+}
+
+void test_whodata_adapt_path_convert_system32 (void **state) {
+    char *path = strdup("C:\\windows\\system32\\test");
+
+    expect_string(__wrap_wstr_replace, string, path);
+    expect_string(__wrap_wstr_replace, search, ":\\windows\\system32");
+    expect_string(__wrap_wstr_replace, replace, ":\\windows\\sysnative");
+    will_return(__wrap_wstr_replace, "C:\\windows\\sysnative\\test");
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6307): Convert 'C:\\windows\\system32\\test' to 'C:\\windows\\sysnative\\test' to process the whodata event.");
+
+    whodata_adapt_path(&path);
+
+    assert_string_equal(path, "C:\\windows\\sysnative\\test");
+}
+
+void test_whodata_adapt_path_convert_syswow64 (void **state) {
+    char *path = strdup("C:\\windows\\syswow64\\test");
+
+    expect_string(__wrap_wstr_replace, string, path);
+    expect_string(__wrap_wstr_replace, search, ":\\windows\\syswow64");
+    expect_string(__wrap_wstr_replace, replace, ":\\windows\\system32");
+    will_return(__wrap_wstr_replace, "C:\\windows\\system32\\test");
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6307): Convert 'C:\\windows\\syswow64\\test' to 'C:\\windows\\system32\\test' to process the whodata event.");
+
+    whodata_adapt_path(&path);
+
+    assert_string_equal(path, "C:\\windows\\system32\\test");
+}
+
 /**************************************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -1467,6 +1517,10 @@ int main(void) {
         cmocka_unit_test(test_whodata_check_arch_amd64),
         cmocka_unit_test(test_whodata_check_arch_ia64),
         cmocka_unit_test(test_whodata_check_arch_arm64),
+        /* whodata_adapt_path */
+        cmocka_unit_test(test_whodata_adapt_path_no_changes),
+        cmocka_unit_test(test_whodata_adapt_path_convert_system32),
+        cmocka_unit_test(test_whodata_adapt_path_convert_syswow64),
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, NULL);
