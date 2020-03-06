@@ -14,10 +14,10 @@
 #include <stdio.h>
 
 
-#include "../syscheckd/syscheck.h"
-#include "../external/procps/readproc.h"
+#include "syscheckd/syscheck.h"
+#include "external/procps/readproc.h"
 
-
+#if defined(TEST_SERVER) || defined(TEST_AGENT)
 extern volatile int audit_health_check_deletion;
 
 int test_mode = 0;
@@ -2128,3 +2128,13 @@ int main(void) {
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
+
+#elif defined(TEST_WINAGENT)
+
+int main(void) {
+    const struct CMUnitTest tests[] = {
+    };
+    return cmocka_run_group_tests(tests, NULL, NULL);
+}
+
+#endif
