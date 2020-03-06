@@ -419,7 +419,7 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
             return OS_INVALID;
         }
 
-        json_event = fim_json_event(key, saved->data, data, pos,
+        json_event = fim_json_event(key, saved ? saved->data : NULL, data, pos,
                                     alert_type, 0, NULL);
     } else {
         fim_db_set_scanned(syscheck.database, key);
