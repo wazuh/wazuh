@@ -397,7 +397,7 @@ void test_realtime_adddir_whodata(void **state) {
     expect_string(__wrap_W_Vector_insert_unique, element, "/etc/folder");
     will_return(__wrap_W_Vector_insert_unique, 1);
 
-    ret = realtime_adddir(path, 1);
+    ret = realtime_adddir(path, 1, 0);
 
     assert_int_equal(ret, 1);
 }
@@ -416,7 +416,7 @@ void test_realtime_adddir_whodata_new_directory(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "(6230): Monitoring with Audit: '/etc/folder'");
     will_return(__wrap__mdebug1, 1);
 
-    ret = realtime_adddir(path, 1);
+    ret = realtime_adddir(path, 1, 0);
 
     assert_int_equal(ret, 1);
 }
@@ -430,7 +430,7 @@ void test_realtime_adddir_realtime_failure(void **state)
 
     syscheck.realtime->fd = -1;
 
-    ret = realtime_adddir(path, 0);
+    ret = realtime_adddir(path, 0, 0);
 
     assert_int_equal(ret, -1);
 }
@@ -449,7 +449,7 @@ void test_realtime_adddir_realtime_watch_max_reached_failure(void **state)
                                                 "The maximum limit of inotify watches has been reached.");
     errno = 28;
 
-    ret = realtime_adddir(path, 0);
+    ret = realtime_adddir(path, 0, 0);
 
     errno = 0;
 
@@ -469,7 +469,7 @@ void test_realtime_adddir_realtime_watch_generic_failure(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "(6272): Unable to add inotify watch to real time monitoring: '/etc/folder'. '-1' '0':'Success'");
     will_return(__wrap__mdebug1, 1);
 
-    ret = realtime_adddir(path, 0);
+    ret = realtime_adddir(path, 0, 0);
 
     assert_int_equal(ret, 1);
 }
@@ -490,7 +490,7 @@ void test_realtime_adddir_realtime_add(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "(6227): Directory added for real time monitoring: '/etc/folder'");
     will_return(__wrap__mdebug1, 1);
 
-    ret = realtime_adddir(path, 0);
+    ret = realtime_adddir(path, 0, 0);
 
     assert_int_equal(ret, 1);
 }
@@ -510,7 +510,7 @@ void test_realtime_adddir_realtime_add_hash_failure(void **state)
     expect_string(__wrap__merror_exit, formatted_msg, "(6697): Out of memory. Exiting.");
     will_return_always(__wrap__mdebug1, 0);
 
-    ret = realtime_adddir(path, 0);
+    ret = realtime_adddir(path, 0, 0);
 
     assert_int_equal(ret, 1);
 }
@@ -528,7 +528,7 @@ void test_realtime_adddir_realtime_update(void **state)
     will_return(__wrap_OSHash_Get_ex, 1);
     will_return(__wrap_OSHash_Update_ex, 1);
 
-    ret = realtime_adddir(path, 0);
+    ret = realtime_adddir(path, 0, 0);
 
     assert_int_equal(ret, 1);
 }
@@ -548,7 +548,7 @@ void test_realtime_adddir_realtime_update_failure(void **state)
 
     expect_string(__wrap__merror, formatted_msg, "Unable to update 'dirtb'. Directory not found: '/etc/folder'");
 
-    ret = realtime_adddir(path, 0);
+    ret = realtime_adddir(path, 0, 0);
 
     assert_int_equal(ret, -1);
 }

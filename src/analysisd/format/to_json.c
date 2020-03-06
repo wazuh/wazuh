@@ -169,6 +169,10 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         cJSON_AddItemToObject(root, "syscheck", file_diff);
         cJSON_AddStringToObject(file_diff, "path", lf->filename);
 
+        if (lf->fields[FIM_HARD_LINKS].value && *lf->fields[FIM_HARD_LINKS].value) {
+            cJSON_AddItemToObject(file_diff, "hard_links", cJSON_Parse(lf->fields[FIM_HARD_LINKS].value));
+        }
+
         if (lf->sym_path && *lf->sym_path) {
             cJSON_AddStringToObject(file_diff, "symbolic_path", lf->sym_path);
         }

@@ -66,7 +66,7 @@ int realtime_start()
 }
 
 /* Add a directory to real time checking */
-int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
+int realtime_adddir(const char *dir, __attribute__((unused)) int whodata, __attribute__((unused))int followsl)
 {
     if (whodata && audit_thread_active) {
         // Save dir into saved rules list
@@ -91,7 +91,7 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
 
             wd = inotify_add_watch(syscheck.realtime->fd,
                                    dir,
-                                   REALTIME_MONITOR_FLAGS);
+                                   (0 == followsl) ? (REALTIME_MONITOR_FLAGS|IN_DONT_FOLLOW) : REALTIME_MONITOR_FLAGS);
             if (wd < 0) {
                 if (errno == 28) {
                     merror(FIM_ERROR_INOTIFY_ADD_MAX_REACHED, dir, wd, errno);
@@ -353,7 +353,7 @@ int realtime_win32read(win32rtfim *rtlocald)
 }
 
 // In Windows the whodata parameter contains the directory position + 1 to be able to reference it
-int realtime_adddir(const char *dir, int whodata)
+int realtime_adddir(const char *dir, int whodata, __attribute__((unused)) int followsl)
 {
     char wdchar[260 + 1];
     win32rtfim *rtlocald;
@@ -417,7 +417,11 @@ int realtime_adddir(const char *dir, int whodata)
     /* Set key for hash */
     wdchar[260] = '\0';
     snprintf(wdchar, 260, "%s", dir);
-    if(OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
+      if(OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
+        if (!w_directory_exists(wdchar)) {
+            rtlocald = OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar);
+            free_win32rtfim_data(rtlocald);
+        }
         mdebug2(FIM_REALTIME_HASH_DUP, wdchar);
         w_mutex_unlock(&adddir_mutex);
     }
@@ -465,7 +469,7 @@ int realtime_start()
     return (0);
 }
 
-int realtime_adddir(__attribute__((unused)) const char *dir, __attribute__((unused))int whodata)
+int realtime_adddir(__attribute__((unused)) const char *dir, __attribute__((unused))int whodata, __attribute__((unused))int followsl)
 {
     return (0);
 }

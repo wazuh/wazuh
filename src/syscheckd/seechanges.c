@@ -477,8 +477,8 @@ char *seechanges_addfile(const char *filename)
         diff_location_filtered = filter(diff_location);
 
         if (!(tmp_location_filtered && old_location_filtered && diff_location_filtered)) {
-            mdebug1(FIM_DIFF_SKIPPED);
-            goto cleanup;
+            mdebug1(FIM_DIFF_SKIPPED); //LCOV_EXCL_LINE
+            goto cleanup; //LCOV_EXCL_LINE
         }
 
         snprintf(

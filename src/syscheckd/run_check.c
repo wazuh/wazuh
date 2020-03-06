@@ -18,6 +18,13 @@
 #include <sys/inotify.h>
 #endif
 
+#ifdef UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 #include "shared.h"
 #include "syscheck.h"
 #include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
@@ -51,16 +58,16 @@ STATIC void set_whodata_mode_changes();
 #endif
 #else
 static void *symlink_checker_thread(__attribute__((unused)) void * data);
-static void fim_link_update(int pos, char *new_path);
-static void fim_link_check_delete(int pos);
-static void fim_link_delete_range(int pos);
-static void fim_link_silent_scan(char *path, int pos);
-static void fim_link_reload_broken_link(char *path, int index);
-static void fim_delete_realtime_watches(int pos);
+STATIC void fim_link_update(int pos, char *new_path);
+STATIC void fim_link_check_delete(int pos);
+STATIC void fim_link_delete_range(int pos);
+STATIC void fim_link_silent_scan(char *path, int pos);
+STATIC void fim_link_reload_broken_link(char *path, int index);
+STATIC void fim_delete_realtime_watches(int pos);
 #endif
 
 // Send a message
-static void fim_send_msg(char mq, const char * location, const char * msg) {
+STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
     if (SendMSG(syscheck.queue, msg, location, mq) < 0) {
         merror(QUEUE_SEND);
 
@@ -320,11 +327,7 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
         // Directories in Windows configured with real-time add recursive watches
         for (int i = 0; syscheck.dir[i]; i++) {
             if (syscheck.opts[i] & REALTIME_ACTIVE) {
-                realtime_adddir(syscheck.dir[i], 0);
-            }
-
-            if (syscheck.opts[i] & WHODATA_ACTIVE) {
-                realtime_adddir(syscheck.dir[i], i + 1);
+                realtime_adddir(syscheck.dir[i], 0, (syscheck.opts[i] & CHECK_FOLLOW) ? 1 : 0);
             }
         }
 #endif
@@ -408,7 +411,7 @@ int fim_whodata_initialize() {
 
     for (int i = 0; syscheck.dir[i]; i++) {
         if (syscheck.opts[i] & WHODATA_ACTIVE) {
-            realtime_adddir(syscheck.dir[i], i + 1);
+            realtime_adddir(syscheck.dir[i], i + 1, (syscheck.opts[i] & CHECK_FOLLOW) ? 1 : 0);
         }
     }
 
@@ -529,7 +532,7 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
 }
 // LCOV_EXCL_STOP
 
-static void fim_link_update(int pos, char *new_path) {
+STATIC void fim_link_update(int pos, char *new_path) {
     int i;
 
     if (*syscheck.dir[pos]) {
@@ -553,7 +556,7 @@ static void fim_link_update(int pos, char *new_path) {
     fim_link_silent_scan(new_path, pos);
 }
 
-static void fim_link_check_delete(int pos) {
+STATIC void fim_link_check_delete(int pos) {
     struct stat statbuf;
 
     if (w_stat(syscheck.dir[pos], &statbuf) < 0) {
@@ -572,7 +575,7 @@ static void fim_link_check_delete(int pos) {
     }
 }
 
-static void fim_delete_realtime_watches(__attribute__((unused)) int pos) {
+STATIC void fim_delete_realtime_watches(__attribute__((unused)) int pos) {
 #ifdef INOTIFY_ENABLED
     OSHashNode *hash_node;
     char *data;
@@ -618,7 +621,7 @@ static void fim_delete_realtime_watches(__attribute__((unused)) int pos) {
     return;
 }
 
-static void fim_link_delete_range(int pos) {
+STATIC void fim_link_delete_range(int pos) {
     char first_entry[PATH_MAX] = {0};
     char last_entry[PATH_MAX]  = {0};
     fim_tmp_file * file = NULL;
@@ -644,7 +647,7 @@ static void fim_link_delete_range(int pos) {
     }
 }
 
-static void fim_link_silent_scan(char *path, int pos) {
+STATIC void fim_link_silent_scan(char *path, int pos) {
     struct fim_element *item;
 
     os_calloc(1, sizeof(fim_element), item);
@@ -652,14 +655,14 @@ static void fim_link_silent_scan(char *path, int pos) {
     item->mode = FIM_SCHEDULED;
 
     if (syscheck.opts[pos] & REALTIME_ACTIVE) {
-        realtime_adddir(path, 0);
+        realtime_adddir(path, 0, (syscheck.opts[pos] & CHECK_FOLLOW) ? 1 : 0);
     }
 
     fim_checker(path, item, NULL, 0);
     os_free(item);
 }
 
-static void fim_link_reload_broken_link(char *path, int index) {
+STATIC void fim_link_reload_broken_link(char *path, int index) {
     int element;
     int found = 0;
 
@@ -696,7 +699,7 @@ void set_whodata_mode_changes() {
             // At this point the directories in whodata mode that have been deconfigured are added to realtime
             syscheck.wdata.dirs_status[i].status &= ~WD_CHECK_REALTIME;
             syscheck.opts[i] |= REALTIME_ACTIVE;
-            if (realtime_adddir(syscheck.dir[i], 0) != 1) {
+            if (realtime_adddir(syscheck.dir[i], 0, (syscheck.opts[i] & CHECK_FOLLOW) ? 1 : 0) != 1) {
                 merror(FIM_ERROR_REALTIME_ADDDIR_FAILED, syscheck.dir[i]);
             } else {
                 mdebug1(FIM_REALTIME_MONITORING, syscheck.dir[i]);

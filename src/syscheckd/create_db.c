@@ -69,7 +69,7 @@ void fim_scan() {
         item->index = it;
 #ifndef WIN32
         if (syscheck.opts[it] & REALTIME_ACTIVE) {
-            realtime_adddir(syscheck.dir[it], 0);
+            realtime_adddir(syscheck.dir[it], 0, (syscheck.opts[it] & CHECK_FOLLOW) ? 1 : 0);
         }
 #endif
         fim_checker(syscheck.dir[it], item, NULL, 1);
@@ -101,19 +101,8 @@ void fim_scan() {
 }
 
 void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) {
-    // SQLite Development
-    // fim_entry_data *saved_data;
-    cJSON *json_event = NULL;
     int node;
     int depth;
-
-#ifdef WIN_WHODATA
-    if (w_evt && w_evt->scan_directory == 1) {
-        if (w_update_sacl(path)) {
-            mdebug1(FIM_SCAL_NOREFRESH, path);
-            }
-        }
-#endif
 
     if (item->mode == FIM_SCHEDULED) {
         // If the directory have another configuration will come back
@@ -159,21 +148,22 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
         w_mutex_unlock(&syscheck.fim_entry_mutex);
 
         if (saved_entry) {
-            json_event = fim_json_event(path, NULL, saved_entry->data, item->index, FIM_DELETE, item->mode, w_evt);
-            fim_db_remove_path(syscheck.database, saved_entry, &syscheck.fim_entry_mutex, (void *) (int) 0);
+            fim_db_remove_path(syscheck.database, saved_entry, &syscheck.fim_entry_mutex, (void *) (int) true,
+                                (void *) (fim_event_mode) item->mode, (void *) w_evt);
             free_entry(saved_entry);
             saved_entry = NULL;
         }
 
-        if (json_event && report) {
-            char *json_formated = cJSON_PrintUnformatted(json_event);
-            send_syscheck_msg(json_formated);
-            os_free(json_formated);
-        }
-        cJSON_Delete(json_event);
-
         return;
     }
+
+#ifdef WIN_WHODATA
+    if (w_evt && w_evt->scan_directory == 1) {
+        if (w_update_sacl(path)) {
+            mdebug1(FIM_SCAL_NOREFRESH, path);
+            }
+        }
+#endif
 
     if (HasFilesystem(path, syscheck.skip_fs)) {
         return;
@@ -201,7 +191,7 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
     case FIM_DIRECTORY:
 #ifndef WIN32
         if (item->configuration & REALTIME_ACTIVE) {
-            realtime_adddir(path, 0);
+            realtime_adddir(path, 0, (item->configuration & CHECK_FOLLOW) ? 1 : 0);
         }
 #endif
         fim_directory(path, item, w_evt, report);
@@ -306,9 +296,7 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
     if (!_base_line && item->configuration & CHECK_SEECHANGES) {
         // The first backup is created. It should return NULL.
         char *file_changed = seechanges_addfile(file);
-        if (file_changed) {
-            os_free(file_changed);
-        }
+        os_free(file_changed);
     }
 
     if (json_event && _base_line && report) {
@@ -336,13 +324,8 @@ void fim_realtime_event(char *file) {
          */
         fim_rt_delay();
 
-#ifdef WIN32
         fim_element item = { .mode = FIM_REALTIME };
         fim_checker(file, &item, NULL, 1);
-#else
-        fim_audit_inode_event(file, FIM_REALTIME, NULL);
-#endif
-
     }
     else {
         // Otherwise, it could be a file deleted or a directory moved (or renamed).
@@ -358,13 +341,8 @@ void fim_whodata_event(whodata_evt * w_evt) {
     if(w_stat(w_evt->path, &file_stat) >= 0) {
         fim_rt_delay();
 
-#ifdef WIN32
         fim_element item = { .mode = FIM_WHODATA };
         fim_checker(w_evt->path, &item, w_evt, 1);
-#else
-        fim_audit_inode_event(w_evt->path, FIM_WHODATA, w_evt);
-#endif
-
     }
     // Otherwise, it could be a file deleted or a directory moved (or renamed).
     else {
@@ -384,14 +362,8 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
 
     // Exists, create event.
     if (saved_data) {
-
-#ifdef WIN32
         fim_element item = { .mode = mode };
         fim_checker(pathname, &item, w_evt, 1);
-#else
-        fim_audit_inode_event(pathname, mode, w_evt);
-#endif
-
         free_entry(saved_data);
         return;
     }
@@ -417,68 +389,10 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
 
     if (files && files->elements) {
         if (fim_db_process_missing_entry(syscheck.database, files, &syscheck.fim_entry_mutex,
-            syscheck.database_store, mode) != FIMDB_OK) {
+            syscheck.database_store, mode, w_evt) != FIMDB_OK) {
                 merror(FIM_DB_ERROR_RM_RANGE, first_entry, last_entry);
             }
     }
-}
-
-
-void fim_audit_inode_event(char *file, fim_event_mode mode, whodata_evt * w_evt) {
-    struct fim_element *item;
-    char **paths = NULL;
-
-    w_mutex_lock(&syscheck.fim_entry_mutex);
-
-    if (mode == FIM_WHODATA) {
-        paths = fim_db_get_paths_from_inode(syscheck.database, atoi(w_evt->inode), atoi(w_evt->dev));
-    } else {
-        struct stat statbuf;
-        fim_entry *entry;
-        if (w_stat(file, &statbuf) < 0) {
-            entry = fim_db_get_path(syscheck.database, file);
-
-            if (entry) {
-                paths = fim_db_get_paths_from_inode(syscheck.database, entry->data->inode, entry->data->dev);
-                free_entry(entry);
-            }
-        } else {
-            paths = fim_db_get_paths_from_inode(syscheck.database, statbuf.st_ino, statbuf.st_dev);
-        }
-    }
-
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-    os_calloc(1, sizeof(fim_element), item);
-    item->mode = mode;
-
-    if (paths && paths[0]) {
-        int i = 0;
-
-        // For add events we don't have the path saved.
-        if (!w_is_str_in_array(paths, file)) {
-            fim_checker(file, item, w_evt, 1);
-        }
-
-        // An alert is generated for each path with the same inode
-        for(i = 0; paths[i]; i++) {
-            struct fim_element *hard_link_items;
-
-            os_calloc(1, sizeof(fim_element), hard_link_items);
-            hard_link_items->mode = mode;
-            fim_checker(paths[i], hard_link_items, w_evt, 1);
-            os_free(paths[i]);
-            os_free(hard_link_items);
-        }
-    } else {
-        // Add events
-        fim_checker(file, item, w_evt, 1);
-    }
-
-    os_free(paths);
-    os_free(item);
-
-    return;
 }
 
 #ifdef WIN32
@@ -500,8 +414,6 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
         alert_type = FIM_MODIFICATION;
     }
 
-    json_event = fim_json_event(key, saved ? saved->data : NULL, data, pos,
-                                alert_type, 0, NULL);
     if ((saved && saved->data && strcmp(saved->data->hash_sha1, data->hash_sha1) != 0)
         || alert_type == FIM_ADD) {
         if (fim_db_insert(syscheck.database, key, data) == -1) {
@@ -509,6 +421,9 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
             w_mutex_unlock(&syscheck.fim_entry_mutex);
             return OS_INVALID;
         }
+
+        json_event = fim_json_event(key, saved->data, data, pos,
+                                    alert_type, 0, NULL);
     } else {
         fim_db_set_scanned(syscheck.database, key);
         result = 0;
@@ -824,6 +739,30 @@ cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_da
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE[type]);
     cJSON_AddNumberToObject(data, "timestamp", new_data->last_event);
+
+#ifndef WIN32
+    if (old_data != NULL) {
+        char** paths = NULL;
+
+        if(paths = fim_db_get_paths_from_inode(syscheck.database, old_data->inode, old_data->dev), paths){
+            if(paths[0] && paths[1]){
+                cJSON *hard_links = cJSON_CreateArray();
+                int i;
+                for(i = 0; paths[i]; i++) {
+                    if(strcmp(file_name, paths[i])) {
+                        cJSON_AddItemToArray(hard_links, cJSON_CreateString(paths[i]));
+                    }
+                    os_free(paths[i]);
+                }
+                cJSON_AddItemToObject(data, "hard_links", hard_links);
+            } else {
+                os_free(paths[0]);
+            }
+            os_free(paths);
+        }
+    }
+
+#endif
 
     cJSON_AddItemToObject(data, "attributes", fim_attributes_json(new_data));
 

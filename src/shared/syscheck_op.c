@@ -640,6 +640,7 @@ void ag_send_syscheck(char * message) {
 
 char *get_user(const char *path, __attribute__((unused)) int uid, char **sid) {
     DWORD dwRtnCode = 0;
+    DWORD dwSecurityInfoErrorCode = 0;
     PSID pSidOwner = NULL;
     BOOL bRtnBool = TRUE;
     char AcctName[BUFFER_LEN];
@@ -698,6 +699,10 @@ char *get_user(const char *path, __attribute__((unused)) int uid, char **sid) {
                                 NULL,
                                 &pSD);
 
+    if (dwRtnCode != ERROR_SUCCESS) {
+        dwSecurityInfoErrorCode = GetLastError();
+    }
+
     CloseHandle(hFile);
 
     char *aux;
@@ -711,10 +716,7 @@ char *get_user(const char *path, __attribute__((unused)) int uid, char **sid) {
 
     // Check GetLastError for GetSecurityInfo error condition.
     if (dwRtnCode != ERROR_SUCCESS) {
-        DWORD dwErrorCode = 0;
-
-        dwErrorCode = GetLastError();
-        merror("GetSecurityInfo error = %lu", dwErrorCode);
+        merror("GetSecurityInfo error = %lu", dwSecurityInfoErrorCode);
         *AcctName = '\0';
         goto end;
     }
@@ -903,12 +905,21 @@ int w_get_account_info(SID *sid, char **account_name, char **account_domain) {
     return 0;
 }
 
+unsigned int w_directory_exists(const char *path){
+    if (path != NULL){
+        unsigned int attrs = w_get_file_attrs(path);
+        return attrs & FILE_ATTRIBUTE_DIRECTORY;
+    }
+
+    return 0;
+}
+
 unsigned int w_get_file_attrs(const char *file_path) {
     unsigned int attrs;
 
     if (attrs = GetFileAttributesA(file_path), attrs == INVALID_FILE_ATTRIBUTES) {
         attrs = 0;
-        merror("The attributes for '%s' could not be obtained. Error '%ld'.", file_path, GetLastError());
+        mdebug2("The attributes for '%s' could not be obtained. Error '%ld'.", file_path, GetLastError());
     }
 
     return attrs;
@@ -1137,7 +1148,7 @@ cJSON *win_perm_to_json(char *perms) {
         char *permissions = perm_node;
         perm_node = strchr(perm_node, ',');
         if (perm_node) {
-            *(perm_node++) = '\0';
+            *(perm_node++) = '\0'; //LCOV_EXCL_LINE
         }
 
         const char *tag_name = "name";
@@ -1147,7 +1158,7 @@ cJSON *win_perm_to_json(char *perms) {
         for (json_it = perms_json->child; json_it; json_it = json_it->next) {
             cJSON *obj;
             if (obj = cJSON_GetObjectItem(json_it, tag_name), !obj || !obj->valuestring) {
-                continue;
+                continue; //LCOV_EXCL_LINE
             }
             if (!strcmp(obj->valuestring, username)) {
                 user_obj = json_it;

@@ -81,6 +81,7 @@
 /* Fields for rules */
 typedef enum fim_fields {
     FIM_FILE,
+    FIM_HARD_LINKS,
     FIM_SIZE,
     FIM_PERM,
     FIM_UID,
@@ -288,6 +289,14 @@ const char *get_group(int gid);
  * @return The user name on success, NULL on failure
  */
 char *get_user(const char *path, __attribute__((unused)) int uid, char **sid);
+
+/**
+ * @brief Check if a directory exists
+ *
+ * @param path Path of the directory to check
+ * @return The FILE_ATTRIBUTE_DIRECTORY bit mask on success, 0 on failure
+ */
+unsigned int w_directory_exists(const char *path);
 
 /**
  * @brief Retrieves the attributes of a specific file (Windows)

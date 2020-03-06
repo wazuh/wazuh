@@ -195,6 +195,10 @@ size_t __wrap_syscom_dispatch(char * command, char ** output) {
     *output = mock_type(char*);
     return mock();
 }
+#else
+int __wrap_sysconf() {
+    return mock();
+}
 #endif
 
 /* setup/teardown */
@@ -2122,6 +2126,8 @@ static void test_unescape_syscheck_empty_string(void **state) {
 static void test_get_user_success(void **state) {
     char *user;
 
+    will_return(__wrap_sysconf, 16384);
+
     will_return(__wrap_getpwuid_r, "user_name");
     will_return(__wrap_getpwuid_r, 1);
     #ifndef SOLARIS
@@ -2137,6 +2143,8 @@ static void test_get_user_success(void **state) {
 
 static void test_get_user_uid_not_found(void **state) {
     char *user;
+
+    will_return(__wrap_sysconf, -1);
 
     will_return(__wrap_getpwuid_r, "user_name");
     will_return(__wrap_getpwuid_r, NULL);
@@ -2155,6 +2163,8 @@ static void test_get_user_uid_not_found(void **state) {
 
 static void test_get_user_error(void **state) {
     char *user;
+
+    will_return(__wrap_sysconf, 16384);
 
     will_return(__wrap_getpwuid_r, "user_name");
     will_return(__wrap_getpwuid_r, NULL);

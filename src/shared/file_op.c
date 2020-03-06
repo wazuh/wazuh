@@ -2459,7 +2459,7 @@ char ** wreaddir(const char * name) {
         return NULL;
     }
 
-    files = malloc(sizeof(char *));
+    os_malloc(sizeof(char *), files);
 
     while (dirent = readdir(dir), dirent) {
         // Skip "." and ".."
@@ -2467,7 +2467,7 @@ char ** wreaddir(const char * name) {
             continue;
         }
 
-        files = realloc(files, (i + 2) * sizeof(char *));
+        os_realloc(files, (i + 2) * sizeof(char *), files);
         if(!files){
            merror_exit(MEM_ERROR, errno, strerror(errno));
         }
