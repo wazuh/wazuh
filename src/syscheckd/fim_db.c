@@ -293,12 +293,27 @@ void fim_db_close(fdb_t *fim_sql) {
     sqlite3_close_v2(fim_sql->db);
 }
 
+
 int fim_db_clean(void) {
+    int rm = FIMDB_OK;
+
     if (w_is_file(FIM_DB_DISK_PATH)) {
-        return remove(FIM_DB_DISK_PATH);
+        // If the file is being used by other processes, wait until
+        // it's unlocked in order to remove it.
+        int i;
+        for (i = 1; i <= 5 && (rm = remove(FIM_DB_DISK_PATH)); i++) {
+            mdebug2("SQL Error: Failed to access '%s' - %dº try.", FIM_DB_DISK_PATH, i);
+#ifdef WIN32
+            Sleep(200*i);
+#else
+            usleep(100*i);
+#endif
+        }
     }
-    return FIMDB_OK;
+
+    return rm;
 }
+
 
 int fim_db_cache(fdb_t *fim_sql) {
     int index;
