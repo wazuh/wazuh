@@ -217,3 +217,22 @@ LONG WINAPI wrap_win_whodata_RegQueryValueEx(
   }
   return mock();
 }
+
+int WINAPI wrap_win_whodata_WideCharToMultiByte(
+  __attribute__((unused)) UINT CodePage,
+  __attribute__((unused)) DWORD dwFlags,
+  LPCWCH lpWideCharStr,
+  int cchWideChar,
+  LPSTR lpMultiByteStr,
+  int cbMultiByte,
+  __attribute__((unused)) LPCCH lpDefaultChar,
+  __attribute__((unused)) LPBOOL lpUsedDefaultChar
+) {
+  check_expected(lpWideCharStr);
+  check_expected(cchWideChar);
+
+  if(lpMultiByteStr)
+    strncpy(lpMultiByteStr, mock_type(char*), cbMultiByte);
+
+  return mock();
+}

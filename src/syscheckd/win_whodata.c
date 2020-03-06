@@ -63,6 +63,7 @@
 #define RegOpenKeyEx wrap_win_whodata_RegOpenKeyEx
 #undef RegQueryValueEx
 #define RegQueryValueEx wrap_win_whodata_RegQueryValueEx
+#define WideCharToMultiByte wrap_win_whodata_WideCharToMultiByte
 #else
 #define STATIC static
 #endif

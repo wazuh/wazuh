@@ -17,6 +17,7 @@
 
 extern int set_winsacl(const char *dir, int position);
 extern int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
+extern char *get_whodata_path(const short unsigned int *win_path);
 extern int whodata_path_filter(char **path);
 extern void whodata_adapt_path(char **path);
 extern int whodata_check_arch();
@@ -25,13 +26,29 @@ extern char sys_64;
 extern PSID everyone_sid;
 extern size_t ev_sid_size;
 /**************************************************************************/
-/*************************WRAPS - GROUP SETUP******************************/
+/*************************WRAPS - FIXTURES*********************************/
 int test_group_setup(void **state) {
     int ret;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6287): Reading configuration file: 'test_syscheck.conf'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file");
+    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file OK?");
+    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 0");
+    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node test_$");
+    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node test_$ OK?");
+    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 1");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck.conf]");
+
     ret = Read_Syscheck_Config("test_syscheck.conf");
     return ret;
 }
 
+static int teardown_string(void **state) {
+    if(*state)
+        free(*state);
+
+    return 0;
+}
 
 void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
     char formatted_msg[OS_MAXSTR];
@@ -45,6 +62,17 @@ void __wrap__mdebug2(const char * file, int line, const char * func, const char 
 }
 
 void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
+}
+
+void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
     char formatted_msg[OS_MAXSTR];
     va_list args;
 
@@ -1526,6 +1554,66 @@ void test_whodata_path_filter_32_bit_system(void **state) {
     assert_string_equal(path, "C:\\windows\\system32\\test");
 }
 
+void test_get_whodata_path_error_determining_buffer_size(void **state) {
+    const char *win_path = "C:\\a\\path";
+    char *ret;
+
+    expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
+    expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+    will_return(wrap_win_whodata_WideCharToMultiByte, 0);
+
+    will_return(wrap_win_whodata_GetLastError, ERROR_ACCESS_DENIED);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6306): The path could not be processed in Whodata mode. Error: 5");
+
+    ret = get_whodata_path((const short unsigned int *)win_path);
+
+    assert_null(ret);
+}
+
+void test_get_whodata_path_error_copying_buffer(void **state) {
+    const char *win_path = "C:\\a\\path";
+    char *ret;
+
+    expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
+    expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+    will_return(wrap_win_whodata_WideCharToMultiByte, 10);
+
+    expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
+    expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+    will_return(wrap_win_whodata_WideCharToMultiByte, "");
+    will_return(wrap_win_whodata_WideCharToMultiByte, 0);
+
+    will_return(wrap_win_whodata_GetLastError, ERROR_ACCESS_DENIED);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6306): The path could not be processed in Whodata mode. Error: 5");
+
+    ret = get_whodata_path((const short unsigned int *)win_path);
+
+    assert_null(ret);
+}
+
+void test_get_whodata_path_success(void **state) {
+    const char *win_path = "C:\\a\\path";
+    char *ret;
+
+    expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
+    expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+    will_return(wrap_win_whodata_WideCharToMultiByte, 21);
+
+    expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
+    expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+    will_return(wrap_win_whodata_WideCharToMultiByte, "C:\\another\\path.file");
+    will_return(wrap_win_whodata_WideCharToMultiByte, 21);
+
+    ret = get_whodata_path((const short unsigned int *)win_path);
+
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret, "C:\\another\\path.file");
+}
+
 /**************************************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -1570,6 +1658,10 @@ int main(void) {
         cmocka_unit_test(test_whodata_path_filter_file_discarded),
         cmocka_unit_test(test_whodata_path_filter_64_bit_system),
         cmocka_unit_test(test_whodata_path_filter_32_bit_system),
+        /* get_whodata_path */
+        cmocka_unit_test(test_get_whodata_path_error_determining_buffer_size),
+        cmocka_unit_test(test_get_whodata_path_error_copying_buffer),
+        cmocka_unit_test_teardown(test_get_whodata_path_success, teardown_string),
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, NULL);

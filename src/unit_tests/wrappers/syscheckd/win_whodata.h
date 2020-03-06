@@ -125,5 +125,16 @@ LONG WINAPI wrap_win_whodata_RegQueryValueEx(
   LPBYTE lpData,
   LPDWORD lpcbData
 );
+
+int WINAPI wrap_win_whodata_WideCharToMultiByte(
+  UINT CodePage,
+  DWORD dwFlags,
+  LPCWCH lpWideCharStr,
+  int cchWideChar,
+  LPSTR lpMultiByteStr,
+  int cbMultiByte,
+  LPCCH lpDefaultChar,
+  LPBOOL lpUsedDefaultChar
+);
 #endif
 #endif
