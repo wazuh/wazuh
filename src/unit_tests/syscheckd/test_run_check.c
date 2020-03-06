@@ -186,14 +186,14 @@ int __wrap_inotify_rm_watch() {
     return mock();
 }
 
-#ifdef TEST_WINAGENT
-int __wrap_realtime_adddir(const char *dir, int whodata) {
+int __wrap_realtime_adddir(const char *dir, int whodata, __attribute__((unused)) int followsl) {
     check_expected(dir);
     check_expected(whodata);
 
     return mock();
 }
 
+#ifdef TEST_WINAGENT
 int __wrap_realtime_start(void) {
     return 0;
 }
@@ -206,6 +206,11 @@ static int setup_group(void ** state) {
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file");
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file OK?");
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 0");
+    #ifdef TEST_WINAGENT
+    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node test_$");
+    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node test_$ OK?");
+    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 1");
+    #endif
 
     #if defined(TEST_AGENT) || defined(TEST_WINAGENT)
     expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck.conf]");
@@ -259,12 +264,44 @@ static int teardown_tmp_file(void **state) {
 
 void test_fim_whodata_initialize(void **state)
 {
-    (void) state;
     int ret;
-
     #ifdef TEST_WINAGENT
-    will_return(__wrap__mdebug1, 1);
+    int i;
+    char *dirs[] = {
+        "%WINDIR%\\System32\\WindowsPowerShell\\v1.0",
+        NULL
+    };
+    char expanded_dirs[1][OS_SIZE_1024];
+    #endif
+    #ifdef TEST_WINAGENT
+    will_return(wrap_GetCurrentThread, (HANDLE)123456);
+
+    expect_value(wrap_SetThreadPriority, hThread, (HANDLE)123456);
+    expect_value(wrap_SetThreadPriority, nPriority, THREAD_PRIORITY_LOWEST);
+    will_return(wrap_SetThreadPriority, true);
+
     expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '10'");
+
+    // Expand directories
+    for(i = 0; dirs[i]; i++) {
+        if(!ExpandEnvironmentStrings(dirs[i], expanded_dirs[i], OS_SIZE_1024))
+            fail();
+
+        str_lowercase(expanded_dirs[i]);
+        expect_string(__wrap_realtime_adddir, dir, expanded_dirs[i]);
+        expect_value(__wrap_realtime_adddir, whodata, 9);
+        will_return(__wrap_realtime_adddir, 0);
+    }
+    #else
+    expect_string(__wrap_realtime_adddir, dir, "/etc");
+    expect_value(__wrap_realtime_adddir, whodata, 1);
+    will_return(__wrap_realtime_adddir, 0);
+    expect_string(__wrap_realtime_adddir, dir, "/usr/bin");
+    expect_value(__wrap_realtime_adddir, whodata, 2);
+    will_return(__wrap_realtime_adddir, 0);
+    expect_string(__wrap_realtime_adddir, dir, "/usr/sbin");
+    expect_value(__wrap_realtime_adddir, whodata, 3);
+    will_return(__wrap_realtime_adddir, 0);
     #endif
 
     ret = fim_whodata_initialize();
@@ -545,7 +582,9 @@ void test_fim_send_sync_msg_10_eps(void ** _state) {
         assert_int_equal(state.sleep_seconds, 0);
     }
 
+    #ifndef TEST_WINAGENT
     will_return(__wrap_sleep, 1);
+    #endif
 
     // After 10 times, sleep one second
     expect_string(__wrap__mdebug2, msg, FIM_DBSYNC_SEND);
@@ -594,7 +633,9 @@ void test_send_syscheck_msg_10_eps(void ** _state) {
         assert_int_equal(state.sleep_seconds, 0);
     }
 
+    #ifndef TEST_WINAGENT
     will_return(__wrap_sleep, 1);
+    #endif
 
     // After 10 times, sleep one second
     expect_string(__wrap__mdebug2, msg, FIM_SEND);
@@ -790,6 +831,10 @@ void test_fim_link_silent_scan(void **state) {
     int pos = 3;
     char *link_path = "/folder/test";
 
+    expect_string(__wrap_realtime_adddir, dir, link_path);
+    expect_value(__wrap_realtime_adddir, whodata, 0);
+    will_return(__wrap_realtime_adddir, 0);
+
     expect_string(__wrap_fim_checker, path, link_path);
 
     fim_link_silent_scan(link_path, pos);
@@ -813,6 +858,10 @@ void test_fim_link_reload_broken_link_reload_broken(void **state) {
 
     int pos = 5;
     char *link_path = "/test";
+
+    expect_string(__wrap_realtime_adddir, dir, link_path);
+    expect_value(__wrap_realtime_adddir, whodata, 0);
+    will_return(__wrap_realtime_adddir, 0);
 
     expect_string(__wrap_fim_checker, path, link_path);
 
