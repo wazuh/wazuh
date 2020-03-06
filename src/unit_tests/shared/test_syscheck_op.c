@@ -3504,7 +3504,7 @@ void test_w_get_file_attrs_error(void **state) {
 
     will_return(wrap_syscheck_op_GetLastError, ERROR_ACCESS_DENIED);
 
-    expect_string(__wrap__merror, formatted_msg, "The attributes for 'C:\\a\\path' could not be obtained. Error '5'.");
+    expect_string(__wrap__mdebug2, formatted_msg, "The attributes for 'C:\\a\\path' could not be obtained. Error '5'.");
 
     ret = w_get_file_attrs("C:\\a\\path");
 
