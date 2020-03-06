@@ -17,6 +17,7 @@
 
 extern int set_winsacl(const char *dir, int position);
 extern int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
+extern int whodata_path_filter(char **path);
 extern void whodata_adapt_path(char **path);
 extern int whodata_check_arch();
 
@@ -1481,6 +1482,50 @@ void test_whodata_adapt_path_convert_syswow64 (void **state) {
     assert_string_equal(path, "C:\\windows\\system32\\test");
 }
 
+void test_whodata_path_filter_file_discarded(void **state) {
+    char *path = "C:\\$recycle.bin\\test.file";
+    int ret;
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6289): File 'C:\\$recycle.bin\\test.file' is in the recycle bin. It will be discarded.");
+
+    ret = whodata_path_filter(&path);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_whodata_path_filter_64_bit_system(void **state) {
+    char *path = strdup("C:\\windows\\system32\\test");
+    int ret;
+
+    sys_64 = 1;
+
+    expect_string(__wrap_wstr_replace, string, path);
+    expect_string(__wrap_wstr_replace, search, ":\\windows\\system32");
+    expect_string(__wrap_wstr_replace, replace, ":\\windows\\sysnative");
+    will_return(__wrap_wstr_replace, "C:\\windows\\sysnative\\test");
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6307): Convert 'C:\\windows\\system32\\test' to 'C:\\windows\\sysnative\\test' to process the whodata event.");
+
+    ret = whodata_path_filter(&path);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(path, "C:\\windows\\sysnative\\test");
+}
+
+void test_whodata_path_filter_32_bit_system(void **state) {
+    char *path = "C:\\windows\\system32\\test";
+    int ret;
+
+    sys_64 = 0;
+
+    ret = whodata_path_filter(&path);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(path, "C:\\windows\\system32\\test");
+}
+
 /**************************************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -1521,6 +1566,10 @@ int main(void) {
         cmocka_unit_test(test_whodata_adapt_path_no_changes),
         cmocka_unit_test(test_whodata_adapt_path_convert_system32),
         cmocka_unit_test(test_whodata_adapt_path_convert_syswow64),
+        /* whodata_path_filter */
+        cmocka_unit_test(test_whodata_path_filter_file_discarded),
+        cmocka_unit_test(test_whodata_path_filter_64_bit_system),
+        cmocka_unit_test(test_whodata_path_filter_32_bit_system),
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, NULL);
