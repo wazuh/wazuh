@@ -189,10 +189,14 @@ void start_daemon()
     w_create_thread(symlink_checker_thread, NULL);
 
 #else
-    if (CreateThread(NULL, 0, fim_run_integrity, &syscheck, 0, NULL) == NULL) {
-        merror(THREAD_ERROR);
+    if (syscheck.enable_synchronization) {
+        if (CreateThread(NULL, 0, fim_run_integrity, &syscheck, 0, NULL) == NULL) {
+            merror(THREAD_ERROR);
+        }
     }
+
     if (CreateThread(NULL, 0, fim_run_realtime, &syscheck, 0, NULL) == NULL) {
+
         merror(THREAD_ERROR);
     }
 #endif
