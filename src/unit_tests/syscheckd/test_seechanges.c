@@ -215,7 +215,7 @@ int __wrap_OS_MD5_File(const char *fname, os_md5 output, int mode) {
     check_expected(mode);
 
     char *md5 = mock_type(char *);
-    strncpy(output, md5, sizeof(os_md5) - 1);
+    strncpy(output, md5, sizeof(os_md5));
 
     return mock();
 }
@@ -908,6 +908,16 @@ void test_seechanges_addfile(void **state) {
     const char * file_name = "C:\\folder\\test_";
     const char * file_name_abs = "C\\folder\\test_";
     const char * default_path = "";
+    const char * diff_string = "***** start.txt\r\n"
+                               "    1:  First line\r\n"
+                               "***** END.TXT\r\n"
+                               "    1:  First Line 123\r\n"
+                               "    2:  Last line\r\n"
+                               "*****";
+    const char * diff_adapted_string = "> First line\n"
+                                       "< First Line 123\n"
+                                       "< Last line\n"
+                                       "---\n";
     #endif
 
     char last_entry[OS_SIZE_128];
@@ -980,8 +990,13 @@ void test_seechanges_addfile(void **state) {
     expect_string(__wrap_fopen, __filename, diff_file);
     expect_string(__wrap_fopen, __modes, "rb");
     will_return(__wrap_fopen, 1);
+    #ifndef TEST_WINAGENT
     will_return(__wrap_fread, "test diff");
     will_return(__wrap_fread, 9);
+    #else
+    will_return(__wrap_fread, diff_string);
+    will_return(__wrap_fread, 101);
+    #endif
     will_return(__wrap_fclose, 1);
     expect_string(__wrap_w_compress_gzfile, filesrc, file_name);
     expect_string(__wrap_w_compress_gzfile, filedst, last_entry_gz);
@@ -991,7 +1006,11 @@ void test_seechanges_addfile(void **state) {
 
     *state = diff;
 
+    #ifndef TEST_WINAGENT
     assert_string_equal(diff, "test diff");
+    #else
+    assert_string_equal(diff, diff_adapted_string);
+    #endif
 }
 
 void test_seechanges_addfile_run_diff(void **state) {
@@ -1005,6 +1024,16 @@ void test_seechanges_addfile_run_diff(void **state) {
     const char * file_name = "C:\\folder\\test";
     const char * file_name_abs = "C\\folder\\test";
     const char * default_path = "";
+    const char * diff_string = "***** start.txt\r\n"
+                               "    1:  First line\r\n"
+                               "***** END.TXT\r\n"
+                               "    1:  First Line 123\r\n"
+                               "    2:  Last line\r\n"
+                               "*****";
+    const char * diff_adapted_string = "> First line\n"
+                                       "< First Line 123\n"
+                                       "< Last line\n"
+                                       "---\n";
     #endif
 
     char last_entry[OS_SIZE_128];
@@ -1078,8 +1107,13 @@ void test_seechanges_addfile_run_diff(void **state) {
     expect_string(__wrap_fopen, __filename, diff_file);
     expect_string(__wrap_fopen, __modes, "rb");
     will_return(__wrap_fopen, 1);
+    #ifndef TEST_WINAGENT
     will_return(__wrap_fread, "test diff");
     will_return(__wrap_fread, 9);
+    #else
+    will_return(__wrap_fread, diff_string);
+    will_return(__wrap_fread, 101);
+    #endif
     will_return(__wrap_fclose, 1);
     expect_string(__wrap_w_compress_gzfile, filesrc, file_name);
     expect_string(__wrap_w_compress_gzfile, filedst, last_entry_gz);
@@ -1089,7 +1123,11 @@ void test_seechanges_addfile_run_diff(void **state) {
 
     *state = diff;
 
+    #ifndef TEST_WINAGENT
     assert_string_equal(diff, "test diff");
+    #else
+    assert_string_equal(diff, diff_adapted_string);
+    #endif
 }
 
 void test_seechanges_addfile_create_gz_file(void **state) {
@@ -1201,8 +1239,6 @@ void test_seechanges_addfile_same_md5(void **state) {
     expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
     will_return(__wrap_OS_MD5_File, "3c183a30cffcda1408daf1c61d47b274");
     will_return(__wrap_OS_MD5_File, 0);
-
-    // winagent fails due to now being able to wrap _unlink
 
     char * diff = seechanges_addfile(file_name);
 
@@ -1508,6 +1544,16 @@ void test_seechanges_addfile_fwrite_error(void **state) {
     const char * file_name = "C:\\folder\\test_";
     const char * file_name_abs = "C\\folder\\test_";
     const char * default_path = "";
+    const char * diff_string = "***** start.txt\r\n"
+                               "    1:  First line\r\n"
+                               "***** END.TXT\r\n"
+                               "    1:  First Line 123\r\n"
+                               "    2:  Last line\r\n"
+                               "*****";
+    const char * diff_adapted_string = "> First line\n"
+                                       "< First Line 123\n"
+                                       "< Last line\n"
+                                       "---\n";
     #endif
 
     char last_entry[OS_SIZE_128];
@@ -1584,8 +1630,13 @@ void test_seechanges_addfile_fwrite_error(void **state) {
     expect_string(__wrap_fopen, __filename, diff_file);
     expect_string(__wrap_fopen, __modes, "rb");
     will_return(__wrap_fopen, 1);
+    #ifndef TEST_WINAGENT
     will_return(__wrap_fread, "test diff");
     will_return(__wrap_fread, 9);
+    #else
+    will_return(__wrap_fread, diff_string);
+    will_return(__wrap_fread, 101);
+    #endif
     will_return(__wrap_fclose, 1);
     expect_string(__wrap_w_compress_gzfile, filesrc, file_name);
     expect_string(__wrap_w_compress_gzfile, filedst, last_entry_gz);
@@ -1595,7 +1646,11 @@ void test_seechanges_addfile_fwrite_error(void **state) {
 
     *state = diff;
 
+    #ifndef TEST_WINAGENT
     assert_string_equal(diff, "test diff");
+    #else
+    assert_string_equal(diff, diff_adapted_string);
+    #endif
 }
 
 void test_seechanges_addfile_run_diff_system_error(void **state) {
