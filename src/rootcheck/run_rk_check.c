@@ -297,8 +297,11 @@ void run_rk_check()
     return;
 }
 
+#ifdef WIN32
+DWORD WINAPI w_rootcheck_thread(__attribute__((unused)) void * args){
+#else
 void * w_rootcheck_thread(__attribute__((unused)) void * args) {
-
+#endif
     time_t curr_time = 0;
     time_t prev_time_rk = 0;
     syscheck_config *syscheck = args;
@@ -321,7 +324,9 @@ void * w_rootcheck_thread(__attribute__((unused)) void * args) {
         sleep(1);
     }
 
+#ifndef WIN32
     return NULL;
+#endif
 }
 
 void log_realtime_status_rk(int next) {

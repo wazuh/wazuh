@@ -38,7 +38,11 @@ static w_queue_t * fim_sync_queue;
 
 // LCOV_EXCL_START
 // Starting data synchronization thread
+#ifdef WIN32
+DWORD WINAPI fim_run_integrity(void __attribute__((unused)) * args) {
+#else
 void * fim_run_integrity(void * args) {
+#endif
     // Keep track of synchronization failures
     long sync_interval = syscheck.sync_interval;
     struct timespec start;
@@ -85,7 +89,9 @@ void * fim_run_integrity(void * args) {
         }
     }
 
+#ifndef WIN32
     return args;
+#endif
 }
 // LCOV_EXCL_STOP
 

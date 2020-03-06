@@ -630,7 +630,11 @@ int w_update_sacl(const char *obj_path);
  *
  * @param args To be used with NULL value
  */
+#ifdef WIN32
+DWORD WINAPI fim_run_integrity(void __attribute__((unused)) * args);
+#else
 void *fim_run_integrity(void *args);
+#endif
 
 /**
  * @brief Calculates the checksum of the FIM entry files and sends it to the database for integrity checking
