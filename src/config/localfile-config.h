@@ -79,6 +79,7 @@ typedef struct _logreader {
     char *exclude;
     wlabel_t *labels;
     pthread_mutex_t mutex;
+    pthread_rwlock_t lock;
     int exists;
     unsigned int age;
     char *age_str;
