@@ -15,7 +15,8 @@ import aiohttp_cache
 from aiohttp_swagger import setup_swagger
 import ssl
 from api import alogging, configuration, __path__ as api_path
-from api import validator  # To register custom validators (do not remove)
+# noinspection PyUnresolvedReferences
+from api import validator
 from api.api_exception import APIException
 from api.constants import CONFIG_FILE_PATH
 from api.util import to_relative_path
