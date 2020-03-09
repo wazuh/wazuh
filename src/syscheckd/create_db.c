@@ -273,7 +273,9 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
         alert_type = FIM_MODIFICATION;
     }
 
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
     json_event = fim_json_event(file, saved ? saved->data : NULL, new, item->index, alert_type, item->mode, w_evt);
+    w_mutex_lock(&syscheck.fim_entry_mutex);
 
     if (json_event) {
         if (fim_db_insert(syscheck.database, file, new) == -1) {
@@ -418,15 +420,14 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
             w_mutex_unlock(&syscheck.fim_entry_mutex);
             return OS_INVALID;
         }
-
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
         json_event = fim_json_event(key, saved ? saved->data : NULL, data, pos,
                                     alert_type, 0, NULL);
     } else {
         fim_db_set_scanned(syscheck.database, key);
         result = 0;
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
     }
-
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (json_event && _base_line) {
         json_formated = cJSON_PrintUnformatted(json_event);
