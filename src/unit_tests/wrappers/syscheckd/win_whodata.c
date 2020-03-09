@@ -236,3 +236,23 @@ int WINAPI wrap_win_whodata_WideCharToMultiByte(
 
   return mock();
 }
+
+WINBOOL WINAPI wrap_win_whodata_GetVolumePathNamesForVolumeNameW(
+  LPCWSTR lpszVolumeName,
+  LPWCH lpszVolumePathNames,
+  DWORD cchBufferLength,
+  PDWORD lpcchReturnLength
+) {
+  DWORD buffer_size;
+
+  check_expected(lpszVolumeName);
+
+  buffer_size = mock();
+
+  if(lpszVolumePathNames && buffer_size <= cchBufferLength) {
+    memcpy(lpszVolumePathNames, mock_type(LPWCH), cchBufferLength);
+  }
+  *lpcchReturnLength = buffer_size;
+
+  return mock();
+}

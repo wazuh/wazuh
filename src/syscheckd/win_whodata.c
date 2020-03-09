@@ -64,6 +64,7 @@
 #undef RegQueryValueEx
 #define RegQueryValueEx wrap_win_whodata_RegQueryValueEx
 #define WideCharToMultiByte wrap_win_whodata_WideCharToMultiByte
+#define GetVolumePathNamesForVolumeNameW wrap_win_whodata_GetVolumePathNamesForVolumeNameW
 #else
 #define STATIC static
 #endif

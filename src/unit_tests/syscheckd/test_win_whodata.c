@@ -23,6 +23,7 @@ extern void whodata_adapt_path(char **path);
 extern int whodata_check_arch();
 extern int is_valid_sacl(PACL sacl, int is_file);
 extern void replace_device_path(char **path);
+extern int get_drive_names(wchar_t *volume_name, char *device);
 
 extern char sys_64;
 extern PSID everyone_sid;
@@ -52,6 +53,16 @@ static int teardown_string(void **state) {
     return 0;
 }
 
+static int teardown_wdata_device() {
+    free_strarray(syscheck.wdata.device);
+    free_strarray(syscheck.wdata.drive);
+
+    syscheck.wdata.device = NULL;
+    syscheck.wdata.drive = NULL;
+
+    return 0;
+}
+
 static int setup_replace_device_path(void **state) {
     syscheck.wdata.device = calloc(10, sizeof(char*));
     syscheck.wdata.drive = calloc(10, sizeof(char *));
@@ -63,8 +74,8 @@ static int setup_replace_device_path(void **state) {
 }
 
 static int teardown_replace_device_path(void **state) {
-    free_strarray(syscheck.wdata.device);
-    free_strarray(syscheck.wdata.drive);
+    if(teardown_wdata_device(state))
+        return -1;
 
     if(teardown_string(state))
         return -1;
@@ -95,6 +106,17 @@ void __wrap__merror(const char * file, int line, const char * func, const char *
 }
 
 void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
+}
+
+void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...) {
     char formatted_msg[OS_MAXSTR];
     va_list args;
 
@@ -1732,6 +1754,68 @@ void test_replace_device_path_device_found(void **state) {
     assert_string_equal(path, "A:\\a\\path");
 }
 
+void test_get_drive_names_access_denied_error(void **state) {
+    wchar_t *volume_name = L"\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}";
+    char *device = "C";
+
+    expect_string(wrap_win_whodata_GetVolumePathNamesForVolumeNameW,
+        lpszVolumeName, L"\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}");
+
+    will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, OS_MAXSTR);
+    will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, 0);
+
+    will_return(wrap_win_whodata_GetLastError, ERROR_ACCESS_DENIED);
+
+    expect_string(__wrap__mwarn, formatted_msg, "GetVolumePathNamesForVolumeNameW (5)'Input/output error'");
+
+    get_drive_names(volume_name, device);
+}
+
+void test_get_drive_names_more_data_error(void **state) {
+    wchar_t *volume_name = L"\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}";
+    char *device = "C";
+
+    expect_string(wrap_win_whodata_GetVolumePathNamesForVolumeNameW,
+        lpszVolumeName, L"\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}");
+
+    will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, OS_MAXSTR);
+    will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, 0);
+
+    will_return(wrap_win_whodata_GetLastError, ERROR_MORE_DATA);
+
+    expect_string(wrap_win_whodata_GetVolumePathNamesForVolumeNameW,
+        lpszVolumeName, L"\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}");
+
+    will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, OS_MAXSTR);
+    will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, 0);
+
+    will_return(wrap_win_whodata_GetLastError, ERROR_ACCESS_DENIED);
+
+    expect_string(__wrap__mwarn, formatted_msg, "GetVolumePathNamesForVolumeNameW (5)'Input/output error'");
+
+    get_drive_names(volume_name, device);
+}
+
+void test_get_drive_names_success(void **state) {
+    wchar_t *volume_name = L"\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}";
+    char *device = "C";
+    wchar_t *volume_paths = L"A\0C\0\\Some\\path\0";
+
+    expect_string(wrap_win_whodata_GetVolumePathNamesForVolumeNameW,
+        lpszVolumeName, L"\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}");
+
+    will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, 16);
+    will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, volume_paths);
+    will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C' associated with the mounting point 'A'");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C' associated with the mounting point 'C'");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C' associated with the mounting point '\\Some\\path'");
+
+
+    get_drive_names(volume_name, device);
+}
+
 /**************************************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -1788,6 +1872,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_replace_device_path_empty_wdata_device, setup_replace_device_path, teardown_replace_device_path),
         cmocka_unit_test_setup_teardown(test_replace_device_path_device_not_found, setup_replace_device_path, teardown_replace_device_path),
         cmocka_unit_test_setup_teardown(test_replace_device_path_device_found, setup_replace_device_path, teardown_replace_device_path),
+        /* get_drive_names */
+        cmocka_unit_test(test_get_drive_names_access_denied_error),
+        cmocka_unit_test(test_get_drive_names_more_data_error),
+        cmocka_unit_test_teardown(test_get_drive_names_success, teardown_wdata_device),
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, NULL);

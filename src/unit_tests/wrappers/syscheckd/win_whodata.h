@@ -136,5 +136,12 @@ int WINAPI wrap_win_whodata_WideCharToMultiByte(
   LPCCH lpDefaultChar,
   LPBOOL lpUsedDefaultChar
 );
+
+WINBOOL WINAPI wrap_win_whodata_GetVolumePathNamesForVolumeNameW(
+  LPCWSTR lpszVolumeName,
+  LPWCH lpszVolumePathNames,
+  DWORD cchBufferLength,
+  PDWORD lpcchReturnLength
+);
 #endif
 #endif
