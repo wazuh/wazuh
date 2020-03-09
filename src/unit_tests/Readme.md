@@ -132,14 +132,37 @@ On Ubuntu, run the following commands:
 ```
 # Add 32 bit architecture
 sudo dpkg –-add-architecture i386
-wget https://dl.winehq.org/wine-builds/Release.key
-sudo apt-key add Release.key
-sudo apt-add-repository 'https://dl.winehq.org/wine-builds/ubuntu/'
+
+# Add key
+wget -qO - https://dl.winehq.org/wine-builds/winehq.key | sudo apt-key add -
+
+###  Add repository (Ubuntu 19.10)
+sudo apt-add-repository 'deb https://dl.winehq.org/wine-builds/ubuntu/ eoan main'
+
+###  Add repository (Ubuntu 18.04)
+sudo apt-add-repository 'deb https://dl.winehq.org/wine-builds/ubuntu/ bionic main'
+sudo add-apt-repository ppa:cybermax-dexter/sdl2-backport
+
+
+###  Add repository (Ubuntu 16.04)
+sudo apt-add-repository 'deb https://dl.winehq.org/wine-builds/ubuntu/ xenial main'
+
+# Install
 sudo apt update
-sudo apt install wine-stable
+sudo apt install --install-recommends winehq-stable
+
+### If unmet dependencies error, use aptitude
+sudo apt install aptitude
+sudo aptitude install winehq-stable
+
+# Check version
+wine --version
+
 # Link wine binary
 sudo ln -s /opt/wine-stable/bin/wine /usr/bin/
 ```
+
+Commands above have been taken from the following guide: https://tecadmin.net/install-wine-on-ubuntu/
 If you need to run the tests on a CentOS 7 machine, you can follow these instructions in order to build a 32 bit wine: https://www.systutorials.com/239913/install-32-bit-wine-1-8-centos-7/
 
 After installing wine, the `WINEPATH` and `WINEARCH` variables need to be created in order for it to know it should run on 32 bit mode and find all required dlls for the tests. On an Ubuntu system, the following commands need to be executed and/or added into the user's `.bashrc` file.
