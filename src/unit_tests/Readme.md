@@ -1,12 +1,12 @@
 # Unit Tests
 ## Index
 1. [Requirements](#requirements)
-2. [Compile Wazuh](#compile\ wazuh)
-3. [Compile and run unit tests for Linux targets](#Compile\ and\ run\ unit\ tests\ for\ Linux\ targets)
-4. [Compile and run unit tests for Windows agent](#Compile\ and\ run\ unit\ tests\ for\ Windows\ agent)
-5. [Installing CMake](#Installing\ CMake)
-6. [Installing cmocka](#Installing\ cmocka)
-7. [Intalling wine](#Installing\ wine)
+2. [Compile Wazuh](#compile-wazuh)
+3. [Compile and run unit tests for Linux targets](#compile-and-run-unit-tests-for-linux-targets)
+4. [Compile and run unit tests for Windows agent](#compile-and-run-unit-tests-for-windows-agent)
+5. [Installing CMake](#installing-cmake)
+6. [Installing cmocka](#installing-cmocka)
+7. [Intalling wine](#installing-wine)
 
 ## Requirements:
 1. Compiling tools (GCC and/or mingw)
