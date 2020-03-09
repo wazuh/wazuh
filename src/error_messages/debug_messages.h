@@ -226,5 +226,6 @@
 #define FIM_INODES_INFO                     "(6336): Fim inode entries: %d, path count: %d"
 #define FIM_WHODATA_INVALID_UNKNOWN_UID     "(6337): The user ID could not be extracted from the event."
 #define FIM_EMPTY_DIRECTORIES_CONFIG        "(6338): Empty directories tag found in the configuration."
+#define FIM_DELETE_EVENT_PATH_NOCONF        "(6339): Delete event from path without configuration: '%s'"
 
 #endif /* DEBUG_MESSAGES_H */
