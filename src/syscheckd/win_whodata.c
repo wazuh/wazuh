@@ -1285,7 +1285,7 @@ int get_drive_names(wchar_t *volume_name, char *device) {
 
     while (1) {
         // Allocate a buffer to hold the paths.
-        os_calloc(MAX_PATH, sizeof(wchar_t), names);
+        os_calloc(char_count, sizeof(wchar_t), names);
 
         // Obtain all of the paths for this volume.
         success = GetVolumePathNamesForVolumeNameW(
