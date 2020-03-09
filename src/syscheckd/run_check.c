@@ -18,6 +18,13 @@
 #include <sys/inotify.h>
 #endif
 
+#ifdef UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 #include "shared.h"
 #include "syscheck.h"
 #include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
@@ -34,16 +41,16 @@ static void set_whodata_mode_changes();
 #endif
 #else
 static void *symlink_checker_thread(__attribute__((unused)) void * data);
-static void fim_link_update(int pos, char *new_path);
-static void fim_link_check_delete(int pos);
-static void fim_link_delete_range(int pos);
-static void fim_link_silent_scan(char *path, int pos);
-static void fim_link_reload_broken_link(char *path, int index);
-static void fim_delete_realtime_watches(int pos);
+STATIC void fim_link_update(int pos, char *new_path);
+STATIC void fim_link_check_delete(int pos);
+STATIC void fim_link_delete_range(int pos);
+STATIC void fim_link_silent_scan(char *path, int pos);
+STATIC void fim_link_reload_broken_link(char *path, int index);
+STATIC void fim_delete_realtime_watches(int pos);
 #endif
 
 // Send a message
-static void fim_send_msg(char mq, const char * location, const char * msg) {
+STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
     if (SendMSG(syscheck.queue, msg, location, mq) < 0) {
         merror(QUEUE_SEND);
 
@@ -185,10 +192,12 @@ void start_daemon()
     w_create_thread(symlink_checker_thread, NULL);
 
 #else
-    if (CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)fim_run_integrity,
-            &syscheck, 0, NULL) == NULL) {
-        merror(THREAD_ERROR);
+    if (syscheck.enable_synchronization) {
+        if (CreateThread(NULL, 0, fim_run_integrity, &syscheck, 0, NULL) == NULL) {
+            merror(THREAD_ERROR);
+        }
     }
+
     if (CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)fim_run_realtime,
             &syscheck, 0, NULL) == NULL) {
         merror(THREAD_ERROR);
@@ -508,7 +517,7 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
 }
 // LCOV_EXCL_STOP
 
-static void fim_link_update(int pos, char *new_path) {
+STATIC void fim_link_update(int pos, char *new_path) {
     int i;
 
     if (*syscheck.dir[pos]) {
@@ -532,7 +541,7 @@ static void fim_link_update(int pos, char *new_path) {
     fim_link_silent_scan(new_path, pos);
 }
 
-static void fim_link_check_delete(int pos) {
+STATIC void fim_link_check_delete(int pos) {
     struct stat statbuf;
 
     if (w_stat(syscheck.dir[pos], &statbuf) < 0) {
@@ -551,7 +560,7 @@ static void fim_link_check_delete(int pos) {
     }
 }
 
-static void fim_delete_realtime_watches(__attribute__((unused)) int pos) {
+STATIC void fim_delete_realtime_watches(__attribute__((unused)) int pos) {
 #ifdef INOTIFY_ENABLED
     OSHashNode *hash_node;
     char *data;
@@ -597,7 +606,7 @@ static void fim_delete_realtime_watches(__attribute__((unused)) int pos) {
     return;
 }
 
-static void fim_link_delete_range(int pos) {
+STATIC void fim_link_delete_range(int pos) {
     char first_entry[PATH_MAX] = {0};
     char last_entry[PATH_MAX]  = {0};
     fim_tmp_file * file = NULL;
@@ -623,7 +632,7 @@ static void fim_link_delete_range(int pos) {
     }
 }
 
-static void fim_link_silent_scan(char *path, int pos) {
+STATIC void fim_link_silent_scan(char *path, int pos) {
     struct fim_element *item;
 
     os_calloc(1, sizeof(fim_element), item);
@@ -638,7 +647,7 @@ static void fim_link_silent_scan(char *path, int pos) {
     os_free(item);
 }
 
-static void fim_link_reload_broken_link(char *path, int index) {
+STATIC void fim_link_reload_broken_link(char *path, int index) {
     int element;
     int found = 0;
 

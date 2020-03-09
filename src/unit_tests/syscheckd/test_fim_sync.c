@@ -176,6 +176,15 @@ int __wrap_fim_db_sync_path_range(fdb_t *fim_sql) {
     return mock();
 }
 
+#ifdef TEST_WINAGENT // mutex_lock has problems on running with wine
+int __wrap_pthread_mutex_lock(pthread_mutex_t *mutex) {
+    return 0;
+}
+int __wrap_pthread_mutex_unlock(pthread_mutex_t *mutex) {
+    return 0;
+}
+#endif
+
 /* setup/teardown */
 static int setup_fim_sync_queue(void **state) {
     fim_sync_queue = queue_init(10);

@@ -15,11 +15,23 @@
 #include <string.h>
 
 #include "../syscheckd/syscheck.h"
-#include "../syscheckd/run_check.c"
+#include "../syscheckd/fim_db.h"
 
 struct state {
     unsigned int sleep_seconds;
 } state;
+
+/* External 'static' functions prototypes */
+void fim_send_msg(char mq, const char * location, const char * msg);
+
+#ifndef TEST_WINAGENT
+void fim_link_update(int pos, char *new_path);
+void fim_link_check_delete(int pos);
+void fim_link_delete_range(int pos);
+void fim_link_silent_scan(char *path, int pos);
+void fim_link_reload_broken_link(char *path, int index);
+void fim_delete_realtime_watches(int pos);
+#endif
 
 /* redefinitons/wrapping */
 
@@ -28,6 +40,44 @@ int __wrap__minfo(const char * file, int line, const char * func, const char *ms
     check_expected(msg);
     return 1;
 }
+
+#ifdef TEST_AGENT
+char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
+
+int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, int max) {
+    int ret;
+    char *value;
+    char *pt;
+
+    /* Try to read from the local define file */
+    value = _read_file(high_name, low_name, "./internal_options.conf");
+    if (!value) {
+        merror_exit(DEF_NOT_FOUND, high_name, low_name);
+    }
+
+    pt = value;
+    while (*pt != '\0') {
+        if (!isdigit((int)*pt)) {
+            merror_exit(INV_DEF, high_name, low_name, value);
+        }
+        pt++;
+    }
+
+    ret = atoi(value);
+    if ((ret < min) || (ret > max)) {
+        merror_exit(INV_DEF, high_name, low_name, value);
+    }
+
+    /* Clear memory */
+    free(value);
+
+    return (ret);
+}
+
+int __wrap_isChroot() {
+    return 1;
+}
+#endif
 
 int __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...)
 {
@@ -202,6 +252,11 @@ void test_fim_whodata_initialize(void **state)
 {
     (void) state;
     int ret;
+
+    #ifdef TEST_WINAGENT
+    will_return(__wrap__mdebug1, 1);
+    expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '10'");
+    #endif
 
     ret = fim_whodata_initialize();
 
@@ -394,6 +449,7 @@ void test_fim_send_scan_info(void **state) {
     fim_send_scan_info(FIM_SCAN_START);
 }
 
+#ifndef TEST_WINAGENT
 void test_fim_link_update(void **state) {
     (void) state;
 
@@ -580,6 +636,7 @@ void test_fim_link_reload_broken_link_reload_broken(void **state) {
 
     assert_string_equal(syscheck.dir[pos], link_path);
 }
+#endif
 
 
 int main(void) {
@@ -594,6 +651,7 @@ int main(void) {
         cmocka_unit_test(test_send_syscheck_msg_10_eps),
         cmocka_unit_test(test_send_syscheck_msg_0_eps),
         cmocka_unit_test(test_fim_send_scan_info),
+        #ifndef TEST_WINAGENT
         cmocka_unit_test(test_fim_link_update),
         cmocka_unit_test(test_fim_link_update_already_added),
         cmocka_unit_test(test_fim_link_check_delete),
@@ -605,6 +663,7 @@ int main(void) {
         cmocka_unit_test(test_fim_link_silent_scan),
         cmocka_unit_test(test_fim_link_reload_broken_link_already_monitored),
         cmocka_unit_test(test_fim_link_reload_broken_link_reload_broken),
+        #endif
     };
 
     return cmocka_run_group_tests(tests, setup, free_syscheck);

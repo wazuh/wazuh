@@ -91,10 +91,7 @@ src/tap_*
 etc/preloaded-vars.conf
 
 # unit tests
-src/unit_tests/*
-!src/unit_tests/CMakeLists.txt
-!src/unit_tests/*.c
-!src/unit_tests/test_*.conf
+src/unit_tests/build/*
 
 # Old firewall-drop.sh (moved to default-firewall-drop.sh)
 active-response/firewall-drop.sh

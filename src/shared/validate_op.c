@@ -10,6 +10,10 @@
 
 #include "shared.h"
 
+#ifdef UNIT_TESTING
+#define static
+#endif
+
 static char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
 static void _init_masks(void);
 static const char *__gethour(const char *str, char *ossec_hour) __attribute__((nonnull));
