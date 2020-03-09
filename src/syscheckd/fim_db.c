@@ -1099,7 +1099,7 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
             }
         } else {
             mdebug2(FIM_DELETE_EVENT_PATH_NOCONF, entry->path);
-                return;
+            return;
         }
     }
 
