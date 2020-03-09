@@ -737,8 +737,6 @@ void test_realtime_win32read_unable_to_read_directory(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "(6323): Unable to set 'ReadDirectoryChangesW' for directory: 'C:\\a\\path'");
     will_return(__wrap__mdebug1, 1);
 
-    expect_value(wrap_run_realtime_Sleep, dwMilliseconds, 2);
-
     ret = realtime_win32read(&rtlocal);
 
     assert_int_equal(ret, 0);
@@ -904,8 +902,6 @@ void test_realtime_adddir_duplicate_entry(void **state) {
     expect_string(__wrap_w_directory_exists, path, "C:\\a\\path");
     will_return(__wrap_w_directory_exists, 1);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6224): Entry 'C:\\a\\path' already exists in the RT hash table.");
-
     ret = realtime_adddir("C:\\a\\path", 0, 0);
 
     assert_int_equal(ret, 1);
@@ -921,9 +917,8 @@ void test_realtime_adddir_handle_error(void **state) {
     expect_string(wrap_run_realtime_CreateFile, lpFileName, "C:\\a\\path");
     will_return(wrap_run_realtime_CreateFile, INVALID_HANDLE_VALUE);
 
-    expect_string(__wrap__mdebug1, formatted_msg,
+    expect_string(__wrap__mdebug2, formatted_msg,
         "(6290): Unable to add directory to real time monitoring: 'C:\\a\\path'");
-    will_return(__wrap__mdebug1, 1);
 
     ret = realtime_adddir("C:\\a\\path", 0, 0);
 

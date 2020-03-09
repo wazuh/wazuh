@@ -139,9 +139,9 @@ void test_os_winreg_querykey_success_no_subkey(void **state) {
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
-    will_return(wrap_RegQueryInfoKey, 0); // subkey_count 
+    will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 0); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time 
+    will_return(wrap_RegQueryInfoKey, 0); // file_time
     will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
     os_winreg_querykey(oshkey, subkey, fullname, pos);
 }
@@ -154,9 +154,9 @@ void test_os_winreg_querykey_success_subkey_p_key(void **state) {
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
-    will_return(wrap_RegQueryInfoKey, 1); // subkey_count 
+    will_return(wrap_RegQueryInfoKey, 1); // subkey_count
     will_return(wrap_RegQueryInfoKey, 0); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time 
+    will_return(wrap_RegQueryInfoKey, 0); // file_time
     will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
 
     will_return(wrap_RegEnumKeyEx, "SUBKEY_NAME");
@@ -178,9 +178,9 @@ void test_os_winreg_querykey_ignored_registry(void **state) {
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
-    will_return(wrap_RegQueryInfoKey, 0); // subkey_count 
+    will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 0); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time 
+    will_return(wrap_RegQueryInfoKey, 0); // file_time
     will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
 
     char debug_msg[OS_MAXSTR];
@@ -197,9 +197,9 @@ void test_os_winreg_querykey_ignored_regex(void **state) {
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
-    will_return(wrap_RegQueryInfoKey, 0); // subkey_count 
+    will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 0); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time 
+    will_return(wrap_RegQueryInfoKey, 0); // file_time
     will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
 
     char debug_msg[OS_MAXSTR];
@@ -216,9 +216,9 @@ void test_os_winreg_querykey_values_string(void **state) {
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
-    will_return(wrap_RegQueryInfoKey, 0); // subkey_count 
+    will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 1); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time 
+    will_return(wrap_RegQueryInfoKey, 0); // file_time
     will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
 
     will_return(wrap_RegEnumValue, "REG_VALUE");
@@ -249,9 +249,9 @@ void test_os_winreg_querykey_values_multi_string(void **state) {
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
-    will_return(wrap_RegQueryInfoKey, 0); // subkey_count 
+    will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 1); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time 
+    will_return(wrap_RegQueryInfoKey, 0); // file_time
     will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
 
     will_return(wrap_RegEnumValue, "REG_VALUE");
@@ -296,9 +296,9 @@ void test_os_winreg_querykey_values_number(void **state) {
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
-    will_return(wrap_RegQueryInfoKey, 0); // subkey_count 
+    will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 1); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time 
+    will_return(wrap_RegQueryInfoKey, 0); // file_time
     will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
 
     will_return(wrap_RegEnumValue, "REG_VALUE");
@@ -343,9 +343,9 @@ void test_os_winreg_querykey_values_binary(void **state) {
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
-    will_return(wrap_RegQueryInfoKey, 0); // subkey_count 
+    will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 1); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time 
+    will_return(wrap_RegQueryInfoKey, 0); // file_time
     will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
 
     will_return(wrap_RegEnumValue, "REG_VALUE");
@@ -388,9 +388,9 @@ void test_os_winreg_querykey_values_none(void **state) {
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
-    will_return(wrap_RegQueryInfoKey, 0); // subkey_count 
+    will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 1); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time 
+    will_return(wrap_RegQueryInfoKey, 0); // file_time
     will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
 
     will_return(wrap_RegEnumValue, "REG_VALUE");
@@ -417,9 +417,9 @@ void test_os_winreg_querykey_registry_event_fail(void **state) {
 
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_b
     will_return(wrap_RegQueryInfoKey, NULL); // class_name_s
-    will_return(wrap_RegQueryInfoKey, 0); // subkey_count 
+    will_return(wrap_RegQueryInfoKey, 0); // subkey_count
     will_return(wrap_RegQueryInfoKey, 1); // value_count
-    will_return(wrap_RegQueryInfoKey, 0); // file_time 
+    will_return(wrap_RegQueryInfoKey, 0); // file_time
     will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
 
     will_return(wrap_RegEnumValue, "REG_VALUE");
@@ -444,7 +444,7 @@ void test_os_winreg_querykey_registry_event_fail(void **state) {
 /*************************os_winreg_check()*******************************/
 int setup_winreg_check_invalid_subtree(void **state) {
     // Store initial registry pointer
-    *state = syscheck.registry; 
+    *state = syscheck.registry;
     registry *reg_array_ptr;
     reg_array_ptr = (registry *) calloc(2, sizeof(registry));
     reg_array_ptr->entry = strdup("WRONG_SUBTREE\\Software\\Classes\\batfile");
@@ -464,7 +464,7 @@ int teardown_winreg_check_invalid_subtree(void **state){
 
 int setup_winreg_check_valid_subtree(void **state) {
     // Store initial registry pointer
-    *state = syscheck.registry; 
+    *state = syscheck.registry;
     registry *reg_array_ptr;
     reg_array_ptr = (registry *) calloc(2, sizeof(registry));
     reg_array_ptr->entry = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile");
@@ -490,7 +490,7 @@ void test_os_winreg_check_invalid_subtree(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
     char warn_msg[OS_MAXSTR];
     snprintf(warn_msg, OS_MAXSTR, "(6919): Invalid syscheck registry entry: '%s' arch: '%s'.", syscheck.registry[0].entry, syscheck.registry[0].arch == ARCH_64BIT ? "[x64]" : "[x32]");
-    expect_string(__wrap__mwarn, formatted_msg, warn_msg);
+    expect_string(__wrap__mdebug1, formatted_msg, warn_msg);
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
     os_winreg_check();
 }
@@ -500,7 +500,7 @@ void test_os_winreg_check_valid_subtree(void **state) {
     char debug_msg[OS_MAXSTR];
     snprintf(debug_msg, OS_MAXSTR, FIM_READING_REGISTRY, syscheck.registry[0].arch == ARCH_64BIT ? "[x64] " : "[x32] ", syscheck.registry[0].entry);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
-    
+
     // If os_winreg check tries to call os_winreg_open_key then subtree is valid
     will_return(wrap_RegOpenKeyEx, -1);
     char debug_msg2[OS_MAXSTR];
