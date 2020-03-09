@@ -22,6 +22,7 @@ extern int whodata_path_filter(char **path);
 extern void whodata_adapt_path(char **path);
 extern int whodata_check_arch();
 extern int is_valid_sacl(PACL sacl, int is_file);
+extern void replace_device_path(char **path);
 
 extern char sys_64;
 extern PSID everyone_sid;
@@ -47,6 +48,26 @@ int test_group_setup(void **state) {
 static int teardown_string(void **state) {
     if(*state)
         free(*state);
+
+    return 0;
+}
+
+static int setup_replace_device_path(void **state) {
+    syscheck.wdata.device = calloc(10, sizeof(char*));
+    syscheck.wdata.drive = calloc(10, sizeof(char *));
+
+    if(syscheck.wdata.device == NULL || syscheck.wdata.drive == NULL)
+        return -1;
+
+    return 0;
+}
+
+static int teardown_replace_device_path(void **state) {
+    free_strarray(syscheck.wdata.device);
+    free_strarray(syscheck.wdata.drive);
+
+    if(teardown_string(state))
+        return -1;
 
     return 0;
 }
@@ -1651,6 +1672,66 @@ void test_is_valid_sacl_sacl_not_found(void **state) {
     assert_int_equal(ret, 2);
 }
 
+void test_replace_device_path_invalid_path(void **state) {
+    char *path = strdup("invalid\\path");
+
+    replace_device_path(&path);
+
+    *state = path;
+
+    assert_string_equal(path, "invalid\\path");
+}
+
+void test_replace_device_path_empty_wdata_device(void **state) {
+    char *path = strdup("\\C:\\a\\path");
+
+    replace_device_path(&path);
+
+    *state = path;
+
+    assert_string_equal(path, "\\C:\\a\\path");
+}
+
+void test_replace_device_path_device_not_found(void **state) {
+    char *path = strdup("\\Device\\NotFound0\\a\\path");
+    syscheck.wdata.device[0] = strdup("\\Device\\HarddiskVolume1");
+    syscheck.wdata.drive[0] = strdup("D:");
+    syscheck.wdata.device[1] = strdup("\\Device\\Floppy0");
+    syscheck.wdata.drive[1] = strdup("A:");
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6304): Find device '\\Device\\HarddiskVolume1' in path '\\Device\\NotFound0\\a\\path'");
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6304): Find device '\\Device\\Floppy0' in path '\\Device\\NotFound0\\a\\path'");
+
+    replace_device_path(&path);
+
+    *state = path;
+
+    assert_string_equal(path, "\\Device\\NotFound0\\a\\path");
+}
+
+void test_replace_device_path_device_found(void **state) {
+    char *path = strdup("\\Device\\Floppy0\\a\\path");
+    syscheck.wdata.device[0] = strdup("\\Device\\HarddiskVolume1");
+    syscheck.wdata.drive[0] = strdup("D:");
+    syscheck.wdata.device[1] = strdup("\\Device\\Floppy0");
+    syscheck.wdata.drive[1] = strdup("A:");
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6304): Find device '\\Device\\HarddiskVolume1' in path '\\Device\\Floppy0\\a\\path'");
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6304): Find device '\\Device\\Floppy0' in path '\\Device\\Floppy0\\a\\path'");
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6305): Replacing '\\Device\\Floppy0\\a\\path' to 'A:\\a\\path'");
+
+    replace_device_path(&path);
+
+    *state = path;
+
+    assert_string_equal(path, "A:\\a\\path");
+}
+
 /**************************************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -1702,6 +1783,11 @@ int main(void) {
         /* is_valid_sacl */
         cmocka_unit_test(test_is_valid_sacl_sid_error),
         cmocka_unit_test(test_is_valid_sacl_sacl_not_found),
+        /* replace_device_path */
+        cmocka_unit_test_setup_teardown(test_replace_device_path_invalid_path, setup_replace_device_path, teardown_replace_device_path),
+        cmocka_unit_test_setup_teardown(test_replace_device_path_empty_wdata_device, setup_replace_device_path, teardown_replace_device_path),
+        cmocka_unit_test_setup_teardown(test_replace_device_path_device_not_found, setup_replace_device_path, teardown_replace_device_path),
+        cmocka_unit_test_setup_teardown(test_replace_device_path_device_found, setup_replace_device_path, teardown_replace_device_path),
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, NULL);
