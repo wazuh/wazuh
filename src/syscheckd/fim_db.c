@@ -1070,33 +1070,36 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
     fim_event_mode mode = (fim_event_mode) fim_ev_mode;
     int rows = 0;
     int conf_file = fim_configuration_directory(entry->path, "file");
+    int conf_registry = fim_configuration_directory(entry->path, "registry");
 
-    if (conf_file < 0) {
+    if (conf_file < 0 && conf_registry < 0) {
         return;
     }
 
-    switch (mode) {
-        /*
-            Don't send alert if received mode and mode in configuration aren't the same
-        */
+    if (conf_file > -1) {
+        switch (mode) {
+            /*
+                Don't send alert if received mode and mode in configuration aren't the same
+            */
 
-        case FIM_REALTIME:
-            if (!(syscheck.opts[conf_file] & REALTIME_ACTIVE)){
-                return;
-            }
-            break;
+            case FIM_REALTIME:
+                if (!(syscheck.opts[conf_file] & REALTIME_ACTIVE)) {
+                    return;
+                }
+                break;
 
-        case FIM_WHODATA:
-            if (!(syscheck.opts[conf_file] & WHODATA_ACTIVE)) {
-                return;
-            }
-            break;
+            case FIM_WHODATA:
+                if (!(syscheck.opts[conf_file] & WHODATA_ACTIVE)) {
+                    return;
+                }
+                break;
 
-        case FIM_SCHEDULED:
-            if (!(syscheck.opts[conf_file] & SCHEDULED_ACTIVE)) {
-                return;
-            }
-            break;
+            case FIM_SCHEDULED:
+                if (!(syscheck.opts[conf_file] & SCHEDULED_ACTIVE)) {
+                    return;
+                }
+                break;
+        }
     }
 
     w_mutex_lock(mutex);
