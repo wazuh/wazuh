@@ -51,7 +51,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         result = datetime.utcnow() - timedelta(seconds=common.limit_seconds)
         self.request['time_active'] = result.replace(tzinfo=timezone.utc).timestamp()
         if status_filter['operator'] == '!=':
-            self.query += 'NOT '
+            self.query += ' NOT '
 
         if status_filter['value'] == 'active':
             self.query += '(last_keepalive >= :time_active AND version IS NOT NULL) or id = 0'
@@ -461,7 +461,7 @@ class Agent:
                 try:
                     ipaddress.ip_network(ip)
                 except Exception:
-                    WazuhError(1706, extra_message=ip)
+                    raise WazuhError(1706, extra_message=ip)
             else:
                 try:
                     ipaddress.ip_address(ip)
@@ -722,6 +722,8 @@ class Agent:
         :param replace_list: List of Group names that can be replaced
         :return: Agent ID.
         """
+        if replace_list is None:
+            replace_list = []
         if not force:
             # Check if agent exists, it is not 000 and the group exists
             Agent(agent_id).get_basic_information()
@@ -782,7 +784,10 @@ class Agent:
             if agent_info['lastKeepAlive'] == 0:
                 remove_agent = True
             else:
-                last_date = datetime.strptime(agent_info['lastKeepAlive'], '%Y-%m-%d %H:%M:%S')
+                if isinstance(agent_info['lastKeepAlive'], datetime):
+                    last_date = agent_info['lastKeepAlive']
+                else:
+                    last_date = datetime.strptime(agent_info['lastKeepAlive'], '%Y-%m-%d %H:%M:%S')
                 difference = (datetime.utcnow() - last_date).total_seconds()
                 if difference >= seconds:
                     remove_agent = True
@@ -1225,9 +1230,6 @@ class Agent:
             s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): started. "
                       "Current version: {2}".format(str(self.id).zfill(3), self.name, self.version)).encode(),
                      path.join(common.ossec_path, 'queue', 'ossec', 'queue'))
-            s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): started. "
-                      "Current version: {2}".format(str(self.id).zfill(3), self.name, self.version)).encode(),
-                     path.join(common.ossec_path, 'queue', 'ossec', 'queue'))
             s.close()
             return "Upgrade procedure started"
         else:
@@ -1306,6 +1308,7 @@ class Agent:
         s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com lock_restart {1}".format(str(self.id).zfill(3), str(rl_timeout))
         s.send(msg.encode())
+
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
         data = s.receive().decode()
