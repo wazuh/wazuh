@@ -1694,6 +1694,61 @@ void test_is_valid_sacl_sacl_not_found(void **state) {
     assert_int_equal(ret, 2);
 }
 
+void test_is_valid_sacl_ace_not_found(void **state) {
+    int ret;
+    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+    PACL new_sacl = NULL;
+    unsigned long new_sacl_size;
+
+    everyone_sid = NULL;
+    ev_sid_size = 1;
+    
+    expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+    expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+    will_return(wrap_win_whodata_AllocateAndInitializeSid, 1);
+    
+    // Set the new ACL size
+    new_sacl_size = sizeof(SYSTEM_AUDIT_ACE) + ev_sid_size - sizeof(unsigned long);
+    new_sacl = (PACL) win_alloc(new_sacl_size);
+    InitializeAcl(new_sacl, new_sacl_size, ACL_REVISION);
+    new_sacl->AceCount=1;
+
+    will_return(wrap_win_whodata_GetAce, NULL);
+    will_return(wrap_win_whodata_GetAce, 0);
+
+    will_return(wrap_win_whodata_GetLastError, (unsigned int) 800);
+    expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '800'.");
+    
+    ret = is_valid_sacl(new_sacl, 0);
+    assert_int_equal(ret, 0);
+}
+
+void test_is_valid_sacl_not_valid(void **state) {
+    int ret;
+    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+    PACL new_sacl = NULL;
+    unsigned long new_sacl_size;
+    
+    everyone_sid = NULL;
+    ev_sid_size = 1;
+    
+    expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+    expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+    will_return(wrap_win_whodata_AllocateAndInitializeSid, 1);
+    
+    // Set the new ACL size
+    new_sacl_size = sizeof(SYSTEM_AUDIT_ACE) + ev_sid_size - sizeof(unsigned long);
+    new_sacl = (PACL) win_alloc(new_sacl_size);
+    InitializeAcl(new_sacl, new_sacl_size, ACL_REVISION);
+    new_sacl->AceCount=1;
+    
+    will_return(wrap_win_whodata_GetAce, &new_sacl);
+    will_return(wrap_win_whodata_GetAce, 1);
+    
+    ret = is_valid_sacl(new_sacl, 1);
+    assert_int_equal(ret, 0);
+}
+
 void test_replace_device_path_invalid_path(void **state) {
     char *path = strdup("invalid\\path");
 
@@ -1867,6 +1922,8 @@ int main(void) {
         /* is_valid_sacl */
         cmocka_unit_test(test_is_valid_sacl_sid_error),
         cmocka_unit_test(test_is_valid_sacl_sacl_not_found),
+        cmocka_unit_test(test_is_valid_sacl_ace_not_found),
+        cmocka_unit_test(test_is_valid_sacl_not_valid),
         /* replace_device_path */
         cmocka_unit_test_setup_teardown(test_replace_device_path_invalid_path, setup_replace_device_path, teardown_replace_device_path),
         cmocka_unit_test_setup_teardown(test_replace_device_path_empty_wdata_device, setup_replace_device_path, teardown_replace_device_path),
