@@ -1,30 +1,30 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import asyncio
 import datetime
 import logging
 
 import connexion
+from aiohttp import web
 
 import wazuh.cluster as cluster
 import wazuh.common as common
 import wazuh.manager as manager
 import wazuh.stats as stats
 from api.authentication import get_permissions
+from api.encoder import dumps
 from api.models.base_model_ import Data
 from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
-from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.cluster.control import get_system_nodes
+from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhError
 
-loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
 
 @exception_handler
-def get_cluster_node(pretty=False, wait_for_complete=False):
+async def get_cluster_node(pretty=False, wait_for_complete=False):
     """Get basic information about the local node.
 
     :param pretty: Show results in human-readable format
@@ -32,7 +32,7 @@ def get_cluster_node(pretty=False, wait_for_complete=False):
     """
     f_kwargs = {}
 
-    nodes = loop.run_until_complete(get_system_nodes())
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=cluster.get_node_wrapper,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
@@ -43,14 +43,14 @@ def get_cluster_node(pretty=False, wait_for_complete=False):
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
                           nodes=nodes
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_cluster_nodes(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None, select=None,
-                      list_nodes=None):
+async def get_cluster_nodes(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None,
+                            select=None, list_nodes=None):
     """Get information about all nodes in the cluster or a list of them
 
     :param pretty: Show results in human-readable format
@@ -74,7 +74,7 @@ def get_cluster_nodes(pretty=False, wait_for_complete=False, offset=0, limit=Non
                 'select': select,
                 'filter_type': type_}
 
-    nodes = loop.run_until_complete(get_system_nodes())
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=cluster.get_nodes_info,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -86,13 +86,13 @@ def get_cluster_nodes(pretty=False, wait_for_complete=False, offset=0, limit=Non
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
                           nodes=nodes
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_healthcheck(pretty=False, wait_for_complete=False, list_nodes=None):
+async def get_healthcheck(pretty=False, wait_for_complete=False, list_nodes=None):
     """Get cluster healthcheck
 
     Returns cluster healthcheck information for all nodes or a list of them. Such information includes last keep alive,
@@ -105,7 +105,7 @@ def get_healthcheck(pretty=False, wait_for_complete=False, list_nodes=None):
     """
     f_kwargs = {'filter_node': list_nodes}
 
-    nodes = loop.run_until_complete(get_system_nodes())
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=cluster.get_health_nodes,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -117,13 +117,13 @@ def get_healthcheck(pretty=False, wait_for_complete=False, list_nodes=None):
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
                           nodes=nodes
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_status(pretty=False, wait_for_complete=False):
+async def get_status(pretty=False, wait_for_complete=False):
     """Get cluster status
 
     :param pretty: Show results in human-readable format
@@ -131,7 +131,7 @@ def get_status(pretty=False, wait_for_complete=False):
     """
     f_kwargs = {}
 
-    nodes = loop.run_until_complete(get_system_nodes())
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=cluster.get_status_json,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -142,14 +142,14 @@ def get_status(pretty=False, wait_for_complete=False):
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
                           nodes=nodes
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return response, 200
+    return web.json_response(data=response, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_config(pretty=False, wait_for_complete=False):
+async def get_config(pretty=False, wait_for_complete=False):
     """Get the current node cluster configuration
 
     :param pretty: Show results in human-readable format
@@ -157,7 +157,7 @@ def get_config(pretty=False, wait_for_complete=False):
     """
     f_kwargs = {}
 
-    nodes = loop.run_until_complete(get_system_nodes())
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=cluster.read_config_wrapper,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
@@ -168,13 +168,13 @@ def get_config(pretty=False, wait_for_complete=False):
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
                           nodes=nodes
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_status_node(node_id, pretty=False, wait_for_complete=False):
+async def get_status_node(node_id, pretty=False, wait_for_complete=False):
     """Get a specified node's Wazuh daemons status
 
     :param node_id: Cluster node name.
@@ -183,7 +183,7 @@ def get_status_node(node_id, pretty=False, wait_for_complete=False):
     """
     f_kwargs = {'node_id': node_id}
 
-    nodes = loop.run_until_complete(get_system_nodes())
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=manager.get_status,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -194,13 +194,13 @@ def get_status_node(node_id, pretty=False, wait_for_complete=False):
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
                           nodes=nodes
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_info_node(node_id, pretty=False, wait_for_complete=False):
+async def get_info_node(node_id, pretty=False, wait_for_complete=False):
     """Get a specified node's information 
 
     Returns basic information about a specified node such as version, compilation date, installation path.
@@ -211,7 +211,7 @@ def get_info_node(node_id, pretty=False, wait_for_complete=False):
     """
     f_kwargs = {'node_id': node_id}
 
-    nodes = loop.run_until_complete(get_system_nodes())
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=manager.get_basic_info,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -222,13 +222,13 @@ def get_info_node(node_id, pretty=False, wait_for_complete=False):
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
                           nodes=nodes
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_configuration_node(node_id, pretty=False, wait_for_complete=False, section=None, field=None):
+async def get_configuration_node(node_id, pretty=False, wait_for_complete=False, section=None, field=None):
     """Get a specified node's configuration (ossec.conf)
 
     :param node_id: Cluster node name.
@@ -241,7 +241,7 @@ def get_configuration_node(node_id, pretty=False, wait_for_complete=False, secti
                 'section': section,
                 'field': field}
 
-    nodes = loop.run_until_complete(get_system_nodes())
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=manager.read_ossec_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -252,13 +252,13 @@ def get_configuration_node(node_id, pretty=False, wait_for_complete=False, secti
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
                           nodes=nodes
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_stats_node(node_id, pretty=False, wait_for_complete=False, date=None):
+async def get_stats_node(node_id, pretty=False, wait_for_complete=False, date=None):
     """Get a specified node's stats. 
 
     Returns Wazuh statistical information in node {node_id} for the current or specified date.
@@ -284,7 +284,7 @@ def get_stats_node(node_id, pretty=False, wait_for_complete=False, date=None):
                 'day': date.day,
                 'today': today}
 
-    nodes = loop.run_until_complete(get_system_nodes())
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=stats.totals,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -295,13 +295,13 @@ def get_stats_node(node_id, pretty=False, wait_for_complete=False, date=None):
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
                           nodes=nodes
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_stats_hourly_node(node_id, pretty=False, wait_for_complete=False):
+async def get_stats_hourly_node(node_id, pretty=False, wait_for_complete=False):
     """Get a specified node's stats by hour. 
 
     Returns Wazuh statistical information in node {node_id} per hour. Each number in the averages field represents the
@@ -313,7 +313,7 @@ def get_stats_hourly_node(node_id, pretty=False, wait_for_complete=False):
     """
     f_kwargs = {'node_id': node_id}
 
-    nodes = loop.run_until_complete(get_system_nodes())
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=stats.hourly,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -324,14 +324,14 @@ def get_stats_hourly_node(node_id, pretty=False, wait_for_complete=False):
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
                           nodes=nodes
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return response, 200
+    return web.json_response(data=response, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_stats_weekly_node(node_id, pretty=False, wait_for_complete=False):
+async def get_stats_weekly_node(node_id, pretty=False, wait_for_complete=False):
     """Get a specified node's stats by week. 
 
     Returns Wazuh statistical information in node {node_id} per week. Each number in the averages field represents the
@@ -343,7 +343,7 @@ def get_stats_weekly_node(node_id, pretty=False, wait_for_complete=False):
     """
     f_kwargs = {'node_id': node_id}
 
-    nodes = loop.run_until_complete(get_system_nodes())
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=stats.weekly,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -354,14 +354,14 @@ def get_stats_weekly_node(node_id, pretty=False, wait_for_complete=False):
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
                           nodes=nodes
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return response, 200
+    return web.json_response(data=response, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_stats_analysisd_node(node_id, pretty=False, wait_for_complete=False):
+async def get_stats_analysisd_node(node_id, pretty=False, wait_for_complete=False):
     """Get a specified node's analysisd stats.
 
     :param node_id: Cluster node name.
@@ -371,7 +371,7 @@ def get_stats_analysisd_node(node_id, pretty=False, wait_for_complete=False):
     f_kwargs = {'node_id': node_id,
                 'filename': common.analysisd_stats}
 
-    nodes = loop.run_until_complete(get_system_nodes())
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=stats.get_daemons_stats,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -382,14 +382,14 @@ def get_stats_analysisd_node(node_id, pretty=False, wait_for_complete=False):
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
                           nodes=nodes
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return response, 200
+    return web.json_response(data=response, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_stats_remoted_node(node_id, pretty=False, wait_for_complete=False):
+async def get_stats_remoted_node(node_id, pretty=False, wait_for_complete=False):
     """Get a specified node's remoted stats.
 
     :param node_id: Cluster node name.
@@ -399,7 +399,7 @@ def get_stats_remoted_node(node_id, pretty=False, wait_for_complete=False):
     f_kwargs = {'node_id': node_id,
                 'filename': common.remoted_stats}
 
-    nodes = loop.run_until_complete(get_system_nodes())
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=stats.get_daemons_stats,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -410,15 +410,15 @@ def get_stats_remoted_node(node_id, pretty=False, wait_for_complete=False):
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
                           nodes=nodes
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return response, 200
+    return web.json_response(data=response, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_log_node(node_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
-                 search=None, category=None, type_log=None):
+async def get_log_node(node_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
+                       search=None, category=None, type_log=None):
     """Get a specified node's wazuh logs. 
 
     Returns the last 2000 wazuh log entries in node {node_id}.
@@ -444,7 +444,7 @@ def get_log_node(node_id, pretty=False, wait_for_complete=False, offset=0, limit
                 'category': category,
                 'type_log': type_log}
 
-    nodes = loop.run_until_complete(get_system_nodes())
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=manager.ossec_log,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -455,13 +455,13 @@ def get_log_node(node_id, pretty=False, wait_for_complete=False, offset=0, limit
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
                           nodes=nodes
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_log_summary_node(node_id, pretty=False, wait_for_complete=False):
+async def get_log_summary_node(node_id, pretty=False, wait_for_complete=False):
     """Get a summary of a specified node's wazuh logs.
 
     :param node_id: Cluster node name.
@@ -470,7 +470,7 @@ def get_log_summary_node(node_id, pretty=False, wait_for_complete=False):
     """
     f_kwargs = {'node_id': node_id}
 
-    nodes = loop.run_until_complete(get_system_nodes())
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=manager.ossec_log_summary,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -481,13 +481,13 @@ def get_log_summary_node(node_id, pretty=False, wait_for_complete=False):
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
                           nodes=nodes
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_files_node(node_id, path, pretty=False, wait_for_complete=False):
+async def get_files_node(node_id, path, pretty=False, wait_for_complete=False):
     """Get file contents from a specified node in the cluster.
 
     :param node_id: Cluster node name.
@@ -498,7 +498,7 @@ def get_files_node(node_id, path, pretty=False, wait_for_complete=False):
     f_kwargs = {'node_id': node_id,
                 'path': path}
 
-    nodes = loop.run_until_complete(get_system_nodes())
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=manager.get_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -509,13 +509,13 @@ def get_files_node(node_id, path, pretty=False, wait_for_complete=False):
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
                           nodes=nodes
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def put_files_node(body, node_id, path, overwrite=False, pretty=False, wait_for_complete=False):
+async def put_files_node(body, node_id, path, overwrite=False, pretty=False, wait_for_complete=False):
     """Upload file contents in a specified cluster node.
 
     :param body: Body request with the content of the file to be uploaded
@@ -539,7 +539,7 @@ def put_files_node(body, node_id, path, overwrite=False, pretty=False, wait_for_
                 'overwrite': overwrite,
                 'content': body}
 
-    nodes = loop.run_until_complete(get_system_nodes())
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=manager.upload_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -550,13 +550,13 @@ def put_files_node(body, node_id, path, overwrite=False, pretty=False, wait_for_
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
                           nodes=nodes
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def delete_files_node(node_id, path, pretty=False, wait_for_complete=False):
+async def delete_files_node(node_id, path, pretty=False, wait_for_complete=False):
     """Removes a file in a specified cluster node.
 
     :param node_id: Cluster node name.
@@ -567,7 +567,7 @@ def delete_files_node(node_id, path, pretty=False, wait_for_complete=False):
     f_kwargs = {'node_id': node_id,
                 'path': path}
 
-    nodes = loop.run_until_complete(get_system_nodes())
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=manager.delete_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -578,13 +578,13 @@ def delete_files_node(node_id, path, pretty=False, wait_for_complete=False):
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
                           nodes=nodes
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def put_restart(pretty=False, wait_for_complete=False, list_nodes='*'):
+async def put_restart(pretty=False, wait_for_complete=False, list_nodes='*'):
     """Restarts all nodes in the cluster or a list of them.
 
     :param pretty: Show results in human-readable format
@@ -593,7 +593,7 @@ def put_restart(pretty=False, wait_for_complete=False, list_nodes='*'):
     """
     f_kwargs = {'node_list': list_nodes}
 
-    nodes = loop.run_until_complete(get_system_nodes())
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=manager.restart,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -605,13 +605,13 @@ def put_restart(pretty=False, wait_for_complete=False, list_nodes='*'):
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
                           nodes=nodes
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_conf_validation(pretty=False, wait_for_complete=False, list_nodes='*'):
+async def get_conf_validation(pretty=False, wait_for_complete=False, list_nodes='*'):
     """Check whether the Wazuh configuration in a list of cluster nodes is correct or not.
 
     :param pretty: Show results in human-readable format
@@ -621,7 +621,7 @@ def get_conf_validation(pretty=False, wait_for_complete=False, list_nodes='*'):
     """
     f_kwargs = {'node_list': list_nodes}
 
-    nodes = loop.run_until_complete(get_system_nodes())
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=manager.validation,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -633,13 +633,13 @@ def get_conf_validation(pretty=False, wait_for_complete=False, list_nodes='*'):
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
                           nodes=nodes
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_node_config(node_id, component, wait_for_complete=False, pretty=False, **kwargs):
+async def get_node_config(node_id, component, wait_for_complete=False, pretty=False, **kwargs):
     """Get active configuration in node node_id [on demand]
 
     :param pretty: Show results in human-readable format
@@ -652,7 +652,7 @@ def get_node_config(node_id, component, wait_for_complete=False, pretty=False, *
                 'config': kwargs.get('configuration', None)
                 }
 
-    nodes = loop.run_until_complete(get_system_nodes())
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=manager.get_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -663,6 +663,6 @@ def get_node_config(node_id, component, wait_for_complete=False, pretty=False, *
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
                           nodes=nodes
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
