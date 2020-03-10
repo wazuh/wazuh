@@ -301,18 +301,18 @@ void fim_db_clean(void) {
         // it's unlocked in order to remove it. Wait at most 5 seconds.
         int i, rm;
         for (i = 1; i <= FIMDB_RM_MAX_LOOP && (rm = remove(FIM_DB_DISK_PATH)); i++) {
-            mdebug2("Failed to delete '%s' - %dº try.", FIM_DB_DISK_PATH, i);
+            mdebug2(FIM_DELETE_DB_TRY, FIM_DB_DISK_PATH, i);
 #ifdef WIN32
-            Sleep(FIMDB_RM_DEFAULT_TIME*i); //milliseconds
+            Sleep(FIMDB_RM_DEFAULT_TIME * i); //milliseconds
 #else
-            usleep(FIMDB_RM_DEFAULT_TIME*i); //milliseconds
+            usleep(FIMDB_RM_DEFAULT_TIME * i); //milliseconds
 #endif
         }
 
-        //Loop endlessly until the file can be removed.
+        //Loop endlessly until the file can be removed. (60s)
         if (rm == FIMDB_ERR) {
             while (remove(FIM_DB_DISK_PATH)) {
-                mdebug2("Failed to delete '%s'", FIM_DB_DISK_PATH);
+                mdebug2(FIM_DELETE_DB, FIM_DB_DISK_PATH);
 #ifdef WIN32
                 Sleep(60000); //milliseconds
 #else
