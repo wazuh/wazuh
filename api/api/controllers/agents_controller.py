@@ -1,29 +1,30 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import asyncio
 import logging
 
 import connexion
+from aiohttp import web
 
 import wazuh.agent as agent
 from api import configuration
 from api.authentication import get_permissions
+from api.encoder import dumps
 from api.models.agent_added import AgentAdded
 from api.models.agent_inserted import AgentInserted
 from api.models.base_model_ import Data
-from api.util import parse_api_param
-from api.util import remove_nones_to_dict, exception_handler, raise_if_exc
-from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from api.util import parse_api_param, remove_nones_to_dict, exception_handler, raise_if_exc
 from wazuh.common import database_limit
+from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhError
 
 logger = logging.getLogger('wazuh')
 
 
 @exception_handler
-async def delete_agents(pretty=False, wait_for_complete=False, list_agents=None, purge=False, status='all', older_than="7d"):
+async def delete_agents(pretty=False, wait_for_complete=False, list_agents=None, purge=False, status='all',
+                        older_than="7d"):
     """Delete all agents or a list of them with optional criteria based on the status or time of the last connection.
 
     :param pretty: Show results in human-readable format
@@ -51,13 +52,13 @@ async def delete_agents(pretty=False, wait_for_complete=False, list_agents=None,
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_agents(pretty=False, wait_for_complete=False, list_agents=None, offset=0, limit=database_limit, select=None,
-               sort=None, search=None, status=None, q=None, older_than=None, manager=None, version=None, group=None,
-               node_name=None, name=None, ip=None):
+async def get_agents(pretty=False, wait_for_complete=False, list_agents=None, offset=0, limit=database_limit,
+                     select=None, sort=None, search=None, status=None, q=None, older_than=None,
+                     manager=None, version=None, group=None, node_name=None, name=None, ip=None):
     """Get information about all agents or a list of them
 
     :param pretty: Show results in human-readable format
@@ -114,13 +115,13 @@ def get_agents(pretty=False, wait_for_complete=False, list_agents=None, offset=0
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def add_agent(pretty=False, wait_for_complete=False):
+async def add_agent(pretty=False, wait_for_complete=False):
     """Add a new Wazuh agent.
 
     :param pretty: Show results in human-readable format
@@ -155,14 +156,14 @@ def add_agent(pretty=False, wait_for_complete=False):
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
 
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return response, 200
+    return web.json_response(data=response, status=200, dumps=dumps)
 
 
 @exception_handler
-def restart_agents(pretty=False, wait_for_complete=False, list_agents='*'):
+async def restart_agents(pretty=False, wait_for_complete=False, list_agents='*'):
     """ Restarts all agents
 
     :param pretty: Show results in human-readable format
@@ -182,13 +183,13 @@ def restart_agents(pretty=False, wait_for_complete=False, list_agents='*'):
                           broadcasting=list_agents == '*',
                           logger=logger
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def delete_agent(agent_id, pretty=False, wait_for_complete=False, purge=False):
+async def delete_agent(agent_id, pretty=False, wait_for_complete=False, purge=False):
     """Delete an agent
 
     :param pretty: Show results in human-readable format
@@ -211,13 +212,13 @@ def delete_agent(agent_id, pretty=False, wait_for_complete=False, purge=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_agent(agent_id, pretty=False, wait_for_complete=False, select=None):
+async def get_agent(agent_id, pretty=False, wait_for_complete=False, select=None):
     """Get various information from an agent
 
     :param pretty: Show results in human-readable format
@@ -239,13 +240,13 @@ def get_agent(agent_id, pretty=False, wait_for_complete=False, select=None):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_agent_config(pretty=False, wait_for_complete=False, agent_id=None, component=None, **kwargs):
+async def get_agent_config(pretty=False, wait_for_complete=False, agent_id=None, component=None, **kwargs):
     """Get active configuration
 
     Returns the active configuration the agent is currently using. This can be different from the
@@ -272,14 +273,14 @@ def get_agent_config(pretty=False, wait_for_complete=False, agent_id=None, compo
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return response, 200
+    return web.json_response(data=response, status=200, dumps=dumps)
 
 
 @exception_handler
-def delete_single_agent_multiple_groups(agent_id, list_groups=None, pretty=False, wait_for_complete=False):
+async def delete_single_agent_multiple_groups(agent_id, list_groups=None, pretty=False, wait_for_complete=False):
     """'Remove the agent from all groups or a list of them.
 
     The agent will automatically revert to the "default" group if it is removed from all its assigned groups.
@@ -303,13 +304,13 @@ def delete_single_agent_multiple_groups(agent_id, list_groups=None, pretty=False
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
 
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_sync_agent(agent_id, pretty=False, wait_for_complete=False):
+async def get_sync_agent(agent_id, pretty=False, wait_for_complete=False):
     """Get agent configuration sync status.
 
     Returns whether the agent configuration has been synchronized with the agent
@@ -331,13 +332,13 @@ def get_sync_agent(agent_id, pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def delete_single_agent_single_group(agent_id, group_id, pretty=False, wait_for_complete=False):
+async def delete_single_agent_single_group(agent_id, group_id, pretty=False, wait_for_complete=False):
     """Remove agent from a single group.
 
     Removes an agent from a group. If the agent has multigroups, it will preserve all previous groups except the last
@@ -361,13 +362,13 @@ def delete_single_agent_single_group(agent_id, group_id, pretty=False, wait_for_
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def put_agent_single_group(agent_id, group_id, force_single_group=False, pretty=False, wait_for_complete=False):
+async def put_agent_single_group(agent_id, group_id, force_single_group=False, pretty=False, wait_for_complete=False):
     """Assign an agent to the specified group.
 
     :param pretty: Show results in human-readable format
@@ -390,13 +391,13 @@ def put_agent_single_group(agent_id, group_id, force_single_group=False, pretty=
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_agent_key(agent_id, pretty=False, wait_for_complete=False):
+async def get_agent_key(agent_id, pretty=False, wait_for_complete=False):
     """Get agent key.
 
     :param pretty: Show results in human-readable format
@@ -415,13 +416,13 @@ def get_agent_key(agent_id, pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def restart_agent(agent_id, pretty=False, wait_for_complete=False):
+async def restart_agent(agent_id, pretty=False, wait_for_complete=False):
     """Restart an agent.
 
     :param agent_id: Agent ID. All posible values since 000 onwards.
@@ -440,14 +441,14 @@ def restart_agent(agent_id, pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def put_upgrade_agent(agent_id, pretty=False, wait_for_complete=False, wpk_repo=None, version=None, use_http=False,
-                      force=False):
+async def put_upgrade_agent(agent_id, pretty=False, wait_for_complete=False, wpk_repo=None, version=None,
+                            use_http=False, force=False):
     """Upgrade agent using a WPK file from online repository.
 
     :param pretty: Show results in human-readable format
@@ -474,13 +475,13 @@ def put_upgrade_agent(agent_id, pretty=False, wait_for_complete=False, wpk_repo=
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def put_upgrade_custom_agent(agent_id, pretty=False, wait_for_complete=False, file_path=None, installer=None):
+async def put_upgrade_custom_agent(agent_id, pretty=False, wait_for_complete=False, file_path=None, installer=None):
     """Upgrade agent using a local WPK file.'.
 
     :param pretty: Show results in human-readable format
@@ -504,13 +505,13 @@ def put_upgrade_custom_agent(agent_id, pretty=False, wait_for_complete=False, fi
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def post_new_agent(agent_name, pretty=False, wait_for_complete=False):
+async def post_new_agent(agent_name, pretty=False, wait_for_complete=False):
     """Add agent (quick method)
 
     Adds a new agent with name `agent_name`. This agent will use `any` as IP.'
@@ -531,14 +532,14 @@ def post_new_agent(agent_name, pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return response, 200
+    return web.json_response(data=response, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_agent_upgrade(agent_id, timeout=3, pretty=False, wait_for_complete=False):
+async def get_agent_upgrade(agent_id, timeout=3, pretty=False, wait_for_complete=False):
     """Get upgrade result from agent.
 
     :param pretty: Show results in human-readable format
@@ -559,13 +560,13 @@ def get_agent_upgrade(agent_id, timeout=3, pretty=False, wait_for_complete=False
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def delete_multiple_agent_single_group(group_id, list_agents=None, pretty=False, wait_for_complete=False):
+async def delete_multiple_agent_single_group(group_id, list_agents=None, pretty=False, wait_for_complete=False):
     """Removes agents assignment from a specified group.
 
     :param group_id: Group ID.
@@ -586,14 +587,14 @@ def delete_multiple_agent_single_group(group_id, list_agents=None, pretty=False,
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def put_multiple_agent_single_group(group_id, list_agents=None, pretty=False, wait_for_complete=False,
-                                    force_single_group=False):
+async def put_multiple_agent_single_group(group_id, list_agents=None, pretty=False, wait_for_complete=False,
+                                          force_single_group=False):
     """Add multiple agents to a group
 
     :param group_id: Group ID.
@@ -616,13 +617,13 @@ def put_multiple_agent_single_group(group_id, list_agents=None, pretty=False, wa
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def delete_groups(list_groups=None, pretty=False, wait_for_complete=False):
+async def delete_groups(list_groups=None, pretty=False, wait_for_complete=False):
     """Delete all groups or a list of them.
 
     :param pretty: Show results in human-readable format
@@ -641,14 +642,14 @@ def delete_groups(list_groups=None, pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_list_group(pretty=False, wait_for_complete=False, list_groups=None, offset=0, limit=None, sort=None,
-                   search=None):
+async def get_list_group(pretty=False, wait_for_complete=False, list_groups=None, offset=0, limit=None, sort=None,
+                         search=None):
     """Get groups.
 
     Returns a list containing basic information about each agent group such as number of agents belonging to the group
@@ -684,13 +685,13 @@ def get_list_group(pretty=False, wait_for_complete=False, list_groups=None, offs
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def delete_single_group(group_id, pretty=False, wait_for_complete=False):
+async def delete_single_group(group_id, pretty=False, wait_for_complete=False):
     """Deletes a group. Agents that were assigned only to the deleted group will automatically revert to default group.
 
     :param pretty: Show results in human-readable format
@@ -709,14 +710,14 @@ def delete_single_group(group_id, pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_agents_in_group(group_id, pretty=False, wait_for_complete=False, offset=0, limit=database_limit, select=None,
-                        sort=None, search=None, status=None, q=None):
+async def get_agents_in_group(group_id, pretty=False, wait_for_complete=False, offset=0, limit=database_limit,
+                              select=None, sort=None, search=None, status=None, q=None):
     """Get the list of agents that belongs to the specified group.
 
     :param pretty: Show results in human-readable format
@@ -753,13 +754,13 @@ def get_agents_in_group(group_id, pretty=False, wait_for_complete=False, offset=
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
 
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def post_group(group_id, pretty=False, wait_for_complete=False):
+async def post_group(group_id, pretty=False, wait_for_complete=False):
     """Create a new group.
 
     :param pretty: Show results in human-readable format
@@ -778,13 +779,13 @@ def post_group(group_id, pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_group_config(group_id, pretty=False, wait_for_complete=False, offset=0, limit=database_limit):
+async def get_group_config(group_id, pretty=False, wait_for_complete=False, offset=0, limit=database_limit):
     """Get group configuration defined in the `agent.conf` file.
 
     :param pretty: Show results in human-readable format
@@ -807,14 +808,14 @@ def get_group_config(group_id, pretty=False, wait_for_complete=False, offset=0, 
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return response, 200
+    return web.json_response(data=response, status=200, dumps=dumps)
 
 
 @exception_handler
-def put_group_config(body, group_id, pretty=False, wait_for_complete=False):
+async def put_group_config(body, group_id, pretty=False, wait_for_complete=False):
     """Update group configuration.
 
     Update an specified group's configuration. This API call expects a full valid XML file with the shared configuration
@@ -846,14 +847,14 @@ def put_group_config(body, group_id, pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_group_files(group_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
-                    search=None):
+async def get_group_files(group_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
+                          search=None):
     """Get the files placed under the group directory
 
     :param pretty: Show results in human-readable format
@@ -885,14 +886,14 @@ def get_group_files(group_id, pretty=False, wait_for_complete=False, offset=0, l
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return response, 200
+    return web.json_response(data=response, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_group_file_json(group_id, file_name, pretty=False, wait_for_complete=False):
+async def get_group_file_json(group_id, file_name, pretty=False, wait_for_complete=False):
     """Get the files placed under the group directory in json format.
 
     :param pretty: Show results in human-readable format
@@ -915,14 +916,14 @@ def get_group_file_json(group_id, file_name, pretty=False, wait_for_complete=Fal
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
     response = Data(data['data']['items'])
 
-    return response, 200
+    return web.json_response(data=response, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_group_file_xml(group_id, file_name, pretty=False, wait_for_complete=False):
+async def get_group_file_xml(group_id, file_name, pretty=False, wait_for_complete=False):
     """Get the files placed under the group directory in xml format.
 
     :param pretty: Show results in human-readable format
@@ -945,14 +946,14 @@ def get_group_file_xml(group_id, file_name, pretty=False, wait_for_complete=Fals
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
     response = connexion.lifecycle.ConnexionResponse(body=data["data"], mimetype='application/xml')
 
     return response
 
 
 @exception_handler
-def insert_agent(pretty=False, wait_for_complete=False):
+async def insert_agent(pretty=False, wait_for_complete=False):
     """ Insert a new agent
 
     :param pretty: Show results in human-readable format
@@ -986,14 +987,14 @@ def insert_agent(pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return response, 200
+    return web.json_response(data=response, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_agent_by_name(agent_name, pretty=False, wait_for_complete=False, select=None):
+async def get_agent_by_name(agent_name, pretty=False, wait_for_complete=False, select=None):
     """Get various information from an agent using its name
 
     :param pretty: Show results in human-readable format
@@ -1014,14 +1015,14 @@ def get_agent_by_name(agent_name, pretty=False, wait_for_complete=False, select=
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_agent_no_group(pretty=False, wait_for_complete=False, offset=0, limit=database_limit, select=None, sort=None,
-                       search=None, q=None):
+async def get_agent_no_group(pretty=False, wait_for_complete=False, offset=0, limit=database_limit, select=None,
+                             sort=None, search=None, q=None):
     """Get agents without group.
 
     :param pretty: Show results in human-readable format
@@ -1051,14 +1052,14 @@ def get_agent_no_group(pretty=False, wait_for_complete=False, offset=0, limit=da
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_agent_outdated(pretty=False, wait_for_complete=False, offset=0, limit=database_limit, sort=None, search=None,
-                       q=None):
+async def get_agent_outdated(pretty=False, wait_for_complete=False, offset=0, limit=database_limit, sort=None,
+                             search=None, q=None):
     """Get outdated agents.
 
     :param pretty: Show results in human-readable format
@@ -1086,14 +1087,14 @@ def get_agent_outdated(pretty=False, wait_for_complete=False, offset=0, limit=da
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_agent_fields(pretty=False, wait_for_complete=False, fields=None, offset=0, limit=database_limit, select=None,
-                     sort=None, search=None, q=None):
+async def get_agent_fields(pretty=False, wait_for_complete=False, fields=None, offset=0, limit=database_limit,
+                           select=None, sort=None, search=None, q=None):
     """Get distinct fields in agents.
 
     Returns all the different combinations that agents have for the selected fields. It also indicates the total number
@@ -1128,13 +1129,13 @@ def get_agent_fields(pretty=False, wait_for_complete=False, fields=None, offset=
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_agent_summary_status(pretty=False, wait_for_complete=False):
+async def get_agent_summary_status(pretty=False, wait_for_complete=False):
     """Get agents status summary.
 
     :param pretty: Show results in human-readable format
@@ -1152,14 +1153,14 @@ def get_agent_summary_status(pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return response, 200
+    return web.json_response(data=response, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_agent_summary_os(pretty=False, wait_for_complete=False):
+async def get_agent_summary_os(pretty=False, wait_for_complete=False):
     """Get agents OS summary.
 
     :param pretty: Show results in human-readable format
@@ -1177,7 +1178,7 @@ def get_agent_summary_os(pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return response, 200
+    return web.json_response(data=response, status=200, dumps=dumps)
