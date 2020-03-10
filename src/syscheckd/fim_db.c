@@ -1094,34 +1094,38 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
     int *send_alert = (int *) alert;
     fim_event_mode mode = (fim_event_mode) fim_ev_mode;
     int rows = 0;
-    int conf_file = fim_configuration_directory(entry->path, "file");
+    int conf;
 
-    if (conf_file < 0) {
-        return;
-    }
+    if(entry->data->entry_type == FIM_TYPE_FILE) {
 
-    switch (mode) {
-        /*
-            Don't send alert if received mode and mode in configuration aren't the same
-        */
+        conf = fim_configuration_directory(entry->path, "file");
 
-        case FIM_REALTIME:
-            if (!(syscheck.opts[conf_file] & REALTIME_ACTIVE)){
-                return;
+        if(conf > -1) {
+            switch (mode) {
+            /* Don't send alert if received mode and mode in configuration aren't the same */
+            case FIM_REALTIME:
+                if (!(syscheck.opts[conf] & REALTIME_ACTIVE)) {
+                    return;
+                }
+                break;
+
+            case FIM_WHODATA:
+                if (!(syscheck.opts[conf] & WHODATA_ACTIVE)) {
+                    return;
+                }
+                break;
+
+            case FIM_SCHEDULED:
+                if (!(syscheck.opts[conf] & SCHEDULED_ACTIVE)) {
+                    return;
+                }
+                break;
+
             }
-            break;
-
-        case FIM_WHODATA:
-            if (!(syscheck.opts[conf_file] & WHODATA_ACTIVE)) {
-                return;
-            }
-            break;
-
-        case FIM_SCHEDULED:
-            if (!(syscheck.opts[conf_file] & SCHEDULED_ACTIVE)) {
-                return;
-            }
-            break;
+        } else {
+            mdebug2(FIM_DELETE_EVENT_PATH_NOCONF, entry->path);
+            return;
+        }
     }
 
     w_mutex_lock(mutex);
@@ -1168,7 +1172,7 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
         char * json_formatted    = NULL;
         int pos = 0;
 
-         const char *FIM_ENTRY_TYPE[] = { "file", "registry"};
+        const char *FIM_ENTRY_TYPE[] = {"file", "registry"};
 
         json_event = fim_json_event(entry->path, NULL, entry->data, pos,
                                                 FIM_DELETE, mode, whodata_event);
