@@ -1,4 +1,4 @@
-# # Copyright (C) 2015-2019, Wazuh Inc.
+# # Copyright (C) 2015-2020, Wazuh Inc.
 # # Created by Wazuh, Inc. <info@wazuh.com>.
 # # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -8,8 +8,10 @@ import socket
 import time
 
 import yaml
+from aiohttp import web
 
 from api import __path__ as api_path
+from api.encoder import dumps
 from api.models.basic_info import BasicInfo
 from api.util import exception_handler
 
@@ -17,7 +19,7 @@ logger = logging.getLogger('wazuh')
 
 
 @exception_handler
-def default_info():
+async def default_info():
     """Get basicinfo
 
     Returns various basic information about the API
@@ -36,4 +38,4 @@ def default_info():
     }
     response = BasicInfo.from_dict(data)
 
-    return response, 200
+    return web.json_response(data=response, status=200, dumps=dumps)
