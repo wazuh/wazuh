@@ -2,25 +2,25 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import asyncio
 import logging
 
 import connexion
+from aiohttp import web
 
 from api.authentication import get_permissions
+from api.encoder import dumps
 from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc, flask_cached
 from wazuh import rule as rule_framework
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
-loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
 
 @exception_handler
 @flask_cached
-def get_rules(rule_ids=None, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None,
-              q=None, status=None, group=None, level=None, filename=None, relative_dirname=None, pci_dss=None, gdpr=None,
-              gpg13=None, hipaa=None):
+async def get_rules(rule_ids=None, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None,
+                    q=None, status=None, group=None, level=None, filename=None, relative_dirname=None, pci_dss=None,
+                    gdpr=None, gpg13=None, hipaa=None):
     """Get information about all Wazuh rules.
 
     :param rule_ids: Filters by rule ID
@@ -69,14 +69,14 @@ def get_rules(rule_ids=None, pretty=False, wait_for_complete=False, offset=0, li
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
 @flask_cached
-def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None):
+async def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None):
     """Get all rule groups names.
 
     :param pretty: Show results in human-readable format
@@ -105,15 +105,15 @@ def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
 @flask_cached
-def get_rules_requirement(requirement=None, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
-                          search=None):
+async def get_rules_requirement(requirement=None, pretty=False, wait_for_complete=False, offset=0, limit=None,
+                                sort=None, search=None):
     """Get all specified requirements
 
     :param requirement: Get the specified requirement in all rules in the system.
@@ -141,15 +141,15 @@ def get_rules_requirement(requirement=None, pretty=False, wait_for_complete=Fals
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
 @flask_cached
-def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None,
-                    status=None, filename=None, relative_dirname=None):
+async def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None,
+                          status=None, filename=None, relative_dirname=None):
     """Get all files which defines rules
 
     :param pretty: Show results in human-readable format
@@ -183,14 +183,14 @@ def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None,
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
 @flask_cached
-def get_download_file(pretty: bool = False, wait_for_complete: bool = False, filename: str = None):
+async def get_download_file(pretty: bool = False, wait_for_complete: bool = False, filename: str = None):
     """Download an specified decoder file.
 
     :param pretty: Show results in human-readable format
@@ -209,7 +209,7 @@ def get_download_file(pretty: bool = False, wait_for_complete: bool = False, fil
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
     response = connexion.lifecycle.ConnexionResponse(body=data["message"], mimetype='application/xml')
 
     return response
