@@ -240,13 +240,13 @@ void fim_db_bind_get_path_inode(fdb_t *fim_sql, const char *file_path);
 
 fdb_t *fim_db_init(int storage) {
     fdb_t *fim;
-    char *path = (storage == 1) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
+    char *path = (storage == FIM_DB_MEMORY) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
 
     os_calloc(1, sizeof(fdb_t), fim);
     fim->transaction.interval = COMMIT_INTERVAL;
 
-    if (fim_db_clean() < 0) {
-        goto free_fim;
+    if (storage == FIM_DB_DISK) {
+        fim_db_clean();
     }
 
     if (fim_db_create_file(path, schema_fim_sql, storage, &fim->db) < 0) {
@@ -293,12 +293,37 @@ void fim_db_close(fdb_t *fim_sql) {
     sqlite3_close_v2(fim_sql->db);
 }
 
-int fim_db_clean(void) {
+
+void fim_db_clean(void) {
+
     if (w_is_file(FIM_DB_DISK_PATH)) {
-        return remove(FIM_DB_DISK_PATH);
+        // If the file is being used by other processes, wait until
+        // it's unlocked in order to remove it. Wait at most 5 seconds.
+        int i, rm;
+        for (i = 1; i <= FIMDB_RM_MAX_LOOP && (rm = remove(FIM_DB_DISK_PATH)); i++) {
+            mdebug2(FIM_DELETE_DB_TRY, FIM_DB_DISK_PATH, i);
+#ifdef WIN32
+            Sleep(FIMDB_RM_DEFAULT_TIME * i); //milliseconds
+#else
+            usleep(FIMDB_RM_DEFAULT_TIME * i); //milliseconds
+#endif
+        }
+
+        //Loop endlessly until the file can be removed. (60s)
+        if (rm == FIMDB_ERR) {
+            while (remove(FIM_DB_DISK_PATH)) {
+                mdebug2(FIM_DELETE_DB, FIM_DB_DISK_PATH);
+#ifdef WIN32
+                Sleep(60000); //milliseconds
+#else
+                sleep(60); //seconds
+#endif
+            }
+        }
     }
-    return FIMDB_OK;
+
 }
+
 
 int fim_db_cache(fdb_t *fim_sql) {
     int index;
