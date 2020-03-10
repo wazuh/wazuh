@@ -12,201 +12,95 @@
 #include "syscheck-config.h"
 #include "config.h"
 
-void prioritize_syscheck_dirs(syscheck_config *syscheck)
+void organize_syscheck_dirs(syscheck_config *syscheck)
 {
     if (syscheck->dir && syscheck->dir[0]) {
-        int pos_whodata = 0;
-        char **dir_whodata = NULL;
-        char **symlink_whodata;
-        char **tag_whodata;
-        OSMatch **restrict_whodata;
-        int *opts_whodata;
-        int *recursion_whodata;
+        char **dir;
+        char **symbolic_links;
+        char **tag;
+        OSMatch **filerestrict;
+        int *opts;
+        int *recursion_level;
 
-        int pos_realtime;
-        char **dir_realtime = NULL;
-        char **symlink_realtime;
-        char **tag_realtime;
-        OSMatch **restrict_realtime;
-        int *opts_realtime;
-        int *recursion_realtime;
+        int i;
+        int j;
+        int dirs = 0;
 
-        int pos_scheduled;
-        char **dir_scheduled = NULL;
-        char **symlink_scheduled;
-        char **tag_scheduled;
-        OSMatch **restrict_scheduled;
-        int *opts_scheduled;
-        int *recursion_scheduled;
-
-        int it = 0;
-
-        while (syscheck->dir[it] != NULL) {
-            if (syscheck->opts[it] & WHODATA_ACTIVE) {
-                if (dir_whodata == NULL) {
-                    os_calloc(2, sizeof(char *), dir_whodata);
-                    os_calloc(2, sizeof(char *), symlink_whodata);
-                    os_calloc(2, sizeof(char *), tag_whodata);
-                    os_calloc(2, sizeof(int), opts_whodata);
-                    os_calloc(2, sizeof(int), recursion_whodata);
-                    os_calloc(2, sizeof(OSMatch *), restrict_whodata);
-                }
-                else {
-                    os_realloc(dir_whodata, (pos_whodata + 2) * sizeof(char *), dir_whodata);
-                    os_realloc(symlink_whodata, (pos_whodata + 2) * sizeof(char *), symlink_whodata);
-                    os_realloc(tag_whodata, (pos_whodata + 2) * sizeof(char *), tag_whodata);
-                    os_realloc(opts_whodata, (pos_whodata + 2) * sizeof(int), opts_whodata);
-                    os_realloc(recursion_whodata, (pos_whodata + 2) * sizeof(int), recursion_whodata);
-                    os_realloc(restrict_whodata, (pos_whodata + 2) * sizeof(OSMatch *), restrict_whodata);
-                }
-
-                os_strdup(syscheck->dir[it], dir_whodata[pos_whodata]);
-                dir_whodata[pos_whodata + 1] = NULL;
-
-                if (syscheck->symbolic_links[it]) {
-                    os_strdup(syscheck->symbolic_links[it], symlink_whodata[pos_whodata]);
-                }
-                else {
-                    symlink_whodata[pos_whodata] = NULL;
-                }
-                symlink_whodata[pos_whodata + 1] = NULL;
-
-                if (syscheck->tag[it]) {
-                    os_strdup(syscheck->tag[it], tag_whodata[pos_whodata]);
-                }
-                else {
-                    tag_whodata[pos_whodata] = NULL;
-                }
-                tag_whodata[pos_whodata + 1] = NULL;
-
-                if (syscheck->filerestrict[it]) {
-                    os_strdup(syscheck->filerestrict[it], restrict_whodata[pos_whodata]);
-                }
-                else {
-                    restrict_whodata[pos_whodata] = NULL;
-                }
-                restrict_whodata[pos_whodata + 1] = NULL;
-
-                opts_whodata[pos_whodata] = syscheck->opts[it];
-                opts_whodata[pos_whodata + 1] = 0;
-
-                recursion_whodata[pos_whodata] = syscheck->recursion_level[it];
-                recursion_whodata[pos_whodata + 1] = 0;
-
-                pos_whodata++;
-            }
-            else if (syscheck->opts[it] & REALTIME_ACTIVE) {
-                if (dir_realtime == NULL) {
-                    os_calloc(2, sizeof(char *), dir_realtime);
-                    os_calloc(2, sizeof(char *), symlink_realtime);
-                    os_calloc(2, sizeof(char *), tag_realtime);
-                    os_calloc(2, sizeof(int), opts_realtime);
-                    os_calloc(2, sizeof(int), recursion_realtime);
-                    os_calloc(2, sizeof(OSMatch *), restrict_realtime);
-                }
-                else {
-                    os_realloc(dir_realtime, (pos_realtime + 2) * sizeof(char *), dir_realtime);
-                    os_realloc(symlink_realtime, (pos_realtime + 2) * sizeof(char *), symlink_realtime);
-                    os_realloc(tag_realtime, (pos_realtime + 2) * sizeof(char *), tag_realtime);
-                    os_realloc(opts_realtime, (pos_realtime + 2) * sizeof(int), opts_realtime);
-                    os_realloc(recursion_realtime, (pos_realtime + 2) * sizeof(int), recursion_realtime);
-                    os_realloc(restrict_realtime, (pos_realtime + 2) * sizeof(OSMatch *), restrict_realtime);
-                }
-
-                os_strdup(syscheck->dir[it], dir_realtime[pos_realtime]);
-                dir_realtime[pos_realtime + 1] = NULL;
-
-                if (syscheck->symbolic_links[it]) {
-                    os_strdup(syscheck->symbolic_links[it], symlink_realtime[pos_realtime]);
-                }
-                else {
-                    symlink_realtime[pos_realtime] = NULL;
-                }
-                symlink_realtime[pos_realtime + 1] = NULL;
-
-                if (syscheck->tag[it]) {
-                    os_strdup(syscheck->tag[it], tag_realtime[pos_realtime]);
-                }
-                else {
-                    tag_realtime[pos_realtime] = NULL;
-                }
-                tag_realtime[pos_realtime + 1] = NULL;
-
-                if (syscheck->filerestrict[it]) {
-                    os_strdup(syscheck->filerestrict[it], restrict_realtime[pos_realtime]);
-                }
-                else {
-                    restrict_realtime[pos_realtime] = NULL;
-                }
-                restrict_realtime[pos_realtime + 1] = NULL;
-
-                opts_realtime[pos_realtime] = syscheck->opts[it];
-                opts_realtime[pos_realtime + 1] = 0;
-
-                recursion_realtime[pos_realtime] = syscheck->recursion_level[it];
-                recursion_realtime[pos_realtime + 1] = 0;
-
-                pos_realtime++;
-            }
-            else if (syscheck->opts[it] & SCHEDULED_ACTIVE) {
-                if (dir_scheduled == NULL) {
-                    os_calloc(2, sizeof(char *), dir_scheduled);
-                    os_calloc(2, sizeof(char *), symlink_scheduled);
-                    os_calloc(2, sizeof(char *), tag_scheduled);
-                    os_calloc(2, sizeof(int), opts_scheduled);
-                    os_calloc(2, sizeof(int), recursion_scheduled);
-                    os_calloc(2, sizeof(OSMatch *), restrict_scheduled);
-                }
-                else {
-                    os_realloc(dir_scheduled, (pos_scheduled + 2) * sizeof(char *), dir_scheduled);
-                    os_realloc(symlink_scheduled, (pos_scheduled + 2) * sizeof(char *), symlink_scheduled);
-                    os_realloc(tag_scheduled, (pos_scheduled + 2) * sizeof(char *), tag_scheduled);
-                    os_realloc(opts_scheduled, (pos_scheduled + 2) * sizeof(int), opts_scheduled);
-                    os_realloc(recursion_scheduled, (pos_scheduled + 2) * sizeof(int), recursion_scheduled);
-                    os_realloc(restrict_scheduled, (pos_scheduled + 2) * sizeof(OSMatch *), restrict_scheduled);
-                }
-
-                os_strdup(syscheck->dir[it], dir_scheduled[pos_scheduled]);
-                dir_scheduled[pos_scheduled + 1] = NULL;
-
-                if (syscheck->symbolic_links[it]) {
-                    os_strdup(syscheck->symbolic_links[it], symlink_scheduled[pos_scheduled]);
-                }
-                else {
-                    symlink_scheduled[pos_scheduled] = NULL;
-                }
-                symlink_scheduled[pos_scheduled + 1] = NULL;
-
-                if (syscheck->tag[it]) {
-                    os_strdup(syscheck->tag[it], tag_scheduled[pos_scheduled]);
-                }
-                else {
-                    tag_scheduled[pos_scheduled] = NULL;
-                }
-                tag_scheduled[pos_scheduled + 1] = NULL;
-
-                if (syscheck->filerestrict[it]) {
-                    os_strdup(syscheck->filerestrict[it], restrict_scheduled[pos_scheduled]);
-                }
-                else {
-                    restrict_scheduled[pos_scheduled] = NULL;
-                }
-                restrict_scheduled[pos_scheduled + 1] = NULL;
-
-                opts_scheduled[pos_scheduled] = syscheck->opts[it];
-                opts_scheduled[pos_scheduled + 1] = 0;
-
-                recursion_scheduled[pos_scheduled] = syscheck->recursion_level[it];
-                recursion_scheduled[pos_scheduled + 1] = 0;
-
-                pos_scheduled++;
-            }
-            it++;
+        while (syscheck->dir[dirs] != NULL) {
+            dirs++;
         }
-        // TODO
+
+        os_calloc(dirs + 1, sizeof(char *), dir);
+        os_calloc(dirs + 1, sizeof(char *), symbolic_links);
+        os_calloc(dirs + 1, sizeof(char *), tag);
+        os_calloc(dirs + 1, sizeof(OSMatch *), filerestrict);
+        os_calloc(dirs + 1, sizeof(int), opts);
+        os_calloc(dirs + 1, sizeof(int), recursion_level);
+
+        for (i = 0; i < dirs; ++i) {
+
+            char *current = NULL;
+            int pos = -1;
+
+            for (j = 0; j < dirs; ++j) {
+
+                if (syscheck->dir[j] == NULL) {
+                    continue;
+                }
+
+                if (current == NULL) {
+                    current = syscheck->dir[j];
+                    pos = j;
+                    continue;
+                }
+
+                if (strcmp(current, syscheck->dir[j]) > 0) {
+                    current = syscheck->dir[j];
+                    pos = j;
+                }
+            }
+
+            dir[i] = current;
+            dir[i + 1] = NULL;
+
+            symbolic_links[i] = (syscheck->symbolic_links[pos]) ? syscheck->symbolic_links[pos] : NULL;
+            symbolic_links[i + 1] = NULL;
+
+            tag[i] = (syscheck->tag[pos]) ? syscheck->tag[pos] : NULL;
+            tag[i + 1] = NULL;
+
+            filerestrict[i] = (syscheck->filerestrict[pos]) ? syscheck->filerestrict[pos] : NULL;
+            filerestrict[i + 1] = NULL;
+
+            opts[i] = syscheck->opts[pos];
+            opts[i + 1] = 0;
+
+            recursion_level[i] = syscheck->recursion_level[pos];
+            recursion_level[i + 1] = 0;
+
+            syscheck->dir[pos] = NULL;
+        }
+
+        free(syscheck->dir);
+        syscheck->dir = dir;
+
+        free(syscheck->symbolic_links);
+        syscheck->symbolic_links = symbolic_links;
+
+        free(syscheck->tag);
+        syscheck->tag = tag;
+
+        free(syscheck->filerestrict);
+        syscheck->filerestrict = filerestrict;
+
+        free(syscheck->opts);
+        syscheck->opts = opts;
+
+        free(syscheck->recursion_level);
+        syscheck->recursion_level = recursion_level;
     }
     else {
-        mdebug2("No directory entries to prioritize in syscheck configuration.");
+        mdebug2("No directory entries to organize in syscheck configuration.");
     }
 }
 
@@ -1729,6 +1623,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             mwarn(FIM_WARN_ALLOW_PREFILTER, prefilter_cmd, xml_allow_remote_prefilter_cmd);
         }
     }
+
+    organize_syscheck_dirs(syscheck);
 
     return (0);
 }

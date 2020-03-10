@@ -337,7 +337,7 @@ typedef struct _config {
  *
  * @param syscheck Syscheck configuration structure
  */
-void prioritize_syscheck_dirs(syscheck_config *syscheck) __attribute__((nonnull(1)));
+void organize_syscheck_dirs(syscheck_config *syscheck) __attribute__((nonnull(1)));
 
 /**
  * @brief Adds (or overwrite if exists) an entry to the syscheck configuration structure
