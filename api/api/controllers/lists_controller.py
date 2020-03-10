@@ -2,24 +2,24 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import asyncio
 import logging
 import os
 
 import connexion
+from aiohttp import web
 
 from api.authentication import get_permissions
+from api.encoder import dumps
 from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
 from wazuh import cdb_list
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
-loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
 
 @exception_handler
-def get_lists(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
-              sort: str = None, search: str = None, filename: str = None, relative_dirname: str = None):
+async def get_lists(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
+                    sort: str = None, search: str = None, filename: str = None, relative_dirname: str = None):
     """ Get all CDB lists
 
     :param pretty: Show results in human-readable format.
@@ -55,14 +55,14 @@ def get_lists(pretty: bool = False, wait_for_complete: bool = False, offset: int
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_lists_files(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
-                    sort: str = None, search: str = None, filename: str = None, relative_dirname: str = None):
+async def get_lists_files(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
+                          sort: str = None, search: str = None, filename: str = None, relative_dirname: str = None):
     """ Get paths from all CDB lists
 
     :param pretty: Show results in human-readable format.
@@ -99,6 +99,6 @@ def get_lists_files(pretty: bool = False, wait_for_complete: bool = False, offse
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
