@@ -31,7 +31,7 @@ class DistributedAPI:
                  debug: bool = False, pretty: bool = False, request_type: str = "local_master",
                  wait_for_complete: bool = False, from_cluster: bool = False, is_async: bool = False,
                  broadcasting: bool = False, basic_services: tuple = None, local_client_arg: str = None,
-                 rbac_permissions: Dict = None, nodes: list = None):
+                 rbac_permissions: Dict = None, nodes: list = None, cluster_required: bool = False):
         """Class constructor.
 
         Parameters
@@ -66,6 +66,8 @@ class DistributedAPI:
             Default `None`
         nodes : list, optional
             Default `None`
+        cluster_required : bool, optional
+            True when the cluster must be enabled. False otherwise. Default `False`
         """
         self.logger = logger
         self.f = f
@@ -83,6 +85,7 @@ class DistributedAPI:
         self.broadcasting = broadcasting
         self.rbac_permissions = rbac_permissions if rbac_permissions is not None else dict()
         self.nodes = nodes if nodes is not None else list()
+        self.cluster_required = cluster_required
         if not basic_services:
             self.basic_services = ('wazuh-modulesd', 'ossec-analysisd', 'ossec-execd', 'wazuh-db')
             if common.install_type != "local":
@@ -109,10 +112,7 @@ class DistributedAPI:
             is_cluster_disabled = self.node == local_client and wazuh.core.cluster.cluster.check_cluster_status()
 
             # If it is a cluster API request and the cluster is not enabled, raise an exception
-            if is_cluster_disabled and 'cluster' in self.f.__name__ and \
-                    self.f.__name__ != '/cluster/status' and \
-                    self.f.__name__ != '/cluster/config' and \
-                    self.f.__name__ != '/cluster/node':
+            if is_cluster_disabled and self.cluster_required:
                 raise exception.WazuhError(3013)
 
             # First case: execute the request locally.
