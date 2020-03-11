@@ -1171,8 +1171,13 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
         cJSON * json_event      = NULL;
         char * json_formatted    = NULL;
         int pos = 0;
-
         const char *FIM_ENTRY_TYPE[] = {"file", "registry"};
+
+        // Obtaining the position of the directory, in @syscheck.dir, where @entry belongs
+        if (pos = fim_configuration_directory(entry->path,
+            FIM_ENTRY_TYPE[entry->data->entry_type]), pos < 0) {
+            goto end;
+        }
 
         json_event = fim_json_event(entry->path, NULL, entry->data, pos,
                                                 FIM_DELETE, mode, whodata_event);
