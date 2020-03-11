@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 from wazuh import common
@@ -78,16 +78,16 @@ def read_api_config(config_file=common.api_config_path) -> Dict:
         "cache": {
             "enabled": False,
             "debug": False,
-            "time": 750
+            "time": 0.750
         },
         "use_only_authd": False,
         "drop_privileges": True,
         "experimental_features": False
     }
 
-    if os.path.exists(common.api_config_path):
+    if os.path.exists(config_file):
         try:
-            with open(common.api_config_path) as f:
+            with open(config_file) as f:
                 configuration = yaml.safe_load(f)
         except IOError as e:
             raise APIException(2004, details=e.strerror)

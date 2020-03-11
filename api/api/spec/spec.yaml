@@ -15,7 +15,17 @@ info:
     url: 'https://github.com/wazuh/wazuh/blob/master/LICENSE'
 
 servers:
-  - url: http://localhost:55000/v1
+  - url: '{protocol}://{host}:{port}/v4'
+    variables:
+      protocol:
+        default: https
+        enum:
+          - http
+          - https
+      host:
+        default: localhost
+      port:
+        default: '55000'
 
 x-rbac-catalog:
   resources:

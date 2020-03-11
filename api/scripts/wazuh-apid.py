@@ -1,29 +1,29 @@
 #!/var/ossec/framework/python/bin/python3
 
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import argparse
 import os
+import ssl
 import sys
-import yaml
+
+import aiohttp_cache
+import aiohttp_cors
 import connexion
 from aiohttp import web
-import aiohttp_cors
-import aiohttp_cache
 from aiohttp_swagger import setup_swagger
-import ssl
+
 from api import alogging, configuration, __path__ as api_path
 # noinspection PyUnresolvedReferences
 from api import validator
 from api.api_exception import APIException
 from api.constants import CONFIG_FILE_PATH
 from api.util import to_relative_path
-from api.constants import UWSGI_CONFIG_PATH
-from wazuh.core.cluster.utils import read_config
 from wazuh import pyDaemonModule, common
 from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licence__
+from wazuh.core.cluster.utils import read_config
 
 
 def set_logging(foreground_mode=False, debug_mode='info'):
@@ -47,14 +47,14 @@ if __name__ == '__main__':
     parser.add_argument('-t', help="Test configuration", action='store_true', dest='test_config')
     parser.add_argument('-r', help="Run as root", action='store_true', dest='root')
     parser.add_argument('-c', help="Configuration file to use", type=str, metavar='config', dest='config_file',
-                        default=UWSGI_CONFIG_PATH)
+                        default=common.api_config_path)
     args = parser.parse_args()
 
     if args.test_config:
         try:
-            with open(args.config_file, 'r') as stream:
-                yaml.safe_load(stream)
+            configuration.read_api_config(config_file=args.config_file)
         except Exception as e:
+            print(f"Configuration not valid: {e}")
             sys.exit(1)
         sys.exit(0)
 
@@ -72,7 +72,7 @@ if __name__ == '__main__':
         os.setuid(common.ossec_uid())
 
     cluster_config = read_config()
-    configuration = configuration.read_api_config()
+    configuration = configuration.read_api_config(config_file=args.config_file)
     cache_conf = configuration['cache']
     cors = configuration['cors']
 
@@ -89,7 +89,11 @@ if __name__ == '__main__':
                                options={"swagger_ui": False}
                                )
     app.add_api('spec.yaml',
-                arguments={'title': 'Wazuh API'},
+                arguments={'title': 'Wazuh API',
+                           'protocol': 'https' if configuration['https']['enabled'] else 'http',
+                           'host': configuration['host'],
+                           'port': configuration['port']
+                           },
                 strict_validation=True,
                 validate_responses=True,
                 pass_context_arg_name='request')
