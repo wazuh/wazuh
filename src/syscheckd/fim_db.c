@@ -898,9 +898,24 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_entry_data *en
     return FIMDB_OK;
 }
 
-int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) {
+int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry, int alert_type) {
     int inode_id;
     int res, res_data, res_path;
+    unsigned int nodes_count;
+
+    switch (alert_type) {
+    case FIM_ADD:
+        nodes_count = fim_db_get_count_entry_path(syscheck.database);
+        if (nodes_count >= syscheck.file_limit) {
+            mdebug1("Couldn't insert this entry into DB: %s. The DB is full, please check your configuration.", file_path);
+            return FIMDB_ERR;
+        }
+    case FIM_MODIFICATION:
+        break;
+    default:
+        merror("Coudn't insert this entry into the DB: %s. Invalid event type: %d.", file_path, alert_type);
+        return FIMDB_ERR;
+    }
 
 #ifdef WIN32
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_DATA_ROW);
