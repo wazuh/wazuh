@@ -2,6 +2,7 @@ aiohttp==3.6.2
 aiohttp-cache==1.0.3
 aiohttp-jinja2==1.2.0
 aiohttp-cors==0.7.0
+aiohttp-swagger==1.0.14
 asn1crypto==0.24.0
 azure-common==1.1.18
 azure-storage-blob==1.4.0
