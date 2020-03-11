@@ -2,13 +2,14 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import asyncio
 import logging
 import re
 
 import connexion
+from aiohttp import web
 
-from api.authentication import get_permissions, generate_token, validation
+from api.authentication import get_permissions, generate_token
+from api.encoder import dumps
 from api.models.token_response import TokenResponse
 from api.util import remove_nones_to_dict, exception_handler, raise_if_exc, parse_api_param
 from wazuh import security
@@ -16,14 +17,12 @@ from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhError
 from wazuh.rbac.orm import AuthenticationManager
 
-
-loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
 
 
 @exception_handler
-def login_user(user, auth_context=None):
+async def login_user(user, auth_context=None):
     """User/password authentication to get an access token
 
     This method should be called to get an API token. This token will expire at some time. # noqa: E501
@@ -31,13 +30,15 @@ def login_user(user, auth_context=None):
     """
     with AuthenticationManager() as auth:
         if auth.user_auth_context(user):
-            return TokenResponse(token=generate_token(user_id=user, auth_context=auth_context)), 200
-    return TokenResponse(token=generate_token(user_id=user)), 200
+            return web.json_response(data=TokenResponse(token=generate_token(user_id=user, auth_context=auth_context)),
+                                     status=200, dumps=dumps)
+    return web.json_response(data=TokenResponse(token=generate_token(user_id=user)),
+                             status=200, dumps=dumps)
 
 
 @exception_handler
-def get_users(usernames: list = None, pretty=False, wait_for_complete=False,
-              offset=0, limit=None, search=None, sort=None):
+async def get_users(usernames: list = None, pretty=False, wait_for_complete=False,
+                    offset=0, limit=None, search=None, sort=None):
     """Returns information from all system roles
 
     :param usernames: List of users to be obtained
@@ -62,13 +63,12 @@ def get_users(usernames: list = None, pretty=False, wait_for_complete=False,
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-def check_body(f_kwargs, keys: list = None):
+def _check_body(f_kwargs, keys: list = None):
     """Checks that body is correct
 
     :param f_kwargs: Body to be checked
@@ -85,13 +85,13 @@ def check_body(f_kwargs, keys: list = None):
 
 
 @exception_handler
-def create_user():
+async def create_user():
     """Create a new user
 
     :return: User data
     """
     f_kwargs = {**connexion.request.get_json()}
-    validate = check_body(f_kwargs)
+    validate = _check_body(f_kwargs)
     if validate is not True:
         raise WazuhError(5005, extra_message='Invalid field found {}'.format(validate))
     dapi = DistributedAPI(f=security.create_user,
@@ -101,20 +101,20 @@ def create_user():
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def update_user(username):
+async def update_user(username):
     """Modify an existent user
 
     :param username: Name of the user to be modified
     :return: User data
     """
     f_kwargs = {'username': username, **connexion.request.get_json()}
-    validate = check_body(f_kwargs)
+    validate = _check_body(f_kwargs)
     if validate is not True:
         raise WazuhError(5005, extra_message='Invalid field found {}'.format(validate))
     dapi = DistributedAPI(f=security.update_user,
@@ -124,13 +124,13 @@ def update_user(username):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def delete_users(usernames=None):
+async def delete_users(usernames=None):
     """Delete an existent list of users
 
     :param usernames: Names of the users to be removed
@@ -144,13 +144,13 @@ def delete_users(usernames=None):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_roles(role_ids=None, pretty=False, wait_for_complete=False, offset=0, limit=None, search=None, sort=None):
+async def get_roles(role_ids=None, pretty=False, wait_for_complete=False, offset=0, limit=None, search=None, sort=None):
     """Returns information from all system roles
 
     :param role_ids: List of roles ids to be obtained
@@ -179,13 +179,13 @@ def get_roles(role_ids=None, pretty=False, wait_for_complete=False, offset=0, li
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def add_role(pretty=False, wait_for_complete=False):
+async def add_role(pretty=False, wait_for_complete=False):
     """Add one specified role
 
     :param pretty: Show results in human-readable format
@@ -212,13 +212,13 @@ def add_role(pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def remove_roles(role_ids=None, pretty=False, wait_for_complete=False):
+async def remove_roles(role_ids=None, pretty=False, wait_for_complete=False):
     """Removes a list of roles in the system
 
     :param role_ids: List of roles ids to be deleted
@@ -237,13 +237,13 @@ def remove_roles(role_ids=None, pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def update_role(role_id, pretty=False, wait_for_complete=False):
+async def update_role(role_id, pretty=False, wait_for_complete=False):
     """Update the information of one specified role
 
     :param role_id: Specific role id in the system to be updated
@@ -272,13 +272,13 @@ def update_role(role_id, pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_policies(policy_ids=None, pretty=False, wait_for_complete=False, offset=0, limit=None, search=None, sort=None):
+async def get_policies(policy_ids=None, pretty=False, wait_for_complete=False, offset=0, limit=None, search=None, sort=None):
     """Returns information from all system policies
 
     :param policy_ids: List of policies
@@ -307,13 +307,13 @@ def get_policies(policy_ids=None, pretty=False, wait_for_complete=False, offset=
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def add_policy(pretty=False, wait_for_complete=False):
+async def add_policy(pretty=False, wait_for_complete=False):
     """Add one specified policy
 
     :param pretty: Show results in human-readable format
@@ -339,13 +339,13 @@ def add_policy(pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def remove_policies(policy_ids=None, pretty=False, wait_for_complete=False):
+async def remove_policies(policy_ids=None, pretty=False, wait_for_complete=False):
     """Removes a list of roles in the system
 
     :param policy_ids: List of policies ids to be deleted
@@ -364,13 +364,13 @@ def remove_policies(policy_ids=None, pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def update_policy(policy_id, pretty=False, wait_for_complete=False):
+async def update_policy(policy_id, pretty=False, wait_for_complete=False):
     """Update the information of one specified policy
 
     :param policy_id: Specific policy id in the system to be updated
@@ -399,13 +399,13 @@ def update_policy(policy_id, pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def set_user_role(username, role_ids, pretty=False, wait_for_complete=False):
+async def set_user_role(username, role_ids, pretty=False, wait_for_complete=False):
     """Add a list of roles to one specified user
 
     :param username: User's username
@@ -425,13 +425,13 @@ def set_user_role(username, role_ids, pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def remove_user_role(username, role_ids, pretty=False, wait_for_complete=False):
+async def remove_user_role(username, role_ids, pretty=False, wait_for_complete=False):
     """Delete a list of roles of one specified user
 
     :param username: User's username
@@ -451,13 +451,13 @@ def remove_user_role(username, role_ids, pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def set_role_policy(role_id, policy_ids, pretty=False, wait_for_complete=False):
+async def set_role_policy(role_id, policy_ids, pretty=False, wait_for_complete=False):
     """Add a list of policies to one specified role
 
     :param role_id: Role id
@@ -477,13 +477,13 @@ def set_role_policy(role_id, policy_ids, pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def remove_role_policy(role_id, policy_ids, pretty=False, wait_for_complete=False):
+async def remove_role_policy(role_id, policy_ids, pretty=False, wait_for_complete=False):
     """Delete a list of policies of one specified role
 
     :param role_id: Role id
@@ -503,13 +503,13 @@ def remove_role_policy(role_id, policy_ids, pretty=False, wait_for_complete=Fals
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def revoke_all_tokens():
+async def revoke_all_tokens():
     """ Revoke all tokens """
 
     f_kwargs = {}
@@ -521,6 +521,6 @@ def revoke_all_tokens():
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
