@@ -330,14 +330,13 @@ int realtime_win32read(win32rtfim *rtlocald)
                                RTCallBack);
     if (rc == 0) {
         mdebug1(FIM_REALTIME_DIRECTORYCHANGES, rtlocald->dir);
-        sleep(2);
     }
 
     return (0);
 }
 
 // In Windows the whodata parameter contains the directory position + 1 to be able to reference it
-int realtime_adddir(const char *dir, int whodata, int followsl)
+int realtime_adddir(const char *dir, int whodata, __attribute__((unused)) int followsl)
 {
     char wdchar[260 + 1];
     win32rtfim *rtlocald;
@@ -368,7 +367,7 @@ int realtime_adddir(const char *dir, int whodata, int followsl)
         syscheck.wdata.dirs_status[whodata - 1].status |= WD_STATUS_EXISTS;
     } else {
         mdebug1(FIM_WARN_REALTIME_OPENFAIL, dir);
-            
+
         syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_UNK_TYPE;
         syscheck.wdata.dirs_status[whodata - 1].status &= ~WD_STATUS_EXISTS;
         return 0;
@@ -402,7 +401,10 @@ int realtime_adddir(const char *dir, int whodata, int followsl)
     wdchar[260] = '\0';
     snprintf(wdchar, 260, "%s", dir);
     if(OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
-        mdebug2(FIM_REALTIME_HASH_DUP, wdchar);
+        if (!w_directory_exists(wdchar)) {
+            rtlocald = OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar);
+            free_win32rtfim_data(rtlocald);
+        }
         w_mutex_unlock(&adddir_mutex);
     }
     else {
@@ -420,7 +422,7 @@ int realtime_adddir(const char *dir, int whodata, int followsl)
         if (rtlocald->h == INVALID_HANDLE_VALUE || rtlocald->h == NULL) {
             free(rtlocald);
             rtlocald = NULL;
-            mdebug1(FIM_REALTIME_ADD, dir);
+            mdebug2(FIM_REALTIME_ADD, dir);
             w_mutex_unlock(&adddir_mutex);
             return (0);
         }

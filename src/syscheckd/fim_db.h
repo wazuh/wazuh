@@ -29,6 +29,9 @@
 #define FIMDB_OK 0   // Successful result.
 #define FIMDB_ERR -1 // Generic error.
 
+#define FIMDB_RM_MAX_LOOP 10 // Max number of loop iterations
+#define FIMDB_RM_DEFAULT_TIME 100 //miliseconds
+
 #define FIM_LAST_ROW 0
 #define FIM_FIRST_ROW 1
 
@@ -60,9 +63,8 @@ void fim_db_close(fdb_t *fim_sql);
 /**
  * @brief Clean the FIM databases.
  *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_clean(void);
+void fim_db_clean(void);
 
 /**
  * @brief Compile all statement associated with FIM queries.
@@ -220,21 +222,16 @@ int fim_db_get_count_range(fdb_t *fim_sql, char *start, char *top, int *counter)
  * @param fim_sql FIM database struct.
  * @param file_path File path.
  * @param mutex
- * @param arg 0 No send alert, 1 send delete alert.
+ * @param alert False don't send alert, True send delete alert.
+ * @param fim_ev_mode FIM Mode (scheduled/realtime/whodata)
+ * @param w_evt Whodata information
+ *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex,
-                         __attribute__((unused))void *arg);
-
-/**
- * @brief Process missing entries
- *
- * @param fim_sql FIM database struct.
- * @param file_path File path.
- * @param mutex
- * @param arg Directory configuration.
- */
-void fim_db_process_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex, void *arg);
+                        __attribute__((unused))void *alert,
+                        __attribute__((unused))void *fim_ev_mode,
+                        __attribute__((unused))void *w_evt);
 
 /**
  * @brief Get the last/first row from entry_path.
@@ -288,10 +285,12 @@ void fim_db_callback_save_path(fdb_t *fim_sql, fim_entry *entry, int storage, vo
  * @param fim_sql FIM database struct.
  * @param entry Entry data to be inserted.
  * @param mutex FIM database's mutex for thread synchronization.
- * @param args  Unused arguments.
+ * @param mode  Unused argument.
+ * @param w_event Unused argument.
  */
 void fim_db_callback_sync_path_range(__attribute__((unused))fdb_t *fim_sql, fim_entry *entry,
-    __attribute__((unused))pthread_mutex_t *mutex, __attribute__((unused))void *args);
+    __attribute__((unused))pthread_mutex_t *mutex, __attribute__((unused))void *alert,
+    __attribute__((unused))void *mode, __attribute__((unused))void *w_event);
 
 /**
  * @brief Delete not scanned entries from database.
@@ -342,27 +341,30 @@ int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file,
  * @param file  Structure of the file which contains all the paths.
  * @param mutex
  * @param storage 1 Store database in memory, disk otherwise.
+ * @param mode FIM mode (scheduled, realtime or whodata)
+ * @param w_evt Whodata information
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 int fim_db_process_missing_entry(fdb_t *fim_sql, fim_tmp_file *file,
                                  pthread_mutex_t *mutex, int storage,
-                                 fim_event_mode mode);
+                                 fim_event_mode mode,
+                                 whodata_evt * w_evt);
 
 /**
  * @brief Get count of all entries in entry_data table.
- * 
+ *
  * @param fim_sql FIM database struct.
- * 
+ *
  * @return Number of entries in entry_data table.
  */
 int fim_db_get_count_entry_data(fdb_t * fim_sql);
 
 /**
  * @brief Get count of all entries in entry_path table.
- * 
+ *
  * @param fim_sql FIM database struct.
- * 
+ *
  * @return Number of entries in entry_path table.
  */
 int fim_db_get_count_entry_path(fdb_t * fim_sql);

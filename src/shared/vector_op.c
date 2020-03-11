@@ -13,7 +13,8 @@
 
 W_Vector *W_Vector_init(int initialSize) {
 
-    W_Vector *v = malloc(sizeof(W_Vector));
+    W_Vector *v;
+    os_malloc(sizeof(W_Vector), v);
     v->vector = (char **)malloc(initialSize * sizeof(char *));
     v->used = 0;
     v->size = initialSize;

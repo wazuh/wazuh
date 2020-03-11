@@ -258,6 +258,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos)
 
         // Set registry entry type
         data->entry_type = FIM_TYPE_REGISTRY;
+        data->mode = FIM_SCHEDULED;
         snprintf(path, MAX_PATH + 7, "%s%s", syscheck.registry[pos].arch == ARCH_64BIT ? "[x64] " : "[x32] ", full_key_name);
         data->last_event = time(NULL);
         data->options |= CHECK_SHA1SUM | CHECK_MTIME;
