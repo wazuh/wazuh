@@ -1,23 +1,23 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import asyncio
 import logging
 
 import connexion
+from aiohttp import web
 
-from wazuh.syscheck import run, clear, files, last_scan
 from api.authentication import get_permissions
+from api.encoder import dumps
 from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.syscheck import run, clear, files, last_scan
 
-loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
 
 @exception_handler
-def put_syscheck(list_agents='*', pretty=False, wait_for_complete=False):
+async def put_syscheck(list_agents='*', pretty=False, wait_for_complete=False):
     """Run a syscheck scan over the agent_ids
 
     :type list_agents: List of agent ids
@@ -38,15 +38,15 @@ def put_syscheck(list_agents='*', pretty=False, wait_for_complete=False):
                           broadcasting=list_agents == '*',
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_syscheck_agent(agent_id, pretty=False, wait_for_complete=False, offset=0,
-                       limit=None, select=None, sort=None, search=None,
-                       summary=False, md5=None, sha1=None, sha256=None):
+async def get_syscheck_agent(agent_id, pretty=False, wait_for_complete=False, offset=0,
+                             limit=None, select=None, sort=None, search=None,
+                             summary=False, md5=None, sha1=None, sha256=None):
     """
     :param agent_id: Agent ID
     :type agent_id: str
@@ -97,15 +97,14 @@ def get_syscheck_agent(agent_id, pretty=False, wait_for_complete=False, offset=0
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def delete_syscheck_agent(agent_id='*', pretty=False, wait_for_complete=False):
+async def delete_syscheck_agent(agent_id='*', pretty=False, wait_for_complete=False):
     """
-
     :param pretty: Show results in human-readable format 
     :type pretty: bool
     :param wait_for_complete: Disable timeout response 
@@ -124,13 +123,13 @@ def delete_syscheck_agent(agent_id='*', pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_last_scan_agent(agent_id, pretty=False, wait_for_complete=False):
+async def get_last_scan_agent(agent_id, pretty=False, wait_for_complete=False):
     """
 
     :param pretty: Show results in human-readable format 
@@ -151,6 +150,6 @@ def get_last_scan_agent(agent_id, pretty=False, wait_for_complete=False):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
