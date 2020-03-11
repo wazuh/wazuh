@@ -6,18 +6,21 @@ import logging
 
 import connexion
 from aiohttp import web
+from aiohttp_cache import cache
 
 from api.authentication import get_permissions
+from api.configuration import read_api_config
 from api.encoder import dumps
-from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc, flask_cached
+from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
 from wazuh import rule as rule_framework
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
 logger = logging.getLogger('wazuh')
+configuration = read_api_config()
 
 
 @exception_handler
-@flask_cached
+@cache(expires=configuration['cache']['time'], unless=not configuration['cache']['enabled'])
 async def get_rules(rule_ids=None, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None,
                     q=None, status=None, group=None, level=None, filename=None, relative_dirname=None, pci_dss=None,
                     gdpr=None, gpg13=None, hipaa=None):
@@ -75,7 +78,7 @@ async def get_rules(rule_ids=None, pretty=False, wait_for_complete=False, offset
 
 
 @exception_handler
-@flask_cached
+@cache(expires=configuration['cache']['time'], unless=not configuration['cache']['enabled'])
 async def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None):
     """Get all rule groups names.
 
@@ -111,7 +114,7 @@ async def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limi
 
 
 @exception_handler
-@flask_cached
+@cache(expires=configuration['cache']['time'], unless=not configuration['cache']['enabled'])
 async def get_rules_requirement(requirement=None, pretty=False, wait_for_complete=False, offset=0, limit=None,
                                 sort=None, search=None):
     """Get all specified requirements
@@ -147,7 +150,7 @@ async def get_rules_requirement(requirement=None, pretty=False, wait_for_complet
 
 
 @exception_handler
-@flask_cached
+@cache(expires=configuration['cache']['time'], unless=not configuration['cache']['enabled'])
 async def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None,
                           status=None, filename=None, relative_dirname=None):
     """Get all files which defines rules
@@ -189,7 +192,7 @@ async def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit
 
 
 @exception_handler
-@flask_cached
+@cache(expires=configuration['cache']['time'], unless=not configuration['cache']['enabled'])
 async def get_download_file(pretty: bool = False, wait_for_complete: bool = False, filename: str = None):
     """Download an specified decoder file.
 
