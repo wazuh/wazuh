@@ -28,8 +28,7 @@ class APILogger(WazuhLogger):
         """
         Constructor
         """
-        super().__init__(*args, **kwargs, tag='{asctime} {levelname}: {message}',
-                         custom_formatter=APIFormatter)
+        super().__init__(*args, **kwargs, tag='{asctime} {levelname}: {message}')
 
     def setup_logger(self):
         """
@@ -52,19 +51,6 @@ class APILogger(WazuhLogger):
             debug_level = logging.INFO
 
         self.logger.setLevel(debug_level)
-
-
-class APIFormatter(logging.Formatter):
-    """
-    Custom formatter to ignore logging format when message comes from uWSGI
-    """
-
-    def format(self, record):
-        message = record.getMessage()
-        if "[UWSGI]" in message:
-            return message
-        else:
-            return super().format(record)
 
 
 def set_request_user_logs():
