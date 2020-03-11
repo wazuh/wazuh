@@ -27,6 +27,7 @@ static void files_lock_init(void);
 static void check_text_only();
 static int check_pattern_expand(int do_seek);
 static void check_pattern_expand_excluded();
+static void set_can_read(int value);
 
 /* Global variables */
 int loop_timeout;
@@ -55,6 +56,10 @@ static pthread_mutex_t mutex;
 static pthread_mutex_t win_el_mutex;
 static pthread_mutexattr_t win_el_mutex_attr;
 #endif
+
+/* can read synchronization */
+static int _can_read = 0;
+static pthread_mutex_t can_read_mutex;
 
 /* Multiple readers / one write mutex */
 static pthread_rwlock_t files_update_rwlock;
@@ -93,7 +98,7 @@ void LogCollectorStart()
     check_pattern_expand_excluded();
 
     w_mutex_init(&mutex, NULL);
-
+    w_mutex_init(&can_read_mutex, NULL);
 #ifndef WIN32
     /* To check for inode changes */
     struct stat tmp_stat;
@@ -297,14 +302,15 @@ void LogCollectorStart()
     // Start com request thread
     w_create_thread(lccom_main, NULL);
 #endif
-
+    set_can_read(1);
     /* Daemon loop */
     while (1) {
 
         /* Free hash table content for excluded files */
         if (f_free_excluded >= free_excluded_files_interval) {
+            set_can_read(0); // Stop reading threads
             w_rwlock_wrlock(&files_update_rwlock);
-
+            set_can_read(1); // Clean signal once we have the lock
             mdebug1("Refreshing excluded files list.");
 
             OSHash_Free(excluded_files);
@@ -327,7 +333,9 @@ void LogCollectorStart()
         }
 
         if (f_check >= vcheck_files) {
+            set_can_read(0); // Stop reading threads
             w_rwlock_wrlock(&files_update_rwlock);
+            set_can_read(1); // Clean signal once we have the lock
             int i;
             int j = -1;
             f_reload += f_check;
@@ -363,7 +371,9 @@ void LogCollectorStart()
                     nanosleep(&delay, NULL);
                 }
 
+                set_can_read(0); // Stop reading threads
                 w_rwlock_wrlock(&files_update_rwlock);
+                set_can_read(1); // Clean signal once we have the lock
 
                 // Open files again, and restore position
 
@@ -2361,3 +2371,18 @@ static void check_pattern_expand_excluded() {
     }
 }
 #endif
+
+
+static void set_can_read(int value){
+    w_mutex_lock(&can_read_mutex);
+    _can_read = value;
+    w_mutex_unlock(&can_read_mutex);
+}
+
+int can_read() {
+    int ret;
+    w_mutex_lock(&can_read_mutex);
+    ret = _can_read;
+    w_mutex_unlock(&can_read_mutex);
+    return ret;
+}
