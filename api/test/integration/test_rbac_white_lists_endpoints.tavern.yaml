@@ -14,7 +14,7 @@ stages:
 
   - name: Try to show the lists of the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/lists"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -36,7 +36,7 @@ stages:
 
   - name: Try to show an specified filename (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/lists"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -57,7 +57,7 @@ stages:
 
   - name: Try to show an specified path (Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/lists"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -83,7 +83,7 @@ test_name: GET LISTS FILES RBAC
 stages:
   - name: Try to show the lists files of the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/lists/files"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET

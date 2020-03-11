@@ -14,7 +14,7 @@ stages:
 
   - name: Try to show the rules of the system
     request: &general_rules_request
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -141,7 +141,7 @@ stages:
 
   - name: Search in rules
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -243,7 +243,7 @@ stages:
 
   - name: Try to show the rules of the system with a non-existent state
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -567,7 +567,7 @@ stages:
 
   - name: Try to show the rules by requirement pci_dss
     request: &pci_dss_rules_request
-      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/pci_dss"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/requirement/pci_dss"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -672,7 +672,7 @@ stages:
 
   - name: Try to show the rules by requirement gdpr
     request: &gdpr_rules_request
-      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/gdpr"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/requirement/gdpr"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -778,7 +778,7 @@ stages:
 
   - name: Try to show the rules by requirement gpg13
     request: &gpg13_rules_request
-      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/gpg13"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/requirement/gpg13"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -892,7 +892,7 @@ stages:
 
   - name: Try to show the rules by requirement hipaa
     request: &hipaa_rules_request
-      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/hipaa"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/requirement/hipaa"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -975,7 +975,7 @@ stages:
 
   - name: Try to show the rules by requirement nist-800-53
     request: &nist-800-53_rules_request
-      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/nist-800-53"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/requirement/nist-800-53"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1058,7 +1058,7 @@ stages:
 
   - name: Try to show the rules groups
     request: &groups_rules_request
-      url: "{protocol:s}://{host:s}:{port:d}/rules/groups"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/groups"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1141,7 +1141,7 @@ stages:
 
   - name: Get the rules files
     request: &files_rules_request
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1236,7 +1236,7 @@ stages:
 
   - name: Download rule
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/0350-amazon_rules.xml/download"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/files/0350-amazon_rules.xml/download"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -1251,7 +1251,7 @@ stages:
 
   - name: Try to show a rule with a existent id
     request: &id_rules_request
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1376,7 +1376,7 @@ stages:
 
   - name: No rule
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"

@@ -17,7 +17,7 @@ stages:
   # DELETE /security/roles/{role_id}
   - name: Try to delete a existent role
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -37,7 +37,7 @@ stages:
   # DELETE /security/roles/1
   - name: Try to delete the admin role of the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -60,7 +60,7 @@ stages:
   # DELETE /security/roles/{non-existent role}
   - name: Try to delete a non-existent role
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -79,7 +79,7 @@ stages:
   # DELETE /security/roles/{role_id}/policies/{policy_id}
   - name: Try to delete a existent role-policy
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/4/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/4/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -103,7 +103,7 @@ stages:
   # DELETE /security/roles/{non-existent role_id}/policies/{non-existent policy_id}
   - name: Try to delete a non-existent role-policy
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/999/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -117,7 +117,7 @@ stages:
   # DELETE /security/roles/{non-existent role_id}/policies/{policy_id}
   - name: Try to delete a non-existent role-policy (role non-existent)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/999/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -131,7 +131,7 @@ stages:
   # DELETE /security/roles/{role_id}/policies/{policy_id}
   - name: Try to delete a non-existent role-policy (policy non-existent)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/3/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/3/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -150,7 +150,7 @@ stages:
   # DELETE /security/user/{user_id}/roles/{role_id}
   - name: Try to delete a existent user-role
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/user/new_user/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/new_user/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -168,7 +168,7 @@ stages:
   # DELETE /security/user/{user_id}/roles/{role_id}
   - name: Try to delete a non-existent user-role
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/user/no_user/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/no_user/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -182,7 +182,7 @@ stages:
   # DELETE /security/user/{user_id}/roles/{role_id}
   - name: Try to delete a non-existent user-role (role non-existent)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/user/new_user/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/new_user/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -208,7 +208,7 @@ stages:
   # DELETE /security/policies/{role_id}
   - name: Try to delete a existent policy
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -228,7 +228,7 @@ stages:
   # DELETE /security/policies/1
   - name: Try to delete the admin policy of the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -242,7 +242,7 @@ stages:
   # DELETE /security/roles/{non-existent role}
   - name: Try to delete an inexistent policy
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -260,7 +260,7 @@ stages:
   # DELETE /security/roles
   - name: Try to delete one existent role and no existent one
     request: &delete_all_roles_request
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -314,7 +314,7 @@ stages:
   # DELETE /security/policies
   - name: Try to delete two existent policies
     request: &delete_all_policies_request
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -364,7 +364,7 @@ stages:
   # DELETE /security/roles
   - name: Try to delete all roles
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -373,7 +373,7 @@ stages:
 
   - name: Try to delete all policies
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE

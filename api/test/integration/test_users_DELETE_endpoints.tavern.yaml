@@ -11,7 +11,7 @@ stages:
 
   - name: Delete a non-existent user
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -35,7 +35,7 @@ stages:
 
   - name: Delete an admin user (wazuh)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -59,7 +59,7 @@ stages:
 
   - name: Delete an admin user (wazuh-wui)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -83,7 +83,7 @@ stages:
 
   - name: Delete an existent user (with body)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -100,7 +100,7 @@ stages:
 
   - name: Delete an existent user
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -117,7 +117,7 @@ stages:
 
   - name: Delete all users in the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE

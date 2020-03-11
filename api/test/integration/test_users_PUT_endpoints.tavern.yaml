@@ -11,7 +11,7 @@ stages:
 
   - name: Update an existent user (empty body)
     request: &put_users_request
-      url: "{protocol:s}://{host:s}:{port:d}/security/users/new_user"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/new_user"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -48,7 +48,7 @@ stages:
 
   - name: Update an non-existent user
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users/non-existent"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/non-existent"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
