@@ -50,7 +50,7 @@ void fim_scan() {
     struct timespec start;
     struct timespec end;
     clock_t cputime_start;
-
+    unsigned int nodes_count;
 
     cputime_start = clock();
     gettime(&start);
@@ -81,13 +81,59 @@ void fim_scan() {
         os_winreg_check();
 #endif
 
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+    nodes_count = fim_db_get_count_entry_path(syscheck.database);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    if (nodes_count < syscheck.file_limit) {
+        check_deleted_files();
+    }
+    else {
+        check_deleted_files();
+
+        w_mutex_lock(&syscheck.fim_entry_mutex);
+        nodes_count = fim_db_get_count_entry_path(syscheck.database);
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+        if (nodes_count < syscheck.file_limit) {
+            it = 0;
+
+            w_mutex_lock(&syscheck.fim_scan_mutex);
+
+            while ((syscheck.dir[it] != NULL) && (nodes_count < syscheck.file_limit)) {
+                struct fim_element *item;
+                os_calloc(1, sizeof(fim_element), item);
+                item->mode = FIM_SCHEDULED;
+                item->index = it;
+                fim_checker(syscheck.dir[it], item, NULL, 0);
+                it++;
+                os_free(item);
+
+                w_mutex_lock(&syscheck.fim_entry_mutex);
+                nodes_count = fim_db_get_count_entry_path(syscheck.database);
+                w_mutex_unlock(&syscheck.fim_entry_mutex);
+            }
+
+            w_mutex_unlock(&syscheck.fim_scan_mutex);
+
+            w_mutex_lock(&syscheck.fim_entry_mutex);
+            fim_db_set_all_unscanned(syscheck.database);
+            w_mutex_unlock(&syscheck.fim_entry_mutex);
+        }
+
+        if (nodes_count >= syscheck.file_limit) {
+
+            //TODO: send alert
+            minfo("Sending DB full alert.");
+
+        }
+    }
+
     gettime(&end);
 
     if (_base_line == 0) {
         _base_line = 1;
     }
-
-    check_deleted_files();
 
     minfo(FIM_FREQUENCY_ENDED);
     fim_send_scan_info(FIM_SCAN_END);
