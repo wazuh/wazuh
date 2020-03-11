@@ -1,23 +1,23 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import asyncio
 import logging
 
 import connexion
+from aiohttp import web
 
 import wazuh.syscollector as syscollector
 from api.authentication import get_permissions
+from api.encoder import dumps
 from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
-loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
 
 @exception_handler
-def get_hardware_info(agent_id, pretty=False, wait_for_complete=False, select=None):
+async def get_hardware_info(agent_id, pretty=False, wait_for_complete=False, select=None):
     """ Get hardware info of an agent
 
     :param agent_id: Agent ID
@@ -38,14 +38,14 @@ def get_hardware_info(agent_id, pretty=False, wait_for_complete=False, select=No
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_hotfix_info(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None,
-                    select=None, hotfix=None):
+async def get_hotfix_info(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None,
+                          select=None, hotfix=None):
     """ Get info about an agent's hotfixes
 
     :param agent_id: Agent ID
@@ -81,15 +81,15 @@ def get_hotfix_info(agent_id, pretty=False, wait_for_complete=False, offset=0, l
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_network_address_info(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None,
-                             sort=None, search=None, iface=None, proto=None, address=None, broadcast=None,
-                             netmask=None):
+async def get_network_address_info(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None,
+                                   sort=None, search=None, iface=None, proto=None, address=None, broadcast=None,
+                                   netmask=None):
     """ Get network address info of an agent
 
     :param agent_id: Agent ID
@@ -132,14 +132,14 @@ def get_network_address_info(agent_id, pretty=False, wait_for_complete=False, of
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_network_interface_info(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None,
-                               sort=None, search=None, name=None, adapter=None, state=None, mtu=None):
+async def get_network_interface_info(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None,
+                                     sort=None, search=None, name=None, adapter=None, state=None, mtu=None):
     """ Get network interface info of an agent
 
     :param agent_id: Agent ID
@@ -186,14 +186,14 @@ def get_network_interface_info(agent_id, pretty=False, wait_for_complete=False, 
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_network_protocol_info(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None,
-                              sort=None, search=None, iface=None, gateway=None, dhcp=None):
+async def get_network_protocol_info(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None,
+                                    sort=None, search=None, iface=None, gateway=None, dhcp=None):
     """ Get network protocol info of an agent
 
     :param agent_id: Agent ID
@@ -233,13 +233,13 @@ def get_network_protocol_info(agent_id, pretty=False, wait_for_complete=False, o
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_os_info(agent_id, pretty=False, wait_for_complete=False, select=None):
+async def get_os_info(agent_id, pretty=False, wait_for_complete=False, select=None):
     """ Get OS info of an agent
 
     :param agent_id: Agent ID
@@ -261,14 +261,14 @@ def get_os_info(agent_id, pretty=False, wait_for_complete=False, select=None):
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_packages_info(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None,
-                      search=None, vendor=None, name=None, architecture=None, version=None):
+async def get_packages_info(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None,
+                            sort=None, search=None, vendor=None, name=None, architecture=None, version=None):
     """ Get packages info of an agent
 
     :param agent_id: Agent ID
@@ -310,14 +310,14 @@ def get_packages_info(agent_id, pretty=False, wait_for_complete=False, offset=0,
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_ports_info(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None,
-                   search=None, pid=None, protocol=None, tx_queue=None, state=None, process=None):
+async def get_ports_info(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None,
+                         search=None, pid=None, protocol=None, tx_queue=None, state=None, process=None):
     """ Get ports info of an agent
 
     :param agent_id: Agent ID
@@ -364,15 +364,16 @@ def get_ports_info(agent_id, pretty=False, wait_for_complete=False, offset=0, li
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 @exception_handler
-def get_processes_info(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None,
-                       search=None, pid=None, state=None, ppid=None, egroup=None, euser=None, fgroup=None, name=None,
-                       nlwp=None, pgrp=None, priority=None, rgroup=None, ruser=None, sgroup=None, suser=None):
+async def get_processes_info(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None,
+                             sort=None, search=None, pid=None, state=None, ppid=None, egroup=None, euser=None,
+                             fgroup=None, name=None, nlwp=None, pgrp=None, priority=None, rgroup=None, ruser=None,
+                             sgroup=None, suser=None):
     """ Get processes info an agent
 
     :param agent_id: Agent ID
@@ -433,6 +434,6 @@ def get_processes_info(agent_id, pretty=False, wait_for_complete=False, offset=0
                           logger=logger,
                           rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
