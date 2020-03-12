@@ -28,6 +28,7 @@
 
 #define FIMDB_OK 0   // Successful result.
 #define FIMDB_ERR -1 // Generic error.
+#define FIMDB_FULL -2 // DB is full.
 
 #define FIMDB_RM_MAX_LOOP 10 // Max number of loop iterations
 #define FIMDB_RM_DEFAULT_TIME 100 //miliseconds

@@ -908,14 +908,14 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry, 
         if (syscheck.file_limit) {
             nodes_count = fim_db_get_count_entry_path(syscheck.database);
             if (nodes_count >= syscheck.file_limit) {
-                mdebug1("Couldn't insert this entry into DB: %s. The DB is full, please check your configuration.", file_path);
-                return FIMDB_ERR;
+                mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.", file_path);
+                return FIMDB_FULL;
             }
         }
     case FIM_MODIFICATION:
         break;
     default:
-        merror("Coudn't insert this entry into the DB: %s. Invalid event type: %d.", file_path, alert_type);
+        merror("Couldn't insert '%s' entry into DB. Invalid event type: %d.", file_path, alert_type);
         return FIMDB_ERR;
     }
 

@@ -315,6 +315,7 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
     cJSON *json_event = NULL;
     char *json_formated;
     int alert_type;
+    int result;
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
@@ -338,13 +339,13 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
     if (json_event) {
-        if (fim_db_insert(syscheck.database, file, new, alert_type) == -1) {
+        if (result = fim_db_insert(syscheck.database, file, new, alert_type), result < 0) {
             free_entry_data(new);
             free_entry(saved);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
             cJSON_Delete(json_event);
 
-            return OS_INVALID;
+            return (result == FIMDB_FULL) ? 0 : OS_INVALID;
         }
     }
 
@@ -475,10 +476,11 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
 
     if ((saved && saved->data && strcmp(saved->data->hash_sha1, data->hash_sha1) != 0)
         || alert_type == FIM_ADD) {
-        if (fim_db_insert(syscheck.database, key, data, alert_type) == -1) {
+        if (result = fim_db_insert(syscheck.database, key, data, alert_type), result < 0) {
             free_entry(saved);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
-            return OS_INVALID;
+
+            return (result == FIMDB_FULL) ? 0 : OS_INVALID;
         }
         w_mutex_unlock(&syscheck.fim_entry_mutex);
         json_event = fim_json_event(key, saved ? saved->data : NULL, data, pos,
