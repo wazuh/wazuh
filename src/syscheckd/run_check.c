@@ -49,7 +49,12 @@
 #endif
 
 // Prototypes
+#ifdef WIN32
+DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args);
+#else
 void * fim_run_realtime(__attribute__((unused)) void * args);
+#endif
+
 int fim_whodata_initialize();
 #ifdef WIN32
 STATIC void set_priority_windows_thread();
@@ -166,8 +171,7 @@ void start_daemon()
     // Launch rootcheck thread
     w_create_thread(w_rootcheck_thread, &syscheck);
 #else
-    if (CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)w_rootcheck_thread,
-            &syscheck, 0, NULL) == NULL) {
+    if (CreateThread(NULL, 0, w_rootcheck_thread, &syscheck, 0, NULL) == NULL) {
         merror(THREAD_ERROR);
     }
 #endif
@@ -215,8 +219,8 @@ void start_daemon()
         }
     }
 
-    if (CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)fim_run_realtime,
-            &syscheck, 0, NULL) == NULL) {
+    if (CreateThread(NULL, 0, fim_run_realtime, &syscheck, 0, NULL) == NULL) {
+
         merror(THREAD_ERROR);
     }
 #endif
@@ -316,7 +320,11 @@ void start_daemon()
 
 // LCOV_EXCL_START
 // Starting Real-time thread
+#ifdef WIN32
+DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args) {
+#else
 void * fim_run_realtime(__attribute__((unused)) void * args) {
+#endif
 
 #if defined INOTIFY_ENABLED || defined WIN32
 

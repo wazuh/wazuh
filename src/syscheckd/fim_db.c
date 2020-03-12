@@ -246,13 +246,13 @@ void fim_db_bind_get_path_inode(fdb_t *fim_sql, const char *file_path);
 
 fdb_t *fim_db_init(int storage) {
     fdb_t *fim;
-    char *path = (storage == 1) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
+    char *path = (storage == FIM_DB_MEMORY) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
 
     os_calloc(1, sizeof(fdb_t), fim);
     fim->transaction.interval = COMMIT_INTERVAL;
 
-    if (fim_db_clean() < 0) {
-        goto free_fim;
+    if (storage == FIM_DB_DISK) {
+        fim_db_clean();
     }
 
     if (fim_db_create_file(path, schema_fim_sql, storage, &fim->db) < 0) {
@@ -299,12 +299,37 @@ void fim_db_close(fdb_t *fim_sql) {
     sqlite3_close_v2(fim_sql->db);
 }
 
-int fim_db_clean(void) {
+
+void fim_db_clean(void) {
+
     if (w_is_file(FIM_DB_DISK_PATH)) {
-        return remove(FIM_DB_DISK_PATH);
+        // If the file is being used by other processes, wait until
+        // it's unlocked in order to remove it. Wait at most 5 seconds.
+        int i, rm;
+        for (i = 1; i <= FIMDB_RM_MAX_LOOP && (rm = remove(FIM_DB_DISK_PATH)); i++) {
+            mdebug2(FIM_DELETE_DB_TRY, FIM_DB_DISK_PATH, i);
+#ifdef WIN32
+            Sleep(FIMDB_RM_DEFAULT_TIME * i); //milliseconds
+#else
+            usleep(FIMDB_RM_DEFAULT_TIME * i); //milliseconds
+#endif
+        }
+
+        //Loop endlessly until the file can be removed. (60s)
+        if (rm == FIMDB_ERR) {
+            while (remove(FIM_DB_DISK_PATH)) {
+                mdebug2(FIM_DELETE_DB, FIM_DB_DISK_PATH);
+#ifdef WIN32
+                Sleep(60000); //milliseconds
+#else
+                sleep(60); //seconds
+#endif
+            }
+        }
     }
-    return FIMDB_OK;
+
 }
+
 
 int fim_db_cache(fdb_t *fim_sql) {
     int index;
@@ -1075,34 +1100,38 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
     int *send_alert = (int *) alert;
     fim_event_mode mode = (fim_event_mode) fim_ev_mode;
     int rows = 0;
-    int conf_file = fim_configuration_directory(entry->path, "file");
+    int conf;
 
-    if (conf_file < 0) {
-        return;
-    }
+    if(entry->data->entry_type == FIM_TYPE_FILE) {
 
-    switch (mode) {
-        /*
-            Don't send alert if received mode and mode in configuration aren't the same
-        */
+        conf = fim_configuration_directory(entry->path, "file");
 
-        case FIM_REALTIME:
-            if (!(syscheck.opts[conf_file] & REALTIME_ACTIVE)){
-                return;
+        if(conf > -1) {
+            switch (mode) {
+            /* Don't send alert if received mode and mode in configuration aren't the same */
+            case FIM_REALTIME:
+                if (!(syscheck.opts[conf] & REALTIME_ACTIVE)) {
+                    return;
+                }
+                break;
+
+            case FIM_WHODATA:
+                if (!(syscheck.opts[conf] & WHODATA_ACTIVE)) {
+                    return;
+                }
+                break;
+
+            case FIM_SCHEDULED:
+                if (!(syscheck.opts[conf] & SCHEDULED_ACTIVE)) {
+                    return;
+                }
+                break;
+
             }
-            break;
-
-        case FIM_WHODATA:
-            if (!(syscheck.opts[conf_file] & WHODATA_ACTIVE)) {
-                return;
-            }
-            break;
-
-        case FIM_SCHEDULED:
-            if (!(syscheck.opts[conf_file] & SCHEDULED_ACTIVE)) {
-                return;
-            }
-            break;
+        } else {
+            mdebug2(FIM_DELETE_EVENT_PATH_NOCONF, entry->path);
+            return;
+        }
     }
 
     w_mutex_lock(mutex);
@@ -1148,8 +1177,13 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
         cJSON * json_event      = NULL;
         char * json_formatted    = NULL;
         int pos = 0;
+        const char *FIM_ENTRY_TYPE[] = {"file", "registry"};
 
-         const char *FIM_ENTRY_TYPE[] = { "file", "registry"};
+        // Obtaining the position of the directory, in @syscheck.dir, where @entry belongs
+        if (pos = fim_configuration_directory(entry->path,
+            FIM_ENTRY_TYPE[entry->data->entry_type]), pos < 0) {
+            goto end;
+        }
 
         json_event = fim_json_event(entry->path, NULL, entry->data, pos,
                                                 FIM_DELETE, mode, whodata_event);

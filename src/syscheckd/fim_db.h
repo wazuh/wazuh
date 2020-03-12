@@ -29,6 +29,9 @@
 #define FIMDB_OK 0   // Successful result.
 #define FIMDB_ERR -1 // Generic error.
 
+#define FIMDB_RM_MAX_LOOP 10 // Max number of loop iterations
+#define FIMDB_RM_DEFAULT_TIME 100 //miliseconds
+
 #define FIM_LAST_ROW 0
 #define FIM_FIRST_ROW 1
 
@@ -60,9 +63,8 @@ void fim_db_close(fdb_t *fim_sql);
 /**
  * @brief Clean the FIM databases.
  *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_clean(void);
+void fim_db_clean(void);
 
 /**
  * @brief Compile all statement associated with FIM queries.
@@ -223,7 +225,7 @@ int fim_db_get_count_range(fdb_t *fim_sql, char *start, char *top, int *counter)
  * @param alert False don't send alert, True send delete alert.
  * @param fim_ev_mode FIM Mode (scheduled/realtime/whodata)
  * @param w_evt Whodata information
- * 
+ *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex,
@@ -351,18 +353,18 @@ int fim_db_process_missing_entry(fdb_t *fim_sql, fim_tmp_file *file,
 
 /**
  * @brief Get count of all entries in entry_data table.
- * 
+ *
  * @param fim_sql FIM database struct.
- * 
+ *
  * @return Number of entries in entry_data table.
  */
 int fim_db_get_count_entry_data(fdb_t * fim_sql);
 
 /**
  * @brief Get count of all entries in entry_path table.
- * 
+ *
  * @param fim_sql FIM database struct.
- * 
+ *
  * @return Number of entries in entry_path table.
  */
 int fim_db_get_count_entry_path(fdb_t * fim_sql);
