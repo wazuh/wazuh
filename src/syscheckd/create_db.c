@@ -397,7 +397,7 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
 #ifdef WIN32
 int fim_registry_event(char *key, fim_entry_data *data, int pos) {
 
-    assert(data);
+    assert(data != NULL);
 
     cJSON *json_event = NULL;
     fim_entry *saved;
@@ -413,7 +413,7 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
         alert_type = FIM_MODIFICATION;
     }
 
-    if ((saved && saved->data && strcmp(saved->data->hash_sha1, data->hash_sha1) != 0)
+    if ((saved && data && saved->data && strcmp(saved->data->hash_sha1, data->hash_sha1) != 0)
         || alert_type == FIM_ADD) {
         if (fim_db_insert(syscheck.database, key, data) == -1) {
             free_entry(saved);
