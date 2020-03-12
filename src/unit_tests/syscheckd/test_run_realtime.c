@@ -31,6 +31,7 @@ typedef struct _win32rtfim {
 
 int realtime_win32read(win32rtfim *rtlocald);
 void free_win32rtfim_data(win32rtfim *data);
+void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap);
 #endif
 /* redefinitons/wrapping */
 
@@ -228,6 +229,15 @@ int __wrap_isChroot() {
 }
 #endif
 
+#ifdef TEST_WINAGENT
+int __wrap_fim_configuration_directory(const char *path, const char *entry) {
+    check_expected(path);
+    check_expected(entry);
+
+    return mock();
+}
+#endif
+
 #ifdef WIN_WHODATA
 int __wrap_whodata_audit_start() {
     return 0;
@@ -288,6 +298,27 @@ static int teardown_group(void **state) {
 
         return 0;
     }
+#else
+static int setup_RTCallBack(void **state) {
+    win32rtfim *rt = calloc(1, sizeof(win32rtfim));
+
+    if(rt == NULL)
+        return -1;
+
+    *state = rt;
+    return 0;
+}
+
+static int teardown_RTCallBack(void **state) {
+    win32rtfim *rt = *state;
+
+    if(rt->dir)
+        free(rt->dir);
+
+    free(rt);
+
+    return 0;
+}
 #endif
 
 static int setup_realtime_start(void **state) {
@@ -960,6 +991,108 @@ void test_realtime_adddir_success(void **state) {
 
     assert_int_equal(ret, 1);
 }
+
+void test_RTCallBack_error_on_callback(void **state) {
+    OVERLAPPED ov;
+
+    expect_string(__wrap__mwarn, formatted_msg, FIM_WARN_REALTIME_OVERFLOW);
+
+    expect_string(__wrap__merror, formatted_msg, "(6613): Real time Windows callback process: 'Path not found.' (3).");
+
+    RTCallBack(ERROR_PATH_NOT_FOUND, 0, &ov);
+}
+
+void test_RTCallBack_empty_hash_table(void **state) {
+    OVERLAPPED ov;
+
+    will_return(__wrap_OSHash_Get, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, FIM_ERROR_REALTIME_WINDOWS_CALLBACK_EMPTY);
+
+    RTCallBack(ERROR_SUCCESS, 1, &ov);
+}
+
+void test_RTCallBack_no_bytes_returned(void **state) {
+    win32rtfim *rt = *state;
+    OVERLAPPED ov;
+
+    expect_string(__wrap__mwarn, formatted_msg, FIM_WARN_REALTIME_OVERFLOW);
+
+    will_return(__wrap_OSHash_Get, rt);
+
+    // Inside realtime_win32read
+    will_return(wrap_run_realtime_ReadDirectoryChangesW, 1);
+
+    RTCallBack(ERROR_SUCCESS, 0, &ov);
+}
+
+void test_RTCallBack_acquired_changes_null_dir(void **state) {
+    win32rtfim *rt = *state;
+    OVERLAPPED ov;
+    PFILE_NOTIFY_INFORMATION pinfo;
+
+    // Fill the win32rtfim struct with testing data
+    pinfo = (PFILE_NOTIFY_INFORMATION) rt->buffer;
+    wcscpy(pinfo->FileName, L"C:\\a\\path");
+    pinfo->FileNameLength = wcslen(pinfo->FileName) * sizeof(WCHAR);
+    pinfo->NextEntryOffset = 0;
+
+    // This condition is not taken into account
+    rt->dir = NULL;
+
+    ov.Pointer = "C:\\a\\path";
+
+    // Begin calls to mock functions
+    will_return(__wrap_OSHash_Get, rt);
+
+    expect_string(__wrap_fim_configuration_directory, path, "C:\\a\\path");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
+    will_return(__wrap_fim_configuration_directory, 0);
+
+    expect_string(__wrap_fim_configuration_directory, path, "");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
+    will_return(__wrap_fim_configuration_directory, -1);
+
+    // Inside realtime_win32read
+    will_return(wrap_run_realtime_ReadDirectoryChangesW, 1);
+
+    RTCallBack(ERROR_SUCCESS, 1, &ov);
+}
+
+void test_RTCallBack_acquired_changes(void **state) {
+    win32rtfim *rt = *state;
+    OVERLAPPED ov;
+    PFILE_NOTIFY_INFORMATION pinfo;
+
+    // Fill the win32rtfim struct with testing data
+    pinfo = (PFILE_NOTIFY_INFORMATION) rt->buffer;
+    wcscpy(pinfo->FileName, L"file.test");
+    pinfo->FileNameLength = wcslen(pinfo->FileName) * sizeof(WCHAR);
+    pinfo->NextEntryOffset = 0;
+
+    // This condition is not taken into account
+    rt->dir = strdup("C:\\a\\path");
+
+    ov.Pointer = "C:\\a\\path\\file.test";
+
+    // Begin calls to mock functions
+    will_return(__wrap_OSHash_Get, rt);
+
+    expect_string(__wrap_fim_configuration_directory, path, "C:\\a\\path\\file.test");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
+    will_return(__wrap_fim_configuration_directory, 0);
+
+    expect_string(__wrap_fim_configuration_directory, path, "c:\\a\\path\\file.test");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
+    will_return(__wrap_fim_configuration_directory, 0);
+
+    expect_string(__wrap_fim_realtime_event, file, "c:\\a\\path\\file.test");
+
+    // Inside realtime_win32read
+    will_return(wrap_run_realtime_ReadDirectoryChangesW, 1);
+
+    RTCallBack(ERROR_SUCCESS, 1, &ov);
+}
 #endif
 
 int main(void) {
@@ -994,6 +1127,12 @@ int main(void) {
         // free_win32rtfim_data
         cmocka_unit_test(test_free_win32rtfim_data_null_input),
         cmocka_unit_test(test_free_win32rtfim_data_full_data),
+        // RTCallBack
+        cmocka_unit_test(test_RTCallBack_error_on_callback),
+        cmocka_unit_test(test_RTCallBack_empty_hash_table),
+        cmocka_unit_test_setup_teardown(test_RTCallBack_no_bytes_returned, setup_RTCallBack, teardown_RTCallBack),
+        cmocka_unit_test_setup_teardown(test_RTCallBack_acquired_changes_null_dir, setup_RTCallBack, teardown_RTCallBack),
+        cmocka_unit_test_setup_teardown(test_RTCallBack_acquired_changes, setup_RTCallBack, teardown_RTCallBack),
         #endif
     };
     #else
