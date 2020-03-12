@@ -102,14 +102,30 @@ INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version,
                    'node01',strftime('%s','now','-5 days'),
                     strftime('%s','now','-2 hour'),'updated');
 
-
-
-
+-- Windows agent
 INSERT INTO agent (id, name, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
                    os_platform, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add,
                    last_keepalive, status) VALUES (6,'agent-6','172.19.0.157',
                    'b3650e11eba2f27er4d160c69de533ee7eed6016fga85ba2455d53a90927747f', 'Windows','5.2','5','2',
                    'XP','windows','x86_64',
                    'Wazuh v3.6.2','ab73af41699f13fgt81903b5f23d8d00','f8d49771911ed9d5c45bdfa40babd065','master',
+                   'node01',strftime('%s','now','-3 days'),
+                    strftime('%s','now','-15 minutes'),'updated');
+
+INSERT INTO agent (id, name, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
+                   os_platform, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add,
+                   last_keepalive, status) VALUES (7,'agent-7','172.19.0.157',
+                   'b3650e11eba2f27er4d160c69de533ee7eed6016fga85ba2455d53a90927747f', 'Windows','5.2','5','2',
+                   'XP','windows','x86_64',
+                   'Wazuh v2.0.0','ab73af41699f13fgt81903b5f23d8d00','f8d49771911ed9d5c45bdfa40babd065','master',
+                   'node01',strftime('%s','now','-3 days'),
+                    strftime('%s','now','-15 minutes'),'updated');
+
+INSERT INTO agent (id, name, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
+                   os_platform, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add,
+                   last_keepalive, status) VALUES (8,'agent-8','172.19.0.157',
+                   'b3650e11eba2f27er4d160c69de533ee7eed6016fga85ba2455d53a90927747f', 'Windows','7.2','7','2',
+                   'XP','windows','x86_64',
+                   'Wazuh v3.8.2','ab73af41699f13fgt81903b5f23d8d00','f8d49771911ed9d5c45bdfa40babd065','master',
                    'node01',strftime('%s','now','-3 days'),
                     strftime('%s','now','-15 minutes'),'updated');

@@ -683,7 +683,7 @@ class Agent:
             raise WazuhInternalError(1600)
 
         conn = Connection(db_global[0])
-        query = "SELECT :attr FROM agent WHERE id = :id"
+        query = "SELECT {0} FROM agent WHERE id = {1}".format(attr, self.id)
         request = {'attr': attr, 'id': self.id}
         conn.execute(query, request)
         query_value = str(conn.fetch())
@@ -1351,7 +1351,6 @@ class Agent:
         if not file:
             raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
         try:
-            # start_time = time()
             bytes_read = file.read(chunk_size)
             file_sha1 = hashlib.sha1(bytes_read)
             bytes_read_acum = 0
@@ -1359,7 +1358,7 @@ class Agent:
                 s = OssecSocket(common.REQUEST_SOCKET)
                 msg = "{0} com write {1} {2} ".format(str(self.id).zfill(3), str(len(bytes_read)), wpk_file)
                 s.send(msg.encode() + bytes_read)
-                # data = s.receive().decode()
+                data = s.receive().decode()
                 s.close()
                 if not data.startswith('ok'):
                     raise WazuhException(1715, data.replace("err ",""))
@@ -1369,7 +1368,6 @@ class Agent:
                     bytes_read_acum = bytes_read_acum + len(bytes_read)
                     show_progress(int(bytes_read_acum * 100 / wpk_file_size) +
                                   (bytes_read_acum * 100 % wpk_file_size > 0))
-            # elapsed_time = time() - start_time
             calc_sha1 = file_sha1.hexdigest()
             if debug:
                 print("FILE SHA1: {0}".format(calc_sha1))

@@ -6,7 +6,7 @@
 import os
 import re
 import sqlite3
-from unittest.mock import ANY, patch, mock_open, call
+from unittest.mock import ANY, patch, mock_open, call, Mock
 
 import pytest
 from freezegun import freeze_time
@@ -679,7 +679,7 @@ def test_agent_remove_authd(mock_ossec_socket):
 @patch("wazuh.common.ossec_path", new=test_data_path)
 @patch('wazuh.core.core_agent.path.exists', side_effect=lambda x: not (common.backup_path in x))
 @patch('wazuh.database.isfile', return_value=True)
-@patch('wazuh.core.core_agent.path.isdir', return_value=True)
+@patch('wazuh.core.core_agent.path.isdir', return_value=False)
 @patch('wazuh.core.core_agent.safe_move')
 @patch('wazuh.core.core_agent.makedirs')
 @patch('wazuh.core.core_agent.chmod_r')
@@ -723,7 +723,7 @@ def test_agent_remove_manual(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, sa
 
 @pytest.mark.parametrize('agent_id, expected_exception', [
     ('001', 1746),
-    ('100', 1701),
+    ('006', 1701),
     ('001', 1600),
     ('001', 1748),
     ('001', 1747)
@@ -758,7 +758,9 @@ def test_agent_remove_manual_ko(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock,
     expected_exception : int
         Error code that is expected.
     """
-    client_keys_text = '\n'.join([f'{str(row["id"]).zfill(3)} {row["name"]} {row["register_ip"]} '
+    client_keys_text = '\n'.join([f'{str(row["id"]).zfill(3) if expected_exception != 1701 else "100"} '
+                                  f'{row["name"]} '
+                                  f'{row["register_ip"]} '
                                   f'{row["internal_key"] + "" if expected_exception != 1746 else " random"}' for row in
                                   test_data.global_db.execute(
                                       'select id, name, register_ip, internal_key from agent where id > 0')])
@@ -832,6 +834,7 @@ def test_agent_add_ko(mock_use_only_authd, mock_maganer_status):
     with pytest.raises(WazuhInternalError, match='.* 1726 .*'):
         agent._add('test_name', '192.168.0.0')
 
+
 @pytest.mark.parametrize("name, ip, id, key", [
     ('test_agent', '172.19.0.100', None, None),
     ('test_agent', '172.19.0.100', '002', 'MDAyIHdpbmRvd3MtYWdlbnQyIGFueSAzNDA2MjgyMjEwYmUwOWVlMWViNDAyZTYyODZmNWQ2O'
@@ -893,7 +896,7 @@ def test_agent_add_manual(mock_ossec_socket, mock_lockf, mock_stat, mock_chmod, 
     """Tests if method _add_manual() works as expected"""
     key = 'MDAyIHdpbmRvd3MtYWdlbnQyIGFueSAzNDA2MjgyMjEwYmUwOWVlMWViNDAyZTYyODZmNWQ2OTE5' \
           'MjBkODNjNTVjZDE5N2YyMzk3NzA0YWRhNjg1YzQz'
-    client_keys_text = f'001 windows-agent any {key}'
+    client_keys_text = f'001 windows-agent any {key}\n \n002 #name '
 
     with patch('wazuh.core.core_agent.open', mock_open(read_data=client_keys_text)) as m:
         with patch('sqlite3.connect') as mock_db:
@@ -996,17 +999,32 @@ def test_agent_delete_single_group(mock_remove_manual, mock_time, mock_safe_move
                                            permissions=0o660), 'Safe_move not called with expected params'
 
 
-############# ESTE NO ESTÁ FUNCIONANDO CORRECTAMENTE, DEVUELVE 'name'
+@pytest.mark.parametrize("id, attr, expected_result", [
+    (0, 'os_name', 'Ubuntu'),
+    (7, 'os_name', 'Windows'),
+    (5, 'status', 'updated'),
+    (2, 'register_ip', '172.17.0.201'),
+    (1, 'os_arch', 'x86_64')
+])
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
-def test_agent_get_agent_attr(test_data):
-    """Tests if method get_agent_attr() works as expected"""
+def test_agent_get_agent_attr(test_data, id, attr, expected_result):
+    """Tests if method get_agent_attr() returns expected value for the given attribute
 
+    Parameters
+    ----------
+    id : int
+        ID of the agent to return the attribute from.
+    attr : str
+        Attribute to get value from.
+    expected_result : str
+        Expected value to be obtained.
+    """
     with patch('sqlite3.connect') as mock_db:
         mock_db.return_value = test_data.global_db
 
-        agent = Agent(0)
-        agent.load_info_from_db()
-        agent.get_agent_attr('name')
+        agent = Agent(id)
+        result = agent.get_agent_attr(attr)
+        assert result == expected_result
 
 
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'test'))
@@ -1027,7 +1045,7 @@ def test_agent_get_agents_overview_default(test_data):
         agents = Agent.get_agents_overview()
 
         # check number of agents
-        assert agents['totalItems'] == 7
+        assert agents['totalItems'] == 9
         # check the return dictionary has all necessary fields
 
         for agent in agents['items']:
@@ -1073,9 +1091,9 @@ def test_agent_get_agents_overview_select(test_data, select, status, older_than,
 
 @pytest.mark.parametrize("search, totalItems", [
     ({'value': 'any', 'negation': 0}, 3),
-    ({'value': 'any', 'negation': 1}, 4),
+    ({'value': 'any', 'negation': 1}, 6),
     ({'value': '202', 'negation': 0}, 1),
-    ({'value': '202', 'negation': 1}, 6),
+    ({'value': '202', 'negation': 1}, 8),
     ({'value': 'master', 'negation': 1}, 2)
 ])
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
@@ -1101,7 +1119,7 @@ def test_agent_get_agents_overview_search(test_data, search, totalItems):
     ("ip=172.17.0.202", 1),
     ("ip=172.17.0.202;registerIP=any", 1),
     ("status=disconnected;lastKeepAlive>34m", 1),
-    ("(status=active,status=pending);lastKeepAlive>5m", 2)
+    ("(status=active,status=pending);lastKeepAlive>5m", 4)
 ])
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
 def test_agent_get_agents_overview_query(test_data, query, totalItems):
@@ -1122,8 +1140,8 @@ def test_agent_get_agents_overview_query(test_data, query, totalItems):
 
 
 @pytest.mark.parametrize("status, older_than, totalItems, exception", [
-    ('active', '9m', 2, None),
-    ('all', '1s', 6, None),
+    ('active', '9m', 4, None),
+    ('all', '1s', 8, None),
     ('pending,never_connected', '30m', 1, None),
     (55, '30m', 0, 1729)
 ])
@@ -1272,7 +1290,7 @@ def test_agent_add_group_to_agent_ko(test_data):
 
 @pytest.mark.parametrize("agent_id, seconds, expected_result", [
     ('002', 10, True),
-    ('002', 700, False),
+    ('002', 700, False)
 ])
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
 def test_agent_check_if_delete_agent(test_data, agent_id, seconds, expected_result):
@@ -1595,6 +1613,7 @@ def test_agent_get_wpk_file(versions_mock, get_req_mock, open_mock, sha1_mock, t
     versions_mock.return_value = wpk_versions
     # mock requests.get.ok to return True
     get_req_mock.return_value.ok = True
+    get_req_mock.return_value.iter_content.side_effect = 'a'
 
     with patch('sqlite3.connect') as mock_db:
         mock_db.return_value = test_data.global_db
@@ -1609,6 +1628,7 @@ def test_agent_get_wpk_file(versions_mock, get_req_mock, open_mock, sha1_mock, t
             result = agent._get_wpk_file(debug=True, version=version, force=force)
 
         assert result[1] == hash_manager_version
+        # get_req_mock.return_value.iter_content.assert_called_once_with('a')
         if not force:
             assert get_package_version(result[0]) == manager_version
 
@@ -1650,6 +1670,12 @@ def test_agent_get_wpk_file_ko(versions_mock, open_mock, sha1_mock, test_data):
             with pytest.raises(WazuhInternalError, match='.* 1714 .*'):
                 agent._get_wpk_file(debug=True)
 
+            # Hash doesn't match
+            with pytest.raises(WazuhInternalError, match=".* 1714 .*"):
+                with patch('wazuh.core.core_agent.path.isfile', return_value=True):
+                    sha1_mock.return_value.hexdigest.return_value = 'random'
+                    agent._get_wpk_file(debug=True, version='3.3.9', force=True)
+
         # Requests API raises exception
         agent.os['platform'] = 'noexists'
         with pytest.raises(WazuhInternalError, match='.* 1714 .*'):
@@ -1662,7 +1688,7 @@ def test_agent_get_wpk_file_ko(versions_mock, open_mock, sha1_mock, test_data):
 ])
 @patch('wazuh.core.core_agent.open')
 @patch('wazuh.core.core_agent.OssecSocket')
-@patch('wazuh.core.core_agent.stat')
+@patch('wazuh.core.core_agent.stat', return_value=Mock(st_size=1))
 @patch('wazuh.core.core_agent.requests.get')
 @patch('wazuh.core.core_agent.Agent._get_wpk_file')
 @patch('wazuh.common.open_sleep', new=0)
@@ -1689,7 +1715,7 @@ def test_agent_send_wpk_file(_get_wpk_mock, get_req_mock, stat_mock, ossec_socke
             # mock return value of open.read to avoid infinite loop
             open_mock.return_value.read.side_effect = [b'test', b'']
 
-            result = agent._send_wpk_file(wpk_repo='packages.wazuh.com/wpk', debug=True)
+            result = agent._send_wpk_file(wpk_repo='packages.wazuh.com/wpk', debug=True, show_progress=Mock())
 
             assert result == ["WPK file sent", version[0]]
             calls = [call(bytes(f'{agent_id} com lock_restart -1', encoding='ascii')),
@@ -1754,6 +1780,12 @@ def test_agent_send_wpk_file_ko(_get_wpk_mock, get_req_mock, stat_mock, ossec_so
                                                                  [f'err {wpk_version}'.encode()]
             agent._send_wpk_file(debug=True)
 
+        # Hash doesn't match
+        with pytest.raises(WazuhException, match=".* 1715 .*"):
+            ossec_socket_mock.return_value.receive.side_effect = [f'ok {wpk_version}'.encode()] * 4 + \
+                                                                 ['ok random'.encode()]
+            agent._send_wpk_file(debug=True)
+
         # open returns None
         with pytest.raises(WazuhException, match=".* 1715 .*"):
             ossec_socket_mock.return_value.receive.side_effect = [f'ok {wpk_version}'.encode()] * 20
@@ -1761,15 +1793,16 @@ def test_agent_send_wpk_file_ko(_get_wpk_mock, get_req_mock, stat_mock, ossec_so
             agent._send_wpk_file(debug=True)
 
 
-@pytest.mark.parametrize('agent_id', [
-    '001',
-    '002',
+@pytest.mark.parametrize('agent_id, platform', [
+    ('001', 'Ubuntu'),
+    ('002', 'Ubuntu'),
+    ('008', 'Windows'),
 ])
 @patch('wazuh.core.core_agent.OssecSocket')
 @patch('wazuh.core.core_agent.Agent._send_wpk_file')
 @patch('socket.socket.sendto', return_value=1)
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
-def test_agent_upgrade(socket_sendto, _send_wpk_file, ossec_socket_mock, test_data, agent_id):
+def test_agent_upgrade(socket_sendto, _send_wpk_file, ossec_socket_mock, test_data, agent_id, platform):
     """Test upgrade method returns expected message and call socket.sendto with correct params
 
     Parameters
@@ -1785,6 +1818,7 @@ def test_agent_upgrade(socket_sendto, _send_wpk_file, ossec_socket_mock, test_da
         result = agent.upgrade(wpk_repo='packages.wazuh.com/wpk', debug=True)
 
         assert result == 'Upgrade procedure started'
+        ossec_socket_mock.return_value.send.assert_called_once()
         socket_sendto.assert_called_with(f'1:wazuh-upgrade:wazuh: Upgrade procedure on agent {agent_id} ({agent.name}):'
                                          f' started. Current version: {agent.version}'.encode(),
                                          path.join(test_data_path, 'queue', 'ossec', 'queue'))
@@ -1809,6 +1843,11 @@ def test_agent_upgrade_ko(ossec_socket_mock, _send_wpk_file, socket_sendto, test
         # Agent is not active
         agent = Agent('005')
         with pytest.raises(WazuhException, match=".* 1720 .*"):
+            agent.upgrade(debug=True)
+
+        # Wazuh version is < 3.0.0-alpha4
+        agent = Agent('007')
+        with pytest.raises(WazuhError, match=".* 1719 .*"):
             agent.upgrade(debug=True)
 
         # Agent is Windows and os_version < 6
@@ -1891,7 +1930,7 @@ def test_agent_upgrade_result_ko(mock_sleep, socket_sendto, _send_wpk_file, osse
 ])
 @patch('wazuh.core.core_agent.open')
 @patch('wazuh.core.core_agent.OssecSocket')
-@patch('wazuh.core.core_agent.stat')
+@patch('wazuh.core.core_agent.stat', return_value=Mock(st_size=1))
 @patch('wazuh.core.core_agent.requests.get')
 @patch('wazuh.core.core_agent.path.isfile', return_value=True)
 @patch('wazuh.common.open_sleep', new=0)
@@ -1919,7 +1958,8 @@ def test_agent_send_custom_wpk_file(mock_isfile, mock_requests, mock_stat, ossec
         # mock return value of open.read to avoid infinite loop
         open_mock.return_value.read.side_effect = [b'test', b'']
 
-        result = agent._send_custom_wpk_file(file_path=os.path.join(test_data_path, wpk_name), debug=True)
+        result = agent._send_custom_wpk_file(file_path=os.path.join(test_data_path, wpk_name), debug=True,
+                                             show_progress=Mock())
 
         assert result == ['WPK file sent', 'test.wpk'], 'Result message is not as expected.'
         calls = [call(bytes(f'{agent_id} com lock_restart -1', encoding='ascii')),
@@ -1931,15 +1971,18 @@ def test_agent_send_custom_wpk_file(mock_isfile, mock_requests, mock_stat, ossec
         ossec_socket_mock.return_value.send.assert_has_calls(calls)
 
 
+@patch('wazuh.core.core_agent.hashlib.sha1')
+@patch('wazuh.core.core_agent.open')
 @patch('wazuh.core.core_agent.sleep')
 @patch('wazuh.core.core_agent.stat')
 @patch('wazuh.core.core_agent.OssecSocket')
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
-def test_agent_send_custom_wpk_file_ko(ossec_socket_mock, mock_stat, mock_sleep, test_data):
+def test_agent_send_custom_wpk_file_ko(ossec_socket_mock, mock_stat, mock_sleep, mock_open, mock_sha1, test_data):
     """Test _send_custom_wpk_file method returns expected message and call socket.send with correct params"""
 
     with patch('sqlite3.connect') as mock_db:
         mock_db.return_value = test_data.global_db
+        mock_sha1.return_value.hexdigest.return_value = 'random'
         agent = Agent('002')
 
         # WPK file does not exist
@@ -1947,7 +1990,6 @@ def test_agent_send_custom_wpk_file_ko(ossec_socket_mock, mock_stat, mock_sleep,
             agent._send_custom_wpk_file(file_path='/noexists', debug=True)
 
         with patch('wazuh.core.core_agent.path.isfile', return_value=True):
-
             # Get error code from receive method
             with pytest.raises(WazuhInternalError, match=".* 1715 .*"):
                 ossec_socket_mock.return_value.receive.side_effect = [f'err '.encode()]
@@ -1959,7 +2001,49 @@ def test_agent_send_custom_wpk_file_ko(ossec_socket_mock, mock_stat, mock_sleep,
                                                                      [f'err '.encode()]*11
                 agent._send_custom_wpk_file(file_path='wpk', debug=True)
 
+            mock_open.return_value.read.side_effect = [b'a']
 
+            # Get error code from third receive method
+            with pytest.raises(WazuhException, match=".* 1715 .*"):
+                ossec_socket_mock.return_value.receive.side_effect = [f'ok '.encode()]*2 + \
+                                                                     [f'err '.encode()]
+                agent._send_custom_wpk_file(file_path='wpk', debug=True)
+
+            # Get error code from fourth receive method
+            with pytest.raises(WazuhException, match=".* 1715 .*"):
+                mock_open.return_value.read.side_effect = [b'a', None]
+                ossec_socket_mock.return_value.receive.side_effect = [f'ok '.encode()] * 3 + \
+                                                                     [f'err '.encode()]
+                agent._send_custom_wpk_file(file_path='wpk', debug=True)
+
+            # File does not exists
+            with pytest.raises(WazuhInternalError, match=".* 1715 .*"):
+                mock_open.return_value = None
+                ossec_socket_mock.return_value.receive.side_effect = [f'ok '.encode()] * 5
+                agent._send_custom_wpk_file(file_path='wpk', debug=True)
+
+            # Get error code from fifth receive method
+            with pytest.raises(WazuhException, match=".* 1715 .*"):
+                mock_open.return_value = Mock()
+                mock_open.return_value.read.side_effect = [b'a', None]
+                ossec_socket_mock.return_value.receive.side_effect = [f'ok '.encode()] * 3 + \
+                                                                     [f'err '.encode()]
+                agent._send_custom_wpk_file(file_path='wpk', debug=True)
+
+            # Get error code from sixth receive method
+            with pytest.raises(WazuhException, match=".* 1715 .*"):
+                mock_open.return_value = Mock()
+                mock_open.return_value.read.side_effect = [b'a', None]
+                ossec_socket_mock.return_value.receive.side_effect = [f'ok '.encode()] * 4 + \
+                                                                     [f'err '.encode()]
+                agent._send_custom_wpk_file(file_path='wpk', debug=True)
+
+            # Get error code from fifth receive method
+            with pytest.raises(WazuhException, match=".* 1715 .*"):
+                mock_open.return_value = Mock()
+                mock_open.return_value.read.side_effect = [b'a', None]
+                ossec_socket_mock.return_value.receive.side_effect = [f'ok 1234'.encode()] * 5
+                agent._send_custom_wpk_file(file_path='wpk', debug=True)
 
 
 @pytest.mark.parametrize('agent_id', [
