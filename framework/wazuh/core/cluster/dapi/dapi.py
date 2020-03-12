@@ -169,7 +169,7 @@ class DistributedAPI:
         There are some services that are required for wazuh to correctly process API requests. If any of those services
         is not running, the API must raise an exception indicating that:
             * It's not ready yet to process requests if services are restarting
-            * There's an error in any of those services that must be adressed before using the API if any service is
+            * There's an error in any of those services that must be addressed before using the API if any service is
               in failed status.
             * Wazuh must be started before using the API is the services are stopped.
 
