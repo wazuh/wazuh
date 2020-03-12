@@ -1111,19 +1111,19 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
             /* Don't send alert if received mode and mode in configuration aren't the same */
             case FIM_REALTIME:
                 if (!(syscheck.opts[conf] & REALTIME_ACTIVE)) {
-                    return;
+                    return;     // LCOV_EXCL_LINE
                 }
                 break;
 
             case FIM_WHODATA:
                 if (!(syscheck.opts[conf] & WHODATA_ACTIVE)) {
-                    return;
+                    return;     // LCOV_EXCL_LINE
                 }
                 break;
 
             case FIM_SCHEDULED:
                 if (!(syscheck.opts[conf] & SCHEDULED_ACTIVE)) {
-                    return;
+                    return;     // LCOV_EXCL_LINE
                 }
                 break;
 
