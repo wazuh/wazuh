@@ -1702,11 +1702,11 @@ void test_is_valid_sacl_ace_not_found(void **state) {
 
     everyone_sid = NULL;
     ev_sid_size = 1;
-    
+
     expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
     expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
     will_return(wrap_win_whodata_AllocateAndInitializeSid, 1);
-    
+
     // Set the new ACL size
     new_sacl_size = sizeof(SYSTEM_AUDIT_ACE) + ev_sid_size - sizeof(unsigned long);
     new_sacl = (PACL) win_alloc(new_sacl_size);
@@ -1718,7 +1718,7 @@ void test_is_valid_sacl_ace_not_found(void **state) {
 
     will_return(wrap_win_whodata_GetLastError, (unsigned int) 800);
     expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '800'.");
-    
+
     ret = is_valid_sacl(new_sacl, 0);
     assert_int_equal(ret, 0);
 }
@@ -1728,23 +1728,23 @@ void test_is_valid_sacl_not_valid(void **state) {
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     PACL new_sacl = NULL;
     unsigned long new_sacl_size;
-    
+
     everyone_sid = NULL;
     ev_sid_size = 1;
-    
+
     expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
     expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
     will_return(wrap_win_whodata_AllocateAndInitializeSid, 1);
-    
+
     // Set the new ACL size
     new_sacl_size = sizeof(SYSTEM_AUDIT_ACE) + ev_sid_size - sizeof(unsigned long);
     new_sacl = (PACL) win_alloc(new_sacl_size);
     InitializeAcl(new_sacl, new_sacl_size, ACL_REVISION);
     new_sacl->AceCount=1;
-    
+
     will_return(wrap_win_whodata_GetAce, &new_sacl);
     will_return(wrap_win_whodata_GetAce, 1);
-    
+
     ret = is_valid_sacl(new_sacl, 1);
     assert_int_equal(ret, 0);
 }
@@ -1841,7 +1841,8 @@ void test_get_drive_names_more_data_error(void **state) {
     expect_string(wrap_win_whodata_GetVolumePathNamesForVolumeNameW,
         lpszVolumeName, L"\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}");
 
-    will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, OS_MAXSTR);
+    will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, 1);
+    will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, L"");
     will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, 0);
 
     will_return(wrap_win_whodata_GetLastError, ERROR_ACCESS_DENIED);
