@@ -905,10 +905,12 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry, 
 
     switch (alert_type) {
     case FIM_ADD:
-        nodes_count = fim_db_get_count_entry_path(syscheck.database);
-        if (nodes_count >= syscheck.file_limit) {
-            mdebug1("Couldn't insert this entry into DB: %s. The DB is full, please check your configuration.", file_path);
-            return FIMDB_ERR;
+        if (syscheck.file_limit) {
+            nodes_count = fim_db_get_count_entry_path(syscheck.database);
+            if (nodes_count >= syscheck.file_limit) {
+                mdebug1("Couldn't insert this entry into DB: %s. The DB is full, please check your configuration.", file_path);
+                return FIMDB_ERR;
+            }
         }
     case FIM_MODIFICATION:
         break;

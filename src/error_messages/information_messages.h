@@ -50,4 +50,6 @@
 #define FIM_LINKCHECK_CHANGED               "(6034): Updating the symbolic link from '%s': '%s' to '%s'."
 #define FIM_WHODATA_VOLUMES                 "(6036): Analyzing Windows volumes"
 
+#define FIM_DB_FULL                         "(6038): Sending DB full alert."
+
 #endif /* INFO_MESSAGES_H */
