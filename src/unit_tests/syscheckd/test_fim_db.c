@@ -659,16 +659,6 @@ static int test_teardown_fim_db_init(void **state) {
     return 0;
 }
 
-void test_fim_db_init_failed_db_clean(void **state) {
-    expect_string(__wrap_w_is_file, file, FIM_DB_DISK_PATH);
-    will_return(__wrap_w_is_file, 1);
-    expect_string(__wrap_remove, filename, FIM_DB_DISK_PATH);
-    will_return(__wrap_remove, -1);
-    fdb_t* fim_db;
-    fim_db = fim_db_init(syscheck.database_store);
-    assert_null(fim_db);
-}
-
 void test_fim_db_init_failed_file_creation(void **state) {
     wraps_fim_db_clean();
     expect_string(__wrap_sqlite3_open_v2, filename, FIM_DB_DISK_PATH);
@@ -720,6 +710,8 @@ void test_fim_db_init_failed_file_creation_step(void **state) {
 }
 
 void test_fim_db_init_failed_file_creation_chmod(void **state) {
+    errno = 0;
+
     wraps_fim_db_clean();
     expect_string(__wrap_sqlite3_open_v2, filename, FIM_DB_DISK_PATH);
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
@@ -730,7 +722,11 @@ void test_fim_db_init_failed_file_creation_chmod(void **state) {
     will_return(__wrap_sqlite3_finalize, 0);
     will_return(__wrap_sqlite3_close_v2, 0);
     will_return(__wrap_chmod, -1);
+    #ifndef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg, "(1127): Could not chmod object '/var/ossec/queue/fim/db/fim.db' due to [(0)-(Success)].");
+    #else
+    expect_string(__wrap__merror, formatted_msg, "(1127): Could not chmod object 'queue/fim/db/fim.db' due to [(0)-(Success)].");
+    #endif
     fdb_t* fim_db;
     fim_db = fim_db_init(syscheck.database_store);
     assert_null(fim_db);
@@ -772,7 +768,6 @@ void test_fim_db_init_failed_cache(void **state) {
 }
 
 void test_fim_db_init_failed_cache_memory(void **state) {
-    wraps_fim_db_clean();
     expect_string(__wrap_sqlite3_open_v2, filename, FIM_DB_MEMORY_PATH);
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
     will_return(__wrap_sqlite3_open_v2, 1);
@@ -863,23 +858,26 @@ void test_fim_db_init_success(void **state) {
 void test_fim_db_clean_no_db_file(void **state) {
     expect_string(__wrap_w_is_file, file, FIM_DB_DISK_PATH);
     will_return(__wrap_w_is_file, 0);
-    int ret = fim_db_clean();
-    assert_int_equal(ret, FIMDB_OK);
+    fim_db_clean();
 }
 
 void test_fim_db_clean_file_not_removed(void **state) {
     expect_string(__wrap_w_is_file, file, FIM_DB_DISK_PATH);
     will_return(__wrap_w_is_file, 1);
+
+    expect_string_count(__wrap_remove, filename, FIM_DB_DISK_PATH, FIMDB_RM_MAX_LOOP);
+    will_return_count(__wrap_remove, -1, FIMDB_RM_MAX_LOOP);
+
+    // Inside while loop
     expect_string(__wrap_remove, filename, FIM_DB_DISK_PATH);
-    will_return(__wrap_remove, -1);
-    int ret = fim_db_clean();
-    assert_int_equal(ret, FIMDB_ERR);
+    will_return(__wrap_remove, 0);
+
+    fim_db_clean();
 }
 
 void test_fim_db_clean_success(void **state) {
     wraps_fim_db_clean();
-    int ret =  fim_db_clean();
-    assert_int_equal(ret, FIMDB_OK);
+    fim_db_clean();
 }
 /*-----------------------------------------*/
 /*----------fim_db_insert_data()---------------*/
@@ -1258,6 +1256,12 @@ void test_fim_db_remove_path_one_entry_alert_fail(void **state) {
     expect_value(__wrap_sqlite3_column_int, iCol, 1);
     will_return(__wrap_sqlite3_column_int, 1);
     will_return_count(__wrap_sqlite3_step, SQLITE_DONE, 2);
+
+    #ifndef TEST_WINAGENT
+    will_return(__wrap_fim_configuration_directory, 0);
+    #else
+    will_return(__wrap_fim_configuration_directory, 8);
+    #endif
     will_return(__wrap_fim_json_event, json);
     wraps_fim_db_check_transaction();
     time_t last_commit =  test_data->fim_sql->transaction.last_commit;
@@ -1284,6 +1288,12 @@ void test_fim_db_remove_path_one_entry_alert_success(void **state) {
     expect_value(__wrap_sqlite3_column_int, iCol, 1);
     will_return(__wrap_sqlite3_column_int, 1);
     will_return_count(__wrap_sqlite3_step, SQLITE_DONE, 2);
+
+    #ifndef TEST_WINAGENT
+    will_return(__wrap_fim_configuration_directory, 0);
+    #else
+    will_return(__wrap_fim_configuration_directory, 8);
+    #endif
     cJSON * json = cJSON_CreateObject();
     will_return(__wrap_fim_json_event, json);
     wraps_fim_db_check_transaction();
@@ -2083,9 +2093,9 @@ void test_fim_db_delete_range_success(void **state) {
 
     // Inside fim_db_remove_path (callback)
     #ifndef TEST_WINAGENT
-    will_return(__wrap_fim_configuration_directory, 6);
+    // will_return(__wrap_fim_configuration_directory, 6);
     #else
-    will_return(__wrap_fim_configuration_directory, 0);
+    // will_return(__wrap_fim_configuration_directory, 0);
     #endif
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
@@ -2118,9 +2128,9 @@ void test_fim_db_delete_range_error(void **state) {
 
     // Inside fim_db_remove_path (callback)
     #ifndef TEST_WINAGENT
-    will_return(__wrap_fim_configuration_directory, 6);
+    // will_return(__wrap_fim_configuration_directory, 6);
     #else
-    will_return(__wrap_fim_configuration_directory, 0);
+    // will_return(__wrap_fim_configuration_directory, 0);
     #endif
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     wraps_fim_db_check_transaction();
@@ -2169,9 +2179,9 @@ void test_fim_db_delete_not_scanned(void **state) {
     // Inside fim_db_remove_path (callback)
     // Its return value is not checked so force the error is the simplest way to wrap it
     #ifndef TEST_WINAGENT
-    will_return(__wrap_fim_configuration_directory, 6);
+    // will_return(__wrap_fim_configuration_directory, 6);
     #else
-    will_return(__wrap_fim_configuration_directory, 0);
+    // will_return(__wrap_fim_configuration_directory, 0);
     #endif
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     wraps_fim_db_check_transaction();
@@ -2201,9 +2211,9 @@ void test_fim_db_process_missing_entry(void **state) {
 
     // Inside fim_db_remove_path()
     #ifndef TEST_WINAGENT
-    will_return(__wrap_fim_configuration_directory, 3);
+    // will_return(__wrap_fim_configuration_directory, 3);
     #else
-    will_return(__wrap_fim_configuration_directory, 6);
+    // will_return(__wrap_fim_configuration_directory, 6);
     #endif
 
     // Inside fim_db_remove_path (callback)
@@ -2550,7 +2560,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_exec_simple_wquery_error, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_exec_simple_wquery_success, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_init
-        cmocka_unit_test(test_fim_db_init_failed_db_clean),
         cmocka_unit_test(test_fim_db_init_failed_file_creation),
         cmocka_unit_test(test_fim_db_init_failed_file_creation_prepare),
         cmocka_unit_test(test_fim_db_init_failed_file_creation_step),
