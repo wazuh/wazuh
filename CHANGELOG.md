@@ -13,6 +13,13 @@ All notable changes to this project will be documented in this file.
 - Fixed a small memory leak in clusterd. ([#4465](https://github.com/wazuh/wazuh/pull/4465))
 
 
+## [v3.11.4] - 2020-02-25
+
+## Changed
+
+- Remove chroot in Agentd to allow it resolve DNS at any time. ([#4652](https://github.com/wazuh/wazuh/issues/4652))
+
+
 ## [v3.11.3] - 2020-01-28
 
 ### Fixed
