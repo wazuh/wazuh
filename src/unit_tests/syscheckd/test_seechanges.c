@@ -461,9 +461,6 @@ void test_is_nodiff_no_nodiff(void **state) {
 }
 
 #ifdef TEST_WINAGENT
-/* Forbidden windows path characters taken from: */
-/* https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file#naming-conventions */
-
 void test_filter_success(void **state) {
     char *input = "a/unix/style/path/";
     char *output;
@@ -484,69 +481,6 @@ void test_filter_unchanged_string(void **state) {
     *state = output;
 
     assert_string_equal(output, input);
-}
-
-void test_filter_colon_char(void **state) {
-    char *input = "This : is not valid";
-    char *output;
-
-    output = filter(input);
-
-    assert_null(output);
-}
-
-void test_filter_question_mark_char(void **state) {
-    char *input = "This ? is not valid";
-    char *output;
-
-    output = filter(input);
-
-    assert_null(output);
-}
-
-void test_filter_less_than_char(void **state) {
-    char *input = "This < is not valid";
-    char *output;
-
-    output = filter(input);
-
-    assert_null(output);
-}
-
-void test_filter_greater_than_char(void **state) {
-    char *input = "This > is not valid";
-    char *output;
-
-    output = filter(input);
-
-    assert_null(output);
-}
-
-void test_filter_pipe_char(void **state) {
-    char *input = "This | is not valid";
-    char *output;
-
-    output = filter(input);
-
-    assert_null(output);
-}
-
-void test_filter_double_quote_char(void **state) {
-    char *input = "This \" is not valid";
-    char *output;
-
-    output = filter(input);
-
-    assert_null(output);
-}
-
-void test_filter_asterisk_char(void **state) {
-    char *input = "This * is not valid";
-    char *output;
-
-    output = filter(input);
-
-    assert_null(output);
 }
 
 void test_filter_percentage_char(void **state) {
@@ -1783,13 +1717,6 @@ int main(void) {
         /* filter */
         cmocka_unit_test_teardown(test_filter_success, teardown_string),
         cmocka_unit_test_teardown(test_filter_unchanged_string, teardown_string),
-        cmocka_unit_test(test_filter_colon_char),
-        cmocka_unit_test(test_filter_question_mark_char),
-        cmocka_unit_test(test_filter_less_than_char),
-        cmocka_unit_test(test_filter_greater_than_char),
-        cmocka_unit_test(test_filter_pipe_char),
-        cmocka_unit_test(test_filter_double_quote_char),
-        cmocka_unit_test(test_filter_asterisk_char),
         cmocka_unit_test(test_filter_percentage_char),
 
         cmocka_unit_test_setup_teardown(test_adapt_win_fc_output_success, setup_adapt_win_fc_output, teardown_adapt_win_fc_output),
