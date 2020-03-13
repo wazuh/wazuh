@@ -248,13 +248,13 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos)
                     }
                     break;
                 case REG_DWORD:
-                    snprintf(buffer, OS_SIZE_2048, "%08x", (unsigned int)*data_buffer);
+                    snprintf(buffer, OS_SIZE_2048, "%08x", *((unsigned int*)data_buffer));
                     EVP_DigestUpdate(ctx, buffer, strlen(buffer));
                     buffer[0] = '\0';
                     break;
                 default:
                     for (j = 0; j < data_size; j++) {
-                        snprintf(buffer, OS_SIZE_2048, "%02x", (unsigned int)data_buffer[j]);
+                        snprintf(buffer, 3, "%02x", (unsigned int)data_buffer[j] & 0xFF);
                         EVP_DigestUpdate(ctx, buffer, strlen(buffer));
                         buffer[0] = '\0';
                     }

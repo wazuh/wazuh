@@ -945,13 +945,13 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                         continue;
                     }
 
-                    memcpy(srcip,client_source_ip,IPSIZE);
+                    snprintf(srcip, IPSIZE, "%s", client_source_ip);
                 }
 
                 use_client_ip = 1;
             } else if(!config.flags.use_source_ip) {
                 // use_source-ip = 0 and no -I argument in agent
-                memcpy(srcip, "any", 3);
+                snprintf(srcip, IPSIZE, "any");
             }
             // else -> agent IP is already on srcip
 
