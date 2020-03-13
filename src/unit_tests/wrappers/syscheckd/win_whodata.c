@@ -29,10 +29,10 @@ DWORD WINAPI wrap_win_whodata_GetLastError() {
 BOOL WINAPI wrap_win_whodata_LookupPrivilegeValue(
   __attribute__ ((unused))  LPCSTR lpSystemName,
   LPCSTR lpName,
-  PLUID  lpLuid
+  __attribute__ ((unused)) PLUID  lpLuid
 ) {
   check_expected(lpName);
-  lpLuid = mock();
+  lpLuid = mock_type(PLUID);
   return mock();
 }
 

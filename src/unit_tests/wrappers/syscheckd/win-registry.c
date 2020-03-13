@@ -14,8 +14,8 @@
 
 LONG WINAPI wrap_RegQueryInfoKey(
     __attribute__ ((unused)) HKEY hKey,
-    LPSTR lpClass,
-    LPDWORD lpcchClass,
+    __attribute__ ((unused)) LPSTR lpClass,
+    __attribute__ ((unused)) LPDWORD lpcchClass,
     __attribute__ ((unused)) LPDWORD lpReserved,
     LPDWORD lpcSubKeys,
     __attribute__ ((unused)) LPDWORD lpcbMaxSubKeyLen,
@@ -24,13 +24,13 @@ LONG WINAPI wrap_RegQueryInfoKey(
     __attribute__ ((unused)) LPDWORD lpcbMaxValueNameLen,
     __attribute__ ((unused)) LPDWORD lpcbMaxValueLen,
     __attribute__ ((unused)) LPDWORD lpcbSecurityDescriptor,
-    PFILETIME lpftLastWriteTime) 
-{  
-    lpClass = mock();
-    lpcchClass = mock();
+    __attribute__ ((unused)) PFILETIME lpftLastWriteTime)
+{
+    lpClass = mock_type(char *);
+    lpcchClass = mock_type(unsigned long *);
     *lpcSubKeys = mock_type(long);
     *lpcValues = mock_type(long);
-    lpftLastWriteTime = mock();
+    lpftLastWriteTime = mock_type(PFILETIME);
     return mock();
 }
 
@@ -42,7 +42,7 @@ LONG WINAPI wrap_RegEnumKeyEx(
     __attribute__ ((unused)) LPDWORD lpReserved,
     __attribute__ ((unused)) LPSTR lpClass,
     __attribute__ ((unused)) LPDWORD lpcchClass,
-    __attribute__ ((unused)) PFILETIME lpftLastWriteTime) 
+    __attribute__ ((unused)) PFILETIME lpftLastWriteTime)
 {
     strcpy(lpName, mock_ptr_type(char *));
     *lpcchName = mock_type(long);
@@ -54,7 +54,7 @@ LONG WINAPI wrap_RegOpenKeyEx(
     __attribute__ ((unused)) LPCSTR lpSubKey,
     __attribute__ ((unused)) DWORD ulOptions,
     __attribute__ ((unused)) REGSAM samDesired,
-    __attribute__ ((unused))PHKEY phkResult) 
+    __attribute__ ((unused))PHKEY phkResult)
 {
     return mock();
 }
@@ -67,7 +67,7 @@ LONG WINAPI wrap_RegEnumValue(
     __attribute__ ((unused)) LPDWORD lpReserved,
     __attribute__ ((unused)) LPDWORD lpType,
     __attribute__ ((unused)) LPBYTE lpData,
-    LPDWORD lpcbData) 
+    LPDWORD lpcbData)
 {
     strcpy(lpValueName, mock_ptr_type(char *));
     *lpcchValueName = mock_type(long);
@@ -76,8 +76,8 @@ LONG WINAPI wrap_RegEnumValue(
     const void *data = mock_ptr_type(void *);
     memcpy(lpData, data, sizeof(char) * (*lpcbData));
     return mock();
-}  
+}
 
-LONG WINAPI wrap_RegCloseKey(HKEY hKey) {
+LONG WINAPI wrap_RegCloseKey(__attribute__ ((unused)) HKEY hKey) {
     return 0;
 }
