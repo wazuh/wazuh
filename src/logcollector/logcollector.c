@@ -59,7 +59,7 @@ static pthread_mutexattr_t win_el_mutex_attr;
 
 /* can read synchronization */
 static int _can_read = 0;
-static pthread_mutex_t can_read_mutex;
+static pthread_rwlock_t can_read_rwlock;
 
 /* Multiple readers / one write mutex */
 static pthread_rwlock_t files_update_rwlock;
@@ -98,7 +98,6 @@ void LogCollectorStart()
     check_pattern_expand_excluded();
 
     w_mutex_init(&mutex, NULL);
-    w_mutex_init(&can_read_mutex, NULL);
 #ifndef WIN32
     /* To check for inode changes */
     struct stat tmp_stat;
@@ -2173,6 +2172,7 @@ void files_lock_init()
 #endif
 
     w_rwlock_init(&files_update_rwlock, &attr);
+    w_rwlock_init(&can_read_rwlock, &attr);
     pthread_rwlockattr_destroy(&attr);
 }
 
@@ -2374,15 +2374,15 @@ static void check_pattern_expand_excluded() {
 
 
 static void set_can_read(int value){
-    w_mutex_lock(&can_read_mutex);
+    w_rwlock_wrlock(&can_read_rwlock);
     _can_read = value;
-    w_mutex_unlock(&can_read_mutex);
+    w_rwlock_unlock(&can_read_rwlock);
 }
 
 int can_read() {
     int ret;
-    w_mutex_lock(&can_read_mutex);
+    w_rwlock_rdlock(&can_read_rwlock);
     ret = _can_read;
-    w_mutex_unlock(&can_read_mutex);
+    w_rwlock_unlock(&can_read_rwlock);
     return ret;
 }
