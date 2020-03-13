@@ -25,6 +25,7 @@ extern int is_valid_sacl(PACL sacl, int is_file);
 extern void replace_device_path(char **path);
 extern int get_drive_names(wchar_t *volume_name, char *device);
 extern int get_volume_names();
+extern void notify_SACL_change(char *dir);
 
 extern char sys_64;
 extern PSID everyone_sid;
@@ -136,6 +137,13 @@ char *__wrap_wstr_replace(const char * string, const char * search, const char *
     return mock_type(char*);
 }
 
+int __wrap_SendMSG(__attribute__((unused)) int queue, const char *message, const char *locmsg, char loc) {
+    check_expected(message);
+    check_expected(locmsg);
+    check_expected(loc);
+
+    return mock();
+}
 /**************************************************************************/
 /***************************set_winsacl************************************/
 void test_set_winsacl_failed_opening(void **state) {
@@ -2009,6 +2017,15 @@ void test_get_volume_names_no_more_files(void **state) {
     assert_int_equal(ret, 0);
 }
 
+void test_notify_SACL_change(void **state) {
+    expect_string(__wrap_SendMSG, message,
+        "ossec: Audit: The SACL of 'C:\\a\\path' has been modified and can no longer be scanned in whodata mode.");
+    expect_string(__wrap_SendMSG, locmsg, "syscheck");
+    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
+    will_return(__wrap_SendMSG, 0); // Return value is discarded
+
+    notify_SACL_change("C:\\a\\path");
+}
 
 /**************************************************************************/
 int main(void) {
@@ -2078,6 +2095,8 @@ int main(void) {
         cmocka_unit_test(test_get_volume_names_no_dos_device),
         cmocka_unit_test(test_get_volume_names_error_on_next_volume),
         cmocka_unit_test(test_get_volume_names_no_more_files),
+        /* notify_SACL_change */
+        cmocka_unit_test(test_notify_SACL_change),
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, NULL);
