@@ -1,14 +1,17 @@
 # WINAGENT NEEDS TO BE BUILT WITH WIN32 toolchain
 # cmake ../ -DCMAKE_TOOLCHAIN_FILE=../Toolchain-win32.cmake
 
+set(CMAKE_FIND_LIBRARY_SUFFIXES ".a;.dll")
+
 if(NOT CMAKE_CROSSCOMPILING)
   message(FATAL_ERROR "Cross compiling tools not enabled. Try running cmake as: \n cmake ../ -DCMAKE_TOOLCHAIN_FILE=../Toolchain-win32.cmake")
 endif()
 
 # Setup the compiling toolchain
 # Find the wazuh shared library
-find_library(WAZUHEXT NAMES libwazuhext.dll HINTS "${SRC_FOLDER}")
+find_library(WAZUHEXT NAMES wazuhext HINTS "${SRC_FOLDER}")
 if(NOT WAZUHEXT)
+  message(FATAL_ERROR "WAZUHEXT is set to '${WAZUHEXT}', but did not find any file matching ${SRC_FOLDER}/${CMAKE_FIND_LIBRARY_PREFIXES}wazuhext${CMAKE_FIND_LIBRARY_SUFFIXES}")
   message(FATAL_ERROR "libwazuhext not found in ${SRC_FOLDER} Aborting...")
 endif()
 
@@ -25,18 +28,8 @@ if(NOT STATIC_CMOCKA)
 endif()
 
 # Add compiling flags
-add_compile_options(-ggdb -O0 -g -coverage -DTEST_WINAGENT -DDEBUG -DENABLE_AUDIT)
-
-# Add syscheck objects
-file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/*.o)
-list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/syscheckd/main.o)
-list(FILTER sysfiles EXCLUDE REGEX ".*-event.o$")
-list(APPEND obj_files ${sysfiles})
-
-
-file(GLOB rootfiles ${SRC_FOLDER}/rootcheck/*.o)
-list(FILTER rootfiles EXCLUDE REGEX ".*_rk.o$")
-list(APPEND obj_files ${rootfiles})
+add_compile_options(-ggdb -O0 -g -coverage)
+add_definitions(-DTEST_WINAGENT -DDEBUG -DENABLE_AUDIT)
 
 # Add logcollector objects
 file(GLOB logcollector_lib ${SRC_FOLDER}/logcollector/*.o)
@@ -72,12 +65,11 @@ set_target_properties(
   DEPENDENCIES_O
   PROPERTIES
   LINKER_LANGUAGE C
-  CMAKE_C_COMPILER i686-w64-mingw32-gcc
-  CMAKE_C_LINK_EXECUTABLE "CMAKE_C_COMPILER <FLAGS> <CMAKE_C_LINK_FLAGS> <LINK_FLAGS> <OBJECTS>  -o <TARGET> <LINK_LIBRARIES>"
 )
 
-target_link_libraries(DEPENDENCIES_O ${WAZUHLIB} ${WAZUHEXT} ${PTHREAD} ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32)
+target_link_libraries(DEPENDENCIES_O ${WAZUHLIB} ${WAZUHEXT} ${PTHREAD} ${STATIC_CMOCKA} SYSCHECK_O wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32)
 
 # Set tests dependencies
 # Use --start-group and --end-group to handle circular dependencies
 set(TEST_DEPS -Wl,--start-group ${WAZUHLIB} ${WAZUHEXT} DEPENDENCIES_O -Wl,--end-group ${PTHREAD} ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 -fprofile-arcs -ftest-coverage)
+set(TEST_EVENT_DEPS -Wl,--start-group ${WAZUHLIB} ${WAZUHEXT} DEPENDENCIES_O -Wl,--end-group ${PTHREAD} ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 -fprofile-arcs -ftest-coverage)

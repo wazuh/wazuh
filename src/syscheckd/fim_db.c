@@ -11,6 +11,12 @@
 #include "fim_db.h"
 
 #ifdef UNIT_TESTING
+#ifdef WIN32
+#include "unit_tests/wrappers/syscheckd/fim_db.h"
+
+#define fprintf wrap_fprintf
+#endif
+
 #define static
 #endif
 
@@ -1105,19 +1111,19 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
             /* Don't send alert if received mode and mode in configuration aren't the same */
             case FIM_REALTIME:
                 if (!(syscheck.opts[conf] & REALTIME_ACTIVE)) {
-                    return;
+                    return;     // LCOV_EXCL_LINE
                 }
                 break;
 
             case FIM_WHODATA:
                 if (!(syscheck.opts[conf] & WHODATA_ACTIVE)) {
-                    return;
+                    return;     // LCOV_EXCL_LINE
                 }
                 break;
 
             case FIM_SCHEDULED:
                 if (!(syscheck.opts[conf] & SCHEDULED_ACTIVE)) {
-                    return;
+                    return;     // LCOV_EXCL_LINE
                 }
                 break;
 
