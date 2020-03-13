@@ -26,6 +26,7 @@ extern void replace_device_path(char **path);
 extern int get_drive_names(wchar_t *volume_name, char *device);
 extern int get_volume_names();
 extern void notify_SACL_change(char *dir);
+extern int whodata_hash_add(OSHash *table, char *id, void *data, char *tag);
 
 extern char sys_64;
 extern PSID everyone_sid;
@@ -141,6 +142,14 @@ int __wrap_SendMSG(__attribute__((unused)) int queue, const char *message, const
     check_expected(message);
     check_expected(locmsg);
     check_expected(loc);
+
+    return mock();
+}
+
+int __wrap_OSHash_Add_ex(OSHash *self, const char *key, void *data) {
+    check_expected(self);
+    check_expected(key);
+    check_expected(data);
 
     return mock();
 }
@@ -2027,6 +2036,55 @@ void test_notify_SACL_change(void **state) {
     notify_SACL_change("C:\\a\\path");
 }
 
+void test_whodata_hash_add_unable_to_add(void **state) {
+    wchar_t *data = L"Some random data";
+    int ret;
+
+    expect_value(__wrap_OSHash_Add_ex, self, (OSHash*)123456);
+    expect_string(__wrap_OSHash_Add_ex, key, "key");
+    expect_memory(__wrap_OSHash_Add_ex, data, data, wcslen(data));
+    will_return(__wrap_OSHash_Add_ex, 0);
+
+    expect_string(__wrap__merror, formatted_msg,
+        "(6631): The event could not be added to the 'tag' hash table. Target: 'key'.");
+
+    ret = whodata_hash_add((OSHash*)123456, "key", data, "tag");
+
+    assert_int_equal(ret, 0);
+}
+
+void test_whodata_hash_add_duplicate_entry(void **state) {
+    wchar_t *data = L"Some random data";
+    int ret;
+
+    expect_value(__wrap_OSHash_Add_ex, self, (OSHash*)123456);
+    expect_string(__wrap_OSHash_Add_ex, key, "key");
+    expect_memory(__wrap_OSHash_Add_ex, data, data, wcslen(data));
+    will_return(__wrap_OSHash_Add_ex, 1);
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6630): The event could not be added to the 'tag' hash table because it is duplicated. Target: 'key'.");
+
+    ret = whodata_hash_add((OSHash*)123456, "key", data, "tag");
+
+    assert_int_equal(ret, 1);
+}
+
+void test_whodata_hash_add_success(void **state) {
+    wchar_t *data = L"Some random data";
+    int ret;
+
+    expect_value(__wrap_OSHash_Add_ex, self, (OSHash*)123456);
+    expect_string(__wrap_OSHash_Add_ex, key, "key");
+    expect_memory(__wrap_OSHash_Add_ex, data, data, wcslen(data));
+    will_return(__wrap_OSHash_Add_ex, 2);
+
+    ret = whodata_hash_add((OSHash*)123456, "key", data, "tag");
+
+    assert_int_equal(ret, 2);
+}
+
+
 /**************************************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -2097,6 +2155,11 @@ int main(void) {
         cmocka_unit_test(test_get_volume_names_no_more_files),
         /* notify_SACL_change */
         cmocka_unit_test(test_notify_SACL_change),
+        /* whodata_hash_add */
+        // TODO: Should we add tests for NULL input parameter?
+        cmocka_unit_test(test_whodata_hash_add_unable_to_add),
+        cmocka_unit_test(test_whodata_hash_add_duplicate_entry),
+        cmocka_unit_test(test_whodata_hash_add_success),
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, NULL);
