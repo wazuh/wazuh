@@ -612,7 +612,7 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
                 path = wstr_unescape_json(line);
             }
         } else {
-            path = (char *)W_Vector_get(file->list, i);
+            path = wstr_unescape_json((char *) W_Vector_get(file->list, i));
         }
 
         if (path) {
