@@ -99,7 +99,7 @@ ID: 80200 - 80499
     <rule id="80300" level="0">
         <if_sid>80200</if_sid>
         <field name="aws.source">guardduty</field>
-        <description>AWS Guard​Duty alert.</description>
+        <description>AWS GuardDuty alert.</description>
         <group>aws_guardduty,</group>
         <options>no_full_log</options>
     </rule>
@@ -108,21 +108,21 @@ ID: 80200 - 80499
     <rule id="80301" level="3">
         <if_sid>80300</if_sid>
         <field name="aws.severity">0|1|2|3</field>
-        <description>AWS Guard​Duty: $(aws.service.action.actionType) - $(aws.title)</description>
+        <description>AWS GuardDuty: $(aws.service.action.actionType) - $(aws.title)</description>
         <group>aws_guardduty,</group>
         <options>no_full_log</options>
     </rule>
     <rule id="80302" level="6">
         <if_sid>80300</if_sid>
         <field name="aws.severity">4|5|6</field>
-        <description>AWS Guard​Duty: $(aws.service.action.actionType) - $(aws.title)</description>
+        <description>AWS GuardDuty: $(aws.service.action.actionType) - $(aws.title)</description>
         <group>aws_guardduty,</group>
         <options>no_full_log</options>
     </rule>
     <rule id="80303" level="10">
         <if_sid>80300</if_sid>
         <field name="aws.severity">7|8|9</field>
-        <description>AWS Guard​Duty: $(aws.service.action.actionType) - $(aws.title)</description>
+        <description>AWS GuardDuty: $(aws.service.action.actionType) - $(aws.title)</description>
         <group>aws_guardduty,</group>
         <options>no_full_log</options>
     </rule>
@@ -131,7 +131,7 @@ ID: 80200 - 80499
     <rule id="80305" level="3">
         <if_sid>80301</if_sid>
         <field name="aws.service.action.actionType">PORT_PROBE</field>
-        <description>AWS Guard​Duty: $(aws.service.action.actionType) - $(aws.title) [IP: $(aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.ipAddressV4)] [Port: $(aws.service.action.portProbeAction.portProbeDetails.localPortDetails.port)]</description>
+        <description>AWS GuardDuty: $(aws.service.action.actionType) - $(aws.title) [IP: $(aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.ipAddressV4)] [Port: $(aws.service.action.portProbeAction.portProbeDetails.localPortDetails.port)]</description>
         <group>aws_guardduty,</group>
         <options>no_full_log</options>
     </rule>
@@ -139,7 +139,7 @@ ID: 80200 - 80499
     <rule id="80306" level="6">
         <if_sid>80302</if_sid>
         <field name="aws.service.action.actionType">PORT_PROBE</field>
-        <description>AWS Guard​Duty: $(aws.service.action.actionType) - $(aws.title) [IP: $(aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.ipAddressV4)] [Port: $(aws.service.action.portProbeAction.portProbeDetails.localPortDetails.port)]</description>
+        <description>AWS GuardDuty: $(aws.service.action.actionType) - $(aws.title) [IP: $(aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.ipAddressV4)] [Port: $(aws.service.action.portProbeAction.portProbeDetails.localPortDetails.port)]</description>
         <group>aws_guardduty,</group>
         <options>no_full_log</options>
     </rule>
@@ -147,7 +147,7 @@ ID: 80200 - 80499
     <rule id="80307" level="10">
         <if_sid>80303</if_sid>
         <field name="aws.service.action.actionType">PORT_PROBE</field>
-        <description>AWS Guard​Duty: $(aws.service.action.actionType) - $(aws.title) [IP: $(aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.ipAddressV4)] [Port: $(aws.service.action.portProbeAction.portProbeDetails.localPortDetails.port)]</description>
+        <description>AWS GuardDuty: $(aws.service.action.actionType) - $(aws.title) [IP: $(aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.ipAddressV4)] [Port: $(aws.service.action.portProbeAction.portProbeDetails.localPortDetails.port)]</description>
         <group>aws_guardduty,</group>
         <options>no_full_log</options>
     </rule>
