@@ -143,5 +143,24 @@ WINBOOL WINAPI wrap_win_whodata_GetVolumePathNamesForVolumeNameW(
   DWORD cchBufferLength,
   PDWORD lpcchReturnLength
 );
+
+HANDLE WINAPI wrap_win_whodata_FindFirstVolumeW(
+  LPWSTR lpszVolumeName,
+  DWORD cchBufferLength
+);
+
+WINBOOL WINAPI wrap_win_whodata_FindVolumeClose (HANDLE hFindVolume);
+
+DWORD WINAPI wrap_win_whodata_QueryDosDeviceW(
+  LPCWSTR lpDeviceName,
+  LPWSTR lpTargetPath,
+  DWORD ucchMax
+);
+
+WINBOOL WINAPI wrap_win_whodata_FindNextVolumeW(
+  HANDLE hFindVolume,
+  LPWSTR lpszVolumeName,
+  DWORD cchBufferLength
+);
 #endif
 #endif

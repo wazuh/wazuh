@@ -256,3 +256,44 @@ WINBOOL WINAPI wrap_win_whodata_GetVolumePathNamesForVolumeNameW(
 
   return mock();
 }
+
+HANDLE WINAPI wrap_win_whodata_FindFirstVolumeW(
+  LPWSTR lpszVolumeName,
+  DWORD cchBufferLength
+) {
+  wcsncpy(lpszVolumeName, mock_type(wchar_t*), cchBufferLength);
+
+  return mock_type(HANDLE);
+}
+
+WINBOOL WINAPI wrap_win_whodata_FindVolumeClose (HANDLE hFindVolume) {
+  check_expected(hFindVolume);
+
+  return mock();
+}
+
+DWORD WINAPI wrap_win_whodata_QueryDosDeviceW(
+  LPCWSTR lpDeviceName,
+  LPWSTR lpTargetPath,
+  DWORD ucchMax
+) {
+  DWORD len = mock();
+  check_expected(lpDeviceName);
+
+  if(len <= ucchMax)
+    memcpy(lpTargetPath, mock_type(LPWSTR), len);
+
+  return mock();
+}
+
+WINBOOL WINAPI wrap_win_whodata_FindNextVolumeW(
+  HANDLE hFindVolume,
+  LPWSTR lpszVolumeName,
+  DWORD cchBufferLength
+) {
+  check_expected(hFindVolume);
+
+  wcsncpy(lpszVolumeName, mock_type(LPWSTR), cchBufferLength);
+
+  return mock();
+}

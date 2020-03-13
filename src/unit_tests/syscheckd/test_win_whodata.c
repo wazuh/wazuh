@@ -24,6 +24,7 @@ extern int whodata_check_arch();
 extern int is_valid_sacl(PACL sacl, int is_file);
 extern void replace_device_path(char **path);
 extern int get_drive_names(wchar_t *volume_name, char *device);
+extern int get_volume_names();
 
 extern char sys_64;
 extern PSID everyone_sid;
@@ -1813,9 +1814,7 @@ void test_get_drive_names_access_denied_error(void **state) {
     wchar_t *volume_name = L"\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}";
     char *device = "C";
 
-    expect_string(wrap_win_whodata_GetVolumePathNamesForVolumeNameW,
-        lpszVolumeName, L"\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}");
-
+    expect_memory(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, lpszVolumeName, volume_name, wcslen(volume_name));
     will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, OS_MAXSTR);
     will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, 0);
 
@@ -1838,9 +1837,7 @@ void test_get_drive_names_more_data_error(void **state) {
 
     will_return(wrap_win_whodata_GetLastError, ERROR_MORE_DATA);
 
-    expect_string(wrap_win_whodata_GetVolumePathNamesForVolumeNameW,
-        lpszVolumeName, L"\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}");
-
+    expect_memory(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, lpszVolumeName, volume_name, wcslen(volume_name));
     will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, 1);
     will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, L"");
     will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, 0);
@@ -1857,8 +1854,7 @@ void test_get_drive_names_success(void **state) {
     char *device = "C";
     wchar_t *volume_paths = L"A\0C\0\\Some\\path\0";
 
-    expect_string(wrap_win_whodata_GetVolumePathNamesForVolumeNameW,
-        lpszVolumeName, L"\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}");
+    expect_memory(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, lpszVolumeName, volume_name, wcslen(volume_name));
 
     will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, 16);
     will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, volume_paths);
@@ -1871,6 +1867,148 @@ void test_get_drive_names_success(void **state) {
 
     get_drive_names(volume_name, device);
 }
+
+void test_get_volume_names_unable_to_find_first_volume(void **state) {
+    int ret;
+    will_return(wrap_win_whodata_FindFirstVolumeW, L"");
+    will_return(wrap_win_whodata_FindFirstVolumeW, INVALID_HANDLE_VALUE);
+
+    will_return(wrap_win_whodata_GetLastError, ERROR_ACCESS_DENIED);
+
+    expect_string(__wrap__mwarn, formatted_msg, "FindFirstVolumeW failed (5)'Input/output error'");
+
+    expect_value(wrap_win_whodata_FindVolumeClose, hFindVolume, INVALID_HANDLE_VALUE);
+    will_return(wrap_win_whodata_FindVolumeClose, 1);
+
+    ret = get_volume_names();
+
+    assert_int_equal(ret, -1);
+}
+
+void test_get_volume_names_bad_path(void **state) {
+    int ret;
+    will_return(wrap_win_whodata_FindFirstVolumeW, L"Not a valid volume");
+    will_return(wrap_win_whodata_FindFirstVolumeW, (HANDLE)123456);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Find Volume returned a bad path: Not a valid volume");
+
+    expect_value(wrap_win_whodata_FindVolumeClose, hFindVolume, (HANDLE)123456);
+    will_return(wrap_win_whodata_FindVolumeClose, 1);
+
+    ret = get_volume_names();
+
+    assert_int_equal(ret, -1);
+}
+
+void test_get_volume_names_no_dos_device(void **state) {
+    int ret;
+    wchar_t *str = L"";
+    will_return(wrap_win_whodata_FindFirstVolumeW, L"\\\\?\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}\\");
+    will_return(wrap_win_whodata_FindFirstVolumeW, (HANDLE)123456);
+
+    expect_string(wrap_win_whodata_QueryDosDeviceW, lpDeviceName, L"Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}");
+    will_return(wrap_win_whodata_QueryDosDeviceW, wcslen(str));
+    will_return(wrap_win_whodata_QueryDosDeviceW, str);
+    will_return(wrap_win_whodata_QueryDosDeviceW, 0);
+
+    will_return(wrap_win_whodata_GetLastError, ERROR_ACCESS_DENIED);
+
+    expect_string(__wrap__mwarn, formatted_msg, "QueryDosDeviceW failed (5)'Input/output error'");
+
+    expect_value(wrap_win_whodata_FindVolumeClose, hFindVolume, (HANDLE)123456);
+    will_return(wrap_win_whodata_FindVolumeClose, 1);
+
+    ret = get_volume_names();
+
+    assert_int_equal(ret, -1);
+}
+
+void test_get_volume_names_error_on_next_volume(void **state) {
+    int ret;
+    wchar_t *str = L"C:";
+    wchar_t *volume_name = L"\\\\?\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}\\";
+
+    will_return(wrap_win_whodata_FindFirstVolumeW, volume_name);
+    will_return(wrap_win_whodata_FindFirstVolumeW, (HANDLE)123456);
+
+    expect_string(wrap_win_whodata_QueryDosDeviceW, lpDeviceName, L"Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}");
+    will_return(wrap_win_whodata_QueryDosDeviceW, wcslen(str));
+    will_return(wrap_win_whodata_QueryDosDeviceW, str);
+    will_return(wrap_win_whodata_QueryDosDeviceW, wcslen(str));
+
+    // Inside get_drive_names
+    {
+        wchar_t *volume_paths = L"A\0C\0\\Some\\path\0";
+
+        expect_memory(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, lpszVolumeName, volume_name, wcslen(volume_name));
+
+        will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, 16);
+        will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, volume_paths);
+        will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, 1);
+
+        expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C' associated with the mounting point 'A'");
+        expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C' associated with the mounting point 'C'");
+        expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C' associated with the mounting point '\\Some\\path'");
+    }
+
+    expect_value(wrap_win_whodata_FindNextVolumeW, hFindVolume, (HANDLE)123456);
+    will_return(wrap_win_whodata_FindNextVolumeW, L"");
+    will_return(wrap_win_whodata_FindNextVolumeW, 0);
+
+    will_return(wrap_win_whodata_GetLastError, ERROR_ACCESS_DENIED);
+
+    expect_string(__wrap__mwarn, formatted_msg, "FindNextVolumeW failed (5)'Input/output error'");
+
+    expect_value(wrap_win_whodata_FindVolumeClose, hFindVolume, (HANDLE)123456);
+    will_return(wrap_win_whodata_FindVolumeClose, 1);
+
+    ret = get_volume_names();
+
+    assert_int_equal(ret, -1);
+}
+
+void test_get_volume_names_no_more_files(void **state) {
+    int ret;
+    wchar_t *str = L"C:";
+    wchar_t *volume_name = L"\\\\?\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}\\";
+
+    will_return(wrap_win_whodata_FindFirstVolumeW, volume_name);
+    will_return(wrap_win_whodata_FindFirstVolumeW, (HANDLE)123456);
+
+    expect_string(wrap_win_whodata_QueryDosDeviceW, lpDeviceName, L"Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}");
+    will_return(wrap_win_whodata_QueryDosDeviceW, wcslen(str));
+    will_return(wrap_win_whodata_QueryDosDeviceW, str);
+    will_return(wrap_win_whodata_QueryDosDeviceW, wcslen(str));
+
+    // Inside get_drive_names
+    {
+        wchar_t *volume_paths = L"A\0C\0\\Some\\path\0";
+
+        expect_memory(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, lpszVolumeName, volume_name, wcslen(volume_name));
+
+        will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, 16);
+        will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, volume_paths);
+        will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, 1);
+
+        expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C' associated with the mounting point 'A'");
+        expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C' associated with the mounting point 'C'");
+        expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C' associated with the mounting point '\\Some\\path'");
+    }
+
+    expect_value(wrap_win_whodata_FindNextVolumeW, hFindVolume, (HANDLE)123456);
+    will_return(wrap_win_whodata_FindNextVolumeW, L"");
+    will_return(wrap_win_whodata_FindNextVolumeW, 0);
+
+    will_return(wrap_win_whodata_GetLastError, ERROR_NO_MORE_FILES);
+
+    expect_value(wrap_win_whodata_FindVolumeClose, hFindVolume, (HANDLE)123456);
+    will_return(wrap_win_whodata_FindVolumeClose, 1);
+
+    ret = get_volume_names();
+
+    assert_int_equal(ret, 0);
+}
+
 
 /**************************************************************************/
 int main(void) {
@@ -1934,6 +2072,12 @@ int main(void) {
         cmocka_unit_test(test_get_drive_names_access_denied_error),
         cmocka_unit_test(test_get_drive_names_more_data_error),
         cmocka_unit_test_teardown(test_get_drive_names_success, teardown_wdata_device),
+        /* get_volume_names */
+        cmocka_unit_test(test_get_volume_names_unable_to_find_first_volume),
+        cmocka_unit_test(test_get_volume_names_bad_path),
+        cmocka_unit_test(test_get_volume_names_no_dos_device),
+        cmocka_unit_test(test_get_volume_names_error_on_next_volume),
+        cmocka_unit_test(test_get_volume_names_no_more_files),
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, NULL);

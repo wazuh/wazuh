@@ -65,6 +65,11 @@
 #define RegQueryValueEx wrap_win_whodata_RegQueryValueEx
 #define WideCharToMultiByte wrap_win_whodata_WideCharToMultiByte
 #define GetVolumePathNamesForVolumeNameW wrap_win_whodata_GetVolumePathNamesForVolumeNameW
+#define FindFirstVolumeW wrap_win_whodata_FindFirstVolumeW
+#define FindVolumeClose wrap_win_whodata_FindVolumeClose
+#define QueryDosDeviceW wrap_win_whodata_QueryDosDeviceW
+#define FindNextVolumeW wrap_win_whodata_FindNextVolumeW
+#define FindVolumeClose wrap_win_whodata_FindVolumeClose
 #else
 #define STATIC static
 #endif
