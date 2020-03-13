@@ -1761,6 +1761,15 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
         w_cond_signal(&msg->available);
     }
 
+    if ((result < 0) && !reported) {
+        #ifndef WIN32
+            mwarn("Target '%s' message queue is full (%zu). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
+        #else
+            mwarn("Target '%s' message queue is full (%u). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
+        #endif
+            reported = 1;
+    }
+
     w_mutex_unlock(&msg->mutex);
 
     if (result < 0) {
@@ -1768,15 +1777,6 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
         free(message->buffer);
         free(message);
         mdebug2("Discarding log line for target '%s'", log_target->log_socket->name);
-
-        if (!reported) {
-#ifndef WIN32
-            mwarn("Target '%s' message queue is full (%zu). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
-#else
-            mwarn("Target '%s' message queue is full (%u). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
-#endif
-            reported = 1;
-        }
     }
 
     return result;
