@@ -2083,8 +2083,41 @@ void test_whodata_hash_add_success(void **state) {
 
     assert_int_equal(ret, 2);
 }
+/*****************************restore_sacls********************************/
+void test_restore_sacls_openprocesstoken_failed(void **state){
+    expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_win_whodata_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_win_whodata_OpenProcessToken, 0);
 
+    will_return(wrap_win_whodata_GetLastError, (unsigned int) 500);
 
+    expect_string(__wrap__merror, formatted_msg,
+        "(6648): OpenProcessToken() failed. Error '500'.");
+
+    will_return(wrap_win_whodata_CloseHandle, 0);
+    will_return(wrap_win_whodata_CloseHandle, 0);
+
+    restore_sacls();
+}
+
+void test_restore_sacls_set_privilege_failed(void **state){
+    expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_win_whodata_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_win_whodata_OpenProcessToken, 1);
+
+    // set_privilege 
+    expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+    will_return(wrap_win_whodata_LookupPrivilegeValue, 0);
+    will_return(wrap_win_whodata_LookupPrivilegeValue, 0);
+    will_return(wrap_win_whodata_GetLastError, ERROR_ACCESS_DENIED);
+    expect_string(__wrap__merror, formatted_msg, "(6647): Could not find the 'SeSecurityPrivilege' privilege. Error: 5");
+    will_return(wrap_win_whodata_GetLastError, ERROR_ACCESS_DENIED);
+    expect_string(__wrap__merror, formatted_msg, "(6659): The privilege could not be activated. Error: '5'.");
+    
+    will_return(wrap_win_whodata_CloseHandle, 0);
+    will_return(wrap_win_whodata_CloseHandle, 0);
+    restore_sacls();
+}
 /**************************************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -2160,6 +2193,10 @@ int main(void) {
         cmocka_unit_test(test_whodata_hash_add_unable_to_add),
         cmocka_unit_test(test_whodata_hash_add_duplicate_entry),
         cmocka_unit_test(test_whodata_hash_add_success),
+        /* restore_sacls */
+        cmocka_unit_test(test_restore_sacls_openprocesstoken_failed),
+        cmocka_unit_test(test_restore_sacls_set_privilege_failed),
+        /* audit_restore */
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, NULL);
