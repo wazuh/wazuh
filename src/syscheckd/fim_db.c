@@ -434,8 +434,7 @@ void fim_db_clean_file(fim_tmp_file **file, int storage) {
         }
         os_free((*file)->path);
     } else {
-        os_free((*file)->list->vector);
-        os_free((*file)->list);
+        W_Vector_free((*file)->list);
     }
 
     os_free((*file));
