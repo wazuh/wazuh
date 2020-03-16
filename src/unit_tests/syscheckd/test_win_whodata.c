@@ -30,6 +30,7 @@ extern int whodata_hash_add(OSHash *table, char *id, void *data, char *tag);
 extern int check_object_sacl(char *obj, int is_file);
 extern void whodata_clist_remove(whodata_event_node *node);
 extern void free_win_whodata_evt(whodata_evt *evt);
+extern int compare_timestamp(SYSTEMTIME *t1, SYSTEMTIME *t2);
 
 extern char sys_64;
 extern PSID everyone_sid;
@@ -2544,6 +2545,306 @@ void test_free_win_whodata_evt_null_event(void **state) {
     free_win_whodata_evt(NULL);
 }
 
+void test_compare_timestamp_t1_year_bigger(void **state) {
+    SYSTEMTIME t1, t2;
+    int ret;
+
+    memset(&t1, 0, sizeof(SYSTEMTIME));
+    memset(&t2, 0, sizeof(SYSTEMTIME));
+
+    t1.wYear = 2020;
+    t2.wYear = 2019;
+
+    ret = compare_timestamp(&t1, &t2);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_compare_timestamp_t2_year_bigger(void **state) {
+    SYSTEMTIME t1, t2;
+    int ret;
+
+    memset(&t1, 0, sizeof(SYSTEMTIME));
+    memset(&t2, 0, sizeof(SYSTEMTIME));
+
+    t1.wYear = 2019;
+    t2.wYear = 2020;
+
+    ret = compare_timestamp(&t1, &t2);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_compare_timestamp_t1_month_bigger(void **state) {
+    SYSTEMTIME t1, t2;
+    int ret;
+
+    memset(&t1, 0, sizeof(SYSTEMTIME));
+    memset(&t2, 0, sizeof(SYSTEMTIME));
+
+    t1.wYear = 2020;
+    t2.wYear = 2020;
+
+    t1.wMonth = 5;
+    t2.wMonth = 3;
+
+    ret = compare_timestamp(&t1, &t2);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_compare_timestamp_t2_month_bigger(void **state) {
+    SYSTEMTIME t1, t2;
+    int ret;
+
+    memset(&t1, 0, sizeof(SYSTEMTIME));
+    memset(&t2, 0, sizeof(SYSTEMTIME));
+
+    t1.wYear = 2020;
+    t2.wYear = 2020;
+
+    t1.wMonth = 3;
+    t2.wMonth = 5;
+
+    ret = compare_timestamp(&t1, &t2);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_compare_timestamp_t1_day_bigger(void **state) {
+    SYSTEMTIME t1, t2;
+    int ret;
+
+    memset(&t1, 0, sizeof(SYSTEMTIME));
+    memset(&t2, 0, sizeof(SYSTEMTIME));
+
+    t1.wYear = 2020;
+    t2.wYear = 2020;
+
+    t1.wMonth = 5;
+    t2.wMonth = 5;
+
+    t1.wDay = 15;
+    t2.wDay = 10;
+
+    ret = compare_timestamp(&t1, &t2);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_compare_timestamp_t2_day_bigger(void **state) {
+    SYSTEMTIME t1, t2;
+    int ret;
+
+    memset(&t1, 0, sizeof(SYSTEMTIME));
+    memset(&t2, 0, sizeof(SYSTEMTIME));
+
+    t1.wYear = 2020;
+    t2.wYear = 2020;
+
+    t1.wMonth = 5;
+    t2.wMonth = 5;
+
+    t1.wDay = 10;
+    t2.wDay = 15;
+
+    ret = compare_timestamp(&t1, &t2);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_compare_timestamp_t1_hour_bigger(void **state) {
+    SYSTEMTIME t1, t2;
+    int ret;
+
+    memset(&t1, 0, sizeof(SYSTEMTIME));
+    memset(&t2, 0, sizeof(SYSTEMTIME));
+
+    t1.wYear = 2020;
+    t2.wYear = 2020;
+
+    t1.wMonth = 5;
+    t2.wMonth = 5;
+
+    t1.wDay = 15;
+    t2.wDay = 15;
+
+    t1.wHour = 14;
+    t2.wHour = 12;
+
+    ret = compare_timestamp(&t1, &t2);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_compare_timestamp_t2_hour_bigger(void **state) {
+    SYSTEMTIME t1, t2;
+    int ret;
+
+    memset(&t1, 0, sizeof(SYSTEMTIME));
+    memset(&t2, 0, sizeof(SYSTEMTIME));
+
+    t1.wYear = 2020;
+    t2.wYear = 2020;
+
+    t1.wMonth = 5;
+    t2.wMonth = 5;
+
+    t1.wDay = 15;
+    t2.wDay = 15;
+
+    t1.wHour = 12;
+    t2.wHour = 14;
+
+    ret = compare_timestamp(&t1, &t2);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_compare_timestamp_t1_minute_bigger(void **state) {
+    SYSTEMTIME t1, t2;
+    int ret;
+
+    memset(&t1, 0, sizeof(SYSTEMTIME));
+    memset(&t2, 0, sizeof(SYSTEMTIME));
+
+    t1.wYear = 2020;
+    t2.wYear = 2020;
+
+    t1.wMonth = 5;
+    t2.wMonth = 5;
+
+    t1.wDay = 15;
+    t2.wDay = 15;
+
+    t1.wHour = 14;
+    t2.wHour = 14;
+
+    t1.wMinute = 30;
+    t2.wMinute = 25;
+
+    ret = compare_timestamp(&t1, &t2);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_compare_timestamp_t2_minute_bigger(void **state) {
+    SYSTEMTIME t1, t2;
+    int ret;
+
+    memset(&t1, 0, sizeof(SYSTEMTIME));
+    memset(&t2, 0, sizeof(SYSTEMTIME));
+
+    t1.wYear = 2020;
+    t2.wYear = 2020;
+
+    t1.wMonth = 5;
+    t2.wMonth = 5;
+
+    t1.wDay = 15;
+    t2.wDay = 15;
+
+    t1.wHour = 14;
+    t2.wHour = 14;
+
+    t1.wMinute = 25;
+    t2.wMinute = 30;
+
+    ret = compare_timestamp(&t1, &t2);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_compare_timestamp_t1_seconds_bigger(void **state) {
+    SYSTEMTIME t1, t2;
+    int ret;
+
+    memset(&t1, 0, sizeof(SYSTEMTIME));
+    memset(&t2, 0, sizeof(SYSTEMTIME));
+
+    t1.wYear = 2020;
+    t2.wYear = 2020;
+
+    t1.wMonth = 5;
+    t2.wMonth = 5;
+
+    t1.wDay = 15;
+    t2.wDay = 15;
+
+    t1.wHour = 14;
+    t2.wHour = 14;
+
+    t1.wMinute = 30;
+    t2.wMinute = 30;
+
+    t1.wSecond = 30;
+    t2.wSecond = 25;
+
+    ret = compare_timestamp(&t1, &t2);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_compare_timestamp_t2_seconds_bigger(void **state) {
+    SYSTEMTIME t1, t2;
+    int ret;
+
+    memset(&t1, 0, sizeof(SYSTEMTIME));
+    memset(&t2, 0, sizeof(SYSTEMTIME));
+
+    t1.wYear = 2020;
+    t2.wYear = 2020;
+
+    t1.wMonth = 5;
+    t2.wMonth = 5;
+
+    t1.wDay = 15;
+    t2.wDay = 15;
+
+    t1.wHour = 14;
+    t2.wHour = 14;
+
+    t1.wMinute = 25;
+    t2.wMinute = 30;
+
+    t1.wSecond = 25;
+    t2.wSecond = 30;
+
+    ret = compare_timestamp(&t1, &t2);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_compare_timestamp_equal_dates(void **state) {
+    SYSTEMTIME t1, t2;
+    int ret;
+
+    memset(&t1, 0, sizeof(SYSTEMTIME));
+    memset(&t2, 0, sizeof(SYSTEMTIME));
+
+    t1.wYear = 2020;
+    t2.wYear = 2020;
+
+    t1.wMonth = 5;
+    t2.wMonth = 5;
+
+    t1.wDay = 15;
+    t2.wDay = 15;
+
+    t1.wHour = 14;
+    t2.wHour = 14;
+
+    t1.wMinute = 25;
+    t2.wMinute = 30;
+
+    t1.wSecond = 30;
+    t2.wSecond = 30;
+
+    ret = compare_timestamp(&t1, &t2);
+
+    assert_int_equal(ret, 1);
+}
+
 /**************************************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -2638,6 +2939,21 @@ int main(void) {
         /* free_win_whodata_evt */
         cmocka_unit_test_setup_teardown(test_free_win_whodata_evt, setup_w_clist, teardown_w_clist),
         cmocka_unit_test(test_free_win_whodata_evt_null_event),
+        /* compare_timestamp */
+        // TODO: Should we add tests for NULL input parameters?
+        cmocka_unit_test(test_compare_timestamp_t1_year_bigger),
+        cmocka_unit_test(test_compare_timestamp_t2_year_bigger),
+        cmocka_unit_test(test_compare_timestamp_t1_month_bigger),
+        cmocka_unit_test(test_compare_timestamp_t2_month_bigger),
+        cmocka_unit_test(test_compare_timestamp_t1_day_bigger),
+        cmocka_unit_test(test_compare_timestamp_t2_day_bigger),
+        cmocka_unit_test(test_compare_timestamp_t1_hour_bigger),
+        cmocka_unit_test(test_compare_timestamp_t2_hour_bigger),
+        cmocka_unit_test(test_compare_timestamp_t1_minute_bigger),
+        cmocka_unit_test(test_compare_timestamp_t2_minute_bigger),
+        cmocka_unit_test(test_compare_timestamp_t1_seconds_bigger),
+        cmocka_unit_test(test_compare_timestamp_t2_seconds_bigger),
+        cmocka_unit_test(test_compare_timestamp_equal_dates),
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, NULL);
