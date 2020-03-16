@@ -315,3 +315,13 @@ WINBOOL WINAPI wrap_win_whodata_FileTimeToSystemTime(
 
   return mock();
 }
+
+BOOL WINAPI wrap_win_whodata_DeleteAce(
+  PACL  pAcl,
+  DWORD dwAceIndex
+){
+  check_expected(pAcl);
+  check_expected(dwAceIndex);
+
+  return mock();
+} 

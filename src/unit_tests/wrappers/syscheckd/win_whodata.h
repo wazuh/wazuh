@@ -172,5 +172,10 @@ WINBOOL WINAPI wrap_win_whodata_FileTimeToSystemTime(
   CONST FILETIME *lpFileTime,
   LPSYSTEMTIME lpSystemTime
 );
+
+BOOL WINAPI wrap_win_whodata_DeleteAce(
+  PACL  pAcl,
+  DWORD dwAceIndex
+);
 #endif
 #endif
