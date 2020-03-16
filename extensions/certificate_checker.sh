@@ -5,17 +5,17 @@ elasticsearch_config_folder="/etc/elasticsearch"
 elasticsearch_config_file="elasticsearch.yml"
 
 elasticsearch_settings=( "xpack.security.transport.ssl.key" 
-                                    "xpack.security.transport.ssl.certificate"
-                                    "xpack.security.transport.ssl.certificate_authorities"
-                                    "xpack.security.http.ssl.key"
-                                    "xpack.security.http.ssl.certificate"
-                                    "xpack.security.http.ssl.certificate_authorities"
-                                    )
+                         "xpack.security.transport.ssl.certificate"
+                         "xpack.security.transport.ssl.certificate_authorities"
+                         "xpack.security.http.ssl.key"
+                         "xpack.security.http.ssl.certificate"
+                         "xpack.security.http.ssl.certificate_authorities"
+                         )
 # ------------------
 
 # Filebeat definitions
-filebeat_config_folder="/etc/filebeat"
-filebeat_config_file="filebeat.yml"
+filebeat_config_folder="/etc/filebeat" 
+filebeat_config_file="filebeat.yml" 
 
 
 filebeat_settings=( "output.elasticsearch.ssl.certificate" 
