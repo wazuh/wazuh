@@ -2362,6 +2362,126 @@ void test_restore_sacls_deleteAce_failed(void **state){
     restore_sacls();
 }
 
+void test_restore_sacls_SetNamedSecurityInfo_failed(void **state){
+    expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_win_whodata_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_win_whodata_OpenProcessToken, 1);
+
+    // set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+    }
+    // GetNamedSecurity
+    expect_string(wrap_win_whodata_GetNamedSecurityInfo, pObjectName, syscheck.dir[0]);
+    ACL acl;
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, &acl);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_SUCCESS);
+    
+    expect_value(wrap_win_whodata_DeleteAce, pAcl, &acl);
+    expect_value(wrap_win_whodata_DeleteAce, dwAceIndex, 0);
+    will_return(wrap_win_whodata_DeleteAce, 1);
+
+    expect_string(wrap_win_whodata_SetNamedSecurityInfo, pObjectName, syscheck.dir[0]);
+    expect_value(wrap_win_whodata_SetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
+    expect_value(wrap_win_whodata_SetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
+    expect_value(wrap_win_whodata_SetNamedSecurityInfo, psidOwner, NULL);
+    expect_value(wrap_win_whodata_SetNamedSecurityInfo, psidGroup, NULL);
+    expect_value(wrap_win_whodata_SetNamedSecurityInfo, pDacl, NULL);
+    expect_value(wrap_win_whodata_SetNamedSecurityInfo, pSacl, &acl);
+    will_return(wrap_win_whodata_SetNamedSecurityInfo, ERROR_PATH_NOT_FOUND);
+    expect_string(__wrap__merror, formatted_msg, "(6658): SetNamedSecurityInfo() failed. Error: '3'.");
+
+    /* Inside set_privilege */
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+    }
+    
+    will_return(wrap_win_whodata_CloseHandle, 0);
+    will_return(wrap_win_whodata_CloseHandle, 0);
+
+    restore_sacls();
+}
+
+void test_restore_sacls_success(void **state){
+    expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_win_whodata_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_win_whodata_OpenProcessToken, 1);
+
+    // set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+    }
+    // GetNamedSecurity
+    expect_string(wrap_win_whodata_GetNamedSecurityInfo, pObjectName, syscheck.dir[0]);
+    ACL acl;
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, &acl);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_SUCCESS);
+    
+    expect_value(wrap_win_whodata_DeleteAce, pAcl, &acl);
+    expect_value(wrap_win_whodata_DeleteAce, dwAceIndex, 0);
+    will_return(wrap_win_whodata_DeleteAce, 1);
+
+    expect_string(wrap_win_whodata_SetNamedSecurityInfo, pObjectName, syscheck.dir[0]);
+    expect_value(wrap_win_whodata_SetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
+    expect_value(wrap_win_whodata_SetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
+    expect_value(wrap_win_whodata_SetNamedSecurityInfo, psidOwner, NULL);
+    expect_value(wrap_win_whodata_SetNamedSecurityInfo, psidGroup, NULL);
+    expect_value(wrap_win_whodata_SetNamedSecurityInfo, pDacl, NULL);
+    expect_value(wrap_win_whodata_SetNamedSecurityInfo, pSacl, &acl);
+    will_return(wrap_win_whodata_SetNamedSecurityInfo, ERROR_SUCCESS);
+
+    char debug_msg[OS_MAXSTR];
+    snprintf(debug_msg, OS_MAXSTR, FIM_SACL_RESTORED, syscheck.dir[0]);
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
+
+    /* Inside set_privilege */
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+    }
+    
+    will_return(wrap_win_whodata_CloseHandle, 0);
+    will_return(wrap_win_whodata_CloseHandle, 0);
+
+    restore_sacls();
+}
+
+
 /********************************************************************************************/
 void test_check_object_sacl_open_process_error(void **state) {
     int ret;
@@ -3196,6 +3316,8 @@ int main(void) {
         cmocka_unit_test(test_restore_sacls_set_privilege_failed),
         cmocka_unit_test_setup_teardown(test_restore_sacls_securityNameInfo_failed, setup_restore_sacls, teardown_restore_sacls),
         cmocka_unit_test_setup_teardown(test_restore_sacls_deleteAce_failed, setup_restore_sacls, teardown_restore_sacls),
+        cmocka_unit_test_setup_teardown(test_restore_sacls_SetNamedSecurityInfo_failed, setup_restore_sacls, teardown_restore_sacls),
+        cmocka_unit_test_setup_teardown(test_restore_sacls_success, setup_restore_sacls, teardown_restore_sacls),
         /* audit_restore */
         /* check_object_sacl */
         cmocka_unit_test(test_check_object_sacl_open_process_error),
