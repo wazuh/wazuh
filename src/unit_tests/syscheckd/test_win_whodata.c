@@ -28,6 +28,9 @@ extern int get_volume_names();
 extern void notify_SACL_change(char *dir);
 extern int whodata_hash_add(OSHash *table, char *id, void *data, char *tag);
 extern void restore_sacls();
+extern int check_object_sacl(char *obj, int is_file);
+extern void whodata_clist_remove(whodata_event_node *node);
+extern void free_win_whodata_evt(whodata_evt *evt);
 
 extern char sys_64;
 extern PSID everyone_sid;
@@ -83,6 +86,91 @@ static int teardown_replace_device_path(void **state) {
 
     if(teardown_string(state))
         return -1;
+
+    return 0;
+}
+
+static int setup_w_clist_single_node(void **state) {
+    whodata_event_node *node = calloc(1, sizeof(whodata_event_node));
+
+    if(!node)
+        return -1;
+
+    node->next = NULL;
+    node->prev = NULL;
+
+    if(node->id = strdup("First node"), !node->id)
+        return -1;
+
+    syscheck.w_clist.first = node;
+    syscheck.w_clist.last = node;
+    syscheck.w_clist.current_size = 1;
+
+    return 0;
+}
+
+static int teardown_w_clist_single_node(void **state) {
+    if(syscheck.w_clist.first) {
+        if(syscheck.w_clist.first->id)
+            free(syscheck.w_clist.first->id);
+
+        free(syscheck.w_clist.first);
+    }
+
+    syscheck.w_clist.last = syscheck.w_clist.first = NULL;
+
+    return 0;
+}
+
+static int setup_w_clist(void **state) {
+    whodata_event_node *first_node = calloc(1, sizeof(whodata_event_node));
+    whodata_event_node *mid_node = calloc(1, sizeof(whodata_event_node));
+    whodata_event_node *last_node = calloc(1, sizeof(whodata_event_node));
+
+    if(!first_node || !mid_node || !last_node)
+        return -1;
+
+    if(first_node->id = strdup("first_node"), !first_node->id)
+        return -1;
+
+    if(mid_node->id = strdup("mid_node"), !mid_node->id)
+        return -1;
+
+    if(last_node->id = strdup("last_node"), !last_node->id)
+        return -1;
+
+    first_node->prev = NULL;
+    first_node->next = mid_node;
+
+    mid_node->prev = first_node;
+    mid_node->next = last_node;
+
+    last_node->prev = mid_node;
+    last_node->next = NULL;
+
+    syscheck.w_clist.first = first_node;
+    syscheck.w_clist.last = last_node;
+
+    syscheck.w_clist.current_size = 3;
+
+    return 0;
+}
+
+static int teardown_w_clist(void **state) {
+    whodata_event_node *node;
+    whodata_event_node *next = node->next;
+
+    for(node = syscheck.w_clist.first; node; node = next) {
+        next = node->next;
+
+        if(node->id)
+            free(node->id);
+
+        free(node);
+    }
+
+    syscheck.w_clist.last = syscheck.w_clist.first = NULL;
+    syscheck.w_clist.current_size = 0;
 
     return 0;
 }
@@ -154,6 +242,11 @@ int __wrap_OSHash_Add_ex(OSHash *self, const char *key, void *data) {
 
     return mock();
 }
+
+void __wrap_free_whodata_event(whodata_evt *w_evt) {
+    check_expected(w_evt);
+}
+
 /**************************************************************************/
 /***************************set_winsacl************************************/
 void test_set_winsacl_failed_opening(void **state) {
@@ -1768,6 +1861,34 @@ void test_is_valid_sacl_not_valid(void **state) {
     assert_int_equal(ret, 0);
 }
 
+void test_is_valid_sacl_valid(void **state) {
+    int ret;
+    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+    ACL new_sacl;
+    ACCESS_ALLOWED_ACE ace;
+    unsigned long new_sacl_size;
+
+    everyone_sid = NULL;
+    ev_sid_size = 1;
+
+    // Set the ACL and ACE data
+    new_sacl.AceCount=1;
+    ace.Header.AceFlags = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG;
+    ace.Mask = FILE_WRITE_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES | DELETE;
+
+    expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+    expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+    will_return(wrap_win_whodata_AllocateAndInitializeSid, 1);
+
+    will_return(wrap_win_whodata_GetAce, &ace);
+    will_return(wrap_win_whodata_GetAce, 1);
+
+    will_return(wrap_win_whodata_EqualSid, 1);
+
+    ret = is_valid_sacl(&new_sacl, 1);
+    assert_int_equal(ret, 1);
+}
+
 void test_replace_device_path_invalid_path(void **state) {
     char *path = strdup("invalid\\path");
 
@@ -2106,7 +2227,7 @@ void test_restore_sacls_set_privilege_failed(void **state){
     will_return(wrap_win_whodata_OpenProcessToken, (HANDLE) 123456);
     will_return(wrap_win_whodata_OpenProcessToken, 1);
 
-    // set_privilege 
+    // set_privilege
     expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
     will_return(wrap_win_whodata_LookupPrivilegeValue, 0);
     will_return(wrap_win_whodata_LookupPrivilegeValue, 0);
@@ -2114,12 +2235,11 @@ void test_restore_sacls_set_privilege_failed(void **state){
     expect_string(__wrap__merror, formatted_msg, "(6647): Could not find the 'SeSecurityPrivilege' privilege. Error: 5");
     will_return(wrap_win_whodata_GetLastError, ERROR_ACCESS_DENIED);
     expect_string(__wrap__merror, formatted_msg, "(6659): The privilege could not be activated. Error: '5'.");
-    
+
     will_return(wrap_win_whodata_CloseHandle, 0);
     will_return(wrap_win_whodata_CloseHandle, 0);
     restore_sacls();
 }
-
 
 int setup_restore_sacls(void **state) {
     state = malloc(sizeof(int));
@@ -2149,6 +2269,7 @@ void test_restore_sacls_securityNameInfo_failed(void **state){
         expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
         expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
         will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
     // GetNamedSecurity
@@ -2157,10 +2278,10 @@ void test_restore_sacls_securityNameInfo_failed(void **state){
     expect_value(wrap_win_whodata_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
     will_return(wrap_win_whodata_GetNamedSecurityInfo, NULL);
     will_return(wrap_win_whodata_GetNamedSecurityInfo, NULL);
-    will_return(wrap_win_whodata_GetNamedSecurityInfo, -1);
-    expect_string(__wrap__merror, formatted_msg, "(6650): GetNamedSecurityInfo() failed. Error '-1'");
-
-    /* Retry set_privilege */
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_FILE_NOT_FOUND);
+    expect_string(__wrap__merror, formatted_msg, "(6650): GetNamedSecurityInfo() failed. Error '2'");
+    
+    /* Inside set_privilege */
     {
         expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
         will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
@@ -2178,6 +2299,310 @@ void test_restore_sacls_securityNameInfo_failed(void **state){
 
     restore_sacls();
 }
+
+void test_check_object_sacl_open_process_error(void **state) {
+    int ret;
+
+    expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_win_whodata_OpenProcessToken, (HANDLE)NULL);
+    will_return(wrap_win_whodata_OpenProcessToken, 0);
+
+    will_return(wrap_win_whodata_GetLastError, ERROR_ACCESS_DENIED);
+
+    expect_string(__wrap__merror, formatted_msg, "(6648): OpenProcessToken() failed. Error '5'.");
+
+    ret = check_object_sacl("C:\\a\\path", 0);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_check_object_sacl_unable_to_set_privilege(void **state) {
+    int ret;
+
+    expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_win_whodata_OpenProcessToken, (HANDLE)123456);
+    will_return(wrap_win_whodata_OpenProcessToken, 1);
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 0);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 0);
+
+        will_return(wrap_win_whodata_GetLastError, ERROR_ACCESS_DENIED);
+
+        expect_string(__wrap__merror, formatted_msg,
+            "(6647): Could not find the 'SeSecurityPrivilege' privilege. Error: 5");
+    }
+
+    will_return(wrap_win_whodata_GetLastError, ERROR_ACCESS_DENIED);
+
+    expect_string(__wrap__merror, formatted_msg, "(6659): The privilege could not be activated. Error: '5'.");
+
+    will_return(wrap_win_whodata_CloseHandle, 0);
+
+    ret = check_object_sacl("C:\\a\\path", 0);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_check_object_sacl_unable_to_retrieve_security_info(void **state) {
+    int ret;
+
+    expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_win_whodata_OpenProcessToken, (HANDLE)123456);
+    will_return(wrap_win_whodata_OpenProcessToken, 1);
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+    }
+
+    expect_string(wrap_win_whodata_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, NULL);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, NULL);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_FILE_NOT_FOUND);
+
+    expect_string(__wrap__merror, formatted_msg, "(6650): GetNamedSecurityInfo() failed. Error '2'");
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+    }
+
+    will_return(wrap_win_whodata_CloseHandle, 0);
+
+    ret = check_object_sacl("C:\\a\\path", 0);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_check_object_sacl_invalid_sacl(void **state) {
+    ACL acl;
+    int ret;
+
+    expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_win_whodata_OpenProcessToken, (HANDLE)123456);
+    will_return(wrap_win_whodata_OpenProcessToken, 1);
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+    }
+
+    expect_string(wrap_win_whodata_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, &acl);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // is_valid_sacl
+    {
+        SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+
+        expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+        expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+        will_return(wrap_win_whodata_AllocateAndInitializeSid, 0);
+
+        will_return(wrap_win_whodata_GetLastError, (unsigned int) 700);
+
+        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+    }
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+    }
+
+    will_return(wrap_win_whodata_CloseHandle, 0);
+
+    ret = check_object_sacl("C:\\a\\path", 0);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_check_object_sacl_valid_sacl(void **state) {
+    ACL acl;
+    int ret;
+
+    expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_win_whodata_OpenProcessToken, (HANDLE)123456);
+    will_return(wrap_win_whodata_OpenProcessToken, 1);
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+    }
+
+    expect_string(wrap_win_whodata_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, &acl);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside is_valid_sacl
+    {
+        SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+        ACL new_sacl;
+        ACCESS_ALLOWED_ACE ace;
+        unsigned long new_sacl_size;
+
+        everyone_sid = NULL;
+        ev_sid_size = 1;
+
+        // Set the ACL and ACE data
+        new_sacl.AceCount=1;
+        ace.Header.AceFlags = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG;
+        ace.Mask = FILE_WRITE_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES | DELETE;
+
+        expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+        expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+        will_return(wrap_win_whodata_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_win_whodata_GetAce, &ace);
+        will_return(wrap_win_whodata_GetAce, 1);
+
+        will_return(wrap_win_whodata_EqualSid, 1);
+    }
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+    }
+
+    will_return(wrap_win_whodata_CloseHandle, 0);
+
+    ret = check_object_sacl("C:\\a\\path", 0);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_whodata_clist_remove_single_node(void **state) {
+    whodata_clist_remove(syscheck.w_clist.first);
+
+    assert_null(syscheck.w_clist.first);
+    assert_null(syscheck.w_clist.last);
+    assert_int_equal(syscheck.w_clist.current_size, 0);
+}
+
+void test_whodata_clist_remove_first_node(void **state) {
+    whodata_clist_remove(syscheck.w_clist.first);
+
+    assert_non_null(syscheck.w_clist.first);
+    assert_non_null(syscheck.w_clist.last);
+    assert_string_equal(syscheck.w_clist.first->id, "mid_node");
+    assert_ptr_equal(syscheck.w_clist.first->next, syscheck.w_clist.last);
+    assert_null(syscheck.w_clist.first->prev);
+    assert_string_equal(syscheck.w_clist.last->id, "last_node");
+    assert_ptr_equal(syscheck.w_clist.last->prev, syscheck.w_clist.first);
+    assert_null(syscheck.w_clist.last->next);
+    assert_int_equal(syscheck.w_clist.current_size, 2);
+}
+
+void test_whodata_clist_remove_last_node(void **state) {    whodata_event_node *node = syscheck.w_clist.first;
+    whodata_clist_remove(syscheck.w_clist.last);
+
+    assert_non_null(syscheck.w_clist.first);
+    assert_non_null(syscheck.w_clist.last);
+    assert_string_equal(syscheck.w_clist.first->id, "first_node");
+    assert_ptr_equal(syscheck.w_clist.first->next, syscheck.w_clist.last);
+    assert_null(syscheck.w_clist.first->prev);
+    assert_string_equal(syscheck.w_clist.last->id, "mid_node");
+    assert_ptr_equal(syscheck.w_clist.last->prev, syscheck.w_clist.first);
+    assert_null(syscheck.w_clist.last->next);
+    assert_int_equal(syscheck.w_clist.current_size, 2);
+}
+
+void test_whodata_clist_remove_center_node(void **state) {
+    whodata_clist_remove(syscheck.w_clist.first->next);
+
+    assert_non_null(syscheck.w_clist.first);
+    assert_non_null(syscheck.w_clist.last);
+    assert_string_equal(syscheck.w_clist.first->id, "first_node");
+    assert_ptr_equal(syscheck.w_clist.first->next, syscheck.w_clist.last);
+    assert_null(syscheck.w_clist.first->prev);
+    assert_string_equal(syscheck.w_clist.last->id, "last_node");
+    assert_ptr_equal(syscheck.w_clist.last->prev, syscheck.w_clist.first);
+    assert_null(syscheck.w_clist.last->next);
+    assert_int_equal(syscheck.w_clist.current_size, 2);
+}
+
+void test_free_win_whodata_evt(void **state) {
+    whodata_evt evt;
+
+    evt.wnode = syscheck.w_clist.first->next;
+
+    expect_value(__wrap_free_whodata_event, w_evt, &evt);
+
+    free_win_whodata_evt(&evt);
+
+    assert_non_null(syscheck.w_clist.first);
+    assert_non_null(syscheck.w_clist.last);
+    assert_string_equal(syscheck.w_clist.first->id, "first_node");
+    assert_ptr_equal(syscheck.w_clist.first->next, syscheck.w_clist.last);
+    assert_null(syscheck.w_clist.first->prev);
+    assert_string_equal(syscheck.w_clist.last->id, "last_node");
+    assert_ptr_equal(syscheck.w_clist.last->prev, syscheck.w_clist.first);
+    assert_null(syscheck.w_clist.last->next);
+    assert_int_equal(syscheck.w_clist.current_size, 2);
+}
+
+void test_free_win_whodata_evt_null_event(void **state) {
+    // Nothing to check on this condition
+    free_win_whodata_evt(NULL);
+}
+
 /**************************************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -2231,6 +2656,7 @@ int main(void) {
         cmocka_unit_test(test_is_valid_sacl_sacl_not_found),
         cmocka_unit_test(test_is_valid_sacl_ace_not_found),
         cmocka_unit_test(test_is_valid_sacl_not_valid),
+        cmocka_unit_test(test_is_valid_sacl_valid),
         /* replace_device_path */
         cmocka_unit_test_setup_teardown(test_replace_device_path_invalid_path, setup_replace_device_path, teardown_replace_device_path),
         cmocka_unit_test_setup_teardown(test_replace_device_path_empty_wdata_device, setup_replace_device_path, teardown_replace_device_path),
@@ -2258,6 +2684,20 @@ int main(void) {
         cmocka_unit_test(test_restore_sacls_set_privilege_failed),
         cmocka_unit_test_setup_teardown(test_restore_sacls_securityNameInfo_failed, setup_restore_sacls, teardown_restore_sacls),
         /* audit_restore */
+        /* check_object_sacl */
+        cmocka_unit_test(test_check_object_sacl_open_process_error),
+        cmocka_unit_test(test_check_object_sacl_unable_to_set_privilege),
+        cmocka_unit_test(test_check_object_sacl_unable_to_retrieve_security_info),
+        cmocka_unit_test(test_check_object_sacl_invalid_sacl),
+        cmocka_unit_test(test_check_object_sacl_valid_sacl),
+        /* whodata_clist_remove */
+        cmocka_unit_test_setup_teardown(test_whodata_clist_remove_single_node, setup_w_clist_single_node, teardown_w_clist_single_node),
+        cmocka_unit_test_setup_teardown(test_whodata_clist_remove_first_node, setup_w_clist, teardown_w_clist),
+        cmocka_unit_test_setup_teardown(test_whodata_clist_remove_last_node, setup_w_clist, teardown_w_clist),
+        cmocka_unit_test_setup_teardown(test_whodata_clist_remove_center_node, setup_w_clist, teardown_w_clist),
+        /* free_win_whodata_evt */
+        cmocka_unit_test_setup_teardown(test_free_win_whodata_evt, setup_w_clist, teardown_w_clist),
+        cmocka_unit_test(test_free_win_whodata_evt_null_event),
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, NULL);
