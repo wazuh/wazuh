@@ -28,6 +28,7 @@ extern int get_volume_names();
 extern void notify_SACL_change(char *dir);
 extern int whodata_hash_add(OSHash *table, char *id, void *data, char *tag);
 extern void restore_sacls();
+extern int restore_audit_policies();
 extern int check_object_sacl(char *obj, int is_file);
 extern void whodata_clist_remove(whodata_event_node *node);
 extern void free_win_whodata_evt(whodata_evt *evt);
@@ -260,6 +261,14 @@ int __wrap_remove(const char *filename) {
     return mock();
 }
 
+int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path) {
+    check_expected(command);
+    if (output) {
+        *output = mock_type(char *);
+    }
+    *exitcode = mock_type(int);
+    return mock();
+}
 /**************************************************************************/
 /***************************set_winsacl************************************/
 void test_set_winsacl_failed_opening(void **state) {
@@ -2480,7 +2489,30 @@ void test_restore_sacls_success(void **state){
 
     restore_sacls();
 }
+/***********************************restore_audit_policies***********************************/
+void test_restore_audit_policies_backup_not_found(void **state) {
+    expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
+    will_return(__wrap_IsFile, -1);
+    expect_string(__wrap__merror, formatted_msg, "(6622): There is no backup of audit policies. Policies will not be restored.");
 
+    int ret = restore_audit_policies();
+    assert_int_equal(ret, 1);
+}
+
+void test_restore_audit_policies_command_failed(void **state) {
+    expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
+    will_return(__wrap_IsFile, 0);
+
+    expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\backup-policies\"");
+    will_return(__wrap_wm_exec, "OUTPUT COMMAND");
+    will_return(__wrap_wm_exec, -1);
+    will_return(__wrap_wm_exec, -1);
+
+    expect_string(__wrap__merror, formatted_msg, "(6635): Auditpol backup error: 'failed to execute command'.");
+
+    int ret = restore_audit_policies();
+    assert_int_equal(ret, 1);
+}
 
 /********************************************************************************************/
 void test_check_object_sacl_open_process_error(void **state) {
@@ -3179,7 +3211,13 @@ void test_run_whodata_scan_no_auto_audit_policies(void **state) {
     expect_string(__wrap_remove, filename, "tmp\\backup-policies");
     will_return(__wrap_remove, 0);
 
+    expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "(6661): 'tmp\\backup-policies' could not be opened: 'No such file or directory' (2).");
 }
+    expect_string(__wrap__mwarn, formatted_msg,  "(6916): Local audit policies could not be configured.");
 
     ret = run_whodata_scan();
     assert_int_equal(ret, 1);
@@ -3318,6 +3356,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_restore_sacls_deleteAce_failed, setup_restore_sacls, teardown_restore_sacls),
         cmocka_unit_test_setup_teardown(test_restore_sacls_SetNamedSecurityInfo_failed, setup_restore_sacls, teardown_restore_sacls),
         cmocka_unit_test_setup_teardown(test_restore_sacls_success, setup_restore_sacls, teardown_restore_sacls),
+        /* restore_audit_policies */
+        cmocka_unit_test(test_restore_audit_policies_backup_not_found),
+        cmocka_unit_test(test_restore_audit_policies_command_failed),
         /* audit_restore */
         /* check_object_sacl */
         cmocka_unit_test(test_check_object_sacl_open_process_error),
