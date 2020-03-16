@@ -13,6 +13,7 @@
 #include "syscheck.h"
 
 #ifdef UNIT_TESTING
+// Remove static qualifier from tests
 #define static
 #endif
 

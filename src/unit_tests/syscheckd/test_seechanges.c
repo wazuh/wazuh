@@ -29,7 +29,15 @@ char *_read_file(const char *high_name, const char *low_name, const char *define
 
 #ifdef TEST_WINAGENT
 #define __mode_t int
+
+char *adapt_win_fc_output(char *command_output);
 #endif
+
+char* filter(const char *string);
+int symlink_to_dir (const char *filename);
+char *gen_diff_alert(const char *filename, time_t alert_diff_time);
+int seechanges_dupfile(const char *old, const char *current);
+int seechanges_createpath(const char *filename);
 
 /* redefinitons/wrapping */
 
@@ -68,11 +76,6 @@ int __wrap_isChroot() {
     return 1;
 }
 #endif
-char* filter(const char *string);
-int symlink_to_dir (const char *filename);
-char *gen_diff_alert(const char *filename, time_t alert_diff_time);
-int seechanges_dupfile(const char *old, const char *current);
-int seechanges_createpath(const char *filename);
 
 int test_mode = 0;
 
@@ -195,12 +198,24 @@ int __wrap_mkdir(const char *__path, __mode_t __mode) {
     return mock();
 }
 
+#ifdef TEST_WINAGENT
+void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
+}
+#endif
 int __wrap_OS_MD5_File(const char *fname, os_md5 output, int mode) {
     check_expected(fname);
     check_expected(mode);
 
     char *md5 = mock_type(char *);
-    strncpy(output, md5, sizeof(os_md5) - 1);
+    strncpy(output, md5, sizeof(os_md5));
 
     return mock();
 }
@@ -241,6 +256,35 @@ static int teardown_free_string(void **state) {
     free(string);
     return 0;
 }
+
+static int teardown_string(void **state) {
+    char *s = *state;
+    free(s);
+    return 0;
+}
+
+#ifdef TEST_WINAGENT
+static int setup_adapt_win_fc_output(void **state) {
+    char **strarray = calloc(2, sizeof(char*));
+
+    if(strarray == NULL)
+        return -1;
+
+    *state = strarray;
+
+    return 0;
+}
+
+static int teardown_adapt_win_fc_output(void **state) {
+    char **strarray = *state;
+
+    free(strarray[0]);
+    free(strarray[1]);
+    free(strarray);
+
+    return 0;
+}
+#endif
 
 /* tests */
 void test_filter(void **state) {
@@ -416,6 +460,83 @@ void test_is_nodiff_no_nodiff(void **state) {
     assert_int_equal(ret, 0);
 }
 
+#ifdef TEST_WINAGENT
+void test_filter_success(void **state) {
+    char *input = "a/unix/style/path/";
+    char *output;
+
+    output = filter(input);
+
+    *state = output;
+
+    assert_string_equal(output, "a\\unix\\style\\path\\");
+}
+
+void test_filter_unchanged_string(void **state) {
+    char *input = "This string wont change";
+    char *output;
+
+    output = filter(input);
+
+    *state = output;
+
+    assert_string_equal(output, input);
+}
+
+void test_filter_percentage_char(void **state) {
+    char *input = "This % is not valid";
+    char *output;
+
+    output = filter(input);
+
+    assert_null(output);
+}
+
+void test_adapt_win_fc_output_success(void **state) {
+    char **strarray = *state;
+    char *output;
+    char *input = strdup(
+        "***** start.txt\r\n"
+        "    1:  First line\r\n"
+        "***** END.TXT\r\n"
+        "    1:  First Line 123\r\n"
+        "    2:  Last line\r\n"
+        "*****");
+
+    if(input == NULL) fail();
+
+    strarray[0] = input;
+
+    output = adapt_win_fc_output(input);
+
+    assert_non_null(output);
+
+    strarray[1] = output;
+
+    assert_string_equal(output, "> First line\n< First Line 123\n< Last line\n---\n");
+}
+
+void test_adapt_win_fc_output_invalid_input(void **state) {
+    char **strarray = *state;
+    char *output;
+    char *input = strdup("This is invalid");
+
+    if(input == NULL) fail();
+
+    strarray[0] = input;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6667): Unable to find second line of alert string.: This is invalid");
+
+    output = adapt_win_fc_output(input);
+
+    assert_non_null(output);
+
+    strarray[1] = output;
+
+    assert_string_equal(output, input);
+}
+
+#endif
 void test_gen_diff_alert(void **state) {
     const char * file_name = "/folder/test.file";
     time_t time = 12345;
@@ -721,6 +842,16 @@ void test_seechanges_addfile(void **state) {
     const char * file_name = "C:\\folder\\test_";
     const char * file_name_abs = "C\\folder\\test_";
     const char * default_path = "";
+    const char * diff_string = "***** start.txt\r\n"
+                               "    1:  First line\r\n"
+                               "***** END.TXT\r\n"
+                               "    1:  First Line 123\r\n"
+                               "    2:  Last line\r\n"
+                               "*****";
+    const char * diff_adapted_string = "> First line\n"
+                                       "< First Line 123\n"
+                                       "< Last line\n"
+                                       "---\n";
     #endif
 
     char last_entry[OS_SIZE_128];
@@ -793,8 +924,13 @@ void test_seechanges_addfile(void **state) {
     expect_string(__wrap_fopen, __filename, diff_file);
     expect_string(__wrap_fopen, __modes, "rb");
     will_return(__wrap_fopen, 1);
+    #ifndef TEST_WINAGENT
     will_return(__wrap_fread, "test diff");
     will_return(__wrap_fread, 9);
+    #else
+    will_return(__wrap_fread, diff_string);
+    will_return(__wrap_fread, 101);
+    #endif
     will_return(__wrap_fclose, 1);
     expect_string(__wrap_w_compress_gzfile, filesrc, file_name);
     expect_string(__wrap_w_compress_gzfile, filedst, last_entry_gz);
@@ -804,7 +940,11 @@ void test_seechanges_addfile(void **state) {
 
     *state = diff;
 
+    #ifndef TEST_WINAGENT
     assert_string_equal(diff, "test diff");
+    #else
+    assert_string_equal(diff, diff_adapted_string);
+    #endif
 }
 
 void test_seechanges_addfile_run_diff(void **state) {
@@ -818,6 +958,16 @@ void test_seechanges_addfile_run_diff(void **state) {
     const char * file_name = "C:\\folder\\test";
     const char * file_name_abs = "C\\folder\\test";
     const char * default_path = "";
+    const char * diff_string = "***** start.txt\r\n"
+                               "    1:  First line\r\n"
+                               "***** END.TXT\r\n"
+                               "    1:  First Line 123\r\n"
+                               "    2:  Last line\r\n"
+                               "*****";
+    const char * diff_adapted_string = "> First line\n"
+                                       "< First Line 123\n"
+                                       "< Last line\n"
+                                       "---\n";
     #endif
 
     char last_entry[OS_SIZE_128];
@@ -891,8 +1041,13 @@ void test_seechanges_addfile_run_diff(void **state) {
     expect_string(__wrap_fopen, __filename, diff_file);
     expect_string(__wrap_fopen, __modes, "rb");
     will_return(__wrap_fopen, 1);
+    #ifndef TEST_WINAGENT
     will_return(__wrap_fread, "test diff");
     will_return(__wrap_fread, 9);
+    #else
+    will_return(__wrap_fread, diff_string);
+    will_return(__wrap_fread, 101);
+    #endif
     will_return(__wrap_fclose, 1);
     expect_string(__wrap_w_compress_gzfile, filesrc, file_name);
     expect_string(__wrap_w_compress_gzfile, filedst, last_entry_gz);
@@ -902,7 +1057,11 @@ void test_seechanges_addfile_run_diff(void **state) {
 
     *state = diff;
 
+    #ifndef TEST_WINAGENT
     assert_string_equal(diff, "test diff");
+    #else
+    assert_string_equal(diff, diff_adapted_string);
+    #endif
 }
 
 void test_seechanges_addfile_create_gz_file(void **state) {
@@ -1014,8 +1173,6 @@ void test_seechanges_addfile_same_md5(void **state) {
     expect_value(__wrap_OS_MD5_File, mode, OS_BINARY);
     will_return(__wrap_OS_MD5_File, "3c183a30cffcda1408daf1c61d47b274");
     will_return(__wrap_OS_MD5_File, 0);
-
-    // winagent fails due to now being able to wrap _unlink
 
     char * diff = seechanges_addfile(file_name);
 
@@ -1321,6 +1478,16 @@ void test_seechanges_addfile_fwrite_error(void **state) {
     const char * file_name = "C:\\folder\\test_";
     const char * file_name_abs = "C\\folder\\test_";
     const char * default_path = "";
+    const char * diff_string = "***** start.txt\r\n"
+                               "    1:  First line\r\n"
+                               "***** END.TXT\r\n"
+                               "    1:  First Line 123\r\n"
+                               "    2:  Last line\r\n"
+                               "*****";
+    const char * diff_adapted_string = "> First line\n"
+                                       "< First Line 123\n"
+                                       "< Last line\n"
+                                       "---\n";
     #endif
 
     char last_entry[OS_SIZE_128];
@@ -1397,8 +1564,13 @@ void test_seechanges_addfile_fwrite_error(void **state) {
     expect_string(__wrap_fopen, __filename, diff_file);
     expect_string(__wrap_fopen, __modes, "rb");
     will_return(__wrap_fopen, 1);
+    #ifndef TEST_WINAGENT
     will_return(__wrap_fread, "test diff");
     will_return(__wrap_fread, 9);
+    #else
+    will_return(__wrap_fread, diff_string);
+    will_return(__wrap_fread, 101);
+    #endif
     will_return(__wrap_fclose, 1);
     expect_string(__wrap_w_compress_gzfile, filesrc, file_name);
     expect_string(__wrap_w_compress_gzfile, filedst, last_entry_gz);
@@ -1408,7 +1580,11 @@ void test_seechanges_addfile_fwrite_error(void **state) {
 
     *state = diff;
 
+    #ifndef TEST_WINAGENT
     assert_string_equal(diff, "test diff");
+    #else
+    assert_string_equal(diff, diff_adapted_string);
+    #endif
 }
 
 void test_seechanges_addfile_run_diff_system_error(void **state) {
@@ -1522,6 +1698,7 @@ int main(void) {
         cmocka_unit_test(test_seechanges_createpath_mkdir),
         cmocka_unit_test(test_seechanges_createpath_mkdir_error),
         #endif
+
         cmocka_unit_test_teardown(test_seechanges_addfile, teardown_free_string),
         cmocka_unit_test_teardown(test_seechanges_addfile_run_diff, teardown_free_string),
         cmocka_unit_test(test_seechanges_addfile_create_gz_file),
@@ -1534,6 +1711,18 @@ int main(void) {
         cmocka_unit_test(test_seechanges_addfile_fopen_error),
         cmocka_unit_test_teardown(test_seechanges_addfile_fwrite_error, teardown_free_string),
         cmocka_unit_test(test_seechanges_addfile_run_diff_system_error),
+
+        /* Windows specific tests */
+        #ifdef TEST_WINAGENT
+        /* filter */
+        cmocka_unit_test_teardown(test_filter_success, teardown_string),
+        cmocka_unit_test_teardown(test_filter_unchanged_string, teardown_string),
+        cmocka_unit_test(test_filter_percentage_char),
+
+        cmocka_unit_test_setup_teardown(test_adapt_win_fc_output_success, setup_adapt_win_fc_output, teardown_adapt_win_fc_output),
+        cmocka_unit_test_setup_teardown(test_adapt_win_fc_output_invalid_input, setup_adapt_win_fc_output, teardown_adapt_win_fc_output),
+        #endif
+
         cmocka_unit_test(test_is_nodiff_true),
         cmocka_unit_test(test_is_nodiff_false),
         cmocka_unit_test(test_is_nodiff_regex_true),

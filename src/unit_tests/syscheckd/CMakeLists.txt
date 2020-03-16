@@ -1,32 +1,66 @@
-if(NOT ${TARGET} STREQUAL "winagent")
-  # Generate syscheck library
-  file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/*.o)
-  list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/syscheckd/main.o)
-  file(GLOB rootfiles ${SRC_FOLDER}/rootcheck/*.o)
+# Generate syscheck library
+file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/*.o)
+list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/syscheckd/main.o)
 
-  add_library(SYSCHECK_O STATIC ${sysfiles})
-  add_library(ROOTCHECK_O STATIC ${rootfiles})
+file(GLOB rootfiles ${SRC_FOLDER}/rootcheck/*.o)
+
+if(${TARGET} STREQUAL "winagent")
+  # Exclude winagent files
+  list(FILTER sysfiles EXCLUDE REGEX ".*-event.o$")
+  list(FILTER rootfiles EXCLUDE REGEX ".*_rk.o$")
+
+  # Add test wrappers
+  file(GLOB test_wrapper_files
+       ${SRC_FOLDER}/unit_tests/wrappers/syscheckd/*.o
+       ${SRC_FOLDER}/unit_tests/wrappers/shared/*.o
+       )
+  list(APPEND sysfiles ${test_wrapper_files})
+endif()
+
+add_library(SYSCHECK_O STATIC ${sysfiles})
+add_library(ROOTCHECK_O STATIC ${rootfiles})
+
+set_source_files_properties(
+  ${sysfiles}
+  ${rootfiles}
+  PROPERTIES
+  EXTERNAL_OBJECT true
+  GENERATED true
+  )
+
+set_target_properties(
+  SYSCHECK_O
+  ROOTCHECK_O
+  PROPERTIES
+  LINKER_LANGUAGE C
+  )
+
+target_link_libraries(SYSCHECK_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+
+# Generate syscheckd-event library
+if(${TARGET} STREQUAL "winagent")
+  file(GLOB syscheck_event_files ${SRC_FOLDER}/syscheckd/*-event.o)
+
+  add_library(SYSCHECK_EVENT_O STATIC ${syscheck_event_files})
 
   set_source_files_properties(
-    ${sysfiles}
-    ${rootfiles}
+    ${syscheck_event_files}
     PROPERTIES
     EXTERNAL_OBJECT true
     GENERATED true
     )
 
   set_target_properties(
-    SYSCHECK_O
+    SYSCHECK_EVENT_O
     ROOTCHECK_O
     PROPERTIES
     LINKER_LANGUAGE C
-    CMAKE_C_COMPILER i686-w64-mingw32-gcc
-    CMAKE_C_LINK_EXECUTABLE "CMAKE_C_COMPILER <FLAGS> <CMAKE_C_LINK_FLAGS> <LINK_FLAGS> <OBJECTS>  -o <TARGET> <LINK_LIBRARIES>"
     )
 
-  target_link_libraries(SYSCHECK_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+  target_link_libraries(SYSCHECK_EVENT_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 endif()
-# Generate Analysisd tests
+
+# Generate Syscheckd tests
 list(APPEND syscheckd_tests_names "test_syscom")
 list(APPEND syscheckd_tests_flags "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap,fim_sync_push_msg \
                                    -Wl,--wrap,_mdebug1")
@@ -71,7 +105,7 @@ list(APPEND syscheckd_tests_names "test_seechanges")
 if(${TARGET} STREQUAL "agent")
   list(APPEND syscheckd_tests_flags "${SEECHANGES_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot,--wrap=unlink")
 elseif(${TARGET} STREQUAL "winagent")
-  list(APPEND syscheckd_tests_flags "${SEECHANGES_BASE_FLAGS} -Wl,--wrap=_unlink")
+  list(APPEND syscheckd_tests_flags "${SEECHANGES_BASE_FLAGS} -Wl,--wrap=_unlink,--wrap=_mdebug2")
 else()
   list(APPEND syscheckd_tests_flags "${SEECHANGES_BASE_FLAGS} -Wl,--wrap=unlink")
 endif()
@@ -86,6 +120,13 @@ set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watc
 list(APPEND syscheckd_tests_names "test_run_realtime")
 if(${TARGET} STREQUAL "agent")
   list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot")
+elseif(${TARGET} STREQUAL "winagent")
+  list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=fim_configuration_directory")
+
+  # Create event channel tests for run_realtime
+  list(APPEND syscheckd_event_tests_names "test_run_realtime_event")
+  list(APPEND syscheckd_event_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=whodata_audit_start \
+                                           -Wl,--wrap=check_path_type,--wrap=set_winsacl,--wrap=w_directory_exists")
 else()
   list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS}")
 endif()
@@ -99,8 +140,19 @@ else()
   list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS}")
 endif()
 
+set(SYSCHECK_BASE_FLAGS "-Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror_exit -Wl,--wrap,_minfo -Wl,--wrap,fim_db_init -Wl,--wrap,getDefine_Int")
 list(APPEND syscheckd_tests_names "test_syscheck")
-list(APPEND syscheckd_tests_flags "-Wl,--wrap,_mwarn -Wl,--wrap,_merror_exit -Wl,--wrap,fim_db_init  -Wl,--wrap,getDefine_Int")
+if(${TARGET} STREQUAL "winagent")
+  list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS} \
+                                    -Wl,--wrap=Read_Syscheck_Config \
+                                    -Wl,--wrap=os_wait \
+                                    -Wl,--wrap=rootcheck_init \
+                                    -Wl,--wrap=start_daemon \
+                                    -Wl,--wrap=File_DateofChange")
+
+else()
+  list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS}")
+endif()
 
 set(FIM_SYNC_BASE_FLAGS "-Wl,--wrap,fim_send_sync_msg -Wl,--wrap,time -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 \
                          -Wl,--wrap,_merror -Wl,--wrap,_mdebug2 -Wl,--wrap,queue_push_ex -Wl,--wrap,fim_db_get_row_path \
@@ -116,16 +168,22 @@ else()
   list(APPEND syscheckd_tests_flags "${FIM_SYNC_BASE_FLAGS}")
 endif()
 
-set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,_minfo -Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,_merror_exit \
+set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,_merror_exit \
                           -Wl,--wrap,sleep -Wl,--wrap,SendMSG -Wl,--wrap,StartMQ -Wl,--wrap,realtime_adddir -Wl,--wrap,audit_set_db_consistency \
                           -Wl,--wrap,time -Wl,--wrap,fim_checker -Wl,--wrap,fim_db_get_path_range -Wl,--wrap,fim_db_delete_range -Wl,--wrap,lstat \
                           -Wl,--wrap,fim_configuration_directory -Wl,--wrap,inotify_rm_watch")
 
 list(APPEND syscheckd_tests_names "test_run_check")
 if(${TARGET} STREQUAL "agent")
-  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot")
+  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot,--wrap=sleep")
+elseif(${TARGET} STREQUAL "winagent")
+  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=realtime_start")
+
+  # Create event channel tests for run_check
+  list(APPEND syscheckd_event_tests_names "test_run_check_event")
+  list(APPEND syscheckd_event_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=realtime_start")
 else()
-  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS}")
+  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=sleep")
 endif()
 
 set(FIM_DB_BASE_FLAGS "-Wl,--wrap=w_is_file,--wrap=remove,--wrap=sqlite3_open_v2,--wrap=sqlite3_exec,--wrap=_merror \
@@ -137,13 +195,24 @@ set(FIM_DB_BASE_FLAGS "-Wl,--wrap=w_is_file,--wrap=remove,--wrap=sqlite3_open_v2
                        -Wl,--wrap=fim_configuration_directory,--wrap=fim_json_event,--wrap=send_syscheck_msg \
                        -Wl,--wrap=delete_target_file,--wrap=_minfo,--wrap=_mdebug1,--wrap=_mdebug2 \
                        -Wl,--wrap=fseek,--wrap=fclose,--wrap=fopen,--wrap=time,--wrap=getpid,--wrap=fflush \
-                       -Wl,--wrap=fgets,--wrap=fprintf,--wrap=wstr_escape_json")
+                       -Wl,--wrap=fgets,--wrap=wstr_escape_json")
 
 list(APPEND syscheckd_tests_names "test_fim_db")
 if(${TARGET} STREQUAL "agent")
-  list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot")
-else()
+  list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot,--wrap=fprintf")
+elseif(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS}")
+else()
+list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS} -Wl,--wrap=fprintf")
+endif()
+
+if(${TARGET} STREQUAL "winagent")
+  list(APPEND syscheckd_tests_names "test_win_registry")
+  list(APPEND syscheckd_tests_flags "-Wl,--wrap=_mdebug2,--wrap=fim_registry_event,--wrap=EVP_DigestUpdate,--wrap=_mdebug1 \
+                                     -Wl,--wrap=_mwarn")
+
+  list(APPEND syscheckd_event_tests_names "test_win_whodata")
+  list(APPEND syscheckd_event_tests_flags "-Wl,--wrap=_mdebug2,--wrap=_merror,--wrap=_mdebug1,--wrap=_mwarn,--wrap=wstr_replace")
 endif()
 
 # Compiling tests
@@ -155,18 +224,11 @@ foreach(counter RANGE ${count})
 
     add_executable(${test_name} ${test_name}.c)
 
-    if(NOT ${TARGET} STREQUAL "winagent")
-      target_link_libraries(
-        ${test_name}
-        SYSCHECK_O
-        ${TEST_DEPS}
-      )
-    else()
-      target_link_libraries(
-        ${test_name}
-        ${TEST_DEPS}
-      )
-    endif()
+    target_link_libraries(
+      ${test_name}
+      SYSCHECK_O
+      ${TEST_DEPS}
+    )
 
     if(NOT test_flags STREQUAL " ")
         target_link_libraries(
@@ -176,3 +238,32 @@ foreach(counter RANGE ${count})
     endif()
     add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()
+
+if(${TARGET} STREQUAL "winagent")
+  # Compile event channel tests
+  list(LENGTH syscheckd_event_tests_names count)
+  math(EXPR count "${count} - 1")
+  foreach(counter RANGE ${count})
+      list(GET syscheckd_event_tests_names ${counter} test_name)
+      list(GET syscheckd_event_tests_flags ${counter} test_flags)
+
+      string(REPLACE "_event" ".c" test_file ${test_name})
+      add_executable(${test_name} ${test_file})
+
+      target_link_libraries(
+        ${test_name}
+        SYSCHECK_EVENT_O
+        ${TEST_EVENT_DEPS}
+      )
+
+      target_compile_definitions(${test_name} PUBLIC WIN_WHODATA)
+
+      if(NOT test_flags STREQUAL " ")
+          target_link_libraries(
+              ${test_name}
+              ${test_flags}
+          )
+      endif()
+      add_test(NAME ${test_name} COMMAND ${test_name})
+  endforeach()
+endif()

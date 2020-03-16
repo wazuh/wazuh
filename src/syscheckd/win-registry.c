@@ -17,6 +17,21 @@
 #include "os_crypto/md5_sha1/md5_sha1_op.h"
 #include <openssl/evp.h>
 
+#ifdef UNIT_TESTING
+#include "unit_tests/wrappers/syscheckd/win-registry.h"
+
+#undef RegQueryInfoKey
+#define RegQueryInfoKey wrap_RegQueryInfoKey
+#undef RegEnumKeyEx
+#define RegEnumKeyEx wrap_RegEnumKeyEx
+#undef RegOpenKeyEx
+#define RegOpenKeyEx wrap_RegOpenKeyEx
+#undef RegEnumValue
+#define RegEnumValue wrap_RegEnumValue
+#undef RegCloseKey
+#define RegCloseKey wrap_RegCloseKey
+#endif
+
 /* Default values */
 #define MAX_KEY_LENGTH   260
 #define MAX_KEY         2048
@@ -233,13 +248,13 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int pos)
                     }
                     break;
                 case REG_DWORD:
-                    snprintf(buffer, OS_SIZE_2048, "%08x", (unsigned int)*data_buffer);
+                    snprintf(buffer, OS_SIZE_2048, "%08x", *((unsigned int*)data_buffer));
                     EVP_DigestUpdate(ctx, buffer, strlen(buffer));
                     buffer[0] = '\0';
                     break;
                 default:
                     for (j = 0; j < data_size; j++) {
-                        snprintf(buffer, OS_SIZE_2048, "%02x", (unsigned int)data_buffer[j]);
+                        snprintf(buffer, 3, "%02x", (unsigned int)data_buffer[j] & 0xFF);
                         EVP_DigestUpdate(ctx, buffer, strlen(buffer));
                         buffer[0] = '\0';
                     }

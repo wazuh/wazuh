@@ -11,6 +11,12 @@
 #include "fim_db.h"
 
 #ifdef UNIT_TESTING
+#ifdef WIN32
+#include "unit_tests/wrappers/syscheckd/fim_db.h"
+
+#define fprintf wrap_fprintf
+#endif
+
 #define static
 #endif
 
@@ -428,8 +434,7 @@ void fim_db_clean_file(fim_tmp_file **file, int storage) {
         }
         os_free((*file)->path);
     } else {
-        os_free((*file)->list->vector);
-        os_free((*file)->list);
+        W_Vector_free((*file)->list);
     }
 
     os_free((*file));
@@ -606,7 +611,7 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
                 path = wstr_unescape_json(line);
             }
         } else {
-            path = (char *)W_Vector_get(file->list, i);
+            path = wstr_unescape_json((char *) W_Vector_get(file->list, i));
         }
 
         if (path) {
@@ -1122,19 +1127,19 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
             /* Don't send alert if received mode and mode in configuration aren't the same */
             case FIM_REALTIME:
                 if (!(syscheck.opts[conf] & REALTIME_ACTIVE)) {
-                    return;
+                    return;     // LCOV_EXCL_LINE
                 }
                 break;
 
             case FIM_WHODATA:
                 if (!(syscheck.opts[conf] & WHODATA_ACTIVE)) {
-                    return;
+                    return;     // LCOV_EXCL_LINE
                 }
                 break;
 
             case FIM_SCHEDULED:
                 if (!(syscheck.opts[conf] & SCHEDULED_ACTIVE)) {
-                    return;
+                    return;     // LCOV_EXCL_LINE
                 }
                 break;
 
