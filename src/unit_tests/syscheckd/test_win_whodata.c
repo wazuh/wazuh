@@ -2925,7 +2925,7 @@ void test_compare_timestamp_t2_seconds_bigger(void **state) {
     t1.wHour = 14;
     t2.wHour = 14;
 
-    t1.wMinute = 25;
+    t1.wMinute = 30;
     t2.wMinute = 30;
 
     t1.wSecond = 25;
@@ -2955,7 +2955,7 @@ void test_compare_timestamp_equal_dates(void **state) {
     t1.wHour = 14;
     t2.wHour = 14;
 
-    t1.wMinute = 25;
+    t1.wMinute = 30;
     t2.wMinute = 30;
 
     t1.wSecond = 30;
