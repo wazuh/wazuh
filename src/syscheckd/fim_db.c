@@ -434,8 +434,7 @@ void fim_db_clean_file(fim_tmp_file **file, int storage) {
         }
         os_free((*file)->path);
     } else {
-        os_free((*file)->list->vector);
-        os_free((*file)->list);
+        W_Vector_free((*file)->list);
     }
 
     os_free((*file));
@@ -612,7 +611,7 @@ int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t
                 path = wstr_unescape_json(line);
             }
         } else {
-            path = (char *)W_Vector_get(file->list, i);
+            path = wstr_unescape_json((char *) W_Vector_get(file->list, i));
         }
 
         if (path) {
