@@ -47,3 +47,10 @@
   <regex offset="after_prematch">^ '(\S+)'.</regex>
   <order>module</order>
 </decoder>
+
+<decoder name="fim-state">
+  <parent>wazuh</parent>
+  <prematch offset="after_parent">^FIM DB:</prematch>
+  <regex offset="after_prematch">^ '(\S+)'.</regex>
+  <order>level</order>
+</decoder>

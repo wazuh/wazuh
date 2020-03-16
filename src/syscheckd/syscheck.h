@@ -46,6 +46,14 @@ typedef enum fim_scan_event {
     FIM_SCAN_END
 } fim_scan_event;
 
+typedef enum fim_state_db {
+    FIM_STATE_DB_EMPTY,
+    FIM_STATE_DB_NORMAL,
+    FIM_STATE_DB_80_PERCENTAGE,
+    FIM_STATE_DB_90_PERCENTAGE,
+    FIM_STATE_DB_FULL
+} fim_state_db;
+
 typedef struct fim_element {
     struct stat statbuf;
     int index;
@@ -803,5 +811,11 @@ cJSON * fim_scan_info_json(fim_scan_event event, long timestamp);
  * @param event Event type (start or end).
  */
 void fim_send_scan_info(fim_scan_event event);
+
+/**
+ * @brief Checks the DB state, sends a message alert if necessary
+ *
+ */
+void fim_check_db_state();
 
 #endif /* SYSCHECK_H */

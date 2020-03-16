@@ -25,8 +25,16 @@ extern void mock_assert(const int result, const char* const expression,
     mock_assert((int)(expression), #expression, __FILE__, __LINE__);
 #endif
 
+//Alert messages
+#define FIM_NORMAL_DB         "wazuh: FIM DB: 'normal'."
+#define FIM_80_PERCENTAGE_DB  "wazuh: FIM DB: '80%%'."
+#define FIM_90_PERCENTAGE_DB  "wazuh: FIM DB: '90%%'."
+#define FIM_FULL_DB           "wazuh: FIM DB: 'full'."
+
 // Global variables
 static int _base_line = 0;
+
+static fim_state_db _db_state = FIM_STATE_DB_EMPTY;
 
 static const char *FIM_EVENT_TYPE[] = {
     "added",
@@ -131,12 +139,6 @@ void fim_scan() {
                 fim_db_set_all_unscanned(syscheck.database);
                 w_mutex_unlock(&syscheck.fim_entry_mutex);
             }
-
-            if (nodes_count >= syscheck.file_limit) {
-                minfo(FIM_DB_FULL);
-
-                //TODO: send alert
-            }
         }
     }
     else {
@@ -144,6 +146,8 @@ void fim_scan() {
     }
 
     gettime(&end);
+
+    fim_check_db_state();
 
     if (_base_line == 0) {
         _base_line = 1;
@@ -502,6 +506,79 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
     return result;
 }
 #endif
+
+// Checks the DB state, sends a message alert if necessary
+void fim_check_db_state() {
+    unsigned int nodes_count = 0;
+
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+    nodes_count = fim_db_get_count_entry_path(syscheck.database);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    switch (_db_state) {
+    case FIM_STATE_DB_FULL:
+        if (nodes_count >= syscheck.file_limit) {
+            return;
+        }
+        break;
+    case FIM_STATE_DB_90_PERCENTAGE:
+        if ((nodes_count < syscheck.file_limit) && (nodes_count >= syscheck.file_limit * 0.9)) {
+            return;
+        }
+        break;
+    case FIM_STATE_DB_80_PERCENTAGE:
+        if ((nodes_count < syscheck.file_limit * 0.9) && (nodes_count >= syscheck.file_limit * 0.8)) {
+            return;
+        }
+        break;
+    case FIM_STATE_DB_NORMAL:
+        if (nodes_count == 0) {
+            _db_state = FIM_STATE_DB_EMPTY;
+            return;
+        }
+        else if (nodes_count < syscheck.file_limit * 0.8) {
+            return;
+        }
+        break;
+    case FIM_STATE_DB_EMPTY:
+        if (nodes_count == 0) {
+            return;
+        }
+        else if (nodes_count < syscheck.file_limit * 0.8) {
+            _db_state = FIM_STATE_DB_NORMAL;
+            return;
+        }
+        break;
+    default:
+        break;
+    }
+
+    if (nodes_count >= syscheck.file_limit) {
+        _db_state = FIM_STATE_DB_FULL;
+        minfo(FIM_DB_FULL_ALERT);
+        send_log_msg(FIM_FULL_DB);
+    }
+    else if (nodes_count >= syscheck.file_limit * 0.9) {
+        _db_state = FIM_STATE_DB_90_PERCENTAGE;
+        minfo(FIM_DB_90_PERCENTAGE_ALERT);
+        send_log_msg(FIM_90_PERCENTAGE_DB);
+    }
+    else if (nodes_count >= syscheck.file_limit * 0.8) {
+        _db_state = FIM_STATE_DB_80_PERCENTAGE;
+        minfo(FIM_DB_80_PERCENTAGE_ALERT);
+        send_log_msg(FIM_80_PERCENTAGE_DB);
+    }
+    else if (nodes_count > 0) {
+        _db_state = FIM_STATE_DB_NORMAL;
+        minfo(FIM_DB_NORMAL_ALERT);
+        send_log_msg(FIM_NORMAL_DB);
+    }
+    else {
+        _db_state = FIM_STATE_DB_EMPTY;
+        minfo(FIM_DB_NORMAL_ALERT);
+        send_log_msg(FIM_NORMAL_DB);
+    }
+}
 
 // Returns the position of the path into directories array
 int fim_configuration_directory(const char *path, const char *entry) {
