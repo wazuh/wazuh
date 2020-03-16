@@ -247,6 +247,17 @@ void __wrap_free_whodata_event(whodata_evt *w_evt) {
     check_expected(w_evt);
 }
 
+int __wrap_IsFile(const char * file)
+{
+    check_expected(file);
+    return mock();
+}
+
+int __wrap_remove(const char *filename) {
+    check_expected(filename);
+    return mock();
+}
+
 /**************************************************************************/
 /***************************set_winsacl************************************/
 void test_set_winsacl_failed_opening(void **state) {
@@ -2845,6 +2856,105 @@ void test_compare_timestamp_equal_dates(void **state) {
     assert_int_equal(ret, 1);
 }
 
+/* run_whodata_scan */
+
+void test_run_whodata_scan_invalid_arch(void **state) {
+    int ret;
+/* whodata_check_arch() */
+{
+    expect_value(wrap_win_whodata_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
+    expect_string(wrap_win_whodata_RegOpenKeyEx, lpSubKey,
+        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+    expect_value(wrap_win_whodata_RegOpenKeyEx, ulOptions, 0);
+    expect_value(wrap_win_whodata_RegOpenKeyEx, samDesired, KEY_READ);
+    will_return(wrap_win_whodata_RegOpenKeyEx, NULL);
+    will_return(wrap_win_whodata_RegOpenKeyEx, ERROR_ACCESS_DENIED);
+
+    expect_string(__wrap__merror, formatted_msg,
+        "(1758): Unable to open registry key: 'System\\CurrentControlSet\\Control\\Session Manager\\Environment'.");
+}
+    ret = run_whodata_scan();
+    assert_int_equal(ret, 1);
+}
+
+void test_run_whodata_scan_no_audit_policies(void **state) {
+    int ret;
+
+/* Inside whodata_check_arch */
+{
+    HKEY key;
+    const BYTE data[64] = "ARM64";
+
+    expect_value(wrap_win_whodata_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
+    expect_string(wrap_win_whodata_RegOpenKeyEx, lpSubKey,
+        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+    expect_value(wrap_win_whodata_RegOpenKeyEx, ulOptions, 0);
+    expect_value(wrap_win_whodata_RegOpenKeyEx, samDesired, KEY_READ);
+    will_return(wrap_win_whodata_RegOpenKeyEx, &key);
+    will_return(wrap_win_whodata_RegOpenKeyEx, ERROR_SUCCESS);
+
+    expect_string(wrap_win_whodata_RegQueryValueEx, lpValueName, "PROCESSOR_ARCHITECTURE");
+    expect_value(wrap_win_whodata_RegQueryValueEx, lpReserved, NULL);
+    expect_value(wrap_win_whodata_RegQueryValueEx, lpType, NULL);
+    will_return(wrap_win_whodata_RegQueryValueEx, data);
+    will_return(wrap_win_whodata_RegQueryValueEx, ERROR_SUCCESS);
+
+}
+
+/* Inside set_policies */
+{
+    expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
+    will_return(__wrap_IsFile, 0);
+    expect_string(__wrap_remove, filename, "tmp\\backup-policies");
+    will_return(__wrap_remove, 1);
+
+    expect_string(__wrap__merror, formatted_msg,
+         "(6660): 'tmp\\backup-policies' could not be removed: 'No such file or directory' (2).");
+}
+    expect_string(__wrap__mwarn, formatted_msg,
+         "(6916): Local audit policies could not be configured.");
+
+    ret = run_whodata_scan();
+    assert_int_equal(ret, 1);
+}
+
+void test_run_whodata_scan_no_auto_audit_policies(void **state) {
+    int ret;
+
+/* Inside whodata_check_arch */
+{
+    HKEY key;
+    const BYTE data[64] = "ARM64";
+
+    expect_value(wrap_win_whodata_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
+    expect_string(wrap_win_whodata_RegOpenKeyEx, lpSubKey,
+        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+    expect_value(wrap_win_whodata_RegOpenKeyEx, ulOptions, 0);
+    expect_value(wrap_win_whodata_RegOpenKeyEx, samDesired, KEY_READ);
+    will_return(wrap_win_whodata_RegOpenKeyEx, &key);
+    will_return(wrap_win_whodata_RegOpenKeyEx, ERROR_SUCCESS);
+
+    expect_string(wrap_win_whodata_RegQueryValueEx, lpValueName, "PROCESSOR_ARCHITECTURE");
+    expect_value(wrap_win_whodata_RegQueryValueEx, lpReserved, NULL);
+    expect_value(wrap_win_whodata_RegQueryValueEx, lpType, NULL);
+    will_return(wrap_win_whodata_RegQueryValueEx, data);
+    will_return(wrap_win_whodata_RegQueryValueEx, ERROR_SUCCESS);
+
+}
+
+/* Inside set_policies */
+{
+    expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
+    will_return(__wrap_IsFile, 0);
+    expect_string(__wrap_remove, filename, "tmp\\backup-policies");
+    will_return(__wrap_remove, 0);
+
+}
+
+    ret = run_whodata_scan();
+    assert_int_equal(ret, 1);
+}
+
 /**************************************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -2954,6 +3064,10 @@ int main(void) {
         cmocka_unit_test(test_compare_timestamp_t1_seconds_bigger),
         cmocka_unit_test(test_compare_timestamp_t2_seconds_bigger),
         cmocka_unit_test(test_compare_timestamp_equal_dates),
+        /* run_whodata_scan */
+        cmocka_unit_test(test_run_whodata_scan_invalid_arch),
+        cmocka_unit_test(test_run_whodata_scan_no_audit_policies),
+        cmocka_unit_test(test_run_whodata_scan_no_auto_audit_policies),
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, NULL);
