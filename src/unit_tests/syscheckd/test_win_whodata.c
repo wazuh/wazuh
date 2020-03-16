@@ -31,6 +31,7 @@ extern int check_object_sacl(char *obj, int is_file);
 extern void whodata_clist_remove(whodata_event_node *node);
 extern void free_win_whodata_evt(whodata_evt *evt);
 extern int compare_timestamp(SYSTEMTIME *t1, SYSTEMTIME *t2);
+extern int get_file_time(unsigned long long file_time_val, SYSTEMTIME *system_time);
 
 extern char sys_64;
 extern PSID everyone_sid;
@@ -2955,6 +2956,56 @@ void test_run_whodata_scan_no_auto_audit_policies(void **state) {
     assert_int_equal(ret, 1);
 }
 
+void test_get_file_time_error(void **state) {
+    unsigned long long file_time_val = 0x0102030405060708;
+    SYSTEMTIME time, returned_time;
+    FILETIME ftime;
+    int ret;
+
+    memset(&time, 0, sizeof(SYSTEMTIME));
+    memset(&returned_time, 0, sizeof(SYSTEMTIME));
+
+    ftime.dwHighDateTime = 0x01020304;
+    ftime.dwLowDateTime = 0x05060708;
+
+    expect_memory(wrap_win_whodata_FileTimeToSystemTime, lpFileTime, &ftime, sizeof(FILETIME));
+    will_return(wrap_win_whodata_FileTimeToSystemTime, &returned_time);
+    will_return(wrap_win_whodata_FileTimeToSystemTime, 0);
+
+    ret = get_file_time(file_time_val, &time);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_get_file_time_success(void **state) {
+    unsigned long long file_time_val = 0x0102030405060708;
+    SYSTEMTIME time, returned_time;
+    FILETIME ftime;
+    int ret;
+
+    memset(&time, 0, sizeof(SYSTEMTIME));
+    memset(&returned_time, 0, sizeof(SYSTEMTIME));
+
+    ftime.dwHighDateTime = 0x01020304;
+    ftime.dwLowDateTime = 0x05060708;
+
+    returned_time.wYear = 2020;
+    returned_time.wMonth = 3;
+    returned_time.wDay = 10;
+    returned_time.wHour = 12;
+    returned_time.wMinute = 55;
+    returned_time.wSecond = 32;
+
+    expect_memory(wrap_win_whodata_FileTimeToSystemTime, lpFileTime, &ftime, sizeof(FILETIME));
+    will_return(wrap_win_whodata_FileTimeToSystemTime, &returned_time);
+    will_return(wrap_win_whodata_FileTimeToSystemTime, 1);
+
+    ret = get_file_time(file_time_val, &time);
+
+    assert_int_equal(ret, 1);
+    assert_memory_equal(&time, &returned_time, sizeof(SYSTEMTIME));
+}
+
 /**************************************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -3068,6 +3119,10 @@ int main(void) {
         cmocka_unit_test(test_run_whodata_scan_invalid_arch),
         cmocka_unit_test(test_run_whodata_scan_no_audit_policies),
         cmocka_unit_test(test_run_whodata_scan_no_auto_audit_policies),
+        /* get_file_time */
+        // TODO: Should we add tests for NULL input parameters?
+        cmocka_unit_test(test_get_file_time_error),
+        cmocka_unit_test(test_get_file_time_success),
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, NULL);
