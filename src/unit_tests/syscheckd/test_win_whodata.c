@@ -31,6 +31,8 @@ extern void restore_sacls();
 extern int check_object_sacl(char *obj, int is_file);
 extern void whodata_clist_remove(whodata_event_node *node);
 extern void free_win_whodata_evt(whodata_evt *evt);
+extern int compare_timestamp(SYSTEMTIME *t1, SYSTEMTIME *t2);
+extern int get_file_time(unsigned long long file_time_val, SYSTEMTIME *system_time);
 
 extern char sys_64;
 extern PSID everyone_sid;
@@ -245,6 +247,17 @@ int __wrap_OSHash_Add_ex(OSHash *self, const char *key, void *data) {
 
 void __wrap_free_whodata_event(whodata_evt *w_evt) {
     check_expected(w_evt);
+}
+
+int __wrap_IsFile(const char * file)
+{
+    check_expected(file);
+    return mock();
+}
+
+int __wrap_remove(const char *filename) {
+    check_expected(filename);
+    return mock();
 }
 
 /**************************************************************************/
@@ -2603,6 +2616,455 @@ void test_free_win_whodata_evt_null_event(void **state) {
     free_win_whodata_evt(NULL);
 }
 
+void test_compare_timestamp_t1_year_bigger(void **state) {
+    SYSTEMTIME t1, t2;
+    int ret;
+
+    memset(&t1, 0, sizeof(SYSTEMTIME));
+    memset(&t2, 0, sizeof(SYSTEMTIME));
+
+    t1.wYear = 2020;
+    t2.wYear = 2019;
+
+    ret = compare_timestamp(&t1, &t2);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_compare_timestamp_t2_year_bigger(void **state) {
+    SYSTEMTIME t1, t2;
+    int ret;
+
+    memset(&t1, 0, sizeof(SYSTEMTIME));
+    memset(&t2, 0, sizeof(SYSTEMTIME));
+
+    t1.wYear = 2019;
+    t2.wYear = 2020;
+
+    ret = compare_timestamp(&t1, &t2);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_compare_timestamp_t1_month_bigger(void **state) {
+    SYSTEMTIME t1, t2;
+    int ret;
+
+    memset(&t1, 0, sizeof(SYSTEMTIME));
+    memset(&t2, 0, sizeof(SYSTEMTIME));
+
+    t1.wYear = 2020;
+    t2.wYear = 2020;
+
+    t1.wMonth = 5;
+    t2.wMonth = 3;
+
+    ret = compare_timestamp(&t1, &t2);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_compare_timestamp_t2_month_bigger(void **state) {
+    SYSTEMTIME t1, t2;
+    int ret;
+
+    memset(&t1, 0, sizeof(SYSTEMTIME));
+    memset(&t2, 0, sizeof(SYSTEMTIME));
+
+    t1.wYear = 2020;
+    t2.wYear = 2020;
+
+    t1.wMonth = 3;
+    t2.wMonth = 5;
+
+    ret = compare_timestamp(&t1, &t2);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_compare_timestamp_t1_day_bigger(void **state) {
+    SYSTEMTIME t1, t2;
+    int ret;
+
+    memset(&t1, 0, sizeof(SYSTEMTIME));
+    memset(&t2, 0, sizeof(SYSTEMTIME));
+
+    t1.wYear = 2020;
+    t2.wYear = 2020;
+
+    t1.wMonth = 5;
+    t2.wMonth = 5;
+
+    t1.wDay = 15;
+    t2.wDay = 10;
+
+    ret = compare_timestamp(&t1, &t2);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_compare_timestamp_t2_day_bigger(void **state) {
+    SYSTEMTIME t1, t2;
+    int ret;
+
+    memset(&t1, 0, sizeof(SYSTEMTIME));
+    memset(&t2, 0, sizeof(SYSTEMTIME));
+
+    t1.wYear = 2020;
+    t2.wYear = 2020;
+
+    t1.wMonth = 5;
+    t2.wMonth = 5;
+
+    t1.wDay = 10;
+    t2.wDay = 15;
+
+    ret = compare_timestamp(&t1, &t2);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_compare_timestamp_t1_hour_bigger(void **state) {
+    SYSTEMTIME t1, t2;
+    int ret;
+
+    memset(&t1, 0, sizeof(SYSTEMTIME));
+    memset(&t2, 0, sizeof(SYSTEMTIME));
+
+    t1.wYear = 2020;
+    t2.wYear = 2020;
+
+    t1.wMonth = 5;
+    t2.wMonth = 5;
+
+    t1.wDay = 15;
+    t2.wDay = 15;
+
+    t1.wHour = 14;
+    t2.wHour = 12;
+
+    ret = compare_timestamp(&t1, &t2);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_compare_timestamp_t2_hour_bigger(void **state) {
+    SYSTEMTIME t1, t2;
+    int ret;
+
+    memset(&t1, 0, sizeof(SYSTEMTIME));
+    memset(&t2, 0, sizeof(SYSTEMTIME));
+
+    t1.wYear = 2020;
+    t2.wYear = 2020;
+
+    t1.wMonth = 5;
+    t2.wMonth = 5;
+
+    t1.wDay = 15;
+    t2.wDay = 15;
+
+    t1.wHour = 12;
+    t2.wHour = 14;
+
+    ret = compare_timestamp(&t1, &t2);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_compare_timestamp_t1_minute_bigger(void **state) {
+    SYSTEMTIME t1, t2;
+    int ret;
+
+    memset(&t1, 0, sizeof(SYSTEMTIME));
+    memset(&t2, 0, sizeof(SYSTEMTIME));
+
+    t1.wYear = 2020;
+    t2.wYear = 2020;
+
+    t1.wMonth = 5;
+    t2.wMonth = 5;
+
+    t1.wDay = 15;
+    t2.wDay = 15;
+
+    t1.wHour = 14;
+    t2.wHour = 14;
+
+    t1.wMinute = 30;
+    t2.wMinute = 25;
+
+    ret = compare_timestamp(&t1, &t2);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_compare_timestamp_t2_minute_bigger(void **state) {
+    SYSTEMTIME t1, t2;
+    int ret;
+
+    memset(&t1, 0, sizeof(SYSTEMTIME));
+    memset(&t2, 0, sizeof(SYSTEMTIME));
+
+    t1.wYear = 2020;
+    t2.wYear = 2020;
+
+    t1.wMonth = 5;
+    t2.wMonth = 5;
+
+    t1.wDay = 15;
+    t2.wDay = 15;
+
+    t1.wHour = 14;
+    t2.wHour = 14;
+
+    t1.wMinute = 25;
+    t2.wMinute = 30;
+
+    ret = compare_timestamp(&t1, &t2);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_compare_timestamp_t1_seconds_bigger(void **state) {
+    SYSTEMTIME t1, t2;
+    int ret;
+
+    memset(&t1, 0, sizeof(SYSTEMTIME));
+    memset(&t2, 0, sizeof(SYSTEMTIME));
+
+    t1.wYear = 2020;
+    t2.wYear = 2020;
+
+    t1.wMonth = 5;
+    t2.wMonth = 5;
+
+    t1.wDay = 15;
+    t2.wDay = 15;
+
+    t1.wHour = 14;
+    t2.wHour = 14;
+
+    t1.wMinute = 30;
+    t2.wMinute = 30;
+
+    t1.wSecond = 30;
+    t2.wSecond = 25;
+
+    ret = compare_timestamp(&t1, &t2);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_compare_timestamp_t2_seconds_bigger(void **state) {
+    SYSTEMTIME t1, t2;
+    int ret;
+
+    memset(&t1, 0, sizeof(SYSTEMTIME));
+    memset(&t2, 0, sizeof(SYSTEMTIME));
+
+    t1.wYear = 2020;
+    t2.wYear = 2020;
+
+    t1.wMonth = 5;
+    t2.wMonth = 5;
+
+    t1.wDay = 15;
+    t2.wDay = 15;
+
+    t1.wHour = 14;
+    t2.wHour = 14;
+
+    t1.wMinute = 25;
+    t2.wMinute = 30;
+
+    t1.wSecond = 25;
+    t2.wSecond = 30;
+
+    ret = compare_timestamp(&t1, &t2);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_compare_timestamp_equal_dates(void **state) {
+    SYSTEMTIME t1, t2;
+    int ret;
+
+    memset(&t1, 0, sizeof(SYSTEMTIME));
+    memset(&t2, 0, sizeof(SYSTEMTIME));
+
+    t1.wYear = 2020;
+    t2.wYear = 2020;
+
+    t1.wMonth = 5;
+    t2.wMonth = 5;
+
+    t1.wDay = 15;
+    t2.wDay = 15;
+
+    t1.wHour = 14;
+    t2.wHour = 14;
+
+    t1.wMinute = 25;
+    t2.wMinute = 30;
+
+    t1.wSecond = 30;
+    t2.wSecond = 30;
+
+    ret = compare_timestamp(&t1, &t2);
+
+    assert_int_equal(ret, 1);
+}
+
+/* run_whodata_scan */
+
+void test_run_whodata_scan_invalid_arch(void **state) {
+    int ret;
+/* whodata_check_arch() */
+{
+    expect_value(wrap_win_whodata_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
+    expect_string(wrap_win_whodata_RegOpenKeyEx, lpSubKey,
+        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+    expect_value(wrap_win_whodata_RegOpenKeyEx, ulOptions, 0);
+    expect_value(wrap_win_whodata_RegOpenKeyEx, samDesired, KEY_READ);
+    will_return(wrap_win_whodata_RegOpenKeyEx, NULL);
+    will_return(wrap_win_whodata_RegOpenKeyEx, ERROR_ACCESS_DENIED);
+
+    expect_string(__wrap__merror, formatted_msg,
+        "(1758): Unable to open registry key: 'System\\CurrentControlSet\\Control\\Session Manager\\Environment'.");
+}
+    ret = run_whodata_scan();
+    assert_int_equal(ret, 1);
+}
+
+void test_run_whodata_scan_no_audit_policies(void **state) {
+    int ret;
+
+/* Inside whodata_check_arch */
+{
+    HKEY key;
+    const BYTE data[64] = "ARM64";
+
+    expect_value(wrap_win_whodata_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
+    expect_string(wrap_win_whodata_RegOpenKeyEx, lpSubKey,
+        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+    expect_value(wrap_win_whodata_RegOpenKeyEx, ulOptions, 0);
+    expect_value(wrap_win_whodata_RegOpenKeyEx, samDesired, KEY_READ);
+    will_return(wrap_win_whodata_RegOpenKeyEx, &key);
+    will_return(wrap_win_whodata_RegOpenKeyEx, ERROR_SUCCESS);
+
+    expect_string(wrap_win_whodata_RegQueryValueEx, lpValueName, "PROCESSOR_ARCHITECTURE");
+    expect_value(wrap_win_whodata_RegQueryValueEx, lpReserved, NULL);
+    expect_value(wrap_win_whodata_RegQueryValueEx, lpType, NULL);
+    will_return(wrap_win_whodata_RegQueryValueEx, data);
+    will_return(wrap_win_whodata_RegQueryValueEx, ERROR_SUCCESS);
+
+}
+
+/* Inside set_policies */
+{
+    expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
+    will_return(__wrap_IsFile, 0);
+    expect_string(__wrap_remove, filename, "tmp\\backup-policies");
+    will_return(__wrap_remove, 1);
+
+    expect_string(__wrap__merror, formatted_msg,
+         "(6660): 'tmp\\backup-policies' could not be removed: 'No such file or directory' (2).");
+}
+    expect_string(__wrap__mwarn, formatted_msg,
+         "(6916): Local audit policies could not be configured.");
+
+    ret = run_whodata_scan();
+    assert_int_equal(ret, 1);
+}
+
+void test_run_whodata_scan_no_auto_audit_policies(void **state) {
+    int ret;
+
+/* Inside whodata_check_arch */
+{
+    HKEY key;
+    const BYTE data[64] = "ARM64";
+
+    expect_value(wrap_win_whodata_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
+    expect_string(wrap_win_whodata_RegOpenKeyEx, lpSubKey,
+        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+    expect_value(wrap_win_whodata_RegOpenKeyEx, ulOptions, 0);
+    expect_value(wrap_win_whodata_RegOpenKeyEx, samDesired, KEY_READ);
+    will_return(wrap_win_whodata_RegOpenKeyEx, &key);
+    will_return(wrap_win_whodata_RegOpenKeyEx, ERROR_SUCCESS);
+
+    expect_string(wrap_win_whodata_RegQueryValueEx, lpValueName, "PROCESSOR_ARCHITECTURE");
+    expect_value(wrap_win_whodata_RegQueryValueEx, lpReserved, NULL);
+    expect_value(wrap_win_whodata_RegQueryValueEx, lpType, NULL);
+    will_return(wrap_win_whodata_RegQueryValueEx, data);
+    will_return(wrap_win_whodata_RegQueryValueEx, ERROR_SUCCESS);
+
+}
+
+/* Inside set_policies */
+{
+    expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
+    will_return(__wrap_IsFile, 0);
+    expect_string(__wrap_remove, filename, "tmp\\backup-policies");
+    will_return(__wrap_remove, 0);
+
+}
+
+    ret = run_whodata_scan();
+    assert_int_equal(ret, 1);
+}
+
+void test_get_file_time_error(void **state) {
+    unsigned long long file_time_val = 0x0102030405060708;
+    SYSTEMTIME time, returned_time;
+    FILETIME ftime;
+    int ret;
+
+    memset(&time, 0, sizeof(SYSTEMTIME));
+    memset(&returned_time, 0, sizeof(SYSTEMTIME));
+
+    ftime.dwHighDateTime = 0x01020304;
+    ftime.dwLowDateTime = 0x05060708;
+
+    expect_memory(wrap_win_whodata_FileTimeToSystemTime, lpFileTime, &ftime, sizeof(FILETIME));
+    will_return(wrap_win_whodata_FileTimeToSystemTime, &returned_time);
+    will_return(wrap_win_whodata_FileTimeToSystemTime, 0);
+
+    ret = get_file_time(file_time_val, &time);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_get_file_time_success(void **state) {
+    unsigned long long file_time_val = 0x0102030405060708;
+    SYSTEMTIME time, returned_time;
+    FILETIME ftime;
+    int ret;
+
+    memset(&time, 0, sizeof(SYSTEMTIME));
+    memset(&returned_time, 0, sizeof(SYSTEMTIME));
+
+    ftime.dwHighDateTime = 0x01020304;
+    ftime.dwLowDateTime = 0x05060708;
+
+    returned_time.wYear = 2020;
+    returned_time.wMonth = 3;
+    returned_time.wDay = 10;
+    returned_time.wHour = 12;
+    returned_time.wMinute = 55;
+    returned_time.wSecond = 32;
+
+    expect_memory(wrap_win_whodata_FileTimeToSystemTime, lpFileTime, &ftime, sizeof(FILETIME));
+    will_return(wrap_win_whodata_FileTimeToSystemTime, &returned_time);
+    will_return(wrap_win_whodata_FileTimeToSystemTime, 1);
+
+    ret = get_file_time(file_time_val, &time);
+
+    assert_int_equal(ret, 1);
+    assert_memory_equal(&time, &returned_time, sizeof(SYSTEMTIME));
+}
+
 /**************************************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -2698,6 +3160,29 @@ int main(void) {
         /* free_win_whodata_evt */
         cmocka_unit_test_setup_teardown(test_free_win_whodata_evt, setup_w_clist, teardown_w_clist),
         cmocka_unit_test(test_free_win_whodata_evt_null_event),
+        /* compare_timestamp */
+        // TODO: Should we add tests for NULL input parameters?
+        cmocka_unit_test(test_compare_timestamp_t1_year_bigger),
+        cmocka_unit_test(test_compare_timestamp_t2_year_bigger),
+        cmocka_unit_test(test_compare_timestamp_t1_month_bigger),
+        cmocka_unit_test(test_compare_timestamp_t2_month_bigger),
+        cmocka_unit_test(test_compare_timestamp_t1_day_bigger),
+        cmocka_unit_test(test_compare_timestamp_t2_day_bigger),
+        cmocka_unit_test(test_compare_timestamp_t1_hour_bigger),
+        cmocka_unit_test(test_compare_timestamp_t2_hour_bigger),
+        cmocka_unit_test(test_compare_timestamp_t1_minute_bigger),
+        cmocka_unit_test(test_compare_timestamp_t2_minute_bigger),
+        cmocka_unit_test(test_compare_timestamp_t1_seconds_bigger),
+        cmocka_unit_test(test_compare_timestamp_t2_seconds_bigger),
+        cmocka_unit_test(test_compare_timestamp_equal_dates),
+        /* run_whodata_scan */
+        cmocka_unit_test(test_run_whodata_scan_invalid_arch),
+        cmocka_unit_test(test_run_whodata_scan_no_audit_policies),
+        cmocka_unit_test(test_run_whodata_scan_no_auto_audit_policies),
+        /* get_file_time */
+        // TODO: Should we add tests for NULL input parameters?
+        cmocka_unit_test(test_get_file_time_error),
+        cmocka_unit_test(test_get_file_time_success),
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, NULL);

@@ -71,6 +71,7 @@
 #define FindNextVolumeW wrap_win_whodata_FindNextVolumeW
 #define FindVolumeClose wrap_win_whodata_FindVolumeClose
 #define EqualSid wrap_win_whodata_EqualSid
+#define FileTimeToSystemTime wrap_win_whodata_FileTimeToSystemTime
 #else
 #define STATIC static
 #endif

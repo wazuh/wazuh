@@ -167,5 +167,10 @@ WINBOOL WINAPI wrap_win_whodata_EqualSid(
   __attribute__ ((unused)) PSID pSid1,
   __attribute__ ((unused)) PSID pSid2
 );
+
+WINBOOL WINAPI wrap_win_whodata_FileTimeToSystemTime(
+  CONST FILETIME *lpFileTime,
+  LPSYSTEMTIME lpSystemTime
+);
 #endif
 #endif

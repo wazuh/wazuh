@@ -304,3 +304,14 @@ WINBOOL WINAPI wrap_win_whodata_EqualSid(
 ) {
   return mock();
 }
+
+WINBOOL WINAPI wrap_win_whodata_FileTimeToSystemTime(
+  CONST FILETIME *lpFileTime,
+  LPSYSTEMTIME lpSystemTime
+) {
+  check_expected(lpFileTime);
+
+  memcpy(lpSystemTime, mock_type(LPSYSTEMTIME), sizeof(SYSTEMTIME));
+
+  return mock();
+}
