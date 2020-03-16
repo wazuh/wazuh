@@ -1159,7 +1159,7 @@ static void test_fim_check_depth_success(void **state) {
     int ret;
 
     #ifndef TEST_WINAGENT
-    // Pos 1 = "/usr/bin"
+    // Pos 4 = "/usr/bin"
     char * path = "/usr/bin/folder1/folder2/folder3/file";
     #else
     // Pos 1 = "%WINDIR%\\SysNative\\drivers\\etc"
@@ -1169,7 +1169,7 @@ static void test_fim_check_depth_success(void **state) {
     if(!ExpandEnvironmentStrings(aux_path, path, OS_MAXSTR))
         fail();
     #endif
-    ret = fim_check_depth(path, 1);
+    ret = fim_check_depth(path, 4);
 
     assert_int_equal(ret, 3);
 }
@@ -1817,7 +1817,7 @@ static void test_fim_checker_fim_regular_ignore(void **state) {
     fim_checker(path, fim_data->item, fim_data->w_evt, 1);
 
     assert_int_equal(fim_data->item->configuration, 66047);
-    assert_int_equal(fim_data->item->index, 0);
+    assert_int_equal(fim_data->item->index, 1);
 }
 
 static void test_fim_checker_fim_regular_restrict(void **state) {
@@ -1878,17 +1878,19 @@ static void test_fim_scan(void **state) {
     // In fim_checker
     will_return_count(__wrap_lstat, 0, 6);
 
+    expect_string(__wrap_HasFilesystem, path, "/boot");
     expect_string(__wrap_HasFilesystem, path, "/etc");
+    expect_string(__wrap_HasFilesystem, path, "/home");
+    expect_string(__wrap_HasFilesystem, path, "/media");
     expect_string(__wrap_HasFilesystem, path, "/usr/bin");
     expect_string(__wrap_HasFilesystem, path, "/usr/sbin");
-    expect_string(__wrap_HasFilesystem, path, "/media");
-    expect_string(__wrap_HasFilesystem, path, "/home");
-    expect_string(__wrap_HasFilesystem, path, "/boot");
     will_return_count(__wrap_HasFilesystem, 0, 6);
 
-    expect_string(__wrap_realtime_adddir, dir, "/media");
-    expect_string(__wrap_realtime_adddir, dir, "/home");
     expect_string(__wrap_realtime_adddir, dir, "/boot");
+    expect_string(__wrap_realtime_adddir, dir, "/home");
+    expect_string(__wrap_realtime_adddir, dir, "/media");
+
+    will_return(__wrap_fim_db_get_count_entry_path, 1000);
 
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
@@ -1897,6 +1899,8 @@ static void test_fim_scan(void **state) {
 
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_set_all_unscanned, 0);
+
+    will_return(__wrap_fim_db_get_count_entry_path, 900);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 

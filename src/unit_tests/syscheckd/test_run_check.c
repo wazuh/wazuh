@@ -294,13 +294,13 @@ void test_fim_whodata_initialize(void **state)
     }
     #else
     expect_string(__wrap_realtime_adddir, dir, "/etc");
-    expect_value(__wrap_realtime_adddir, whodata, 1);
-    will_return(__wrap_realtime_adddir, 0);
-    expect_string(__wrap_realtime_adddir, dir, "/usr/bin");
     expect_value(__wrap_realtime_adddir, whodata, 2);
     will_return(__wrap_realtime_adddir, 0);
+    expect_string(__wrap_realtime_adddir, dir, "/usr/bin");
+    expect_value(__wrap_realtime_adddir, whodata, 5);
+    will_return(__wrap_realtime_adddir, 0);
     expect_string(__wrap_realtime_adddir, dir, "/usr/sbin");
-    expect_value(__wrap_realtime_adddir, whodata, 3);
+    expect_value(__wrap_realtime_adddir, whodata, 6);
     will_return(__wrap_realtime_adddir, 0);
     #endif
 
@@ -689,6 +689,10 @@ void test_fim_link_update(void **state) {
     will_return(__wrap_fim_db_get_path_range, NULL);
     will_return(__wrap_fim_db_get_path_range, FIMDB_OK);
 
+    expect_string(__wrap_realtime_adddir, dir, "/folder/test");
+    expect_value(__wrap_realtime_adddir, whodata, 0);
+    will_return(__wrap_realtime_adddir, 0);
+
     expect_string(__wrap_fim_checker, path, link_path);
 
     fim_link_update(pos, link_path);
@@ -718,7 +722,7 @@ void test_fim_link_check_delete(void **state) {
     (void) state;
 
     int pos = 1;
-    char *link_path = "/usr/bin";
+    char *link_path = "/etc";
 
     expect_string(__wrap_lstat, filename, link_path);
     will_return(__wrap_lstat, 0);
@@ -739,12 +743,12 @@ void test_fim_link_check_delete_lstat_error(void **state) {
     (void) state;
 
     int pos = 2;
-    char *link_path = "/usr/sbin";
+    char *link_path = "/home";
 
     expect_string(__wrap_lstat, filename, link_path);
     will_return(__wrap_lstat, -1);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6222): Stat() function failed on: '/usr/sbin' due to [(0)-(Success)]");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6222): Stat() function failed on: '/home' due to [(0)-(Success)]");
 
     fim_link_check_delete(pos);
 
@@ -755,7 +759,7 @@ void test_fim_link_check_delete_noentry_error(void **state) {
     (void) state;
 
     int pos = 2;
-    char *link_path = "/usr/sbin";
+    char *link_path = "/home";
 
     expect_string(__wrap_lstat, filename, link_path);
     will_return(__wrap_lstat, -1);
@@ -844,9 +848,9 @@ void test_fim_link_reload_broken_link_already_monitored(void **state) {
     (void) state;
 
     int pos = 4;
-    char *link_path = "/home";
+    char *link_path = "/usr/bin";
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6234): Directory '/home' already monitored, ignoring link '(null)'");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6234): Directory '/usr/bin' already monitored, ignoring link '(null)'");
 
     fim_link_reload_broken_link(link_path, pos);
 
@@ -858,10 +862,6 @@ void test_fim_link_reload_broken_link_reload_broken(void **state) {
 
     int pos = 5;
     char *link_path = "/test";
-
-    expect_string(__wrap_realtime_adddir, dir, link_path);
-    expect_value(__wrap_realtime_adddir, whodata, 0);
-    will_return(__wrap_realtime_adddir, 0);
 
     expect_string(__wrap_fim_checker, path, link_path);
 
