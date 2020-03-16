@@ -27,6 +27,7 @@ extern int get_drive_names(wchar_t *volume_name, char *device);
 extern int get_volume_names();
 extern void notify_SACL_change(char *dir);
 extern int whodata_hash_add(OSHash *table, char *id, void *data, char *tag);
+extern void restore_sacls();
 
 extern char sys_64;
 extern PSID everyone_sid;
@@ -2118,6 +2119,65 @@ void test_restore_sacls_set_privilege_failed(void **state){
     will_return(wrap_win_whodata_CloseHandle, 0);
     restore_sacls();
 }
+
+
+int setup_restore_sacls(void **state) {
+    state = malloc(sizeof(int));
+    *state = syscheck.wdata.dirs_status[0].status;
+    // Set realtime
+    syscheck.wdata.dirs_status[0].status |= WD_IGNORE_REST;
+    return 0;
+}
+
+int teardown_restore_sacls(void **state) {
+    int *ptr = (int *)state;
+    syscheck.wdata.dirs_status[0].status = *ptr;
+    free(*state); 
+    return 0;
+}
+
+void test_restore_sacls_securityNameInfo_failed(void **state){
+    expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_win_whodata_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_win_whodata_OpenProcessToken, 1);
+
+    // set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+        expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+    }
+    // GetNamedSecurity
+    expect_string(wrap_win_whodata_GetNamedSecurityInfo, pObjectName, syscheck.dir[0]);
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, NULL);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, NULL);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, -1);
+    expect_string(__wrap__merror, formatted_msg, "(6650): GetNamedSecurityInfo() failed. Error '-1'");
+
+    /* Retry set_privilege */
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+    }
+    
+    will_return(wrap_win_whodata_CloseHandle, 0);
+    will_return(wrap_win_whodata_CloseHandle, 0);
+
+    restore_sacls();
+}
 /**************************************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -2196,6 +2256,7 @@ int main(void) {
         /* restore_sacls */
         cmocka_unit_test(test_restore_sacls_openprocesstoken_failed),
         cmocka_unit_test(test_restore_sacls_set_privilege_failed),
+        cmocka_unit_test_setup_teardown(test_restore_sacls_securityNameInfo_failed, setup_restore_sacls, teardown_restore_sacls),
         /* audit_restore */
     };
 
