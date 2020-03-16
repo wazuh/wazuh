@@ -356,6 +356,38 @@ alert_data *GetAlertJSONData(file_queue *fileq) {
     return al_data;
 }
 
+/* Initiates the JSON monitoring */
+int Init_JsonQueue(file_queue *fileq, const struct tm *p, int flags) {
+
+    /* Initialize file_queue fields */
+    if (!(flags & CRALERT_FP_SET)) {
+        fileq->fp = NULL;
+    }
+    fileq->last_change = 0;
+    fileq->flags = 0;
+
+    fileq->day = p->tm_mday;
+    fileq->year = p->tm_year + 1900;
+
+    strncpy(fileq->mon, s_month[p->tm_mon], 3);
+    memset(fileq->file_name, '\0', MAX_FQUEUE + 1);
+
+    /* Set the supplied flags */
+    jqueue_flags(fileq, flags);
+
+    /* Create the logfile name */
+    fileq->file_name[0] = '\0';
+    fileq->file_name[MAX_FQUEUE] = '\0';
+
+    snprintf(fileq->file_name, MAX_FQUEUE, isChroot() ? ALERTSJSON_DAILY : DEFAULTDIR ALERTSJSON_DAILY);
+
+    if (Handle_JQueue(fileq, fileq->flags) < 0) {
+        return -1;
+    }
+
+    return 0;
+}
+
 /* Read from monitored file in JSON format */
 alert_data *Read_JSON_Mon(file_queue *fileq, const struct tm *p, unsigned int timeout) {
     unsigned int i = 0;

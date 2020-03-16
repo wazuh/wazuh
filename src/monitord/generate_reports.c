@@ -60,11 +60,13 @@ void generate_reports(int cday, int cmon, int cyear, const struct tm *p)
                     continue;
                 }
 
-                snprintf(aname, 255, "%s/%d/%s/ossec-%s-%02d.log", ALERTS, cyear, monthss[cmon], "alerts", cday);
+                char *alerts_ext = (mond.reports[s]->r_filter.report_log_source == REPORT_SOURCE_JSON) ? "json" : "log";
+
+                snprintf(aname, 255, "%s/%d/%s/ossec-%s-%02d.%s", ALERTS, cyear, monthss[cmon], "alerts", cday, alerts_ext);
 
                 for (i = 1; !IsFile(aname); i++) {
                     /* Open the log file */
-                    snprintf(aname, 255, "%s/%d/%s/ossec-%s-%02d.log", ALERTS, cyear, monthss[cmon], "alerts", cday);
+                    snprintf(aname, 255, "%s/%d/%s/ossec-%s-%02d.%s", ALERTS, cyear, monthss[cmon], "alerts", cday, alerts_ext);
                     os_strdup(aname, mond.reports[s]->r_filter.filename);
 
                     /* Start report */
@@ -90,7 +92,7 @@ void generate_reports(int cday, int cmon, int cyear, const struct tm *p)
                     free(mond.reports[s]->r_filter.filename);
                     mond.reports[s]->r_filter.filename = NULL;
 
-                    snprintf(aname, 255, "%s/%d/%s/ossec-%s-%02d-%.3d.log", ALERTS, cyear, monthss[cmon], "alerts", cday, i);
+                    snprintf(aname, 255, "%s/%d/%s/ossec-%s-%02d-%.3d.%s", ALERTS, cyear, monthss[cmon], "alerts", cday, i, alerts_ext);
                 }
 
                 exit(0);
