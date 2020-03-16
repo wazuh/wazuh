@@ -28,6 +28,7 @@ extern int get_volume_names();
 extern void notify_SACL_change(char *dir);
 extern int whodata_hash_add(OSHash *table, char *id, void *data, char *tag);
 extern int check_object_sacl(char *obj, int is_file);
+extern void whodata_clist_remove(whodata_event_node *node);
 
 extern char sys_64;
 extern PSID everyone_sid;
@@ -83,6 +84,91 @@ static int teardown_replace_device_path(void **state) {
 
     if(teardown_string(state))
         return -1;
+
+    return 0;
+}
+
+static int setup_w_clist_single_node(void **state) {
+    whodata_event_node *node = calloc(1, sizeof(whodata_event_node));
+
+    if(!node)
+        return -1;
+
+    node->next = NULL;
+    node->prev = NULL;
+
+    if(node->id = strdup("First node"), !node->id)
+        return -1;
+
+    syscheck.w_clist.first = node;
+    syscheck.w_clist.last = node;
+    syscheck.w_clist.current_size = 1;
+
+    return 0;
+}
+
+static int teardown_w_clist_single_node(void **state) {
+    if(syscheck.w_clist.first) {
+        if(syscheck.w_clist.first->id)
+            free(syscheck.w_clist.first->id);
+
+        free(syscheck.w_clist.first);
+    }
+
+    syscheck.w_clist.last = syscheck.w_clist.first = NULL;
+
+    return 0;
+}
+
+static int setup_w_clist(void **state) {
+    whodata_event_node *first_node = calloc(1, sizeof(whodata_event_node));
+    whodata_event_node *mid_node = calloc(1, sizeof(whodata_event_node));
+    whodata_event_node *last_node = calloc(1, sizeof(whodata_event_node));
+
+    if(!first_node || !mid_node || !last_node)
+        return -1;
+
+    if(first_node->id = strdup("first_node"), !first_node->id)
+        return -1;
+
+    if(mid_node->id = strdup("mid_node"), !mid_node->id)
+        return -1;
+
+    if(last_node->id = strdup("last_node"), !last_node->id)
+        return -1;
+
+    first_node->prev = NULL;
+    first_node->next = mid_node;
+
+    mid_node->prev = first_node;
+    mid_node->next = last_node;
+
+    last_node->prev = mid_node;
+    last_node->next = NULL;
+
+    syscheck.w_clist.first = first_node;
+    syscheck.w_clist.last = last_node;
+
+    syscheck.w_clist.current_size = 3;
+
+    return 0;
+}
+
+static int teardown_w_clist(void **state) {
+    whodata_event_node *node;
+    whodata_event_node *next = node->next;
+
+    for(node = syscheck.w_clist.first; node; node = next) {
+        next = node->next;
+
+        if(node->id)
+            free(node->id);
+
+        free(node);
+    }
+
+    syscheck.w_clist.last = syscheck.w_clist.first = NULL;
+    syscheck.w_clist.current_size = 0;
 
     return 0;
 }
@@ -2377,6 +2463,56 @@ void test_check_object_sacl_valid_sacl(void **state) {
     assert_int_equal(ret, 0);
 }
 
+void test_whodata_clist_remove_single_node(void **state) {
+    whodata_clist_remove(syscheck.w_clist.first);
+
+    assert_null(syscheck.w_clist.first);
+    assert_null(syscheck.w_clist.last);
+    assert_int_equal(syscheck.w_clist.current_size, 0);
+}
+
+void test_whodata_clist_remove_first_node(void **state) {
+    whodata_clist_remove(syscheck.w_clist.first);
+
+    assert_non_null(syscheck.w_clist.first);
+    assert_non_null(syscheck.w_clist.last);
+    assert_string_equal(syscheck.w_clist.first->id, "mid_node");
+    assert_ptr_equal(syscheck.w_clist.first->next, syscheck.w_clist.last);
+    assert_null(syscheck.w_clist.first->prev);
+    assert_string_equal(syscheck.w_clist.last->id, "last_node");
+    assert_ptr_equal(syscheck.w_clist.last->prev, syscheck.w_clist.first);
+    assert_null(syscheck.w_clist.last->next);
+    assert_int_equal(syscheck.w_clist.current_size, 2);
+}
+
+void test_whodata_clist_remove_last_node(void **state) {    whodata_event_node *node = syscheck.w_clist.first;
+    whodata_clist_remove(syscheck.w_clist.last);
+
+    assert_non_null(syscheck.w_clist.first);
+    assert_non_null(syscheck.w_clist.last);
+    assert_string_equal(syscheck.w_clist.first->id, "first_node");
+    assert_ptr_equal(syscheck.w_clist.first->next, syscheck.w_clist.last);
+    assert_null(syscheck.w_clist.first->prev);
+    assert_string_equal(syscheck.w_clist.last->id, "mid_node");
+    assert_ptr_equal(syscheck.w_clist.last->prev, syscheck.w_clist.first);
+    assert_null(syscheck.w_clist.last->next);
+    assert_int_equal(syscheck.w_clist.current_size, 2);
+}
+
+void test_whodata_clist_remove_center_node(void **state) {
+    whodata_clist_remove(syscheck.w_clist.first->next);
+
+    assert_non_null(syscheck.w_clist.first);
+    assert_non_null(syscheck.w_clist.last);
+    assert_string_equal(syscheck.w_clist.first->id, "first_node");
+    assert_ptr_equal(syscheck.w_clist.first->next, syscheck.w_clist.last);
+    assert_null(syscheck.w_clist.first->prev);
+    assert_string_equal(syscheck.w_clist.last->id, "last_node");
+    assert_ptr_equal(syscheck.w_clist.last->prev, syscheck.w_clist.first);
+    assert_null(syscheck.w_clist.last->next);
+    assert_int_equal(syscheck.w_clist.current_size, 2);
+}
+
 /**************************************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -2463,6 +2599,11 @@ int main(void) {
         cmocka_unit_test(test_check_object_sacl_unable_to_retrieve_security_info),
         cmocka_unit_test(test_check_object_sacl_invalid_sacl),
         cmocka_unit_test(test_check_object_sacl_valid_sacl),
+        /* whodata_clist_remove */
+        cmocka_unit_test_setup_teardown(test_whodata_clist_remove_single_node, setup_w_clist_single_node, teardown_w_clist_single_node),
+        cmocka_unit_test_setup_teardown(test_whodata_clist_remove_first_node, setup_w_clist, teardown_w_clist),
+        cmocka_unit_test_setup_teardown(test_whodata_clist_remove_last_node, setup_w_clist, teardown_w_clist),
+        cmocka_unit_test_setup_teardown(test_whodata_clist_remove_center_node, setup_w_clist, teardown_w_clist),
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, NULL);
