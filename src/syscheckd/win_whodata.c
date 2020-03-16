@@ -70,6 +70,7 @@
 #define QueryDosDeviceW wrap_win_whodata_QueryDosDeviceW
 #define FindNextVolumeW wrap_win_whodata_FindNextVolumeW
 #define FindVolumeClose wrap_win_whodata_FindVolumeClose
+#define EqualSid wrap_win_whodata_EqualSid
 #else
 #define STATIC static
 #endif

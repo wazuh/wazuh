@@ -1767,6 +1767,34 @@ void test_is_valid_sacl_not_valid(void **state) {
     assert_int_equal(ret, 0);
 }
 
+void test_is_valid_sacl_valid(void **state) {
+    int ret;
+    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+    ACL new_sacl;
+    ACCESS_ALLOWED_ACE ace;
+    unsigned long new_sacl_size;
+
+    everyone_sid = NULL;
+    ev_sid_size = 1;
+
+    // Set the ACL and ACE data
+    new_sacl.AceCount=1;
+    ace.Header.AceFlags = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG;
+    ace.Mask = FILE_WRITE_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES | DELETE;
+
+    expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+    expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+    will_return(wrap_win_whodata_AllocateAndInitializeSid, 1);
+
+    will_return(wrap_win_whodata_GetAce, &ace);
+    will_return(wrap_win_whodata_GetAce, 1);
+
+    will_return(wrap_win_whodata_EqualSid, 1);
+
+    ret = is_valid_sacl(&new_sacl, 1);
+    assert_int_equal(ret, 1);
+}
+
 void test_replace_device_path_invalid_path(void **state) {
     char *path = strdup("invalid\\path");
 
@@ -2105,7 +2133,7 @@ void test_restore_sacls_set_privilege_failed(void **state){
     will_return(wrap_win_whodata_OpenProcessToken, (HANDLE) 123456);
     will_return(wrap_win_whodata_OpenProcessToken, 1);
 
-    // set_privilege 
+    // set_privilege
     expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
     will_return(wrap_win_whodata_LookupPrivilegeValue, 0);
     will_return(wrap_win_whodata_LookupPrivilegeValue, 0);
@@ -2113,7 +2141,7 @@ void test_restore_sacls_set_privilege_failed(void **state){
     expect_string(__wrap__merror, formatted_msg, "(6647): Could not find the 'SeSecurityPrivilege' privilege. Error: 5");
     will_return(wrap_win_whodata_GetLastError, ERROR_ACCESS_DENIED);
     expect_string(__wrap__merror, formatted_msg, "(6659): The privilege could not be activated. Error: '5'.");
-    
+
     will_return(wrap_win_whodata_CloseHandle, 0);
     will_return(wrap_win_whodata_CloseHandle, 0);
     restore_sacls();
@@ -2171,6 +2199,7 @@ int main(void) {
         cmocka_unit_test(test_is_valid_sacl_sacl_not_found),
         cmocka_unit_test(test_is_valid_sacl_ace_not_found),
         cmocka_unit_test(test_is_valid_sacl_not_valid),
+        cmocka_unit_test(test_is_valid_sacl_valid),
         /* replace_device_path */
         cmocka_unit_test_setup_teardown(test_replace_device_path_invalid_path, setup_replace_device_path, teardown_replace_device_path),
         cmocka_unit_test_setup_teardown(test_replace_device_path_empty_wdata_device, setup_replace_device_path, teardown_replace_device_path),
