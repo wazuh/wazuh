@@ -289,7 +289,7 @@ void test_fim_whodata_initialize(void **state)
 
         str_lowercase(expanded_dirs[i]);
         expect_string(__wrap_realtime_adddir, dir, expanded_dirs[i]);
-        expect_value(__wrap_realtime_adddir, whodata, 9);
+        expect_value(__wrap_realtime_adddir, whodata, 10);
         will_return(__wrap_realtime_adddir, 0);
     }
     #else
@@ -492,20 +492,20 @@ void test_set_priority_windows_thread_error(void **state) {
 void test_set_whodata_mode_changes(void **state) {
     int i;
     char *dirs[] = {
+        "%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
         "%WINDIR%\\System32\\drivers\\etc",
         "%WINDIR%\\System32\\wbem",
-        "%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
         NULL
     };
     char expanded_dirs[3][OS_SIZE_1024];
 
     // Mark directories to be added in realtime
-    syscheck.wdata.dirs_status[6].status |= WD_CHECK_REALTIME;
-    syscheck.wdata.dirs_status[6].status &= ~WD_CHECK_WHODATA;
+    syscheck.wdata.dirs_status[0].status |= WD_CHECK_REALTIME;
+    syscheck.wdata.dirs_status[0].status &= ~WD_CHECK_WHODATA;
     syscheck.wdata.dirs_status[7].status |= WD_CHECK_REALTIME;
     syscheck.wdata.dirs_status[7].status &= ~WD_CHECK_WHODATA;
-    syscheck.wdata.dirs_status[9].status |= WD_CHECK_REALTIME;
-    syscheck.wdata.dirs_status[9].status &= ~WD_CHECK_WHODATA;
+    syscheck.wdata.dirs_status[8].status |= WD_CHECK_REALTIME;
+    syscheck.wdata.dirs_status[8].status &= ~WD_CHECK_WHODATA;
 
     // Expand directories
     for(i = 0; dirs[i]; i++) {
@@ -522,9 +522,9 @@ void test_set_whodata_mode_changes(void **state) {
         }
     }
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6225): The 'c:\\windows\\system32\\drivers\\etc' directory starts to be monitored in real-time mode.");
-    expect_string(__wrap__merror, formatted_msg, "(6611): 'realtime_adddir' failed, the directory 'c:\\windows\\system32\\wbem'could't be added to real time mode.");
     expect_string(__wrap__mdebug1, formatted_msg, "(6225): The 'c:\\programdata\\microsoft\\windows\\start menu\\programs\\startup' directory starts to be monitored in real-time mode.");
+    expect_string(__wrap__merror, formatted_msg, "(6611): 'realtime_adddir' failed, the directory 'c:\\windows\\system32\\drivers\\etc'could't be added to real time mode.");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6225): The 'c:\\windows\\system32\\wbem' directory starts to be monitored in real-time mode.");
 
     set_whodata_mode_changes();
 }
@@ -553,7 +553,7 @@ void test_fim_whodata_initialize_eventchannel(void **state) {
 
         str_lowercase(expanded_dirs[i]);
         expect_string(__wrap_realtime_adddir, dir, expanded_dirs[i]);
-        expect_value(__wrap_realtime_adddir, whodata, 9);
+        expect_value(__wrap_realtime_adddir, whodata, 10);
         will_return(__wrap_realtime_adddir, 0);
     }
 

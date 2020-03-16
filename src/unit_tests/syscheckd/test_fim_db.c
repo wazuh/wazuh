@@ -1392,7 +1392,7 @@ void test_fim_db_remove_path_no_entry_realtime_file(void **state) {
     #ifndef TEST_WINAGENT
     will_return(__wrap_fim_configuration_directory, 3);
     #else
-    will_return(__wrap_fim_configuration_directory, 6);
+    will_return(__wrap_fim_configuration_directory, 7);
     #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
@@ -1414,7 +1414,7 @@ void test_fim_db_remove_path_no_entry_scheduled_file(void **state) {
     #ifndef TEST_WINAGENT
     will_return(__wrap_fim_configuration_directory, 6);
     #else
-    will_return(__wrap_fim_configuration_directory, 0);
+    will_return(__wrap_fim_configuration_directory, 9);
     #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
