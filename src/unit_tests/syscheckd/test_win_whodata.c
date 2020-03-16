@@ -29,6 +29,7 @@ extern void notify_SACL_change(char *dir);
 extern int whodata_hash_add(OSHash *table, char *id, void *data, char *tag);
 extern int check_object_sacl(char *obj, int is_file);
 extern void whodata_clist_remove(whodata_event_node *node);
+extern void free_win_whodata_evt(whodata_evt *evt);
 
 extern char sys_64;
 extern PSID everyone_sid;
@@ -240,6 +241,11 @@ int __wrap_OSHash_Add_ex(OSHash *self, const char *key, void *data) {
 
     return mock();
 }
+
+void __wrap_free_whodata_event(whodata_evt *w_evt) {
+    check_expected(w_evt);
+}
+
 /**************************************************************************/
 /***************************set_winsacl************************************/
 void test_set_winsacl_failed_opening(void **state) {
@@ -2513,6 +2519,31 @@ void test_whodata_clist_remove_center_node(void **state) {
     assert_int_equal(syscheck.w_clist.current_size, 2);
 }
 
+void test_free_win_whodata_evt(void **state) {
+    whodata_evt evt;
+
+    evt.wnode = syscheck.w_clist.first->next;
+
+    expect_value(__wrap_free_whodata_event, w_evt, &evt);
+
+    free_win_whodata_evt(&evt);
+
+    assert_non_null(syscheck.w_clist.first);
+    assert_non_null(syscheck.w_clist.last);
+    assert_string_equal(syscheck.w_clist.first->id, "first_node");
+    assert_ptr_equal(syscheck.w_clist.first->next, syscheck.w_clist.last);
+    assert_null(syscheck.w_clist.first->prev);
+    assert_string_equal(syscheck.w_clist.last->id, "last_node");
+    assert_ptr_equal(syscheck.w_clist.last->prev, syscheck.w_clist.first);
+    assert_null(syscheck.w_clist.last->next);
+    assert_int_equal(syscheck.w_clist.current_size, 2);
+}
+
+void test_free_win_whodata_evt_null_event(void **state) {
+    // Nothing to check on this condition
+    free_win_whodata_evt(NULL);
+}
+
 /**************************************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -2604,6 +2635,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_whodata_clist_remove_first_node, setup_w_clist, teardown_w_clist),
         cmocka_unit_test_setup_teardown(test_whodata_clist_remove_last_node, setup_w_clist, teardown_w_clist),
         cmocka_unit_test_setup_teardown(test_whodata_clist_remove_center_node, setup_w_clist, teardown_w_clist),
+        /* free_win_whodata_evt */
+        cmocka_unit_test_setup_teardown(test_free_win_whodata_evt, setup_w_clist, teardown_w_clist),
+        cmocka_unit_test(test_free_win_whodata_evt_null_event),
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, NULL);
