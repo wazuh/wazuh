@@ -515,6 +515,18 @@ static int teardown_struct_dirent(void **state) {
     return 0;
 }
 
+static int setup_file_limit(void **state) {
+    syscheck.file_limit = 0;
+
+    return 0;
+}
+
+static int teardown_file_limit(void **state) {
+    syscheck.file_limit = 50000;
+
+    return 0;
+}
+
 /* tests */
 static void test_fim_json_event(void **state) {
     fim_data_t *fim_data = *state;
@@ -1887,7 +1899,87 @@ static void test_fim_checker_fim_directory(void **state) {
     fim_checker(path, fim_data->item, NULL, 1);
 }
 
-static void test_fim_scan(void **state) {
+static void test_fim_scan_db_full_double_scan(void **state) {
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+
+    // In fim_checker
+    will_return_count(__wrap_lstat, 0, 7);
+
+    expect_string(__wrap_HasFilesystem, path, "/boot");
+    expect_string(__wrap_HasFilesystem, path, "/etc");
+    expect_string(__wrap_HasFilesystem, path, "/home");
+    expect_string(__wrap_HasFilesystem, path, "/media");
+    expect_string(__wrap_HasFilesystem, path, "/usr/bin");
+    expect_string(__wrap_HasFilesystem, path, "/usr/sbin");
+    will_return_count(__wrap_HasFilesystem, 0, 7);
+
+    expect_string(__wrap_realtime_adddir, dir, "/boot");
+    expect_string(__wrap_realtime_adddir, dir, "/home");
+    expect_string(__wrap_realtime_adddir, dir, "/media");
+
+    will_return(__wrap_fim_db_get_count_entry_path, 50000);
+
+    expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_not_scanned, NULL);
+    will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
+
+    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_set_all_unscanned, 0);
+
+    will_return(__wrap_fim_db_get_count_entry_path, 45000);
+
+    expect_string(__wrap_HasFilesystem, path, "/boot");
+
+    will_return(__wrap_fim_db_get_count_entry_path, 50000);
+
+    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_set_all_unscanned, 0);
+
+    will_return(__wrap_fim_db_get_count_entry_path, 50000);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6041): Sending DB 100% full alert.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: 'full'.");
+
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
+
+    fim_scan();
+}
+
+static void test_fim_scan_db_full_not_double_scan(void **state) {
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+
+    // In fim_checker
+    will_return_count(__wrap_lstat, 0, 6);
+
+    expect_string(__wrap_HasFilesystem, path, "/boot");
+    expect_string(__wrap_HasFilesystem, path, "/etc");
+    expect_string(__wrap_HasFilesystem, path, "/home");
+    expect_string(__wrap_HasFilesystem, path, "/media");
+    expect_string(__wrap_HasFilesystem, path, "/usr/bin");
+    expect_string(__wrap_HasFilesystem, path, "/usr/sbin");
+    will_return_count(__wrap_HasFilesystem, 0, 6);
+
+    expect_string(__wrap_realtime_adddir, dir, "/boot");
+    expect_string(__wrap_realtime_adddir, dir, "/home");
+    expect_string(__wrap_realtime_adddir, dir, "/media");
+
+    will_return_count(__wrap_fim_db_get_count_entry_path, 50000, 3);
+
+    expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_not_scanned, NULL);
+    will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
+
+    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_set_all_unscanned, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
+
+    fim_scan();
+}
+
+static void test_fim_scan_db_free(void **state) {
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // In fim_checker
@@ -1917,10 +2009,45 @@ static void test_fim_scan(void **state) {
 
     will_return(__wrap_fim_db_get_count_entry_path, 1000);
 
+    expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: 'normal'.");
+
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
     fim_scan();
 }
+
+static void test_fim_scan_no_limit(void **state) {
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+
+    // In fim_checker
+    will_return_count(__wrap_lstat, 0, 6);
+
+    expect_string(__wrap_HasFilesystem, path, "/boot");
+    expect_string(__wrap_HasFilesystem, path, "/etc");
+    expect_string(__wrap_HasFilesystem, path, "/home");
+    expect_string(__wrap_HasFilesystem, path, "/media");
+    expect_string(__wrap_HasFilesystem, path, "/usr/bin");
+    expect_string(__wrap_HasFilesystem, path, "/usr/sbin");
+    will_return_count(__wrap_HasFilesystem, 0, 6);
+
+    expect_string(__wrap_realtime_adddir, dir, "/boot");
+    expect_string(__wrap_realtime_adddir, dir, "/home");
+    expect_string(__wrap_realtime_adddir, dir, "/media");
+
+    expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_not_scanned, NULL);
+    will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
+
+    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_set_all_unscanned, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
+
+    fim_scan();
+}
+
 #else
 static void test_fim_checker_invalid_fim_mode(void **state) {
     fim_data_t *fim_data = *state;
@@ -3274,7 +3401,10 @@ int main(void) {
         cmocka_unit_test_setup(test_fim_file_error_on_insert, setup_fim_entry),
 
         /* fim_scan */
-        cmocka_unit_test(test_fim_scan),
+        cmocka_unit_test(test_fim_scan_db_full_double_scan),
+        cmocka_unit_test(test_fim_scan_db_full_not_double_scan),
+        cmocka_unit_test(test_fim_scan_db_free),
+        cmocka_unit_test_setup_teardown(test_fim_scan_no_limit, setup_file_limit, teardown_file_limit),
 
         /* fim_check_db_state */
         cmocka_unit_test(test_fim_check_db_state_normal_to_empty),

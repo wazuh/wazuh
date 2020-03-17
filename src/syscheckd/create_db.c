@@ -150,7 +150,9 @@ void fim_scan() {
 
     gettime(&end);
 
-    fim_check_db_state();
+    if (syscheck.file_limit) {
+        fim_check_db_state();
+    }
 
     if (_base_line == 0) {
         _base_line = 1;
