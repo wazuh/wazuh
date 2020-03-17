@@ -1806,15 +1806,15 @@ void * w_output_thread(void * args){
 
     while(1)
     {
+        int sleep_time = 5;
         /* Pop message from the queue */
         message = w_msg_queue_pop(msg_queue);
 
-        if (SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) < 0) {
-            if (strcmp(message->log_target->log_socket->name, "agent") == 0) {
-                // When dealing with this type of messages we don't want any of them to be lost
-                // Continuously attempt to reconnect to the queue and send the message.
-                int sleep_time = 5;
+        if (strcmp(message->log_target->log_socket->name, "agent") == 0) {
+            // When dealing with this type of messages we don't want any of them to be lost
+            // Continuously attempt to reconnect to the queue and send the message. 
 
+            if(SendMSG(logr_queue, message->buffer, message->file, message->queue_mq) != 0) {
                 #ifdef CLIENT
                 merror("Unable to send message to '%s' (ossec-agentd might be down). Attempting to reconnect.", DEFAULTQPATH);
                 #else
@@ -1823,7 +1823,7 @@ void * w_output_thread(void * args){
 
                 while(1) {
                     if(logr_queue = StartMQ(DEFAULTQPATH, WRITE), logr_queue > 0) {
-                        if (SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) == 0) {
+                        if (SendMSG(logr_queue, message->buffer, message->file, message->queue_mq) == 0) {
                             minfo("Successfully reconnected to '%s'", DEFAULTQPATH);
                             break;  //  We sent the message successfully, we can go on.
                         }
@@ -1835,15 +1835,28 @@ void * w_output_thread(void * args){
                     if(sleep_time < 300)
                         sleep_time += 5;
                 }
-            } else {
-                merror(QUEUE_SEND);
+            }
+            
+        } else {
+            int messageSent = 0;
+            const int MAX_RETRIES = 3;
+            int retries = 0;
+            while (messageSent <= 0 && retries < MAX_RETRIES) {
+                messageSent = SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target);
+                if (messageSent < 0) {
+                    merror(QUEUE_SEND);
 
-                if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                    merror_exit(QUEUE_FATAL, DEFAULTQPATH);
+                    sleep(sleep_time);
+
+                    // If we failed, we will wait longer before reattempting to connect
+                    sleep_time += 5;
+                    retries++;
                 }
             }
+            if (retries == MAX_RETRIES) {
+                merror(SEND_ERROR, message->log_target->log_socket->location, message->buffer);
+            }
         }
-
         free(message->file);
         free(message->buffer);
         free(message);
