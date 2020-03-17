@@ -34,6 +34,7 @@ extern void whodata_clist_remove(whodata_event_node *node);
 extern void free_win_whodata_evt(whodata_evt *evt);
 extern int compare_timestamp(SYSTEMTIME *t1, SYSTEMTIME *t2);
 extern int get_file_time(unsigned long long file_time_val, SYSTEMTIME *system_time);
+void set_subscription_query(wchar_t *query);
 
 extern char sys_64;
 extern PSID everyone_sid;
@@ -2274,7 +2275,7 @@ int setup_restore_sacls(void **state) {
 int teardown_restore_sacls(void **state) {
     int *ptr = (int *)state;
     syscheck.wdata.dirs_status[0].status = *ptr;
-    free(*state); 
+    free(*state);
     return 0;
 }
 
@@ -2302,7 +2303,7 @@ void test_restore_sacls_securityNameInfo_failed(void **state){
     will_return(wrap_win_whodata_GetNamedSecurityInfo, NULL);
     will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_FILE_NOT_FOUND);
     expect_string(__wrap__merror, formatted_msg, "(6650): GetNamedSecurityInfo() failed. Error '2'");
-    
+
     /* Inside set_privilege */
     {
         expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
@@ -2315,7 +2316,7 @@ void test_restore_sacls_securityNameInfo_failed(void **state){
 
         expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
     }
-    
+
     will_return(wrap_win_whodata_CloseHandle, 0);
     will_return(wrap_win_whodata_CloseHandle, 0);
 
@@ -2346,7 +2347,7 @@ void test_restore_sacls_deleteAce_failed(void **state){
     will_return(wrap_win_whodata_GetNamedSecurityInfo, &acl);
     will_return(wrap_win_whodata_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
     will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_SUCCESS);
-    
+
     expect_value(wrap_win_whodata_DeleteAce, pAcl, &acl);
     expect_value(wrap_win_whodata_DeleteAce, dwAceIndex, 0);
     will_return(wrap_win_whodata_DeleteAce, 0);
@@ -2364,7 +2365,7 @@ void test_restore_sacls_deleteAce_failed(void **state){
 
         expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
     }
-    
+
     will_return(wrap_win_whodata_CloseHandle, 0);
     will_return(wrap_win_whodata_CloseHandle, 0);
 
@@ -2395,7 +2396,7 @@ void test_restore_sacls_SetNamedSecurityInfo_failed(void **state){
     will_return(wrap_win_whodata_GetNamedSecurityInfo, &acl);
     will_return(wrap_win_whodata_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
     will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_SUCCESS);
-    
+
     expect_value(wrap_win_whodata_DeleteAce, pAcl, &acl);
     expect_value(wrap_win_whodata_DeleteAce, dwAceIndex, 0);
     will_return(wrap_win_whodata_DeleteAce, 1);
@@ -2422,7 +2423,7 @@ void test_restore_sacls_SetNamedSecurityInfo_failed(void **state){
 
         expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
     }
-    
+
     will_return(wrap_win_whodata_CloseHandle, 0);
     will_return(wrap_win_whodata_CloseHandle, 0);
 
@@ -2453,7 +2454,7 @@ void test_restore_sacls_success(void **state){
     will_return(wrap_win_whodata_GetNamedSecurityInfo, &acl);
     will_return(wrap_win_whodata_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
     will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_SUCCESS);
-    
+
     expect_value(wrap_win_whodata_DeleteAce, pAcl, &acl);
     expect_value(wrap_win_whodata_DeleteAce, dwAceIndex, 0);
     will_return(wrap_win_whodata_DeleteAce, 1);
@@ -2483,7 +2484,7 @@ void test_restore_sacls_success(void **state){
 
         expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
     }
-    
+
     will_return(wrap_win_whodata_CloseHandle, 0);
     will_return(wrap_win_whodata_CloseHandle, 0);
 
@@ -3273,6 +3274,19 @@ void test_get_file_time_success(void **state) {
     assert_memory_equal(&time, &returned_time, sizeof(SYSTEMTIME));
 }
 
+void test_set_subscription_query(void **state) {
+    wchar_t output[OS_MAXSTR];
+    wchar_t *expected_output = L"Event[ System[band(Keywords, 9007199254740992)] and "
+                                "( ( ( EventData/Data[@Name='ObjectType'] = 'File' ) and "
+                                "( (  System/EventID = 4656 or System/EventID = 4663 ) and "
+                                "( EventData[band(Data[@Name='AccessMask'], 327938‬)] ) ) ) or "
+                                "System/EventID = 4658 or System/EventID = 4660 ) ]";
+
+    set_subscription_query(output);
+
+    assert_memory_equal(output, expected_output, wcslen(expected_output));
+}
+
 /**************************************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -3397,6 +3411,8 @@ int main(void) {
         // TODO: Should we add tests for NULL input parameters?
         cmocka_unit_test(test_get_file_time_error),
         cmocka_unit_test(test_get_file_time_success),
+        /* set_subscription_query */
+        cmocka_unit_test(test_set_subscription_query),
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, NULL);
