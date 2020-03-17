@@ -350,7 +350,6 @@ static int teardown_realtime_start(void **state) {
     return 0;
 }
 
-#ifdef WIN_WHODATA
 static int setup_realtime_adddir_realtime_start_error(void **state) {
     *state = syscheck.realtime;
     syscheck.realtime = NULL;
@@ -358,11 +357,13 @@ static int setup_realtime_adddir_realtime_start_error(void **state) {
 }
 
 static int teardown_realtime_adddir_realtime_start_error(void **state) {
+    if (syscheck.realtime) {
+        free(syscheck.realtime);
+    }
     syscheck.realtime = *state;
 
     return 0;
 }
-#endif
 
 /* tests */
 
@@ -456,6 +457,22 @@ void test_realtime_adddir_whodata_new_directory(void **state) {
     ret = realtime_adddir(path, 1, 0);
 
     assert_int_equal(ret, 1);
+}
+
+void test_realtime_adddir_realtime_start_failure(void **state)
+{
+    (void) state;
+    int ret;
+
+    const char * path = "/etc/folder";
+
+    will_return(__wrap_OSHash_Create, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "(1102): Could not acquire memory due to [(0)-(Success)].");
+
+    ret = realtime_adddir(path, 0, 0);
+
+    assert_int_equal(ret, -1);
 }
 
 void test_realtime_adddir_realtime_failure(void **state)
@@ -1104,6 +1121,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_realtime_start_failure_inotify, setup_realtime_start, teardown_realtime_start),
         cmocka_unit_test_setup_teardown(test_realtime_adddir_whodata, setup_w_vector, teardown_w_vector),
         cmocka_unit_test_setup_teardown(test_realtime_adddir_whodata_new_directory, setup_w_vector, teardown_w_vector),
+        cmocka_unit_test_setup_teardown(test_realtime_adddir_realtime_start_failure, setup_realtime_adddir_realtime_start_error, teardown_realtime_adddir_realtime_start_error),
         cmocka_unit_test(test_realtime_adddir_realtime_failure),
         cmocka_unit_test(test_realtime_adddir_realtime_watch_max_reached_failure),
         cmocka_unit_test(test_realtime_adddir_realtime_watch_generic_failure),

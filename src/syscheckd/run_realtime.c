@@ -80,7 +80,9 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata, __attr
 
     } else {
         if (!syscheck.realtime) {
-            realtime_start();
+            if (realtime_start() < 0 ) {
+                return (-1);
+            }
         }
 
         /* Check if it is ready to use */

@@ -1260,12 +1260,39 @@ void test_fim_db_remove_path_one_entry_alert_fail(void **state) {
     will_return_count(__wrap_sqlite3_step, SQLITE_DONE, 2);
 
     #ifndef TEST_WINAGENT
-    will_return(__wrap_fim_configuration_directory, 0);
+    will_return(__wrap_fim_configuration_directory, 1);
     #else
-    will_return(__wrap_fim_configuration_directory, 8);
+    will_return(__wrap_fim_configuration_directory, 9);
     #endif
     will_return(__wrap_fim_json_event, json);
     expect_function_call(__wrap__mdebug2);
+    wraps_fim_db_check_transaction();
+    time_t last_commit =  test_data->fim_sql->transaction.last_commit;
+    int alert = 1;
+    fim_db_remove_path(test_data->fim_sql, test_data->entry, &syscheck.fim_entry_mutex, &alert, (void *) FIM_WHODATA, NULL);
+    // Last commit time should change
+    assert_int_not_equal(last_commit, test_data->fim_sql->transaction.last_commit);
+}
+
+void test_fim_db_remove_path_one_entry_alert_fail_invalid_pos(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+
+    #ifndef TEST_WINAGENT
+    will_return(__wrap_fim_configuration_directory, 1);
+    #else
+    will_return(__wrap_fim_configuration_directory, 9);
+    #endif
+    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_bind_int, 0);
+    will_return_always(__wrap_sqlite3_bind_text, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 1);
+    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    will_return(__wrap_sqlite3_column_int, 1);
+    will_return_count(__wrap_sqlite3_step, SQLITE_DONE, 2);
+    will_return(__wrap_fim_configuration_directory, -1);
     wraps_fim_db_check_transaction();
     time_t last_commit =  test_data->fim_sql->transaction.last_commit;
     int alert = 1;
@@ -1293,9 +1320,9 @@ void test_fim_db_remove_path_one_entry_alert_success(void **state) {
     will_return_count(__wrap_sqlite3_step, SQLITE_DONE, 2);
 
     #ifndef TEST_WINAGENT
-    will_return(__wrap_fim_configuration_directory, 0);
+    will_return(__wrap_fim_configuration_directory, 1);
     #else
-    will_return(__wrap_fim_configuration_directory, 8);
+    will_return(__wrap_fim_configuration_directory, 9);
     #endif
     cJSON * json = cJSON_CreateObject();
     will_return(__wrap_fim_json_event, json);
@@ -1303,9 +1330,9 @@ void test_fim_db_remove_path_one_entry_alert_success(void **state) {
     wraps_fim_db_check_transaction();
     time_t last_commit =  test_data->fim_sql->transaction.last_commit;
     int alert = 1;
-    syscheck.opts[0] |= CHECK_SEECHANGES;
+    syscheck.opts[1] |= CHECK_SEECHANGES;
     fim_db_remove_path(test_data->fim_sql, test_data->entry, &syscheck.fim_entry_mutex, &alert, (void *) FIM_WHODATA, NULL);
-    syscheck.opts[0] &= ~CHECK_SEECHANGES;
+    syscheck.opts[1] &= ~CHECK_SEECHANGES;
     // Last commit time should change
     assert_int_not_equal(last_commit, test_data->fim_sql->transaction.last_commit);
 }
@@ -2634,6 +2661,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_remove_path_one_entry, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_remove_path_one_entry_step_fail, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_remove_path_one_entry_alert_fail, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_remove_path_one_entry_alert_fail_invalid_pos, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_remove_path_one_entry_alert_success, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_remove_path_multiple_entry, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_remove_path_multiple_entry_step_fail, test_fim_db_setup, test_fim_db_teardown),

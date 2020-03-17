@@ -318,12 +318,14 @@ void fim_db_clean(void) {
         //Loop endlessly until the file can be removed. (60s)
         if (rm == FIMDB_ERR) {
             while (remove(FIM_DB_DISK_PATH)) {
+                // LCOV_EXCL_START
                 mdebug2(FIM_DELETE_DB, FIM_DB_DISK_PATH);
 #ifdef WIN32
                 Sleep(60000); //milliseconds
 #else
                 sleep(60); //seconds
 #endif
+                // LCOV_EXCL_STOP
             }
         }
     }

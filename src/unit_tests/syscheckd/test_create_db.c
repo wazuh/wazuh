@@ -1187,8 +1187,8 @@ static void test_fim_check_depth_failure_strlen(void **state) {
    int ret;
 
     char * path = "fl/fd";
-    // Pos 1 = "/usr/bin"
-    ret = fim_check_depth(path, 1);
+    // Pos 4 = "/usr/bin"
+    ret = fim_check_depth(path, 4);
 
     assert_int_equal(ret, -1);
 
@@ -1198,7 +1198,7 @@ static void test_fim_check_depth_failure_null_directory(void **state) {
    int ret;
 
     char * path = "/usr/bin";
-    // Pos 1 = "/usr/bin"
+    // Pos 4 = "/usr/bin"
     ret = fim_check_depth(path, 6);
 
     assert_int_equal(ret, -1);
