@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include "headers/defs.h"
 
 BOOL WINAPI wrap_win_whodata_OpenProcessToken(
   __attribute__ ((unused)) HANDLE  ProcessHandle,
@@ -324,4 +325,31 @@ BOOL WINAPI wrap_win_whodata_DeleteAce(
   check_expected(dwAceIndex);
 
   return mock();
-} 
+}
+
+int wrap_win_whodata_fprintf (FILE *__stream, const char *__format, ...) {
+  char formatted_msg[OS_MAXSTR];
+  va_list args;
+
+  check_expected(__stream);
+
+  va_start(args, __format);
+  vsnprintf(formatted_msg, OS_MAXSTR, __format, args);
+  va_end(args);
+
+  check_expected(formatted_msg);
+
+  return mock();
+}
+
+char * wrap_win_whodata_fgets (char * __s, int __n, FILE * __stream) {
+  char *buffer = mock_type(char*);
+
+  check_expected(__stream);
+
+  if(buffer) {
+    strncpy(__s, buffer, __n - 1);
+    return __s;
+  }
+  return NULL;
+}

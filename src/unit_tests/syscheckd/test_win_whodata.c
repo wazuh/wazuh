@@ -34,11 +34,14 @@ extern void whodata_clist_remove(whodata_event_node *node);
 extern void free_win_whodata_evt(whodata_evt *evt);
 extern int compare_timestamp(SYSTEMTIME *t1, SYSTEMTIME *t2);
 extern int get_file_time(unsigned long long file_time_val, SYSTEMTIME *system_time);
-void set_subscription_query(wchar_t *query);
+extern void set_subscription_query(wchar_t *query);
+extern int set_policies();
 
 extern char sys_64;
 extern PSID everyone_sid;
 extern size_t ev_sid_size;
+
+static int unit_testing = 0;
 /**************************************************************************/
 /*************************WRAPS - FIXTURES*********************************/
 int test_group_setup(void **state) {
@@ -54,7 +57,14 @@ int test_group_setup(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck.conf]");
 
     ret = Read_Syscheck_Config("test_syscheck.conf");
+
+    unit_testing = 1;
     return ret;
+}
+
+static int test_group_teardown(void **state) {
+    unit_testing = 0;
+    return 0;
 }
 
 static int teardown_string(void **state) {
@@ -179,6 +189,11 @@ static int teardown_w_clist(void **state) {
     return 0;
 }
 
+static int teardown_reset_errno(void **state) {
+    errno = 0;
+    return 0;
+}
+
 void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
     char formatted_msg[OS_MAXSTR];
     va_list args;
@@ -270,6 +285,29 @@ int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const 
     *exitcode = mock_type(int);
     return mock();
 }
+
+FILE *__cdecl __real_fopen(const char * __restrict__ _Filename,const char * __restrict__ _Mode) __MINGW_ATTRIB_DEPRECATED_SEC_WARN;
+FILE * __wrap_fopen(const char * __restrict__ _Filename,const char * __restrict__ _Mode) {
+    if(unit_testing) {
+        check_expected(_Filename);
+        check_expected(_Mode);
+
+        return mock_type(FILE*);
+    } else {
+        return __real_fopen(_Filename, _Mode);
+    }
+}
+
+int __cdecl __real_fclose(FILE *_File);
+int __wrap_fclose(FILE *_File) {
+    if(unit_testing) {
+        check_expected(_File);
+        return mock();
+    } else {
+        return __real_fclose(_File);
+    }
+}
+
 /**************************************************************************/
 /***************************set_winsacl************************************/
 void test_set_winsacl_failed_opening(void **state) {
@@ -3216,6 +3254,10 @@ void test_run_whodata_scan_no_auto_audit_policies(void **state) {
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
+    expect_string(__wrap_fopen, _Filename, "tmp\\backup-policies");
+    expect_string(__wrap_fopen, _Mode, "r");
+    will_return(__wrap_fopen, NULL);
+
     expect_string(__wrap__merror, formatted_msg, "(6661): 'tmp\\backup-policies' could not be opened: 'No such file or directory' (2).");
 }
     expect_string(__wrap__mwarn, formatted_msg,  "(6916): Local audit policies could not be configured.");
@@ -3285,6 +3327,193 @@ void test_set_subscription_query(void **state) {
     set_subscription_query(output);
 
     assert_memory_equal(output, expected_output, wcslen(expected_output));
+}
+
+void test_set_policies_unable_to_remove_backup_file(void **state) {
+    int ret;
+
+    expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
+    will_return(__wrap_IsFile, 0);
+
+    expect_string(__wrap_remove, filename, "tmp\\backup-policies");
+    will_return(__wrap_remove, -1);
+    errno = EACCES;
+
+    expect_string(__wrap__merror, formatted_msg,
+        "(6660): 'tmp\\backup-policies' could not be removed: 'Permission denied' (13).");
+
+    ret = set_policies();
+
+    assert_int_equal(ret, 1);
+}
+
+void test_set_policies_fail_getting_policies(void **state) {
+    int ret;
+
+    expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
+    will_return(__wrap_IsFile, 1);
+
+    expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
+    will_return(__wrap_wm_exec, 1);
+    will_return(__wrap_wm_exec, 0);
+
+    ret = set_policies();
+
+    assert_int_equal(ret, 2);
+}
+
+void test_set_policies_unable_to_open_backup_file(void **state) {
+    int ret;
+
+    expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
+    will_return(__wrap_IsFile, 1);
+
+    expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_string(__wrap_fopen, _Filename, "tmp\\backup-policies");
+    expect_string(__wrap_fopen, _Mode, "r");
+    will_return(__wrap_fopen, NULL);
+    errno = EACCES;
+
+    expect_string(__wrap__merror, formatted_msg,
+        "(6661): 'tmp\\backup-policies' could not be opened: 'Permission denied' (13).");
+
+    ret = set_policies();
+
+    assert_int_equal(ret, 1);
+}
+
+void test_set_policies_unable_to_open_new_file(void **state) {
+    int ret;
+
+    expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
+    will_return(__wrap_IsFile, 1);
+
+    expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_string(__wrap_fopen, _Filename, "tmp\\backup-policies");
+    expect_string(__wrap_fopen, _Mode, "r");
+    will_return(__wrap_fopen, (FILE*)1234);
+
+    expect_string(__wrap_fopen, _Filename, "tmp\\new-policies");
+    expect_string(__wrap_fopen, _Mode, "w");
+    will_return(__wrap_fopen, NULL);
+    errno = EACCES;
+
+    expect_string(__wrap__merror, formatted_msg,
+        "(6661): 'tmp\\new-policies' could not be opened: 'Permission denied' (13).");
+
+    expect_value(__wrap_fclose, _File, (FILE*)1234);
+    will_return(__wrap_fclose, 0);
+
+    ret = set_policies();
+
+    assert_int_equal(ret, 1);
+}
+
+void test_set_policies_unable_to_restore_policies(void **state) {
+    int ret;
+
+    expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
+    will_return(__wrap_IsFile, 1);
+
+    expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_string(__wrap_fopen, _Filename, "tmp\\backup-policies");
+    expect_string(__wrap_fopen, _Mode, "r");
+    will_return(__wrap_fopen, (FILE*)1234);
+
+    expect_string(__wrap_fopen, _Filename, "tmp\\new-policies");
+    expect_string(__wrap_fopen, _Mode, "w");
+    will_return(__wrap_fopen, (FILE*)2345);
+
+    expect_value(wrap_win_whodata_fgets, __stream, (FILE*)1234);
+    will_return(wrap_win_whodata_fgets, "some policies");
+
+    expect_value(wrap_win_whodata_fprintf, __stream, 2345);
+    expect_string(wrap_win_whodata_fprintf, formatted_msg, "some policies");
+    will_return(wrap_win_whodata_fprintf, 0);
+
+    expect_value(wrap_win_whodata_fgets, __stream, (FILE*)1234);
+    will_return(wrap_win_whodata_fgets, NULL);
+
+    expect_value(wrap_win_whodata_fprintf, __stream, 2345);
+    expect_string(wrap_win_whodata_fprintf, formatted_msg, ",System,File System,{0CCE921D-69AE-11D9-BED3-505054503030},,,1\n");
+    will_return(wrap_win_whodata_fprintf, 0);
+
+    expect_value(wrap_win_whodata_fprintf, __stream, 2345);
+    expect_string(wrap_win_whodata_fprintf, formatted_msg, ",System,Handle Manipulation,{0CCE9223-69AE-11D9-BED3-505054503030},,,1\n");
+    will_return(wrap_win_whodata_fprintf, 0);
+
+    expect_value(__wrap_fclose, _File, (FILE*)2345);
+    will_return(__wrap_fclose, 0);
+
+    expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\new-policies\"");
+    will_return(__wrap_wm_exec, 1);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_value(__wrap_fclose, _File, (FILE*)1234);
+    will_return(__wrap_fclose, 0);
+
+    ret = set_policies();
+
+    assert_int_equal(ret, 2);
+}
+void test_set_policies_success(void **state) {
+    int ret;
+
+    expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
+    will_return(__wrap_IsFile, 1);
+
+    expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_string(__wrap_fopen, _Filename, "tmp\\backup-policies");
+    expect_string(__wrap_fopen, _Mode, "r");
+    will_return(__wrap_fopen, (FILE*)1234);
+
+    expect_string(__wrap_fopen, _Filename, "tmp\\new-policies");
+    expect_string(__wrap_fopen, _Mode, "w");
+    will_return(__wrap_fopen, (FILE*)2345);
+
+    expect_value(wrap_win_whodata_fgets, __stream, (FILE*)1234);
+    will_return(wrap_win_whodata_fgets, "some policies");
+
+    expect_value(wrap_win_whodata_fprintf, __stream, 2345);
+    expect_string(wrap_win_whodata_fprintf, formatted_msg, "some policies");
+    will_return(wrap_win_whodata_fprintf, 0);
+
+    expect_value(wrap_win_whodata_fgets, __stream, (FILE*)1234);
+    will_return(wrap_win_whodata_fgets, NULL);
+
+    expect_value(wrap_win_whodata_fprintf, __stream, 2345);
+    expect_string(wrap_win_whodata_fprintf, formatted_msg, ",System,File System,{0CCE921D-69AE-11D9-BED3-505054503030},,,1\n");
+    will_return(wrap_win_whodata_fprintf, 0);
+
+    expect_value(wrap_win_whodata_fprintf, __stream, 2345);
+    expect_string(wrap_win_whodata_fprintf, formatted_msg, ",System,Handle Manipulation,{0CCE9223-69AE-11D9-BED3-505054503030},,,1\n");
+    will_return(wrap_win_whodata_fprintf, 0);
+
+    expect_value(__wrap_fclose, _File, (FILE*)2345);
+    will_return(__wrap_fclose, 0);
+
+    expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\new-policies\"");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_value(__wrap_fclose, _File, (FILE*)1234);
+    will_return(__wrap_fclose, 0);
+
+    ret = set_policies();
+
+    assert_int_equal(ret, 0);
 }
 
 /**************************************************************************/
@@ -3413,7 +3642,14 @@ int main(void) {
         cmocka_unit_test(test_get_file_time_success),
         /* set_subscription_query */
         cmocka_unit_test(test_set_subscription_query),
+        /* set_policies */
+        cmocka_unit_test_teardown(test_set_policies_unable_to_remove_backup_file, teardown_reset_errno),
+        cmocka_unit_test(test_set_policies_fail_getting_policies),
+        cmocka_unit_test_teardown(test_set_policies_unable_to_open_backup_file, teardown_reset_errno),
+        cmocka_unit_test_teardown(test_set_policies_unable_to_open_new_file, teardown_reset_errno),
+        cmocka_unit_test(test_set_policies_unable_to_restore_policies),
+        cmocka_unit_test(test_set_policies_success),
     };
 
-    return cmocka_run_group_tests(tests, test_group_setup, NULL);
+    return cmocka_run_group_tests(tests, test_group_setup, test_group_teardown);
 }

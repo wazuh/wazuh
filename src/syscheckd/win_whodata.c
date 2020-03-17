@@ -73,6 +73,8 @@
 #define EqualSid wrap_win_whodata_EqualSid
 #define FileTimeToSystemTime wrap_win_whodata_FileTimeToSystemTime
 #define DeleteAce wrap_win_whodata_DeleteAce
+#define fprintf wrap_win_whodata_fprintf
+#define fgets wrap_win_whodata_fgets
 #else
 #define STATIC static
 #endif
