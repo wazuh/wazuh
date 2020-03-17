@@ -12,6 +12,7 @@
 #ifdef WIN32
 #include <windows.h>
 #include <accctrl.h>
+#include <stdio.h>
 
 BOOL WINAPI wrap_win_whodata_OpenProcessToken(
   HANDLE  ProcessHandle,
@@ -177,5 +178,8 @@ BOOL WINAPI wrap_win_whodata_DeleteAce(
   PACL  pAcl,
   DWORD dwAceIndex
 );
+
+int wrap_win_whodata_fprintf (FILE *__stream, const char *__format, ...);
+char * wrap_win_whodata_fgets (char * __s, int __n, FILE * __stream);
 #endif
 #endif

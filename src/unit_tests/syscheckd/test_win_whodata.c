@@ -34,10 +34,17 @@ extern void whodata_clist_remove(whodata_event_node *node);
 extern void free_win_whodata_evt(whodata_evt *evt);
 extern int compare_timestamp(SYSTEMTIME *t1, SYSTEMTIME *t2);
 extern int get_file_time(unsigned long long file_time_val, SYSTEMTIME *system_time);
+extern void set_subscription_query(wchar_t *query);
+extern int set_policies();
+extern void whodata_list_set_values();
+extern void whodata_list_remove_multiple(size_t quantity);
+extern whodata_event_node *whodata_list_add(char *id);
 
 extern char sys_64;
 extern PSID everyone_sid;
 extern size_t ev_sid_size;
+
+static int unit_testing = 0;
 /**************************************************************************/
 /*************************WRAPS - FIXTURES*********************************/
 int test_group_setup(void **state) {
@@ -53,7 +60,14 @@ int test_group_setup(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck.conf]");
 
     ret = Read_Syscheck_Config("test_syscheck.conf");
+
+    unit_testing = 1;
     return ret;
+}
+
+static int test_group_teardown(void **state) {
+    unit_testing = 0;
+    return 0;
 }
 
 static int teardown_string(void **state) {
@@ -156,6 +170,10 @@ static int setup_w_clist(void **state) {
 
     syscheck.w_clist.current_size = 3;
 
+    syscheck.w_clist.max_size = OS_SIZE_1024;
+    syscheck.w_clist.max_remove = syscheck.w_clist.max_size * 10 * 0.01;
+    syscheck.w_clist.alert_threshold = syscheck.w_clist.max_size * 80 * 0.01;
+
     return 0;
 }
 
@@ -174,7 +192,16 @@ static int teardown_w_clist(void **state) {
 
     syscheck.w_clist.last = syscheck.w_clist.first = NULL;
     syscheck.w_clist.current_size = 0;
+    syscheck.w_clist.max_size = 0;
+    syscheck.w_clist.max_remove = 0;
+    syscheck.w_clist.alert_threshold = 0;
+    syscheck.w_clist.alerted = 0;
 
+    return 0;
+}
+
+static int teardown_reset_errno(void **state) {
+    errno = 0;
     return 0;
 }
 
@@ -267,9 +294,14 @@ int __wrap_IsFile(const char * file)
     return mock();
 }
 
+int __real_remove(const char *filename);
 int __wrap_remove(const char *filename) {
-    check_expected(filename);
-    return mock();
+    if(unit_testing){
+        check_expected(filename);
+        return mock();
+    } else {
+        return __real_remove(filename);
+    }
 }
 
 int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path) {
@@ -280,6 +312,44 @@ int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const 
     *exitcode = mock_type(int);
     return mock();
 }
+
+FILE *__cdecl __real_fopen(const char * __restrict__ _Filename,const char * __restrict__ _Mode) __MINGW_ATTRIB_DEPRECATED_SEC_WARN;
+FILE * __wrap_fopen(const char * __restrict__ _Filename,const char * __restrict__ _Mode) {
+    if(unit_testing) {
+        check_expected(_Filename);
+        check_expected(_Mode);
+
+        return mock_type(FILE*);
+    } else {
+        return __real_fopen(_Filename, _Mode);
+    }
+}
+
+int __cdecl __real_fclose(FILE *_File);
+int __wrap_fclose(FILE *_File) {
+    if(unit_testing) {
+        check_expected(_File);
+        return mock();
+    } else {
+        return __real_fclose(_File);
+    }
+}
+
+int __cdecl __real_atexit(void (__cdecl *callback)(void));
+int __cdecl __wrap_atexit(void (__cdecl *callback)(void)) {
+    if(unit_testing)
+        return 0;
+    else
+        return __real_atexit(callback);
+}
+
+void *__wrap_OSHash_Delete_ex(OSHash *self, const char *key) {
+    check_expected(self);
+    check_expected(key);
+
+    return mock_type(void*);
+}
+
 /**************************************************************************/
 /***************************set_winsacl************************************/
 void test_set_winsacl_failed_opening(void **state) {
@@ -2285,7 +2355,7 @@ int setup_restore_sacls(void **state) {
 int teardown_restore_sacls(void **state) {
     int *ptr = (int *)state;
     syscheck.wdata.dirs_status[0].status = *ptr;
-    free(*state); 
+    free(*state);
     return 0;
 }
 
@@ -2313,7 +2383,7 @@ void test_restore_sacls_securityNameInfo_failed(void **state){
     will_return(wrap_win_whodata_GetNamedSecurityInfo, NULL);
     will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_FILE_NOT_FOUND);
     expect_string(__wrap__merror, formatted_msg, "(6650): GetNamedSecurityInfo() failed. Error '2'");
-    
+
     /* Inside set_privilege */
     {
         expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
@@ -2326,7 +2396,7 @@ void test_restore_sacls_securityNameInfo_failed(void **state){
 
         expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
     }
-    
+
     will_return(wrap_win_whodata_CloseHandle, 0);
     will_return(wrap_win_whodata_CloseHandle, 0);
 
@@ -2357,7 +2427,7 @@ void test_restore_sacls_deleteAce_failed(void **state){
     will_return(wrap_win_whodata_GetNamedSecurityInfo, &acl);
     will_return(wrap_win_whodata_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
     will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_SUCCESS);
-    
+
     expect_value(wrap_win_whodata_DeleteAce, pAcl, &acl);
     expect_value(wrap_win_whodata_DeleteAce, dwAceIndex, 0);
     will_return(wrap_win_whodata_DeleteAce, 0);
@@ -2375,7 +2445,7 @@ void test_restore_sacls_deleteAce_failed(void **state){
 
         expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
     }
-    
+
     will_return(wrap_win_whodata_CloseHandle, 0);
     will_return(wrap_win_whodata_CloseHandle, 0);
 
@@ -2406,7 +2476,7 @@ void test_restore_sacls_SetNamedSecurityInfo_failed(void **state){
     will_return(wrap_win_whodata_GetNamedSecurityInfo, &acl);
     will_return(wrap_win_whodata_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
     will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_SUCCESS);
-    
+
     expect_value(wrap_win_whodata_DeleteAce, pAcl, &acl);
     expect_value(wrap_win_whodata_DeleteAce, dwAceIndex, 0);
     will_return(wrap_win_whodata_DeleteAce, 1);
@@ -2433,7 +2503,7 @@ void test_restore_sacls_SetNamedSecurityInfo_failed(void **state){
 
         expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
     }
-    
+
     will_return(wrap_win_whodata_CloseHandle, 0);
     will_return(wrap_win_whodata_CloseHandle, 0);
 
@@ -2464,7 +2534,7 @@ void test_restore_sacls_success(void **state){
     will_return(wrap_win_whodata_GetNamedSecurityInfo, &acl);
     will_return(wrap_win_whodata_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
     will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_SUCCESS);
-    
+
     expect_value(wrap_win_whodata_DeleteAce, pAcl, &acl);
     expect_value(wrap_win_whodata_DeleteAce, dwAceIndex, 0);
     will_return(wrap_win_whodata_DeleteAce, 1);
@@ -2494,7 +2564,7 @@ void test_restore_sacls_success(void **state){
 
         expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
     }
-    
+
     will_return(wrap_win_whodata_CloseHandle, 0);
     will_return(wrap_win_whodata_CloseHandle, 0);
 
@@ -3269,6 +3339,10 @@ void test_run_whodata_scan_no_auto_audit_policies(void **state) {
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
+    expect_string(__wrap_fopen, _Filename, "tmp\\backup-policies");
+    expect_string(__wrap_fopen, _Mode, "r");
+    will_return(__wrap_fopen, NULL);
+
     expect_string(__wrap__merror, formatted_msg, "(6661): 'tmp\\backup-policies' could not be opened: 'No such file or directory' (2).");
 }
     expect_string(__wrap__mwarn, formatted_msg,  "(6916): Local audit policies could not be configured.");
@@ -3325,6 +3399,405 @@ void test_get_file_time_success(void **state) {
 
     assert_int_equal(ret, 1);
     assert_memory_equal(&time, &returned_time, sizeof(SYSTEMTIME));
+}
+
+void test_set_subscription_query(void **state) {
+    wchar_t output[OS_MAXSTR];
+    wchar_t *expected_output = L"Event[ System[band(Keywords, 9007199254740992)] and "
+                                "( ( ( EventData/Data[@Name='ObjectType'] = 'File' ) and "
+                                "( (  System/EventID = 4656 or System/EventID = 4663 ) and "
+                                "( EventData[band(Data[@Name='AccessMask'], 327938‬)] ) ) ) or "
+                                "System/EventID = 4658 or System/EventID = 4660 ) ]";
+
+    set_subscription_query(output);
+
+    assert_memory_equal(output, expected_output, wcslen(expected_output));
+}
+
+void test_set_policies_unable_to_remove_backup_file(void **state) {
+    int ret;
+
+    expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
+    will_return(__wrap_IsFile, 0);
+
+    expect_string(__wrap_remove, filename, "tmp\\backup-policies");
+    will_return(__wrap_remove, -1);
+    errno = EACCES;
+
+    expect_string(__wrap__merror, formatted_msg,
+        "(6660): 'tmp\\backup-policies' could not be removed: 'Permission denied' (13).");
+
+    ret = set_policies();
+
+    assert_int_equal(ret, 1);
+}
+
+void test_set_policies_fail_getting_policies(void **state) {
+    int ret;
+
+    expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
+    will_return(__wrap_IsFile, 1);
+
+    expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
+    will_return(__wrap_wm_exec, 1);
+    will_return(__wrap_wm_exec, 0);
+
+    ret = set_policies();
+
+    assert_int_equal(ret, 2);
+}
+
+void test_set_policies_unable_to_open_backup_file(void **state) {
+    int ret;
+
+    expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
+    will_return(__wrap_IsFile, 1);
+
+    expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_string(__wrap_fopen, _Filename, "tmp\\backup-policies");
+    expect_string(__wrap_fopen, _Mode, "r");
+    will_return(__wrap_fopen, NULL);
+    errno = EACCES;
+
+    expect_string(__wrap__merror, formatted_msg,
+        "(6661): 'tmp\\backup-policies' could not be opened: 'Permission denied' (13).");
+
+    ret = set_policies();
+
+    assert_int_equal(ret, 1);
+}
+
+void test_set_policies_unable_to_open_new_file(void **state) {
+    int ret;
+
+    expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
+    will_return(__wrap_IsFile, 1);
+
+    expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_string(__wrap_fopen, _Filename, "tmp\\backup-policies");
+    expect_string(__wrap_fopen, _Mode, "r");
+    will_return(__wrap_fopen, (FILE*)1234);
+
+    expect_string(__wrap_fopen, _Filename, "tmp\\new-policies");
+    expect_string(__wrap_fopen, _Mode, "w");
+    will_return(__wrap_fopen, NULL);
+    errno = EACCES;
+
+    expect_string(__wrap__merror, formatted_msg,
+        "(6661): 'tmp\\new-policies' could not be opened: 'Permission denied' (13).");
+
+    expect_value(__wrap_fclose, _File, (FILE*)1234);
+    will_return(__wrap_fclose, 0);
+
+    ret = set_policies();
+
+    assert_int_equal(ret, 1);
+}
+
+void test_set_policies_unable_to_restore_policies(void **state) {
+    int ret;
+
+    expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
+    will_return(__wrap_IsFile, 1);
+
+    expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_string(__wrap_fopen, _Filename, "tmp\\backup-policies");
+    expect_string(__wrap_fopen, _Mode, "r");
+    will_return(__wrap_fopen, (FILE*)1234);
+
+    expect_string(__wrap_fopen, _Filename, "tmp\\new-policies");
+    expect_string(__wrap_fopen, _Mode, "w");
+    will_return(__wrap_fopen, (FILE*)2345);
+
+    expect_value(wrap_win_whodata_fgets, __stream, (FILE*)1234);
+    will_return(wrap_win_whodata_fgets, "some policies");
+
+    expect_value(wrap_win_whodata_fprintf, __stream, 2345);
+    expect_string(wrap_win_whodata_fprintf, formatted_msg, "some policies");
+    will_return(wrap_win_whodata_fprintf, 0);
+
+    expect_value(wrap_win_whodata_fgets, __stream, (FILE*)1234);
+    will_return(wrap_win_whodata_fgets, NULL);
+
+    expect_value(wrap_win_whodata_fprintf, __stream, 2345);
+    expect_string(wrap_win_whodata_fprintf, formatted_msg, ",System,File System,{0CCE921D-69AE-11D9-BED3-505054503030},,,1\n");
+    will_return(wrap_win_whodata_fprintf, 0);
+
+    expect_value(wrap_win_whodata_fprintf, __stream, 2345);
+    expect_string(wrap_win_whodata_fprintf, formatted_msg, ",System,Handle Manipulation,{0CCE9223-69AE-11D9-BED3-505054503030},,,1\n");
+    will_return(wrap_win_whodata_fprintf, 0);
+
+    expect_value(__wrap_fclose, _File, (FILE*)2345);
+    will_return(__wrap_fclose, 0);
+
+    expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\new-policies\"");
+    will_return(__wrap_wm_exec, 1);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_value(__wrap_fclose, _File, (FILE*)1234);
+    will_return(__wrap_fclose, 0);
+
+    ret = set_policies();
+
+    assert_int_equal(ret, 2);
+}
+void test_set_policies_success(void **state) {
+    int ret;
+
+    expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
+    will_return(__wrap_IsFile, 1);
+
+    expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_string(__wrap_fopen, _Filename, "tmp\\backup-policies");
+    expect_string(__wrap_fopen, _Mode, "r");
+    will_return(__wrap_fopen, (FILE*)1234);
+
+    expect_string(__wrap_fopen, _Filename, "tmp\\new-policies");
+    expect_string(__wrap_fopen, _Mode, "w");
+    will_return(__wrap_fopen, (FILE*)2345);
+
+    expect_value(wrap_win_whodata_fgets, __stream, (FILE*)1234);
+    will_return(wrap_win_whodata_fgets, "some policies");
+
+    expect_value(wrap_win_whodata_fprintf, __stream, 2345);
+    expect_string(wrap_win_whodata_fprintf, formatted_msg, "some policies");
+    will_return(wrap_win_whodata_fprintf, 0);
+
+    expect_value(wrap_win_whodata_fgets, __stream, (FILE*)1234);
+    will_return(wrap_win_whodata_fgets, NULL);
+
+    expect_value(wrap_win_whodata_fprintf, __stream, 2345);
+    expect_string(wrap_win_whodata_fprintf, formatted_msg, ",System,File System,{0CCE921D-69AE-11D9-BED3-505054503030},,,1\n");
+    will_return(wrap_win_whodata_fprintf, 0);
+
+    expect_value(wrap_win_whodata_fprintf, __stream, 2345);
+    expect_string(wrap_win_whodata_fprintf, formatted_msg, ",System,Handle Manipulation,{0CCE9223-69AE-11D9-BED3-505054503030},,,1\n");
+    will_return(wrap_win_whodata_fprintf, 0);
+
+    expect_value(__wrap_fclose, _File, (FILE*)2345);
+    will_return(__wrap_fclose, 0);
+
+    expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\new-policies\"");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_value(__wrap_fclose, _File, (FILE*)1234);
+    will_return(__wrap_fclose, 0);
+
+    ret = set_policies();
+
+    assert_int_equal(ret, 0);
+}
+
+void test_whodata_list_set_values(void **state) {
+    // Clear the values to be checked
+    syscheck.w_clist.max_size = 0;
+    syscheck.w_clist.max_remove = 0;
+    syscheck.w_clist.alert_threshold = 0;
+
+    expect_string(__wrap__mdebug1, formatted_msg,
+        "(6237): Whodata event queue values for Windows -> max_size:'1024' | max_remove:'102' | alert_threshold:'819'");
+
+    whodata_list_set_values();
+
+    assert_int_equal(syscheck.w_clist.max_size, 1024);
+    assert_int_equal(syscheck.w_clist.max_remove, 102);
+    assert_int_equal(syscheck.w_clist.alert_threshold, 819);
+}
+
+void test_whodata_list_remove_multiple_remove_none(void **state) {
+    expect_string(__wrap__mdebug1, formatted_msg, "(6236): '0' events have been deleted from the whodata list.");
+
+    whodata_list_remove_multiple(0);
+
+    assert_int_equal(syscheck.w_clist.current_size, 3);
+    assert_string_equal(syscheck.w_clist.first->id, "first_node");
+    assert_string_equal(syscheck.w_clist.last->id, "last_node");
+    assert_ptr_equal(syscheck.w_clist.first->next, syscheck.w_clist.last->prev);
+    assert_null(syscheck.w_clist.first->prev);
+    assert_null(syscheck.w_clist.last->next);
+}
+
+void test_whodata_list_remove_multiple_remove_one(void **state) {
+    expect_value(__wrap_OSHash_Delete_ex, self, syscheck.wdata.fd);
+    expect_string(__wrap_OSHash_Delete_ex, key, "first_node");
+    will_return(__wrap_OSHash_Delete_ex, (whodata_evt *)1234);
+
+    expect_value(__wrap_free_whodata_event, w_evt, (whodata_evt *)1234);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6236): '1' events have been deleted from the whodata list.");
+
+    whodata_list_remove_multiple(1);
+
+    assert_int_equal(syscheck.w_clist.current_size, 2);
+    assert_string_equal(syscheck.w_clist.first->id, "mid_node");
+    assert_string_equal(syscheck.w_clist.last->id, "last_node");
+    assert_ptr_equal(syscheck.w_clist.first->next, syscheck.w_clist.last);
+    assert_ptr_equal(syscheck.w_clist.last->prev, syscheck.w_clist.first);
+    assert_null(syscheck.w_clist.first->prev);
+    assert_null(syscheck.w_clist.last->next);
+}
+
+void test_whodata_list_remove_multiple_remove_two(void **state) {
+    expect_value(__wrap_OSHash_Delete_ex, self, syscheck.wdata.fd);
+    expect_string(__wrap_OSHash_Delete_ex, key, "first_node");
+    will_return(__wrap_OSHash_Delete_ex, (whodata_evt *)1234);
+
+    expect_value(__wrap_free_whodata_event, w_evt, (whodata_evt *)1234);
+
+    expect_value(__wrap_OSHash_Delete_ex, self, syscheck.wdata.fd);
+    expect_string(__wrap_OSHash_Delete_ex, key, "mid_node");
+    will_return(__wrap_OSHash_Delete_ex, (whodata_evt *)2345);
+
+    expect_value(__wrap_free_whodata_event, w_evt, (whodata_evt *)2345);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6236): '2' events have been deleted from the whodata list.");
+
+    whodata_list_remove_multiple(2);
+
+    assert_int_equal(syscheck.w_clist.current_size, 1);
+    assert_string_equal(syscheck.w_clist.first->id, "last_node");
+    assert_string_equal(syscheck.w_clist.last->id, "last_node");
+    assert_null(syscheck.w_clist.first->next);
+    assert_null(syscheck.w_clist.last->prev);
+    assert_null(syscheck.w_clist.first->prev);
+    assert_null(syscheck.w_clist.last->next);
+}
+
+void test_whodata_list_remove_multiple_remove_more_than_available(void **state) {
+    expect_value(__wrap_OSHash_Delete_ex, self, syscheck.wdata.fd);
+    expect_string(__wrap_OSHash_Delete_ex, key, "first_node");
+    will_return(__wrap_OSHash_Delete_ex, (whodata_evt *)1234);
+
+    expect_value(__wrap_free_whodata_event, w_evt, (whodata_evt *)1234);
+
+    expect_value(__wrap_OSHash_Delete_ex, self, syscheck.wdata.fd);
+    expect_string(__wrap_OSHash_Delete_ex, key, "mid_node");
+    will_return(__wrap_OSHash_Delete_ex, (whodata_evt *)2345);
+
+    expect_value(__wrap_free_whodata_event, w_evt, (whodata_evt *)2345);
+
+    expect_value(__wrap_OSHash_Delete_ex, self, syscheck.wdata.fd);
+    expect_string(__wrap_OSHash_Delete_ex, key, "last_node");
+    will_return(__wrap_OSHash_Delete_ex, (whodata_evt *)3456);
+
+    expect_value(__wrap_free_whodata_event, w_evt, (whodata_evt *)3456);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6236): '3' events have been deleted from the whodata list.");
+
+    whodata_list_remove_multiple(syscheck.w_clist.current_size * 10);
+
+    assert_int_equal(syscheck.w_clist.current_size, 0);
+    assert_null(syscheck.w_clist.first);
+    assert_null(syscheck.w_clist.last);
+}
+
+void test_whodata_list_add_on_empty_list(void **state) {
+    whodata_event_node *node;
+
+    // setup some required values
+    syscheck.w_clist.max_size = OS_SIZE_1024;
+    syscheck.w_clist.max_remove = syscheck.w_clist.max_size * 0.1;
+    syscheck.w_clist.alert_threshold = syscheck.w_clist.max_size * 80 * 0.01;
+
+    node = whodata_list_add(strdup("A node"));
+
+    assert_int_equal(syscheck.w_clist.current_size, 1);
+    assert_non_null(node);
+    assert_ptr_equal(node, syscheck.w_clist.first);
+    assert_ptr_equal(node, syscheck.w_clist.last);
+    assert_null(node->next);
+    assert_null(node->prev);
+    assert_string_equal(node->id, "A node");
+}
+
+void test_whodata_list_add_on_regular_list(void **state) {
+    whodata_event_node *node;
+
+    node = whodata_list_add(strdup("A node"));
+
+    assert_int_equal(syscheck.w_clist.current_size, 4);
+    assert_non_null(node);
+    assert_ptr_not_equal(node, syscheck.w_clist.first);
+    assert_ptr_equal(node, syscheck.w_clist.last);
+    assert_null(node->next);
+    assert_ptr_equal(node->prev, syscheck.w_clist.first->next->next);
+    assert_string_equal(node->id, "A node");
+}
+
+void test_whodata_list_add_trigger_alert(void **state) {
+    whodata_event_node *node;
+
+    // Trick the list into thinking it is almost full
+    syscheck.w_clist.current_size = syscheck.w_clist.alert_threshold + 1;
+
+    expect_string(__wrap__mwarn, formatted_msg,
+        "(6917): Real-time Whodata events queue for Windows has more than 819 elements.");
+
+    node = whodata_list_add(strdup("A node"));
+
+    assert_int_equal(syscheck.w_clist.current_size, 821);
+    assert_non_null(node);
+    assert_ptr_not_equal(node, syscheck.w_clist.first);
+    assert_ptr_equal(node, syscheck.w_clist.last);
+    assert_null(node->next);
+    assert_ptr_equal(node->prev, syscheck.w_clist.first->next->next);
+    assert_string_equal(node->id, "A node");
+}
+
+void test_whodata_list_add_on_full_list(void **state) {
+    whodata_event_node *node;
+
+    // Trick the list into thinking it is full
+    syscheck.w_clist.current_size = syscheck.w_clist.max_size;
+
+    expect_string(__wrap__mdebug1, formatted_msg,
+        "(6235): Real-time Whodata events queue for Windows is full. Removing the first '102'");
+
+    // Inside whodata_list_remove_multiple
+    {
+        expect_value(__wrap_OSHash_Delete_ex, self, syscheck.wdata.fd);
+        expect_string(__wrap_OSHash_Delete_ex, key, "first_node");
+        will_return(__wrap_OSHash_Delete_ex, (whodata_evt *)1234);
+
+        expect_value(__wrap_free_whodata_event, w_evt, (whodata_evt *)1234);
+
+        expect_value(__wrap_OSHash_Delete_ex, self, syscheck.wdata.fd);
+        expect_string(__wrap_OSHash_Delete_ex, key, "mid_node");
+        will_return(__wrap_OSHash_Delete_ex, (whodata_evt *)2345);
+
+        expect_value(__wrap_free_whodata_event, w_evt, (whodata_evt *)2345);
+
+        expect_value(__wrap_OSHash_Delete_ex, self, syscheck.wdata.fd);
+        expect_string(__wrap_OSHash_Delete_ex, key, "last_node");
+        will_return(__wrap_OSHash_Delete_ex, (whodata_evt *)3456);
+
+        expect_value(__wrap_free_whodata_event, w_evt, (whodata_evt *)3456);
+
+        expect_string(__wrap__mdebug1, formatted_msg, "(6236): '102' events have been deleted from the whodata list.");
+    }
+
+    node = whodata_list_add(strdup("A node"));
+
+    assert_int_equal(syscheck.w_clist.current_size, 1022);
+    assert_non_null(node);
+    assert_ptr_equal(node, syscheck.w_clist.first);
+    assert_ptr_equal(node, syscheck.w_clist.last);
+    assert_null(node->next);
+    assert_null(node->prev);
+    assert_string_equal(node->id, "A node");
 }
 
 /**************************************************************************/
@@ -3454,7 +3927,28 @@ int main(void) {
         // TODO: Should we add tests for NULL input parameters?
         cmocka_unit_test(test_get_file_time_error),
         cmocka_unit_test(test_get_file_time_success),
+        /* set_subscription_query */
+        cmocka_unit_test(test_set_subscription_query),
+        /* set_policies */
+        cmocka_unit_test_teardown(test_set_policies_unable_to_remove_backup_file, teardown_reset_errno),
+        cmocka_unit_test(test_set_policies_fail_getting_policies),
+        cmocka_unit_test_teardown(test_set_policies_unable_to_open_backup_file, teardown_reset_errno),
+        cmocka_unit_test_teardown(test_set_policies_unable_to_open_new_file, teardown_reset_errno),
+        cmocka_unit_test(test_set_policies_unable_to_restore_policies),
+        cmocka_unit_test(test_set_policies_success),
+        /* whodata_list_set_values */
+        cmocka_unit_test(test_whodata_list_set_values),
+        /* whodata_list_remove_multiple */
+        cmocka_unit_test_setup_teardown(test_whodata_list_remove_multiple_remove_none, setup_w_clist, teardown_w_clist),
+        cmocka_unit_test_setup_teardown(test_whodata_list_remove_multiple_remove_one, setup_w_clist, teardown_w_clist),
+        cmocka_unit_test_setup_teardown(test_whodata_list_remove_multiple_remove_two, setup_w_clist, teardown_w_clist),
+        cmocka_unit_test_setup_teardown(test_whodata_list_remove_multiple_remove_more_than_available, setup_w_clist, teardown_w_clist),
+        /* whodata_list_add */
+        cmocka_unit_test_teardown(test_whodata_list_add_on_empty_list, teardown_w_clist),
+        cmocka_unit_test_setup_teardown(test_whodata_list_add_on_regular_list, setup_w_clist, teardown_w_clist),
+        cmocka_unit_test_setup_teardown(test_whodata_list_add_trigger_alert, setup_w_clist, teardown_w_clist),
+        cmocka_unit_test_setup_teardown(test_whodata_list_add_on_full_list, setup_w_clist, teardown_w_clist),
     };
 
-    return cmocka_run_group_tests(tests, test_group_setup, NULL);
+    return cmocka_run_group_tests(tests, test_group_setup, test_group_teardown);
 }
