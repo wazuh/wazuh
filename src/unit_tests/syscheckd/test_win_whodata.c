@@ -222,6 +222,17 @@ void __wrap__mwarn(const char * file, int line, const char * func, const char *m
     check_expected(formatted_msg);
 }
 
+void __wrap__mterror(const char * file, int line, const char * func, const char *msg, ...) {
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
+}
+
 char *__wrap_wstr_replace(const char * string, const char * search, const char * replace) {
     check_expected(string);
     check_expected(search);
@@ -2514,6 +2525,49 @@ void test_restore_audit_policies_command_failed(void **state) {
     assert_int_equal(ret, 1);
 }
 
+void test_restore_audit_policies_command2_failed(void **state) {
+    expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
+    will_return(__wrap_IsFile, 0);
+
+    expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\backup-policies\"");
+    will_return(__wrap_wm_exec, "OUTPUT COMMAND");
+    will_return(__wrap_wm_exec, -1);
+    will_return(__wrap_wm_exec, 1);
+
+    expect_string(__wrap__merror, formatted_msg, "(6635): Auditpol backup error: 'time overtaken while running the command'.");
+
+    int ret = restore_audit_policies();
+    assert_int_equal(ret, 1);
+}
+
+void test_restore_audit_policies_command3_failed(void **state) {
+    expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
+    will_return(__wrap_IsFile, 0);
+
+    expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\backup-policies\"");
+    will_return(__wrap_wm_exec, "OUTPUT COMMAND");
+    will_return(__wrap_wm_exec, -1);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_string(__wrap__mterror, formatted_msg, "(6635): Auditpol backup error: 'command returned failure'. Output: OUTPUT COMMAND'.");
+
+    int ret = restore_audit_policies();
+    assert_int_equal(ret, 1);
+}
+
+void test_restore_audit_policies_success(void **state) {
+    expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
+    will_return(__wrap_IsFile, 0);
+
+    expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\backup-policies\"");
+    will_return(__wrap_wm_exec, "OUTPUT COMMAND");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    int ret = restore_audit_policies();
+    assert_int_equal(ret, 0);
+}
+
 /********************************************************************************************/
 void test_check_object_sacl_open_process_error(void **state) {
     int ret;
@@ -3359,6 +3413,9 @@ int main(void) {
         /* restore_audit_policies */
         cmocka_unit_test(test_restore_audit_policies_backup_not_found),
         cmocka_unit_test(test_restore_audit_policies_command_failed),
+        cmocka_unit_test(test_restore_audit_policies_command2_failed),
+        cmocka_unit_test(test_restore_audit_policies_command3_failed),
+        cmocka_unit_test(test_restore_audit_policies_success),
         /* audit_restore */
         /* check_object_sacl */
         cmocka_unit_test(test_check_object_sacl_open_process_error),
