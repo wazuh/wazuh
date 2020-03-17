@@ -562,7 +562,7 @@ void LogCollectorStart()
                         continue;
                     }
 #ifdef WIN32
-                    else if (current->size > (lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow))
+                    else if ((DWORD)current->size > (lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow))
 #else
                     else if (current->size > tmp_stat.st_size)
 #endif
