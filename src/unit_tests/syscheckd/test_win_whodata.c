@@ -308,6 +308,10 @@ int __wrap_fclose(FILE *_File) {
     }
 }
 
+int __cdecl __wrap_atexit(__attribute__((unused)) void (__cdecl *callback)(void)) {
+    return 0;
+}
+
 /**************************************************************************/
 /***************************set_winsacl************************************/
 void test_set_winsacl_failed_opening(void **state) {
