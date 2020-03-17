@@ -31,7 +31,7 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
     /* Get initial file location */
     fgetpos(lf->fp, &fp_pos);
 
-    for (offset = w_ftell(lf->fp); fgetws(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
+    for (offset = w_ftell(lf->fp); can_read() && fgetws(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
         lines++;
         mdebug2("Bytes read from '%s': %lld bytes",lf->file,rbytes);
