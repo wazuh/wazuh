@@ -38,6 +38,7 @@ extern void set_subscription_query(wchar_t *query);
 extern int set_policies();
 extern void whodata_list_set_values();
 extern void whodata_list_remove_multiple(size_t quantity);
+extern whodata_event_node *whodata_list_add(char *id);
 
 extern char sys_64;
 extern PSID everyone_sid;
@@ -169,6 +170,10 @@ static int setup_w_clist(void **state) {
 
     syscheck.w_clist.current_size = 3;
 
+    syscheck.w_clist.max_size = OS_SIZE_1024;
+    syscheck.w_clist.max_remove = syscheck.w_clist.max_size * 10 * 0.01;
+    syscheck.w_clist.alert_threshold = syscheck.w_clist.max_size * 80 * 0.01;
+
     return 0;
 }
 
@@ -187,6 +192,10 @@ static int teardown_w_clist(void **state) {
 
     syscheck.w_clist.last = syscheck.w_clist.first = NULL;
     syscheck.w_clist.current_size = 0;
+    syscheck.w_clist.max_size = 0;
+    syscheck.w_clist.max_remove = 0;
+    syscheck.w_clist.alert_threshold = 0;
+    syscheck.w_clist.alerted = 0;
 
     return 0;
 }
@@ -3632,6 +3641,102 @@ void test_whodata_list_remove_multiple_remove_more_than_available(void **state) 
     assert_null(syscheck.w_clist.last);
 }
 
+void test_whodata_list_add_on_empty_list(void **state) {
+    whodata_event_node *node;
+
+    // setup some required values
+    syscheck.w_clist.max_size = OS_SIZE_1024;
+    syscheck.w_clist.max_remove = syscheck.w_clist.max_size * 0.1;
+    syscheck.w_clist.alert_threshold = syscheck.w_clist.max_size * 80 * 0.01;
+
+    node = whodata_list_add(strdup("A node"));
+
+    assert_int_equal(syscheck.w_clist.current_size, 1);
+    assert_non_null(node);
+    assert_ptr_equal(node, syscheck.w_clist.first);
+    assert_ptr_equal(node, syscheck.w_clist.last);
+    assert_null(node->next);
+    assert_null(node->prev);
+    assert_string_equal(node->id, "A node");
+}
+
+void test_whodata_list_add_on_regular_list(void **state) {
+    whodata_event_node *node;
+
+    node = whodata_list_add(strdup("A node"));
+
+    assert_int_equal(syscheck.w_clist.current_size, 4);
+    assert_non_null(node);
+    assert_ptr_not_equal(node, syscheck.w_clist.first);
+    assert_ptr_equal(node, syscheck.w_clist.last);
+    assert_null(node->next);
+    assert_ptr_equal(node->prev, syscheck.w_clist.first->next->next);
+    assert_string_equal(node->id, "A node");
+}
+
+void test_whodata_list_add_trigger_alert(void **state) {
+    whodata_event_node *node;
+
+    // Trick the list into thinking it is almost full
+    syscheck.w_clist.current_size = syscheck.w_clist.alert_threshold + 1;
+
+    expect_string(__wrap__mwarn, formatted_msg,
+        "(6917): Real-time Whodata events queue for Windows has more than 819 elements.");
+
+    node = whodata_list_add(strdup("A node"));
+
+    assert_int_equal(syscheck.w_clist.current_size, 821);
+    assert_non_null(node);
+    assert_ptr_not_equal(node, syscheck.w_clist.first);
+    assert_ptr_equal(node, syscheck.w_clist.last);
+    assert_null(node->next);
+    assert_ptr_equal(node->prev, syscheck.w_clist.first->next->next);
+    assert_string_equal(node->id, "A node");
+}
+
+void test_whodata_list_add_on_full_list(void **state) {
+    whodata_event_node *node;
+
+    // Trick the list into thinking it is full
+    syscheck.w_clist.current_size = syscheck.w_clist.max_size;
+
+    expect_string(__wrap__mdebug1, formatted_msg,
+        "(6235): Real-time Whodata events queue for Windows is full. Removing the first '102'");
+
+    // Inside whodata_list_remove_multiple
+    {
+        expect_value(__wrap_OSHash_Delete_ex, self, syscheck.wdata.fd);
+        expect_string(__wrap_OSHash_Delete_ex, key, "first_node");
+        will_return(__wrap_OSHash_Delete_ex, (whodata_evt *)1234);
+
+        expect_value(__wrap_free_whodata_event, w_evt, (whodata_evt *)1234);
+
+        expect_value(__wrap_OSHash_Delete_ex, self, syscheck.wdata.fd);
+        expect_string(__wrap_OSHash_Delete_ex, key, "mid_node");
+        will_return(__wrap_OSHash_Delete_ex, (whodata_evt *)2345);
+
+        expect_value(__wrap_free_whodata_event, w_evt, (whodata_evt *)2345);
+
+        expect_value(__wrap_OSHash_Delete_ex, self, syscheck.wdata.fd);
+        expect_string(__wrap_OSHash_Delete_ex, key, "last_node");
+        will_return(__wrap_OSHash_Delete_ex, (whodata_evt *)3456);
+
+        expect_value(__wrap_free_whodata_event, w_evt, (whodata_evt *)3456);
+
+        expect_string(__wrap__mdebug1, formatted_msg, "(6236): '102' events have been deleted from the whodata list.");
+    }
+
+    node = whodata_list_add(strdup("A node"));
+
+    assert_int_equal(syscheck.w_clist.current_size, 1022);
+    assert_non_null(node);
+    assert_ptr_equal(node, syscheck.w_clist.first);
+    assert_ptr_equal(node, syscheck.w_clist.last);
+    assert_null(node->next);
+    assert_null(node->prev);
+    assert_string_equal(node->id, "A node");
+}
+
 /**************************************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -3772,6 +3877,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_whodata_list_remove_multiple_remove_one, setup_w_clist, teardown_w_clist),
         cmocka_unit_test_setup_teardown(test_whodata_list_remove_multiple_remove_two, setup_w_clist, teardown_w_clist),
         cmocka_unit_test_setup_teardown(test_whodata_list_remove_multiple_remove_more_than_available, setup_w_clist, teardown_w_clist),
+        /* whodata_list_add */
+        cmocka_unit_test_teardown(test_whodata_list_add_on_empty_list, teardown_w_clist),
+        cmocka_unit_test_setup_teardown(test_whodata_list_add_on_regular_list, setup_w_clist, teardown_w_clist),
+        cmocka_unit_test_setup_teardown(test_whodata_list_add_trigger_alert, setup_w_clist, teardown_w_clist),
+        cmocka_unit_test_setup_teardown(test_whodata_list_add_on_full_list, setup_w_clist, teardown_w_clist),
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, test_group_teardown);
