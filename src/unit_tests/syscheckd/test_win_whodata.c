@@ -283,9 +283,14 @@ int __wrap_IsFile(const char * file)
     return mock();
 }
 
+int __real_remove(const char *filename);
 int __wrap_remove(const char *filename) {
-    check_expected(filename);
-    return mock();
+    if(unit_testing){
+        check_expected(filename);
+        return mock();
+    } else {
+        return __real_remove(filename);
+    }
 }
 
 int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path) {
@@ -319,8 +324,12 @@ int __wrap_fclose(FILE *_File) {
     }
 }
 
-int __cdecl __wrap_atexit(__attribute__((unused)) void (__cdecl *callback)(void)) {
-    return 0;
+int __cdecl __real_atexit(void (__cdecl *callback)(void));
+int __cdecl __wrap_atexit(void (__cdecl *callback)(void)) {
+    if(unit_testing)
+        return 0;
+    else
+        return __real_atexit(callback);
 }
 
 void *__wrap_OSHash_Delete_ex(OSHash *self, const char *key) {
