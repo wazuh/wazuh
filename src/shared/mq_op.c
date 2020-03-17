@@ -160,7 +160,6 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
     }
 
     // Send msg to socket
-
     if (__mq_rcode = OS_SendUnix(target->log_socket->socket, tmpstr, strlen(tmpstr)), __mq_rcode < 0) {
         if (__mq_rcode == OS_SOCKTERR) {
             if (mtime = time(NULL), mtime > target->log_socket->last_attempt + sock_fail_time) {

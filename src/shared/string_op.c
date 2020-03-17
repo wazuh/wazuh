@@ -169,6 +169,7 @@ char * w_strtrim(char * string) {
 
 // Add a dynamic field with object nesting
 void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
+
     cJSON *object;
     char *current;
     char *nest = strchr(key, '.');
@@ -176,7 +177,7 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
 
     if (nest) {
         length = nest - key;
-        current = malloc(length + 1);
+        os_malloc(length + 1, current);
         strncpy(current, key, length);
         current[length] = '\0';
 
@@ -679,7 +680,28 @@ char *w_strtok_r_str_delim(const char *delim, char **remaining_str)
     return token;
 }
 
-const char *find_string_in_array(char * const string_array[], size_t array_len, const char * const str, const size_t str_len)
+
+// Returns the characters number of the string source if, only if, source is included completely in str, 0 in other case.
+int w_compare_str(const char * source, const char * str) {
+    int matching = 0;
+    size_t source_lenght;
+
+    if (!(source && str)) {
+        return -1;
+    }
+
+    source_lenght = strlen(source);
+    if (source_lenght > strlen(str)) {
+        return -2;
+    }
+
+    // Match if result is 0
+    matching = strncmp(source, str, source_lenght);
+
+    return matching == 0 ? source_lenght : 0;
+}
+
+const char * find_string_in_array(char * const string_array[], size_t array_len, const char * const str, const size_t str_len)
 {
     if (!string_array || !str){
         return NULL;
@@ -693,6 +715,46 @@ const char *find_string_in_array(char * const string_array[], size_t array_len, 
     }
 
     return NULL;
+}
+
+// Parse boolean string
+
+int w_parse_bool(const char * string) {
+    return (strcmp(string, "yes") == 0) ? 1 : (strcmp(string, "no") == 0) ? 0 : -1;
+}
+
+// Parse positive time string into seconds
+
+long w_parse_time(const char * string) {
+    char * end;
+    long seconds = strtol(string, &end, 10);
+
+    if (seconds < 0 || (seconds == LONG_MAX && errno == ERANGE)) {
+        return -1;
+    }
+
+    switch (*end) {
+    case '\0':
+        break;
+    case 'd':
+        seconds *= 86400;
+        break;
+    case 'h':
+        seconds *= 3600;
+        break;
+    case 'm':
+        seconds *= 60;
+        break;
+    case 's':
+        break;
+    case 'w':
+        seconds *= 604800;
+        break;
+    default:
+        return -1;
+    }
+
+    return seconds >= 0 ? seconds : -1;
 }
 
 char* decode_hex_buffer_2_ascii_buffer(const char * const encoded_buffer, const size_t buffer_size)

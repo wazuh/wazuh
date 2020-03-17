@@ -553,7 +553,7 @@ int OS_SetKeepalive(int socket)
 }
 
 // Set keepalive parameters for a socket
-void OS_SetKeepalive_Options(int socket, int idle, int intvl, int cnt)
+void OS_SetKeepalive_Options(__attribute__((unused)) int socket, int idle, int intvl, int cnt)
 {
     if (cnt > 0) {
 #if !defined(sun) && !defined(WIN32) && !defined(OpenBSD)

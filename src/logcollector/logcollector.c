@@ -562,7 +562,7 @@ void LogCollectorStart()
                         continue;
                     }
 #ifdef WIN32
-                    else if (current->size > (lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow))
+                    else if ((DWORD)current->size > (lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow))
 #else
                     else if (current->size > tmp_stat.st_size)
 #endif
@@ -1811,7 +1811,7 @@ void * w_output_thread(void * args){
                 #else
                 merror("Unable to send message to '%s' (ossec-analysisd might be down). Attempting to reconnect.", DEFAULTQPATH);
                 #endif
-
+            
                 while(1) {
                     if(logr_queue = StartMQ(DEFAULTQPATH, WRITE), logr_queue > 0) {
                         if (SendMSG(logr_queue, message->buffer, message->file, message->queue_mq) == 0) {

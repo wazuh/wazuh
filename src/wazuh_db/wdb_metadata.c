@@ -24,17 +24,6 @@ static const char *SQL_METADATA_STMT[] = {
     "SELECT value FROM metadata WHERE key = ?;"
 };
 
-int wdb_metadata_initialize (wdb_t *wdb) {
-    int result = 0;
-
-    if (wdb_metadata_insert_entry(wdb, "db_version", "3") < 0) {
-        merror("Couldn't fill metadata into database '%s'", wdb->agent_id);
-        result = -1;
-    }
-
-    return result;
-}
-
 int wdb_fim_fill_metadata(wdb_t *wdb, char *data) {
     char *key, *value;
 

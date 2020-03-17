@@ -191,7 +191,7 @@ static void FileAccess_PreludeLog(idmef_message_t *idmef,
                            const char *sha256,
                            const char *owner,
                            const char *gowner,
-                           int perm)
+                           const char *perm)
 {
 
     mdebug1("filename = %s.", filename);
@@ -221,19 +221,7 @@ static void FileAccess_PreludeLog(idmef_message_t *idmef,
 
         if (perm) {
             /* Add the permissions */
-            if (perm & S_IWUSR) {
-                add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "write");
-                add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "delete");
-            }
-            if (perm & S_IXUSR) {
-                add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "execute");
-            }
-            if (perm & S_IRUSR ) {
-                add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "read");
-            }
-            if (perm & S_ISUID) {
-                add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "executeAs");
-            }
+            add_idmef_object(idmef, "alert.target(0).file(-1).file_access(>>).permission", perm);
         }
     }
 

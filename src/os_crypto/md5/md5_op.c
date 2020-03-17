@@ -27,7 +27,7 @@ int OS_MD5_File(const char *fname, os_md5 output, int mode)
     unsigned char digest[16];
     size_t n;
 
-    memset(output, 0, 33);
+    memset(output, 0, sizeof(os_md5));
     buf[1024] = '\0';
 
     fp = fopen(fname, mode == OS_BINARY ? "rb" : "r");
