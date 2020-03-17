@@ -15,6 +15,7 @@
 #include "unit_tests/wrappers/syscheckd/fim_db.h"
 
 #define fprintf wrap_fprintf
+#define Sleep wrap_fim_db_Sleep
 #endif
 
 #define static
