@@ -99,7 +99,7 @@ static const wchar_t* event_fields[] = {
 static unsigned int fields_number = sizeof(event_fields) / sizeof(LPWSTR);
 static const unsigned __int64 AUDIT_SUCCESS = 0x20000000000000;
 static LPCTSTR priv = "SeSecurityPrivilege";
-static int restore_policies = 0;
+STATIC int restore_policies = 0;
 
 // Whodata function headers
 void restore_sacls();
