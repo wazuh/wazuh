@@ -472,6 +472,9 @@ static void wraps_fim_db_insert_path_success() {
 static int setup_group(void **state) {
     (void) state;
     expect_string(__wrap__mdebug1, formatted_msg, "(6287): Reading configuration file: 'test_syscheck2.conf'");
+#ifdef TEST_WINAGENT
+    expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck2.conf]");
+#endif
     Read_Syscheck_Config("test_syscheck2.conf");
     syscheck.database_store = 0;    // disk
     w_mutex_init(&syscheck.fim_entry_mutex, NULL);
@@ -1034,36 +1037,6 @@ void test_fim_db_insert_invalid_type(void **state) {
     expect_string(__wrap__merror, formatted_msg, "Couldn't insert '/test/path' entry into DB. Invalid event type: 1.");
 
     ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data, FIM_DELETE);
-    assert_int_equal(ret, FIMDB_ERR);
-}
-
-void test_fim_db_insert_db_free(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-    int ret;
-
-    will_return(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
-    will_return(__wrap_sqlite3_column_int, 1000);
-
-    will_return(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-
-    will_return_always(__wrap_sqlite3_bind_int, 0);
-
-    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
-
-    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "SQL ERROR: (1)ERROR MESSAGE");
-
-    syscheck.database = test_data->fim_sql;
-
-    ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data, FIM_ADD);
-
-    syscheck.database = NULL;
-
     assert_int_equal(ret, FIMDB_ERR);
 }
 
@@ -2726,7 +2699,6 @@ int main(void) {
         // fim_db_insert
         cmocka_unit_test_setup_teardown(test_fim_db_insert_error, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_insert_invalid_type, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_insert_db_free, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_insert_db_full, test_fim_db_setup, test_fim_db_teardown),
         #ifndef TEST_WINAGENT
         cmocka_unit_test_setup_teardown(test_fim_db_insert_inode_id_nonull, test_fim_db_setup, test_fim_db_teardown),

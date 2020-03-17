@@ -2385,7 +2385,113 @@ static void test_fim_checker_fim_directory(void **state) {
     fim_checker(expanded_path, fim_data->item, NULL, 1);
 }
 
-static void test_fim_scan(void **state) {
+static void test_fim_scan_db_full_double_scan(void **state) {
+    char expanded_dirs[10][OS_SIZE_1024];
+    char directories[10][OS_SIZE_256] = {
+        "%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
+        "%WINDIR%",
+        "%WINDIR%\\SysNative",
+        "%WINDIR%\\SysNative\\drivers\\etc",
+        "%WINDIR%\\SysNative\\wbem",
+        "%WINDIR%\\SysNative\\WindowsPowerShell\\v1.0",
+        "%WINDIR%\\System32",
+        "%WINDIR%\\System32\\drivers\\etc",
+        "%WINDIR%\\System32\\wbem",
+        "%WINDIR%\\System32\\WindowsPowerShell\\v1.0",
+    };
+    int i;
+
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+
+    // In fim_checker
+    will_return_count(__wrap_stat, 0, 11);
+
+    for(i = 0; i < 10; i++) {
+        if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024))
+            fail();
+
+        str_lowercase(expanded_dirs[i]);
+        expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
+    }
+
+    will_return_count(__wrap_HasFilesystem, 0, 11);
+
+    will_return(__wrap_fim_db_get_count_entry_path, 50000);
+
+    expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_not_scanned, NULL);
+    will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
+
+    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_set_all_unscanned, 0);
+
+    will_return(__wrap_fim_db_get_count_entry_path, 45000);
+
+    expect_string(__wrap_HasFilesystem, path, expanded_dirs[0]);
+
+    will_return(__wrap_fim_db_get_count_entry_path, 50000);
+
+    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_set_all_unscanned, 0);
+
+    will_return(__wrap_fim_db_get_count_entry_path, 50000);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6041): Sending DB 100% full alert.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: 'full'.");
+
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
+
+    fim_scan();
+}
+
+static void test_fim_scan_db_full_not_double_scan(void **state) {
+    char expanded_dirs[10][OS_SIZE_1024];
+    char directories[10][OS_SIZE_256] = {
+        "%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
+        "%WINDIR%",
+        "%WINDIR%\\SysNative",
+        "%WINDIR%\\SysNative\\drivers\\etc",
+        "%WINDIR%\\SysNative\\wbem",
+        "%WINDIR%\\SysNative\\WindowsPowerShell\\v1.0",
+        "%WINDIR%\\System32",
+        "%WINDIR%\\System32\\drivers\\etc",
+        "%WINDIR%\\System32\\wbem",
+        "%WINDIR%\\System32\\WindowsPowerShell\\v1.0",
+    };
+    int i;
+
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+
+    // In fim_checker
+    will_return_count(__wrap_stat, 0, 10);
+
+    for(i = 0; i < 10; i++) {
+        if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024))
+            fail();
+
+        str_lowercase(expanded_dirs[i]);
+        expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
+    }
+
+    will_return_count(__wrap_HasFilesystem, 0, 10);
+
+    will_return_count(__wrap_fim_db_get_count_entry_path, 50000, 3);
+
+    expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_not_scanned, NULL);
+    will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
+
+    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_set_all_unscanned, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
+
+    fim_scan();
+}
+
+static void test_fim_scan_db_free(void **state) {
     char expanded_dirs[10][OS_SIZE_1024];
     char directories[10][OS_SIZE_256] = {
         "%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
@@ -2418,15 +2524,62 @@ static void test_fim_scan(void **state) {
 
     will_return(__wrap_fim_db_get_count_entry_path, 1000);
 
+    expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_not_scanned, NULL);
+    will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
+
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_set_all_unscanned, 0);
+
+    will_return(__wrap_fim_db_get_count_entry_path, 1000);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: 'normal'.");
+
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
+
+    fim_scan();
+}
+
+static void test_fim_scan_no_limit(void **state) {
+    char expanded_dirs[10][OS_SIZE_1024];
+    char directories[10][OS_SIZE_256] = {
+        "%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
+        "%WINDIR%",
+        "%WINDIR%\\SysNative",
+        "%WINDIR%\\SysNative\\drivers\\etc",
+        "%WINDIR%\\SysNative\\wbem",
+        "%WINDIR%\\SysNative\\WindowsPowerShell\\v1.0",
+        "%WINDIR%\\System32",
+        "%WINDIR%\\System32\\drivers\\etc",
+        "%WINDIR%\\System32\\wbem",
+        "%WINDIR%\\System32\\WindowsPowerShell\\v1.0",
+    };
+    int i;
+
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+
+    // In fim_checker
+    will_return_count(__wrap_stat, 0, 10);
+
+    for(i = 0; i < 10; i++) {
+        if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024))
+            fail();
+
+        str_lowercase(expanded_dirs[i]);
+        expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
+    }
+
+    will_return_count(__wrap_HasFilesystem, 0, 10);
 
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_not_scanned, NULL);
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
 
-    will_return(__wrap_fim_db_get_count_entry_path, 1000);
+    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_set_all_unscanned, 0);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
@@ -2492,7 +2645,7 @@ static void test_fim_check_db_state_full_to_empty(void **state) {
 static void test_fim_check_db_state_empty_to_90_percentage(void **state) {
     (void) state;
 
-    will_return(__wrap_fim_db_get_count_entry_path, 45000);
+    will_return(__wrap_fim_db_get_count_entry_path, 46000);
 
     expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 90% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: '90%%'.");
@@ -2522,7 +2675,7 @@ static void test_fim_check_db_state_90_percentage_to_empty(void **state) {
 static void test_fim_check_db_state_empty_to_80_percentage(void **state) {
     (void) state;
 
-    will_return(__wrap_fim_db_get_count_entry_path, 40000);
+    will_return(__wrap_fim_db_get_count_entry_path, 41000);
 
     expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: '80%%'.");
@@ -2606,7 +2759,7 @@ static void test_fim_check_db_state_full_to_normal(void **state) {
 static void test_fim_check_db_state_normal_to_90_percentage(void **state) {
     (void) state;
 
-    will_return(__wrap_fim_db_get_count_entry_path, 45000);
+    will_return(__wrap_fim_db_get_count_entry_path, 46000);
 
     expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 90% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: '90%%'.");
@@ -2636,7 +2789,7 @@ static void test_fim_check_db_state_90_percentage_to_normal(void **state) {
 static void test_fim_check_db_state_normal_to_80_percentage(void **state) {
     (void) state;
 
-    will_return(__wrap_fim_db_get_count_entry_path, 40000);
+    will_return(__wrap_fim_db_get_count_entry_path, 41000);
 
     expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: '80%%'.");
@@ -2678,7 +2831,7 @@ static void test_fim_check_db_state_80_percentage_to_full(void **state) {
 static void test_fim_check_db_state_full_to_80_percentage(void **state) {
     (void) state;
 
-    will_return(__wrap_fim_db_get_count_entry_path, 40000);
+    will_return(__wrap_fim_db_get_count_entry_path, 41000);
 
     expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: '80%%'.");
@@ -2693,7 +2846,7 @@ static void test_fim_check_db_state_full_to_80_percentage(void **state) {
 static void test_fim_check_db_state_80_percentage_to_90_percentage(void **state) {
     (void) state;
 
-    will_return(__wrap_fim_db_get_count_entry_path, 45000);
+    will_return(__wrap_fim_db_get_count_entry_path, 46000);
 
     expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 90% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: '90%%'.");
@@ -2747,7 +2900,7 @@ static void test_fim_check_db_state_full_to_full(void **state) {
 static void test_fim_check_db_state_full_to_90_percentage(void **state) {
     (void) state;
 
-    will_return(__wrap_fim_db_get_count_entry_path, 45000);
+    will_return(__wrap_fim_db_get_count_entry_path, 46000);
 
     expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 90% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: '90%%'.");
@@ -2762,7 +2915,7 @@ static void test_fim_check_db_state_full_to_90_percentage(void **state) {
 static void test_fim_check_db_state_90_percentage_to_80_percentage(void **state) {
     (void) state;
 
-    will_return(__wrap_fim_db_get_count_entry_path, 40000);
+    will_return(__wrap_fim_db_get_count_entry_path, 41000);
 
     expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: '80%%'.");
