@@ -162,6 +162,7 @@
       "data.dstip",
       "data.dstport",
       "data.dstuser",
+      "data.extra_data",
       "data.hardware.serial",
       "data.id",
       "data.integration",
@@ -291,10 +292,37 @@
       "data.vulnerability.advisories",
       "data.vulnerability.bugzilla_reference",
       "data.vulnerability.cve",
+      "data.vulnerability.cvss.cvss2.base_score",
+      "data.vulnerability.cvss.cvss2.exploitability_score",
+      "data.vulnerability.cvss.cvss2.impact_score",
+      "data.vulnerability.cvss.cvss2.vector.access_complexity",
+      "data.vulnerability.cvss.cvss2.vector.attack_vector",
+      "data.vulnerability.cvss.cvss2.vector.authentication",
+      "data.vulnerability.cvss.cvss2.vector.availability",
+      "data.vulnerability.cvss.cvss2.vector.confidentiality_impact",
+      "data.vulnerability.cvss.cvss2.vector.integrity_impact",
+      "data.vulnerability.cvss.cvss2.vector.privileges_required",
+      "data.vulnerability.cvss.cvss2.vector.scope",
+      "data.vulnerability.cvss.cvss2.vector.user_interaction",
+      "data.vulnerability.cvss.cvss3.base_score",
+      "data.vulnerability.cvss.cvss3.exploitability_score",
+      "data.vulnerability.cvss.cvss3.impact_score",
+      "data.vulnerability.cvss.cvss3.vector.access_complexity",
+      "data.vulnerability.cvss.cvss3.vector.attack_vector",
+      "data.vulnerability.cvss.cvss3.vector.authentication",
+      "data.vulnerability.cvss.cvss3.vector.availability",
+      "data.vulnerability.cvss.cvss3.vector.confidentiality_impact",
+      "data.vulnerability.cvss.cvss3.vector.integrity_impact",
+      "data.vulnerability.cvss.cvss3.vector.privileges_required",
+      "data.vulnerability.cvss.cvss3.vector.scope",
+      "data.vulnerability.cvss.cvss3.vector.user_interaction",
       "data.vulnerability.cwe_reference",
+      "data.vulnerability.package.architecture",
       "data.vulnerability.package.condition",
+      "data.vulnerability.package.generated_cpe",
       "data.vulnerability.package.name",
       "data.vulnerability.package.version",
+      "data.vulnerability.rationale",
       "data.vulnerability.reference",
       "data.vulnerability.severity",
       "data.vulnerability.state",
@@ -372,6 +400,8 @@
       "rule.id",
       "rule.info",
       "rule.pci_dss",
+      "rule.hipaa",
+      "rule.nist_800_53",
       "syscheck.audit.effective_user.id",
       "syscheck.audit.effective_user.name",
       "syscheck.audit.group.id",
@@ -526,6 +556,9 @@
       "syscheck": {
         "properties": {
           "path": {
+            "type": "keyword"
+          },
+          "hard_links": {
             "type": "keyword"
           },
           "sha1_before": {
@@ -941,6 +974,9 @@
             "type": "keyword"
           },
           "data": {
+            "type": "keyword"
+          },
+          "extra_data": {
             "type": "keyword"
           },
           "system_name": {
@@ -1531,14 +1567,93 @@
               },
               "cvss": {
                 "properties": {
-                  "cvss3_score": {
-                    "type": "keyword"
+                  "cvss2": {
+                    "properties": {
+                      "base_score": {
+                        "type": "keyword"
+                      },
+                      "exploitability_score": {
+                        "type": "keyword"
+                      },
+                      "impact_score": {
+                        "type": "keyword"
+                      },
+                      "vector": {
+                        "properties": {
+                          "access_complexity": {
+                            "type": "keyword"
+                          },
+                          "attack_vector": {
+                            "type": "keyword"
+                          },
+                          "authentication": {
+                            "type": "keyword"
+                          },
+                          "availability": {
+                            "type": "keyword"
+                          },
+                          "confidentiality_impact": {
+                            "type": "keyword"
+                          },
+                          "integrity_impact": {
+                            "type": "keyword"
+                          },
+                          "privileges_required": {
+                            "type": "keyword"
+                          },
+                          "scope": {
+                            "type": "keyword"
+                          },
+                          "user_interaction": {
+                            "type": "keyword"
+                          }
+                        }
+                      }
+                    }
                   },
-                  "cvss_score": {
-                    "type": "keyword"
-                  },
-                  "cvss_scoring_vector": {
-                    "type": "keyword"
+                  "cvss3": {
+                    "properties": {
+                      "base_score": {
+                        "type": "keyword"
+                      },
+                      "exploitability_score": {
+                        "type": "keyword"
+                      },
+                      "impact_score": {
+                        "type": "keyword"
+                      },
+                      "vector": {
+                        "properties": {
+                          "access_complexity": {
+                            "type": "keyword"
+                          },
+                          "attack_vector": {
+                            "type": "keyword"
+                          },
+                          "authentication": {
+                            "type": "keyword"
+                          },
+                          "availability": {
+                            "type": "keyword"
+                          },
+                          "confidentiality_impact": {
+                            "type": "keyword"
+                          },
+                          "integrity_impact": {
+                            "type": "keyword"
+                          },
+                          "privileges_required": {
+                            "type": "keyword"
+                          },
+                          "scope": {
+                            "type": "keyword"
+                          },
+                          "user_interaction": {
+                            "type": "keyword"
+                          }
+                        }
+                      }
+                    }
                   }
                 }
               },
@@ -1547,7 +1662,13 @@
               },
               "package": {
                 "properties": {
+                  "architecture": {
+                    "type": "keyword"
+                  },
                   "condition": {
+                    "type": "keyword"
+                  },
+                  "generated_cpe": {
                     "type": "keyword"
                   },
                   "name": {
@@ -1560,6 +1681,12 @@
               },
               "published": {
                 "type": "date"
+              },
+              "updated": {
+                "type": "date"
+              },
+              "rationale": {
+                "type": "keyword"
               },
               "reference": {
                 "type": "keyword"
