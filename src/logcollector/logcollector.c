@@ -1801,7 +1801,6 @@ void * w_output_thread(void * args){
         /* Pop message from the queue */
         message = w_msg_queue_pop(msg_queue);
 
-        
         if (strcmp(message->log_target->log_socket->name, "agent") == 0) {
             // When dealing with this type of messages we don't want any of them to be lost
             // Continuously attempt to reconnect to the queue and send the message. 
@@ -1812,7 +1811,7 @@ void * w_output_thread(void * args){
                 #else
                 merror("Unable to send message to '%s' (ossec-analysisd might be down). Attempting to reconnect.", DEFAULTQPATH);
                 #endif
-            
+
                 while(1) {
                     if(logr_queue = StartMQ(DEFAULTQPATH, WRITE), logr_queue > 0) {
                         if (SendMSG(logr_queue, message->buffer, message->file, message->queue_mq) == 0) {
@@ -1831,7 +1830,9 @@ void * w_output_thread(void * args){
             
         } else {
             int messageSent = 0;
-            while (messageSent <= 0) {
+            const int MAX_RETRIES = 3;
+            int retries = 0;
+            while (messageSent <= 0 && retries < MAX_RETRIES) {
                 messageSent = SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target);
                 if (messageSent < 0) {
                     merror(QUEUE_SEND);
@@ -1839,12 +1840,14 @@ void * w_output_thread(void * args){
                     sleep(sleep_time);
 
                     // If we failed, we will wait longer before reattempting to connect
-                    if(sleep_time < 300)
-                        sleep_time += 5;
+                    sleep_time += 5;
+                    retries++;
                 }
             }
+            if (retries == MAX_RETRIES) {
+                merror(SEND_ERROR, message->log_target->log_socket->location, message->buffer);
+            }
         }
-        
         free(message->file);
         free(message->buffer);
         free(message);
