@@ -18,6 +18,8 @@
 #include "../config/syscheck-config.h"
 #include "../syscheckd/fim_db.h"
 
+extern fim_state_db _db_state;
+
 char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
 
 /* auxiliary structs */
@@ -312,6 +314,11 @@ int __wrap_isChroot() {
 
 int __wrap_fim_db_get_count_entry_path(fdb_t * fim_sql){
     return mock();
+}
+
+int __wrap_send_log_msg(const char * msg) {
+    check_expected(msg);
+    return 1;
 }
 
 
@@ -2300,6 +2307,361 @@ static void test_fim_scan(void **state) {
 }
 #endif
 
+/* fim_check_db_state */
+static void test_fim_check_db_state_normal_to_empty(void **state) {
+    (void) state;
+
+    will_return(__wrap_fim_db_get_count_entry_path, 0);
+
+    assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
+
+    fim_check_db_state();
+
+    assert_int_equal(_db_state, FIM_STATE_DB_EMPTY);
+}
+
+static void test_fim_check_db_state_empty_to_empty(void **state) {
+    (void) state;
+
+    will_return(__wrap_fim_db_get_count_entry_path, 0);
+
+    assert_int_equal(_db_state, FIM_STATE_DB_EMPTY);
+
+    fim_check_db_state();
+
+    assert_int_equal(_db_state, FIM_STATE_DB_EMPTY);
+}
+
+static void test_fim_check_db_state_empty_to_full(void **state) {
+    (void) state;
+
+    will_return(__wrap_fim_db_get_count_entry_path, 50000);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6041): Sending DB 100% full alert.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: 'full'.");
+
+    assert_int_equal(_db_state, FIM_STATE_DB_EMPTY);
+
+    fim_check_db_state();
+
+    assert_int_equal(_db_state, FIM_STATE_DB_FULL);
+}
+
+static void test_fim_check_db_state_full_to_empty(void **state) {
+    (void) state;
+
+    will_return(__wrap_fim_db_get_count_entry_path, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: 'normal'.");
+
+    assert_int_equal(_db_state, FIM_STATE_DB_FULL);
+
+    fim_check_db_state();
+
+    assert_int_equal(_db_state, FIM_STATE_DB_EMPTY);
+}
+
+static void test_fim_check_db_state_empty_to_90_percentage(void **state) {
+    (void) state;
+
+    will_return(__wrap_fim_db_get_count_entry_path, 45000);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 90% full alert.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: '90%%'.");
+
+    assert_int_equal(_db_state, FIM_STATE_DB_EMPTY);
+
+    fim_check_db_state();
+
+    assert_int_equal(_db_state, FIM_STATE_DB_90_PERCENTAGE);
+}
+
+static void test_fim_check_db_state_90_percentage_to_empty(void **state) {
+    (void) state;
+
+    will_return(__wrap_fim_db_get_count_entry_path, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: 'normal'.");
+
+    assert_int_equal(_db_state, FIM_STATE_DB_90_PERCENTAGE);
+
+    fim_check_db_state();
+
+    assert_int_equal(_db_state, FIM_STATE_DB_EMPTY);
+}
+
+static void test_fim_check_db_state_empty_to_80_percentage(void **state) {
+    (void) state;
+
+    will_return(__wrap_fim_db_get_count_entry_path, 40000);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: '80%%'.");
+
+    assert_int_equal(_db_state, FIM_STATE_DB_EMPTY);
+
+    fim_check_db_state();
+
+    assert_int_equal(_db_state, FIM_STATE_DB_80_PERCENTAGE);
+}
+
+static void test_fim_check_db_state_80_percentage_to_empty(void **state) {
+    (void) state;
+
+    will_return(__wrap_fim_db_get_count_entry_path, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: 'normal'.");
+
+    assert_int_equal(_db_state, FIM_STATE_DB_80_PERCENTAGE);
+
+    fim_check_db_state();
+
+    assert_int_equal(_db_state, FIM_STATE_DB_EMPTY);
+}
+
+static void test_fim_check_db_state_empty_to_normal(void **state) {
+    (void) state;
+
+    will_return(__wrap_fim_db_get_count_entry_path, 10000);
+
+    assert_int_equal(_db_state, FIM_STATE_DB_EMPTY);
+
+    fim_check_db_state();
+
+    assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
+}
+
+static void test_fim_check_db_state_normal_to_normal(void **state) {
+    (void) state;
+
+    will_return(__wrap_fim_db_get_count_entry_path, 20000);
+
+    assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
+
+    fim_check_db_state();
+
+    assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
+}
+
+static void test_fim_check_db_state_normal_to_full(void **state) {
+    (void) state;
+
+    will_return(__wrap_fim_db_get_count_entry_path, 50000);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6041): Sending DB 100% full alert.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: 'full'.");
+
+    assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
+
+    fim_check_db_state();
+
+    assert_int_equal(_db_state, FIM_STATE_DB_FULL);
+}
+
+static void test_fim_check_db_state_full_to_normal(void **state) {
+    (void) state;
+
+    will_return(__wrap_fim_db_get_count_entry_path, 10000);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: 'normal'.");
+
+    assert_int_equal(_db_state, FIM_STATE_DB_FULL);
+
+    fim_check_db_state();
+
+    assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
+}
+
+static void test_fim_check_db_state_normal_to_90_percentage(void **state) {
+    (void) state;
+
+    will_return(__wrap_fim_db_get_count_entry_path, 45000);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 90% full alert.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: '90%%'.");
+
+    assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
+
+    fim_check_db_state();
+
+    assert_int_equal(_db_state, FIM_STATE_DB_90_PERCENTAGE);
+}
+
+static void test_fim_check_db_state_90_percentage_to_normal(void **state) {
+    (void) state;
+
+    will_return(__wrap_fim_db_get_count_entry_path, 10000);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: 'normal'.");
+
+    assert_int_equal(_db_state, FIM_STATE_DB_90_PERCENTAGE);
+
+    fim_check_db_state();
+
+    assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
+}
+
+static void test_fim_check_db_state_normal_to_80_percentage(void **state) {
+    (void) state;
+
+    will_return(__wrap_fim_db_get_count_entry_path, 40000);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: '80%%'.");
+
+    assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
+
+    fim_check_db_state();
+
+    assert_int_equal(_db_state, FIM_STATE_DB_80_PERCENTAGE);
+}
+
+static void test_fim_check_db_state_80_percentage_to_80_percentage(void **state) {
+    (void) state;
+
+    will_return(__wrap_fim_db_get_count_entry_path, 42000);
+
+    assert_int_equal(_db_state, FIM_STATE_DB_80_PERCENTAGE);
+
+    fim_check_db_state();
+
+    assert_int_equal(_db_state, FIM_STATE_DB_80_PERCENTAGE);
+}
+
+static void test_fim_check_db_state_80_percentage_to_full(void **state) {
+    (void) state;
+
+    will_return(__wrap_fim_db_get_count_entry_path, 50000);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6041): Sending DB 100% full alert.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: 'full'.");
+
+    assert_int_equal(_db_state, FIM_STATE_DB_80_PERCENTAGE);
+
+    fim_check_db_state();
+
+    assert_int_equal(_db_state, FIM_STATE_DB_FULL);
+}
+
+static void test_fim_check_db_state_full_to_80_percentage(void **state) {
+    (void) state;
+
+    will_return(__wrap_fim_db_get_count_entry_path, 40000);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: '80%%'.");
+
+    assert_int_equal(_db_state, FIM_STATE_DB_FULL);
+
+    fim_check_db_state();
+
+    assert_int_equal(_db_state, FIM_STATE_DB_80_PERCENTAGE);
+}
+
+static void test_fim_check_db_state_80_percentage_to_90_percentage(void **state) {
+    (void) state;
+
+    will_return(__wrap_fim_db_get_count_entry_path, 45000);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 90% full alert.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: '90%%'.");
+
+    assert_int_equal(_db_state, FIM_STATE_DB_80_PERCENTAGE);
+
+    fim_check_db_state();
+
+    assert_int_equal(_db_state, FIM_STATE_DB_90_PERCENTAGE);
+}
+
+static void test_fim_check_db_state_90_percentage_to_90_percentage(void **state) {
+    (void) state;
+
+    will_return(__wrap_fim_db_get_count_entry_path, 48000);
+
+    assert_int_equal(_db_state, FIM_STATE_DB_90_PERCENTAGE);
+
+    fim_check_db_state();
+
+    assert_int_equal(_db_state, FIM_STATE_DB_90_PERCENTAGE);
+}
+
+static void test_fim_check_db_state_90_percentage_to_full(void **state) {
+    (void) state;
+
+    will_return(__wrap_fim_db_get_count_entry_path, 50000);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6041): Sending DB 100% full alert.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: 'full'.");
+
+    assert_int_equal(_db_state, FIM_STATE_DB_90_PERCENTAGE);
+
+    fim_check_db_state();
+
+    assert_int_equal(_db_state, FIM_STATE_DB_FULL);
+}
+
+static void test_fim_check_db_state_full_to_full(void **state) {
+    (void) state;
+
+    will_return(__wrap_fim_db_get_count_entry_path, 60000);
+
+    assert_int_equal(_db_state, FIM_STATE_DB_FULL);
+
+    fim_check_db_state();
+
+    assert_int_equal(_db_state, FIM_STATE_DB_FULL);
+}
+
+static void test_fim_check_db_state_full_to_90_percentage(void **state) {
+    (void) state;
+
+    will_return(__wrap_fim_db_get_count_entry_path, 45000);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 90% full alert.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: '90%%'.");
+
+    assert_int_equal(_db_state, FIM_STATE_DB_FULL);
+
+    fim_check_db_state();
+
+    assert_int_equal(_db_state, FIM_STATE_DB_90_PERCENTAGE);
+}
+
+static void test_fim_check_db_state_90_percentage_to_80_percentage(void **state) {
+    (void) state;
+
+    will_return(__wrap_fim_db_get_count_entry_path, 40000);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: '80%%'.");
+
+    assert_int_equal(_db_state, FIM_STATE_DB_90_PERCENTAGE);
+
+    fim_check_db_state();
+
+    assert_int_equal(_db_state, FIM_STATE_DB_80_PERCENTAGE);
+}
+
+static void test_fim_check_db_state_80_percentage_to_normal(void **state) {
+    (void) state;
+
+    will_return(__wrap_fim_db_get_count_entry_path, 10000);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: 'normal'.");
+
+    assert_int_equal(_db_state, FIM_STATE_DB_80_PERCENTAGE);
+
+    fim_check_db_state();
+
+    assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
+}
+
 /* fim_directory */
 static void test_fim_directory(void **state) {
     fim_data_t *fim_data = *state;
@@ -2913,6 +3275,33 @@ int main(void) {
 
         /* fim_scan */
         cmocka_unit_test(test_fim_scan),
+
+        /* fim_check_db_state */
+        cmocka_unit_test(test_fim_check_db_state_normal_to_empty),
+        cmocka_unit_test(test_fim_check_db_state_empty_to_empty),
+        cmocka_unit_test(test_fim_check_db_state_empty_to_full),
+        cmocka_unit_test(test_fim_check_db_state_full_to_empty),
+        cmocka_unit_test(test_fim_check_db_state_empty_to_90_percentage),
+        cmocka_unit_test(test_fim_check_db_state_90_percentage_to_empty),
+        cmocka_unit_test(test_fim_check_db_state_empty_to_80_percentage),
+        cmocka_unit_test(test_fim_check_db_state_80_percentage_to_empty),
+        cmocka_unit_test(test_fim_check_db_state_empty_to_normal),
+        cmocka_unit_test(test_fim_check_db_state_normal_to_normal),
+        cmocka_unit_test(test_fim_check_db_state_normal_to_full),
+        cmocka_unit_test(test_fim_check_db_state_full_to_normal),
+        cmocka_unit_test(test_fim_check_db_state_normal_to_90_percentage),
+        cmocka_unit_test(test_fim_check_db_state_90_percentage_to_normal),
+        cmocka_unit_test(test_fim_check_db_state_normal_to_80_percentage),
+        cmocka_unit_test(test_fim_check_db_state_80_percentage_to_80_percentage),
+        cmocka_unit_test(test_fim_check_db_state_80_percentage_to_full),
+        cmocka_unit_test(test_fim_check_db_state_full_to_80_percentage),
+        cmocka_unit_test(test_fim_check_db_state_80_percentage_to_90_percentage),
+        cmocka_unit_test(test_fim_check_db_state_90_percentage_to_90_percentage),
+        cmocka_unit_test(test_fim_check_db_state_90_percentage_to_full),
+        cmocka_unit_test(test_fim_check_db_state_full_to_full),
+        cmocka_unit_test(test_fim_check_db_state_full_to_90_percentage),
+        cmocka_unit_test(test_fim_check_db_state_90_percentage_to_80_percentage),
+        cmocka_unit_test(test_fim_check_db_state_80_percentage_to_normal),
 
         /* fim_checker */
         cmocka_unit_test(test_fim_checker_scheduled_configuration_directory_error),

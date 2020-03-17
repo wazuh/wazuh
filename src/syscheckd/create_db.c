@@ -552,8 +552,8 @@ void fim_check_db_state() {
             return;
         }
         break;
-    default:
-        break;
+    default: // LCOV_EXCL_LINE
+        break; // LCOV_EXCL_LINE
     }
 
     if (nodes_count >= syscheck.file_limit) {
