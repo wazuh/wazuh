@@ -37,6 +37,7 @@ extern int get_file_time(unsigned long long file_time_val, SYSTEMTIME *system_ti
 extern void set_subscription_query(wchar_t *query);
 extern int set_policies();
 extern void whodata_list_set_values();
+extern void whodata_list_remove_multiple(size_t quantity);
 
 extern char sys_64;
 extern PSID everyone_sid;
@@ -311,6 +312,13 @@ int __wrap_fclose(FILE *_File) {
 
 int __cdecl __wrap_atexit(__attribute__((unused)) void (__cdecl *callback)(void)) {
     return 0;
+}
+
+void *__wrap_OSHash_Delete_ex(OSHash *self, const char *key) {
+    check_expected(self);
+    check_expected(key);
+
+    return mock_type(void*);
 }
 
 /**************************************************************************/
@@ -3537,6 +3545,93 @@ void test_whodata_list_set_values(void **state) {
     assert_int_equal(syscheck.w_clist.alert_threshold, 819);
 }
 
+void test_whodata_list_remove_multiple_remove_none(void **state) {
+    expect_string(__wrap__mdebug1, formatted_msg, "(6236): '0' events have been deleted from the whodata list.");
+
+    whodata_list_remove_multiple(0);
+
+    assert_int_equal(syscheck.w_clist.current_size, 3);
+    assert_string_equal(syscheck.w_clist.first->id, "first_node");
+    assert_string_equal(syscheck.w_clist.last->id, "last_node");
+    assert_ptr_equal(syscheck.w_clist.first->next, syscheck.w_clist.last->prev);
+    assert_null(syscheck.w_clist.first->prev);
+    assert_null(syscheck.w_clist.last->next);
+}
+
+void test_whodata_list_remove_multiple_remove_one(void **state) {
+    expect_value(__wrap_OSHash_Delete_ex, self, syscheck.wdata.fd);
+    expect_string(__wrap_OSHash_Delete_ex, key, "first_node");
+    will_return(__wrap_OSHash_Delete_ex, (whodata_evt *)1234);
+
+    expect_value(__wrap_free_whodata_event, w_evt, (whodata_evt *)1234);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6236): '1' events have been deleted from the whodata list.");
+
+    whodata_list_remove_multiple(1);
+
+    assert_int_equal(syscheck.w_clist.current_size, 2);
+    assert_string_equal(syscheck.w_clist.first->id, "mid_node");
+    assert_string_equal(syscheck.w_clist.last->id, "last_node");
+    assert_ptr_equal(syscheck.w_clist.first->next, syscheck.w_clist.last);
+    assert_ptr_equal(syscheck.w_clist.last->prev, syscheck.w_clist.first);
+    assert_null(syscheck.w_clist.first->prev);
+    assert_null(syscheck.w_clist.last->next);
+}
+
+void test_whodata_list_remove_multiple_remove_two(void **state) {
+    expect_value(__wrap_OSHash_Delete_ex, self, syscheck.wdata.fd);
+    expect_string(__wrap_OSHash_Delete_ex, key, "first_node");
+    will_return(__wrap_OSHash_Delete_ex, (whodata_evt *)1234);
+
+    expect_value(__wrap_free_whodata_event, w_evt, (whodata_evt *)1234);
+
+    expect_value(__wrap_OSHash_Delete_ex, self, syscheck.wdata.fd);
+    expect_string(__wrap_OSHash_Delete_ex, key, "mid_node");
+    will_return(__wrap_OSHash_Delete_ex, (whodata_evt *)2345);
+
+    expect_value(__wrap_free_whodata_event, w_evt, (whodata_evt *)2345);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6236): '2' events have been deleted from the whodata list.");
+
+    whodata_list_remove_multiple(2);
+
+    assert_int_equal(syscheck.w_clist.current_size, 1);
+    assert_string_equal(syscheck.w_clist.first->id, "last_node");
+    assert_string_equal(syscheck.w_clist.last->id, "last_node");
+    assert_null(syscheck.w_clist.first->next);
+    assert_null(syscheck.w_clist.last->prev);
+    assert_null(syscheck.w_clist.first->prev);
+    assert_null(syscheck.w_clist.last->next);
+}
+
+void test_whodata_list_remove_multiple_remove_more_than_available(void **state) {
+    expect_value(__wrap_OSHash_Delete_ex, self, syscheck.wdata.fd);
+    expect_string(__wrap_OSHash_Delete_ex, key, "first_node");
+    will_return(__wrap_OSHash_Delete_ex, (whodata_evt *)1234);
+
+    expect_value(__wrap_free_whodata_event, w_evt, (whodata_evt *)1234);
+
+    expect_value(__wrap_OSHash_Delete_ex, self, syscheck.wdata.fd);
+    expect_string(__wrap_OSHash_Delete_ex, key, "mid_node");
+    will_return(__wrap_OSHash_Delete_ex, (whodata_evt *)2345);
+
+    expect_value(__wrap_free_whodata_event, w_evt, (whodata_evt *)2345);
+
+    expect_value(__wrap_OSHash_Delete_ex, self, syscheck.wdata.fd);
+    expect_string(__wrap_OSHash_Delete_ex, key, "last_node");
+    will_return(__wrap_OSHash_Delete_ex, (whodata_evt *)3456);
+
+    expect_value(__wrap_free_whodata_event, w_evt, (whodata_evt *)3456);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6236): '3' events have been deleted from the whodata list.");
+
+    whodata_list_remove_multiple(syscheck.w_clist.current_size * 10);
+
+    assert_int_equal(syscheck.w_clist.current_size, 0);
+    assert_null(syscheck.w_clist.first);
+    assert_null(syscheck.w_clist.last);
+}
+
 /**************************************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -3672,6 +3767,11 @@ int main(void) {
         cmocka_unit_test(test_set_policies_success),
         /* whodata_list_set_values */
         cmocka_unit_test(test_whodata_list_set_values),
+        /* whodata_list_remove_multiple */
+        cmocka_unit_test_setup_teardown(test_whodata_list_remove_multiple_remove_none, setup_w_clist, teardown_w_clist),
+        cmocka_unit_test_setup_teardown(test_whodata_list_remove_multiple_remove_one, setup_w_clist, teardown_w_clist),
+        cmocka_unit_test_setup_teardown(test_whodata_list_remove_multiple_remove_two, setup_w_clist, teardown_w_clist),
+        cmocka_unit_test_setup_teardown(test_whodata_list_remove_multiple_remove_more_than_available, setup_w_clist, teardown_w_clist),
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, test_group_teardown);
