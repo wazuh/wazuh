@@ -1,0 +1,18 @@
+server.host: <kibana_ip>
+elasticsearch.hosts: https://<elasticsearch_ip>:9200
+elasticsearch.password: <elasticsearch_password>
+
+# Elasticsearch from/to Kibana
+
+elasticsearch.ssl.certificateAuthorities: /etc/kibana/certs/ca/ca.crt
+elasticsearch.ssl.certificate: /etc/kibana/certs/kibana.crt
+elasticsearch.ssl.key: /etc/kibana/certs/kibana.key
+
+# Browser from/to Kibana
+server.ssl.enabled: true
+server.ssl.certificate: /etc/kibana/certs/kibana.crt
+server.ssl.key: /etc/kibana/certs/kibana.key
+
+# Elasticsearch authentication
+xpack.security.enabled: true
+elasticsearch.username: elastic
