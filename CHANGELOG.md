@@ -11,6 +11,9 @@ All notable changes to this project will be documented in this file.
 - Add support for monitoring Cisco Umbrella S3 buckets. ([#3890](https://github.com/wazuh/wazuh/issues/3890))
 - Add automatic reconnection with the Eventchannel service when it is restarted. ([#3836](https://github.com/wazuh/wazuh/pull/3836))
 - Add a status validation when starting Wazuh. ([#4237](https://github.com/wazuh/wazuh/pull/4237))
+- Add FIM module unit testing for Unix source code. ([¢4688](https://github.com/wazuh/wazuh/pull/4688))
+- Add multi-target support for unit testing. ([#4564](https://github.com/wazuh/wazuh/pull/4564))
+- Add FIM module unit testing for Windows source code. ([#4633](https://github.com/wazuh/wazuh/pull/4633))
 
 ## Changed
 
