@@ -28,12 +28,6 @@ extern void mock_assert(const int result, const char* const expression,
     mock_assert((int)(expression), #expression, __FILE__, __LINE__);
 #endif
 
-//Alert messages
-#define FIM_NORMAL_DB         "wazuh: FIM DB: 'normal'."
-#define FIM_80_PERCENTAGE_DB  "wazuh: FIM DB: '80%%'."
-#define FIM_90_PERCENTAGE_DB  "wazuh: FIM DB: '90%%'."
-#define FIM_FULL_DB           "wazuh: FIM DB: 'full'."
-
 // Global variables
 static int _base_line = 0;
 
@@ -515,6 +509,9 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
 // Checks the DB state, sends a message alert if necessary
 void fim_check_db_state() {
     unsigned int nodes_count = 0;
+    cJSON *json_event = NULL;
+    char *json_plain = NULL;
+    char alert_msg[OS_SIZE_256] = {'\0'};
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
     nodes_count = fim_db_get_count_entry_path(syscheck.database);
@@ -558,31 +555,44 @@ void fim_check_db_state() {
         break; // LCOV_EXCL_LINE
     }
 
+    json_event = cJSON_CreateObject();
+    cJSON_AddNumberToObject(json_event, "file_limit", syscheck.file_limit);
+    cJSON_AddNumberToObject(json_event, "file_count", nodes_count);
+
     if (nodes_count >= syscheck.file_limit) {
         _db_state = FIM_STATE_DB_FULL;
         minfo(FIM_DB_FULL_ALERT);
-        send_log_msg(FIM_FULL_DB);
+        cJSON_AddStringToObject(json_event, "alert_type", "full");
     }
     else if (nodes_count >= syscheck.file_limit * 0.9) {
         _db_state = FIM_STATE_DB_90_PERCENTAGE;
         minfo(FIM_DB_90_PERCENTAGE_ALERT);
-        send_log_msg(FIM_90_PERCENTAGE_DB);
+        cJSON_AddStringToObject(json_event, "alert_type", "90_percentage");
     }
     else if (nodes_count >= syscheck.file_limit * 0.8) {
         _db_state = FIM_STATE_DB_80_PERCENTAGE;
         minfo(FIM_DB_80_PERCENTAGE_ALERT);
-        send_log_msg(FIM_80_PERCENTAGE_DB);
+        cJSON_AddStringToObject(json_event, "alert_type", "80_percentage");
     }
     else if (nodes_count > 0) {
         _db_state = FIM_STATE_DB_NORMAL;
         minfo(FIM_DB_NORMAL_ALERT);
-        send_log_msg(FIM_NORMAL_DB);
+        cJSON_AddStringToObject(json_event, "alert_type", "normal");
     }
     else {
         _db_state = FIM_STATE_DB_EMPTY;
         minfo(FIM_DB_NORMAL_ALERT);
-        send_log_msg(FIM_NORMAL_DB);
+        cJSON_AddStringToObject(json_event, "alert_type", "normal");
     }
+
+    json_plain = cJSON_PrintUnformatted(json_event);
+
+    snprintf(alert_msg, OS_SIZE_256, "wazuh: FIM DB: %s", json_plain);
+
+    send_log_msg(alert_msg);
+
+    os_free(json_plain);
+    cJSON_Delete(json_event);
 }
 
 // Returns the position of the path into directories array
