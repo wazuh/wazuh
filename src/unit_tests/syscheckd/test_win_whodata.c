@@ -507,6 +507,1010 @@ void test_set_winsacl_failed_security_descriptor(void **state) {
 
     set_winsacl(syscheck.dir[0], 0);
 }
+
+void test_set_winsacl_no_need_to_configure_acl(void **state) {
+    ACL old_sacl;
+    ACL new_sacl;
+    ACCESS_ALLOWED_ACE ace;
+    SECURITY_DESCRIPTOR security_descriptor;
+    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+    int ret;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6266): The SACL of 'C:\\a\\path' will be configured.");
+
+    expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_win_whodata_OpenProcessToken, (HANDLE)123456);
+    will_return(wrap_win_whodata_OpenProcessToken, 1);
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+    }
+
+    // GetNamedSecurity
+    expect_string(wrap_win_whodata_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, &old_sacl);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, &security_descriptor);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside is_valid_sacl
+    {
+        everyone_sid = NULL;
+        ev_sid_size = 1;
+
+        // Set the ACL and ACE data
+        new_sacl.AceCount=1;
+        ace.Header.AceFlags = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG;
+        ace.Mask = FILE_WRITE_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES | DELETE;
+
+        expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+        expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+        will_return(wrap_win_whodata_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_win_whodata_GetAce, &ace);
+        will_return(wrap_win_whodata_GetAce, 1);
+
+        will_return(wrap_win_whodata_EqualSid, 1);
+    }
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+    }
+
+    will_return(wrap_win_whodata_CloseHandle, 0);
+
+    ret = set_winsacl("C:\\a\\path", 0);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_set_winsacl_unable_to_get_acl_info(void **state) {
+    ACL old_sacl;
+    ACL new_sacl;
+    ACCESS_ALLOWED_ACE ace;
+    SECURITY_DESCRIPTOR security_descriptor;
+    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+    int ret;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6266): The SACL of 'C:\\a\\path' will be configured.");
+
+    expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_win_whodata_OpenProcessToken, (HANDLE)123456);
+    will_return(wrap_win_whodata_OpenProcessToken, 1);
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+    }
+
+    // GetNamedSecurity
+    expect_string(wrap_win_whodata_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, &old_sacl);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, &security_descriptor);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside is_valid_sacl
+    {
+        expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+        expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+        will_return(wrap_win_whodata_AllocateAndInitializeSid, 0);
+
+        will_return(wrap_win_whodata_GetLastError, (unsigned int) 700);
+
+        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+    }
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
+
+    will_return(wrap_win_whodata_GetAclInformation, NULL);
+    will_return(wrap_win_whodata_GetAclInformation, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "(6651): The size of the 'C:\\a\\path' SACL could not be obtained.");
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+    }
+
+    will_return(wrap_win_whodata_CloseHandle, 0);
+
+    ret = set_winsacl("C:\\a\\path", 0);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_set_winsacl_fail_to_alloc_new_sacl(void **state) {
+    ACL old_sacl;
+    ACL new_sacl;
+    ACCESS_ALLOWED_ACE ace;
+    SECURITY_DESCRIPTOR security_descriptor;
+    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+    int ret;
+
+    ev_sid_size = 1;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6266): The SACL of 'C:\\a\\path' will be configured.");
+
+    expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_win_whodata_OpenProcessToken, (HANDLE)123456);
+    will_return(wrap_win_whodata_OpenProcessToken, 1);
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+    }
+
+    // GetNamedSecurity
+    expect_string(wrap_win_whodata_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, &old_sacl);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, &security_descriptor);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside is_valid_sacl
+    {
+        expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+        expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+        will_return(wrap_win_whodata_AllocateAndInitializeSid, 0);
+
+        will_return(wrap_win_whodata_GetLastError, (unsigned int) 700);
+
+        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+    }
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
+
+    will_return(wrap_win_whodata_GetAclInformation, NULL);
+    will_return(wrap_win_whodata_GetAclInformation, 1);
+
+    expect_value(wrap_win_whodata_win_alloc, size, 9);
+    will_return(wrap_win_whodata_win_alloc, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "(6652): No memory could be reserved for the new SACL of 'C:\\a\\path'.");
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+    }
+
+    will_return(wrap_win_whodata_CloseHandle, 0);
+
+    ret = set_winsacl("C:\\a\\path", 0);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_set_winsacl_fail_to_initialize_new_sacl(void **state) {
+    ACL old_sacl;
+    ACL new_sacl;
+    ACCESS_ALLOWED_ACE ace;
+    SECURITY_DESCRIPTOR security_descriptor;
+    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+    int ret;
+
+    ev_sid_size = 1;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6266): The SACL of 'C:\\a\\path' will be configured.");
+
+    expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_win_whodata_OpenProcessToken, (HANDLE)123456);
+    will_return(wrap_win_whodata_OpenProcessToken, 1);
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+    }
+
+    // GetNamedSecurity
+    expect_string(wrap_win_whodata_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, &old_sacl);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, &security_descriptor);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside is_valid_sacl
+    {
+        expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+        expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+        will_return(wrap_win_whodata_AllocateAndInitializeSid, 0);
+
+        will_return(wrap_win_whodata_GetLastError, (unsigned int) 700);
+
+        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+    }
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
+
+    will_return(wrap_win_whodata_GetAclInformation, NULL);
+    will_return(wrap_win_whodata_GetAclInformation, 1);
+
+    expect_value(wrap_win_whodata_win_alloc, size, 9);
+    will_return(wrap_win_whodata_win_alloc, 1234);
+
+    expect_value(wrap_win_whodata_InitializeAcl, pAcl, 1234);
+    expect_value(wrap_win_whodata_InitializeAcl, nAclLength, 9);
+    expect_value(wrap_win_whodata_InitializeAcl, dwAclRevision, ACL_REVISION);
+    will_return(wrap_win_whodata_InitializeAcl, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "(6653): The new SACL for 'C:\\a\\path' could not be created.");
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+    }
+
+    will_return(wrap_win_whodata_CloseHandle, 0);
+
+    ret = set_winsacl("C:\\a\\path", 0);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_set_winsacl_fail_getting_ace_from_old_sacl(void **state) {
+    ACL old_sacl;
+    ACL new_sacl;
+    ACL_SIZE_INFORMATION old_sacl_info = {.AceCount = 1};
+    ACCESS_ALLOWED_ACE ace;
+    SECURITY_DESCRIPTOR security_descriptor;
+    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+    int ret;
+
+    ev_sid_size = 1;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6266): The SACL of 'C:\\a\\path' will be configured.");
+
+    expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_win_whodata_OpenProcessToken, (HANDLE)123456);
+    will_return(wrap_win_whodata_OpenProcessToken, 1);
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+    }
+
+    // GetNamedSecurity
+    expect_string(wrap_win_whodata_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, &old_sacl);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, &security_descriptor);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside is_valid_sacl
+    {
+        expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+        expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+        will_return(wrap_win_whodata_AllocateAndInitializeSid, 0);
+
+        will_return(wrap_win_whodata_GetLastError, (unsigned int) 700);
+
+        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+    }
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
+
+    will_return(wrap_win_whodata_GetAclInformation, &old_sacl_info);
+    will_return(wrap_win_whodata_GetAclInformation, 1);
+
+    expect_value(wrap_win_whodata_win_alloc, size, 9);
+    will_return(wrap_win_whodata_win_alloc, 1234);
+
+    expect_value(wrap_win_whodata_InitializeAcl, pAcl, 1234);
+    expect_value(wrap_win_whodata_InitializeAcl, nAclLength, 9);
+    expect_value(wrap_win_whodata_InitializeAcl, dwAclRevision, ACL_REVISION);
+    will_return(wrap_win_whodata_InitializeAcl, 1);
+
+    will_return(wrap_win_whodata_GetAce, NULL);
+    will_return(wrap_win_whodata_GetAce, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "(6654): The ACE number 0 for 'C:\\a\\path' could not be obtained.");
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+    }
+
+    will_return(wrap_win_whodata_CloseHandle, 0);
+
+    ret = set_winsacl("C:\\a\\path", 0);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_set_winsacl_fail_adding_old_ace_into_new_sacl(void **state) {
+    ACL old_sacl;
+    ACL new_sacl;
+    ACL_SIZE_INFORMATION old_sacl_info = {.AceCount = 1};
+    ACCESS_ALLOWED_ACE ace;
+    SECURITY_DESCRIPTOR security_descriptor;
+    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+    int ret;
+
+    ev_sid_size = 1;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6266): The SACL of 'C:\\a\\path' will be configured.");
+
+    expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_win_whodata_OpenProcessToken, (HANDLE)123456);
+    will_return(wrap_win_whodata_OpenProcessToken, 1);
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+    }
+
+    // GetNamedSecurity
+    expect_string(wrap_win_whodata_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, &old_sacl);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, &security_descriptor);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside is_valid_sacl
+    {
+        expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+        expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+        will_return(wrap_win_whodata_AllocateAndInitializeSid, 0);
+
+        will_return(wrap_win_whodata_GetLastError, (unsigned int) 700);
+
+        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+    }
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
+
+    will_return(wrap_win_whodata_GetAclInformation, &old_sacl_info);
+    will_return(wrap_win_whodata_GetAclInformation, 1);
+
+    expect_value(wrap_win_whodata_win_alloc, size, 9);
+    will_return(wrap_win_whodata_win_alloc, 1234);
+
+    expect_value(wrap_win_whodata_InitializeAcl, pAcl, 1234);
+    expect_value(wrap_win_whodata_InitializeAcl, nAclLength, 9);
+    expect_value(wrap_win_whodata_InitializeAcl, dwAclRevision, ACL_REVISION);
+    will_return(wrap_win_whodata_InitializeAcl, 1);
+
+    will_return(wrap_win_whodata_GetAce, &old_sacl_info);
+    will_return(wrap_win_whodata_GetAce, 1);
+
+    expect_value(wrap_win_whodata_AddAce, pAcl, 1234);
+    will_return(wrap_win_whodata_AddAce, 0);
+
+    expect_string(__wrap__merror, formatted_msg,
+        "(6655): The ACE number 0 of 'C:\\a\\path' could not be copied to the new ACL.");
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+    }
+
+    will_return(wrap_win_whodata_CloseHandle, 0);
+
+    ret = set_winsacl("C:\\a\\path", 0);
+
+    assert_int_equal(ret, 1);
+}
+void test_set_winsacl_fail_to_alloc_new_ace(void **state) {
+    ACL old_sacl;
+    ACL new_sacl;
+    ACL_SIZE_INFORMATION old_sacl_info = {.AceCount = 1};
+    ACCESS_ALLOWED_ACE ace;
+    SECURITY_DESCRIPTOR security_descriptor;
+    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+    int ret;
+
+    ev_sid_size = 1;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6266): The SACL of 'C:\\a\\path' will be configured.");
+
+    expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_win_whodata_OpenProcessToken, (HANDLE)123456);
+    will_return(wrap_win_whodata_OpenProcessToken, 1);
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+    }
+
+    // GetNamedSecurity
+    expect_string(wrap_win_whodata_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, &old_sacl);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, &security_descriptor);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside is_valid_sacl
+    {
+        expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+        expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+        will_return(wrap_win_whodata_AllocateAndInitializeSid, 0);
+
+        will_return(wrap_win_whodata_GetLastError, (unsigned int) 700);
+
+        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+    }
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
+
+    will_return(wrap_win_whodata_GetAclInformation, &old_sacl_info);
+    will_return(wrap_win_whodata_GetAclInformation, 1);
+
+    expect_value(wrap_win_whodata_win_alloc, size, 9);
+    will_return(wrap_win_whodata_win_alloc, 1234);
+
+    expect_value(wrap_win_whodata_InitializeAcl, pAcl, 1234);
+    expect_value(wrap_win_whodata_InitializeAcl, nAclLength, 9);
+    expect_value(wrap_win_whodata_InitializeAcl, dwAclRevision, ACL_REVISION);
+    will_return(wrap_win_whodata_InitializeAcl, 1);
+
+    will_return(wrap_win_whodata_GetAce, &old_sacl_info);
+    will_return(wrap_win_whodata_GetAce, 1);
+
+    expect_value(wrap_win_whodata_AddAce, pAcl, 1234);
+    will_return(wrap_win_whodata_AddAce, 1);
+
+    expect_value(wrap_win_whodata_win_alloc, size, 9);
+    will_return(wrap_win_whodata_win_alloc, NULL);
+
+    expect_string(__wrap__merror, formatted_msg,
+        "(6656): No memory could be reserved for the new ACE of 'C:\\a\\path'.");
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+    }
+
+    will_return(wrap_win_whodata_CloseHandle, 0);
+
+    ret = set_winsacl("C:\\a\\path", 0);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_set_winsacl_fail_to_copy_sid(void **state) {
+    ACL old_sacl;
+    ACL new_sacl;
+    ACL_SIZE_INFORMATION old_sacl_info = {.AceCount = 1};
+    SYSTEM_AUDIT_ACE ace;
+
+    SECURITY_DESCRIPTOR security_descriptor;
+    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+    int ret;
+
+    ev_sid_size = 1;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6266): The SACL of 'C:\\a\\path' will be configured.");
+
+    expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_win_whodata_OpenProcessToken, (HANDLE)123456);
+    will_return(wrap_win_whodata_OpenProcessToken, 1);
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+    }
+
+    // GetNamedSecurity
+    expect_string(wrap_win_whodata_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, &old_sacl);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, &security_descriptor);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside is_valid_sacl
+    {
+        expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+        expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+        will_return(wrap_win_whodata_AllocateAndInitializeSid, 0);
+
+        will_return(wrap_win_whodata_GetLastError, (unsigned int) 700);
+
+        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+    }
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
+
+    will_return(wrap_win_whodata_GetAclInformation, &old_sacl_info);
+    will_return(wrap_win_whodata_GetAclInformation, 1);
+
+    expect_value(wrap_win_whodata_win_alloc, size, 9);
+    will_return(wrap_win_whodata_win_alloc, 1234);
+
+    expect_value(wrap_win_whodata_InitializeAcl, pAcl, 1234);
+    expect_value(wrap_win_whodata_InitializeAcl, nAclLength, 9);
+    expect_value(wrap_win_whodata_InitializeAcl, dwAclRevision, ACL_REVISION);
+    will_return(wrap_win_whodata_InitializeAcl, 1);
+
+    will_return(wrap_win_whodata_GetAce, &old_sacl_info);
+    will_return(wrap_win_whodata_GetAce, 1);
+
+    expect_value(wrap_win_whodata_AddAce, pAcl, 1234);
+    will_return(wrap_win_whodata_AddAce, 1);
+
+    expect_value(wrap_win_whodata_win_alloc, size, 9);
+    will_return(wrap_win_whodata_win_alloc, &ace);
+
+    will_return(wrap_win_whodata_CopySid, 0);
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+    }
+
+    will_return(wrap_win_whodata_CloseHandle, 0);
+
+    ret = set_winsacl("C:\\a\\path", 0);
+
+    assert_int_equal(ret, 1);
+    assert_int_equal(ace.Header.AceType, SYSTEM_AUDIT_ACE_TYPE);
+    assert_int_equal(ace.Header.AceFlags, CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG);
+    assert_int_equal(ace.Header.AceSize, 9);
+    assert_int_equal(ace.Mask, DELETE | FILE_WRITE_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES);
+}
+
+void test_set_winsacl_fail_to_add_ace(void **state) {
+    ACL old_sacl;
+    ACL new_sacl;
+    ACL_SIZE_INFORMATION old_sacl_info = {.AceCount = 1};
+    SYSTEM_AUDIT_ACE ace;
+
+    SECURITY_DESCRIPTOR security_descriptor;
+    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+    int ret;
+
+    ev_sid_size = 1;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6266): The SACL of 'C:\\a\\path' will be configured.");
+
+    expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_win_whodata_OpenProcessToken, (HANDLE)123456);
+    will_return(wrap_win_whodata_OpenProcessToken, 1);
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+    }
+
+    // GetNamedSecurity
+    expect_string(wrap_win_whodata_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, &old_sacl);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, &security_descriptor);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside is_valid_sacl
+    {
+        expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+        expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+        will_return(wrap_win_whodata_AllocateAndInitializeSid, 0);
+
+        will_return(wrap_win_whodata_GetLastError, (unsigned int) 700);
+
+        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+    }
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
+
+    will_return(wrap_win_whodata_GetAclInformation, &old_sacl_info);
+    will_return(wrap_win_whodata_GetAclInformation, 1);
+
+    expect_value(wrap_win_whodata_win_alloc, size, 9);
+    will_return(wrap_win_whodata_win_alloc, 1234);
+
+    expect_value(wrap_win_whodata_InitializeAcl, pAcl, 1234);
+    expect_value(wrap_win_whodata_InitializeAcl, nAclLength, 9);
+    expect_value(wrap_win_whodata_InitializeAcl, dwAclRevision, ACL_REVISION);
+    will_return(wrap_win_whodata_InitializeAcl, 1);
+
+    will_return(wrap_win_whodata_GetAce, &old_sacl_info);
+    will_return(wrap_win_whodata_GetAce, 1);
+
+    expect_value(wrap_win_whodata_AddAce, pAcl, 1234);
+    will_return(wrap_win_whodata_AddAce, 1);
+
+    expect_value(wrap_win_whodata_win_alloc, size, 9);
+    will_return(wrap_win_whodata_win_alloc, &ace);
+
+    will_return(wrap_win_whodata_CopySid, 1);
+
+    expect_value(wrap_win_whodata_AddAce, pAcl, 1234);
+    will_return(wrap_win_whodata_AddAce, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "(6657): The new ACE could not be added to 'C:\\a\\path'.");
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+    }
+
+    will_return(wrap_win_whodata_CloseHandle, 0);
+
+    ret = set_winsacl("C:\\a\\path", 0);
+
+    assert_int_equal(ret, 1);
+    assert_int_equal(ace.Header.AceType, SYSTEM_AUDIT_ACE_TYPE);
+    assert_int_equal(ace.Header.AceFlags, CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG);
+    assert_int_equal(ace.Header.AceSize, 9);
+    assert_int_equal(ace.Mask, DELETE | FILE_WRITE_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES);
+}
+
+void test_set_winsacl_fail_to_set_security_info(void **state) {
+    ACL old_sacl;
+    ACL new_sacl;
+    ACL_SIZE_INFORMATION old_sacl_info = {.AceCount = 1};
+    SYSTEM_AUDIT_ACE ace;
+
+    SECURITY_DESCRIPTOR security_descriptor;
+    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+    int ret;
+
+    ev_sid_size = 1;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6266): The SACL of 'C:\\a\\path' will be configured.");
+
+    expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_win_whodata_OpenProcessToken, (HANDLE)123456);
+    will_return(wrap_win_whodata_OpenProcessToken, 1);
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+    }
+
+    // GetNamedSecurity
+    expect_string(wrap_win_whodata_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, &old_sacl);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, &security_descriptor);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside is_valid_sacl
+    {
+        expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+        expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+        will_return(wrap_win_whodata_AllocateAndInitializeSid, 0);
+
+        will_return(wrap_win_whodata_GetLastError, (unsigned int) 700);
+
+        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+    }
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
+
+    will_return(wrap_win_whodata_GetAclInformation, &old_sacl_info);
+    will_return(wrap_win_whodata_GetAclInformation, 1);
+
+    expect_value(wrap_win_whodata_win_alloc, size, 9);
+    will_return(wrap_win_whodata_win_alloc, 1234);
+
+    expect_value(wrap_win_whodata_InitializeAcl, pAcl, 1234);
+    expect_value(wrap_win_whodata_InitializeAcl, nAclLength, 9);
+    expect_value(wrap_win_whodata_InitializeAcl, dwAclRevision, ACL_REVISION);
+    will_return(wrap_win_whodata_InitializeAcl, 1);
+
+    will_return(wrap_win_whodata_GetAce, &old_sacl_info);
+    will_return(wrap_win_whodata_GetAce, 1);
+
+    expect_value(wrap_win_whodata_AddAce, pAcl, 1234);
+    will_return(wrap_win_whodata_AddAce, 1);
+
+    expect_value(wrap_win_whodata_win_alloc, size, 9);
+    will_return(wrap_win_whodata_win_alloc, &ace);
+
+    will_return(wrap_win_whodata_CopySid, 1);
+
+    expect_value(wrap_win_whodata_AddAce, pAcl, 1234);
+    will_return(wrap_win_whodata_AddAce, 1);
+
+    expect_string(wrap_win_whodata_SetNamedSecurityInfo, pObjectName, "C:\\a\\path");
+    expect_value(wrap_win_whodata_SetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
+    expect_value(wrap_win_whodata_SetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
+    expect_value(wrap_win_whodata_SetNamedSecurityInfo, psidOwner, NULL);
+    expect_value(wrap_win_whodata_SetNamedSecurityInfo, psidGroup, NULL);
+    expect_value(wrap_win_whodata_SetNamedSecurityInfo, pDacl, NULL);
+    expect_value(wrap_win_whodata_SetNamedSecurityInfo, pSacl, 1234);
+    will_return(wrap_win_whodata_SetNamedSecurityInfo, ERROR_ACCESS_DENIED);
+
+    expect_string(__wrap__merror, formatted_msg, "(6658): SetNamedSecurityInfo() failed. Error: '5'.");
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+    }
+
+    will_return(wrap_win_whodata_CloseHandle, 0);
+
+    ret = set_winsacl("C:\\a\\path", 0);
+
+    assert_int_equal(ret, 1);
+    assert_int_equal(ace.Header.AceType, SYSTEM_AUDIT_ACE_TYPE);
+    assert_int_equal(ace.Header.AceFlags, CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG);
+    assert_int_equal(ace.Header.AceSize, 9);
+    assert_int_equal(ace.Mask, DELETE | FILE_WRITE_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES);
+}
+
+void test_set_winsacl_success(void **state) {
+    ACL old_sacl;
+    ACL new_sacl;
+    ACL_SIZE_INFORMATION old_sacl_info = {.AceCount = 1};
+    SYSTEM_AUDIT_ACE ace;
+
+    SECURITY_DESCRIPTOR security_descriptor;
+    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+    int ret;
+
+    ev_sid_size = 1;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6266): The SACL of 'C:\\a\\path' will be configured.");
+
+    expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+    will_return(wrap_win_whodata_OpenProcessToken, (HANDLE)123456);
+    will_return(wrap_win_whodata_OpenProcessToken, 1);
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+    }
+
+    // GetNamedSecurity
+    expect_string(wrap_win_whodata_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
+    expect_value(wrap_win_whodata_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, &old_sacl);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, &security_descriptor);
+    will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside is_valid_sacl
+    {
+        expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+        expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+        will_return(wrap_win_whodata_AllocateAndInitializeSid, 0);
+
+        will_return(wrap_win_whodata_GetLastError, (unsigned int) 700);
+
+        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+    }
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
+
+    will_return(wrap_win_whodata_GetAclInformation, &old_sacl_info);
+    will_return(wrap_win_whodata_GetAclInformation, 1);
+
+    expect_value(wrap_win_whodata_win_alloc, size, 9);
+    will_return(wrap_win_whodata_win_alloc, 1234);
+
+    expect_value(wrap_win_whodata_InitializeAcl, pAcl, 1234);
+    expect_value(wrap_win_whodata_InitializeAcl, nAclLength, 9);
+    expect_value(wrap_win_whodata_InitializeAcl, dwAclRevision, ACL_REVISION);
+    will_return(wrap_win_whodata_InitializeAcl, 1);
+
+    will_return(wrap_win_whodata_GetAce, &old_sacl_info);
+    will_return(wrap_win_whodata_GetAce, 1);
+
+    expect_value(wrap_win_whodata_AddAce, pAcl, 1234);
+    will_return(wrap_win_whodata_AddAce, 1);
+
+    expect_value(wrap_win_whodata_win_alloc, size, 9);
+    will_return(wrap_win_whodata_win_alloc, &ace);
+
+    will_return(wrap_win_whodata_CopySid, 1);
+
+    expect_value(wrap_win_whodata_AddAce, pAcl, 1234);
+    will_return(wrap_win_whodata_AddAce, 1);
+
+    expect_string(wrap_win_whodata_SetNamedSecurityInfo, pObjectName, "C:\\a\\path");
+    expect_value(wrap_win_whodata_SetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
+    expect_value(wrap_win_whodata_SetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
+    expect_value(wrap_win_whodata_SetNamedSecurityInfo, psidOwner, NULL);
+    expect_value(wrap_win_whodata_SetNamedSecurityInfo, psidGroup, NULL);
+    expect_value(wrap_win_whodata_SetNamedSecurityInfo, pDacl, NULL);
+    expect_value(wrap_win_whodata_SetNamedSecurityInfo, pSacl, 1234);
+    will_return(wrap_win_whodata_SetNamedSecurityInfo, ERROR_SUCCESS);
+
+    // Inside set_privilege
+    {
+        expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+        will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+        expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+        will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+    }
+
+    will_return(wrap_win_whodata_CloseHandle, 0);
+
+    ret = set_winsacl("C:\\a\\path", 0);
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(ace.Header.AceType, SYSTEM_AUDIT_ACE_TYPE);
+    assert_int_equal(ace.Header.AceFlags, CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG);
+    assert_int_equal(ace.Header.AceSize, 9);
+    assert_int_equal(ace.Mask, DELETE | FILE_WRITE_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES);
+}
+
 /**************************************************************************/
 
 void test_set_privilege_lookup_error (void **state) {
@@ -4356,6 +5360,17 @@ int main(void) {
         cmocka_unit_test(test_set_winsacl_failed_opening),
         cmocka_unit_test(test_set_winsacl_failed_privileges),
         cmocka_unit_test(test_set_winsacl_failed_security_descriptor),
+        cmocka_unit_test(test_set_winsacl_no_need_to_configure_acl),
+        cmocka_unit_test(test_set_winsacl_unable_to_get_acl_info),
+        cmocka_unit_test(test_set_winsacl_fail_to_alloc_new_sacl),
+        cmocka_unit_test(test_set_winsacl_fail_to_initialize_new_sacl),
+        cmocka_unit_test(test_set_winsacl_fail_getting_ace_from_old_sacl),
+        cmocka_unit_test(test_set_winsacl_fail_adding_old_ace_into_new_sacl),
+        cmocka_unit_test(test_set_winsacl_fail_to_alloc_new_ace),
+        cmocka_unit_test(test_set_winsacl_fail_to_copy_sid),
+        cmocka_unit_test(test_set_winsacl_fail_to_add_ace),
+        cmocka_unit_test(test_set_winsacl_fail_to_set_security_info),
+        cmocka_unit_test(test_set_winsacl_success),
         /* set_privilege */
         cmocka_unit_test(test_set_privilege_lookup_error),
         cmocka_unit_test(test_set_privilege_adjust_token_error),
