@@ -3865,7 +3865,7 @@ void test_whodata_callback_invalid_rendered_params(void **state) {
     assert_int_equal(ret, 1);
 }
 
-void test_whodata_callback_invalid_buffer_type(void **state) {
+void test_whodata_callback_invalid_parameter_event_id(void **state) {
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event;
     const int NUM_EVENTS = 10;
@@ -3894,6 +3894,42 @@ void test_whodata_callback_invalid_buffer_type(void **state) {
     will_return(wrap_win_whodata_EvtRender, 1);
 
     expect_string(__wrap__merror, formatted_msg, "(6681): Invalid parameter type (0) for 'event_id'.");
+
+    int ret = whodata_callback(action, NULL, event);
+    assert_int_equal(ret, 1);
+}
+
+void test_whodata_callback_invalid_parameter_path(void **state) {
+    EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
+    EVT_HANDLE event;
+    const int NUM_EVENTS = 10;
+    const int SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
+
+    /* EvtRender first call */
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferSize
+    will_return(wrap_win_whodata_EvtRender, NULL); // Buffer
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferUsed
+    will_return(wrap_win_whodata_EvtRender, 0); // PropertyCount
+    will_return(wrap_win_whodata_EvtRender, 0);
+    
+    /* EvtRender second call */
+    PEVT_VARIANT buffer = malloc(sizeof(EVT_VARIANT) * 10);
+    buffer[0].Type = EvtVarTypeUInt16; // Correct buffer type
+    buffer[0].Int16Val = 0; //Wrong event_id
+    buffer[2].Type = EvtVarTypeNull;
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferSize
+    will_return(wrap_win_whodata_EvtRender, buffer); // Buffer
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS);// BufferUsed
+    will_return(wrap_win_whodata_EvtRender, 9); // PropertyCount
+    will_return(wrap_win_whodata_EvtRender, 1);
+
+    expect_string(__wrap__merror, formatted_msg, "(6681): Invalid parameter type (0) for 'path'.");
 
     int ret = whodata_callback(action, NULL, event);
     assert_int_equal(ret, 1);
@@ -5679,7 +5715,8 @@ int main(void) {
         /* whodata_callback */
         cmocka_unit_test(test_whodata_callback_EvtRenderFailed),
         cmocka_unit_test(test_whodata_callback_invalid_rendered_params),
-        cmocka_unit_test(test_whodata_callback_invalid_buffer_type),
+        cmocka_unit_test(test_whodata_callback_invalid_parameter_event_id),
+        cmocka_unit_test(test_whodata_callback_invalid_parameter_path),
         /* check_object_sacl */
         cmocka_unit_test(test_check_object_sacl_open_process_error),
         cmocka_unit_test(test_check_object_sacl_unable_to_set_privilege),
