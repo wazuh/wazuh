@@ -332,16 +332,24 @@ BOOL WINAPI wrap_win_whodata_EvtRender(
   EVT_HANDLE Fragment,
   DWORD      Flags,
   DWORD      BufferSize,
-  __attribute__ ((unused)) PVOID      Buffer,
+  PVOID      Buffer,
   PDWORD     BufferUsed,
   PDWORD     PropertyCount
 ) {
   check_expected_ptr(Context);
   check_expected_ptr(Fragment);
   check_expected(Flags);
-  check_expected(BufferSize);
+  BufferSize = mock_type(int);
+  PEVT_VARIANT buffer = mock_ptr_type(PVOID);
+  PEVT_VARIANT ptr = Buffer;
+  if (buffer && ptr) {
+    unsigned int i;
+    for (i=0;i < (BufferSize / sizeof(EVT_VARIANT)); i++){
+      ptr[i] = buffer[i];
+    }
+  }
   *BufferUsed = mock_type(int);
-  check_expected(*PropertyCount);
+  *PropertyCount = mock_type(int);
 
   return mock();
 }
