@@ -353,3 +353,15 @@ char * wrap_win_whodata_fgets (char * __s, int __n, FILE * __stream) {
   }
   return NULL;
 }
+
+int FOREVER() {
+  return mock();
+}
+
+VOID wrap_win_whodata_Sleep (DWORD dwMilliseconds) {
+    check_expected(dwMilliseconds);
+}
+
+VOID WINAPI wrap_win_whodata_GetSystemTime (LPSYSTEMTIME lpSystemTime) {
+  memcpy(lpSystemTime, mock_type(LPSYSTEMTIME), sizeof(SYSTEMTIME));
+}

@@ -181,5 +181,7 @@ BOOL WINAPI wrap_win_whodata_DeleteAce(
 
 int wrap_win_whodata_fprintf (FILE *__stream, const char *__format, ...);
 char * wrap_win_whodata_fgets (char * __s, int __n, FILE * __stream);
+VOID wrap_win_whodata_Sleep (DWORD dwMilliseconds);
+VOID WINAPI wrap_win_whodata_GetSystemTime (LPSYSTEMTIME lpSystemTime);
 #endif
 #endif
