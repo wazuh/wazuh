@@ -37,6 +37,9 @@
 // Remove static qualifier when unit testing
 #define STATIC
 
+// Control infinite loops during unit tests
+int FOREVER();
+
 #undef OpenProcessToken
 #define OpenProcessToken wrap_win_whodata_OpenProcessToken
 #undef GetLastError
@@ -76,8 +79,11 @@
 #define fprintf wrap_win_whodata_fprintf
 #define fgets wrap_win_whodata_fgets
 #define EvtRender wrap_win_whodata_EvtRender
+#define Sleep wrap_win_whodata_Sleep
+#define GetSystemTime wrap_win_whodata_GetSystemTime
 #else
 #define STATIC static
+#define FOREVER() 1
 #endif
 
 // Variables whodata
@@ -884,7 +890,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
 
     mdebug1(FIM_WHODATA_CHECKTHREAD, interval);
 
-    while (1) {
+    while (FOREVER()) {
         for (i = 0; syscheck.dir[i]; i++) {
             exists = 0;
             d_status = &syscheck.wdata.dirs_status[i];

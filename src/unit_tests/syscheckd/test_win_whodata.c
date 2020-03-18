@@ -215,6 +215,55 @@ static int teardown_reset_errno(void **state) {
     return 0;
 }
 
+static int setup_state_checker(void **state) {
+    // Remove everything from the syscheck struct
+    Free_Syscheck(&syscheck);
+
+    syscheck.opts = NULL;
+    syscheck.scan_day = NULL;
+    syscheck.scan_time = NULL;
+    syscheck.ignore = NULL;
+    syscheck.ignore_regex = NULL;
+    syscheck.nodiff = NULL;
+    syscheck.nodiff_regex = NULL;
+    syscheck.dir = NULL;
+    syscheck.filerestrict = NULL;
+    syscheck.tag = NULL;
+    syscheck.symbolic_links = NULL;
+    syscheck.recursion_level = NULL;
+    syscheck.registry_ignore = NULL;
+    syscheck.registry_ignore_regex = NULL;
+    syscheck.registry = NULL;
+    syscheck.realtime = NULL;
+    syscheck.prefilter_cmd = NULL;
+    syscheck.audit_key = NULL;
+
+    return 0;
+}
+
+static int teardown_state_checker(void **state) {
+    int ret;
+
+    // Remove everything that might have been added on the test
+    Free_Syscheck(&syscheck);
+
+    // Restore the syscheck struct
+    expect_string(__wrap__mdebug1, formatted_msg, "(6287): Reading configuration file: 'test_syscheck.conf'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file");
+    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file OK?");
+    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 0");
+    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node test_$");
+    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node test_$ OK?");
+    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 1");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck.conf]");
+
+    unit_testing = 0;
+    ret = Read_Syscheck_Config("test_syscheck.conf");
+    unit_testing = 1;
+
+    return ret;
+}
+
 void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
     char formatted_msg[OS_MAXSTR];
     va_list args;
@@ -260,6 +309,17 @@ void __wrap__mwarn(const char * file, int line, const char * func, const char *m
 }
 
 void __wrap__mterror(const char * file, int line, const char * func, const char *msg, ...) {
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
+}
+
+void __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...) {
     char formatted_msg[OS_MAXSTR];
     va_list args;
 
@@ -358,6 +418,12 @@ void *__wrap_OSHash_Delete_ex(OSHash *self, const char *key) {
     check_expected(key);
 
     return mock_type(void*);
+}
+
+int __wrap_check_path_type(const char *dir) {
+    check_expected(dir);
+
+    return mock();
 }
 
 /**************************************************************************/
@@ -3917,6 +3983,372 @@ void test_whodata_list_add_on_full_list(void **state) {
     assert_string_equal(node->id, "A node");
 }
 
+void test_state_checker_no_files_to_check(void **state) {
+    int ret;
+    void *input;
+
+    if(syscheck.dir = calloc(1, sizeof(char*)), !syscheck.dir)
+        fail();
+
+    syscheck.dir[0] = NULL;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
+
+    will_return(FOREVER, 1);
+    will_return(FOREVER, 0);
+
+    expect_value(wrap_win_whodata_Sleep, dwMilliseconds, WDATA_DEFAULT_INTERVAL_SCAN * 1000);
+
+    ret = state_checker(input);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_state_checker_file_not_whodata(void **state) {
+    int ret;
+    void *input;
+
+    if(syscheck.dir = calloc(2, sizeof(char*)), !syscheck.dir)
+        fail();
+
+    if(syscheck.dir[0] = strdup("C:\\a\\path"), !syscheck.dir[0])
+        fail();
+
+    // Leverage Free_Syscheck not free the wdata struct
+    syscheck.wdata.dirs_status[0].status &= ~WD_CHECK_WHODATA;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
+
+    will_return(FOREVER, 1);
+    will_return(FOREVER, 0);
+
+    expect_value(wrap_win_whodata_Sleep, dwMilliseconds, WDATA_DEFAULT_INTERVAL_SCAN * 1000);
+
+    ret = state_checker(input);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_state_checker_file_does_not_exist(void **state) {
+    int ret;
+    void *input;
+    SYSTEMTIME st;
+
+    if(syscheck.dir = calloc(2, sizeof(char*)), !syscheck.dir)
+        fail();
+
+    if(syscheck.dir[0] = strdup("C:\\a\\path"), !syscheck.dir[0])
+        fail();
+
+    // Leverage Free_Syscheck not free the wdata struct
+    syscheck.wdata.dirs_status[0].status |= WD_CHECK_WHODATA | WD_STATUS_EXISTS;
+    syscheck.wdata.dirs_status[0].object_type = WD_STATUS_DIR_TYPE;
+
+    memset(&st, 0, sizeof(SYSTEMTIME));
+    st.wYear = 2020;
+    st.wMonth = 3;
+    st.wDay = 3;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
+
+    will_return(FOREVER, 1);
+    will_return(FOREVER, 0);
+
+    expect_value(wrap_win_whodata_Sleep, dwMilliseconds, WDATA_DEFAULT_INTERVAL_SCAN * 1000);
+
+    expect_string(__wrap_check_path_type, dir, "C:\\a\\path");
+    will_return(__wrap_check_path_type, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg,
+        "(6022): 'C:\\a\\path' has been deleted. It will not be monitored in real-time Whodata mode.");
+
+    will_return(wrap_win_whodata_GetSystemTime, &st);
+
+    ret = state_checker(input);
+
+    assert_int_equal(ret, 0);
+    assert_memory_equal(&syscheck.wdata.dirs_status[0].last_check, &st, sizeof(SYSTEMTIME));
+    assert_int_equal(syscheck.wdata.dirs_status[0].object_type, WD_STATUS_UNK_TYPE);
+    assert_null(syscheck.wdata.dirs_status[0].status & WD_STATUS_EXISTS);
+}
+
+void test_state_checker_file_with_invalid_sacl(void **state) {
+    int ret;
+    void *input;
+    ACL acl;
+    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+
+    if(syscheck.dir = calloc(2, sizeof(char*)), !syscheck.dir)
+        fail();
+
+    if(syscheck.dir[0] = strdup("C:\\a\\path"), !syscheck.dir[0])
+        fail();
+
+    if(syscheck.opts = calloc(1, sizeof(int)), !syscheck.opts)
+        fail();
+
+    // Leverage Free_Syscheck not free the wdata struct
+    syscheck.wdata.dirs_status[0].status |= WD_CHECK_WHODATA | WD_STATUS_EXISTS;
+    syscheck.wdata.dirs_status[0].object_type = WD_STATUS_DIR_TYPE;
+    syscheck.opts[0] = (int)0xFFFFFFFF;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
+
+    will_return(FOREVER, 1);
+    will_return(FOREVER, 0);
+
+    expect_value(wrap_win_whodata_Sleep, dwMilliseconds, WDATA_DEFAULT_INTERVAL_SCAN * 1000);
+
+    expect_string(__wrap_check_path_type, dir, "C:\\a\\path");
+    will_return(__wrap_check_path_type, 1);
+
+    // Inside check_object_sacl
+    {
+        expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+        will_return(wrap_win_whodata_OpenProcessToken, (HANDLE)123456);
+        will_return(wrap_win_whodata_OpenProcessToken, 1);
+
+        // Inside set_privilege
+        {
+            expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+            will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+            will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+            expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+            expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+            will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+            expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+        }
+
+        expect_string(wrap_win_whodata_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
+        expect_value(wrap_win_whodata_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
+        expect_value(wrap_win_whodata_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
+        will_return(wrap_win_whodata_GetNamedSecurityInfo, &acl);
+        will_return(wrap_win_whodata_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
+        will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+        // is_valid_sacl
+        {
+
+            expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+            expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+            will_return(wrap_win_whodata_AllocateAndInitializeSid, 0);
+
+            will_return(wrap_win_whodata_GetLastError, (unsigned int) 700);
+
+            expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        }
+
+        // Inside set_privilege
+        {
+            expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+            will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+            will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+            expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+            expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+            will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+            expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+        }
+
+        will_return(wrap_win_whodata_CloseHandle, 0);
+    }
+
+    expect_string(__wrap__minfo, formatted_msg,
+        "(6021): The SACL of 'C:\\a\\path' has been modified and it is not valid for the real-time Whodata mode. Whodata will not be available for this file.");
+
+    // Inside notify_SACL_change
+    {
+        expect_string(__wrap_SendMSG, message,
+            "ossec: Audit: The SACL of 'C:\\a\\path' has been modified and can no longer be scanned in whodata mode.");
+        expect_string(__wrap_SendMSG, locmsg, "syscheck");
+        expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
+        will_return(__wrap_SendMSG, 0); // Return value is discarded
+    }
+
+    ret = state_checker(input);
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(syscheck.wdata.dirs_status[0].object_type, WD_STATUS_FILE_TYPE);
+    assert_non_null(syscheck.wdata.dirs_status[0].status & WD_STATUS_EXISTS);
+    assert_null(syscheck.opts[0] & WHODATA_ACTIVE);
+}
+
+void test_state_checker_file_with_valid_sacl(void **state) {
+    int ret;
+    void *input;
+    SYSTEMTIME st;
+    ACL acl;
+    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+
+    if(syscheck.dir = calloc(2, sizeof(char*)), !syscheck.dir)
+        fail();
+
+    if(syscheck.dir[0] = strdup("C:\\a\\path"), !syscheck.dir[0])
+        fail();
+
+    if(syscheck.opts = calloc(1, sizeof(int)), !syscheck.opts)
+        fail();
+
+    // Leverage Free_Syscheck not free the wdata struct
+    syscheck.wdata.dirs_status[0].status |= WD_CHECK_WHODATA | WD_STATUS_EXISTS;
+    syscheck.wdata.dirs_status[0].object_type = WD_STATUS_DIR_TYPE;
+    syscheck.opts[0] = (int)0xFFFFFFFF;
+
+    memset(&st, 0, sizeof(SYSTEMTIME));
+    st.wYear = 2020;
+    st.wMonth = 3;
+    st.wDay = 3;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
+
+    will_return(FOREVER, 1);
+    will_return(FOREVER, 0);
+
+    expect_value(wrap_win_whodata_Sleep, dwMilliseconds, WDATA_DEFAULT_INTERVAL_SCAN * 1000);
+
+    expect_string(__wrap_check_path_type, dir, "C:\\a\\path");
+    will_return(__wrap_check_path_type, 1);
+
+    // Inside check_object_sacl
+    {
+        expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+        will_return(wrap_win_whodata_OpenProcessToken, (HANDLE)123456);
+        will_return(wrap_win_whodata_OpenProcessToken, 1);
+
+        // Inside set_privilege
+        {
+            expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+            will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+            will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+            expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+            expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+            will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+            expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+        }
+
+        expect_string(wrap_win_whodata_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
+        expect_value(wrap_win_whodata_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
+        expect_value(wrap_win_whodata_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
+        will_return(wrap_win_whodata_GetNamedSecurityInfo, &acl);
+        will_return(wrap_win_whodata_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
+        will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+        // Inside is_valid_sacl
+        {
+            SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+            ACL new_sacl;
+            ACCESS_ALLOWED_ACE ace;
+            unsigned long new_sacl_size;
+
+            everyone_sid = NULL;
+            ev_sid_size = 1;
+
+            // Set the ACL and ACE data
+            new_sacl.AceCount=1;
+            ace.Header.AceFlags = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG;
+            ace.Mask = FILE_WRITE_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES | DELETE;
+
+            expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+            expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+            will_return(wrap_win_whodata_AllocateAndInitializeSid, 1);
+
+            will_return(wrap_win_whodata_GetAce, &ace);
+            will_return(wrap_win_whodata_GetAce, 1);
+
+            will_return(wrap_win_whodata_EqualSid, 1);
+        }
+
+        // Inside set_privilege
+        {
+            expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+            will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+            will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+            expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+            expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+            will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+            expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+        }
+
+        will_return(wrap_win_whodata_CloseHandle, 0);
+    }
+
+    will_return(wrap_win_whodata_GetSystemTime, &st);
+
+    ret = state_checker(input);
+
+    assert_int_equal(ret, 0);
+    assert_memory_equal(&syscheck.wdata.dirs_status[0].last_check, &st, sizeof(SYSTEMTIME));
+    assert_int_equal(syscheck.wdata.dirs_status[0].object_type, WD_STATUS_FILE_TYPE);
+    assert_non_null(syscheck.wdata.dirs_status[0].status & WD_STATUS_EXISTS);
+    assert_non_null(syscheck.opts[0] & WHODATA_ACTIVE);
+}
+
+void test_state_checker_dir_readded_error(void **state) {
+    int ret;
+    void *input;
+    char debug_msg[OS_MAXSTR];
+
+    if(syscheck.dir = calloc(2, sizeof(char*)), !syscheck.dir)
+        fail();
+
+    if(syscheck.dir[0] = strdup("C:\\a\\path"), !syscheck.dir[0])
+        fail();
+
+    if(syscheck.opts = calloc(1, sizeof(int)), !syscheck.opts)
+        fail();
+
+    // Leverage Free_Syscheck not free the wdata struct
+    syscheck.wdata.dirs_status[0].status |= WD_CHECK_WHODATA;
+    syscheck.wdata.dirs_status[0].status &= ~WD_STATUS_EXISTS;
+    syscheck.wdata.dirs_status[0].object_type = WD_STATUS_UNK_TYPE;
+    syscheck.opts[0] = (int)0xFFFFFFFF;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
+
+    will_return(FOREVER, 1);
+    will_return(FOREVER, 0);
+
+    expect_value(wrap_win_whodata_Sleep, dwMilliseconds, WDATA_DEFAULT_INTERVAL_SCAN * 1000);
+
+    expect_string(__wrap_check_path_type, dir, "C:\\a\\path");
+    will_return(__wrap_check_path_type, 1);
+
+    expect_string(__wrap__minfo, formatted_msg,
+        "(6020): 'C:\\a\\path' has been re-added. It will be monitored in real-time Whodata mode.");
+
+    // Inside set_winsacl
+    {
+        snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, syscheck.dir[0]);
+        expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+
+        expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+        will_return(wrap_win_whodata_OpenProcessToken, (HANDLE)123456);
+        will_return(wrap_win_whodata_OpenProcessToken, 0);
+
+        will_return(wrap_win_whodata_GetLastError, (unsigned int) 500);
+        expect_string(__wrap__merror, formatted_msg, "(6648): OpenProcessToken() failed. Error '500'.");
+    }
+
+    expect_string(__wrap__merror, formatted_msg,
+        "(6619): Unable to add directory to whodata real time monitoring: 'C:\\a\\path'.");
+
+    ret = state_checker(input);
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(syscheck.wdata.dirs_status[0].object_type, WD_STATUS_FILE_TYPE);
+    assert_null(syscheck.wdata.dirs_status[0].status & WD_STATUS_EXISTS);
+    assert_non_null(syscheck.opts[0] & WHODATA_ACTIVE);
+}
+
+void test_state_checker_dir_readded_succesful(void **state) {}
+
 /**************************************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -4068,6 +4500,14 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_whodata_list_add_on_regular_list, setup_w_clist, teardown_w_clist),
         cmocka_unit_test_setup_teardown(test_whodata_list_add_trigger_alert, setup_w_clist, teardown_w_clist),
         cmocka_unit_test_setup_teardown(test_whodata_list_add_on_full_list, setup_w_clist, teardown_w_clist),
+        /* state_checker */
+        cmocka_unit_test_setup_teardown(test_state_checker_no_files_to_check, setup_state_checker, teardown_state_checker),
+        cmocka_unit_test_setup_teardown(test_state_checker_file_not_whodata, setup_state_checker, teardown_state_checker),
+        cmocka_unit_test_setup_teardown(test_state_checker_file_does_not_exist, setup_state_checker, teardown_state_checker),
+        cmocka_unit_test_setup_teardown(test_state_checker_file_with_invalid_sacl, setup_state_checker, teardown_state_checker),
+        cmocka_unit_test_setup_teardown(test_state_checker_file_with_valid_sacl, setup_state_checker, teardown_state_checker),
+        cmocka_unit_test_setup_teardown(test_state_checker_dir_readded_error, setup_state_checker, teardown_state_checker),
+        cmocka_unit_test_setup_teardown(test_state_checker_dir_readded_succesful, setup_state_checker, teardown_state_checker),
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, test_group_teardown);
