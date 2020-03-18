@@ -9,7 +9,6 @@ import socket
 from base64 import b64encode
 from datetime import date, datetime, timedelta, timezone
 from glob import glob
-from json import loads
 from os import chown, chmod, path, makedirs, urandom, stat, remove
 from platform import platform
 from shutil import copyfile, rmtree
@@ -17,6 +16,7 @@ from time import time, sleep
 
 import requests
 
+from api import configuration as api_configuration
 from wazuh import common, configuration
 from wazuh.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
@@ -279,19 +279,6 @@ class Agent:
 
         return send_restart_command(self.id)
 
-    @staticmethod
-    def use_only_authd():
-        """Function to know the value of the option "use_only_authd" in API configuration
-        """
-        try:
-            with open(common.api_config_path) as f:
-                data = f.readlines()
-
-            use_only_authd = list(filter(lambda x: x.strip().startswith('config.use_only_authd'), data))
-
-            return loads(use_only_authd[0][:-2].strip().split(' = ')[1]) if use_only_authd != [] else False
-        except IOError:
-            return False
 
     def remove(self, backup=False, purge=False):
         """Deletes the agent.
@@ -304,7 +291,7 @@ class Agent:
         manager_status = get_manager_status()
         is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
 
-        if self.use_only_authd():
+        if api_configuration.read_api_config()['use_only_authd']:
             if not is_authd_running:
                 raise WazuhInternalError(1726)
 
@@ -471,7 +458,7 @@ class Agent:
         manager_status = get_manager_status()
         is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
 
-        if self.use_only_authd():
+        if api_configuration.read_api_config()['use_only_authd']:
             if not is_authd_running:
                 raise WazuhInternalError(1726)
 
