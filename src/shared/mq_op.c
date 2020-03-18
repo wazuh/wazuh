@@ -105,7 +105,7 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc)
 }
 
 /* Send a message to socket */
-int SendMSGtoSCK(int queue, const char *message, const char *locmsg, __attribute__((unused)) πchar loc, logtarget * target)
+int SendMSGtoSCK(int queue, const char *message, const char *locmsg, __attribute__((unused)) char loc, logtarget * target)
 {
     int __mq_rcode;
     char tmpstr[OS_MAXSTR + 1];
