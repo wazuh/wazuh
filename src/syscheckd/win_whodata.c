@@ -75,6 +75,7 @@
 #define DeleteAce wrap_win_whodata_DeleteAce
 #define fprintf wrap_win_whodata_fprintf
 #define fgets wrap_win_whodata_fgets
+#define EvtRender wrap_win_whodata_EvtRender
 #else
 #define STATIC static
 #endif
@@ -84,7 +85,7 @@ STATIC char sys_64 = 1;
 STATIC PSID everyone_sid = NULL;
 STATIC size_t ev_sid_size = 0;
 static unsigned short inherit_flag = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE; //SUB_CONTAINERS_AND_OBJECTS_INHERIT
-static EVT_HANDLE context;
+STATIC EVT_HANDLE context;
 static const wchar_t* event_fields[] = {
     L"Event/System/EventID",
     L"Event/EventData/Data[@Name='SubjectUserName']",
@@ -696,7 +697,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 user_name = NULL;
                 user_id = NULL;
                 process_name = NULL;
-add_whodata_evt:
+            add_whodata_evt:
                 if (result = whodata_hash_add(syscheck.wdata.fd, hash_id, w_evt, "whodata"), result != 2) {
                     if (result == 1) {
                         mdebug1(FIM_WHODATA_HANDLE_UPDATE, hash_id);

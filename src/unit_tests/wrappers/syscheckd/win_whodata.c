@@ -327,6 +327,25 @@ BOOL WINAPI wrap_win_whodata_DeleteAce(
   return mock();
 }
 
+BOOL WINAPI wrap_win_whodata_EvtRender(
+  EVT_HANDLE Context,
+  EVT_HANDLE Fragment,
+  DWORD      Flags,
+  DWORD      BufferSize,
+  __attribute__ ((unused)) PVOID      Buffer,
+  PDWORD     BufferUsed,
+  PDWORD     PropertyCount
+) {
+  check_expected_ptr(Context);
+  check_expected_ptr(Fragment);
+  check_expected(Flags);
+  check_expected(BufferSize);
+  *BufferUsed = mock_type(int);
+  check_expected(*PropertyCount);
+
+  return mock();
+}
+
 int wrap_win_whodata_fprintf (FILE *__stream, const char *__format, ...) {
   char formatted_msg[OS_MAXSTR];
   va_list args;

@@ -10,8 +10,11 @@
 #define UNIT_TEST_WRAPPERS_WIN_WHODATA
 
 #ifdef WIN32
+#include <winsock2.h>
 #include <windows.h>
-#include <accctrl.h>
+#include <aclapi.h>
+#include <sddl.h>
+#include <winevt.h>
 #include <stdio.h>
 
 BOOL WINAPI wrap_win_whodata_OpenProcessToken(
@@ -177,6 +180,16 @@ WINBOOL WINAPI wrap_win_whodata_FileTimeToSystemTime(
 BOOL WINAPI wrap_win_whodata_DeleteAce(
   PACL  pAcl,
   DWORD dwAceIndex
+);
+
+BOOL WINAPI wrap_win_whodata_EvtRender(
+  EVT_HANDLE Context,
+  EVT_HANDLE Fragment,
+  DWORD      Flags,
+  DWORD      BufferSize,
+  PVOID      Buffer,
+  PDWORD     BufferUsed,
+  PDWORD     PropertyCount
 );
 
 int wrap_win_whodata_fprintf (FILE *__stream, const char *__format, ...);

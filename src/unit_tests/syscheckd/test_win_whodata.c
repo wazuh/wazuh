@@ -12,6 +12,12 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
+#include <winsock2.h>
+#include <windows.h>
+#include <aclapi.h>
+#include <sddl.h>
+#include <winevt.h>
+
 #include "syscheckd/syscheck.h"
 #include "unit_tests/wrappers/syscheckd/win_whodata.h"
 
@@ -40,11 +46,13 @@ extern int set_policies();
 extern void whodata_list_set_values();
 extern void whodata_list_remove_multiple(size_t quantity);
 extern whodata_event_node *whodata_list_add(char *id);
+unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attribute__((unused)) void *_void, EVT_HANDLE event);
 
 extern char sys_64;
 extern PSID everyone_sid;
 extern size_t ev_sid_size;
 extern int restore_policies;
+extern EVT_HANDLE context;
 
 static int unit_testing = 0;
 /**************************************************************************/
@@ -2717,6 +2725,37 @@ void test_audit_restore(void **state) {
 
 }
 /********************************************************************************************/
+/****************************************whodata_callback**************************************/
+void test_whodata_callback_EvtRenderFailed(void **state) {
+    EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
+    EVT_HANDLE event;
+    const int NUM_EVENTS = 10;
+
+    /* EvtRender first call */
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, 0);
+    will_return(wrap_win_whodata_EvtRender, NUM_EVENTS);
+    expect_value(wrap_win_whodata_EvtRender, *PropertyCount, 0);
+    will_return(wrap_win_whodata_EvtRender, 0);
+    
+    /* EvtRender second call */
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, NUM_EVENTS);
+    will_return(wrap_win_whodata_EvtRender, NUM_EVENTS);
+    expect_value(wrap_win_whodata_EvtRender, *PropertyCount, 0);
+    will_return(wrap_win_whodata_EvtRender, 0);
+
+    will_return(wrap_win_whodata_GetLastError, 500);
+    expect_string(__wrap__merror, formatted_msg, "(6623): Error rendering the event. Error 500.");
+
+    int ret = whodata_callback(action, NULL, event);
+    assert_int_equal(ret, 1);
+}
+/********************************************************************************************/
 void test_check_object_sacl_open_process_error(void **state) {
     int ret;
 
@@ -3969,6 +4008,8 @@ int main(void) {
         cmocka_unit_test(test_restore_audit_policies_success),
         /* audit_restore */
         cmocka_unit_test_setup_teardown(test_audit_restore, setup_restore_sacls, teardown_restore_sacls),
+        /* whodata_callback */
+        cmocka_unit_test(test_whodata_callback_EvtRenderFailed),
         /* check_object_sacl */
         cmocka_unit_test(test_check_object_sacl_open_process_error),
         cmocka_unit_test(test_check_object_sacl_unable_to_set_privilege),

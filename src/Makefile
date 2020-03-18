@@ -1568,7 +1568,7 @@ endif
 endif #TEST
 
 unit_tests/wrappers/syscheckd/%.o: unit_tests/wrappers/syscheckd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
 unit_tests/wrappers/shared/%.o: unit_tests/wrappers/shared/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
