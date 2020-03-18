@@ -3809,7 +3809,7 @@ void test_whodata_callback_EvtRenderFailed(void **state) {
     will_return(wrap_win_whodata_EvtRender, NUM_EVENTS);
     expect_value(wrap_win_whodata_EvtRender, *PropertyCount, 0);
     will_return(wrap_win_whodata_EvtRender, 0);
-    
+
     /* EvtRender second call */
     expect_value(wrap_win_whodata_EvtRender, Context, context);
     expect_value(wrap_win_whodata_EvtRender, Fragment, event);
@@ -5351,7 +5351,155 @@ void test_state_checker_dir_readded_error(void **state) {
     assert_non_null(syscheck.opts[0] & WHODATA_ACTIVE);
 }
 
-void test_state_checker_dir_readded_succesful(void **state) {}
+void test_state_checker_dir_readded_succesful(void **state) {
+    int ret;
+    void *input;
+    char debug_msg[OS_MAXSTR];
+    ACL old_sacl;
+    ACL new_sacl;
+    ACL_SIZE_INFORMATION old_sacl_info = {.AceCount = 1};
+    SYSTEM_AUDIT_ACE ace;
+    SECURITY_DESCRIPTOR security_descriptor;
+    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+    SYSTEMTIME st;
+
+    if(syscheck.dir = calloc(2, sizeof(char*)), !syscheck.dir)
+        fail();
+
+    if(syscheck.dir[0] = strdup("C:\\a\\path"), !syscheck.dir[0])
+        fail();
+
+    if(syscheck.opts = calloc(1, sizeof(int)), !syscheck.opts)
+        fail();
+
+    // Leverage Free_Syscheck not free the wdata struct
+    syscheck.wdata.dirs_status[0].status |= WD_CHECK_WHODATA;
+    syscheck.wdata.dirs_status[0].status &= ~WD_STATUS_EXISTS;
+    syscheck.wdata.dirs_status[0].object_type = WD_STATUS_UNK_TYPE;
+    syscheck.opts[0] = (int)0xFFFFFFFF;
+
+    memset(&st, 0, sizeof(SYSTEMTIME));
+    st.wYear = 2020;
+    st.wMonth = 3;
+    st.wDay = 3;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
+
+    will_return(FOREVER, 1);
+    will_return(FOREVER, 0);
+
+    expect_value(wrap_win_whodata_Sleep, dwMilliseconds, WDATA_DEFAULT_INTERVAL_SCAN * 1000);
+
+    expect_string(__wrap_check_path_type, dir, "C:\\a\\path");
+    will_return(__wrap_check_path_type, 1);
+
+    expect_string(__wrap__minfo, formatted_msg,
+        "(6020): 'C:\\a\\path' has been re-added. It will be monitored in real-time Whodata mode.");
+
+    // Inside set_winsacl
+    {
+        ev_sid_size = 1;
+
+        expect_string(__wrap__mdebug2, formatted_msg, "(6266): The SACL of 'C:\\a\\path' will be configured.");
+
+        expect_value(wrap_win_whodata_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
+        will_return(wrap_win_whodata_OpenProcessToken, (HANDLE)123456);
+        will_return(wrap_win_whodata_OpenProcessToken, 1);
+
+        // Inside set_privilege
+        {
+            expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+            will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+            will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+            expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+            expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+            will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+            expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+        }
+
+        // GetNamedSecurity
+        expect_string(wrap_win_whodata_GetNamedSecurityInfo, pObjectName, "C:\\a\\path");
+        expect_value(wrap_win_whodata_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
+        expect_value(wrap_win_whodata_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
+        will_return(wrap_win_whodata_GetNamedSecurityInfo, &old_sacl);
+        will_return(wrap_win_whodata_GetNamedSecurityInfo, &security_descriptor);
+        will_return(wrap_win_whodata_GetNamedSecurityInfo, ERROR_SUCCESS);
+
+        // Inside is_valid_sacl
+        {
+            expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
+            expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
+            will_return(wrap_win_whodata_AllocateAndInitializeSid, 0);
+
+            will_return(wrap_win_whodata_GetLastError, (unsigned int) 700);
+
+            expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        }
+
+        expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
+
+        will_return(wrap_win_whodata_GetAclInformation, &old_sacl_info);
+        will_return(wrap_win_whodata_GetAclInformation, 1);
+
+        expect_value(wrap_win_whodata_win_alloc, size, 9);
+        will_return(wrap_win_whodata_win_alloc, 1234);
+
+        expect_value(wrap_win_whodata_InitializeAcl, pAcl, 1234);
+        expect_value(wrap_win_whodata_InitializeAcl, nAclLength, 9);
+        expect_value(wrap_win_whodata_InitializeAcl, dwAclRevision, ACL_REVISION);
+        will_return(wrap_win_whodata_InitializeAcl, 1);
+
+        will_return(wrap_win_whodata_GetAce, &old_sacl_info);
+        will_return(wrap_win_whodata_GetAce, 1);
+
+        expect_value(wrap_win_whodata_AddAce, pAcl, 1234);
+        will_return(wrap_win_whodata_AddAce, 1);
+
+        expect_value(wrap_win_whodata_win_alloc, size, 9);
+        will_return(wrap_win_whodata_win_alloc, &ace);
+
+        will_return(wrap_win_whodata_CopySid, 1);
+
+        expect_value(wrap_win_whodata_AddAce, pAcl, 1234);
+        will_return(wrap_win_whodata_AddAce, 1);
+
+        expect_string(wrap_win_whodata_SetNamedSecurityInfo, pObjectName, "C:\\a\\path");
+        expect_value(wrap_win_whodata_SetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
+        expect_value(wrap_win_whodata_SetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
+        expect_value(wrap_win_whodata_SetNamedSecurityInfo, psidOwner, NULL);
+        expect_value(wrap_win_whodata_SetNamedSecurityInfo, psidGroup, NULL);
+        expect_value(wrap_win_whodata_SetNamedSecurityInfo, pDacl, NULL);
+        expect_value(wrap_win_whodata_SetNamedSecurityInfo, pSacl, 1234);
+        will_return(wrap_win_whodata_SetNamedSecurityInfo, ERROR_SUCCESS);
+
+        // Inside set_privilege
+        {
+            expect_string(wrap_win_whodata_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
+            will_return(wrap_win_whodata_LookupPrivilegeValue, 234567);
+            will_return(wrap_win_whodata_LookupPrivilegeValue, 1);
+
+            expect_value(wrap_win_whodata_AdjustTokenPrivileges, TokenHandle, (HANDLE)123456);
+            expect_value(wrap_win_whodata_AdjustTokenPrivileges, DisableAllPrivileges, 0);
+            will_return(wrap_win_whodata_AdjustTokenPrivileges, 1);
+
+            expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+        }
+
+        will_return(wrap_win_whodata_CloseHandle, 0);
+    }
+
+    will_return(wrap_win_whodata_GetSystemTime, &st);
+
+    ret = state_checker(input);
+
+    assert_int_equal(ret, 0);
+    assert_memory_equal(&syscheck.wdata.dirs_status[0].last_check, &st, sizeof(SYSTEMTIME));
+    assert_int_equal(syscheck.wdata.dirs_status[0].object_type, WD_STATUS_FILE_TYPE);
+    assert_non_null(syscheck.wdata.dirs_status[0].status & WD_STATUS_EXISTS);
+    assert_non_null(syscheck.opts[0] & WHODATA_ACTIVE);
+}
 
 /**************************************************************************/
 int main(void) {
