@@ -1233,6 +1233,30 @@ static void test_fim_configuration_directory_not_found(void **state) {
     assert_int_equal(ret, -1);
 }
 
+#ifdef TEST_WINAGENT
+static void test_fim_configuration_directory_registry_not_found(void **state) {
+    int ret;
+
+    const char *path = "invalid";
+    const char *entry = "registry";
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (registry):'invalid'");
+
+    ret = fim_configuration_directory(path, entry);
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_fim_configuration_directory_registry_found(void **state) {
+    char *path = "[x32] HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce";
+    const char * entry = "registry";
+    int ret;
+
+    ret = fim_configuration_directory(path, entry);
+
+    assert_int_equal(ret, 20);
+}
+#endif
 
 static void test_init_fim_data_entry(void **state) {
     fim_data_t *fim_data = *state;
@@ -2867,6 +2891,10 @@ int main(void) {
         cmocka_unit_test(test_fim_configuration_directory_no_path),
         cmocka_unit_test(test_fim_configuration_directory_file),
         cmocka_unit_test(test_fim_configuration_directory_not_found),
+        #ifdef TEST_WINAGENT
+        cmocka_unit_test(test_fim_configuration_directory_registry_not_found),
+        cmocka_unit_test(test_fim_configuration_directory_registry_found),
+        #endif
 
         /* init_fim_data_entry */
         cmocka_unit_test_setup_teardown(test_init_fim_data_entry, setup_fim_entry, teardown_fim_entry),
