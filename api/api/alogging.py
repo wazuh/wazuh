@@ -13,8 +13,8 @@ request_pattern = re.compile(r'\[.+\]|\s+\*\s+')
 class AccessLogger(AbstractAccessLogger):
 
     def log(self, request, response, time):
-        self.logger.info(f'{request.get("user_name", "unknown_user")} '
-                         f'{request.get("token", "unknown_token")} {request.remote} '
+        self.logger.info(f'{request.get("user", "unknown_user")} '
+                         f'{request.remote} '
                          f'"{request.method} {request.path} '
                          f'done in {time*1000}ms: {response.status}')
 
@@ -51,12 +51,3 @@ class APILogger(WazuhLogger):
             debug_level = logging.INFO
 
         self.logger.setLevel(debug_level)
-
-
-def set_request_user_logs():
-    """
-    sets authenticated user in logs
-    """
-    # new_user = request.authorization['username'] if request.authorization else ''
-    # wazuh_logger = logging.getLogger('aiohttp')
-    # wazuh_logger.filters[0].update_user(new_user)

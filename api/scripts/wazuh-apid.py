@@ -12,7 +12,6 @@ import sys
 import aiohttp_cache
 import aiohttp_cors
 import connexion
-from aiohttp import web
 from aiohttp_swagger import setup_swagger
 
 from api import alogging, configuration, __path__ as api_path
@@ -21,13 +20,14 @@ from api import validator
 from api.api_exception import APIException
 from api.constants import CONFIG_FILE_PATH
 from api.util import to_relative_path
+from api.middlewares import set_user_name
 from wazuh import pyDaemonModule, common
 from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licence__
 from wazuh.core.cluster.utils import read_config
 
 
 def set_logging(foreground_mode=False, debug_mode='info'):
-    for logger_name in ('aiohttp.server', 'aiohttp.access'):
+    for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api'):
         api_logger = alogging.APILogger(log_path='logs/api.log', foreground_mode=foreground_mode,
                                         debug_level=debug_mode,
                                         logger_name=logger_name)
@@ -96,7 +96,8 @@ if __name__ == '__main__':
                            },
                 strict_validation=True,
                 validate_responses=True,
-                pass_context_arg_name='request')
+                pass_context_arg_name='request',
+                options={"middlewares": [set_user_name]})
     # Enable CORS
     if cors:
         aiohttp_cors.setup(app.app)
@@ -129,11 +130,11 @@ if __name__ == '__main__':
     else:
         ssl_context = None
 
-    # Launch server
-    web.run_app(app.app,
-                port=configuration['port'],
-                host=configuration['host'],
-                access_log_class=alogging.AccessLogger,
-                ssl_context=ssl_context)
+    app.run(port=configuration['port'],
+            host=configuration['host'],
+            ssl_context=ssl_context,
+            access_log_class=alogging.AccessLogger,
+            use_default_access_log=True
+            )
 
     pyDaemonModule.create_pid('wazuh-apid', os.getpid())
