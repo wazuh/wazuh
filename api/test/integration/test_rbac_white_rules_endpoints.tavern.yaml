@@ -28,7 +28,7 @@ stages:
             - &full_item_rules
               description: !anystr
               details: !anything
-              file: 0010-rules_config.xml
+              filename: 0010-rules_config.xml
               gdpr: !anything
               gpg13: !anything
               groups: !anything
@@ -36,8 +36,8 @@ stages:
               id: !anyint
               level: !anyint
               nist_800_53: !anything
-              path: !anystr
-              pci: !anything
+              relative_dirname: !anystr
+              pci_dss: !anything
               status: !anystr
             - <<: *full_item_rules
             - <<: *full_item_rules
@@ -55,7 +55,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        q: 'file=0020-syslog_rules.xml'
+        q: 'filename=0020-syslog_rules.xml'
     response:
       status_code: 200
       body:
@@ -84,10 +84,10 @@ stages:
             - <<: *full_item_rules
               id: 2
             - <<: *full_item_rules
-              file: 0015-ossec_rules.xml
+              filename: 0015-ossec_rules.xml
               id: 500
             - <<: *full_item_rules
-              file: 0015-ossec_rules.xml
+              filename: 0015-ossec_rules.xml
               id: 700
           failed_items:
             - error:
@@ -116,11 +116,11 @@ stages:
         data:
           affected_items:
             - &full_item_rules_files
-              file: 0010-rules_config.xml
-              path: ruleset/rules
+              filename: 0010-rules_config.xml
+              relative_dirname: ruleset/rules
               status: enabled
             - <<: *full_item_rules_files
-              file: 0015-ossec_rules.xml
+              filename: 0015-ossec_rules.xml
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -133,16 +133,16 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        file: 0015-ossec_rules.xml,0010-rules_config.xml
+        filename: 0015-ossec_rules.xml,0010-rules_config.xml
     response:
       status_code: 200
       body:
         data:
           affected_items:
             - <<: *full_item_rules_files
-              file: 0010-rules_config.xml
+              filename: 0010-rules_config.xml
             - <<: *full_item_rules_files
-              file: 0015-ossec_rules.xml
+              filename: 0015-ossec_rules.xml
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -155,7 +155,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        file: 0011-ossec_rules.xml,0011-rules_config.xml
+        filename: 0011-ossec_rules.xml,0011-rules_config.xml
     response:
       status_code: 400
       body: &permissions_denied
@@ -218,13 +218,13 @@ stages:
         message: !anystr
 
 ---
-test_name: GET PCI REQUIREMENT RBAC
+test_name: GET pci_dss REQUIREMENT RBAC
 
 stages:
 
   - name: Try to show the groups of rules in the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/pci"
+      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/pci_dss"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET

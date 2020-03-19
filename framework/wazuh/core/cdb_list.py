@@ -43,7 +43,7 @@ def iterate_lists(absolute_path=common.lists_path, only_names=False):
     dir_content = listdir(absolute_path)
     output = list()
 
-    # for skipping .swp files
+    # For skipping .swp files
     regex_swp = r'^\.{1}[\w\-/]+(.swp){1}$'
     pattern = re.compile(regex_swp)
 
@@ -54,10 +54,10 @@ def iterate_lists(absolute_path=common.lists_path, only_names=False):
         if (isfile(new_absolute_path)) and ('.cdb' not in name) and ('~' not in name) and not pattern.search(name):
             if only_names:
                 relative_path = get_relative_path(absolute_path)
-                output.append({'path': '{0}/{1}'.format(relative_path, name), 'name': name, 'folder': relative_path})
+                output.append({'relative_dirname': relative_path, 'filename': name})
             else:
                 items = get_list_from_file(new_relative_path)
-                output.append({'path': new_relative_path, 'items': items})
+                output.append({'relative_dirname': new_relative_path, 'filename': name, 'items': items})
         elif isdir(new_absolute_path):
             output += iterate_lists(new_absolute_path, only_names=only_names)
 

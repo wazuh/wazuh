@@ -5,7 +5,7 @@
 from wazuh import common
 from wazuh.ossec_queue import OssecQueue
 from wazuh.exception import WazuhError
-from wazuh.agent import Agent
+from wazuh.core.core_agent import Agent
 
 
 def create_message(command, custom, arguments):
