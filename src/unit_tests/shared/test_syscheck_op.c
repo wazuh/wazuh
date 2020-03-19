@@ -411,6 +411,17 @@ static void test_delete_target_file_rmdir_ex_error(void **state) {
 
     assert_int_equal(ret, 1);
 }
+
+static void test_delete_target_file_invalid_path(void **state) {
+    int ret = -1;
+    char *path = "an\\invalid\\path";
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Incorrect path. This does not contain ':' ");
+
+    ret = delete_target_file(path);
+
+    assert_int_equal(ret, 0);
+}
 #endif
 
 /* escape_syscheck_field tests */
@@ -3531,6 +3542,9 @@ int main(int argc, char *argv[]) {
         /* delete_target_file tests */
         cmocka_unit_test(test_delete_target_file_success),
         cmocka_unit_test(test_delete_target_file_rmdir_ex_error),
+        #ifdef TEST_WINAGENT
+        cmocka_unit_test(test_delete_target_file_invalid_path),
+        #endif
 
         /* escape_syscheck_field tests */
         cmocka_unit_test_teardown(test_escape_syscheck_field_escape_all, teardown_string),
