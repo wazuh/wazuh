@@ -5,13 +5,33 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add synchronization capabilities for FIM. ([#3319](https://github.com/wazuh/wazuh/issues/3319))
+- Add SQL database for the FIM module. Its storage can be switched between disk and memory. ([#3319](https://github.com/wazuh/wazuh/issues/3319))
 - Add support for monitoring AWS S3 buckets in GovCloud regions. ([#3953](https://github.com/wazuh/wazuh/issues/3953))
 - Add support for monitoring Cisco Umbrella S3 buckets. ([#3890](https://github.com/wazuh/wazuh/issues/3890))
+- Add automatic reconnection with the Eventchannel service when it is restarted. ([#3836](https://github.com/wazuh/wazuh/pull/3836))
+- Add a status validation when starting Wazuh. ([#4237](https://github.com/wazuh/wazuh/pull/4237))
+- Add FIM module unit testing for Unix source code. ([#4688](https://github.com/wazuh/wazuh/pull/4688))
+- Add multi-target support for unit testing. ([#4564](https://github.com/wazuh/wazuh/pull/4564))
+- Add FIM module unit testing for Windows source code. ([#4633](https://github.com/wazuh/wazuh/pull/4633))
+
+## Changed
+
+- Move the FIM logic engine to the agent. ([#3319](https://github.com/wazuh/wazuh/issues/3319))
+- Make Logcollector continuously attempt to reconnect with the agent daemon. ([#4435](https://github.com/wazuh/wazuh/pull/4435))
+- Make Windows agents to send the keep-alive independently. ([#4077](https://github.com/wazuh/wazuh/pull/4077))
+- Do not enforce source IP checking by default in the registration process. ([#4083](https://github.com/wazuh/wazuh/pull/4083))
 
 ### Fixed
 
-- Fixed a small memory leak in clusterd. ([#4465](https://github.com/wazuh/wazuh/pull/4465))
-
+- Avoid reopening the current socket when Logcollector fails to send a event. ([#4696](https://github.com/wazuh/wazuh/pull/4696))
+- Prevent Logcollector from starving when has to reload files. ([#4730](https://github.com/wazuh/wazuh/pull/4730))
+- Fix a small memory leak in clusterd. ([#4465](https://github.com/wazuh/wazuh/pull/4465))
+- Fix a crash in the fluent forwarder when SSL is not enabled. ([#4675](https://github.com/wazuh/wazuh/pull/4675))
+- Replace non-reentrant functions to avoid race condition hazards. ([#4081](https://github.com/wazuh/wazuh/pull/4081))
+- Fixed the registration of more than one agent as `any` when forcing to use the source IP. ([#2533](https://github.com/wazuh/wazuh/pull/2533))
+- Fix Windows upgrades in custom directories. ([#2534](https://github.com/wazuh/wazuh/pull/2534))
+- Fix the format of the alert payload passed to the Slack integration. ([#3978](https://github.com/wazuh/wazuh/pull/3978))
 
 ## [v3.11.4] - 2020-02-25
 
