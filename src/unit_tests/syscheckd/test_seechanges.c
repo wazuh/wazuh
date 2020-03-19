@@ -257,13 +257,13 @@ static int teardown_free_string(void **state) {
     return 0;
 }
 
+#ifdef TEST_WINAGENT
 static int teardown_string(void **state) {
     char *s = *state;
     free(s);
     return 0;
 }
 
-#ifdef TEST_WINAGENT
 static int setup_adapt_win_fc_output(void **state) {
     char **strarray = calloc(2, sizeof(char*));
 

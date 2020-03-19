@@ -207,6 +207,7 @@ static int teardown_string(void **state) {
     return 0;
 }
 
+#ifdef TEST_WINAGENT
 static int setup_string_array(void **state) {
     char **array = calloc(10, sizeof(char*));
 
@@ -225,6 +226,7 @@ static int teardown_string_array(void **state) {
 
     return 0;
 }
+#endif
 
 #if defined(TEST_SERVER)
 static int setup_sk_decode(void **state) {

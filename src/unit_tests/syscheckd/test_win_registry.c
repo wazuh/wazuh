@@ -121,7 +121,7 @@ void test_os_winreg_sethkek_valid_users(void **state) {
 /**************************************************************************/
 /*************************os_winreg_querykey*******************************/
 void test_os_winreg_querykey_invalid_query(void **state) {
-    HKEY oshkey;
+    HKEY oshkey = NULL;
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command");
     int pos = 0;
@@ -132,7 +132,7 @@ void test_os_winreg_querykey_invalid_query(void **state) {
 }
 
 void test_os_winreg_querykey_success_no_subkey(void **state) {
-    HKEY oshkey;
+    HKEY oshkey = NULL;
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command");
     int pos = 0;
@@ -147,7 +147,7 @@ void test_os_winreg_querykey_success_no_subkey(void **state) {
 }
 
 void test_os_winreg_querykey_success_subkey_p_key(void **state) {
-    HKEY oshkey;
+    HKEY oshkey = NULL;
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command");
     int pos = 0;
@@ -171,7 +171,7 @@ void test_os_winreg_querykey_success_subkey_p_key(void **state) {
 }
 
 void test_os_winreg_querykey_ignored_registry(void **state) {
-    HKEY oshkey;
+    HKEY oshkey = NULL;
     int pos = 0;
     char *subkey = strdup("command");
     char *fullname = syscheck.registry_ignore[pos].entry;
@@ -190,7 +190,7 @@ void test_os_winreg_querykey_ignored_registry(void **state) {
 }
 
 void test_os_winreg_querykey_ignored_regex(void **state) {
-    HKEY oshkey;
+    HKEY oshkey = NULL;
     int pos = 0;
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Security\\Enum"); // <registry_ignore type="sregex">\Enum$</registry_ignore>
@@ -203,13 +203,13 @@ void test_os_winreg_querykey_ignored_regex(void **state) {
     will_return(wrap_RegQueryInfoKey,ERROR_SUCCESS);
 
     char debug_msg[OS_MAXSTR];
-    snprintf(debug_msg, OS_MAXSTR,"(6205): Ignoring 'registry' '%s' due to sregex '\\Enum$'", fullname, fullname);
+    snprintf(debug_msg, OS_MAXSTR,"(6205): Ignoring 'registry' '%s' due to sregex '\\Enum$'", fullname);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
     os_winreg_querykey(oshkey, subkey, fullname, pos);
 }
 
 void test_os_winreg_querykey_values_string(void **state) {
-    HKEY oshkey;
+    HKEY oshkey = NULL;
     int pos = 0;
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command"); // <registry_ignore type="sregex">\Enum$</registry_ignore>
@@ -242,7 +242,7 @@ void test_os_winreg_querykey_values_string(void **state) {
 }
 
 void test_os_winreg_querykey_values_multi_string(void **state) {
-    HKEY oshkey;
+    HKEY oshkey = NULL;
     int pos = 0;
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command"); // <registry_ignore type="sregex">\Enum$</registry_ignore>
@@ -289,7 +289,7 @@ void test_os_winreg_querykey_values_number(void **state) {
         buffer[0] = '\0';
         break;
      * */
-    HKEY oshkey;
+    HKEY oshkey = NULL;
     int pos = 0;
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command"); // <registry_ignore type="sregex">\Enum$</registry_ignore>
@@ -336,7 +336,7 @@ void test_os_winreg_querykey_values_binary(void **state) {
         }
         break;
      * */
-    HKEY oshkey;
+    HKEY oshkey = NULL;
     int pos = 0;
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command"); // <registry_ignore type="sregex">\Enum$</registry_ignore>
@@ -381,7 +381,7 @@ void test_os_winreg_querykey_values_binary(void **state) {
 }
 
 void test_os_winreg_querykey_values_none(void **state) {
-    HKEY oshkey;
+    HKEY oshkey = NULL;
     int pos = 0;
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command"); // <registry_ignore type="sregex">\Enum$</registry_ignore>
@@ -410,7 +410,7 @@ void test_os_winreg_querykey_values_none(void **state) {
 }
 
 void test_os_winreg_querykey_registry_event_fail(void **state) {
-    HKEY oshkey;
+    HKEY oshkey = NULL;
     int pos = 0;
     char *subkey = strdup("command");
     char *fullname = strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\shell\\open\\command"); // <registry_ignore type="sregex">\Enum$</registry_ignore>

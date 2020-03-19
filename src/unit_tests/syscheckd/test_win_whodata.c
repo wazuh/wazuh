@@ -190,7 +190,7 @@ static int setup_w_clist(void **state) {
 
 static int teardown_w_clist(void **state) {
     whodata_event_node *node;
-    whodata_event_node *next = node->next;
+    whodata_event_node *next;
 
     for(node = syscheck.w_clist.first; node; node = next) {
         next = node->next;
@@ -511,7 +511,6 @@ void test_set_winsacl_failed_security_descriptor(void **state) {
 
 void test_set_winsacl_no_need_to_configure_acl(void **state) {
     ACL old_sacl;
-    ACL new_sacl;
     ACCESS_ALLOWED_ACE ace;
     SECURITY_DESCRIPTOR security_descriptor;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
@@ -550,7 +549,6 @@ void test_set_winsacl_no_need_to_configure_acl(void **state) {
         ev_sid_size = 1;
 
         // Set the ACL and ACE data
-        new_sacl.AceCount=1;
         ace.Header.AceFlags = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG;
         ace.Mask = FILE_WRITE_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES | DELETE;
 
@@ -586,8 +584,6 @@ void test_set_winsacl_no_need_to_configure_acl(void **state) {
 
 void test_set_winsacl_unable_to_get_acl_info(void **state) {
     ACL old_sacl;
-    ACL new_sacl;
-    ACCESS_ALLOWED_ACE ace;
     SECURITY_DESCRIPTOR security_descriptor;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     int ret;
@@ -659,8 +655,6 @@ void test_set_winsacl_unable_to_get_acl_info(void **state) {
 
 void test_set_winsacl_fail_to_alloc_new_sacl(void **state) {
     ACL old_sacl;
-    ACL new_sacl;
-    ACCESS_ALLOWED_ACE ace;
     SECURITY_DESCRIPTOR security_descriptor;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     int ret;
@@ -737,8 +731,6 @@ void test_set_winsacl_fail_to_alloc_new_sacl(void **state) {
 
 void test_set_winsacl_fail_to_initialize_new_sacl(void **state) {
     ACL old_sacl;
-    ACL new_sacl;
-    ACCESS_ALLOWED_ACE ace;
     SECURITY_DESCRIPTOR security_descriptor;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     int ret;
@@ -820,9 +812,7 @@ void test_set_winsacl_fail_to_initialize_new_sacl(void **state) {
 
 void test_set_winsacl_fail_getting_ace_from_old_sacl(void **state) {
     ACL old_sacl;
-    ACL new_sacl;
     ACL_SIZE_INFORMATION old_sacl_info = {.AceCount = 1};
-    ACCESS_ALLOWED_ACE ace;
     SECURITY_DESCRIPTOR security_descriptor;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     int ret;
@@ -907,9 +897,7 @@ void test_set_winsacl_fail_getting_ace_from_old_sacl(void **state) {
 
 void test_set_winsacl_fail_adding_old_ace_into_new_sacl(void **state) {
     ACL old_sacl;
-    ACL new_sacl;
     ACL_SIZE_INFORMATION old_sacl_info = {.AceCount = 1};
-    ACCESS_ALLOWED_ACE ace;
     SECURITY_DESCRIPTOR security_descriptor;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     int ret;
@@ -997,9 +985,7 @@ void test_set_winsacl_fail_adding_old_ace_into_new_sacl(void **state) {
 }
 void test_set_winsacl_fail_to_alloc_new_ace(void **state) {
     ACL old_sacl;
-    ACL new_sacl;
     ACL_SIZE_INFORMATION old_sacl_info = {.AceCount = 1};
-    ACCESS_ALLOWED_ACE ace;
     SECURITY_DESCRIPTOR security_descriptor;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     int ret;
@@ -1091,7 +1077,6 @@ void test_set_winsacl_fail_to_alloc_new_ace(void **state) {
 
 void test_set_winsacl_fail_to_copy_sid(void **state) {
     ACL old_sacl;
-    ACL new_sacl;
     ACL_SIZE_INFORMATION old_sacl_info = {.AceCount = 1};
     SYSTEM_AUDIT_ACE ace;
 
@@ -1189,7 +1174,6 @@ void test_set_winsacl_fail_to_copy_sid(void **state) {
 
 void test_set_winsacl_fail_to_add_ace(void **state) {
     ACL old_sacl;
-    ACL new_sacl;
     ACL_SIZE_INFORMATION old_sacl_info = {.AceCount = 1};
     SYSTEM_AUDIT_ACE ace;
 
@@ -1292,7 +1276,6 @@ void test_set_winsacl_fail_to_add_ace(void **state) {
 
 void test_set_winsacl_fail_to_set_security_info(void **state) {
     ACL old_sacl;
-    ACL new_sacl;
     ACL_SIZE_INFORMATION old_sacl_info = {.AceCount = 1};
     SYSTEM_AUDIT_ACE ace;
 
@@ -1404,7 +1387,6 @@ void test_set_winsacl_fail_to_set_security_info(void **state) {
 
 void test_set_winsacl_success(void **state) {
     ACL old_sacl;
-    ACL new_sacl;
     ACL_SIZE_INFORMATION old_sacl_info = {.AceCount = 1};
     SYSTEM_AUDIT_ACE ace;
 
@@ -3050,7 +3032,6 @@ void test_is_valid_sacl_valid(void **state) {
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     ACL new_sacl;
     ACCESS_ALLOWED_ACE ace;
-    unsigned long new_sacl_size;
 
     everyone_sid = NULL;
     ev_sid_size = 1;
@@ -3426,8 +3407,14 @@ void test_restore_sacls_set_privilege_failed(void **state){
 }
 
 int setup_restore_sacls(void **state) {
-    state = malloc(sizeof(int));
-    *state = syscheck.wdata.dirs_status[0].status;
+    int *ptr = malloc(sizeof(int));
+
+    if(ptr == NULL)
+        return -1;
+
+    *ptr = syscheck.wdata.dirs_status[0].status;
+
+    *state = ptr;
     // Set realtime
     syscheck.wdata.dirs_status[0].status |= WD_IGNORE_REST;
     return 0;
@@ -3799,7 +3786,7 @@ void test_audit_restore(void **state) {
 /****************************************whodata_callback**************************************/
 void test_whodata_callback_EvtRenderFailed(void **state) {
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
-    EVT_HANDLE event;
+    EVT_HANDLE event = NULL;
     const int NUM_EVENTS = 10;
     const int SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
 
@@ -3834,7 +3821,7 @@ void test_whodata_callback_EvtRenderFailed(void **state) {
 
 void test_whodata_callback_invalid_rendered_params(void **state) {
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
-    EVT_HANDLE event;
+    EVT_HANDLE event = NULL;
     const int NUM_EVENTS = 10;
     const int SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
 
@@ -3847,7 +3834,7 @@ void test_whodata_callback_invalid_rendered_params(void **state) {
     will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferUsed
     will_return(wrap_win_whodata_EvtRender, 0); // PropertyCount
     will_return(wrap_win_whodata_EvtRender, 0);
-    
+
     /* EvtRender second call */
     PEVT_VARIANT buffer = malloc(sizeof(EVT_VARIANT) * 10);
     buffer[0].Type = EvtVarTypeNull; // Wrong buffer type
@@ -3868,7 +3855,7 @@ void test_whodata_callback_invalid_rendered_params(void **state) {
 
 void test_whodata_callback_invalid_parameter_event_id(void **state) {
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
-    EVT_HANDLE event;
+    EVT_HANDLE event = NULL;
     const int NUM_EVENTS = 10;
     const int SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
 
@@ -3881,7 +3868,7 @@ void test_whodata_callback_invalid_parameter_event_id(void **state) {
     will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferUsed
     will_return(wrap_win_whodata_EvtRender, 0); // PropertyCount
     will_return(wrap_win_whodata_EvtRender, 0);
-    
+
     /* EvtRender second call */
     PEVT_VARIANT buffer = malloc(sizeof(EVT_VARIANT) * 10);
     buffer[0].Type = EvtVarTypeNull; // Wrong buffer type
@@ -3902,7 +3889,7 @@ void test_whodata_callback_invalid_parameter_event_id(void **state) {
 
 void test_whodata_callback_invalid_parameter_path(void **state) {
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
-    EVT_HANDLE event;
+    EVT_HANDLE event = NULL;
     const int NUM_EVENTS = 10;
     const int SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
 
@@ -3915,7 +3902,7 @@ void test_whodata_callback_invalid_parameter_path(void **state) {
     will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferUsed
     will_return(wrap_win_whodata_EvtRender, 0); // PropertyCount
     will_return(wrap_win_whodata_EvtRender, 0);
-    
+
     /* EvtRender second call */
     PEVT_VARIANT buffer = malloc(sizeof(EVT_VARIANT) * 10);
     buffer[0].Type = EvtVarTypeUInt16; // Correct buffer type
@@ -4122,15 +4109,12 @@ void test_check_object_sacl_valid_sacl(void **state) {
     // Inside is_valid_sacl
     {
         SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
-        ACL new_sacl;
         ACCESS_ALLOWED_ACE ace;
-        unsigned long new_sacl_size;
 
         everyone_sid = NULL;
         ev_sid_size = 1;
 
         // Set the ACL and ACE data
-        new_sacl.AceCount=1;
         ace.Header.AceFlags = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG;
         ace.Mask = FILE_WRITE_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES | DELETE;
 
@@ -4186,7 +4170,7 @@ void test_whodata_clist_remove_first_node(void **state) {
     assert_int_equal(syscheck.w_clist.current_size, 2);
 }
 
-void test_whodata_clist_remove_last_node(void **state) {    whodata_event_node *node = syscheck.w_clist.first;
+void test_whodata_clist_remove_last_node(void **state) {
     whodata_clist_remove(syscheck.w_clist.last);
 
     assert_non_null(syscheck.w_clist.first);
@@ -5171,7 +5155,7 @@ void test_whodata_list_add_on_full_list(void **state) {
 
 void test_state_checker_no_files_to_check(void **state) {
     int ret;
-    void *input;
+    void *input = NULL;
 
     if(syscheck.dir = calloc(1, sizeof(char*)), !syscheck.dir)
         fail();
@@ -5192,7 +5176,7 @@ void test_state_checker_no_files_to_check(void **state) {
 
 void test_state_checker_file_not_whodata(void **state) {
     int ret;
-    void *input;
+    void *input = NULL;
 
     if(syscheck.dir = calloc(2, sizeof(char*)), !syscheck.dir)
         fail();
@@ -5217,7 +5201,7 @@ void test_state_checker_file_not_whodata(void **state) {
 
 void test_state_checker_file_does_not_exist(void **state) {
     int ret;
-    void *input;
+    void *input = NULL;
     SYSTEMTIME st;
 
     if(syscheck.dir = calloc(2, sizeof(char*)), !syscheck.dir)
@@ -5260,7 +5244,7 @@ void test_state_checker_file_does_not_exist(void **state) {
 
 void test_state_checker_file_with_invalid_sacl(void **state) {
     int ret;
-    void *input;
+    void *input = NULL;
     ACL acl;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
 
@@ -5364,10 +5348,9 @@ void test_state_checker_file_with_invalid_sacl(void **state) {
 
 void test_state_checker_file_with_valid_sacl(void **state) {
     int ret;
-    void *input;
+    void *input = NULL;
     SYSTEMTIME st;
     ACL acl;
-    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
 
     if(syscheck.dir = calloc(2, sizeof(char*)), !syscheck.dir)
         fail();
@@ -5427,15 +5410,12 @@ void test_state_checker_file_with_valid_sacl(void **state) {
         // Inside is_valid_sacl
         {
             SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
-            ACL new_sacl;
             ACCESS_ALLOWED_ACE ace;
-            unsigned long new_sacl_size;
 
             everyone_sid = NULL;
             ev_sid_size = 1;
 
             // Set the ACL and ACE data
-            new_sacl.AceCount=1;
             ace.Header.AceFlags = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG;
             ace.Mask = FILE_WRITE_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES | DELETE;
 
@@ -5478,7 +5458,7 @@ void test_state_checker_file_with_valid_sacl(void **state) {
 
 void test_state_checker_dir_readded_error(void **state) {
     int ret;
-    void *input;
+    void *input = NULL;
     char debug_msg[OS_MAXSTR];
 
     if(syscheck.dir = calloc(2, sizeof(char*)), !syscheck.dir)
@@ -5535,10 +5515,8 @@ void test_state_checker_dir_readded_error(void **state) {
 
 void test_state_checker_dir_readded_succesful(void **state) {
     int ret;
-    void *input;
-    char debug_msg[OS_MAXSTR];
+    void *input = NULL;
     ACL old_sacl;
-    ACL new_sacl;
     ACL_SIZE_INFORMATION old_sacl_info = {.AceCount = 1};
     SYSTEM_AUDIT_ACE ace;
     SECURITY_DESCRIPTOR security_descriptor;

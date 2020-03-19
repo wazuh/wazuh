@@ -298,7 +298,9 @@ static int teardown_group(void **state) {
 
         return 0;
     }
-#else
+#endif
+#ifdef TEST_WINAGENT
+#ifndef WIN_WHODATA
 static int setup_RTCallBack(void **state) {
     win32rtfim *rt = calloc(1, sizeof(win32rtfim));
 
@@ -320,7 +322,21 @@ static int teardown_RTCallBack(void **state) {
     return 0;
 }
 #endif
+#endif
 
+#ifdef WIN_WHODATA
+static int setup_realtime_adddir_realtime_start_error(void **state) {
+    *state = syscheck.realtime;
+    syscheck.realtime = NULL;
+    return 0;
+}
+
+static int teardown_realtime_adddir_realtime_start_error(void **state) {
+    syscheck.realtime = *state;
+
+    return 0;
+}
+#else
 static int setup_realtime_start(void **state) {
     OSHash *hash = calloc(1, sizeof(OSHash));
 
@@ -346,19 +362,6 @@ static int teardown_realtime_start(void **state) {
 
     syscheck.realtime = state[1];
     state[1] = NULL;
-
-    return 0;
-}
-
-#ifdef WIN_WHODATA
-static int setup_realtime_adddir_realtime_start_error(void **state) {
-    *state = syscheck.realtime;
-    syscheck.realtime = NULL;
-    return 0;
-}
-
-static int teardown_realtime_adddir_realtime_start_error(void **state) {
-    syscheck.realtime = *state;
 
     return 0;
 }

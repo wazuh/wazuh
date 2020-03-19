@@ -473,24 +473,6 @@ static int teardown_local_data(void **state) {
     return 0;
 }
 
-static int setup_inode_data(void **state) {
-    fim_data_t *fim_data = *state;
-
-
-    if(fim_data->inode_data = calloc(1, sizeof(fim_inode_data)), fim_data->inode_data == NULL)
-        return -1;
-
-    return 0;
-}
-
-static int teardown_inode_data(void **state) {
-    fim_data_t *fim_data = *state;
-
-    free_inode_data(&fim_data->inode_data);
-
-    return 0;
-}
-
 static int setup_struct_dirent(void **state) {
     fim_data_t *fim_data = *state;
 

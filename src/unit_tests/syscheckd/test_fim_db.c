@@ -447,6 +447,7 @@ static void wraps_fim_db_decode_full_row() {
     will_return(__wrap_sqlite3_column_int, 12345678); // mtime
 }
 
+#ifndef TEST_WINAGENT
 /**
  * Successfully wrappes a wraps_fim_db_insert_data() call
  * */
@@ -467,7 +468,7 @@ static void wraps_fim_db_insert_path_success() {
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 }
-
+#endif
 /*---------------SETUP/TEARDOWN------------------*/
 static int setup_group(void **state) {
     (void) state;
