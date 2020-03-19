@@ -4,14 +4,11 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import datetime
-import functools
 import os
 import typing
-from functools import wraps
 
 import six
-from connexion import problem
-from flask import current_app
+from connexion import ProblemException
 
 from wazuh.common import ossec_path as WAZUH_PATH
 from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
@@ -220,29 +217,19 @@ def to_relative_path(full_path):
     return os.path.relpath(full_path, WAZUH_PATH)
 
 
-def flask_cached(f):
-    """Adds a cache handler decorator to the function
-    This method is used to avoid problems accessing API app from API controllers without an existing app_context
-
-    :param f: function to decorate
-    :return: decorated function
+def _create_problem(exc: Exception):
     """
-    @functools.wraps(f)
-    def cached_function(*args, **kwargs):
+    Transforms an exception into a ProblemException according to `exc`
 
-        @current_app.cache.memoize()
-        def decorated_function(*args, **kwargs):
-            return f(*args, **kwargs)
-        return decorated_function(*args, **kwargs)
+    Parameters
+    ----------
+    exc : Exception
+        If `exc` is an instance of `WazuhException` it will be casted into a ProblemException, otherwise it will be
+        raised
 
-    return cached_function
-
-
-def _create_problem(exc):
-    """
-    Builds an HTTP response to show a WazuhException information
-    :param exc: WazuhException to be rendered
-    :return: HTTP response to be return by an API controller
+    Raises
+    ------
+        ProblemException or `exc` exception type
     """
     if isinstance(exc, WazuhException):
         ext = remove_nones_to_dict({'remediation': exc.remediation,
@@ -252,47 +239,20 @@ def _create_problem(exc):
     else:
         ext = None
     if isinstance(exc, WazuhError):
-        return problem(400,
-                       'Wazuh Error',
-                       exc.message,
-                       ext=ext)
+        raise ProblemException(status=400, title='Wazuh Error', detail=exc.message, ext=ext)
     elif isinstance(exc, (WazuhInternalError, WazuhException)):
-        return problem(500,
-                       'Wazuh Internal Error',
-                       exc.message,
-                       ext=ext)
+        raise ProblemException(status=500, title='Wazuh Internal Error', detail=exc.message, ext=ext)
     raise exc
-
-
-def exception_handler(f):
-    """
-    Enables a controller to handle a WazuhException return by a framework function
-
-    Intended to be used as a decorator
-    """
-    @wraps(f)
-    def handle_exception(*args, **kwargs):
-        try:
-            result = f(*args, **kwargs)
-            if isinstance(result, tuple) or isinstance(result, list):
-                if len(result) > 0:
-                    if isinstance(result[0], Exception):
-                        raise result[0]
-            return result
-        except Exception as e:
-            return _create_problem(e)
-
-    return handle_exception
 
 
 def raise_if_exc(obj):
     """
-    Checks if obj is an Exception a raises it. Otherwise it is returned
+    Checks if obj is an Exception and raises it. Otherwise it is returned
 
     :param obj: object to be checked
     :return: obj only if it is not an Exception instance
     """
     if isinstance(obj, Exception):
-        raise obj
+        _create_problem(obj)
     else:
         return obj

@@ -5,20 +5,17 @@
 import logging
 import os
 
-import connexion
 from aiohttp import web
 
-from api.authentication import get_permissions
 from api.encoder import dumps
-from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
+from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh import cdb_list
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
 logger = logging.getLogger('wazuh')
 
 
-@exception_handler
-async def get_lists(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
+async def get_lists(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
                     sort: str = None, search: str = None, filename: str = None, relative_dirname: str = None):
     """ Get all CDB lists
 
@@ -53,16 +50,16 @@ async def get_lists(pretty: bool = False, wait_for_complete: bool = False, offse
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-async def get_lists_files(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
-                          sort: str = None, search: str = None, filename: str = None, relative_dirname: str = None):
+async def get_lists_files(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
+                          limit: int = None, sort: str = None, search: str = None, filename: str = None,
+                          relative_dirname: str = None):
     """ Get paths from all CDB lists
 
     :param pretty: Show results in human-readable format.
@@ -97,7 +94,7 @@ async def get_lists_files(pretty: bool = False, wait_for_complete: bool = False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 

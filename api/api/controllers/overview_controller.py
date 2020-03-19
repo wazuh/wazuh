@@ -4,21 +4,18 @@
 
 import logging
 
-import connexion
 from aiohttp import web
 
-from api.authentication import get_permissions
 from api.encoder import dumps
 from api.models.base_model_ import Data
-from api.util import exception_handler, raise_if_exc, remove_nones_to_dict
+from api.util import raise_if_exc, remove_nones_to_dict
 from wazuh.agent import get_full_overview
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
 logger = logging.getLogger('wazuh')
 
 
-@exception_handler
-async def get_overview_agents(pretty=False, wait_for_complete=False):
+async def get_overview_agents(request, pretty=False, wait_for_complete=False):
     """ Get full summary of agents.
 
     :param pretty: Show results in human-readable format
@@ -34,7 +31,7 @@ async def get_overview_agents(pretty=False, wait_for_complete=False):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)

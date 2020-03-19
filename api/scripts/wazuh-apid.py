@@ -5,6 +5,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import argparse
+import asyncio
 import os
 import ssl
 import sys
@@ -12,6 +13,7 @@ import sys
 import aiohttp_cache
 import aiohttp_cors
 import connexion
+import uvloop
 from aiohttp_swagger import setup_swagger
 
 from api import alogging, configuration, __path__ as api_path
@@ -19,15 +21,15 @@ from api import alogging, configuration, __path__ as api_path
 from api import validator
 from api.api_exception import APIException
 from api.constants import CONFIG_FILE_PATH
-from api.util import to_relative_path
 from api.middlewares import set_user_name
+from api.util import to_relative_path
 from wazuh import pyDaemonModule, common
 from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licence__
 from wazuh.core.cluster.utils import read_config
 
 
 def set_logging(foreground_mode=False, debug_mode='info'):
-    for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api'):
+    for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh'):
         api_logger = alogging.APILogger(log_path='logs/api.log', foreground_mode=foreground_mode,
                                         debug_level=debug_mode,
                                         logger_name=logger_name)
@@ -83,6 +85,7 @@ if __name__ == '__main__':
         os.chown('{0}/logs/api.log'.format(common.ossec_path), common.ossec_uid(), common.ossec_gid())
         os.chmod('{0}/logs/api.log'.format(common.ossec_path), 0o660)
 
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     app = connexion.AioHttpApp(__name__, host=configuration['host'],
                                port=configuration['port'],
                                specification_dir=os.path.join(api_path[0], 'spec'),

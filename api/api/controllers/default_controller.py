@@ -13,12 +13,10 @@ from aiohttp import web
 from api import __path__ as api_path
 from api.encoder import dumps
 from api.models.basic_info import BasicInfo
-from api.util import exception_handler
 
 logger = logging.getLogger('wazuh')
 
 
-@exception_handler
 async def default_info():
     """Get basicinfo
 

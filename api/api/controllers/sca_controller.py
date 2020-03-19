@@ -5,21 +5,18 @@
 
 import logging
 
-import connexion
 from aiohttp import web
 
 import wazuh.sca as sca
-from api.authentication import get_permissions
 from api.encoder import dumps
-from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
+from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh.common import database_limit
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
 logger = logging.getLogger('wazuh')
 
 
-@exception_handler
-async def get_sca_agent(agent_id=None, pretty=False, wait_for_complete=False, name=None, description=None,
+async def get_sca_agent(request, agent_id=None, pretty=False, wait_for_complete=False, name=None, description=None,
                         references=None, offset=0, limit=database_limit, sort=None, search=None, q=None):
     """Get security configuration assessment (SCA) database of an agent
 
@@ -57,15 +54,14 @@ async def get_sca_agent(agent_id=None, pretty=False, wait_for_complete=False, na
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-async def get_sca_checks(agent_id=None, pretty=False, wait_for_complete=False, policy_id=None, title=None,
+async def get_sca_checks(request, agent_id=None, pretty=False, wait_for_complete=False, policy_id=None, title=None,
                          description=None, rationale=None, remediation=None, file=None, process=None, directory=None,
                          registry=None, references=None, result=None, condition=None, offset=0, limit=database_limit,
                          sort=None, search=None, q=None):
@@ -122,7 +118,7 @@ async def get_sca_checks(agent_id=None, pretty=False, wait_for_complete=False, p
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 

@@ -4,21 +4,18 @@
 
 import logging
 
-import connexion
 from aiohttp import web
 
 import wazuh.active_response as active_response
-from api.authentication import get_permissions
 from api.encoder import dumps
 from api.models.active_response_model import ActiveResponse
-from api.util import remove_nones_to_dict, exception_handler, raise_if_exc
+from api.util import remove_nones_to_dict, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
 logger = logging.getLogger('wazuh')
 
 
-@exception_handler
-async def run_command(list_agents='*', pretty=False, wait_for_complete=False):
+async def run_command(request, list_agents='*', pretty=False, wait_for_complete=False):
     """Runs an Active Response command on a specified agent
 
     :param list_agents: List of Agents IDs. All possible values since 000 onwards
@@ -27,7 +24,7 @@ async def run_command(list_agents='*', pretty=False, wait_for_complete=False):
     :return: message
     """
     # Get body parameters
-    active_response_model = ActiveResponse.from_dict(connexion.request.get_json())
+    active_response_model = ActiveResponse.from_dict(await request.json())
     f_kwargs = {**{'agent_list': list_agents}, **active_response_model.to_dict()}
 
     dapi = DistributedAPI(f=active_response.run_command,
@@ -38,7 +35,7 @@ async def run_command(list_agents='*', pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger,
                           broadcasting=list_agents == '*',
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 

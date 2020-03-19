@@ -33,6 +33,9 @@ class LocalClientHandler(client.AbstractClient):
         """
         self.transport = transport
 
+    def _cancel_all_tasks(self):
+        pass
+
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
         """
         Defines commands available in a local client

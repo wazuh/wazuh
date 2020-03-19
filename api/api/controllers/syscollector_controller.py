@@ -4,20 +4,17 @@
 
 import logging
 
-import connexion
 from aiohttp import web
 
 import wazuh.syscollector as syscollector
-from api.authentication import get_permissions
 from api.encoder import dumps
-from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
+from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
 logger = logging.getLogger('wazuh')
 
 
-@exception_handler
-async def get_hardware_info(agent_id, pretty=False, wait_for_complete=False, select=None):
+async def get_hardware_info(request, agent_id, pretty=False, wait_for_complete=False, select=None):
     """ Get hardware info of an agent
 
     :param agent_id: Agent ID
@@ -36,16 +33,15 @@ async def get_hardware_info(agent_id, pretty=False, wait_for_complete=False, sel
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-async def get_hotfix_info(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None,
-                          select=None, hotfix=None):
+async def get_hotfix_info(request, agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
+                          search=None, select=None, hotfix=None):
     """ Get info about an agent's hotfixes
 
     :param agent_id: Agent ID
@@ -79,17 +75,16 @@ async def get_hotfix_info(agent_id, pretty=False, wait_for_complete=False, offse
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-async def get_network_address_info(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None,
-                                   sort=None, search=None, iface=None, proto=None, address=None, broadcast=None,
-                                   netmask=None):
+async def get_network_address_info(request, agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None,
+                                   select=None, sort=None, search=None, iface=None, proto=None, address=None,
+                                   broadcast=None, netmask=None):
     """ Get network address info of an agent
 
     :param agent_id: Agent ID
@@ -130,16 +125,16 @@ async def get_network_address_info(agent_id, pretty=False, wait_for_complete=Fal
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-async def get_network_interface_info(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None,
-                                     sort=None, search=None, name=None, adapter=None, state=None, mtu=None):
+async def get_network_interface_info(request, agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None,
+                                     select=None, sort=None, search=None, name=None, adapter=None, state=None,
+                                     mtu=None):
     """ Get network interface info of an agent
 
     :param agent_id: Agent ID
@@ -158,14 +153,14 @@ async def get_network_interface_info(agent_id, pretty=False, wait_for_complete=F
     :return: Data
     """
     filters = {'adapter': adapter,
-               'type': connexion.request.args.get('type', None),
+               'type': request.query.get('type', None),
                'state': state,
                'name': name,
                'mtu': mtu}
     # Add nested fields to kwargs filters
     nested = ['tx.packets', 'rx.packets', 'tx.bytes', 'rx.bytes', 'tx.errors', 'rx.errors', 'tx.dropped', 'rx.dropped']
     for field in nested:
-        filters[field] = connexion.request.args.get(field, None)
+        filters[field] = request.query.get(field, None)
 
     f_kwargs = {'agent_list': [agent_id],
                 'offset': offset,
@@ -184,16 +179,15 @@ async def get_network_interface_info(agent_id, pretty=False, wait_for_complete=F
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-async def get_network_protocol_info(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None,
-                                    sort=None, search=None, iface=None, gateway=None, dhcp=None):
+async def get_network_protocol_info(request, agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None,
+                                    select=None, sort=None, search=None, iface=None, gateway=None, dhcp=None):
     """ Get network protocol info of an agent
 
     :param agent_id: Agent ID
@@ -211,7 +205,7 @@ async def get_network_protocol_info(agent_id, pretty=False, wait_for_complete=Fa
     :return: Data
     """
     filters = {'iface': iface,
-               'type': connexion.request.args.get('type', None),
+               'type': request.query.get('type', None),
                'gateway': gateway,
                'dhcp': dhcp}
 
@@ -231,15 +225,14 @@ async def get_network_protocol_info(agent_id, pretty=False, wait_for_complete=Fa
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-async def get_os_info(agent_id, pretty=False, wait_for_complete=False, select=None):
+async def get_os_info(request, agent_id, pretty=False, wait_for_complete=False, select=None):
     """ Get OS info of an agent
 
     :param agent_id: Agent ID
@@ -259,15 +252,14 @@ async def get_os_info(agent_id, pretty=False, wait_for_complete=False, select=No
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-async def get_packages_info(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None,
+async def get_packages_info(request, agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None,
                             sort=None, search=None, vendor=None, name=None, architecture=None, version=None):
     """ Get packages info of an agent
 
@@ -289,7 +281,7 @@ async def get_packages_info(agent_id, pretty=False, wait_for_complete=False, off
     filters = {'vendor': vendor,
                'name': name,
                'architecture': architecture,
-               'format': connexion.request.args.get('format', None),
+               'format': request.query.get('format', None),
                'version': version}
 
     f_kwargs = {'agent_list': [agent_id],
@@ -308,16 +300,15 @@ async def get_packages_info(agent_id, pretty=False, wait_for_complete=False, off
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-async def get_ports_info(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None,
-                         search=None, pid=None, protocol=None, tx_queue=None, state=None, process=None):
+async def get_ports_info(request, agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None,
+                         sort=None, search=None, pid=None, protocol=None, tx_queue=None, state=None, process=None):
     """ Get ports info of an agent
 
     :param agent_id: Agent ID
@@ -344,7 +335,7 @@ async def get_ports_info(agent_id, pretty=False, wait_for_complete=False, offset
     # Add nested fields to kwargs filters
     nested = ['local.ip', 'local.port', 'remote.ip']
     for field in nested:
-        filters[field] = connexion.request.args.get(field, None)
+        filters[field] = request.query.get(field, None)
 
     f_kwargs = {'agent_list': [agent_id],
                 'offset': offset,
@@ -362,18 +353,17 @@ async def get_ports_info(agent_id, pretty=False, wait_for_complete=False, offset
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-async def get_processes_info(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None,
-                             sort=None, search=None, pid=None, state=None, ppid=None, egroup=None, euser=None,
-                             fgroup=None, name=None, nlwp=None, pgrp=None, priority=None, rgroup=None, ruser=None,
-                             sgroup=None, suser=None):
+async def get_processes_info(request, agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None,
+                             select=None, sort=None, search=None, pid=None, state=None, ppid=None, egroup=None,
+                             euser=None, fgroup=None, name=None, nlwp=None, pgrp=None, priority=None, rgroup=None,
+                             ruser=None, sgroup=None, suser=None):
     """ Get processes info an agent
 
     :param agent_id: Agent ID
@@ -432,7 +422,7 @@ async def get_processes_info(agent_id, pretty=False, wait_for_complete=False, of
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 

@@ -4,20 +4,18 @@
 
 import logging
 
-import connexion
 from aiohttp import web
+from connexion.lifecycle import ConnexionResponse
 
-from api.authentication import get_permissions
 from api.encoder import dumps
-from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
+from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh import decoder as decoder_framework
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
 logger = logging.getLogger('wazuh')
 
 
-@exception_handler
-async def get_decoders(decoder_names: list = None, pretty: bool = False, wait_for_complete: bool = False,
+async def get_decoders(request, decoder_names: list = None, pretty: bool = False, wait_for_complete: bool = False,
                        offset: int = 0, limit: int = None, sort: str = None, search: str = None, q: str = None,
                        filename: str = None, relative_dirname: str = None, status: str = None):
     """Get all decoders
@@ -58,15 +56,14 @@ async def get_decoders(decoder_names: list = None, pretty: bool = False, wait_fo
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-async def get_decoders_files(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
+async def get_decoders_files(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                              limit: int = None, sort: str = None, search: str = None, filename: str = None,
                              relative_dirname: str = None, status: str = None):
     """Get all decoders files
@@ -103,15 +100,14 @@ async def get_decoders_files(pretty: bool = False, wait_for_complete: bool = Fal
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-async def get_download_file(pretty: bool = False, wait_for_complete: bool = False, filename: str = None):
+async def get_download_file(request, pretty: bool = False, wait_for_complete: bool = False, filename: str = None):
     """Download an specified decoder file.
 
     :param pretty: Show results in human-readable format
@@ -128,16 +124,15 @@ async def get_download_file(pretty: bool = False, wait_for_complete: bool = Fals
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = connexion.lifecycle.ConnexionResponse(body=data["message"], mimetype='application/xml')
+    response = ConnexionResponse(body=data["message"], mimetype='application/xml')
 
     return response
 
 
-@exception_handler
-async def get_decoders_parents(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
+async def get_decoders_parents(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                                limit: int = None, sort: str = None, search: str = None):
     """Get decoders by parents
 
@@ -167,7 +162,7 @@ async def get_decoders_parents(pretty: bool = False, wait_for_complete: bool = F
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 

@@ -1,13 +1,13 @@
 import json
 
 import six
-from connexion.apps.flask_app import FlaskJSONEncoder
+from connexion.jsonifier import JSONEncoder
 
 from api.models.base_model_ import Model
 from wazuh.results import AbstractWazuhResult
 
 
-class JSONEncoder(FlaskJSONEncoder):
+class WazuhJSONEncoder(JSONEncoder):
     include_nulls = False
 
     def default(self, o):
@@ -22,7 +22,7 @@ class JSONEncoder(FlaskJSONEncoder):
             return dikt
         elif isinstance(o, AbstractWazuhResult):
             return o.render()
-        return FlaskJSONEncoder.default(self, o)
+        return JSONEncoder.default(self, o)
 
 
 def dumps(obj: object) -> str:
@@ -42,4 +42,4 @@ def dumps(obj: object) -> str:
     -------
     str
     """
-    return json.dumps(obj, cls=JSONEncoder)
+    return json.dumps(obj, cls=WazuhJSONEncoder)

@@ -5,16 +5,14 @@
 import datetime
 import logging
 
-import connexion
 from aiohttp import web
 from dateutil.parser import parse
 
 import wazuh.manager as manager
 import wazuh.stats as stats
-from api.authentication import get_permissions
 from api.encoder import dumps
 from api.models.base_model_ import Data
-from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
+from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh import common
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhError
@@ -22,8 +20,7 @@ from wazuh.exception import WazuhError
 logger = logging.getLogger('wazuh')
 
 
-@exception_handler
-async def get_status(pretty=False, wait_for_complete=False):
+async def get_status(request, pretty=False, wait_for_complete=False):
     """Get manager's or local_node's Wazuh daemons status
 
     :param pretty: Show results in human-readable format
@@ -38,15 +35,14 @@ async def get_status(pretty=False, wait_for_complete=False):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-async def get_info(pretty=False, wait_for_complete=False):
+async def get_info(request, pretty=False, wait_for_complete=False):
     """Get manager's or local_node's basic information
 
     :param pretty: Show results in human-readable format
@@ -61,15 +57,14 @@ async def get_info(pretty=False, wait_for_complete=False):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-async def get_configuration(pretty=False, wait_for_complete=False, section=None, field=None):
+async def get_configuration(request, pretty=False, wait_for_complete=False, section=None, field=None):
     """Get manager's or local_node's configuration (ossec.conf)
 
     :param pretty: Show results in human-readable format
@@ -87,15 +82,14 @@ async def get_configuration(pretty=False, wait_for_complete=False, section=None,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-async def get_stats(pretty=False, wait_for_complete=False, date=None):
+async def get_stats(request, pretty=False, wait_for_complete=False, date=None):
     """Get manager's or local_node's stats.
 
     Returns Wazuh statistical information for the current or specified date.
@@ -124,15 +118,14 @@ async def get_stats(pretty=False, wait_for_complete=False, date=None):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-async def get_stats_hourly(pretty=False, wait_for_complete=False):
+async def get_stats_hourly(request, pretty=False, wait_for_complete=False):
     """Get manager's or local_node's stats by hour.
 
     Returns Wazuh statistical information per hour. Each number in the averages field represents the average of alerts
@@ -150,7 +143,7 @@ async def get_stats_hourly(pretty=False, wait_for_complete=False):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
@@ -158,8 +151,7 @@ async def get_stats_hourly(pretty=False, wait_for_complete=False):
     return web.json_response(data=response, status=200, dumps=dumps)
 
 
-@exception_handler
-async def get_stats_weekly(pretty=False, wait_for_complete=False):
+async def get_stats_weekly(request, pretty=False, wait_for_complete=False):
     """Get manager's or local_node's stats by week.
 
     Returns Wazuh statistical information per week. Each number in the averages field represents the average of alerts
@@ -177,7 +169,7 @@ async def get_stats_weekly(pretty=False, wait_for_complete=False):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
@@ -185,8 +177,7 @@ async def get_stats_weekly(pretty=False, wait_for_complete=False):
     return web.json_response(data=response, status=200, dumps=dumps)
 
 
-@exception_handler
-async def get_stats_analysisd(pretty=False, wait_for_complete=False):
+async def get_stats_analysisd(request, pretty=False, wait_for_complete=False):
     """Get manager's or local_node's analysisd stats.
 
     :param pretty: Show results in human-readable format
@@ -201,7 +192,7 @@ async def get_stats_analysisd(pretty=False, wait_for_complete=False):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
@@ -209,8 +200,7 @@ async def get_stats_analysisd(pretty=False, wait_for_complete=False):
     return web.json_response(data=response, status=200, dumps=dumps)
 
 
-@exception_handler
-async def get_stats_remoted(pretty=False, wait_for_complete=False):
+async def get_stats_remoted(request, pretty=False, wait_for_complete=False):
     """Get manager's or local_node's remoted stats.
 
     :param pretty: Show results in human-readable format
@@ -225,7 +215,7 @@ async def get_stats_remoted(pretty=False, wait_for_complete=False):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
@@ -233,8 +223,7 @@ async def get_stats_remoted(pretty=False, wait_for_complete=False):
     return web.json_response(data=response, status=200, dumps=dumps)
 
 
-@exception_handler
-async def get_log(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
+async def get_log(request, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
                   search=None, category=None, type_log=None):
     """Get manager's or local_node's last 2000 wazuh log entries.
 
@@ -264,15 +253,14 @@ async def get_log(pretty=False, wait_for_complete=False, offset=0, limit=None, s
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-async def get_log_summary(pretty=False, wait_for_complete=False):
+async def get_log_summary(request, pretty=False, wait_for_complete=False):
     """Get manager's or local_node's summary of the last 2000 wazuh log entries.
 
     :param pretty: Show results in human-readable format
@@ -287,15 +275,14 @@ async def get_log_summary(pretty=False, wait_for_complete=False):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-async def get_files(pretty=False, wait_for_complete=False, path=None):
+async def get_files(request, pretty=False, wait_for_complete=False, path=None):
     """Get file contents in manager or local_node.
 
     :param pretty: Show results in human-readable format
@@ -311,15 +298,14 @@ async def get_files(pretty=False, wait_for_complete=False, path=None):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-async def put_files(body, overwrite=False, pretty=False, wait_for_complete=False, path=None):
+async def put_files(request, body, overwrite=False, pretty=False, wait_for_complete=False, path=None):
     """Upload file in manager or local_node.
 
     :param body: Body request with the content of the file to be uploaded
@@ -348,15 +334,14 @@ async def put_files(body, overwrite=False, pretty=False, wait_for_complete=False
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-async def delete_files(pretty=False, wait_for_complete=False, path=None):
+async def delete_files(request, pretty=False, wait_for_complete=False, path=None):
     """Delete file in manager or local_node.
 
     :param pretty: Show results in human-readable format
@@ -372,15 +357,14 @@ async def delete_files(pretty=False, wait_for_complete=False, path=None):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-async def put_restart(pretty=False, wait_for_complete=False):
+async def put_restart(request, pretty=False, wait_for_complete=False):
     """Restart manager or local_node.
 
     :param pretty: Show results in human-readable format
@@ -395,15 +379,14 @@ async def put_restart(pretty=False, wait_for_complete=False):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-async def get_conf_validation(pretty=False, wait_for_complete=False):
+async def get_conf_validation(request, pretty=False, wait_for_complete=False):
     """Check if Wazuh configuration is correct in manager or local_node.
 
     :param pretty: Show results in human-readable format
@@ -418,15 +401,14 @@ async def get_conf_validation(pretty=False, wait_for_complete=False):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-async def get_manager_config_ondemand(component, pretty=False, wait_for_complete=False, **kwargs):
+async def get_manager_config_ondemand(request, component, pretty=False, wait_for_complete=False, **kwargs):
     """Get active configuration in manager or local_node for one component [on demand]
 
     :param pretty: Show results in human-readable format
@@ -444,7 +426,7 @@ async def get_manager_config_ondemand(component, pretty=False, wait_for_complete
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
