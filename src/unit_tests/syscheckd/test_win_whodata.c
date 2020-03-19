@@ -4769,15 +4769,89 @@ void test_run_whodata_scan_error_event_channel(void **state) {
 
     expect_value(wrap_win_whodata_EvtSubscribe, Session, NULL);
     expect_value(wrap_win_whodata_EvtSubscribe, SignalEvent, NULL);
-    expect_value(wrap_win_whodata_EvtSubscribe, ChannelPath, L"Security");
-    expect_value(wrap_win_whodata_EvtSubscribe, Query, query);
+    expect_string(wrap_win_whodata_EvtSubscribe, ChannelPath, L"Security");
+    expect_string(wrap_win_whodata_EvtSubscribe, Query, query);
+    expect_value(wrap_win_whodata_EvtSubscribe, Bookmark, NULL);
+    expect_value(wrap_win_whodata_EvtSubscribe, Context, NULL);
     expect_value(wrap_win_whodata_EvtSubscribe, Callback, (EVT_SUBSCRIBE_CALLBACK)whodata_callback);
-    expect_value(wrap_win_whodata_EvtCreateRenderContext, Flags, EvtSubscribeToFutureEvents);
+    expect_value(wrap_win_whodata_EvtSubscribe, Flags, EvtSubscribeToFutureEvents);
+
+    will_return(wrap_win_whodata_EvtSubscribe, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "(6621): Event Channel subscription could not be made. Whodata scan is disabled.");
 
     ret = run_whodata_scan();
     assert_int_equal(ret, 1);
+}
+
+void test_run_whodata_scan_success(void **state) {
+    int ret;
+
+/* Inside whodata_check_arch */
+{
+    HKEY key;
+    const BYTE data[64] = "ARM64";
+
+    expect_value(wrap_win_whodata_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
+    expect_string(wrap_win_whodata_RegOpenKeyEx, lpSubKey,
+        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+    expect_value(wrap_win_whodata_RegOpenKeyEx, ulOptions, 0);
+    expect_value(wrap_win_whodata_RegOpenKeyEx, samDesired, KEY_READ);
+    will_return(wrap_win_whodata_RegOpenKeyEx, &key);
+    will_return(wrap_win_whodata_RegOpenKeyEx, ERROR_SUCCESS);
+
+    expect_string(wrap_win_whodata_RegQueryValueEx, lpValueName, "PROCESSOR_ARCHITECTURE");
+    expect_value(wrap_win_whodata_RegQueryValueEx, lpReserved, NULL);
+    expect_value(wrap_win_whodata_RegQueryValueEx, lpType, NULL);
+    will_return(wrap_win_whodata_RegQueryValueEx, data);
+    will_return(wrap_win_whodata_RegQueryValueEx, ERROR_SUCCESS);
+
+}
+
+/* Inside set_policies */
+{
+    expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
+    will_return(__wrap_IsFile, 0);
+    expect_string(__wrap_remove, filename, "tmp\\backup-policies");
+    will_return(__wrap_remove, 0);
+
+    expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
+    will_return(__wrap_wm_exec, 1);
+    will_return(__wrap_wm_exec, 0);
+}
+
+    expect_string(__wrap__mwarn, formatted_msg,
+        "(6915): Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode.");
+
+    DWORD fields_number = 9;
+    EVT_HANDLE event;
+
+    expect_value(wrap_win_whodata_EvtCreateRenderContext, ValuePathsCount, fields_number);
+    expect_value(wrap_win_whodata_EvtCreateRenderContext, ValuePaths, event_fields);
+    expect_value(wrap_win_whodata_EvtCreateRenderContext, Flags, EvtRenderContextValues);
+    will_return(wrap_win_whodata_EvtCreateRenderContext, event);
+
+    wchar_t *query = L"Event[ System[band(Keywords, 9007199254740992)] and "
+                            "( ( ( EventData/Data[@Name='ObjectType'] = 'File' ) and "
+                            "( (  System/EventID = 4656 or System/EventID = 4663 ) and "
+                            "( EventData[band(Data[@Name='AccessMask'], 327938‬)] ) ) ) or "
+                            "System/EventID = 4658 or System/EventID = 4660 ) ]";
+
+    expect_value(wrap_win_whodata_EvtSubscribe, Session, NULL);
+    expect_value(wrap_win_whodata_EvtSubscribe, SignalEvent, NULL);
+    expect_string(wrap_win_whodata_EvtSubscribe, ChannelPath, L"Security");
+    expect_string(wrap_win_whodata_EvtSubscribe, Query, query);
+    expect_value(wrap_win_whodata_EvtSubscribe, Bookmark, NULL);
+    expect_value(wrap_win_whodata_EvtSubscribe, Context, NULL);
+    expect_value(wrap_win_whodata_EvtSubscribe, Callback, (EVT_SUBSCRIBE_CALLBACK)whodata_callback);
+    expect_value(wrap_win_whodata_EvtSubscribe, Flags, EvtSubscribeToFutureEvents);
+
+    will_return(wrap_win_whodata_EvtSubscribe, 1);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6019): File integrity monitoring real-time Whodata engine started.");
+
+    ret = run_whodata_scan();
+    assert_int_equal(ret, 0);
 }
 
 void test_get_file_time_error(void **state) {
@@ -5972,6 +6046,7 @@ int main(void) {
         cmocka_unit_test(test_run_whodata_scan_no_audit_policies),
         cmocka_unit_test(test_run_whodata_scan_no_auto_audit_policies),
         cmocka_unit_test(test_run_whodata_scan_error_event_channel),
+        cmocka_unit_test(test_run_whodata_scan_success),
         /* get_file_time */
         // TODO: Should we add tests for NULL input parameters?
         cmocka_unit_test(test_get_file_time_error),
