@@ -47,6 +47,7 @@ extern void whodata_list_set_values();
 extern void whodata_list_remove_multiple(size_t quantity);
 extern whodata_event_node *whodata_list_add(char *id);
 unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attribute__((unused)) void *_void, EVT_HANDLE event);
+extern int whodata_audit_start();
 
 extern char sys_64;
 extern PSID everyone_sid;
@@ -265,6 +266,13 @@ static int teardown_state_checker(void **state) {
     return ret;
 }
 
+static int teardown_whodata_audit_start(void **state) {
+    syscheck.wdata.directories = NULL;
+    syscheck.wdata.fd = NULL;
+
+    return 0;
+}
+
 void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
     char formatted_msg[OS_MAXSTR];
     va_list args;
@@ -424,6 +432,16 @@ void *__wrap_OSHash_Delete_ex(OSHash *self, const char *key) {
 int __wrap_check_path_type(const char *dir) {
     check_expected(dir);
 
+    return mock();
+}
+
+OSHash *__wrap_OSHash_Create() {
+    function_called();
+    return mock_type(OSHash*);
+}
+
+int __wrap_OSHash_SetFreeDataPointer(__attribute__((unused)) OSHash *self, __attribute__((unused)) void (free_data_function)(void *)) {
+    function_called();
     return mock();
 }
 
@@ -5661,6 +5679,99 @@ void test_state_checker_dir_readded_succesful(void **state) {
     assert_non_null(syscheck.opts[0] & WHODATA_ACTIVE);
 }
 
+void test_whodata_audit_start_fail_to_create_directories_hash_table(void **state) {
+    int ret;
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, NULL);
+
+    ret = whodata_audit_start();
+
+    assert_int_equal(ret, 1);
+    assert_null(syscheck.wdata.directories);
+}
+
+void test_whodata_audit_start_fail_to_create_fd_hash_table(void **state) {
+    int ret;
+
+    expect_function_calls(__wrap_OSHash_Create, 2);
+    will_return(__wrap_OSHash_Create, 1234);
+    will_return(__wrap_OSHash_Create, NULL);
+
+    ret = whodata_audit_start();
+
+    assert_int_equal(ret, 1);
+    assert_ptr_equal(syscheck.wdata.directories, 1234);
+    assert_null(syscheck.wdata.fd);
+}
+
+void test_whodata_audit_start_success(void **state) {
+    wchar_t *str = L"C:";
+    wchar_t *volume_name = L"\\\\?\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}\\";
+    int ret;
+
+    expect_function_calls(__wrap_OSHash_Create, 2);
+    will_return(__wrap_OSHash_Create, 1234);
+    will_return(__wrap_OSHash_Create, 2345);
+
+    expect_function_call(__wrap_OSHash_SetFreeDataPointer);
+    will_return(__wrap_OSHash_SetFreeDataPointer, 0);
+
+    // Inside whodata_list_set_values
+    {
+        expect_string(__wrap__mdebug1, formatted_msg,
+            "(6237): Whodata event queue values for Windows -> max_size:'1024' | max_remove:'102' | alert_threshold:'819'");
+    }
+
+    expect_string(__wrap__minfo, formatted_msg, FIM_WHODATA_VOLUMES);
+
+    // Inside get_volume_names
+    {
+        will_return(wrap_win_whodata_FindFirstVolumeW, volume_name);
+        will_return(wrap_win_whodata_FindFirstVolumeW, (HANDLE)123456);
+
+        expect_string(wrap_win_whodata_QueryDosDeviceW, lpDeviceName, L"Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}");
+        will_return(wrap_win_whodata_QueryDosDeviceW, wcslen(str));
+        will_return(wrap_win_whodata_QueryDosDeviceW, str);
+        will_return(wrap_win_whodata_QueryDosDeviceW, wcslen(str));
+
+        // Inside get_drive_names
+        {
+            wchar_t *volume_paths = L"A\0C\0\\Some\\path\0";
+
+            expect_memory(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, lpszVolumeName, volume_name, wcslen(volume_name));
+
+            will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, 16);
+            will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, volume_paths);
+            will_return(wrap_win_whodata_GetVolumePathNamesForVolumeNameW, 1);
+
+            expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C' associated with the mounting point 'A'");
+            expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C' associated with the mounting point 'C'");
+            expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C' associated with the mounting point '\\Some\\path'");
+        }
+
+        expect_value(wrap_win_whodata_FindNextVolumeW, hFindVolume, (HANDLE)123456);
+        will_return(wrap_win_whodata_FindNextVolumeW, L"");
+        will_return(wrap_win_whodata_FindNextVolumeW, 0);
+
+        will_return(wrap_win_whodata_GetLastError, ERROR_NO_MORE_FILES);
+
+        expect_value(wrap_win_whodata_FindVolumeClose, hFindVolume, (HANDLE)123456);
+        will_return(wrap_win_whodata_FindVolumeClose, 1);
+    }
+
+    ret = whodata_audit_start();
+
+    assert_int_equal(ret, 0);
+    assert_ptr_equal(syscheck.wdata.directories, 1234);
+    assert_ptr_equal(syscheck.wdata.fd, 2345);
+
+    // Values modified by whodata_list_set_values
+    assert_int_equal(syscheck.w_clist.max_size, 1024);
+    assert_int_equal(syscheck.w_clist.max_remove, 102);
+    assert_int_equal(syscheck.w_clist.alert_threshold, 819);
+}
+
 /**************************************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -5835,6 +5946,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_state_checker_file_with_valid_sacl, setup_state_checker, teardown_state_checker),
         cmocka_unit_test_setup_teardown(test_state_checker_dir_readded_error, setup_state_checker, teardown_state_checker),
         cmocka_unit_test_setup_teardown(test_state_checker_dir_readded_succesful, setup_state_checker, teardown_state_checker),
+        /* whodata_audit_start */
+        cmocka_unit_test_teardown(test_whodata_audit_start_fail_to_create_directories_hash_table, teardown_whodata_audit_start),
+        cmocka_unit_test_teardown(test_whodata_audit_start_fail_to_create_fd_hash_table, teardown_whodata_audit_start),
+        cmocka_unit_test_teardown(test_whodata_audit_start_success, teardown_whodata_audit_start),
     };
 
     return cmocka_run_group_tests(tests, test_group_setup, test_group_teardown);
