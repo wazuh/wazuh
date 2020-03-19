@@ -15,7 +15,7 @@ All notable changes to this project will be documented in this file.
 - Add multi-target support for unit testing. ([#4564](https://github.com/wazuh/wazuh/pull/4564))
 - Add FIM module unit testing for Windows source code. ([#4633](https://github.com/wazuh/wazuh/pull/4633))
 
-## Changed
+### Changed
 
 - Move the FIM logic engine to the agent. ([#3319](https://github.com/wazuh/wazuh/issues/3319))
 - Make Logcollector continuously attempt to reconnect with the agent daemon. ([#4435](https://github.com/wazuh/wazuh/pull/4435))
@@ -35,7 +35,7 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.11.4] - 2020-02-25
 
-## Changed
+### Changed
 
 - Remove chroot in Agentd to allow it resolve DNS at any time. ([#4652](https://github.com/wazuh/wazuh/issues/4652))
 
