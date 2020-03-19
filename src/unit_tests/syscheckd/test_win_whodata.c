@@ -3998,6 +3998,138 @@ void test_whodata_callback_path(void **state){
     int ret = whodata_callback(action, NULL, event);
     assert_int_equal(ret, 1);
 }
+
+void test_whodata_callback_event_4656_not_active(void **state){
+    EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
+    EVT_HANDLE event;
+    const int NUM_EVENTS = 10;
+    const int SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
+
+    /* EvtRender first call */
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferSize
+    will_return(wrap_win_whodata_EvtRender, NULL); // Buffer
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferUsed
+    will_return(wrap_win_whodata_EvtRender, 0); // PropertyCount
+    will_return(wrap_win_whodata_EvtRender, 0);
+    
+    /* EvtRender second call */
+    PEVT_VARIANT buffer = malloc(sizeof(EVT_VARIANT) * 10);
+    buffer[0].Type = EvtVarTypeUInt16; // Correct buffer type
+    buffer[1].Type = EvtVarTypeString;
+    buffer[2].Type = EvtVarTypeString;
+    buffer[3].Type = EvtVarTypeString;
+    buffer[4].Type = EvtVarTypeHexInt64;
+    buffer[5].Type = EvtVarTypeHexInt64;
+    buffer[6].Type = EvtVarTypeHexInt32;
+    buffer[7].Type = EvtVarTypeNull;
+    const char* win_path = "C:\\a\\path";
+    const char* user_name = "USERNAME";
+    const char* process_name = "PROCESS_NAME";
+    buffer[0].Int16Val = 4656;
+    buffer[1].XmlVal = (const short unsigned int *) user_name;
+    buffer[2].XmlVal = (const short unsigned int *) win_path;
+    buffer[3].XmlVal = (const short unsigned int *) process_name;
+    buffer[4].UInt64Val = 4;
+    buffer[5].UInt64Val = 1234567890123456789;
+    buffer[6].UInt32Val = 6;
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferSize
+    will_return(wrap_win_whodata_EvtRender, buffer); // Buffer
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS);// BufferUsed
+    will_return(wrap_win_whodata_EvtRender, 9); // PropertyCount
+    will_return(wrap_win_whodata_EvtRender, 1);
+
+    //Whodata path
+    {
+        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
+        expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+        will_return(wrap_win_whodata_WideCharToMultiByte, 21);
+
+        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
+        expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+        will_return(wrap_win_whodata_WideCharToMultiByte, "C:\\another\\path.file");
+        will_return(wrap_win_whodata_WideCharToMultiByte, 21);
+    }
+
+    expect_string(__wrap__mwarn, formatted_msg, "(6681): Invalid parameter type (0) for 'user_id'.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'c:\\another\\path.file'");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6239): 'c:\\another\\path.file' is discarded because its monitoring is not activated.");
+    
+    int ret = whodata_callback(action, NULL, event);
+    assert_int_equal(ret, 1);
+}
+
+void test_whodata_callback_event_4656_canceled(void **state){
+    EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
+    EVT_HANDLE event;
+    const int NUM_EVENTS = 10;
+    const int SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
+
+    /* EvtRender first call */
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferSize
+    will_return(wrap_win_whodata_EvtRender, NULL); // Buffer
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferUsed
+    will_return(wrap_win_whodata_EvtRender, 0); // PropertyCount
+    will_return(wrap_win_whodata_EvtRender, 0);
+    
+    /* EvtRender second call */
+    PEVT_VARIANT buffer = malloc(sizeof(EVT_VARIANT) * 10);
+    buffer[0].Type = EvtVarTypeUInt16; // Correct buffer type
+    buffer[1].Type = EvtVarTypeString;
+    buffer[2].Type = EvtVarTypeString;
+    buffer[3].Type = EvtVarTypeString;
+    buffer[4].Type = EvtVarTypeHexInt64;
+    buffer[5].Type = EvtVarTypeHexInt64;
+    buffer[6].Type = EvtVarTypeHexInt32;
+    buffer[7].Type = EvtVarTypeNull;
+    const char* win_path = syscheck.dir[0];
+    const char* user_name = "USERNAME";
+    const char* process_name = "PROCESS_NAME";
+    buffer[0].Int16Val = 4656;
+    buffer[1].XmlVal = (const short unsigned int *) user_name;
+    buffer[2].XmlVal = (const short unsigned int *) win_path;
+    buffer[3].XmlVal = (const short unsigned int *) process_name;
+    buffer[4].UInt64Val = 4;
+    buffer[5].UInt64Val = 1234567890123456789;
+    buffer[6].UInt32Val = 6;
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferSize
+    will_return(wrap_win_whodata_EvtRender, buffer); // Buffer
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS);// BufferUsed
+    will_return(wrap_win_whodata_EvtRender, 9); // PropertyCount
+    will_return(wrap_win_whodata_EvtRender, 1);
+
+    //Whodata path
+    {
+        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, syscheck.dir[0]);
+        expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+        will_return(wrap_win_whodata_WideCharToMultiByte, 21);
+
+        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, syscheck.dir[0]);
+        expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+        will_return(wrap_win_whodata_WideCharToMultiByte, syscheck.dir[0]);
+        will_return(wrap_win_whodata_WideCharToMultiByte, 21);
+    }
+
+    expect_string(__wrap__mwarn, formatted_msg, "(6681): Invalid parameter type (0) for 'user_id'.");
+    
+    char debug_msg[OS_MAXSTR];
+    snprintf(debug_msg, OS_MAXSTR, "(6240): The monitoring of '%s' in whodata mode has been canceled. Added to the ignore list.", syscheck.dir[0]);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+
+    int ret = whodata_callback(action, NULL, event);
+    assert_int_equal(ret, 1);
+}
 /********************************************************************************************/
 void test_check_object_sacl_open_process_error(void **state) {
     int ret;
@@ -5938,6 +6070,8 @@ int main(void) {
         cmocka_unit_test(test_whodata_callback_invalid_parameter_event_id),
         cmocka_unit_test(test_whodata_callback_invalid_parameter_path),
         cmocka_unit_test(test_whodata_callback_path),
+        cmocka_unit_test(test_whodata_callback_event_4656_not_active),
+        cmocka_unit_test(test_whodata_callback_event_4656_canceled),
         /* check_object_sacl */
         cmocka_unit_test(test_check_object_sacl_open_process_error),
         cmocka_unit_test(test_check_object_sacl_unable_to_set_privilege),
