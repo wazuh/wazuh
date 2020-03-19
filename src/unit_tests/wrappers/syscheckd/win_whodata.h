@@ -192,6 +192,24 @@ BOOL WINAPI wrap_win_whodata_EvtRender(
   PDWORD     PropertyCount
 );
 
+EVT_HANDLE wrap_win_whodata_EvtCreateRenderContext(
+  DWORD   ValuePathsCount,
+  LPCWSTR *ValuePaths,
+  DWORD   Flags
+);
+
+EVT_HANDLE wrap_win_whodata_EvtSubscribe(
+  EVT_HANDLE             Session,
+  HANDLE                 SignalEvent,
+  LPCWSTR                ChannelPath,
+  LPCWSTR                Query,
+  EVT_HANDLE             Bookmark,
+  PVOID                  Context,
+  EVT_SUBSCRIBE_CALLBACK Callback,
+  DWORD                  Flags
+);
+
+
 int wrap_win_whodata_fprintf (FILE *__stream, const char *__format, ...);
 char * wrap_win_whodata_fgets (char * __s, int __n, FILE * __stream);
 VOID wrap_win_whodata_Sleep (DWORD dwMilliseconds);

@@ -81,6 +81,8 @@ int FOREVER();
 #define EvtRender wrap_win_whodata_EvtRender
 #define Sleep wrap_win_whodata_Sleep
 #define GetSystemTime wrap_win_whodata_GetSystemTime
+#define EvtCreateRenderContext wrap_win_whodata_EvtCreateRenderContext
+#define EvtSubscribe wrap_win_whodata_EvtSubscribe
 #else
 #define STATIC static
 #define FOREVER() 1
@@ -92,7 +94,7 @@ STATIC PSID everyone_sid = NULL;
 STATIC size_t ev_sid_size = 0;
 static unsigned short inherit_flag = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE; //SUB_CONTAINERS_AND_OBJECTS_INHERIT
 STATIC EVT_HANDLE context;
-static const wchar_t* event_fields[] = {
+STATIC const wchar_t* event_fields[] = {
     L"Event/System/EventID",
     L"Event/EventData/Data[@Name='SubjectUserName']",
     L"Event/EventData/Data[@Name='ObjectName']",

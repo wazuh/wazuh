@@ -354,6 +354,39 @@ BOOL WINAPI wrap_win_whodata_EvtRender(
   return mock();
 }
 
+EVT_HANDLE wrap_win_whodata_EvtCreateRenderContext(
+  DWORD   ValuePathsCount,
+  LPCWSTR *ValuePaths,
+  DWORD   Flags
+) {
+  check_expected(ValuePathsCount),
+  check_expected_ptr(ValuePaths);
+  check_expected(Flags);
+
+  return mock_type(EVT_HANDLE);
+}
+
+EVT_HANDLE wrap_win_whodata_EvtSubscribe(
+  EVT_HANDLE             Session,
+  HANDLE                 SignalEvent,
+  LPCWSTR                ChannelPath,
+  LPCWSTR                Query,
+  EVT_HANDLE             Bookmark,
+  PVOID                  Context,
+  EVT_SUBSCRIBE_CALLBACK Callback,
+  DWORD                  Flags
+) {
+  check_expected_ptr(Session);
+  check_expected(SignalEvent);
+  check_expected(ChannelPath);
+  check_expected(Query);
+  check_expected(Bookmark);
+  check_expected(Context);
+  check_expected_ptr(Callback);
+  check_expected(Flags);
+  return mock_type(EVT_HANDLE);
+}
+
 int wrap_win_whodata_fprintf (FILE *__stream, const char *__format, ...) {
   char formatted_msg[OS_MAXSTR];
   va_list args;
