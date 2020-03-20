@@ -189,6 +189,9 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
                 gcp->logging = 4;
             } else if (!strcmp(nodes[i]->content, "critical")) {
                 gcp->logging = 5;
+            } else if (strlen(nodes[i]->content) == 0) {
+                merror("Empty content for tag '%s'", XML_LOGGING);
+                return OS_INVALID;
             } else {
                 merror("Invalid content for tag '%s'", XML_LOGGING);
                 return OS_INVALID;
