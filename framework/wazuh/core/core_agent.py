@@ -32,7 +32,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
     def __init__(self, offset=0, limit=common.database_limit, sort=None, search=None, select=None, count=True,
                  get_data=True, query='', filters=None, default_sort_field='id', min_select_fields=None,
-                 remove_extra_fields=True):
+                 remove_extra_fields=True, distinct=False):
         if filters is None:
             filters = {}
         if min_select_fields is None:
@@ -42,7 +42,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
                               filters=filters, fields=Agent.fields, default_sort_field=default_sort_field,
                               default_sort_order='ASC', query=query, backend=backend,
                               min_select_fields=min_select_fields, count=count, get_data=get_data,
-                              date_fields={'lastKeepAlive', 'dateAdd'}, extra_fields={'internal_key'})
+                              date_fields={'lastKeepAlive', 'dateAdd'}, extra_fields={'internal_key'}, distinct=distinct)
         self.remove_extra_fields = remove_extra_fields
 
     def _filter_status(self, status_filter):
@@ -164,7 +164,7 @@ class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
         return 'COUNT(DISTINCT a.id)'
 
     def _get_total_items(self):
-        WazuhDBQueryAgents._get_total_items(self)
+        self.total_items = self.backend.execute(self.query.format(self._default_count_query()), self.request, True)
         self.query += ' GROUP BY a.id '
 
 
@@ -705,8 +705,10 @@ class Agent:
         :param q: Defines query to filter in DB.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
+        # import pydevd_pycharm
+        # pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                      filters=filters, query=q)
+                                      filters=filters, query=q, distinct=True)
         data = db_query.run()
 
         return data

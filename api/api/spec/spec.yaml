@@ -3657,6 +3657,13 @@ components:
       schema:
         type: string
         format: hash
+    distinct:
+      in: query
+      name: distinct
+      description: Filters list of unique values.
+      schema:
+        type: boolean
+        default: false
     ram.free:
       in: query
       name: ram.free
@@ -8720,6 +8727,7 @@ paths:
         - $ref: '#/components/parameters/sha1'
         - $ref: '#/components/parameters/sha256'
         - $ref: '#/components/parameters/hashfilter'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: Latest syscheck scan result

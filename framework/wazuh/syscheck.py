@@ -137,7 +137,7 @@ def last_scan(agent_list):
 
 @expose_resources(actions=["syscheck:read"], resources=["agent:id:{agent_list}"])
 def files(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters=None,
-          q='', summary=False):
+          q='', summary=False, distinct=False):
     """Return a list of files from the database that match the filters
 
     :param agent_list: Agent ID.
@@ -149,8 +149,10 @@ def files(agent_list=None, offset=0, limit=common.database_limit, sort=None, sea
     :param search: Looks for items with the specified string.
     :param select: Select fields to return. Format: ["field1","field2"].
     :param q: Query to filter by
+    :param distinct: Look for distinct values
     :return: AffectedItemsWazuhResult.
     """
+
     if filters is None:
         filters = {}
     parameters = {"date": "date", "mtime": "mtime", "file": "file", "size": "size", "perm": "perm", "uname": "uname",
@@ -165,8 +167,9 @@ def files(agent_list=None, offset=0, limit=common.database_limit, sort=None, sea
         del filters['hash']
 
     db_query = WazuhDBQuerySyscheck(agent_id=agent_list[0], offset=offset, limit=limit, sort=sort, search=search,
-                                    filters=filters, query=q, select=select, table='fim_entry',
+                                    filters=filters, query=q, select=select, table='fim_entry', distinct=distinct,
                                     fields=summary_parameters if summary else parameters).run()
+
     result.affected_items = db_query['items']
     result.total_affected_items = db_query['totalItems']
 
