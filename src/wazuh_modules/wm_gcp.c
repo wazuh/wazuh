@@ -74,7 +74,7 @@ time_t wm_gcp_get_next_run_time(const wm_gcp *data){
     if (data->scan_day) {
         // Option 1: Day of the month
         int status = -1;
-        
+
         while (status < 0) {
             status = check_day_to_scan(data->scan_day, data->scan_time);
             if (status == 0) {
@@ -83,7 +83,7 @@ time_t wm_gcp_get_next_run_time(const wm_gcp *data){
             } else {
                 // Sleep until next day and re-evaluate
                 wm_delay(1000); // Sleep one second to avoid an infinite loop
-                const time_t sleep_until_tomorrow = get_time_to_hour("00:00"); 
+                const time_t sleep_until_tomorrow = get_time_to_hour("00:00");
 
                 mtdebug2(WM_GCP_LOGTAG, "Sleeping for %d seconds.", (int)sleep_until_tomorrow);
                 wm_delay(1000 * sleep_until_tomorrow);
@@ -98,7 +98,7 @@ time_t wm_gcp_get_next_run_time(const wm_gcp *data){
         return (time_t) get_time_to_hour(data->scan_time);
     } else if (data->interval) {
         // Option 4: Interval of time
-        
+
         if(!time_start){
             // First time
             return 0;
@@ -114,7 +114,7 @@ time_t wm_gcp_get_next_run_time(const wm_gcp *data){
     } else {
         mtinfo(WM_GCP_LOGTAG, "Invalid Scheduling option. Exiting.");
         pthread_exit(NULL);
-        
+
     }
     return 0;
 }
@@ -186,7 +186,7 @@ void wm_gcp_run(const wm_gcp *data) {
         } else if(status == 2) {
             char * ptr;
             if (ptr = strstr(output, "integration.py: error:"), ptr) {
-                ptr += 14;
+                ptr += 16;
                 mtwarn(WM_GCP_LOGTAG, "Error parsing arguments: %s", ptr);
             } else {
                 mtwarn(WM_GCP_LOGTAG, "Error parsing arguments.");
