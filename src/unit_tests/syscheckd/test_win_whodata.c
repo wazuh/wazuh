@@ -3807,24 +3807,25 @@ void test_whodata_callback_EvtRenderFailed(void **state) {
     EVT_HANDLE event = NULL;
     const int NUM_EVENTS = 10;
     const int SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
+    EVT_VARIANT buffer[NUM_EVENTS];
 
     /* EvtRender first call */
     expect_value(wrap_win_whodata_EvtRender, Context, context);
     expect_value(wrap_win_whodata_EvtRender, Fragment, event);
     expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
-    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferSize
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, 0); // BufferSize
     will_return(wrap_win_whodata_EvtRender, NULL); // Buffer
     will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferUsed
     will_return(wrap_win_whodata_EvtRender, 0); // PropertyCount
     will_return(wrap_win_whodata_EvtRender, 0);
 
     /* EvtRender second call */
-    PEVT_VARIANT buffer = malloc(sizeof(EVT_VARIANT) * 10);
+    memset(buffer, 0, SIZE_EVENTS);
     buffer[0].Type = EvtVarTypeNull; // Wrong buffer type
     expect_value(wrap_win_whodata_EvtRender, Context, context);
     expect_value(wrap_win_whodata_EvtRender, Fragment, event);
     expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
-    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferSize
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, SIZE_EVENTS); // BufferSize
     will_return(wrap_win_whodata_EvtRender, buffer); // Buffer
     will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS);// BufferUsed
     will_return(wrap_win_whodata_EvtRender, 0); // PropertyCount
@@ -3842,24 +3843,25 @@ void test_whodata_callback_invalid_rendered_params(void **state) {
     EVT_HANDLE event = NULL;
     const int NUM_EVENTS = 10;
     const int SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
+    EVT_VARIANT buffer[NUM_EVENTS];
 
     /* EvtRender first call */
     expect_value(wrap_win_whodata_EvtRender, Context, context);
     expect_value(wrap_win_whodata_EvtRender, Fragment, event);
     expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
-    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferSize
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, 0); // BufferSize
     will_return(wrap_win_whodata_EvtRender, NULL); // Buffer
     will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferUsed
     will_return(wrap_win_whodata_EvtRender, 0); // PropertyCount
     will_return(wrap_win_whodata_EvtRender, 0);
 
     /* EvtRender second call */
-    PEVT_VARIANT buffer = malloc(sizeof(EVT_VARIANT) * 10);
+    memset(buffer, 0, SIZE_EVENTS);
     buffer[0].Type = EvtVarTypeNull; // Wrong buffer type
     expect_value(wrap_win_whodata_EvtRender, Context, context);
     expect_value(wrap_win_whodata_EvtRender, Fragment, event);
     expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
-    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferSize
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, SIZE_EVENTS); // BufferSize
     will_return(wrap_win_whodata_EvtRender, buffer); // Buffer
     will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS);// BufferUsed
     will_return(wrap_win_whodata_EvtRender, 0); // PropertyCount
@@ -3876,24 +3878,25 @@ void test_whodata_callback_invalid_parameter_event_id(void **state) {
     EVT_HANDLE event = NULL;
     const int NUM_EVENTS = 10;
     const int SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
+    EVT_VARIANT buffer[NUM_EVENTS];
 
     /* EvtRender first call */
     expect_value(wrap_win_whodata_EvtRender, Context, context);
     expect_value(wrap_win_whodata_EvtRender, Fragment, event);
     expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
-    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferSize
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, 0); // BufferSize
     will_return(wrap_win_whodata_EvtRender, NULL); // Buffer
     will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferUsed
     will_return(wrap_win_whodata_EvtRender, 0); // PropertyCount
     will_return(wrap_win_whodata_EvtRender, 0);
 
     /* EvtRender second call */
-    PEVT_VARIANT buffer = malloc(sizeof(EVT_VARIANT) * 10);
+    memset(buffer, 0, SIZE_EVENTS);
     buffer[0].Type = EvtVarTypeNull; // Wrong buffer type
     expect_value(wrap_win_whodata_EvtRender, Context, context);
     expect_value(wrap_win_whodata_EvtRender, Fragment, event);
     expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
-    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferSize
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, SIZE_EVENTS); // BufferSize
     will_return(wrap_win_whodata_EvtRender, buffer); // Buffer
     will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS);// BufferUsed
     will_return(wrap_win_whodata_EvtRender, 9); // PropertyCount
@@ -3910,26 +3913,27 @@ void test_whodata_callback_invalid_parameter_path(void **state) {
     EVT_HANDLE event = NULL;
     const int NUM_EVENTS = 10;
     const int SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
+    EVT_VARIANT buffer[NUM_EVENTS];
 
     /* EvtRender first call */
     expect_value(wrap_win_whodata_EvtRender, Context, context);
     expect_value(wrap_win_whodata_EvtRender, Fragment, event);
     expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
-    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferSize
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, 0); // BufferSize
     will_return(wrap_win_whodata_EvtRender, NULL); // Buffer
     will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferUsed
     will_return(wrap_win_whodata_EvtRender, 0); // PropertyCount
     will_return(wrap_win_whodata_EvtRender, 0);
 
     /* EvtRender second call */
-    PEVT_VARIANT buffer = malloc(sizeof(EVT_VARIANT) * 10);
+    memset(buffer, 0, SIZE_EVENTS);
     buffer[0].Type = EvtVarTypeUInt16; // Correct buffer type
     buffer[0].Int16Val = 0; //Wrong event_id
     buffer[2].Type = EvtVarTypeNull;
     expect_value(wrap_win_whodata_EvtRender, Context, context);
     expect_value(wrap_win_whodata_EvtRender, Fragment, event);
     expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
-    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferSize
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, SIZE_EVENTS); // BufferSize
     will_return(wrap_win_whodata_EvtRender, buffer); // Buffer
     will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS);// BufferUsed
     will_return(wrap_win_whodata_EvtRender, 9); // PropertyCount
@@ -3946,19 +3950,20 @@ void test_whodata_callback_path(void **state){
     EVT_HANDLE event;
     const int NUM_EVENTS = 10;
     const int SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
+    EVT_VARIANT buffer[NUM_EVENTS];
 
     /* EvtRender first call */
     expect_value(wrap_win_whodata_EvtRender, Context, context);
     expect_value(wrap_win_whodata_EvtRender, Fragment, event);
     expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
-    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferSize
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, 0); // BufferSize
     will_return(wrap_win_whodata_EvtRender, NULL); // Buffer
     will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferUsed
     will_return(wrap_win_whodata_EvtRender, 0); // PropertyCount
     will_return(wrap_win_whodata_EvtRender, 0);
-    
+
     /* EvtRender second call */
-    PEVT_VARIANT buffer = malloc(sizeof(EVT_VARIANT) * 10);
+    memset(buffer, 0, SIZE_EVENTS);
     buffer[0].Type = EvtVarTypeUInt16; // Correct buffer type
     buffer[2].Type = EvtVarTypeString;
     buffer[1].Type = EvtVarTypeNull;
@@ -3972,7 +3977,7 @@ void test_whodata_callback_path(void **state){
     expect_value(wrap_win_whodata_EvtRender, Context, context);
     expect_value(wrap_win_whodata_EvtRender, Fragment, event);
     expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
-    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferSize
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, SIZE_EVENTS); // BufferSize
     will_return(wrap_win_whodata_EvtRender, buffer); // Buffer
     will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS);// BufferUsed
     will_return(wrap_win_whodata_EvtRender, 9); // PropertyCount
@@ -4004,19 +4009,20 @@ void test_whodata_callback_event_4656_not_active(void **state){
     EVT_HANDLE event;
     const int NUM_EVENTS = 10;
     const int SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
+    EVT_VARIANT buffer[NUM_EVENTS];
 
     /* EvtRender first call */
     expect_value(wrap_win_whodata_EvtRender, Context, context);
     expect_value(wrap_win_whodata_EvtRender, Fragment, event);
     expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
-    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferSize
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, 0); // BufferSize
     will_return(wrap_win_whodata_EvtRender, NULL); // Buffer
     will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferUsed
     will_return(wrap_win_whodata_EvtRender, 0); // PropertyCount
     will_return(wrap_win_whodata_EvtRender, 0);
-    
+
     /* EvtRender second call */
-    PEVT_VARIANT buffer = malloc(sizeof(EVT_VARIANT) * 10);
+    memset(buffer, 0, SIZE_EVENTS);
     buffer[0].Type = EvtVarTypeUInt16; // Correct buffer type
     buffer[1].Type = EvtVarTypeString;
     buffer[2].Type = EvtVarTypeString;
@@ -4038,7 +4044,7 @@ void test_whodata_callback_event_4656_not_active(void **state){
     expect_value(wrap_win_whodata_EvtRender, Context, context);
     expect_value(wrap_win_whodata_EvtRender, Fragment, event);
     expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
-    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferSize
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, SIZE_EVENTS); // BufferSize
     will_return(wrap_win_whodata_EvtRender, buffer); // Buffer
     will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS);// BufferUsed
     will_return(wrap_win_whodata_EvtRender, 9); // PropertyCount
@@ -4059,7 +4065,7 @@ void test_whodata_callback_event_4656_not_active(void **state){
     expect_string(__wrap__mwarn, formatted_msg, "(6681): Invalid parameter type (0) for 'user_id'.");
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'c:\\another\\path.file'");
     expect_string(__wrap__mdebug2, formatted_msg, "(6239): 'c:\\another\\path.file' is discarded because its monitoring is not activated.");
-    
+
     int ret = whodata_callback(action, NULL, event);
     assert_int_equal(ret, 1);
 }
@@ -4069,19 +4075,20 @@ void test_whodata_callback_event_4656_canceled(void **state){
     EVT_HANDLE event;
     const int NUM_EVENTS = 10;
     const int SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
+    EVT_VARIANT buffer[NUM_EVENTS];
 
     /* EvtRender first call */
     expect_value(wrap_win_whodata_EvtRender, Context, context);
     expect_value(wrap_win_whodata_EvtRender, Fragment, event);
     expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
-    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferSize
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, 0); // BufferSize
     will_return(wrap_win_whodata_EvtRender, NULL); // Buffer
     will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferUsed
     will_return(wrap_win_whodata_EvtRender, 0); // PropertyCount
     will_return(wrap_win_whodata_EvtRender, 0);
-    
+
     /* EvtRender second call */
-    PEVT_VARIANT buffer = malloc(sizeof(EVT_VARIANT) * 10);
+    memset(buffer, 0, SIZE_EVENTS);
     buffer[0].Type = EvtVarTypeUInt16; // Correct buffer type
     buffer[1].Type = EvtVarTypeString;
     buffer[2].Type = EvtVarTypeString;
@@ -4103,7 +4110,7 @@ void test_whodata_callback_event_4656_canceled(void **state){
     expect_value(wrap_win_whodata_EvtRender, Context, context);
     expect_value(wrap_win_whodata_EvtRender, Fragment, event);
     expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
-    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferSize
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, SIZE_EVENTS); // BufferSize
     will_return(wrap_win_whodata_EvtRender, buffer); // Buffer
     will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS);// BufferUsed
     will_return(wrap_win_whodata_EvtRender, 9); // PropertyCount
@@ -4122,7 +4129,7 @@ void test_whodata_callback_event_4656_canceled(void **state){
     }
 
     expect_string(__wrap__mwarn, formatted_msg, "(6681): Invalid parameter type (0) for 'user_id'.");
-    
+
     char debug_msg[OS_MAXSTR];
     snprintf(debug_msg, OS_MAXSTR, "(6240): The monitoring of '%s' in whodata mode has been canceled. Added to the ignore list.", syscheck.dir[0]);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
