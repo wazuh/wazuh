@@ -57,6 +57,7 @@ extern EVT_HANDLE context;
 
 extern const wchar_t* event_fields[];
 static int unit_testing = 0;
+static int OSHash_Add_ex_check_data = 1;
 /**************************************************************************/
 /*************************WRAPS - FIXTURES*********************************/
 int test_group_setup(void **state) {
@@ -273,6 +274,16 @@ static int teardown_whodata_audit_start(void **state) {
     return 0;
 }
 
+static int setup_whodata_callback(void **state){
+    OSHash_Add_ex_check_data = 0;
+    return 0;
+}
+
+static int teardown_whodata_callback(void **state){
+    OSHash_Add_ex_check_data = 1;
+    return 0;
+}
+
 void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
     char formatted_msg[OS_MAXSTR];
     va_list args;
@@ -358,8 +369,9 @@ int __wrap_SendMSG(__attribute__((unused)) int queue, const char *message, const
 int __wrap_OSHash_Add_ex(OSHash *self, const char *key, void *data) {
     check_expected(self);
     check_expected(key);
-    check_expected(data);
-
+    if (OSHash_Add_ex_check_data) {
+        check_expected(data);
+    }
     return mock();
 }
 
@@ -4137,6 +4149,85 @@ void test_whodata_callback_event_4656_canceled(void **state){
     int ret = whodata_callback(action, NULL, event);
     assert_int_equal(ret, 1);
 }
+
+void test_whodata_callback_event_4656_directory(void **state){
+    EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
+    EVT_HANDLE event;
+    const int NUM_EVENTS = 10;
+    const int SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
+    syscheck.wdata.dirs_status[8].status = WD_CHECK_WHODATA;
+
+    /* EvtRender first call */
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, 0); // BufferSize
+    will_return(wrap_win_whodata_EvtRender, NULL); // Buffer
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferUsed
+    will_return(wrap_win_whodata_EvtRender, 0); // PropertyCount
+    will_return(wrap_win_whodata_EvtRender, 0);
+    
+    /* EvtRender second call */
+    EVT_VARIANT buffer[NUM_EVENTS];
+    memset(buffer, 0, SIZE_EVENTS);
+    buffer[0].Type = EvtVarTypeUInt16; // Correct buffer type
+    buffer[1].Type = EvtVarTypeString;
+    buffer[2].Type = EvtVarTypeString;
+    buffer[3].Type = EvtVarTypeString;
+    buffer[4].Type = EvtVarTypeHexInt64;
+    buffer[5].Type = EvtVarTypeHexInt64;
+    buffer[6].Type = EvtVarTypeHexInt32;
+    buffer[7].Type = EvtVarTypeNull;
+    const char* win_path = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0";
+    const char* user_name = "USERNAME";
+    const char* process_name = "PROCESS_NAME";
+    buffer[0].Int16Val = 4656;
+    buffer[1].XmlVal = (const short unsigned int *) user_name;
+    buffer[2].XmlVal = (const short unsigned int *) win_path;
+    buffer[3].XmlVal = (const short unsigned int *) process_name;
+    buffer[4].UInt64Val = 4;
+    buffer[5].UInt64Val = 1234567890123456789;
+    buffer[6].UInt32Val = 6;
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, SIZE_EVENTS); // BufferSize
+    will_return(wrap_win_whodata_EvtRender, buffer); // Buffer
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS);// BufferUsed
+    will_return(wrap_win_whodata_EvtRender, 9); // PropertyCount
+    will_return(wrap_win_whodata_EvtRender, 1);
+
+    //Whodata path
+    {
+        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, win_path);
+        expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+        will_return(wrap_win_whodata_WideCharToMultiByte, strlen(win_path));
+
+        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, win_path);
+        expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+        will_return(wrap_win_whodata_WideCharToMultiByte, win_path);
+        will_return(wrap_win_whodata_WideCharToMultiByte, strlen(win_path));
+    }
+
+    expect_string(__wrap__mwarn, formatted_msg, "(6681): Invalid parameter type (0) for 'user_id'.");
+    
+    expect_string(__wrap_check_path_type, dir, "c:\\windows\\system32\\windowspowershell\\v1.0");
+    will_return(__wrap_check_path_type, 2);
+    
+    expect_string(__wrap__mdebug1, formatted_msg, "(6235): Real-time Whodata events queue for Windows is full. Removing the first '0'");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6236): '0' events have been deleted from the whodata list.");
+    
+    // OSHash_Add_ex
+    {
+        wchar_t *data = L"Some random data";
+        expect_value(__wrap_OSHash_Add_ex, self, syscheck.wdata.fd);
+        expect_string(__wrap_OSHash_Add_ex, key, "1234567890123456789");
+        will_return(__wrap_OSHash_Add_ex, 2);
+    }
+    
+    int ret = whodata_callback(action, NULL, event);
+    assert_int_equal(ret, 0);
+}
 /********************************************************************************************/
 void test_check_object_sacl_open_process_error(void **state) {
     int ret;
@@ -6153,6 +6244,7 @@ int main(void) {
         cmocka_unit_test(test_whodata_callback_path),
         cmocka_unit_test(test_whodata_callback_event_4656_not_active),
         cmocka_unit_test(test_whodata_callback_event_4656_canceled),
+        cmocka_unit_test_setup_teardown(test_whodata_callback_event_4656_directory, setup_whodata_callback, teardown_whodata_callback),
         /* check_object_sacl */
         cmocka_unit_test(test_check_object_sacl_open_process_error),
         cmocka_unit_test(test_check_object_sacl_unable_to_set_privilege),
