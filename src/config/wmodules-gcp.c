@@ -109,7 +109,7 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
             os_strdup(realpath_buffer, gcp->credentials_file);
         }
         else if (!strcmp(nodes[i]->element, XML_MAX_MESSAGES)) {
-            if (!nodes[i]->content) {
+            if (strlen(nodes[i]->content) == 0) {
                 merror("Empty content for tag '%s'", XML_MAX_MESSAGES);
                 return OS_INVALID;
             }
