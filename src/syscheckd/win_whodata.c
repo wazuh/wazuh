@@ -83,6 +83,8 @@ int FOREVER();
 #define GetSystemTime wrap_win_whodata_GetSystemTime
 #define EvtCreateRenderContext wrap_win_whodata_EvtCreateRenderContext
 #define EvtSubscribe wrap_win_whodata_EvtSubscribe
+#undef  ConvertSidToStringSid
+#define ConvertSidToStringSid wrap_win_whodata_ConvertSidToStringSid
 #else
 #define STATIC static
 #define FOREVER() 1

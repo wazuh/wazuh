@@ -421,3 +421,8 @@ VOID wrap_win_whodata_Sleep (DWORD dwMilliseconds) {
 VOID WINAPI wrap_win_whodata_GetSystemTime (LPSYSTEMTIME lpSystemTime) {
   memcpy(lpSystemTime, mock_type(LPSYSTEMTIME), sizeof(SYSTEMTIME));
 }
+
+WINBOOL wrap_win_whodata_ConvertSidToStringSid(__UNUSED_PARAM(PSID Sid),LPSTR *StringSid) {
+    *StringSid = mock_type(LPSTR);
+    return mock();
+}
