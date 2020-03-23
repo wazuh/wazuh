@@ -477,7 +477,9 @@ int restore_audit_policies() {
     }
 
     if (!wm_exec_ret_code && result_code) {
-        mterror(FIM_ERROR_WHODATA_AUDITPOL, "command returned failure. Output: %s", cmd_output);
+        char error_msg[OS_MAXSTR];
+        snprintf(error_msg, OS_MAXSTR, FIM_ERROR_WHODATA_AUDITPOL, "command returned failure'. Output: '%s");
+        merror(error_msg, cmd_output);
         os_free(cmd_output);
         return 1;
     }
@@ -971,7 +973,7 @@ void whodata_list_remove_multiple(size_t quantity) {
         }
         whodata_clist_remove(syscheck.w_clist.first);
     }
-    mdebug1(FIM_WHODATA_EVENT_DELETED, quantity);
+    mdebug1(FIM_WHODATA_EVENT_DELETED, i);
 }
 
 void whodata_clist_remove(whodata_event_node *node) {
@@ -1041,7 +1043,7 @@ int set_policies() {
         goto end;
     }
     if (f_new = fopen (WPOL_NEW_FILE, "w"), !f_new) {
-        merror(FIM_ERROR_WPOL_BACKUP_FILE_REMOVE, WPOL_NEW_FILE, strerror(errno), errno);
+        merror(FIM_ERROR_WPOL_BACKUP_FILE_OPEN, WPOL_NEW_FILE, strerror(errno), errno);
         goto end;
     }
 
