@@ -184,11 +184,6 @@ static time_t _get_next_time(const sched_scan_config *config, const char *MODULE
         return (time_t) get_time_to_hour(config->scan_time);
     } else if (config->interval) {
         // Option 4: Interval of time
-        
-        if(!config->last_scan_time){
-            // First time
-            return 0;
-        }
         const time_t last_run_time = time(NULL) - config->last_scan_time;
 
         if ((time_t)config->interval >= last_run_time) {
