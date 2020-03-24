@@ -789,6 +789,13 @@ class UserRolesManager:
                     if position is None:
                         roles = user.get_roles()
                         position = len(roles) - 1
+                    else:
+                        max_position = max([row.level for row in self.session.query(UserRoles).filter_by(
+                            user_id=username).all()])
+                        if max_position == 0 and len(list(user.roles)) - 1 == 0:
+                            position = 0
+                        elif position > max_position + 1:
+                            position = max_position + 1
                     user_role.level = position
 
                     self.session.commit()
@@ -1093,6 +1100,13 @@ class RolesPoliciesManager:
                                                                               policy_id=policy_id).first()
                     if position is None or position > check_max_level(role_id) + 1:
                         position = len(role.get_policies()) - 1
+                    else:
+                        max_position = max([row.level for row in self.session.query(RolesPolicies).filter_by(
+                            role_id=role_id).all()])
+                        if max_position == 0 and len(list(role.policies)) - 1 == 0:
+                            position = 0
+                        elif position > max_position + 1:
+                            position = max_position + 1
                     role_policy.level = position
 
                     self.session.commit()
