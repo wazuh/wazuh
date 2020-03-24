@@ -97,7 +97,7 @@
   <rule id="7713" level="8">
     <if_sid>7704</if_sid>
     <id>^2004$</id>
-    <group>pci_dss_10.6.1,gpg13_4.14,gpg13_4.4,gpg13_,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <group>pci_dss_10.6.1,gpg13_4.14,gpg13_4.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
     <description>Microsoft Security Essentials - Loading definitions failed. Using last good set.</description>
   </rule>
 

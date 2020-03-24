@@ -61,10 +61,10 @@ void W_Vector_free(W_Vector *v) {
 
     if (v) {
         for (i=0; i < v->used; i++) {
-            free(v->vector[i]);
+            os_free(v->vector[i]);
         }
-        free (v->vector);
-        free (v);
+        os_free (v->vector);
+        os_free (v);
     }
 }
 
