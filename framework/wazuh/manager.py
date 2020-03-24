@@ -219,7 +219,7 @@ def upload_file(tmp_file, path, content_type, overwrite=False):
 
 def upload_xml(xml_file, path):
     """
-    Updates XML files (rules and decoders)
+    Upload XML files (rules and decoders)
     :param xml_file: content of the XML file
     :param path: Destination of the new XML file
     :return: Confirmation message
@@ -336,6 +336,7 @@ def get_file(path, validation=False):
 
     return output
 
+
 def validate_xml(path):
     """
     Validates a XML file
@@ -352,6 +353,7 @@ def validate_xml(path):
         return False
 
     return True
+
 
 def validate_cdb_list(path):
     """
