@@ -8,7 +8,17 @@ def calc_offset(response, total):
     :param total: Number
     :return: Number - 1
     """
-    return {"sort_offset": str(int(total)-1)}
+    return {"sort_offset": str(int(total) - 1)}
+
+
+def test_distinct_key(response):
+    """
+    :param response: Request response
+    :return: True if request response item nummber matches used distict param
+    """
+    total = len(set(tuple(i.values()) for i in response.json()["data"]["affected_items"]))
+    assert len(list(response.json()["data"]["affected_items"])) == total
+    return
 
 
 def test_select_key(response, select_key):
