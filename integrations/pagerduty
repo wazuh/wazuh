@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Pagerduty Integration
 #
 # Copyright (C) 2015-2019, Wazuh Inc.
@@ -9,110 +9,118 @@
 # (at your option) any later version.
 #
 # Author: Daniel B. Cid
-# Modified by: @spartantri
-# Last modified: Jan 18, 2019
+# Modified by: @spartantri, @kravietz
+# Last modified: Feb 2020
 
-ALERTFILE=$1
-APIKEY=$2
-WEBHOOK=$3
+set -euo pipefail
 
-LOCAL=`dirname $0`;
-SERVER=`hostname`
-cd $LOCAL
-cd ../
-PWD=`pwd`
+ALERTFILE="$1"
+APIKEY="$2"
+WEBHOOK="$3"
 
+# Parameters file allows setting HTTP proxy variables etc
+params_file=/var/ossec/integrations/params.sh
+if [ -r "${params_file}" ]; then
+	source "${params_file}"
+fi
 
-build_payload () {
-    #echo 'payload={"username":"OSSEC2slack Integration from '$alertlocation'", "icon_emoji": ":ghost:", "text": "OSSEC Alert\n```'$alertdate $alertlocation'\nRule:'$ruleid' (level '$alertlevel'): '$ruledescription'\nIP:'$srcip'\n'$alertlog'\n```"}' > $postfile
-    payload="{\"service_key\": \"$APIKEY\", \"incident_key\": \"Alert: '$alertdate' / Rule: '$ruleid'\", \"event_type\": \"trigger\", \"description\": \"Wazuh Alert: '$ruledescription'\", \"client\": \"Wazuh\", \"client_url\": \"http://127.0.0.1:5601/app/wazuh\", \"details\": { \"location\": \"'$alertlocation'\", \"Rule\":\"'$ruleid'\", \"Description\":\"'$ruledescription'\", \"Log\": \"'$alertlog'\" } }";
+LOCAL="$(dirname $0)"
+SERVER="$(hostname)"
+cd "${LOCAL}/.." || exit 1
+PWD="$(pwd)"
 
-}
-
-send_payload () {
-
-        postfile=`mktemp`
-        echo $payload > $postfile
-
-        if [ ! $? = 0 ]; then
-            echo "Cannot write temporary alert file to `pwd`"
-            exit 1;
-        fi
-
-        # Echo payload
-        #echo  -n "-------\nSending:\n${payload}\n"
-
-        # Send the pagerduty notification
-        curl -H "Content-type: application/json" -X POST --data "@$postfile" $WEBHOOK
-
-        if [ ! $? = 0 ]; then
-            echo "Error sending the alert to pagerduty"
-            exit 1;
-        fi
-
-        rm -f $postfile;
-}
-
-# Logging the call
-echo "`date` $0 $1 $2 $3" >> ${PWD}/logs/integrations.log
-# Full log
-#cat $1 >> ${PWD}/logs/integrations.log; echo -e "\n" >> ${PWD}/logs/integrations.log
-
-# API key must be provided
-if [ "x${APIKEY}" = "x" ]; then
+if [ -z "${ALERTFILE}" -o -z "${APIKEY}"]; then
    echo "$0: Missing argument <alertfile> <api_key> [webhook]"
-   echo "Default webhook: https://events.pagerduty.com/generic/2010-04-15/create_event.json"
-   exit 1;
+   exit 1
+fi
+
+if [ ! -r "${ALERTFILE}" ]; then
+	echo "$0: alert file ${ALERTFILE} is not readable"
+	exit 1
 fi
 
 # webhook is optional, use default developer API if not specified
-if [ "x${WEBHOOK}" = "x" ]; then
+if [ -z "${WEBHOOK}" ]; then
    WEBHOOK="https://events.pagerduty.com/generic/2010-04-15/create_event.json"
 fi
 
-# Checks if alert file is present and read all alerts present on the file
-ls $ALERTFILE >/dev/null 2>&1
-if [ ! $? = 0 ]; then
-    echo "$0: Missing file: ${ALERTFILE}"
-    exit 1;
-else
-    # This script can be also to send multiple alerts on a single file IF json format is used
-    # Read the file and send alert per line found if format is json otherwise use text format
-    while read line; do
-        if [ ! "${line:0:1}" = "{" ]; then
-            #echo "Alert is not in JSON format"
-            alertformat="Not JSON"
-            break
-        fi
-        #. $ALERTFILE
-        if [ "x${alertlog}" = "x" ]; then
-            alert=$line
-            alertdate=`echo ${alert} |egrep -o 'timestamp":"[^"]+' |awk -F\" '{print $NF}'`
-            ruleid=`echo ${alert} |egrep -o 'rule":{[^{]+"id":"[^"]+' |awk -F\" '{print $NF}'`
-            alertlocation=`echo ${alert} |egrep -o 'location":"[^"]+' |awk -F\" '{print $NF}'`
-            ruledescription=`echo ${alert} |egrep -o 'description":"[^"]+' |awk -F\" '{print $NF}'`
-            alertlog=`echo ${alert} |egrep -o 'alertlog":{[^{]+"id":"[^"]+' |awk -F\" '{print $NF}'`
-        fi
-
-        build_payload
-        send_payload
-
-    done < $ALERTFILE
-
-    # If the alert file was not in json format assume text format is in use
-    if [ ! "x${alertformat}" = "x" ]; then
-        #echo "Processing non-JSON alert"
-        alert=`cat ${ALERTFILE}`
-        while read line; do
-            alertdate=`echo ${alert} |egrep -o "alertdate='[^']+" |awk -F\' '{print $NF}'`
-            ruleid=`echo ${alert} |egrep -o "ruleid='[^']+" |awk -F\' '{print $NF}'`
-            alertlocation=`echo ${alert} |egrep -o "alertlocation='[^']+" |awk -F\' '{print $NF}'`
-            ruledescription=`echo ${alert} |egrep -o "ruledescription='[^']+" |awk -F\' '{print $NF}'`
-            alertlog=`echo ${alert} |egrep -o "alertlog='[^']+" |awk -F\' '{print $NF}'`
-        done < $ALERTFILE
-        build_payload
-        send_payload
-    fi
+# Kibana URL allows instant review of the target alert using its unique id
+if [ -z "${KIBANA}" ]; then
+	KIBANA="http://127.0.0.1:5601"
 fi
 
-exit 0;
+
+
+function build_payload () {
+	# JSON escaping in bash is tricky, only jq can deal correctly
+	jq -n --arg apikey "${APIKEY}" \
+		--arg kibana "${KIBANA}/app/kibana#/discover/?_g=(interval:auto,query(language:lucene,query:'id:$alertid')" \
+		--arg alertid "${alertid}" \
+		--arg alertlocation "${alertlocation}" \
+		--arg ruleid "${ruleid}" \
+		--arg ruledescription "${ruledescription}" \
+		--arg alertlog "${alertlog}" \
+		--arg alertdate "${alertdate}" \
+		--arg alertnode "${alertnode}" \
+		'{"service_key": $apikey, "incident_key": $ruledescription, "event_type": "trigger",  "description": $ruledescription, "client": "Wazuh", "client_url": $kibana, "details": { "Agent": $alertnode, "Location": $alertlocation, "Rule": $ruleid, "Description": $ruledescription, "Log": $alertlog, "Id": $alertid } }'
+}
+
+function send_payload () {
+        postfile="$(mktemp)"
+        if ! build_payload > "${postfile}"; then
+            echo "Cannot write temporary alert file to ${postfile}"
+            exit 1
+        fi
+
+        # Send the PagerDuty notification
+        if ! curl --compressed -s -H "Content-type: application/json" -X POST --data "@${postfile}" "${WEBHOOK}"; then
+            echo "Error sending the alert to PagerDuty"
+            exit 1
+        fi
+
+        rm -f "${postfile}"
+}
+
+# Logging the call
+echo "$(date) $0 $1 $2 $3" >> ${PWD}/logs/integrations.log
+
+# Alert format detection
+# If format of the file is JSON then each line contains one alert
+if jq . "${ALERTFILE}" > /dev/null; then
+	format=json
+else
+	format=text
+fi
+
+function process_alert () {
+	alertdate=$(echo "${alert}" | jq -r .timestamp)
+	ruleid=$(echo  "${alert}" | jq -r .rule.id)
+	alertlocation=$(echo  "${alert}" | jq -r .location)
+	ruledescription=$(echo  "${alert}" | jq .rule.description)
+	alertlog=$(echo "${alert}" | jq -r .full_log)
+	alertid=$(echo "${alert}" | jq -r .id)
+	alertnode=$(echo "${alert}" | jq -r .agent.name)
+}
+
+# input is assumed to contain one JSON block per line
+# each line is a separate alert
+if [ "${format}" = "json" ]; then
+	# standard input from alert file
+	exec < "${ALERTFILE}"
+	while read -r line; do
+		alert="${line}"
+		if [ -z "${alert}" ]; then continue; fi
+		process_alert
+    		send_payload
+	done
+# plain text log has a single alert in multiple lines
+else
+	alertdate=$(egrep '^[0-9]{4} [A-Z][a-z]+ [0-9]+ [0-9]+:[0-9]+:[0-9]+ \(' "${ALERTFILE}" | awk '{print $1,$2,$3,$4;}')
+	ruleid=$(egrep 'Rule: [0-9]+ ' "${ALERTFILE}" | awk '{print $2;}')
+	ruledescription=$(egrep 'Rule: [0-9]+ ' "${ALERTFILE}" | cut -f6- -d' ')
+	alertid=$(egrep '\*\* Alert [0-9]+\.[0-9]+:' "${ALERTFILE}" | awk '{print $3;}')
+
+    	send_payload
+fi
+
+exit 0
