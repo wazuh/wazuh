@@ -1289,9 +1289,7 @@ int get_volume_names() {
         get_drive_names(volume_name, convert_device);
 
         // Move on to the next volume.
-        success = FindNextVolumeW(fh, volume_name, ARRAYSIZE(volume_name));
-
-        if (!success) {
+        if (!FindNextVolumeW(fh, volume_name, ARRAYSIZE(volume_name))) {
             win_error = GetLastError();
 
             if (win_error != ERROR_NO_MORE_FILES) {
