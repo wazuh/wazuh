@@ -38,6 +38,24 @@
     {
       "params": {
         "user_id": [
+          "rbac"
+        ],
+        "role_ids": [
+          "6", "2"
+        ],
+        "position": 1
+      },
+      "result": {
+        "affected_items": [{
+          "username": "rbac",
+          "roles": [5, 6, 2, 3, 4]
+        }],
+        "failed_items": {}
+      }
+    },
+    {
+      "params": {
+        "user_id": [
           "wazuh"
         ],
         "role_ids": [

@@ -69,6 +69,33 @@
     {
       "params": {
         "role_id": [
+          "3"
+        ],
+        "policy_ids": [
+          "7", "3", "9", "4"
+        ],
+        "position": 2
+      },
+      "result": {
+        "affected_items": [{
+          "id": 3,
+          "name": "technical",
+          "rule": {
+            "MATCH": {
+              "definition": "technicalRule"
+            }
+          },
+          "policies": [
+            2, 1, 7, 3, 9, 4, 8, 5
+          ],
+          "users": ["rbac"]
+        }],
+        "failed_items": {}
+      }
+    },
+    {
+      "params": {
+        "role_id": [
           "4"
         ],
         "policy_ids": [

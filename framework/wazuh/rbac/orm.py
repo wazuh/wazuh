@@ -1104,14 +1104,26 @@ class RolesPoliciesManager:
             self.session.rollback()
             return SecurityError.INVALID
 
-    def add_role_to_policy(self, policy_id: int, role_id: int):
+    def add_role_to_policy(self, policy_id: int, role_id: int, position: int = None):
         """Clone of the previous function
 
-        :param policy_id: ID of the policy
-        :param role_id: ID of the role
-        :return: True -> Success | False -> Failure | Role not found | Policy not found | Existing relationship
+        Parameters
+        ----------
+        role_id : int
+            ID of the role
+        policy_id : int
+            ID of the policy
+        position : int
+            Order to be applied in case of multiples roles in the same user
+        force_admin : bool
+            By default, changing an administrator roles is not allowed. If True, it will be applied to admin roles too
+
+        Returns
+        -------
+        bool
+            True -> Success | False -> Failure | Role not found | Policy not found | Existing relationship
         """
-        return self.add_policy_to_role(role_id=role_id, policy_id=policy_id)
+        return self.add_policy_to_role(role_id=role_id, policy_id=policy_id, position=position)
 
     def get_all_policies_from_role(self, role_id):
         """Get all the policies related with the specified role

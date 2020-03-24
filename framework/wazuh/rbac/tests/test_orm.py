@@ -283,6 +283,59 @@ def test_add_role_policy(import_RBAC):
         return policies_ids, roles_ids
 
 
+def test_add_role_policy_level(import_RBAC):
+    """Checks role-policy relation is added with level to database"""
+    with import_RBAC.RolesPoliciesManager() as rpm:
+        with import_RBAC.PoliciesManager() as pm:
+            assert pm.delete_all_policies()
+        with import_RBAC.RolesManager() as rm:
+            assert rm.delete_all_roles()
+
+        policies_ids = list()
+
+        with import_RBAC.RolesManager() as rm:
+            rm.add_role('normal', rule={'Unittest': 'Role'})
+            role_id = rm.get_role('normal')['id']
+
+        with import_RBAC.PoliciesManager() as pm:
+            policy = {
+                'actions': ['agents:update'],
+                'resources': [
+                    'agent:id:005', 'agent:id:003'
+                ],
+                'effect': 'allow'
+            }
+            pm.add_policy('normalPolicy', policy)
+            policies_ids.append(pm.get_policy('normalPolicy')['id'])
+            policy['actions'] = ['agents:create']
+            pm.add_policy('advancedPolicy', policy)
+            policies_ids.append(pm.get_policy('advancedPolicy')['id'])
+
+        # New role-policy
+        for n_policy in policies_ids:
+            rpm.add_role_to_policy(policy_id=n_policy, role_id=role_id)
+        for n_policy in policies_ids:
+            assert rpm.exist_role_policy(policy_id=n_policy, role_id=role_id)
+
+        new_policies_ids = list()
+        policy['actions'] = ['agents:delete']
+        pm.add_policy('deletePolicy', policy)
+        new_policies_ids.append(pm.get_policy('deletePolicy')['id'])
+        policy['actions'] = ['agents:read']
+        pm.add_policy('readPolicy', policy)
+        new_policies_ids.append(pm.get_policy('readPolicy')['id'])
+
+        position = 1
+        for policy in new_policies_ids:
+            rpm.add_role_to_policy(policy_id=policy, role_id=role_id, position=position)
+            policies_ids.insert(position, policy)
+            position += 1
+
+        role_policies = [policy.id for policy in rpm.get_all_policies_from_role(role_id)]
+
+        assert role_policies == policies_ids
+
+
 def test_exist_policy_role(import_RBAC):
     """Checks role-policy relation exist in the database"""
     with import_RBAC.RolesPoliciesManager() as rpm:
