@@ -136,7 +136,7 @@ INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version,
                    'Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
                    'Wazuh v3.8.2','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
                    'node01',strftime('%s','now','-4 days'),
-                    strftime('%s','now','-12 seconds'),'updated', 'group-2');
+                    strftime('%s','now','-12 seconds'),'updated', 'group-2, group-1');
 
 
 -- Create group-1 and group-2
@@ -152,3 +152,4 @@ INSERT INTO belongs (id_agent, id_group) VALUES (7, 1);
 
 -- agent-8 -> group-2
 INSERT INTO belongs (id_agent, id_group) VALUES (8, 2);
+INSERT INTO belongs (id_agent, id_group) VALUES (8, 1);
