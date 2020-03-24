@@ -1,7 +1,7 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.12.0]
+## [v3.12.0] - 2020-03-24
 
 ### Added
 
@@ -32,6 +32,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the registration of more than one agent as `any` when forcing to use the source IP. ([#2533](https://github.com/wazuh/wazuh/pull/2533))
 - Fix Windows upgrades in custom directories. ([#2534](https://github.com/wazuh/wazuh/pull/2534))
 - Fix the format of the alert payload passed to the Slack integration. ([#3978](https://github.com/wazuh/wazuh/pull/3978))
+
 
 ## [v3.11.4] - 2020-02-25
 
