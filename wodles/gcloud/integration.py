@@ -127,19 +127,19 @@ class WazuhGCloudSubscriber:
 
     def process_messages(self, max_messages: int = 100) -> int:
         """Process the available messages in the subscription.
-
         :param max_messages: Maximum number of messages to retrieve
         :return: Number of processed messages
         """
         processed_messages = 0
         response = self.pull_request(max_messages)
-        while len(response.received_messages) > 0:
+        while len(response.received_messages) > 0 and processed_messages < max_messages:
             for message in response.received_messages:
                 message_data: bytes = message.message.data
-                logger.debug(f'Processing event:\n{message_data.decode()}')
+                if logger.getEffectiveLevel() == logging.DEBUG:
+                    logger.debug(f'Processing event:\n{self.format_msg(message_data)}')
                 self.process_message(message.ack_id, message_data)
                 processed_messages += 1  # increment processed_messages counter
             # get more messages
-            response = self.pull_request(max_messages)
-
+            if processed_messages < max_messages:
+                response = self.pull_request(max_messages - processed_messages)
         return processed_messages
