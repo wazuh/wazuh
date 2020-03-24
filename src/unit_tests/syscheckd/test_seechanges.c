@@ -501,12 +501,13 @@ void test_adapt_win_fc_output_success(void **state) {
     char **strarray = *state;
     char *output;
     char *input = strdup(
+        "Comparing files start.txt and end.txt\r\n"
         "***** start.txt\r\n"
         "    1:  First line\r\n"
         "***** END.TXT\r\n"
         "    1:  First Line 123\r\n"
         "    2:  Last line\r\n"
-        "*****");
+        "*****\r\n\r\n\r\n");
 
     if(input == NULL) fail();
 
@@ -518,7 +519,7 @@ void test_adapt_win_fc_output_success(void **state) {
 
     strarray[1] = output;
 
-    assert_string_equal(output, "> First line\n< First Line 123\n< Last line\n---\n");
+    assert_string_equal(output, "< First line\n---\n> First Line 123\n> Last line\n");
 }
 
 void test_adapt_win_fc_output_invalid_input(void **state) {
@@ -539,6 +540,26 @@ void test_adapt_win_fc_output_invalid_input(void **state) {
     strarray[1] = output;
 
     assert_string_equal(output, input);
+}
+
+void test_adapt_win_fc_output_no_differences(void **state) {
+    char **strarray = *state;
+    char *output;
+    char *input = strdup(
+        "Comparing files start.txt and end.txt\r\n"
+        "FC: no differences encountered\r\n\r\n\r\n");
+
+    if(input == NULL) fail();
+
+    strarray[0] = input;
+
+    output = adapt_win_fc_output(input);
+
+    assert_non_null(output);
+
+    strarray[1] = output;
+
+    assert_string_equal(output, "");
 }
 
 #endif
@@ -565,13 +586,14 @@ void test_gen_diff_alert(void **state) {
     will_return(__wrap_fread, "test diff");
     will_return(__wrap_fread, 9);
     #else
-    will_return(__wrap_fread, "***** start.txt\r\n"
+    will_return(__wrap_fread, "Comparing files start.txt and end.txt\r\n"
+                              "***** start.txt\r\n"
                               "    1:  First line\r\n"
                               "***** END.TXT\r\n"
                               "    1:  First Line 123\r\n"
                               "    2:  Last line\r\n"
-                              "*****");
-    will_return(__wrap_fread, 101);
+                              "*****\r\n\r\n\r\n");
+    will_return(__wrap_fread, 146);
     #endif
 
     will_return(__wrap_fclose, 1);
@@ -592,7 +614,7 @@ void test_gen_diff_alert(void **state) {
     #ifndef TEST_WINAGENT
     assert_string_equal(diff, "test diff");
     #else
-    assert_string_equal(diff, "> First line\n< First Line 123\n< Last line\n---\n");
+    assert_string_equal(diff, "< First line\n---\n> First Line 123\n> Last line\n");
     #endif
 }
 
@@ -619,7 +641,9 @@ void test_gen_diff_alert_big_size(void **state) {
     will_return(__wrap_fread, "this is a really big diff\n");
     will_return(__wrap_fread, OS_MAXSTR - OS_SK_HEADER - 1);
     #else
-    will_return(__wrap_fread, "***** start.txt\r\n"
+    will_return(__wrap_fread, "Comparing files start.txt and end.txt\r\n"
+                              "Resync failed. Files are too different.\r\n"
+                              "***** start.txt\r\n"
                               "    1:  First line\r\n"
                               "***** END.TXT\r\n"
                               "    1:  First Line 123\r\n"
@@ -646,7 +670,7 @@ void test_gen_diff_alert_big_size(void **state) {
     #ifndef TEST_WINAGENT
     assert_string_equal(diff, "this is a really big diff\nMore changes...");
     #else
-    assert_string_equal(diff, "> First line\n< First Line 123\n< Last line\n---\nMore changes...");
+    assert_string_equal(diff, "< First line\n---\n> First Line 123\n> Last line\nMore changes...");
     #endif
 }
 
@@ -750,13 +774,14 @@ void test_gen_diff_alert_compress_error(void **state) {
     will_return(__wrap_fread, "test diff");
     will_return(__wrap_fread, 9);
     #else
-    will_return(__wrap_fread, "***** start.txt\r\n"
+    will_return(__wrap_fread, "Comparing files start.txt and end.txt\r\n"
+                              "***** start.txt\r\n"
                               "    1:  First line\r\n"
                               "***** END.TXT\r\n"
                               "    1:  First Line 123\r\n"
                               "    2:  Last line\r\n"
-                              "*****");
-    will_return(__wrap_fread, 101);
+                              "*****\r\n\r\n\r\n");
+    will_return(__wrap_fread, 146);
     #endif
 
     will_return(__wrap_fclose, 1);
@@ -783,7 +808,7 @@ void test_gen_diff_alert_compress_error(void **state) {
     #ifndef TEST_WINAGENT
     assert_string_equal(diff, "test diff");
     #else
-    assert_string_equal(diff, "> First line\n< First Line 123\n< Last line\n---\n");
+    assert_string_equal(diff, "< First line\n---\n> First Line 123\n> Last line\n");
     #endif
 }
 
@@ -960,16 +985,17 @@ void test_seechanges_addfile(void **state) {
     const char * file_name = "C:\\folder\\test_";
     const char * file_name_abs = "C\\folder\\test_";
     const char * default_path = "";
-    const char * diff_string = "***** start.txt\r\n"
+    const char * diff_string = "Comparing files start.txt and end.txt\r\n"
+                               "***** start.txt\r\n"
                                "    1:  First line\r\n"
                                "***** END.TXT\r\n"
                                "    1:  First Line 123\r\n"
                                "    2:  Last line\r\n"
-                               "*****";
-    const char * diff_adapted_string = "> First line\n"
-                                       "< First Line 123\n"
-                                       "< Last line\n"
-                                       "---\n";
+                               "*****\r\n\r\n\r\n";
+    const char * diff_adapted_string = "< First line\n"
+                                       "---\n"
+                                       "> First Line 123\n"
+                                       "> Last line\n";
     #endif
 
     char last_entry[OS_SIZE_128];
@@ -1047,7 +1073,7 @@ void test_seechanges_addfile(void **state) {
     will_return(__wrap_fread, 9);
     #else
     will_return(__wrap_fread, diff_string);
-    will_return(__wrap_fread, 101);
+    will_return(__wrap_fread, strlen(diff_string));
     #endif
     will_return(__wrap_fclose, 1);
     expect_string(__wrap_w_compress_gzfile, filesrc, file_name);
@@ -1076,16 +1102,17 @@ void test_seechanges_addfile_run_diff(void **state) {
     const char * file_name = "C:\\folder\\test";
     const char * file_name_abs = "C\\folder\\test";
     const char * default_path = "";
-    const char * diff_string = "***** start.txt\r\n"
+    const char * diff_string = "Comparing files start.txt and end.txt\r\n"
+                               "***** start.txt\r\n"
                                "    1:  First line\r\n"
                                "***** END.TXT\r\n"
                                "    1:  First Line 123\r\n"
                                "    2:  Last line\r\n"
-                               "*****";
-    const char * diff_adapted_string = "> First line\n"
-                                       "< First Line 123\n"
-                                       "< Last line\n"
-                                       "---\n";
+                               "*****\r\n\r\n\r\n";
+    const char * diff_adapted_string = "< First line\n"
+                                       "---\n"
+                                       "> First Line 123\n"
+                                       "> Last line\n";
     #endif
 
     char last_entry[OS_SIZE_128];
@@ -1164,7 +1191,7 @@ void test_seechanges_addfile_run_diff(void **state) {
     will_return(__wrap_fread, 9);
     #else
     will_return(__wrap_fread, diff_string);
-    will_return(__wrap_fread, 101);
+    will_return(__wrap_fread, strlen(diff_string));
     #endif
     will_return(__wrap_fclose, 1);
     expect_string(__wrap_w_compress_gzfile, filesrc, file_name);
@@ -1596,16 +1623,17 @@ void test_seechanges_addfile_fwrite_error(void **state) {
     const char * file_name = "C:\\folder\\test_";
     const char * file_name_abs = "C\\folder\\test_";
     const char * default_path = "";
-    const char * diff_string = "***** start.txt\r\n"
+    const char * diff_string = "Comparing files start.txt and end.txt\r\n"
+                               "***** start.txt\r\n"
                                "    1:  First line\r\n"
                                "***** END.TXT\r\n"
                                "    1:  First Line 123\r\n"
                                "    2:  Last line\r\n"
-                               "*****";
-    const char * diff_adapted_string = "> First line\n"
-                                       "< First Line 123\n"
-                                       "< Last line\n"
-                                       "---\n";
+                               "*****\r\n\r\n\r\n";
+    const char * diff_adapted_string = "< First line\n"
+                                       "---\n"
+                                       "> First Line 123\n"
+                                       "> Last line\n";
     #endif
 
     char last_entry[OS_SIZE_128];
@@ -1687,7 +1715,7 @@ void test_seechanges_addfile_fwrite_error(void **state) {
     will_return(__wrap_fread, 9);
     #else
     will_return(__wrap_fread, diff_string);
-    will_return(__wrap_fread, 101);
+    will_return(__wrap_fread, strlen(diff_string));
     #endif
     will_return(__wrap_fclose, 1);
     expect_string(__wrap_w_compress_gzfile, filesrc, file_name);
@@ -1837,6 +1865,7 @@ int main(void) {
 
         cmocka_unit_test_setup_teardown(test_adapt_win_fc_output_success, setup_adapt_win_fc_output, teardown_adapt_win_fc_output),
         cmocka_unit_test_setup_teardown(test_adapt_win_fc_output_invalid_input, setup_adapt_win_fc_output, teardown_adapt_win_fc_output),
+        cmocka_unit_test_setup_teardown(test_adapt_win_fc_output_no_differences, setup_adapt_win_fc_output, teardown_adapt_win_fc_output),
         #endif
 
         cmocka_unit_test(test_is_nodiff_true),
