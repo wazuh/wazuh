@@ -8267,7 +8267,7 @@ int main(void) {
         cmocka_unit_test(test_get_volume_names_unable_to_find_first_volume),
         cmocka_unit_test(test_get_volume_names_bad_path),
         cmocka_unit_test(test_get_volume_names_no_dos_device),
-        //cmocka_unit_test(test_get_volume_names_error_on_next_volume),
+        cmocka_unit_test(test_get_volume_names_error_on_next_volume),
         cmocka_unit_test(test_get_volume_names_no_more_files),
         /* notify_SACL_change */
         cmocka_unit_test(test_notify_SACL_change),
@@ -8287,7 +8287,7 @@ int main(void) {
         cmocka_unit_test(test_restore_audit_policies_backup_not_found),
         cmocka_unit_test(test_restore_audit_policies_command_failed),
         cmocka_unit_test(test_restore_audit_policies_command2_failed),
-        //cmocka_unit_test(test_restore_audit_policies_command3_failed),
+        cmocka_unit_test(test_restore_audit_policies_command3_failed),
         cmocka_unit_test(test_restore_audit_policies_success),
         /* audit_restore */
         cmocka_unit_test_setup_teardown(test_audit_restore, setup_restore_sacls, teardown_restore_sacls),
