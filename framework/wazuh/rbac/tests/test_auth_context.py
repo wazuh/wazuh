@@ -4,9 +4,6 @@
 
 import json
 import os
-from unittest.mock import patch
-
-import pytest
 
 from wazuh.rbac.auth_context import RBAChecker
 
@@ -60,13 +57,6 @@ def values():
             results.append(Map(result))
 
     return authorization_contexts, roles, results
-
-
-@pytest.fixture(scope='module')
-def import_auth_RBAC():
-    db_path = os.path.join(test_data_path, 'rbac.db')
-    assert os.path.exists(db_path)
-    os.unlink(db_path)
 
 
 def test_load_files():

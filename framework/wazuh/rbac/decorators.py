@@ -390,14 +390,15 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
             for res_id, target_param in target_params.items():
                 try:
                     if target_param in original_kwargs and not isinstance(original_kwargs[target_param], list):
-                        original_kwargs[target_param] = [original_kwargs[target_param]]
+                        if original_kwargs[target_param] is not None:
+                            original_kwargs[target_param] = [original_kwargs[target_param]]
                     # We don't have any permissions over the required resources
                     if len(allow[res_id]) == 0 and \
                             original_kwargs.get(target_param, None) is not None and \
                             len(original_kwargs[target_param]) != 0:
                         raise Exception
                     if target_param != '*':  # No resourceless and not static
-                        if target_param in original_kwargs:
+                        if target_param in original_kwargs and original_kwargs[target_param] is not None:
                             kwargs[target_param] = list(filter(lambda x: x in allow[res_id], original_kwargs[target_param]))
                         else:
                             kwargs[target_param] = list(allow[res_id])

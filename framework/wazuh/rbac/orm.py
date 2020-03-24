@@ -476,7 +476,7 @@ class RolesManager:
         """
         try:
             if self.get_role(role_name) is not None and self.get_role(role_name).id not in admin_role_ids:
-                relations = self.session.query(RolesPolicies).filter_by(role_id=self.get_role(role_name).id).all()
+                relations = self.session.query(RolesPolicies).filter_by(role_id=self.get_role(role_name)['id']).all()
                 for role_policy in relations:
                     self.session.delete(role_policy)
                 if self.session.query(Roles).filter_by(name=role_name).first() is None:

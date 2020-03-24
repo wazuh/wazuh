@@ -2,23 +2,48 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import os
 import json
+import os
 from unittest.mock import patch
 
 import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import sessionmaker
+from wazuh import security
 
 test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data')
 
 
+def create_memory_db(sql_file, session):
+    with open(os.path.join(test_data_path, sql_file)) as f:
+        for line in f.readlines():
+            line = line.strip()
+            if '* ' not in line and '/*' not in line and '*/' not in line and line != '':
+                session.execute(line)
+                session.commit()
+
+
 @pytest.fixture(scope='module')
-def import_RBAC():
+def db_setup():
+    def _method(session):
+        try:
+            create_memory_db('schema_security_test.sql', session)
+        except OperationalError:
+            pass
+
+    return _method
+
+
+@pytest.fixture(scope='module')
+def import_RBAC(db_setup):
     with patch('api.constants.SECURITY_PATH', new=test_data_path):
         import wazuh.rbac.orm as rbac
-        db_path = os.path.join(test_data_path, 'rbac.db')
-        assert os.path.exists(db_path)
-        yield rbac
+        with patch('wazuh.security.orm._engine', create_engine(f'sqlite://')):
+            with patch('wazuh.security.orm._Session', sessionmaker(bind=create_engine(f'sqlite://'))):
+                db_setup(security.orm._Session())
+                yield rbac
 
 
 def test_database_init(import_RBAC):
@@ -146,12 +171,12 @@ def test_update_role(import_RBAC):
     """Checks update a role in the database"""
     with import_RBAC.RolesManager() as rm:
         rm.add_role(name='toUpdate', rule={'Unittest': 'Role'})
-        tid = rm.get_role(name='toUpdate').id
-        tname = rm.get_role(name='toUpdate').name
+        tid = rm.get_role(name='toUpdate')['id']
+        tname = rm.get_role(name='toUpdate')['name']
         rm.update_role(role_id=tid, name='updatedName', rule={'Unittest1': 'Role'})
-        assert tid == rm.get_role(name='updatedName').id
+        assert tid == rm.get_role(name='updatedName')['id']
         assert tname == 'toUpdate'
-        assert rm.get_role(name='updatedName').name == 'updatedName'
+        assert rm.get_role(name='updatedName')['name'] == 'updatedName'
 
 
 def test_update_policy(import_RBAC):
@@ -165,13 +190,13 @@ def test_update_policy(import_RBAC):
             'effect': 'allow'
         }
         pm.add_policy(name='toUpdate', policy=policy)
-        tid = pm.get_policy(name='toUpdate').id
-        tname = pm.get_policy(name='toUpdate').name
+        tid = pm.get_policy(name='toUpdate')['id']
+        tname = pm.get_policy(name='toUpdate')['name']
         policy['effect'] = 'deny'
         pm.update_policy(policy_id=tid, name='updatedName', policy=policy)
-        assert tid == pm.get_policy(name='updatedName').id
+        assert tid == pm.get_policy(name='updatedName')['id']
         assert tname == 'toUpdate'
-        assert pm.get_policy(name='updatedName').name == 'updatedName'
+        assert pm.get_policy(name='updatedName')['name'] == 'updatedName'
 
 
 def test_add_policy_role(import_RBAC):
@@ -187,9 +212,9 @@ def test_add_policy_role(import_RBAC):
 
         with import_RBAC.RolesManager() as rm:
             rm.add_role(name='normal', rule={'Unittest': 'Role'})
-            roles_ids.append(rm.get_role('normal').id)
+            roles_ids.append(rm.get_role('normal')['id'])
             rm.add_role(name='advanced', rule={'Unittest1': 'Role'})
-            roles_ids.append(rm.get_role('advanced').id)
+            roles_ids.append(rm.get_role('advanced')['id'])
 
         with import_RBAC.PoliciesManager() as pm:
             policy = {
@@ -200,10 +225,10 @@ def test_add_policy_role(import_RBAC):
                 'effect': 'allow'
             }
             pm.add_policy('normalPolicy', policy)
-            policies_ids.append(pm.get_policy('normalPolicy').id)
+            policies_ids.append(pm.get_policy('normalPolicy')['id'])
             policy['effect'] = 'deny'
             pm.add_policy('advancedPolicy', policy)
-            policies_ids.append(pm.get_policy('advancedPolicy').id)
+            policies_ids.append(pm.get_policy('advancedPolicy')['id'])
 
         # New role-policy
         for policy in policies_ids:
@@ -229,9 +254,9 @@ def test_add_role_policy(import_RBAC):
 
         with import_RBAC.RolesManager() as rm:
             rm.add_role('normal', rule={'Unittest': 'Role'})
-            roles_ids.append(rm.get_role('normal').id)
+            roles_ids.append(rm.get_role('normal')['id'])
             rm.add_role('advanced', rule={'Unittest1': 'Role'})
-            roles_ids.append(rm.get_role('advanced').id)
+            roles_ids.append(rm.get_role('advanced')['id'])
 
         with import_RBAC.PoliciesManager() as pm:
             policy = {
@@ -242,10 +267,10 @@ def test_add_role_policy(import_RBAC):
                 'effect': 'allow'
             }
             pm.add_policy('normalPolicy', policy)
-            policies_ids.append(pm.get_policy('normalPolicy').id)
+            policies_ids.append(pm.get_policy('normalPolicy')['id'])
             policy['actions'] = ['agents:create']
             pm.add_policy('advancedPolicy', policy)
-            policies_ids.append(pm.get_policy('advancedPolicy').id)
+            policies_ids.append(pm.get_policy('advancedPolicy')['id'])
 
         # New role-policy
         for policy in policies_ids:
