@@ -870,9 +870,7 @@ endif
 TAR := tar -xf
 GUNZIP := gunzip
 CURL := curl -so
-space =
-space +=
-VERSION = $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(patsubst v%,%,$(shell cat VERSION)))))
+VERSION = $(subst $() $(),.,$(wordlist 1,2,$(subst ., ,$(patsubst v%,%,$(shell cat VERSION)))))
 RESOURCES_URL := https://packages.wazuh.com/deps/$(VERSION)
 CPYTHON := cpython
 ifeq (${PREFIX},/var/ossec)
