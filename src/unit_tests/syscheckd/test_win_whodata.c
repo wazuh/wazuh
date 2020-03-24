@@ -514,6 +514,13 @@ char *__wrap_convert_windows_string(LPCWSTR string) {
     return mock_type(char*);
 }
 
+void *__wrap_OSHash_Get_ex(const OSHash *self, const char *key) {
+    check_expected(self);
+    check_expected(key);
+
+    return mock_type(void*);
+}
+
 /**************************************************************************/
 /***************************set_winsacl************************************/
 void test_set_winsacl_failed_opening(void **state) {
@@ -5569,6 +5576,713 @@ void test_whodata_callback_event_4658_scan_aborted(void **state) {
     assert_int_equal(ret, 0);
 }
 
+void test_whodata_callback_event_4663_invalid_param(void **state){
+    EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
+    EVT_HANDLE event;
+    const int NUM_EVENTS = 10;
+    const int SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
+    EVT_VARIANT buffer[NUM_EVENTS];
+    whodata_evt *w_evt = *state;
+    whodata_directory w_dir;
+
+    /* EvtRender first call */
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, 0); // BufferSize
+    will_return(wrap_win_whodata_EvtRender, NULL); // Buffer
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferUsed
+    will_return(wrap_win_whodata_EvtRender, 0); // PropertyCount
+    will_return(wrap_win_whodata_EvtRender, 0);
+
+    /* EvtRender second call */
+    memset(buffer, 0, SIZE_EVENTS);
+    buffer[0].Type = EvtVarTypeUInt16; // Correct buffer type
+    buffer[1].Type = EvtVarTypeString;
+    buffer[2].Type = EvtVarTypeString;
+    buffer[3].Type = EvtVarTypeString;
+    buffer[4].Type = EvtVarTypeHexInt64;
+    buffer[5].Type = EvtVarTypeHexInt64;
+    buffer[6].Type = EvtVarTypeHexInt32;
+    buffer[7].Type = EvtVarTypeNull;
+    const char* win_path = "C:\\a\\path";
+    const char* user_name = "USERNAME";
+    const char* process_name = "PROCESS_NAME";
+    buffer[0].Int16Val = 4663;
+    buffer[1].XmlVal = (const short unsigned int *) user_name;
+    buffer[2].XmlVal = (const short unsigned int *) win_path;
+    buffer[3].XmlVal = (const short unsigned int *) process_name;
+    buffer[4].UInt64Val = 4;
+    buffer[5].UInt64Val = 1234567890123456789;
+    buffer[6].UInt32Val = 6;
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, SIZE_EVENTS); // BufferSize
+    will_return(wrap_win_whodata_EvtRender, buffer); // Buffer
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS);// BufferUsed
+    will_return(wrap_win_whodata_EvtRender, 9); // PropertyCount
+    will_return(wrap_win_whodata_EvtRender, 1);
+
+    //Whodata path
+    {
+        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
+        expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+        will_return(wrap_win_whodata_WideCharToMultiByte, 21);
+
+        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
+        expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+        will_return(wrap_win_whodata_WideCharToMultiByte, "C:\\another\\path.file");
+        will_return(wrap_win_whodata_WideCharToMultiByte, 21);
+    }
+
+    expect_string(__wrap__mwarn, formatted_msg, "(6681): Invalid parameter type (0) for 'user_id'.");
+
+    expect_value(__wrap_OSHash_Get, self, syscheck.wdata.fd);
+    expect_string(__wrap_OSHash_Get, key, "1234567890123456789");
+    will_return(__wrap_OSHash_Get, &w_evt);
+
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.wdata.directories);
+    expect_string(__wrap_OSHash_Get_ex, key, "c:\\another\\path.file");
+    will_return(__wrap_OSHash_Get_ex, &w_dir);
+
+    expect_string(__wrap__merror, formatted_msg, "(6681): Invalid parameter type (0) for 'event_time'.");
+
+    int ret = whodata_callback(action, NULL, event);
+    assert_int_equal(ret, 1);
+}
+
+void test_whodata_callback_event_4663_wrong_event_time_param(void **state){
+    EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
+    EVT_HANDLE event;
+    const int NUM_EVENTS = 10;
+    const int SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
+    EVT_VARIANT buffer[NUM_EVENTS];
+    whodata_evt *w_evt = *state;
+    whodata_directory w_dir;
+
+    /* EvtRender first call */
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, 0); // BufferSize
+    will_return(wrap_win_whodata_EvtRender, NULL); // Buffer
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferUsed
+    will_return(wrap_win_whodata_EvtRender, 9); // PropertyCount
+    will_return(wrap_win_whodata_EvtRender, 1);
+
+    /* EvtRender second call */
+    memset(buffer, 0, SIZE_EVENTS);
+    buffer[0].Type = EvtVarTypeUInt16; // Correct buffer type
+    buffer[1].Type = EvtVarTypeString;
+    buffer[2].Type = EvtVarTypeString;
+    buffer[3].Type = EvtVarTypeString;
+    buffer[4].Type = EvtVarTypeHexInt64;
+    buffer[5].Type = EvtVarTypeHexInt64;
+    buffer[6].Type = EvtVarTypeHexInt32;
+    buffer[7].Type = EvtVarTypeNull;
+    buffer[8].Type = EvtVarTypeNull;
+    const char* win_path = "C:\\a\\path";
+    const char* user_name = "USERNAME";
+    const char* process_name = "PROCESS_NAME";
+    buffer[0].Int16Val = 4663;
+    buffer[1].XmlVal = (const short unsigned int *) user_name;
+    buffer[2].XmlVal = (const short unsigned int *) win_path;
+    buffer[3].XmlVal = (const short unsigned int *) process_name;
+    buffer[4].UInt64Val = 4;
+    buffer[5].UInt64Val = 1234567890123456789;
+    buffer[6].UInt32Val = 6;
+    buffer[8].FileTimeVal = 72623859790382856;
+
+    w_evt->scan_directory = (char)2;
+
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, SIZE_EVENTS); // BufferSize
+    will_return(wrap_win_whodata_EvtRender, buffer); // Buffer
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS);// BufferUsed
+    will_return(wrap_win_whodata_EvtRender, 9); // PropertyCount
+    will_return(wrap_win_whodata_EvtRender, 1);
+
+    //Whodata path
+    {
+        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
+        expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+        will_return(wrap_win_whodata_WideCharToMultiByte, 21);
+
+        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
+        expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+        will_return(wrap_win_whodata_WideCharToMultiByte, "C:\\another\\path.file");
+        will_return(wrap_win_whodata_WideCharToMultiByte, 21);
+    }
+
+    expect_string(__wrap__mwarn, formatted_msg, "(6681): Invalid parameter type (0) for 'user_id'.");
+
+    expect_value(__wrap_OSHash_Get, self, syscheck.wdata.fd);
+    expect_string(__wrap_OSHash_Get, key, "1234567890123456789");
+    will_return(__wrap_OSHash_Get, &w_evt);
+
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.wdata.directories);
+    expect_string(__wrap_OSHash_Get_ex, key, "c:\\another\\path.file");
+    will_return(__wrap_OSHash_Get_ex, &w_dir);
+
+    expect_string(__wrap__merror, formatted_msg, "(6681): Invalid parameter type (0) for 'event_time'.");
+
+    int ret = whodata_callback(action, NULL, event);
+    assert_int_equal(ret, 1);
+}
+
+void test_whodata_callback_event_4663_file_time_error(void **state){
+    EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
+    EVT_HANDLE event;
+    const int NUM_EVENTS = 10;
+    const int SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
+    EVT_VARIANT buffer[NUM_EVENTS];
+    whodata_evt *w_evt = *state;
+    whodata_directory w_dir;
+
+    /* EvtRender first call */
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, 0); // BufferSize
+    will_return(wrap_win_whodata_EvtRender, NULL); // Buffer
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferUsed
+    will_return(wrap_win_whodata_EvtRender, 9); // PropertyCount
+    will_return(wrap_win_whodata_EvtRender, 1);
+
+    /* EvtRender second call */
+    memset(buffer, 0, SIZE_EVENTS);
+    buffer[0].Type = EvtVarTypeUInt16; // Correct buffer type
+    buffer[1].Type = EvtVarTypeString;
+    buffer[2].Type = EvtVarTypeString;
+    buffer[3].Type = EvtVarTypeString;
+    buffer[4].Type = EvtVarTypeHexInt64;
+    buffer[5].Type = EvtVarTypeHexInt64;
+    buffer[6].Type = EvtVarTypeHexInt32;
+    buffer[7].Type = EvtVarTypeNull;
+    buffer[8].Type = EvtVarTypeFileTime;
+    const char* win_path = "C:\\a\\path";
+    const char* user_name = "USERNAME";
+    const char* process_name = "PROCESS_NAME";
+    buffer[0].Int16Val = 4663;
+    buffer[1].XmlVal = (const short unsigned int *) user_name;
+    buffer[2].XmlVal = (const short unsigned int *) win_path;
+    buffer[3].XmlVal = (const short unsigned int *) process_name;
+    buffer[4].UInt64Val = 4;
+    buffer[5].UInt64Val = 1234567890123456789;
+    buffer[6].UInt32Val = 6;
+    buffer[8].FileTimeVal = 72623859790382856;
+
+    w_evt->scan_directory = (char)2;
+
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, SIZE_EVENTS); // BufferSize
+    will_return(wrap_win_whodata_EvtRender, buffer); // Buffer
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS);// BufferUsed
+    will_return(wrap_win_whodata_EvtRender, 9); // PropertyCount
+    will_return(wrap_win_whodata_EvtRender, 1);
+
+    //Whodata path
+    {
+        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
+        expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+        will_return(wrap_win_whodata_WideCharToMultiByte, 21);
+
+        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
+        expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+        will_return(wrap_win_whodata_WideCharToMultiByte, "C:\\another\\path.file");
+        will_return(wrap_win_whodata_WideCharToMultiByte, 21);
+    }
+
+    /* get_file_time */
+    {
+        SYSTEMTIME systime;
+        FILETIME ftime;
+
+        memset(&systime, 0, sizeof(SYSTEMTIME));
+        memset(&ftime, 0, sizeof(FILETIME));
+
+        ftime.dwHighDateTime = 0x01020304;
+        ftime.dwLowDateTime = 0x05060708;
+
+        systime.wYear = 2020;
+        systime.wMonth = 3;
+        systime.wDay = 10;
+        systime.wHour = 12;
+        systime.wMinute = 55;
+        systime.wSecond = 32;
+
+        expect_memory(wrap_win_whodata_FileTimeToSystemTime, lpFileTime, &ftime, sizeof(FILETIME));
+        will_return(wrap_win_whodata_FileTimeToSystemTime, &systime);
+        will_return(wrap_win_whodata_FileTimeToSystemTime, 0);
+    }
+
+    expect_string(__wrap__mwarn, formatted_msg, "(6681): Invalid parameter type (0) for 'user_id'.");
+
+    expect_value(__wrap_OSHash_Get, self, syscheck.wdata.fd);
+    expect_string(__wrap_OSHash_Get, key, "1234567890123456789");
+    will_return(__wrap_OSHash_Get, &w_evt);
+
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.wdata.directories);
+    expect_string(__wrap_OSHash_Get_ex, key, "c:\\another\\path.file");
+    will_return(__wrap_OSHash_Get_ex, &w_dir);
+
+    expect_string(__wrap__merror, formatted_msg, "(6627): Could not get the time of the event whose handler is '1234567890123456789'.");
+    int ret = whodata_callback(action, NULL, event);
+    assert_int_equal(ret, 1);
+}
+
+void test_whodata_callback_event_4663_timestamp_ok(void **state){
+    EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
+    EVT_HANDLE event;
+    const int NUM_EVENTS = 10;
+    const int SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
+    EVT_VARIANT buffer[NUM_EVENTS];
+    whodata_evt *w_evt = *state;
+    whodata_directory w_dir;
+
+    /* EvtRender first call */
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, 0); // BufferSize
+    will_return(wrap_win_whodata_EvtRender, NULL); // Buffer
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferUsed
+    will_return(wrap_win_whodata_EvtRender, 9); // PropertyCount
+    will_return(wrap_win_whodata_EvtRender, 1);
+
+    /* EvtRender second call */
+    memset(buffer, 0, SIZE_EVENTS);
+    buffer[0].Type = EvtVarTypeUInt16; // Correct buffer type
+    buffer[1].Type = EvtVarTypeString;
+    buffer[2].Type = EvtVarTypeString;
+    buffer[3].Type = EvtVarTypeString;
+    buffer[4].Type = EvtVarTypeHexInt64;
+    buffer[5].Type = EvtVarTypeHexInt64;
+    buffer[6].Type = EvtVarTypeHexInt32;
+    buffer[7].Type = EvtVarTypeNull;
+    buffer[8].Type = EvtVarTypeFileTime;
+    const char* win_path = "C:\\a\\path";
+    const char* user_name = "USERNAME";
+    const char* process_name = "PROCESS_NAME";
+    buffer[0].Int16Val = 4663;
+    buffer[1].XmlVal = (const short unsigned int *) user_name;
+    buffer[2].XmlVal = (const short unsigned int *) win_path;
+    buffer[3].XmlVal = (const short unsigned int *) process_name;
+    buffer[4].UInt64Val = 4;
+    buffer[5].UInt64Val = 1234567890123456789;
+    buffer[6].UInt32Val = 6;
+    buffer[8].FileTimeVal = 72623859790382856;
+
+    w_evt->scan_directory = (char)3;
+
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, SIZE_EVENTS); // BufferSize
+    will_return(wrap_win_whodata_EvtRender, buffer); // Buffer
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS);// BufferUsed
+    will_return(wrap_win_whodata_EvtRender, 9); // PropertyCount
+    will_return(wrap_win_whodata_EvtRender, 1);
+
+    //Whodata path
+    {
+        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
+        expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+        will_return(wrap_win_whodata_WideCharToMultiByte, 21);
+
+        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
+        expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+        will_return(wrap_win_whodata_WideCharToMultiByte, "C:\\another\\path.file");
+        will_return(wrap_win_whodata_WideCharToMultiByte, 21);
+    }
+
+    /* get_file_time */
+    {
+        SYSTEMTIME systime;
+        FILETIME ftime;
+
+        memset(&systime, 0, sizeof(SYSTEMTIME));
+        memset(&ftime, 0, sizeof(FILETIME));
+
+        ftime.dwHighDateTime = 0x01020304;
+        ftime.dwLowDateTime = 0x05060708;
+
+        systime.wYear = 2020;
+        systime.wMonth = 3;
+        systime.wDay = 10;
+        systime.wHour = 12;
+        systime.wMinute = 55;
+        systime.wSecond = 32;
+
+        expect_memory(wrap_win_whodata_FileTimeToSystemTime, lpFileTime, &ftime, sizeof(FILETIME));
+        will_return(wrap_win_whodata_FileTimeToSystemTime, &systime);
+        will_return(wrap_win_whodata_FileTimeToSystemTime, 1);
+    }
+
+    expect_string(__wrap__mwarn, formatted_msg, "(6681): Invalid parameter type (0) for 'user_id'.");
+
+    expect_value(__wrap_OSHash_Get, self, syscheck.wdata.fd);
+    expect_string(__wrap_OSHash_Get, key, "1234567890123456789");
+    will_return(__wrap_OSHash_Get, &w_evt);
+
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.wdata.directories);
+    expect_string(__wrap_OSHash_Get_ex, key, "c:\\another\\path.file");
+    will_return(__wrap_OSHash_Get_ex, &w_dir);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6241): The 'c:\\another\\path.file' directory has been scanned. It does not need to do it again.");
+
+    int ret = whodata_callback(action, NULL, event);
+    assert_int_equal(ret, 0);
+}
+
+void test_whodata_callback_event_4663_no_event(void **state){
+    EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
+    EVT_HANDLE event;
+    const int NUM_EVENTS = 10;
+    const int SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
+    EVT_VARIANT buffer[NUM_EVENTS];
+    whodata_evt *w_evt = *state;
+    whodata_directory w_dir;
+
+    /* EvtRender first call */
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, 0); // BufferSize
+    will_return(wrap_win_whodata_EvtRender, NULL); // Buffer
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferUsed
+    will_return(wrap_win_whodata_EvtRender, 9); // PropertyCount
+    will_return(wrap_win_whodata_EvtRender, 1);
+
+    /* EvtRender second call */
+    memset(buffer, 0, SIZE_EVENTS);
+    buffer[0].Type = EvtVarTypeUInt16; // Correct buffer type
+    buffer[1].Type = EvtVarTypeString;
+    buffer[2].Type = EvtVarTypeString;
+    buffer[3].Type = EvtVarTypeString;
+    buffer[4].Type = EvtVarTypeHexInt64;
+    buffer[5].Type = EvtVarTypeHexInt64;
+    buffer[6].Type = EvtVarTypeHexInt32;
+    buffer[7].Type = EvtVarTypeNull;
+    buffer[8].Type = EvtVarTypeFileTime;
+    const char* win_path = "C:\\a\\path";
+    const char* user_name = "USERNAME";
+    const char* process_name = "PROCESS_NAME";
+    buffer[0].Int16Val = 4663;
+    buffer[1].XmlVal = (const short unsigned int *) user_name;
+    buffer[2].XmlVal = (const short unsigned int *) win_path;
+    buffer[3].XmlVal = (const short unsigned int *) process_name;
+    buffer[4].UInt64Val = 4;
+    buffer[5].UInt64Val = 1234567890123456789;
+    buffer[6].UInt32Val = 6;
+    buffer[8].FileTimeVal = 72623859790382856;
+
+    w_evt->scan_directory = (char)2;
+
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, SIZE_EVENTS); // BufferSize
+    will_return(wrap_win_whodata_EvtRender, buffer); // Buffer
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS);// BufferUsed
+    will_return(wrap_win_whodata_EvtRender, 9); // PropertyCount
+    will_return(wrap_win_whodata_EvtRender, 1);
+
+    //Whodata path
+    {
+        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
+        expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+        will_return(wrap_win_whodata_WideCharToMultiByte, 21);
+
+        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
+        expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+        will_return(wrap_win_whodata_WideCharToMultiByte, "C:\\another\\path.file");
+        will_return(wrap_win_whodata_WideCharToMultiByte, 21);
+    }
+    expect_string(__wrap__mwarn, formatted_msg, "(6681): Invalid parameter type (0) for 'user_id'.");
+
+    expect_value(__wrap_OSHash_Get, self, syscheck.wdata.fd);
+    expect_string(__wrap_OSHash_Get, key, "1234567890123456789");
+    will_return(__wrap_OSHash_Get, &w_evt);
+
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.wdata.directories);
+    expect_string(__wrap_OSHash_Get_ex, key, "c:\\another\\path.file");
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
+    expect_function_call(__wrap_fim_configuration_directory);
+    expect_string(__wrap_fim_configuration_directory, path, "c:\\another\\path.file");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
+    will_return(__wrap_fim_configuration_directory, -1);
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6243): The 'c:\\another\\path.file' directory has been discarded because it is not being monitored in whodata mode.");
+
+    int ret = whodata_callback(action, NULL, event);
+    assert_int_equal(ret, 0);
+}
+
+void test_whodata_callback_event_4663_no_dir(void **state){
+    EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
+    EVT_HANDLE event;
+    const int NUM_EVENTS = 10;
+    const int SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
+    EVT_VARIANT buffer[NUM_EVENTS];
+    whodata_evt *w_evt = *state;
+    whodata_directory w_dir;
+
+    /* EvtRender first call */
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, 0); // BufferSize
+    will_return(wrap_win_whodata_EvtRender, NULL); // Buffer
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferUsed
+    will_return(wrap_win_whodata_EvtRender, 9); // PropertyCount
+    will_return(wrap_win_whodata_EvtRender, 1);
+
+    /* EvtRender second call */
+    memset(buffer, 0, SIZE_EVENTS);
+    buffer[0].Type = EvtVarTypeUInt16; // Correct buffer type
+    buffer[1].Type = EvtVarTypeString;
+    buffer[2].Type = EvtVarTypeString;
+    buffer[3].Type = EvtVarTypeString;
+    buffer[4].Type = EvtVarTypeHexInt64;
+    buffer[5].Type = EvtVarTypeHexInt64;
+    buffer[6].Type = EvtVarTypeHexInt32;
+    buffer[7].Type = EvtVarTypeNull;
+    buffer[8].Type = EvtVarTypeFileTime;
+    const char* win_path = "C:\\a\\path";
+    const char* user_name = "USERNAME";
+    const char* process_name = "PROCESS_NAME";
+    buffer[0].Int16Val = 4663;
+    buffer[1].XmlVal = (const short unsigned int *) user_name;
+    buffer[2].XmlVal = (const short unsigned int *) win_path;
+    buffer[3].XmlVal = (const short unsigned int *) process_name;
+    buffer[4].UInt64Val = 4;
+    buffer[5].UInt64Val = 1234567890123456789;
+    buffer[6].UInt32Val = 6;
+
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, SIZE_EVENTS); // BufferSize
+    will_return(wrap_win_whodata_EvtRender, buffer); // Buffer
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS);// BufferUsed
+    will_return(wrap_win_whodata_EvtRender, 9); // PropertyCount
+    will_return(wrap_win_whodata_EvtRender, 1);
+
+    //Whodata path
+    {
+        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
+        expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+        will_return(wrap_win_whodata_WideCharToMultiByte, 21);
+
+        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
+        expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+        will_return(wrap_win_whodata_WideCharToMultiByte, "C:\\another\\path.file");
+        will_return(wrap_win_whodata_WideCharToMultiByte, 21);
+    }
+
+    expect_string(__wrap__mwarn, formatted_msg, "(6681): Invalid parameter type (0) for 'user_id'.");
+
+    expect_value(__wrap_OSHash_Get, self, syscheck.wdata.fd);
+    expect_string(__wrap_OSHash_Get, key, "1234567890123456789");
+    will_return(__wrap_OSHash_Get, &w_evt);
+
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.wdata.directories);
+    expect_string(__wrap_OSHash_Get_ex, key, "c:\\another\\path.file");
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
+    expect_function_call(__wrap_fim_configuration_directory);
+    expect_string(__wrap_fim_configuration_directory, path, "c:\\another\\path.file");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
+    will_return(__wrap_fim_configuration_directory, 0);
+
+    OSHash_Add_ex_check_data = 0;
+    // OSHash_Add_ex
+    {
+        expect_value(__wrap_OSHash_Add_ex, self, syscheck.wdata.directories);
+        expect_string(__wrap_OSHash_Add_ex, key, "c:\\another\\path.file");
+        will_return(__wrap_OSHash_Add_ex, 1);
+    }
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6630): The event could not be added to the 'directories' hash table because it is duplicated. Target: 'c:\\another\\path.file'.");
+
+    int ret = whodata_callback(action, NULL, event);
+    assert_int_equal(ret, 0);
+}
+
+
+void test_whodata_callback_event_4663_dir(void **state){
+    EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
+    EVT_HANDLE event;
+    const int NUM_EVENTS = 10;
+    const int SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
+    EVT_VARIANT buffer[NUM_EVENTS];
+    whodata_evt *w_evt = *state;
+    whodata_directory w_dir;
+
+    /* EvtRender first call */
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, 0); // BufferSize
+    will_return(wrap_win_whodata_EvtRender, NULL); // Buffer
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferUsed
+    will_return(wrap_win_whodata_EvtRender, 9); // PropertyCount
+    will_return(wrap_win_whodata_EvtRender, 1);
+
+    /* EvtRender second call */
+    memset(buffer, 0, SIZE_EVENTS);
+    buffer[0].Type = EvtVarTypeUInt16; // Correct buffer type
+    buffer[1].Type = EvtVarTypeString;
+    buffer[2].Type = EvtVarTypeString;
+    buffer[3].Type = EvtVarTypeString;
+    buffer[4].Type = EvtVarTypeHexInt64;
+    buffer[5].Type = EvtVarTypeHexInt64;
+    buffer[6].Type = EvtVarTypeHexInt32;
+    buffer[7].Type = EvtVarTypeNull;
+    buffer[8].Type = EvtVarTypeFileTime;
+    const char* win_path = "C:\\a\\path";
+    const char* user_name = "USERNAME";
+    const char* process_name = "PROCESS_NAME";
+    buffer[0].Int16Val = 4663;
+    buffer[1].XmlVal = (const short unsigned int *) user_name;
+    buffer[2].XmlVal = (const short unsigned int *) win_path;
+    buffer[3].XmlVal = (const short unsigned int *) process_name;
+    buffer[4].UInt64Val = 4;
+    buffer[5].UInt64Val = 1234567890123456789;
+    buffer[6].UInt32Val = 6;
+
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, SIZE_EVENTS); // BufferSize
+    will_return(wrap_win_whodata_EvtRender, buffer); // Buffer
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS);// BufferUsed
+    will_return(wrap_win_whodata_EvtRender, 9); // PropertyCount
+    will_return(wrap_win_whodata_EvtRender, 1);
+
+    //Whodata path
+    {
+        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
+        expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+        will_return(wrap_win_whodata_WideCharToMultiByte, 21);
+
+        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
+        expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+        will_return(wrap_win_whodata_WideCharToMultiByte, "C:\\another\\path.file");
+        will_return(wrap_win_whodata_WideCharToMultiByte, 21);
+    }
+
+    expect_string(__wrap__mwarn, formatted_msg, "(6681): Invalid parameter type (0) for 'user_id'.");
+
+    expect_value(__wrap_OSHash_Get, self, syscheck.wdata.fd);
+    expect_string(__wrap_OSHash_Get, key, "1234567890123456789");
+    will_return(__wrap_OSHash_Get, &w_evt);
+
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.wdata.directories);
+    expect_string(__wrap_OSHash_Get_ex, key, "c:\\another\\path.file");
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
+    expect_function_call(__wrap_fim_configuration_directory);
+    expect_string(__wrap_fim_configuration_directory, path, "c:\\another\\path.file");
+    expect_string(__wrap_fim_configuration_directory, entry, "file");
+    will_return(__wrap_fim_configuration_directory, 0);
+
+    OSHash_Add_ex_check_data = 0;
+    // OSHash_Add_ex
+    {
+        expect_value(__wrap_OSHash_Add_ex, self, syscheck.wdata.directories);
+        expect_string(__wrap_OSHash_Add_ex, key, "c:\\another\\path.file");
+        will_return(__wrap_OSHash_Add_ex, 2);
+    }
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6244): New files have been detected in the 'c:\\another\\path.file' directory and will be scanned.");
+
+    int ret = whodata_callback(action, NULL, event);
+    assert_int_equal(ret, 0);
+}
+
+void test_whodata_callback_event_4663_dir_removed(void **state){
+    EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
+    EVT_HANDLE event;
+    const int NUM_EVENTS = 10;
+    const int SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
+    EVT_VARIANT buffer[NUM_EVENTS];
+    whodata_evt *w_evt = *state;
+    whodata_directory w_dir;
+
+    /* EvtRender first call */
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, 0); // BufferSize
+    will_return(wrap_win_whodata_EvtRender, NULL); // Buffer
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferUsed
+    will_return(wrap_win_whodata_EvtRender, 9); // PropertyCount
+    will_return(wrap_win_whodata_EvtRender, 1);
+
+    /* EvtRender second call */
+    memset(buffer, 0, SIZE_EVENTS);
+    buffer[0].Type = EvtVarTypeUInt16; // Correct buffer type
+    buffer[1].Type = EvtVarTypeString;
+    buffer[2].Type = EvtVarTypeString;
+    buffer[3].Type = EvtVarTypeString;
+    buffer[4].Type = EvtVarTypeHexInt64;
+    buffer[5].Type = EvtVarTypeHexInt64;
+    buffer[6].Type = EvtVarTypeHexInt32;
+    buffer[7].Type = EvtVarTypeNull;
+    buffer[8].Type = EvtVarTypeFileTime;
+    const char* win_path = "C:\\a\\path";
+    const char* user_name = "USERNAME";
+    const char* process_name = "PROCESS_NAME";
+    buffer[0].Int16Val = 4663;
+    buffer[1].XmlVal = (const short unsigned int *) user_name;
+    buffer[2].XmlVal = (const short unsigned int *) win_path;
+    buffer[3].XmlVal = (const short unsigned int *) process_name;
+    buffer[4].UInt64Val = 4;
+    buffer[5].UInt64Val = 1234567890123456789;
+    buffer[6].UInt32Val = DELETE;
+
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, SIZE_EVENTS); // BufferSize
+    will_return(wrap_win_whodata_EvtRender, buffer); // Buffer
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS);// BufferUsed
+    will_return(wrap_win_whodata_EvtRender, 9); // PropertyCount
+    will_return(wrap_win_whodata_EvtRender, 1);
+
+    //Whodata path
+    {
+        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
+        expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+        will_return(wrap_win_whodata_WideCharToMultiByte, 21);
+
+        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
+        expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
+        will_return(wrap_win_whodata_WideCharToMultiByte, "C:\\another\\path.file");
+        will_return(wrap_win_whodata_WideCharToMultiByte, 21);
+    }
+
+    expect_string(__wrap__mwarn, formatted_msg, "(6681): Invalid parameter type (0) for 'user_id'.");
+
+    expect_value(__wrap_OSHash_Get, self, syscheck.wdata.fd);
+    expect_string(__wrap_OSHash_Get, key, "1234567890123456789");
+    will_return(__wrap_OSHash_Get, &w_evt);
+
+    int ret = whodata_callback(action, NULL, event);
+    assert_int_equal(ret, 0);
+}
+
 /********************************************************************************************/
 void test_check_object_sacl_open_process_error(void **state) {
     int ret;
@@ -7573,7 +8287,7 @@ int main(void) {
         cmocka_unit_test(test_restore_audit_policies_backup_not_found),
         cmocka_unit_test(test_restore_audit_policies_command_failed),
         cmocka_unit_test(test_restore_audit_policies_command2_failed),
-        cmocka_unit_test(test_restore_audit_policies_command3_failed),
+        //cmocka_unit_test(test_restore_audit_policies_command3_failed),
         cmocka_unit_test(test_restore_audit_policies_success),
         /* audit_restore */
         cmocka_unit_test_setup_teardown(test_audit_restore, setup_restore_sacls, teardown_restore_sacls),
@@ -7604,6 +8318,14 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_whodata_callback_event_4658_new_file_added, setup_win_whodata_evt, teardown_win_whodata_evt),
         cmocka_unit_test_setup_teardown(test_whodata_callback_event_4658_no_new_files, setup_win_whodata_evt, teardown_win_whodata_evt),
         cmocka_unit_test_setup_teardown(test_whodata_callback_event_4658_scan_aborted, setup_win_whodata_evt, teardown_win_whodata_evt),
+        cmocka_unit_test(test_whodata_callback_event_4663_no_dir),
+        cmocka_unit_test(test_whodata_callback_event_4663_invalid_param),
+        cmocka_unit_test_setup_teardown(test_whodata_callback_event_4663_wrong_event_time_param, setup_win_whodata_evt, teardown_win_whodata_evt),
+        cmocka_unit_test_setup_teardown(test_whodata_callback_event_4663_file_time_error, setup_win_whodata_evt, teardown_win_whodata_evt),
+        cmocka_unit_test_setup_teardown(test_whodata_callback_event_4663_timestamp_ok, setup_win_whodata_evt, teardown_win_whodata_evt),
+        cmocka_unit_test_setup_teardown(test_whodata_callback_event_4663_no_event, setup_win_whodata_evt, teardown_win_whodata_evt),
+        cmocka_unit_test_setup_teardown(test_whodata_callback_event_4663_dir, setup_win_whodata_evt, teardown_win_whodata_evt),
+        cmocka_unit_test_setup_teardown(test_whodata_callback_event_4663_dir_removed, setup_win_whodata_evt, teardown_win_whodata_evt),
         /* check_object_sacl */
         cmocka_unit_test(test_check_object_sacl_open_process_error),
         cmocka_unit_test(test_check_object_sacl_unable_to_set_privilege),
