@@ -30,7 +30,7 @@
       "result": {
         "affected_items": [{
           "username": "ossec",
-          "roles": [2, 3, 4, 5]
+          "roles": [2, 5, 3, 4]
         }],
         "failed_items": {}
       }

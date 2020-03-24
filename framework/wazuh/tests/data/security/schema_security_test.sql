@@ -12,9 +12,9 @@ CREATE TABLE roles (id INTEGER NOT NULL, name VARCHAR(20), rule TEXT, created_at
 
 CREATE TABLE policies (id INTEGER NOT NULL, name VARCHAR(20), policy TEXT, created_at DATETIME, PRIMARY KEY (id), CONSTRAINT name_policy UNIQUE (name),	CONSTRAINT policy_definition UNIQUE (policy));
 
-CREATE TABLE roles_policies (id INTEGER NOT NULL, role_id INTEGER, policy_id INTEGER, created_at DATETIME, PRIMARY KEY (id), CONSTRAINT role_policy UNIQUE (role_id, policy_id), FOREIGN KEY(role_id) REFERENCES roles (id) ON DELETE CASCADE, FOREIGN KEY(policy_id) REFERENCES policies (id) ON DELETE CASCADE);
+CREATE TABLE roles_policies (id INTEGER NOT NULL, role_id INTEGER, policy_id INTEGER, level INTEGER, created_at DATETIME, PRIMARY KEY (id), CONSTRAINT role_policy UNIQUE (role_id, policy_id), FOREIGN KEY(role_id) REFERENCES roles (id) ON DELETE CASCADE, FOREIGN KEY(policy_id) REFERENCES policies (id) ON DELETE CASCADE);
 
-CREATE TABLE user_roles (id INTEGER NOT NULL, user_id INTEGER, role_id INTEGER,	created_at DATETIME, PRIMARY KEY (id), CONSTRAINT user_role UNIQUE (user_id, role_id), FOREIGN KEY(user_id) REFERENCES users (username) ON DELETE CASCADE, FOREIGN KEY(role_id) REFERENCES roles (id) ON DELETE CASCADE);
+CREATE TABLE user_roles (id INTEGER NOT NULL, user_id INTEGER, role_id INTEGER, level INTEGER,	created_at DATETIME, PRIMARY KEY (id), CONSTRAINT user_role UNIQUE (user_id, role_id), FOREIGN KEY(user_id) REFERENCES users (username) ON DELETE CASCADE, FOREIGN KEY(role_id) REFERENCES roles (id) ON DELETE CASCADE);
 
 PRAGMA foreign_keys=OFF;
 BEGIN TRANSACTION;
@@ -45,36 +45,36 @@ INSERT INTO policies VALUES(8,'policy2','{"actions": ["role:read"], "effect": "a
 INSERT INTO policies VALUES(9,'policy3','{"actions": ["policy:read"], "effect": "allow", "resources": ["policy:id:1"]}','2019-12-10 12:57:26.105046');
 INSERT INTO policies VALUES(10,'policy4','{"actions": ["policy:delete"], "effect": "deny", "resources": ["policy:id:*"]}','2019-12-10 12:57:40.203363');
 
-INSERT INTO roles_policies VALUES(1,1,1,'2019-12-10 12:46:53.227083');
-INSERT INTO roles_policies VALUES(2,2,1,'2019-12-10 12:46:53.227083');
-INSERT INTO roles_policies VALUES(3,3,2,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(4,3,1,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(5,3,8,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(6,3,5,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(7,4,5,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(8,4,4,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(9,5,2,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(10,5,3,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(11,5,10,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(12,6,2,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(13,6,8,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(14,6,7,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(15,6,10,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(16,6,5,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(17,6,9,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(18,6,1,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(19,6,6,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(20,6,3,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(21,6,4,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(1,1,1,0,'2019-12-10 12:46:53.227083');
+INSERT INTO roles_policies VALUES(2,2,1,0,'2019-12-10 12:46:53.227083');
+INSERT INTO roles_policies VALUES(3,3,2,0,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(4,3,1,1,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(5,3,8,2,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(6,3,5,3,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(7,4,5,0,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(8,4,4,1,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(9,5,2,0,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(10,5,3,1,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(11,5,10,2,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(12,6,2,0,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(13,6,8,1,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(14,6,7,2,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(15,6,10,3,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(16,6,5,4,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(17,6,9,5,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(18,6,1,6,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(19,6,6,7,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(20,6,3,8,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(21,6,4,9,'2019-12-10 12:47:07.032311');
 
-INSERT INTO user_roles VALUES(1,'wazuh',1,'2019-12-10 12:46:53.229308');
-INSERT INTO user_roles VALUES(2,'wazuh-app',1,'2019-12-10 12:46:53.229308');
-INSERT INTO user_roles VALUES(3,'administrator',2,'2019-12-10 12:47:07.035057');
-INSERT INTO user_roles VALUES(4,'normal',5,'2019-12-10 12:47:07.035057');
-INSERT INTO user_roles VALUES(5,'normal',6,'2019-12-10 12:47:07.035057');
-INSERT INTO user_roles VALUES(6,'normal',4,'2019-12-10 12:47:07.035057');
-INSERT INTO user_roles VALUES(7,'ossec',2,'2019-12-10 12:47:07.035057');
-INSERT INTO user_roles VALUES(8,'ossec',5,'2019-12-10 12:47:07.035057');
-INSERT INTO user_roles VALUES(9,'rbac',5,'2019-12-10 12:47:07.035057');
-INSERT INTO user_roles VALUES(10,'rbac',3,'2019-12-10 12:47:07.035057');
-INSERT INTO user_roles VALUES(11,'rbac',4,'2019-12-10 12:47:07.035057');
+INSERT INTO user_roles VALUES(1,'wazuh',1,0,'2019-12-10 12:46:53.229308');
+INSERT INTO user_roles VALUES(2,'wazuh-app',1,0,'2019-12-10 12:46:53.229308');
+INSERT INTO user_roles VALUES(3,'administrator',2,0,'2019-12-10 12:47:07.035057');
+INSERT INTO user_roles VALUES(4,'normal',5,0,'2019-12-10 12:47:07.035057');
+INSERT INTO user_roles VALUES(5,'normal',6,1,'2019-12-10 12:47:07.035057');
+INSERT INTO user_roles VALUES(6,'normal',4,2,'2019-12-10 12:47:07.035057');
+INSERT INTO user_roles VALUES(7,'ossec',2,0,'2019-12-10 12:47:07.035057');
+INSERT INTO user_roles VALUES(8,'ossec',5,1,'2019-12-10 12:47:07.035057');
+INSERT INTO user_roles VALUES(9,'rbac',5,0,'2019-12-10 12:47:07.035057');
+INSERT INTO user_roles VALUES(10,'rbac',3,1,'2019-12-10 12:47:07.035057');
+INSERT INTO user_roles VALUES(11,'rbac',4,2,'2019-12-10 12:47:07.035057');

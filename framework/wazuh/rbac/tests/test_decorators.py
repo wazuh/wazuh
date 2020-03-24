@@ -79,7 +79,7 @@ def test_expose_resources(mock_create_engine, mock_declarative_base, mock_sessio
             def framework_dummy(*args, **kwargs):
                 for target_param, allowed_resource in zip(get_identifier(decorator_params['resources']),
                                                           allowed_resources):
-                    assert (set(kwargs[target_param]) == set(allowed_resource))
+                    assert set(kwargs[target_param]) == set(allowed_resource)
 
             try:
                 framework_dummy(rbac=rbac, **function_params)

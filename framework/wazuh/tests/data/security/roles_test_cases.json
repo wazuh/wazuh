@@ -17,15 +17,7 @@
               }
             },
             "policies": [
-              {
-                "id": 1,
-                "name": "wazuhPolicy",
-                "policy": {
-                  "actions": ["*:*"],
-                  "resources": ["*:*"],
-                  "effect": "allow"
-                }
-              }
+              1
             ],
             "users": ["wazuh"]
           },
@@ -38,24 +30,7 @@
               }
             },
             "policies": [
-              {
-                "id": 4,
-                "name": "administratorPolicy",
-                "policy": {
-                  "actions": ["agent:update", "agent:delete"],
-                  "effect": "allow",
-                  "resources": ["agent:id:*"]
-                }
-              },
-              {
-                "id": 5,
-                "name": "normalPolicy",
-                "policy": {
-                  "actions": ["agent:update", "agent:delete"],
-                  "effect": "deny",
-                  "resources": ["agent:id:*"]
-                }
-              }
+              5, 4
             ],
             "users": ["normal", "rbac"]}
         ],
@@ -78,41 +53,11 @@
             }
           },
           "policies": [
-            {
-              "id": 1,
-              "name": "wazuhPolicy",
-              "policy": {
-                "actions": ["*:*"],
-                "resources": ["*:*"],
-                "effect": "allow"
-              }
-            }, {
-              "id": 2,
-              "name": "wazuh-wuiPolicy",
-              "policy": {
-                "actions": ["agent:create"],
-                "effect": "allow",
-                "resources": ["agent:id:001", "agent:id:002", "agent:id:003"]
-              }
-            }, {
-              "id": 5,
-              "name": "normalPolicy",
-              "policy": {
-                "actions": ["agent:update", "agent:delete"],
-                "effect": "deny",
-                "resources": ["agent:id:*"]
-              }
-            }, {
-              "id": 8,
-              "name": "policy2",
-              "policy": {
-                "actions": ["role:read"],
-                "effect": "allow",
-                "resources": ["role:id:1"]
-              }
-            }],
-            "users": ["rbac"]
-          }, {
+            2, 1, 8, 5
+          ],
+          "users": ["rbac"]
+          },
+          {
             "id": 5,
             "name": "normalUser",
             "rule": {
@@ -120,31 +65,9 @@
                 "definition": "normalRule"
               }
             },
-            "policies": [{
-              "id": 2,
-              "name": "wazuh-wuiPolicy",
-              "policy": {
-                "actions": ["agent:create"],
-                "effect": "allow",
-                "resources": ["agent:id:001", "agent:id:002", "agent:id:003"]
-              }
-            }, {
-              "id": 3,
-              "name": "technicalPolicy",
-              "policy": {
-                "actions": ["agent:create"],
-                "effect": "allow",
-                "resources": ["*:*:*"]
-              }
-            }, {
-              "id": 10,
-              "name": "policy4",
-              "policy": {
-                "actions": ["policy:delete"],
-                "effect": "deny",
-                "resources": ["policy:id:*"]
-              }
-            }],
+            "policies": [
+              2, 3, 10
+            ],
             "users": ["normal", "ossec", "rbac"]
           }, {
             "id": 6,
@@ -154,87 +77,9 @@
                 "definition": "ossecRule"
               }
             },
-            "policies": [{
-              "id": 1,
-              "name": "wazuhPolicy",
-              "policy": {
-                "actions": ["*:*"],
-                "resources": ["*:*"],
-                "effect": "allow"
-              }
-            }, {
-              "id": 2,
-              "name": "wazuh-wuiPolicy",
-              "policy": {
-                "actions": ["agent:create"],
-                "effect": "allow",
-                "resources": ["agent:id:001", "agent:id:002", "agent:id:003"]
-              }
-            }, {
-              "id": 3,
-              "name": "technicalPolicy",
-              "policy": {
-                "actions": ["agent:create"],
-                "effect": "allow",
-                "resources": ["*:*:*"]
-              }
-            }, {
-              "id": 4,
-              "name": "administratorPolicy",
-              "policy": {
-                "actions": ["agent:update", "agent:delete"],
-                "effect": "allow",
-                "resources": ["agent:id:*"]
-              }
-            }, {
-              "id": 5,
-              "name": "normalPolicy",
-              "policy": {
-                "actions": ["agent:update", "agent:delete"],
-                "effect": "deny",
-                "resources": ["agent:id:*"]
-              }
-            }, {
-              "id": 6,
-              "name": "ossecPolicy",
-              "policy": {
-                "actions": ["role:read"],
-                "effect": "allow",
-                "resources": ["role:id:*"]
-              }
-            }, {
-              "id": 7,
-              "name": "policy1",
-              "policy": {
-                "actions": ["role:read"],
-                "effect": "deny",
-                "resources": ["role:id:*"]
-              }
-            }, {
-              "id": 8,
-              "name": "policy2",
-              "policy": {
-                "actions": ["role:read"],
-                "effect": "allow",
-                "resources": ["role:id:1"]
-              }
-            }, {
-              "id": 9,
-              "name": "policy3",
-              "policy": {
-                "actions": ["policy:read"],
-                "effect": "allow",
-                "resources": ["policy:id:1"]
-              }
-            }, {
-              "id": 10,
-              "name": "policy4",
-              "policy": {
-                "actions": ["policy:delete"],
-                "effect": "deny",
-                "resources": ["policy:id:*"]
-              }
-            }],
+            "policies": [
+              2, 8, 7, 10, 5, 9, 1, 6, 3, 4
+            ],
             "users": ["normal"]
           }
         ],
@@ -343,87 +188,9 @@
               "definition": "normalRule3"
             }
           },
-          "policies": [{
-            "id": 1,
-            "name": "wazuhPolicy",
-            "policy": {
-              "actions": ["*:*"],
-              "resources": ["*:*"],
-              "effect": "allow"
-            }
-          }, {
-            "id": 2,
-            "name": "wazuh-wuiPolicy",
-            "policy": {
-              "actions": ["agent:create"],
-              "effect": "allow",
-              "resources": ["agent:id:001", "agent:id:002", "agent:id:003"]
-            }
-          }, {
-            "id": 3,
-            "name": "technicalPolicy",
-            "policy": {
-              "actions": ["agent:create"],
-              "effect": "allow",
-              "resources": ["*:*:*"]
-            }
-          }, {
-            "id": 4,
-            "name": "administratorPolicy",
-            "policy": {
-              "actions": ["agent:update", "agent:delete"],
-              "effect": "allow",
-              "resources": ["agent:id:*"]
-            }
-          }, {
-            "id": 5,
-            "name": "normalPolicy",
-            "policy": {
-              "actions": ["agent:update", "agent:delete"],
-              "effect": "deny",
-              "resources": ["agent:id:*"]
-            }
-          }, {
-            "id": 6,
-            "name": "ossecPolicy",
-            "policy": {
-              "actions": ["role:read"],
-              "effect": "allow",
-              "resources": ["role:id:*"]
-            }
-          }, {
-            "id": 7,
-            "name": "policy1",
-            "policy": {
-              "actions": ["role:read"],
-              "effect": "deny",
-              "resources": ["role:id:*"]
-            }
-          }, {
-            "id": 8,
-            "name": "policy2",
-            "policy": {
-              "actions": ["role:read"],
-              "effect": "allow",
-              "resources": ["role:id:1"]
-            }
-          }, {
-            "id": 9,
-            "name": "policy3",
-            "policy": {
-              "actions": ["policy:read"],
-              "effect": "allow",
-              "resources": ["policy:id:1"]
-            }
-          }, {
-            "id": 10,
-            "name": "policy4",
-            "policy": {
-              "actions": ["policy:delete"],
-              "effect": "deny",
-              "resources": ["policy:id:*"]
-            }
-          }],
+          "policies": [
+            2, 8, 7, 10, 5, 9, 1, 6, 3, 4
+          ],
           "users": ["normal"]
         }],
         "failed_items": {}
@@ -513,34 +280,7 @@
             "id": 4,
             "name": "administrator",
             "policies": [
-              {
-                "id": 4,
-                "name": "administratorPolicy",
-                "policy": {
-                  "actions": [
-                    "agent:update",
-                    "agent:delete"
-                  ],
-                  "effect": "allow",
-                  "resources": [
-                    "agent:id:*"
-                  ]
-                }
-              },
-              {
-                "id": 5,
-                "name": "normalPolicy",
-                "policy": {
-                  "actions": [
-                    "agent:update",
-                    "agent:delete"
-                  ],
-                  "effect": "deny",
-                  "resources": [
-                    "agent:id:*"
-                  ]
-                }
-              }
+              5, 4
             ],
             "rule": {
               "MATCH": {
@@ -572,61 +312,7 @@
             "id": 3,
             "name": "technical",
             "policies": [
-              {
-                "id": 1,
-                "name": "wazuhPolicy",
-                "policy": {
-                  "actions": [
-                    "*:*"
-                  ],
-                  "effect": "allow",
-                  "resources": [
-                    "*:*"
-                  ]
-                }
-              },
-              {
-                "id": 2,
-                "name": "wazuh-wuiPolicy",
-                "policy": {
-                  "actions": [
-                    "agent:create"
-                  ],
-                  "effect": "allow",
-                  "resources": [
-                    "agent:id:001",
-                    "agent:id:002",
-                    "agent:id:003"
-                  ]
-                }
-              },
-              {
-                "id": 5,
-                "name": "normalPolicy",
-                "policy": {
-                  "actions": [
-                    "agent:update",
-                    "agent:delete"
-                  ],
-                  "effect": "deny",
-                  "resources": [
-                    "agent:id:*"
-                  ]
-                }
-              },
-              {
-                "id": 8,
-                "name": "policy2",
-                "policy": {
-                  "actions": [
-                    "role:read"
-                  ],
-                  "effect": "allow",
-                  "resources": [
-                    "role:id:1"
-                  ]
-                }
-              }
+              2, 1, 8, 5
             ],
             "rule": {
               "MATCH": {
@@ -641,47 +327,7 @@
             "id": 5,
             "name": "normalUser",
             "policies": [
-              {
-                "id": 2,
-                "name": "wazuh-wuiPolicy",
-                "policy": {
-                  "actions": [
-                    "agent:create"
-                  ],
-                  "effect": "allow",
-                  "resources": [
-                    "agent:id:001",
-                    "agent:id:002",
-                    "agent:id:003"
-                  ]
-                }
-              },
-              {
-                "id": 3,
-                "name": "technicalPolicy",
-                "policy": {
-                  "actions": [
-                    "agent:create"
-                  ],
-                  "effect": "allow",
-                  "resources": [
-                    "*:*:*"
-                  ]
-                }
-              },
-              {
-                "id": 10,
-                "name": "policy4",
-                "policy": {
-                  "actions": [
-                    "policy:delete"
-                  ],
-                  "effect": "deny",
-                  "resources": [
-                    "policy:id:*"
-                  ]
-                }
-              }
+              2, 3, 10
             ],
             "rule": {
               "MATCH": {
@@ -698,140 +344,7 @@
             "id": 6,
             "name": "ossec",
             "policies": [
-              {
-                "id": 1,
-                "name": "wazuhPolicy",
-                "policy": {
-                  "actions": [
-                    "*:*"
-                  ],
-                  "effect": "allow",
-                  "resources": [
-                    "*:*"
-                  ]
-                }
-              },
-              {
-                "id": 2,
-                "name": "wazuh-wuiPolicy",
-                "policy": {
-                  "actions": [
-                    "agent:create"
-                  ],
-                  "effect": "allow",
-                  "resources": [
-                    "agent:id:001",
-                    "agent:id:002",
-                    "agent:id:003"
-                  ]
-                }
-              },
-              {
-                "id": 3,
-                "name": "technicalPolicy",
-                "policy": {
-                  "actions": [
-                    "agent:create"
-                  ],
-                  "effect": "allow",
-                  "resources": [
-                    "*:*:*"
-                  ]
-                }
-              },
-              {
-                "id": 4,
-                "name": "administratorPolicy",
-                "policy": {
-                  "actions": [
-                    "agent:update",
-                    "agent:delete"
-                  ],
-                  "effect": "allow",
-                  "resources": [
-                    "agent:id:*"
-                  ]
-                }
-              },
-              {
-                "id": 5,
-                "name": "normalPolicy",
-                "policy": {
-                  "actions": [
-                    "agent:update",
-                    "agent:delete"
-                  ],
-                  "effect": "deny",
-                  "resources": [
-                    "agent:id:*"
-                  ]
-                }
-              },
-              {
-                "id": 6,
-                "name": "ossecPolicy",
-                "policy": {
-                  "actions": [
-                    "role:read"
-                  ],
-                  "effect": "allow",
-                  "resources": [
-                    "role:id:*"
-                  ]
-                }
-              },
-              {
-                "id": 7,
-                "name": "policy1",
-                "policy": {
-                  "actions": [
-                    "role:read"
-                  ],
-                  "effect": "deny",
-                  "resources": [
-                    "role:id:*"
-                  ]
-                }
-              },
-              {
-                "id": 8,
-                "name": "policy2",
-                "policy": {
-                  "actions": [
-                    "role:read"
-                  ],
-                  "effect": "allow",
-                  "resources": [
-                    "role:id:1"
-                  ]
-                }
-              },
-              {
-                "id": 9,
-                "name": "policy3",
-                "policy": {
-                  "actions": [
-                    "policy:read"
-                  ],
-                  "effect": "allow",
-                  "resources": [
-                    "policy:id:1"
-                  ]
-                }
-              },
-              {
-                "id": 10,
-                "name": "policy4",
-                "policy": {
-                  "actions": [
-                    "policy:delete"
-                  ],
-                  "effect": "deny",
-                  "resources": [
-                    "policy:id:*"
-                  ]
-                }
-              }
+              2, 8, 7, 10, 5, 9, 1, 6, 3, 4
             ],
             "rule": {
               "MATCH": {

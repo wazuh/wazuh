@@ -62,7 +62,7 @@
           },
           {
             "username": "normal",
-            "roles": [4, 5, 6]
+            "roles": [5, 6, 4]
           }
         ],
         "failed_items": {
@@ -220,7 +220,7 @@
         "affected_items": [
           {
             "username": "normal",
-            "roles": [4, 5, 6]
+            "roles": [5, 6, 4]
           },
           {
             "username": "python",
@@ -242,7 +242,7 @@
         "affected_items": [
           {
             "username": "normal",
-            "roles": [4, 5, 6]
+            "roles": [5, 6, 4]
           }
         ],
         "failed_items": {

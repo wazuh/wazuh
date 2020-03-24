@@ -405,17 +405,28 @@ def update_policy(policy_id, pretty=False, wait_for_complete=False):
 
 
 @exception_handler
-def set_user_role(username, role_ids, pretty=False, wait_for_complete=False):
+def set_user_role(username, role_ids, position=None, pretty=False, wait_for_complete=False):
     """Add a list of roles to one specified user
 
-    :param username: User's username
-    :param role_ids: List of role ids
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :return User-Role information
-    """
-    f_kwargs = {'user_id': username, 'role_ids': role_ids}
+    Parameters
+    ----------
+    username : str
+        User's username
+    role_ids : list of int
+        List of role ids
+    position : int
+        Position where the new role will be inserted
+    pretty : bool
+        Show results in human-readable format
+    wait_for_complete : bool
+        Disable timeout response
 
+    Returns
+    -------
+    Dict
+        User-Role information
+    """
+    f_kwargs = {'user_id': username, 'role_ids': role_ids, 'position': position}
     dapi = DistributedAPI(f=security.set_user_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -457,16 +468,28 @@ def remove_user_role(username, role_ids, pretty=False, wait_for_complete=False):
 
 
 @exception_handler
-def set_role_policy(role_id, policy_ids, pretty=False, wait_for_complete=False):
+def set_role_policy(role_id, policy_ids, position=None, pretty=False, wait_for_complete=False):
     """Add a list of policies to one specified role
 
-    :param role_id: Role id
-    :param policy_ids: List of policy ids
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :return Role information
+    Parameters
+    ----------
+    role_id : int
+        Role ID
+    policy_ids : list of int
+        List of policy IDs
+    position : int
+        Position where the new role will be inserted
+    pretty : bool
+        Show results in human-readable format
+    wait_for_complete : bool
+        Disable timeout response
+
+    Returns
+    -------
+    dict
+        Role information
     """
-    f_kwargs = {'role_id': role_id, 'policy_ids': policy_ids}
+    f_kwargs = {'role_id': role_id, 'policy_ids': policy_ids, 'position': position}
 
     dapi = DistributedAPI(f=security.set_role_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
