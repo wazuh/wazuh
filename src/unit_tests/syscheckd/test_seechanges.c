@@ -35,7 +35,7 @@ char *adapt_win_fc_output(char *command_output);
 
 char* filter(const char *string);
 int symlink_to_dir (const char *filename);
-char *gen_diff_alert(const char *filename, time_t alert_diff_time);
+char *gen_diff_alert(const char *filename, time_t alert_diff_time, int status);
 int seechanges_dupfile(const char *old, const char *current);
 int seechanges_createpath(const char *filename);
 
@@ -557,7 +557,7 @@ void test_gen_diff_alert(void **state) {
     expect_string(__wrap_w_compress_gzfile, filedst, "/var/ossec/queue/diff/local/folder/test.file/last-entry.gz");
     will_return(__wrap_w_compress_gzfile, 0);
 
-    char *diff = gen_diff_alert(file_name, time);
+    char *diff = gen_diff_alert(file_name, time, 1);
 
     *state = diff;
 
@@ -584,7 +584,7 @@ void test_gen_diff_alert_big_size(void **state) {
     expect_string(__wrap_w_compress_gzfile, filedst, "/var/ossec/queue/diff/local/folder/test.file/last-entry.gz");
     will_return(__wrap_w_compress_gzfile, 0);
 
-    char *diff = gen_diff_alert(file_name, time);
+    char *diff = gen_diff_alert(file_name, time, 1);
 
     *state = diff;
 
@@ -600,7 +600,7 @@ void test_gen_diff_alert_abspath_error(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "Cannot get absolute path of '/folder/test.file': Success (0)");
 
-    char *diff = gen_diff_alert(file_name, time);
+    char *diff = gen_diff_alert(file_name, time, 1);
 
     assert_null(diff);
 }
@@ -618,7 +618,7 @@ void test_gen_diff_alert_fopen_error(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "(6665): Unable to generate diff alert (fopen)'/var/ossec/queue/diff/local/folder/test.file/diff.12345'.");
 
-    char *diff = gen_diff_alert(file_name, time);
+    char *diff = gen_diff_alert(file_name, time, 1);
 
     assert_null(diff);
 }
@@ -641,7 +641,7 @@ void test_gen_diff_alert_fread_error(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "(6666): Unable to generate diff alert (fread).");
 
-    char *diff = gen_diff_alert(file_name, time);
+    char *diff = gen_diff_alert(file_name, time, 1);
 
     assert_null(diff);
 }
@@ -668,7 +668,7 @@ void test_gen_diff_alert_compress_error(void **state) {
 
     expect_string(__wrap__mwarn, formatted_msg, "(6914): Cannot create a snapshot of file '/folder/test.file'");
 
-    char *diff = gen_diff_alert(file_name, time);
+    char *diff = gen_diff_alert(file_name, time, 1);
 
     *state = diff;
 
