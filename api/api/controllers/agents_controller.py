@@ -3,12 +3,14 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import logging
+from json.decoder import JSONDecodeError
 
 from aiohttp import web
 from connexion.lifecycle import ConnexionResponse
 
 import wazuh.agent as agent
 from api import configuration
+from api.api_exception import APIError
 from api.encoder import dumps
 from api.models.agent_added import AgentAdded
 from api.models.agent_inserted import AgentInserted
@@ -125,8 +127,11 @@ async def add_agent(request, pretty=False, wait_for_complete=False):
     :return: AgentIdKey
     """
     # Get body parameters
-    agent_added_model = AgentAdded.from_dict(await request.json())
-    f_kwargs = agent_added_model.to_dict()
+    try:
+        agent_added_model = AgentAdded.from_dict(await request.json())
+        f_kwargs = agent_added_model.to_dict()
+    except JSONDecodeError as e:
+        raise_if_exc(APIError(code=2005, details=e.msg))
 
     # Get IP if not given
     if not f_kwargs['ip']:
@@ -175,61 +180,6 @@ async def restart_agents(request, pretty=False, wait_for_complete=False, list_ag
                           rbac_permissions=request['token_info']['rbac_policies'],
                           broadcasting=list_agents == '*',
                           logger=logger
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=dumps)
-
-
-async def delete_agent(request, agent_id, pretty=False, wait_for_complete=False, purge=False):
-    """Delete an agent
-
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param agent_id: Agent ID. All posible values since 000 onwards.
-    :param purge: Delete an agent from the key store
-    :return: AllItemsResponseAgentIDs
-    """
-    f_kwargs = {'agent_list': [agent_id],
-                'purge': purge,
-                'older_than': "0s"
-                }
-
-    dapi = DistributedAPI(f=agent.delete_agents,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          pretty=pretty,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=dumps)
-
-
-async def get_agent(request, agent_id, pretty=False, wait_for_complete=False, select=None):
-    """Get various information from an agent
-
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param agent_id: Agent ID. All posible values since 000 onwards.r
-    :param select: Select which fields to return (separated by comma)
-    :return: AllItemsResponseAgents
-    """
-    f_kwargs = {'agent_list': [agent_id],
-                'select': select
-                }
-
-    dapi = DistributedAPI(f=agent.get_agents,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          pretty=pretty,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -668,30 +618,6 @@ async def get_list_group(request, pretty=False, wait_for_complete=False, list_gr
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-async def delete_single_group(request, group_id, pretty=False, wait_for_complete=False):
-    """Deletes a group. Agents that were assigned only to the deleted group will automatically revert to default group.
-
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param group_id: Group ID.
-    :return: AgentGroupDeleted
-    """
-    f_kwargs = {'group_list': [group_id]}
-
-    dapi = DistributedAPI(f=agent.delete_groups,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          pretty=pretty,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=dumps)
-
-
 async def get_agents_in_group(request, group_id, pretty=False, wait_for_complete=False, offset=0, limit=database_limit,
                               select=None, sort=None, search=None, status=None, q=None):
     """Get the list of agents that belongs to the specified group.
@@ -804,9 +730,9 @@ async def put_group_config(request, body, group_id, pretty=False, wait_for_compl
     try:
         body = body.decode('utf-8')
     except UnicodeDecodeError:
-        return 'Error parsing body request to UTF-8', 400
+        raise_if_exc(APIError(code=2006))
     except AttributeError:
-        return 'Body is empty', 400
+        raise_if_exc(APIError(code=2007))
 
     f_kwargs = {'group_list': [group_id],
                 'file_data': body}
@@ -930,8 +856,11 @@ async def insert_agent(request, pretty=False, wait_for_complete=False):
     :return: AgentIdKey
     """
     # Get body parameters
-    agent_inserted_model = AgentInserted.from_dict(await request.json())
-    f_kwargs = agent_inserted_model.to_dict()
+    try:
+        agent_inserted_model = AgentInserted.from_dict(await request.json())
+        f_kwargs = agent_inserted_model.to_dict()
+    except JSONDecodeError as e:
+        raise_if_exc(APIError(code=2005, details=e.msg))
 
     # Get IP if not given
     if not f_kwargs['ip']:
@@ -958,32 +887,6 @@ async def insert_agent(request, pretty=False, wait_for_complete=False):
     response = Data(data)
 
     return web.json_response(data=response, status=200, dumps=dumps)
-
-
-async def get_agent_by_name(request, agent_name, pretty=False, wait_for_complete=False, select=None):
-    """Get various information from an agent using its name
-
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param agent_name: Agent name used when the agent was registered.
-    :param select: Select which fields to return (separated by comma)
-    :return: AllItemsResponseAgents
-    """
-    f_kwargs = {'name': agent_name,
-                'select': select}
-
-    dapi = DistributedAPI(f=agent.get_agent_by_name,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          pretty=pretty,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 async def get_agent_no_group(request, pretty=False, wait_for_complete=False, offset=0, limit=database_limit,

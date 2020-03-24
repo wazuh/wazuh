@@ -4,9 +4,11 @@
 
 import logging
 import re
+from json.decoder import JSONDecodeError
 
 from aiohttp import web
 
+from api.api_exception import APIError
 from api.authentication import generate_token
 from api.encoder import dumps
 from api.models.token_response import TokenResponse
@@ -86,7 +88,10 @@ async def create_user(request):
 
     :return: User data
     """
-    f_kwargs = {**await request.json()}
+    try:
+        f_kwargs = {**await request.json()}
+    except JSONDecodeError as e:
+        raise_if_exc(APIError(code=2005, details=e.msg))
     validate = _check_body(f_kwargs)
     if validate is not True:
         raise WazuhError(5005, extra_message='Invalid field found {}'.format(validate))
@@ -108,7 +113,10 @@ async def update_user(request, username):
     :param username: Name of the user to be modified
     :return: User data
     """
-    f_kwargs = {'username': username, **await request.json()}
+    try:
+        f_kwargs = {'username': username, **await request.json()}
+    except JSONDecodeError as e:
+        raise_if_exc(APIError(code=2005, details=e.msg))
     validate = _check_body(f_kwargs)
     if validate is not True:
         raise WazuhError(5005, extra_message='Invalid field found {}'.format(validate))
@@ -186,7 +194,10 @@ async def add_role(request, pretty=False, wait_for_complete=False):
     :return Role information
     """
     # get body parameters
-    role_added_model = await request.json()
+    try:
+        role_added_model = await request.json()
+    except JSONDecodeError as e:
+        raise_if_exc(APIError(code=2005, details=e.msg))
 
     f_kwargs = {'name': role_added_model['name'], 'rule': role_added_model['rule']}
 
@@ -237,7 +248,10 @@ async def update_role(request, role_id, pretty=False, wait_for_complete=False):
     :return Role information updated
     """
     # get body parameters
-    role_added_model = await request.json()
+    try:
+        role_added_model = await request.json()
+    except JSONDecodeError as e:
+        raise_if_exc(APIError(code=2005, details=e.msg))
 
     f_kwargs = {'role_id': role_id, 'name': role_added_model.get('name', None),
                 'rule': role_added_model.get('rule', None)}
@@ -299,7 +313,10 @@ async def add_policy(request, pretty=False, wait_for_complete=False):
     :return Policy information
     """
     # get body parameters
-    policy_added_model = await request.json()
+    try:
+        policy_added_model = await request.json()
+    except JSONDecodeError as e:
+        raise_if_exc(APIError(code=2005, details=e.msg))
 
     f_kwargs = {'name': policy_added_model['name'], 'policy': policy_added_model['policy']}
 
@@ -350,7 +367,10 @@ async def update_policy(request, policy_id, pretty=False, wait_for_complete=Fals
     :return Policy information updated
     """
     # get body parameters
-    policy_added_model = await request.json()
+    try:
+        policy_added_model = await request.json()
+    except JSONDecodeError as e:
+        raise_if_exc(APIError(code=2005, details=e.msg))
 
     f_kwargs = {'policy_id': policy_id,
                 'name': policy_added_model.get('name', None),

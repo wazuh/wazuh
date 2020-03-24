@@ -9,5 +9,7 @@ from wazuh import common
 API_PATH = os.path.join(common.ossec_path, 'api')
 CONFIG_PATH = os.path.join(API_PATH, 'configuration')
 CONFIG_FILE_PATH = os.path.join(CONFIG_PATH, 'api.yaml')
+RELATIVE_CONFIG_FILE_PATH = os.path.relpath(CONFIG_FILE_PATH, common.ossec_path)
 SECURITY_PATH = os.path.join(CONFIG_PATH, 'security')
+RELATIVE_SECURITY_PATH = os.path.relpath(SECURITY_PATH, common.ossec_path)
 TEMPLATE_API_CONFIG_PATH = os.path.join(CONFIG_PATH, 'template-api.yaml')

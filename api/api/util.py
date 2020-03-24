@@ -12,6 +12,7 @@ from connexion import ProblemException
 
 from wazuh.common import ossec_path as WAZUH_PATH
 from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
+from api.api_exception import APIException, APIError
 
 
 def serialize(item):
@@ -236,12 +237,18 @@ def _create_problem(exc: Exception):
                                     'code': exc.code,
                                     'dapi_errors': exc.dapi_errors
                                     })
+    elif isinstance(exc, APIException):
+        ext = remove_nones_to_dict({'code': exc.code})
     else:
         ext = None
     if isinstance(exc, WazuhError):
         raise ProblemException(status=400, title='Wazuh Error', detail=exc.message, ext=ext)
     elif isinstance(exc, (WazuhInternalError, WazuhException)):
         raise ProblemException(status=500, title='Wazuh Internal Error', detail=exc.message, ext=ext)
+    elif isinstance(exc, APIError):
+        raise ProblemException(status=400, title='Wazuh Error', detail=exc.details, ext=ext)
+    elif isinstance(exc, APIException):
+        raise ProblemException(status=500, title='Wazuh Internal Error', detail=exc.details, ext=ext)
     raise exc
 
 

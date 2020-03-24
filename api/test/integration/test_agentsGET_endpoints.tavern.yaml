@@ -704,21 +704,23 @@ stages:
      body:
        <<: *error_spec
 
-#THIS TEST FAILS RIGHT NOW
-#File "/var/ossec/framework/python/lib/python3.7/site-packages/wazuh-3.12.0-py3.7.egg/wazuh/core/core_agent.py", line 124, in _parse_legacy_filters
-#    self.legacy_filters['older_than'])
-#TypeError: unsupported operand type(s) for +=: 'NoneType' and 'str'
-#
-# - name: Filter agents using older_than param
-#   request:
-#     <<: *get_agents
-#     params:
-#       older_than: 10s
-#   response:
-#     status_code: 200
-#     body:
-#       data:
-#         <<: *basic_response
+ - name: Filter agents using older_than param
+   request:
+     <<: *get_agents
+     params:
+       older_than: 30s
+   response:
+     status_code: 200
+     body:
+       data:
+         affected_items:
+           - id: '009'
+           - id: '010'
+           - id: '011'
+           - id: '012'
+         failed_items: []
+         total_affected_items: 4
+         total_failed_items: 0
 
  - name: Try show agents using an invalid older_than
    request:
@@ -751,17 +753,19 @@ stages:
          total_failed_items: 0
 
 ---
-test_name: GET /agents/{agent_id}
+test_name: GET /agents with single agent id
 
 stages:
 
-  # GET /agents/000
+  # GET /agents?list_agents=000
  - name: Basic response agent
    request: &get_agent
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
+     params:
+       list_agents: '000'
    response:
      status_code: 200
      body:
@@ -790,13 +794,15 @@ stages:
          total_affected_items: 1
          total_failed_items: 0
 
-  # GET /agents/999
+  # GET /agents?list_agents=999
  - name: Try to show not existing agent
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/999"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
+     params:
+       list_agents: '999'
    response:
      status_code: 200
      body:
@@ -810,24 +816,27 @@ stages:
          total_affected_items: 0
          total_failed_items: 1
 
-  # GET /agents/wrong_name
+  # GET /agents?list_agents=wrong_name
  - name: Try show not existing agent by name
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/wrong_name"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
+     params:
+       list_agents: wrong_name
    response:
      status_code: 400
      body:
        <<: *error_spec
 
-  # GET /agents/000?select=os.platform
+  # GET /agents?list_agents=000&select=os.platform
  - name: Filter select one field
    request:
      <<: *get_agent
      params:
        select: 'os.platform'
+       list_agents: '000'
    response:
      status_code: 200
      body:
@@ -840,12 +849,13 @@ stages:
          total_affected_items: 1
          total_failed_items: 0
 
-  # GET /agents/000?select=dateAdd,status
+  # GET /agents?list_agents=000&select=dateAdd,status
  - name: Filter select multiple fields
    request:
      <<: *get_agent
      params:
        select: 'dateAdd,status'
+       list_agents: '000'
    response:
      status_code: 200
      body:
@@ -858,23 +868,25 @@ stages:
          total_affected_items: 1
          total_failed_items: 0
 
-  # GET /agents/000?select=param_test
+  # GET /agents?list_agents=000&select=param_test
  - name: Try show agents with not allowed selector
    request:
      <<: *get_agent
      params:
        select: param_test
+       list_agents: '000'
    response:
      status_code: 400
      body:
        code: 1724
 
-  # GET /agents/000?select=param_%_test
+  # GET /agents?list_agents=000&select=param_%_test
  - name: Try show agents with not allowed selector (invalid character)
    request:
      <<: *get_agent
      params:
        select: param_%_test
+       list_agents: '000'
    response:
      status_code: 400
      body:
@@ -1794,13 +1806,13 @@ stages:
          total_failed_items: 0
 
 ---
-test_name: GET /agents/groups
+test_name: GET /groups
 
 stages:
 
  - name: Basic response agents groups
    request: &get_agents_groups
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -1991,7 +2003,7 @@ stages:
          total_failed_items: 0
 
 ---
-test_name: GET /agents/groups filter hash
+test_name: GET /groups filter hash
 
 marks:
  - parametrize:
@@ -2024,13 +2036,13 @@ stages:
          <<: *get_groups_answer
 
 ---
-test_name: GET /agents/groups/{group_id}
+test_name: GET /groups/{group_id}/agents
 
 stages:
 
  - name: Try get all agents in one group
    request: &groups_id_request
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/group3"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group3/agents"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -2126,7 +2138,7 @@ stages:
 
  - name: Params, bad group name
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/wrong_group"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_group/agents"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -2137,7 +2149,7 @@ stages:
 
  - name: Params, invalid group name (not alphanumeric)
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/wrong_%_group"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_%_group/agents"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -2326,7 +2338,7 @@ stages:
        <<: *error_spec
 
 ---
-test_name: GET /agents/groups/{group_id} {sort,select}
+test_name: GET /groups/{group_id}/agents {sort,select}
 
 marks:
  - parametrize:
@@ -2394,13 +2406,13 @@ stages:
          total_failed_items: 0
 
 ---
-test_name: GET /agents/groups/{group_id}/configuration
+test_name: GET /groups/{group_id}/configuration
 
 stages:
 
  - name: Try get the configuration of a group
    request: &groups_id_config_request
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/default/configuration"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/default/configuration"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -2417,7 +2429,7 @@ stages:
 
  - name: Try get the configuration of a bad group
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/wrong_group/configuration"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_group/configuration"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -2430,7 +2442,7 @@ stages:
 
  - name: Try get the configuration of a bad group (not alphanumeric)
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/wrong_%group/configuration"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_%group/configuration"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -2515,13 +2527,13 @@ stages:
        code: 1405
 
 ---
-test_name: GET /agents/groups/{group_id}/files
+test_name: GET /groups/{group_id}/files
 
 stages:
 
  - name: Try get the files of a group
    request: &groups_id_files_request
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/default/files"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/default/files"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -2622,7 +2634,7 @@ stages:
 
  - name: Try get the files of a bad group name
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/wrong_group/files"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_group/files"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -2635,7 +2647,7 @@ stages:
 
  - name: Try get the files of a bad group name (no alphanumeric)
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/wrong_%_group/files"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_%_group/files"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -2704,7 +2716,7 @@ stages:
        <<: *error_spec
 
 ---
-test_name: GET /agents/groups/{group_id}/files filter hash
+test_name: GET /groups/{group_id}/files filter hash
 
 marks:
  - parametrize:
@@ -2738,13 +2750,13 @@ stages:
          totalItems: !anyint
 
 ---
-test_name: GET /agents/groups/{group_id}/files/{filename}/json
+test_name: GET /groups/{group_id}/files/{filename}/json
 
 stages:
 
  - name: Try get one file of a group
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/default/files/agent.conf/json"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/default/files/agent.conf/json"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -2755,7 +2767,7 @@ stages:
 
  - name: Try get one file of a group, bad group
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/wrong_group/files/agent.conf/json"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_group/files/agent.conf/json"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -2766,7 +2778,7 @@ stages:
 
  - name: Try get one file of a group, bad group (not aplhanumeric)
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/wrong_%_group/files/agent.conf/json"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_%_group/files/agent.conf/json"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -2776,25 +2788,25 @@ stages:
        <<: *error_spec
 
 ---
-test_name: GET /agents/groups/{group_id}/files/{filename}/xml
+test_name: GET /groups/{group_id}/files/{filename}/xml
 
 stages:
 
  - name: Try get one file of a group
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/default/files/agent.conf/xml"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/default/files/agent.conf/xml"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
      headers:
-       content-type: application/xml
+       content-type: application/xml; charset=utf-8
 
 
  - name: Try get one file of a group, bad group
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/wrong_group/files/agent.conf/xml"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_group/files/agent.conf/xml"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -2805,7 +2817,7 @@ stages:
 
  - name: Try get one file of a group, bad group (not aplhanumeric)
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/wrong_%_group/files/agent.conf/xml"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_%_group/files/agent.conf/xml"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -2815,16 +2827,18 @@ stages:
        <<: *error_spec
 
 ---
-test_name: GET /agents/name/{agent_name}
+test_name: GET /agents?name=agent_name
 
 stages:
 
  - name: Basic response agents name
    request: &get_agents_by_name
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/name/wazuh-agent1"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
+     params:
+       name: wazuh-agent1
    response:
      status_code: 200
      body:
@@ -2838,20 +2852,24 @@ stages:
 
  - name: Error agent name
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/name/wrong_agent"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents?name=wrong_agent"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
+     params:
+       name: wrong_agent
    response:
-     status_code: 400
+     status_code: 200
      body:
-       code: 1754
+       data:
+         total_affected_items: 0
 
  - name: Select one field
    request:
      <<: *get_agents_by_name
      params:
        select: name
+       name: wazuh-agent1
    response:
      status_code: 200
      body:
@@ -2863,6 +2881,7 @@ stages:
      <<: *get_agents_by_name
      params:
        select: name,id,status
+       name: wazuh-agent1
    response:
      status_code: 200
      body:
@@ -2880,6 +2899,7 @@ stages:
      <<: *get_agents_by_name
      params:
        select: wrong_select
+       name: wazuh-agent1
    response:
      status_code: 400
      body:

@@ -3,10 +3,12 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import logging
+from json.decoder import JSONDecodeError
 
 from aiohttp import web
 
 import wazuh.active_response as active_response
+from api.api_exception import APIError
 from api.encoder import dumps
 from api.models.active_response_model import ActiveResponse
 from api.util import remove_nones_to_dict, raise_if_exc
@@ -24,7 +26,11 @@ async def run_command(request, list_agents='*', pretty=False, wait_for_complete=
     :return: message
     """
     # Get body parameters
-    active_response_model = ActiveResponse.from_dict(await request.json())
+    try:
+        active_response_model = ActiveResponse.from_dict(await request.json())
+    except JSONDecodeError as e:
+        raise_if_exc(APIError(code=2005, details=e.msg))
+
     f_kwargs = {**{'agent_list': list_agents}, **active_response_model.to_dict()}
 
     dapi = DistributedAPI(f=active_response.run_command,

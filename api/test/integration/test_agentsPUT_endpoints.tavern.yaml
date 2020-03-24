@@ -1,5 +1,5 @@
 ---
-test_name: PUT /agents/group/{group_id}
+test_name: PUT /agents/group
 
 marks:
   - usefixtures:
@@ -14,24 +14,27 @@ stages:
   - type: ref
     id: login_get_token
 
-    # PUT /agents/group/wrong_group
+    # PUT /agents/group?group_id=wrong_group
   - name: Try to assign all agents to a non existing group
     request: &put_agents_group
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group/wrong_group"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: wrong_group
     response:
       status_code: 400
       body:
         code: 1710
 
-    # PUT /agents/group/wrong_group?list_agents=wrong_agent
+    # PUT /agents/group?group_id=wrong_group&list_agents=wrong_agent
   - name: Try to assign an invalid agent_id to a non existing group
     request:
       <<: *put_agents_group
       params:
         list_agents: "wrong_agent"
+        group_id: "wrong_group"
     response:
       status_code: 400
       body: &error_spec
@@ -40,27 +43,30 @@ stages:
         title: !anystr
         type: !anystr
 
-    # PUT /agents/group/wrong_%_group
+    # PUT /agents/group?group_id=wrong_%_group
   - name: Try to assign all agents to an invalid group id
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group/wrong_%_group"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: 'wrong_%_group'
     response:
       status_code: 400
       body:
         <<: *error_spec
 
-    # PUT /agents/group/default?list_agents=998,999
+    # PUT /agents/group?group_id=default&list_agents=998,999
   - name: Try to assign non existing agents to group default
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group/default"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         list_agents: "998,999"
+        group_id: default
     response:
       status_code: 200
       body:
@@ -76,15 +82,16 @@ stages:
           total_failed_items: 2
         message: !anystr
 
-    # PUT /agents/group/default?list_agents=000,999
+    # PUT /agents/group?group_id=default&list_agents=000,999
   - name: Try to assign 000 and a non existing agent to group default
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group/default"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         list_agents: "000,999"
+        group_id: default
     response:
       status_code: 200
       body:
@@ -103,15 +110,16 @@ stages:
           total_failed_items: 2
         message: !anystr
 
-    # PUT /agents/group/default?list_agents=001,002
+    # PUT /agents/group?group_id=default&list_agents=001,002
   - name: Try to assign agents 001 and 002 to group default where they already belong
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group/default"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         list_agents: "001,002"
+        group_id: default
     response:
       status_code: 200
       body:
@@ -127,15 +135,16 @@ stages:
           total_failed_items: 2
         message: !anystr
 
-    # PUT /agents/group/group1?list_agents=003,004,005
+    # PUT /agents/group?group_id=group1&list_agents=003,004,005
   - name: Assign agents 003, 004 and 005 to group1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group/group1"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         list_agents: "003,004,005"
+        group_id: group1
     response:
       status_code: 200
       body:
@@ -152,13 +161,15 @@ stages:
           total_failed_items: 1
         message: !anystr
 
-    # PUT /agents/group/group2
+    # PUT /agents/group?group_id=group2
   - name: Assign all agents to group2
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group/group2"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: group2
     response:
       status_code: 200
       body:
@@ -172,15 +183,16 @@ stages:
           total_affected_items: 5
         message: !anystr
 
-    # PUT /agents/group/group2?force_single_group=true
+    # PUT /agents/group?group_id=group2&force_single_group=true
   - name: Assign all agents to group2 with force_single_group
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group/group2"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         force_single_group: True
+        group_id: group2
     response:
       status_code: 200
       body:
@@ -200,14 +212,14 @@ stages:
         message: !anystr
 
 ---
-test_name: PUT /agents/groups/{group_id}/configuration
+test_name: PUT /groups/{group_id}/configuration
 
 stages:
 
-    # PUT /agents/group/group2/configuration
+    # PUT /group/group2/configuration
   - name: Update group2 configuration
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/group2/configuration"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group2/configuration"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -219,10 +231,10 @@ stages:
       body:
         message: !anystr
 
-    # PUT /agents/group/wrong_group/configuration
+    # PUT /group/wrong_group/configuration
   - name: Try to update configuration of a non existing group
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/wrong_group/configuration"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_group/configuration"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -234,10 +246,10 @@ stages:
       body:
         code: 1710
 
-    # PUT /agents/group/group1/configuration
+    # PUT /group/group1/configuration
   - name: Try to update configuration using an empty file
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/group1/configuration"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group1/configuration"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -245,12 +257,12 @@ stages:
     response:
       status_code: 400
       body:
-        code: 1112
+        code: 2007
 
-    # PUT /agents/group/group1/configuration
+    # PUT /group/group1/configuration
   - name: Try to update configuration using an invalid configuration file
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/group1/configuration"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group1/configuration"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -262,10 +274,10 @@ stages:
       body:
         code: 1113
 
-    # PUT /agents/group/group1/configuration
+    # PUT /group/group1/configuration
   - name: Try to update configuration using a wrong configuration file
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/group1/configuration"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group1/configuration"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
