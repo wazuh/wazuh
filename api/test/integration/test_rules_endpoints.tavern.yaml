@@ -28,13 +28,13 @@ stages:
           affected_items: &rules_response
             - description: !anystr
               details: !anything
-              file: !anystr
+              filename: !anystr
               gdpr: !anything
               groups: !anything
               id: !anyint
               level: !anyint
-              path: !anystr
-              pci: !anything
+              relative_dirname: !anystr
+              pci_dss: !anything
               status: !anystr
               gpg13: !anything
               hipaa: !anything
@@ -56,7 +56,7 @@ stages:
           affected_items:
             - <<: *rules_response
             - description: !anystr
-              file: !anystr
+              filename: !anystr
               status: !anystr
           failed_items: []
           total_affected_items: !anyint
@@ -64,7 +64,7 @@ stages:
       save:
         body:
           second_rule_description: data.affected_items.1.description
-          second_rule_file: data.affected_items.1.file
+          second_rule_filename: data.affected_items.1.filename
           second_rule_status: data.affected_items.1.status
 
   - name: Try to show the rules of the system, offset = 1
@@ -79,7 +79,7 @@ stages:
         data:
           affected_items:
             - description: "{second_rule_description}"
-              file: "{second_rule_file}"
+              filename: "{second_rule_filename}"
               status: "{second_rule_status}"
             - <<: *rules_response
           failed_items: []
@@ -129,7 +129,7 @@ stages:
     request:
       <<: *general_rules_request
       params:
-        sort: -file
+        sort: -filename
     response:
       status_code: 200
       body:
@@ -350,11 +350,11 @@ stages:
       body:
         <<: *error_response
 
-  - name: Filter path
+  - name: Filter relative_dirname
     request:
       <<: *general_rules_request
       params:
-        path: ruleset/rules
+        relative_dirname: ruleset/rules
         limit: 2
     response:
       status_code: 200
@@ -367,22 +367,22 @@ stages:
           total_affected_items: !anyint
           total_failed_items: !anyint
 
-  - name: Filter path without limit
+  - name: Filter relative_dirname without limit
     request:
       <<: *general_rules_request
       params:
-        path: ruleset/rules
+        relative_dirname: ruleset/rules
     response:
       status_code: 200
       body:
         data:
           total_affected_items: !anyint
 
-  - name: Filter file
+  - name: Filter filename
     request:
       <<: *general_rules_request
       params:
-        file: 0015-ossec_rules.xml
+        filename: 0015-ossec_rules.xml
         limit: 2
     response:
       status_code: 200
@@ -396,17 +396,17 @@ stages:
           total_failed_items: !anyint
       save:
         body:
-          pci_value: data.affected_items.1.pci.0
+          pci_dss_value: data.affected_items.1.pci_dss.0
           gdpr_value: data.affected_items.1.gdpr.0
           gpg13_value: data.affected_items.1.gpg13.0
           hipaa_value: data.affected_items.1.hipaa.0
           nist-800-53_value: data.affected_items.1.nist_800_53.0
 
-  - name: Filter file without limit
+  - name: Filter filename without limit
     request:
       <<: *general_rules_request
       params:
-        file: 0015-ossec_rules.xml
+        filename: 0015-ossec_rules.xml
         offset: 1
         limit: 1
     response:
@@ -414,34 +414,34 @@ stages:
       body:
         data:
           affected_items:
-            - pci:
-              - "{pci_value}"
+            - pci_dss:
+              - "{pci_dss_value}"
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: !anyint
 
-  - name: Filter pci
+  - name: Filter pci_dss
     request:
       <<: *general_rules_request
       params:
-        pci: "{pci_value}"
+        pci_dss: "{pci_dss_value}"
         limit: 1
     response:
       status_code: 200
       body:
         data:
           affected_items:
-            - pci:
-              - "{pci_value}"
+            - pci_dss:
+              - "{pci_dss_value}"
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: !anyint
 
-  - name: Filter pci without limit
+  - name: Filter pci_dss without limit
     request:
       <<: *general_rules_request
       params:
-        pci: "{pci_value}"
+        pci_dss: "{pci_dss_value}"
     response:
       status_code: 200
       body:
@@ -561,13 +561,13 @@ stages:
           total_affected_items: !anyint
 
 ---
-test_name: GET /rules/requirement/pci
+test_name: GET /rules/requirement/pci_dss
 
 stages:
 
-  - name: Try to show the rules by requirement pci
-    request: &pci_rules_request
-      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/pci"
+  - name: Try to show the rules by requirement pci_dss
+    request: &pci_dss_rules_request
+      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/pci_dss"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -585,9 +585,9 @@ stages:
           total_failed_items: 0
         message: Selected rules were shown
 
-  - name: Try to show the rules by requirement pci, limit and offset
+  - name: Try to show the rules by requirement pci_dss, limit and offset
     request:
-      <<: *pci_rules_request
+      <<: *pci_dss_rules_request
       params:
         limit: 1
         offset: 0
@@ -602,9 +602,9 @@ stages:
           total_failed_items: 0
         message: Selected rules were shown
 
-  - name: Try to show the rules by requirement pci, limit = 0
+  - name: Try to show the rules by requirement pci_dss, limit = 0
     request:
-      <<: *pci_rules_request
+      <<: *pci_dss_rules_request
       params:
         limit: 0
     response:
@@ -614,7 +614,7 @@ stages:
 
   - name: Filter sort
     request:
-      <<: *pci_rules_request
+      <<: *pci_dss_rules_request
       params:
         limit: 1000
     response:
@@ -632,7 +632,7 @@ stages:
 
   - name: Filter sort
     request:
-      <<: *pci_rules_request
+      <<: *pci_dss_rules_request
       params:
         sort: "-"
     response:
@@ -643,7 +643,7 @@ stages:
 
   - name: Filter search
     request:
-      <<: *pci_rules_request
+      <<: *pci_dss_rules_request
       params:
         search: 10
     response:
@@ -657,7 +657,7 @@ stages:
 
   - name: Invalid filter
     request:
-      <<: *pci_rules_request
+      <<: *pci_dss_rules_request
       params:
         noexist: True
     response:
@@ -1186,7 +1186,7 @@ stages:
     request:
       <<: *files_rules_request
       params:
-        sort: "-file"
+        sort: "-filename"
         limit: 1
     response:
       verify_response_with:
@@ -1230,7 +1230,7 @@ stages:
           total_failed_items: !anyint
 
 ---
-test_name: GET /rules/files/{file}/download
+test_name: GET /rules/files/{filename}/download
 
 stages:
 
@@ -1310,7 +1310,7 @@ stages:
       <<: *id_rules_request
       params:
         rule_ids: 200
-        file: 0025-sendmail_rules.xml
+        filename: 0025-sendmail_rules.xml
     response:
       status_code: 200
       body:
@@ -1336,7 +1336,7 @@ stages:
     request:
       <<: *id_rules_request
       params:
-        sort: -file
+        sort: -filename
         rule_ids: 1
     response:
       status_code: 200

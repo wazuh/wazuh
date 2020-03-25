@@ -53,7 +53,7 @@ def mock_ossec_path():
 
 # Tests
 
-@pytest.mark.parametrize('names, status, file, path, parents, expected_names, expected_total_failed', [
+@pytest.mark.parametrize('names, status, filename, relative_dirname, parents, expected_names, expected_total_failed', [
     (None, None, None, None, False, {'agent-buffer', 'json', 'agent-upgrade', 'wazuh', 'agent-restart'}, 0),
     (['agent-buffer'], None, None, None, False, {'agent-buffer'}, 0),
     (['agent-buffer', 'non_existing'], None, None, None, False, {'agent-buffer'}, 1),
@@ -65,13 +65,14 @@ def mock_ossec_path():
     (None, 'all', None, 'core/tests/data/decoders', True, {'wazuh', 'json'}, 0),
     (None, 'all', None, 'nothing_here', False, set(), 0)
 ])
-def test_get_decoders(names, status, file, path, parents, expected_names, expected_total_failed):
+def test_get_decoders(names, status, filename, relative_dirname, parents, expected_names, expected_total_failed):
     wrong_decoder_original_path = os.path.join(test_data_path, 'core/tests/data/decoders', 'wrong_decoders.xml')
     wrong_decoder_tmp_path = os.path.join(test_data_path, 'core/tests/data', 'wrong_decoders.xml')
     try:
         os.rename(wrong_decoder_original_path, wrong_decoder_tmp_path)
         # UUT call
-        result = decoder.get_decoders(names=names, status=status, file=file, path=path, parents=parents)
+        result = decoder.get_decoders(names=names, status=status, filename=filename, relative_dirname=relative_dirname,
+                                      parents=parents)
         assert isinstance(result, AffectedItemsWazuhResult)
         # Build result names set from response for filter validation
         result_names = {d['name'] for d in result.affected_items}
@@ -96,14 +97,14 @@ def test_get_decoders_files(conf, exception):
             assert isinstance(result.affected_items, list)
             assert len(result.affected_items) != 0
             for item in result.affected_items:
-                assert {'file', 'path', 'status'}.issubset(set(item))
+                assert {'filename', 'relative_dirname', 'status'}.issubset(set(item))
             assert result.total_affected_items == len(result.affected_items)
         except WazuhInternalError as e:
             # If the UUT call returns an exception we check it has the appropriate error code
             assert e.code == exception.code
 
 
-@pytest.mark.parametrize('status, path, file, expected_files', [
+@pytest.mark.parametrize('status, relative_dirname, filename, expected_files', [
     (None, None, None, {'test1_decoders.xml', 'test2_decoders.xml', 'wrong_decoders.xml'}),
     ('all', None, None, {'test1_decoders.xml', 'test2_decoders.xml', 'wrong_decoders.xml'}),
     ('enabled', None, None, {'test1_decoders.xml', 'wrong_decoders.xml'}),
@@ -120,23 +121,23 @@ def test_get_decoders_files(conf, exception):
     ('disabled', None, ['wrong_decoders.xml', 'test2_decoders.xml', 'non_existing.xml'], {'test2_decoders.xml'}),
     (None, None, 'non_existing.xml', set()),
 ])
-def test_get_decoders_files_filters(status, path, file, expected_files):
+def test_get_decoders_files_filters(status, relative_dirname, filename, expected_files):
     # UUT call
-    result = decoder.get_decoders_files(status=status, path=path, file=file)
+    result = decoder.get_decoders_files(status=status, relative_dirname=relative_dirname, filename=filename)
     assert isinstance(result, AffectedItemsWazuhResult)
     # Build result_files set from response for filter validation
-    result_files = {d['file'] for d in result.affected_items}
+    result_files = {d['filename'] for d in result.affected_items}
     assert result_files == expected_files
 
 
-@pytest.mark.parametrize('file', [
+@pytest.mark.parametrize('filename', [
     'test1_decoders.xml',
     'test2_decoders.xml',
     'wrong_decoders.xml',
 ])
-def test_get_file(file):
+def test_get_file(filename):
     # UUT call
-    result = decoder.get_file(file=file)
+    result = decoder.get_file(filename=filename)
     # We assert the result is a plain text str
     assert isinstance(result, str)
 
@@ -144,16 +145,16 @@ def test_get_file(file):
 def test_get_file_exceptions():
     with pytest.raises(WazuhError, match=r'.* 1503 .*'):
         # UUT 1st call using a non-existing file that returns 0 decoders
-        decoder.get_file(file='non_existing_file.xml')
+        decoder.get_file(filename='non_existing_file.xml')
     with patch('builtins.open', return_value=Exception):
         with pytest.raises(WazuhInternalError, match=r'.* 1501 .*'):
             # UUT 2nd call forcing en error opening decoder file
-            decoder.get_file(file='test1_decoders.xml')
+            decoder.get_file(filename='test1_decoders.xml')
     with pytest.raises(WazuhError, match=r'.* 1502 .*'):
         try:
-            file = 'test2_decoders.xml'
-            os.chmod(os.path.join(test_data_path, 'core/tests/data/decoders', file), 000)
+            filename = 'test2_decoders.xml'
+            os.chmod(os.path.join(test_data_path, 'core/tests/data/decoders', filename), 000)
             # UUT 3rd call forcing a permissions error opening decoder file
-            decoder.get_file(file=file)
+            decoder.get_file(filename=filename)
         finally:
-            os.chmod(os.path.join(test_data_path, 'core/tests/data/decoders', file), 777)
+            os.chmod(os.path.join(test_data_path, 'core/tests/data/decoders', filename), 777)

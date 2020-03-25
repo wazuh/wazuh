@@ -51,14 +51,16 @@ stages:
         data:
           affected_items:
             - items: !anything
-              path: !anystr
+              relative_dirname: !anystr
+              filename: !anystr
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
       # Save some data for future use in the test
       save:
         body:
-          returned_path: data.affected_items.0.path
+          returned_relative_dirname: data.affected_items.0.relative_dirname
+          returned_filename: data.affected_items.0.filename
 
     # We implement a dual stage to check offset parameter behaviour
     # GET /lists?limit=2&offset=0
@@ -74,16 +76,19 @@ stages:
         data:
           affected_items:
             - items: !anything
-              path: !anystr
+              relative_dirname: !anystr
+              filename: !anystr
             - items: !anything
-              path: !anystr
+              relative_dirname: !anystr
+              filename: !anystr
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
       # Save second item to check offset in next stage
       save:
         body:
-          offset_item_path: data.affected_items.1.path
+          offset_item_relative_dirname: data.affected_items.1.relative_dirname
+          offset_item_filename: data.affected_items.1.filename
 
     # GET /lists?limit=1&offset=1
   - name: Try to get lists using limit and offset parameter
@@ -98,18 +103,19 @@ stages:
         data:
           affected_items:
             - items: !anything
-              path: "{offset_item_path}"
+              relative_dirname: "{offset_item_relative_dirname}"
+              filename: "{offset_item_filename}"
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
 
-    # GET /lists?limit=1&search={returned_path:s}
+    # GET /lists?limit=1&search={returned_relative_dirname:s}
   - name: Try to get lists using limit and search parameter
     request:
       <<: *get_lists
       params:
         limit: 1
-        search: "{returned_path:s}"
+        search: "{returned_relative_dirname:s}"
     response:
       status_code: 200
       body:
@@ -120,13 +126,13 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-    # GET /lists?limit=1&search=-{returned_path:s}
+    # GET /lists?limit=1&search=-{returned_filename:s}
   - name: Try to get lists using limit and search parameter
     request:
       <<: *get_lists
       params:
         limit: 1
-        search: "-{returned_path:s}"
+        search: "-{returned_filename:s}"
     response:
       status_code: 200
       body:
@@ -153,75 +159,63 @@ stages:
           total_affected_items: 0
           total_failed_items: 0
 
-    # GET /lists?limit=1&path={returned_path}
-  - name: Try to get lists using limit and path parameter
+    # GET /lists?limit=1&relative_dirname={returned_relative_dirname}
+  - name: Try to get lists using limit and relative_dirname parameter
     request:
       <<: *get_lists
       params:
         limit: 1
-        path: "{returned_path:s}"
+        relative_dirname: "{returned_relative_dirname:s}"
     response:
       status_code: 200
       body:
         data:
           affected_items:
             - items: !anything
-              path: "{tavern.request_vars.params.path}"
+              relative_dirname: "{tavern.request_vars.params.relative_dirname}"
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
 
-    # GET /lists?limit=1&path=wrong_path
-  - name: Try to get lists using limit and a wrong path parameter
+    # GET /lists?limit=1&relative_dirname=wrong_dirname
+  - name: Try to get lists using limit and a wrong relative_dirname parameter
     request:
       <<: *get_lists
       params:
         limit: 1
-        path: "wrong_path"
+        relative_dirname: "wrong_relative_dirname"
     response:
       status_code: 400
 
-    # GET /lists?path=etc/files/audit-keys.cdb
-  - name: Try to get a CBD list from a bad format etc file path
+    # GET /lists?relative_dirname=etc/files
+  - name: Try to get a CBD list from a bad format etc path
     request:
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        path: "etc/lists/audit-keys.cdb"
+        relative_dirname: "etc/files"
     response:
       status_code: 400
-      body:
-        code: 1800
 
-    # GET /lists?path=wrong_filepath
-  - name: Try to get a CBD list from a non existing etc file path
+    # GET /lists?filename=wrong_filename
+  - name: Try to get a CBD list from a non existing filename
     request:
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        path: "etc/lists/wrong_filepath"
+        filename: "wrong_dirname"
     response:
-      status_code: 400
+      status_code: 200
       body:
-        code: 1802
-
-    # GET /lists?path=etc/lists/amazon
-  - name: Try to get a CBD list from a directory instead of a file
-    request:
-      method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/lists"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        path: "etc/lists/amazon"
-    response:
-      status_code: 400
-      body:
-        code: 1804
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
 
 ---
 test_name: GET /lists/files
@@ -265,18 +259,16 @@ stages:
       body:
         data:
           affected_items: &full_items_array_files
-            - folder: !anystr
-              name: !anystr
-              path: !anystr
+            - relative_dirname: !anystr
+              filename: !anystr
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
       # Save some data for future use in the test
       save:
         body:
-          returned_folder: data.affected_items.0.folder
-          returned_name: data.affected_items.0.name
-          returned_path: data.affected_items.0.path
+          returned_relative_dirname: data.affected_items.0.relative_dirname
+          returned_filename: data.affected_items.0.filename
 
     # We implement a dual stage to check offset parameter behaviour
     # GET /lists/files?limit=2&offset=0
@@ -299,9 +291,8 @@ stages:
       # Save second item to check offset in next stage
       save:
         body:
-          offset_item_folder: data.affected_items.1.folder
-          offset_item_name: data.affected_items.1.name
-          offset_item_path: data.affected_items.1.path
+          offset_item_relative_dirname: data.affected_items.1.relative_dirname
+          offset_item_filename: data.affected_items.1.filename
 
     # GET /lists/files?limit=1&offset=1
   - name: Try to get paths from all CDB lists using limit and offset parameter
@@ -316,20 +307,19 @@ stages:
         data:
           affected_items:
               # Check offset matches with previous request
-            - folder: "{offset_item_folder}"
-              name: "{offset_item_name}"
-              path: "{offset_item_path}"
+            - filename: "{offset_item_filename}"
+              relative_dirname: "{offset_item_relative_dirname}"
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
 
-    # GET /lists/files?limit=1&search={returned_path:s}
+    # GET /lists/files?limit=1&search={returned_relative_dirname:s}
   - name: Try to get paths from all CDB lists using limit and search parameter
     request:
       <<: *get_lists_files
       params:
         limit: 1
-        search: "{returned_path:s}"
+        search: "{returned_relative_dirname:s}"
     response:
       status_code: 200
       body:
@@ -340,21 +330,20 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-    # GET /lists/files?limit=1&search=-{returned_path:s}
+    # GET /lists/files?limit=1&search=-{returned_relative_dirname:s}
   - name: Try to get paths from all CDB lists using limit and search parameter
     request:
       <<: *get_lists_files
       params:
         limit: 1
-        search: "-{returned_path:s}"
+        search: "-{returned_relative_dirname:s}"
     response:
       status_code: 200
       body:
         data:
-          affected_items:
-            - <<: *full_items_array_files
+          affected_items: []
           failed_items: []
-          total_affected_items: !anyint
+          total_affected_items: 0
           total_failed_items: 0
 
     # GET /lists/files?limit=1&search=empty_search

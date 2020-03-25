@@ -86,7 +86,8 @@ def test_check_path(path, error_expected):
 
 
 @pytest.mark.parametrize('only_names', [True, False])
-def test_iterate_lists(only_names):
+@pytest.mark.parametrize('path', [ABSOLUTE_PATH, os.path.join(ABSOLUTE_PATH, "subdir")])
+def test_iterate_lists(only_names, path):
     """Test `iterate_lists` core functionality.
 
     `Iterate_list` must get the content of all CDB lists in a specified path skipping `.cdb` and `.swp` files. It will
@@ -96,16 +97,18 @@ def test_iterate_lists(only_names):
     ----------
     only_names : bool
         If this parameter is true, only the name of all lists will be showed by `iterate_lists` instead of its content.
+    path : str
+        Path to iterate lists from.
     """
-    folders = [ABSOLUTE_PATH, os.path.join(ABSOLUTE_PATH, "subdir")]
-    required_fields = ['path', 'name', 'folder'] if only_names else ['path', 'items']
+    required_fields = ['relative_dirname', 'filename'] if only_names else ['relative_dirname', 'filename', 'items']
 
-    for folder in folders:
-        common.reset_context_cache()
-        result = iterate_lists(absolute_path=folder, only_names=only_names)
-        for entry in result:
-            for field in required_fields:
-                assert field in entry
+    common.reset_context_cache()
+    result = iterate_lists(absolute_path=path, only_names=only_names)
+    assert isinstance(result, list)
+    assert len(result) != 0
+    for entry in result:
+        for field in required_fields:
+            assert field in entry
 
 
 def test_get_list_from_file():
@@ -120,6 +123,7 @@ def test_get_list_from_file():
     (OSError(2, "No such file or directory"), LIST_FILE_NOT_FOUND_ERROR_CODE),
     (OSError(13, "Permission denied"), PERMISSION_ERROR_CODE),
     (OSError(21, "Is a directory"), INVALID_FILEPATH_ERROR_CODE),
+    (OSError(1, "Random"), None),
     (ValueError(), BAD_CDB_FORMAT_ERROR_CODE)
 ])
 def test_get_list_from_file_with_errors(error_to_raise, wazuh_error_code):
@@ -141,5 +145,6 @@ def test_get_list_from_file_with_errors(error_to_raise, wazuh_error_code):
             get_list_from_file("some_path")
             pytest.fail("No exception was raised hence failing the test")
         except WazuhError as e:
-            if e._code != wazuh_error_code:
-                raise
+            assert e.code == wazuh_error_code
+        except Exception as e:
+            assert e.args == (1, "Random")

@@ -27,19 +27,19 @@ stages:
           affected_items:
             - &full_item_decoders
               details: !anything
-              file: 0006-json_decoders.xml
+              filename: 0006-json_decoders.xml
               name: !anystr
-              path: !anystr
+              relative_dirname: !anystr
               position: !anyint
               status: !anystr
             - <<: *full_item_decoders
-              file: 0010-active-response_decoders.xml
+              filename: 0010-active-response_decoders.xml
             - <<: *full_item_decoders
-              file: 0010-active-response_decoders.xml
+              filename: 0010-active-response_decoders.xml
             - <<: *full_item_decoders
-              file: 0010-active-response_decoders.xml
+              filename: 0010-active-response_decoders.xml
             - <<: *full_item_decoders
-              file: 0015-aix-ipsec_decoders.xml
+              filename: 0015-aix-ipsec_decoders.xml
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -52,7 +52,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        q: 'file=0005-wazuh_decoders.xml'
+        q: 'filename=0005-wazuh_decoders.xml'
     response:
       status_code: 200
       body:
@@ -107,20 +107,20 @@ stages:
       body:
         data:
           affected_items:
-            - file: 0006-json_decoders.xml
-              path: ruleset/decoders
+            - filename: 0006-json_decoders.xml
+              relative_dirname: ruleset/decoders
               status: enabled
-            - file: 0010-active-response_decoders.xml
-              path: ruleset/decoders
+            - filename: 0010-active-response_decoders.xml
+              relative_dirname: ruleset/decoders
               status: enabled
-            - file: 0015-aix-ipsec_decoders.xml
-              path: ruleset/decoders
+            - filename: 0015-aix-ipsec_decoders.xml
+              relative_dirname: ruleset/decoders
               status: enabled
-            - file: 0025-apache_decoders.xml
-              path: ruleset/decoders
+            - filename: 0025-apache_decoders.xml
+              relative_dirname: ruleset/decoders
               status: enabled
-            - file: 0030-arpwatch_decoders.xml
-              path: ruleset/decoders
+            - filename: 0030-arpwatch_decoders.xml
+              relative_dirname: ruleset/decoders
               status: enabled
           failed_items: []
           total_affected_items: !anyint
@@ -134,17 +134,17 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        file: 0005-wazuh_decoders.xml,0006-json_decoders.xml,0025-apache_decoders.xml
+        filename: 0005-wazuh_decoders.xml,0006-json_decoders.xml,0025-apache_decoders.xml
     response:
       status_code: 200
       body:
         data:
           affected_items:
-            - file: 0006-json_decoders.xml
-              path: ruleset/decoders
+            - filename: 0006-json_decoders.xml
+              relative_dirname: ruleset/decoders
               status: enabled
-            - file: 0025-apache_decoders.xml
-              path: ruleset/decoders
+            - filename: 0025-apache_decoders.xml
+              relative_dirname: ruleset/decoders
               status: enabled
           failed_items:
             - error:
@@ -162,7 +162,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        file: 0160-netscaler_decoders.xml,0005-wazuh_decoders.xml
+        filename: 0160-netscaler_decoders.xml,0005-wazuh_decoders.xml
     response:
       status_code: 400
       body: &permissions_denied
@@ -181,7 +181,7 @@ test_name: GET DECODERS FILES RBAC (Download)
 
 stages:
 
-  - name: Try get one decoder file
+  - name: Try to get one decoder file
     request:
       url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0025-apache_decoders.xml/download"
       headers:
@@ -192,7 +192,7 @@ stages:
       headers:
         content-type: application/xml
 
-  - name: Try get one decoder file (no permissions)
+  - name: Try to get one decoder file (no permissions)
     request:
       url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0005-wazuh_decoders.xml/download"
       headers:
@@ -223,19 +223,19 @@ stages:
           affected_items:
             - &full_item_decoders_parent
               details: !anything
-              file: 0006-json_decoders.xml
+              filename: 0006-json_decoders.xml
               name: !anystr
-              path: !anystr
+              relative_dirname: !anystr
               position: !anyint
               status: !anystr
             - <<: *full_item_decoders_parent
-              file: 0010-active-response_decoders.xml
+              filename: 0010-active-response_decoders.xml
             - <<: *full_item_decoders_parent
-              file: 0015-aix-ipsec_decoders.xml
+              filename: 0015-aix-ipsec_decoders.xml
             - <<: *full_item_decoders_parent
-              file: 0025-apache_decoders.xml
+              filename: 0025-apache_decoders.xml
             - <<: *full_item_decoders_parent
-              file: 0025-apache_decoders.xml
+              filename: 0025-apache_decoders.xml
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
