@@ -263,6 +263,15 @@ void OS_LogOutput(Eventinfo *lf)
         if (lf->fields[FIM_AUDIT_CWD].value && *lf->fields[FIM_AUDIT_CWD].value) {
             printf(" - (Audit) %s: %s\n", "Process cwd", lf->fields[FIM_AUDIT_CWD].value);
         }
+        if (lf->fields[FIM_PROC_PNAME].value && *lf->fields[FIM_PROC_PNAME].value) {
+            printf(" - (Audit) %s: %s\n", "Parent process name", lf->fields[FIM_PROC_PNAME].value);
+        }
+        if (lf->fields[FIM_PPID].value && *lf->fields[FIM_PPID].value) {
+            printf(" - (Audit) %s: %s\n", "Parent process id", lf->fields[FIM_PPID].value);
+        }
+        if (lf->fields[FIM_AUDIT_PCWD].value && strcmp(lf->fields[FIM_AUDIT_PCWD].value, "") != 0) {
+            printf(" - (Audit) %s: %s\n", "Parent process cwd", lf->fields[FIM_AUDIT_PCWD].value);
+        }
     }
 
     if (lf->filename && lf->sk_tag) {
@@ -455,6 +464,15 @@ void OS_Log(Eventinfo *lf)
         }
         if (lf->fields[FIM_AUDIT_CWD].value && strcmp(lf->fields[FIM_AUDIT_CWD].value, "") != 0) {
             fprintf(_aflog, " - (Audit) %s: %s\n", "Process cwd", lf->fields[FIM_AUDIT_CWD].value);
+        }
+        if (lf->fields[FIM_PROC_PNAME].value && strcmp(lf->fields[FIM_PROC_PNAME].value, "") != 0) {
+            fprintf(_aflog, " - (Audit) %s: %s\n", "Parent process name", lf->fields[FIM_PROC_PNAME].value);
+        }
+        if (lf->fields[FIM_PPID].value && strcmp(lf->fields[FIM_PPID].value, "") != 0) {
+            fprintf(_aflog, " - (Audit) %s: %s\n", "Parent process id", lf->fields[FIM_PPID].value);
+        }
+        if (lf->fields[FIM_AUDIT_PCWD].value && strcmp(lf->fields[FIM_AUDIT_PCWD].value, "") != 0) {
+            fprintf(_aflog, " - (Audit) %s: %s\n", "Parent process cwd", lf->fields[FIM_AUDIT_PCWD].value);
         }
 
         if (lf->fields[FIM_DIFF].value) {

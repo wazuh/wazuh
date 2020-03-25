@@ -390,6 +390,8 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         add_json_field(process_sect, "id", lf->fields[FIM_PROC_ID].value, "");
         add_json_field(process_sect, "name", lf->fields[FIM_PROC_NAME].value, "");
         add_json_field(process_sect, "cwd", lf->fields[FIM_AUDIT_CWD].value, "");
+        add_json_field(process_sect, "parent_name", lf->fields[FIM_PROC_PNAME].value, "");
+        add_json_field(process_sect, "parent_cwd", lf->fields[FIM_AUDIT_PCWD].value, "");
         add_json_field(process_sect, "ppid", lf->fields[FIM_PPID].value, "");
 
         // Auser sect

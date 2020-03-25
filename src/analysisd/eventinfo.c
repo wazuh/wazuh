@@ -1010,6 +1010,9 @@ void Free_Eventinfo(Eventinfo *lf)
     if (lf->process_name) {
         free(lf->process_name);
     }
+    if (lf->cwd) {
+        free(lf->cwd);
+    }
     if (lf->audit_uid) {
         free(lf->audit_uid);
     }
@@ -1021,6 +1024,12 @@ void Free_Eventinfo(Eventinfo *lf)
     }
     if (lf->effective_name) {
         free(lf->effective_name);
+    }
+    if (lf->parent_name) {
+        free(lf->parent_name);
+    }
+    if (lf->parent_cwd) {
+        free(lf->parent_cwd);
     }
     if (lf->ppid) {
         free(lf->ppid);

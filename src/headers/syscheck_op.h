@@ -101,7 +101,9 @@ typedef enum fim_fields {
     FIM_GROUP_ID,
     FIM_GROUP_NAME,
     FIM_PROC_NAME,
+    FIM_PROC_PNAME,
     FIM_AUDIT_CWD,
+    FIM_AUDIT_PCWD,
     FIM_AUDIT_ID,
     FIM_AUDIT_NAME,
     FIM_EFFECTIVE_UID,
@@ -155,6 +157,8 @@ typedef struct sk_sum_wdata {
     char *audit_name;
     char *effective_uid;
     char *effective_name;
+    char *parent_name;
+    char *parent_cwd;
     char *ppid;
     char *process_id;
 } sk_sum_wdata;

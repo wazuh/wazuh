@@ -573,6 +573,37 @@ char *gen_audit_path(char *cwd, char *path0, char *path1) {
     return gen_path;
 }
 
+void get_parent_process_info(char *ppid, char **parent_name, char **parent_cwd) {
+
+    char *slinkexe = NULL;
+    char *slinkcwd = NULL;
+    int tam_slink = strlen(ppid) + 11;
+    int tam_ppname = 0;
+    int tam_pcwd = 0;
+
+    os_malloc(tam_slink, slinkexe);
+    os_malloc(tam_slink, slinkcwd);
+
+    snprintf(slinkexe, tam_slink, "/proc/%s/exe", ppid);
+    snprintf(slinkcwd, tam_slink, "/proc/%s/cwd", ppid);
+
+    if(tam_ppname = readlink(slinkexe, *parent_name, OS_FLSIZE), tam_ppname < 0) {
+        merror("Failure to obtain the name of the process: '%s'. Error: %s", ppid, strerror(errno));
+        parent_name[0][0] = '\0';
+    } else {
+        parent_name[0][tam_ppname] = '\0';
+    }
+
+    if(tam_pcwd = readlink(slinkcwd, *parent_cwd, OS_FLSIZE), tam_pcwd < 0) {
+        merror("Failure to obtain the cwd of the process: '%s'. Error: %s", ppid, strerror(errno));
+        parent_cwd[0][0] = '\0';
+    } else {
+        parent_cwd[0][tam_pcwd] = '\0';
+    }
+
+    os_free(slinkexe);
+    os_free(slinkcwd);
+}
 
 void audit_parse(char *buffer) {
     char *psuccess;
@@ -721,8 +752,11 @@ void audit_parse(char *buffer) {
             if(regexec(&regexCompiled_ppid, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 char *ppid = NULL;
+                os_malloc(OS_FLSIZE, w_evt->parent_name);
+                os_malloc(OS_FLSIZE, w_evt->parent_cwd);
                 os_malloc(match_size + 1, ppid);
                 snprintf (ppid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+                get_parent_process_info(ppid , &w_evt->parent_name, &w_evt->parent_cwd);
                 w_evt->ppid = atoi(ppid);
                 free(ppid);
             }

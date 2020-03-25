@@ -459,9 +459,19 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
         os_strdup(sum->wdata.process_name, lf->fields[FIM_PROC_NAME].value);
     }
 
+    if(sum->wdata.parent_name) {
+        os_strdup(sum->wdata.parent_name, lf->parent_name);
+        os_strdup(sum->wdata.parent_name, lf->fields[FIM_PROC_PNAME].value);
+    }
+
     if(sum->wdata.cwd) {
         os_strdup(sum->wdata.cwd, lf->cwd);
         os_strdup(sum->wdata.cwd, lf->fields[FIM_AUDIT_CWD].value);
+    }
+
+    if(sum->wdata.parent_cwd) {
+        os_strdup(sum->wdata.parent_cwd, lf->parent_cwd);
+        os_strdup(sum->wdata.parent_cwd, lf->fields[FIM_AUDIT_PCWD].value);
     }
 
     if(sum->wdata.audit_uid) {
@@ -563,6 +573,9 @@ void sk_sum_clean(sk_sum_t * sum) {
     os_free(sum->attributes);
     os_free(sum->wdata.user_name);
     os_free(sum->wdata.process_name);
+    os_free(sum->wdata.parent_cwd);
+    os_free(sum->wdata.cwd);
+    os_free(sum->wdata.parent_name);
     os_free(sum->uname);
     os_free(sum->win_perm);
 }

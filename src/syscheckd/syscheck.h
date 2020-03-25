@@ -475,6 +475,15 @@ void *audit_healthcheck_thread(int *audit_sock);
 char *gen_audit_path(char *cwd, char *path0, char *path1);
 
 /**
+ * @brief Add cwd and exe of parent process
+ *
+ * @param ppid ID of parent process
+ * @param parent_name String where save the parent name (exe)
+ * @param parent_cwd String where save the parent working directory (cwd)
+ */
+void get_parent_process_info(char *ppid, char **parent_name, char **parent_cwd);
+
+/**
  * @brief Reloads audit rules to configured directories
  * This is necessary to include audit rules for hot added directories in the configuration
  *
