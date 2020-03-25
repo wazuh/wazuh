@@ -188,6 +188,13 @@ static time_t _get_next_time(const sched_scan_config *config, const char *MODULE
 
         if ((time_t)config->interval >= last_run_time) {
             return  (time_t)config->interval - last_run_time;
+        } else if(!config->last_scan_time) { 
+            // First time defined by run_on_start
+            if(run_on_start) {
+                return 0;
+            } else {  
+                return (time_t)config->interval;
+            }
         } else {
             mtwarn(MODULE_TAG, "Interval overtaken.");
             return 0;
