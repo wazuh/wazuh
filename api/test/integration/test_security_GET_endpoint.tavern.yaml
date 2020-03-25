@@ -17,7 +17,7 @@ stages:
   # GET /security/roles
   - name: Try to show the roles of the system
     request: &all_roles_request
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -153,7 +153,7 @@ stages:
   # GET /security/roles
   - name: Search in roles
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -235,7 +235,7 @@ stages:
   # GET /security/roles
   - name: Try to show the roles of the system with a non-existent search
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -254,7 +254,7 @@ stages:
   # GET /security/policies
   - name: Try to show the policies of the system
     request: &all_policies_request
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -360,7 +360,7 @@ stages:
   # GET /security/policies
   - name: Search in policies
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -428,7 +428,7 @@ stages:
   # GET /security/policies
   - name: Try to show the policies of the system with a non-existent search
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -447,7 +447,7 @@ stages:
   # GET /security/roles/{role_id}
   - name: Try to show a specified role in the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -465,7 +465,7 @@ stages:
   # GET /security/roles/{non-existent role_id}
   - name: Try to show a non-existent role in the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -493,7 +493,7 @@ stages:
   # GET /security/policies/{policy_id}
   - name: Try to show a specified policy in the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -511,7 +511,7 @@ stages:
   # GET /security/policies/{non-existent policy_id}
   - name: Try to show a non-existent policy in the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET

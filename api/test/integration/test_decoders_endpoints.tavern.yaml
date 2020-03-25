@@ -18,7 +18,7 @@ stages:
   - name: Try to get all decoders
     request: &get_decoders
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/decoders"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -268,7 +268,7 @@ stages:
   - name: Try to get all decoders with specified decoder_name
     request: &get_decoders_with_name
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/decoders"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -432,7 +432,7 @@ stages:
   - name: Try to get information about all decoders files
     request: &get_decoders_files
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -656,7 +656,7 @@ stages:
   - name: Try to get information about all decoders parents
     request: &get_decoders_parents
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/parents"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/parents"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -819,19 +819,19 @@ stages:
   - name: Download a decoders file
     request:
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/{returned_filename:s}/download"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files/{returned_filename:s}/download"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
       headers:
-        content-type: application/xml
+        content-type: 'application/xml; charset=utf-8'
 
     # GET /decoders/files/{wrong_file}/download
   - name: Try to download a decoders file using a wrong filename
     request:
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/wrongfile/download"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files/wrongfile/download"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:

@@ -31,8 +31,6 @@ def check_user(user, password, required_scopes=None):
                     'active': True
                     }
 
-    return None
-
 
 # Set JWT settings
 JWT_ISSUER = 'wazuh'
