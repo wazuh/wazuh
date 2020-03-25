@@ -16,7 +16,7 @@ stages:
 
   - name: Request all agents (Partially allowed, user agnostic)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscheck"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscheck"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -36,7 +36,7 @@ stages:
 
   - name: Request a list of agents (Partially allowed, user aware)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscheck"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscheck"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -69,7 +69,7 @@ stages:
 
   - name: Request all agents (Partially allowed, user agnostic)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/ciscat/results"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -89,7 +89,7 @@ stages:
 
   - name: Request a list of agents (Partially allowed, user aware)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/ciscat/results"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -119,7 +119,7 @@ stages:
 
   - name: Request all agents (Partially allowed, user agnostic)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hardware"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/hardware"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -138,7 +138,7 @@ stages:
 
   - name: Request a list of agents (Partially allowed, user aware)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hardware"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/hardware"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -168,7 +168,7 @@ stages:
 
   - name: Request all agents (Partially allowed, user agnostic)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netaddr"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netaddr"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -187,7 +187,7 @@ stages:
 
   - name: Request a list of agents (Partially allowed, user aware)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netaddr"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netaddr"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -217,7 +217,7 @@ stages:
 
   - name: Request all agents (Partially allowed, user agnostic)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netiface"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -236,7 +236,7 @@ stages:
 
   - name: Request a list of agents (Partially allowed, user aware)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netiface"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -266,7 +266,7 @@ stages:
 
   - name: Request all agents (Partially allowed, user agnostic)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netproto"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netproto"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -285,7 +285,7 @@ stages:
 
   - name: Request a list of agents (Partially allowed, user aware)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netproto"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netproto"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -315,7 +315,7 @@ stages:
 
   - name: Request all agents (Partially allowed, user agnostic)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/os"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/os"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -334,7 +334,7 @@ stages:
 
   - name: Request a list of agents (Partially allowed, user aware)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/os"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/os"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -364,7 +364,7 @@ stages:
 
   - name:  Request all agents (Partially allowed, user agnostic)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/packages"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -380,7 +380,7 @@ stages:
 
   - name:  Request all agents (Denied)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/packages"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -398,7 +398,7 @@ stages:
 
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/ports"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/ports"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -417,7 +417,7 @@ stages:
 
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/ports"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/ports"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -443,7 +443,7 @@ stages:
 
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/processes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -459,7 +459,7 @@ stages:
 
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/processes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -490,7 +490,7 @@ stages:
 
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hotfixes"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/hotfixes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -506,7 +506,7 @@ stages:
 
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hotfixes"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/hotfixes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"

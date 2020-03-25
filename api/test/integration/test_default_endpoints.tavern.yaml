@@ -18,7 +18,7 @@ stages:
   - name: Get default API information
     request:
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:

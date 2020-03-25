@@ -17,7 +17,7 @@ stages:
   - name: Try to get syscheck scan results for agent 000 (Deny)
     request:
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscheck/000"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/000"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -34,7 +34,7 @@ stages:
   - name: Try to get syscheck scan results for agent 002 (Allow)
     request:
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscheck/002"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/002"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -54,7 +54,7 @@ stages:
   - name: Try to get when the last scan for agent 000 started and ended
     request:
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscheck/000/last_scan"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/000/last_scan"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -65,7 +65,7 @@ stages:
   - name: Try to get when the last scan for agent 002 started and ended
     request:
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscheck/002/last_scan"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/002/last_scan"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -87,7 +87,7 @@ stages:
   - name: Try to run a syscheck scan in all agents
     request:
       method: PUT
-      url: "{protocol:s}://{host:s}:{port:d}/syscheck"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -117,7 +117,7 @@ stages:
   - name: Try to run a syscheck scan on a list of agents
     request:
       method: PUT
-      url: "{protocol:s}://{host:s}:{port:d}/syscheck"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -143,7 +143,7 @@ stages:
   - name: Try to run a syscheck scan on a list of agents
     request:
       method: PUT
-      url: "{protocol:s}://{host:s}:{port:d}/syscheck"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -161,7 +161,7 @@ stages:
   - name: Try to delete syscheck scans in agent 000
     request:
       method: DELETE
-      url: "{protocol:s}://{host:s}:{port:d}/syscheck/002"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/002"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -176,7 +176,7 @@ stages:
   - name: Try to check the answer is empty after deleting the scans for agent 000
     request:
       method: DELETE
-      url: "{protocol:s}://{host:s}:{port:d}/syscheck/001"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/001"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:

@@ -11,7 +11,7 @@ stages:
 
   - name: Get all users in the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -33,7 +33,7 @@ stages:
 
   - name: Get a specified user by its username
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -49,7 +49,7 @@ stages:
 
   - name: Get a specified user by its username
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -66,7 +66,7 @@ stages:
 
   - name: Get an user by its username (invalid username)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -82,7 +82,7 @@ stages:
 
   - name: Get an user by its username (invalid username)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -98,7 +98,7 @@ stages:
 
   - name: Get an non-existent user by its username
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -122,7 +122,7 @@ stages:
 
   - name: Get two non-existent users by their usernames
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -147,7 +147,7 @@ stages:
 
   - name: Get two non-existent users and an existing one by their usernames
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -173,7 +173,7 @@ stages:
 
   - name: Get two non-existent users and two existent by their usernames
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -210,7 +210,7 @@ marks:
 stages:
   - name: Testing search
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -229,7 +229,7 @@ stages:
 
   - name: Testing complementary search
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -253,7 +253,7 @@ test_name: GET /security/users/?sort
 stages:
   - name: Testing inverse sort
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -273,7 +273,7 @@ stages:
 
   - name: Testing sort
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -297,7 +297,7 @@ test_name: GET /security/users/?limit,offset
 stages:
   - name: Testing offset
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -314,7 +314,7 @@ stages:
 
   - name: Testing limit
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET

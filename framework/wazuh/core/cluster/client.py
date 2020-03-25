@@ -168,6 +168,9 @@ class AbstractClient(common.Handler):
 
         if not self.on_con_lost.done():
             self.on_con_lost.set_result(True)
+        self._cancel_all_tasks()
+
+    def _cancel_all_tasks(self):
         for task in asyncio.Task.all_tasks():
             task.cancel()
 

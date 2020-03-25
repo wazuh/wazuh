@@ -20,7 +20,8 @@ class WazuhException(Exception):
         # Wazuh: 0999 - 1099
         999: 'Incompatible version of Python',
         1000: {'message': 'Wazuh Internal Error',
-               'remediation': 'Please, check `WAZUH_HOME/logs/ossec.log` to get more information about the error'},
+               'remediation': 'Please, check `WAZUH_HOME/logs/ossec.log`, `WAZUH_HOME/logs/cluster.log` and '
+                              '`WAZUH_HOME/logs/api.log` to get more information about the error'},
         1001: 'Error importing module',
         1002: 'Error executing command',
         1003: 'Command output not in json',
@@ -675,13 +676,6 @@ class WazuhError(WazuhException):
         result = super().to_dict()
         result['ids'] = list(self.ids)
 
-        return result
-
-    def __or__(self, other):
-        result: WazuhError = super().__or__(other)
-        if isinstance(result, WazuhError):
-            if hasattr(other, 'ids'):
-                result._ids = self.ids | other.ids
         return result
 
 

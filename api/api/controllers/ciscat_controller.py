@@ -1,27 +1,24 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import asyncio
 import logging
 from typing import List
 
-import connexion
+from aiohttp import web
 
 import wazuh.ciscat as ciscat
-from api.authentication import get_permissions
-from api.util import remove_nones_to_dict, parse_api_param, exception_handler, raise_if_exc
+from api.encoder import dumps
+from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
-loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
 
-@exception_handler
-def get_agents_ciscat_results(agent_id: str, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
-                              limit: int = None, select: List[str] = None, sort: str = None, search: str = None,
-                              benchmark: str = None, profile: str = None, fail: int = None, error: int = None,
-                              notchecked: int = None, unknown: int = None, score: int = None):
+async def get_agents_ciscat_results(request, agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
+                                    offset: int = 0, limit: int = None, select: List[str] = None, sort: str = None,
+                                    search: str = None, benchmark: str = None, profile: str = None, fail: int = None,
+                                    error: int = None, notchecked: int = None, unknown: int = None, score: int = None):
     """Get CIS-CAT results from an agent
 
     Returns the agent's ciscat results info.
@@ -54,7 +51,7 @@ def get_agents_ciscat_results(agent_id: str, pretty: bool = False, wait_for_comp
         'filters': {
             'benchmark': benchmark,
             'profile': profile,
-            'pass': connexion.request.args.get('pass', None),
+            'pass': request.query.get('pass', None),
             'fail': fail,
             'error': error,
             'notchecked': notchecked,
@@ -70,8 +67,8 @@ def get_agents_ciscat_results(agent_id: str, pretty: bool = False, wait_for_comp
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
-    response = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = raise_if_exc(await dapi.distribute_function())
 
-    return response, 200
+    return web.json_response(data=response, status=200, dumps=dumps)
