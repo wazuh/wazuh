@@ -97,8 +97,13 @@ stages:
               unknown: !anyint
             - <<: *ciscat_response
             - <<: *ciscat_response
+            - <<: *ciscat_response
+            - <<: *ciscat_response
+            - <<: *ciscat_response
+            - <<: *ciscat_response
+            - <<: *ciscat_response
           failed_items: []
-          total_affected_items: 3
+          total_affected_items: 8
           total_failed_items: 0
         message: !anystr
 
@@ -145,7 +150,7 @@ stages:
               board_serial: !anystr
               cpu:
                 cores: !anyint
-                mhz: !anyfloat
+                mhz: !anything
                 name: !anystr
               ram:
                 free: !anyint
@@ -544,8 +549,9 @@ stages:
             - <<: *ports_response
             - <<: *ports_response
             - <<: *ports_response
+            - <<: *ports_response
           failed_items: []
-          total_affected_items: 11
+          total_affected_items: 12
           total_failed_items: 0
         message: !anystr
 
@@ -616,9 +622,6 @@ stages:
 
 ---
 test_name: GET /experimental/syscollector/hotfixes
-
-marks:
-  - xfail
 
 stages:
 

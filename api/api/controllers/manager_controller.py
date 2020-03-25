@@ -6,13 +6,12 @@ import datetime
 import logging
 
 from aiohttp import web
-from dateutil.parser import parse
 
 import wazuh.manager as manager
 import wazuh.stats as stats
 from api.encoder import dumps
 from api.models.base_model_ import Data
-from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
+from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
 from wazuh import common
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhError
@@ -98,18 +97,12 @@ async def get_stats(request, pretty=False, wait_for_complete=False, date=None):
     :param wait_for_complete: Disable timeout response
     :param date: Selects the date for getting the statistical information. Format ISO 8601.
     """
-    if date:
-        today = parse(date)
+    if not date:
+        date = datetime.datetime.today()
     else:
-        today = datetime.datetime.now()
-    year = str(today.year)
-    month = str(today.month)
-    day = str(today.day)
+        date = deserialize_date(date)
 
-    f_kwargs = {'year': year,
-                'month': month,
-                'day': day,
-                'date': True if date else False}
+    f_kwargs = {'date': date}
 
     dapi = DistributedAPI(f=stats.totals,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
