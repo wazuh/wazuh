@@ -459,6 +459,11 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
         os_strdup(sum->wdata.process_name, lf->fields[FIM_PROC_NAME].value);
     }
 
+    if(sum->wdata.cwd) {
+        os_strdup(sum->wdata.cwd, lf->cwd);
+        os_strdup(sum->wdata.cwd, lf->fields[FIM_AUDIT_CWD].value);
+    }
+
     if(sum->wdata.audit_uid) {
         os_strdup(sum->wdata.audit_uid, lf->audit_uid);
         os_strdup(sum->wdata.audit_uid, lf->fields[FIM_AUDIT_ID].value);

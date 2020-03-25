@@ -960,6 +960,7 @@ cJSON * fim_audit_json(const whodata_evt * w_evt) {
     cJSON_AddStringToObject(fim_audit, "process_name", w_evt->process_name);
     cJSON_AddNumberToObject(fim_audit, "process_id", w_evt->process_id);
 #ifndef WIN32
+    cJSON_AddStringToObject(fim_audit, "cwd", w_evt->cwd);
     cJSON_AddStringToObject(fim_audit, "group_id", w_evt->group_id);
     cJSON_AddStringToObject(fim_audit, "group_name", w_evt->group_name);
     cJSON_AddStringToObject(fim_audit, "audit_uid", w_evt->audit_uid);

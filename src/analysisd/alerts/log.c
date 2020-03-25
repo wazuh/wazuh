@@ -260,6 +260,9 @@ void OS_LogOutput(Eventinfo *lf)
         if (lf->fields[FIM_PROC_NAME].value && *lf->fields[FIM_PROC_NAME].value) {
             printf(" - (Audit) %s: %s\n", "Process name", lf->fields[FIM_PROC_NAME].value);
         }
+        if (lf->fields[FIM_AUDIT_CWD].value && *lf->fields[FIM_AUDIT_CWD].value) {
+            printf(" - (Audit) %s: %s\n", "Process cwd", lf->fields[FIM_AUDIT_CWD].value);
+        }
     }
 
     if (lf->filename && lf->sk_tag) {
@@ -449,6 +452,9 @@ void OS_Log(Eventinfo *lf)
         }
         if (lf->fields[FIM_PROC_NAME].value && strcmp(lf->fields[FIM_PROC_NAME].value, "") != 0) {
             fprintf(_aflog, " - (Audit) %s: %s\n", "Process name", lf->fields[FIM_PROC_NAME].value);
+        }
+        if (lf->fields[FIM_AUDIT_CWD].value && strcmp(lf->fields[FIM_AUDIT_CWD].value, "") != 0) {
+            fprintf(_aflog, " - (Audit) %s: %s\n", "Process cwd", lf->fields[FIM_AUDIT_CWD].value);
         }
 
         if (lf->fields[FIM_DIFF].value) {

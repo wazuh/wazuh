@@ -389,6 +389,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         // Process section
         add_json_field(process_sect, "id", lf->fields[FIM_PROC_ID].value, "");
         add_json_field(process_sect, "name", lf->fields[FIM_PROC_NAME].value, "");
+        add_json_field(process_sect, "cwd", lf->fields[FIM_AUDIT_CWD].value, "");
         add_json_field(process_sect, "ppid", lf->fields[FIM_PPID].value, "");
 
         // Auser sect

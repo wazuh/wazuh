@@ -112,6 +112,7 @@ typedef struct _Eventinfo {
     char *group_id;
     char *group_name;
     char *process_name;
+    char *cwd;
     char *audit_uid;
     char *audit_name;
     char *effective_uid;

@@ -140,6 +140,7 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
     fim_decoder->fields[FIM_GROUP_ID] = "group_id";
     fim_decoder->fields[FIM_GROUP_NAME] = "group_name";
     fim_decoder->fields[FIM_PROC_NAME] = "process_name";
+    fim_decoder->fields[FIM_AUDIT_CWD] = "cwd";
     fim_decoder->fields[FIM_AUDIT_ID] = "audit_uid";
     fim_decoder->fields[FIM_AUDIT_NAME] = "audit_name";
     fim_decoder->fields[FIM_EFFECTIVE_UID] = "effective_uid";
@@ -1115,6 +1116,7 @@ int decode_fim_event(_sdb *sdb, Eventinfo *lf) {
      *       group_id:          string
      *       group_name:        string
      *       process_name:      string
+     *       cwd:               string
      *       audit_uid:         string
      *       audit_name:        string
      *       effective_uid:     string
@@ -1398,6 +1400,8 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
                 os_strdup(object->valuestring, lf->fields[FIM_GROUP_NAME].value);
             } else if (strcmp(object->string, "process_name") == 0) {
                 os_strdup(object->valuestring, lf->fields[FIM_PROC_NAME].value);
+            } else if (strcmp(object->string, "cwd") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_AUDIT_CWD].value);
             } else if (strcmp(object->string, "audit_uid") == 0) {
                 os_strdup(object->valuestring, lf->fields[FIM_AUDIT_ID].value);
             } else if (strcmp(object->string, "audit_name") == 0) {

@@ -123,6 +123,7 @@ void free_whodata_event(whodata_evt *w_evt) {
         LocalFree(w_evt->user_id);
 #endif
     }
+    if (w_evt->cwd) free(w_evt->cwd);
     if (w_evt->audit_name) free(w_evt->audit_name);
     if (w_evt->audit_uid) free(w_evt->audit_uid);
     if (w_evt->effective_name) free(w_evt->effective_name);
