@@ -14,7 +14,7 @@ def calc_offset(response, total):
 def test_distinct_key(response):
     """
     :param response: Request response
-    :return: True if request response item number matches used distinct param
+    :return: True if all request response items are unique
     """
     assert not any(response.json()["data"]["affected_items"].count(item) > 1 for item in response.json()["data"]["affected_items"])
     return
