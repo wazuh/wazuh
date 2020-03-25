@@ -14,7 +14,7 @@ def calc_offset(response, total):
 def test_distinct_key(response):
     """
     :param response: Request response
-    :return: True if request response item nummber matches used distict param
+    :return: True if request response item number matches used distinct param
     """
     total = len(set(tuple(i.values()) for i in response.json()["data"]["affected_items"]))
     assert len(list(response.json()["data"]["affected_items"])) == total

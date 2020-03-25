@@ -244,7 +244,7 @@ def test_syscheck_last_scan_internal_error(glob_mock, version):
 ])
 @patch('socket.socket.connect')
 @patch('wazuh.common.wdb_path', new=test_data_path)
-def test_syscheck_files(socket_mock, agent_id, select, filters,distinct):
+def test_syscheck_files(socket_mock, agent_id, select, filters, distinct):
     """Test function `files` from syscheck module.
 
     Parameters
@@ -255,6 +255,8 @@ def test_syscheck_files(socket_mock, agent_id, select, filters,distinct):
         List of parameters to show from the query.
     filters : dict
         Dict to filter out the result.
+    distinct : bool
+        result items number matches used distinct param
     """
     select_list = ['date', 'mtime', 'file', 'size', 'perm', 'uname', 'gname', 'md5', 'sha1', 'sha256', 'inode', 'gid', 'uid', 'type', 'changes', 'attributes']
     no_clone = set()
