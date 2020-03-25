@@ -259,7 +259,6 @@ def test_syscheck_files(socket_mock, agent_id, select, filters, distinct):
         True if all response items must be unique
     """
     select_list = ['date', 'mtime', 'file', 'size', 'perm', 'uname', 'gname', 'md5', 'sha1', 'sha256', 'inode', 'gid', 'uid', 'type', 'changes', 'attributes']
-    no_clone = set()
     with patch('wazuh.utils.WazuhDBConnection') as mock_wdb:
         mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_syscheck_test.sql')
         result = files(agent_id, select=select, filters=filters)
