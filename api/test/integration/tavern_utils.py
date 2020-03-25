@@ -16,8 +16,7 @@ def test_distinct_key(response):
     :param response: Request response
     :return: True if request response item number matches used distinct param
     """
-    total = len(set(tuple(i.values()) for i in response.json()["data"]["affected_items"]))
-    assert len(list(response.json()["data"]["affected_items"])) == total
+    assert not any(response.json()["data"]["affected_items"].count(item) > 1 for item in response.json()["data"]["affected_items"])
     return
 
 
