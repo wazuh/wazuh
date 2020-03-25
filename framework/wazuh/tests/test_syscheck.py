@@ -256,7 +256,7 @@ def test_syscheck_files(socket_mock, agent_id, select, filters, distinct):
     filters : dict
         Dict to filter out the result.
     distinct : bool
-        result items number matches used distinct param
+        True if all response items must be unique
     """
     select_list = ['date', 'mtime', 'file', 'size', 'perm', 'uname', 'gname', 'md5', 'sha1', 'sha256', 'inode', 'gid', 'uid', 'type', 'changes', 'attributes']
     no_clone = set()
