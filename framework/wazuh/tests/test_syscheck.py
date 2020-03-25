@@ -269,10 +269,7 @@ def test_syscheck_files(socket_mock, agent_id, select, filters, distinct):
         for item in result.affected_items:
             assert len(select) == len(item.keys())
             assert (param in select for param in item.keys())
-            if distinct:
-                no_clone.add(tuple(item.values()))
-        if distinct:
-            assert len(result.affected_items) == len(no_clone)
+        assert not any(result.affected_items.count(item) > 1 for item in result.affected_items) if distinct else True
         if filters:
             for key, value in filters.items():
                 assert (item[key] == value for item in result.affected_items)
