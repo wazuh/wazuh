@@ -1452,13 +1452,19 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
         os_free(hard_links_tmp);
     }
 
+    char * aux = NULL;
+    if (strlen(lf->fields[FIM_FILE].value) > 756){
+        int len = strlen(lf->fields[FIM_FILE].value);
+        aux = lf->fields[FIM_FILE].value + len - 30;
+    }
+
     snprintf(lf->full_log, OS_MAXSTR,
-            "File '%.756s' %s\n"
+            "File '%.728s [...] %s' %s\n"
             "%s"
             "Mode: %s\n"
             "%s"
             "%s%s%s%s%s%s%s%s%s%s%s%s",
-            lf->fields[FIM_FILE].value, event_type,
+            lf->fields[FIM_FILE].value, aux, event_type,
             lf->fields[FIM_HARD_LINKS].value ? hard_links : "",
             mode,
             lf->fields[FIM_CHFIELDS].value ? changed_attributes : "",
