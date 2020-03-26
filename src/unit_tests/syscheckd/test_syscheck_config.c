@@ -336,9 +336,9 @@ void test_getSyscheckConfig_no_audit(void **state)
 
     cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
     #ifndef TEST_WINAGENT
-    assert_int_equal(cJSON_GetArraySize(sys_items), 13);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 14);
     #else
-    assert_int_equal(cJSON_GetArraySize(sys_items), 16);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 17);
     #endif
 
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
