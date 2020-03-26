@@ -40,7 +40,7 @@ volatile int audit_db_consistency_flag;
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
 
-#define REALTIME_MONITOR_FLAGS  IN_MODIFY|IN_ATTRIB|IN_MOVED_FROM|IN_MOVED_TO|IN_CREATE|IN_DELETE|IN_DELETE_SELF
+#define REALTIME_MONITOR_FLAGS  IN_MODIFY|IN_ATTRIB|IN_MOVED_FROM|IN_MOVED_TO|IN_CREATE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
 #define REALTIME_EVENT_SIZE     (sizeof (struct inotify_event))
 #define REALTIME_EVENT_BUFFER   (2048 * (REALTIME_EVENT_SIZE + 16))
 
@@ -66,8 +66,7 @@ int realtime_start()
 }
 
 /* Add a directory to real time checking */
-int realtime_adddir(const char *dir, __attribute__((unused)) int whodata, __attribute__((unused))int followsl)
-{
+int realtime_adddir(const char *dir, __attribute__((unused)) int whodata, __attribute__((unused))int followsl) {
     if (whodata && audit_thread_active) {
         // Save dir into saved rules list
         w_mutex_lock(&audit_mutex);
@@ -78,7 +77,8 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata, __attr
 
         w_mutex_unlock(&audit_mutex);
 
-    } else {
+    }
+    else {
         if (!syscheck.realtime) {
             realtime_start();
         }
@@ -86,7 +86,8 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata, __attr
         /* Check if it is ready to use */
         if (syscheck.realtime->fd < 0) {
             return (-1);
-        } else {
+        }
+        else {
             int wd = 0;
 
             wd = inotify_add_watch(syscheck.realtime->fd,
@@ -95,10 +96,12 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata, __attr
             if (wd < 0) {
                 if (errno == 28) {
                     merror(FIM_ERROR_INOTIFY_ADD_MAX_REACHED, dir, wd, errno);
-                } else {
+                }
+                else {
                     mdebug1(FIM_INOTIFY_ADD_WATCH, dir, wd, errno, strerror(errno));
                 }
-            } else {
+            }
+            else {
                 char wdchar[33];
                 char *data;
                 int retval;
@@ -109,12 +112,14 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata, __attr
                     if (retval = OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
                         os_free(data);
                         merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
-                    } else if (retval == 1) {
+                    }
+                    else if (retval == 1) {
                         mdebug2(FIM_REALTIME_HASH_DUP, data);
                         os_free(data);
                     }
                     mdebug1(FIM_REALTIME_NEWDIRECTORY, dir);
-                } else {
+                }
+                else {
                     if (retval = OSHash_Update_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
                         merror("Unable to update 'dirtb'. Directory not found: '%s'", data);
                         os_free(data);
@@ -182,7 +187,8 @@ void realtime_process()
                     }
 
                     switch(event->mask) {
-                    case(IN_DELETE_SELF):
+                    case IN_MOVE_SELF:
+                    case IN_DELETE_SELF:
                         w_mutex_lock(&syscheck.fim_realtime_mutex);
                         char * data = OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar);
                         os_free(data);
