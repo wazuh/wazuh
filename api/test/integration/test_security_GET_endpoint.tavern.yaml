@@ -181,6 +181,11 @@ stages:
           affected_items:
             - <<: *roles
             - <<: *roles
+            - <<: *roles
+            - <<: *roles
+            - <<: *roles
+            - <<: *roles
+            - <<: *roles
           total_affected_items: !anyint
 
   # GET /security/roles
@@ -373,6 +378,7 @@ stages:
         data:
           affected_items:
             - <<: *policies
+            - <<: *policies
           total_affected_items: !anyint
       save:
         body:
@@ -388,7 +394,7 @@ stages:
       status_code: 200
       body:
         data:
-          total_affected_items: 1
+          total_affected_items: 2
 
   # GET /security/policies
   - name: Search without limit, non existent policy

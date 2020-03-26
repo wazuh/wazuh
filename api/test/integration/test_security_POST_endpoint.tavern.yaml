@@ -383,12 +383,12 @@ stages:
   # POST /security/roles/{role_id}/policies/{policy}
   - name: Create link role-policy
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/4/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/11/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        policy_ids: 2
+        policy_ids: 12
     response:
       status_code: 200
       body:
@@ -399,12 +399,12 @@ stages:
   # POST /security/roles/{role_id}/policies/{policy}
   - name: Create link role-policy
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/3/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/10/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        policy_ids: 3
+        policy_ids: 13
     response:
       status_code: 200
       body:
@@ -420,7 +420,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        policy_ids: 2,3
+        policy_ids: 12,13
     response:
       status_code: 200
       body: &error
@@ -439,7 +439,7 @@ stages:
   # POST /security/roles/{role_id}/policies/{non-existent policy}
   - name: Create link role-policy (non-existent policy)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/2/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/9/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -469,7 +469,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        policy_ids: 999,2
+        policy_ids: 999,12
     response:
       status_code: 200
       body:

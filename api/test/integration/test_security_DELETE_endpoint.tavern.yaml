@@ -22,13 +22,13 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        role_ids: 3
+        role_ids: 10
     response:
       status_code: 200
       body:
         data:
           affected_items:
-            - id: 3
+            - id: 10
               name: !anystr
               policies: !anything
               rule: !anything
@@ -79,12 +79,12 @@ stages:
   # DELETE /security/roles/{role_id}/policies/{policy_id}
   - name: Try to delete a existent role-policy
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/4/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/11/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        policy_ids: 2,5
+        policy_ids: 12,15
     response:
       status_code: 200
       body:
@@ -92,7 +92,7 @@ stages:
           affected_items: !anything
           failed_items:
             - error:
-                code: 4007
+                code: 4010
                 message: !anystr
                 remediation: !anystr
               id: !anything
@@ -150,12 +150,12 @@ stages:
   # DELETE /security/user/{user_id}/roles/{role_id}
   - name: Try to delete a existent user-role
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/new_user/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/normal/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        role_ids: 5,4
+        role_ids: 12,11
     response:
       status_code: 200
       body:
@@ -173,7 +173,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        role_ids: 5
+        role_ids: 12
     response:
       status_code: 200
       body:
@@ -213,13 +213,13 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        policy_ids: 2
+        policy_ids: 12
     response:
       status_code: 200
       body:
         data:
           affected_items:
-            - id: 2
+            - id: 12
               name: !anystr
               policy: !anything
               roles: !anything
@@ -265,13 +265,13 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        role_ids: 3,4
+        role_ids: 10,11
     response:
       status_code: 200
       body:
         data:
           affected_items:
-            - id: 4
+            - id: 11
               name: !anystr
               policies: !anything
               rule: !anything
@@ -281,7 +281,7 @@ stages:
                 message: The specified role does not exist
                 remediation: Please, create the specified role with the endpoint POST /security/roles
               id:
-                - '3'
+                - '10'
           total_affected_items: 1
           total_failed_items: 1
 
@@ -319,17 +319,17 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        policy_ids: 3,4
+        policy_ids: 13,14
     response:
       status_code: 200
       body:
         data:
           affected_items:
-            - id: 3
+            - id: 13
               name: !anystr
               policy: !anything
               roles: !anything
-            - id: 4
+            - id: 14
               name: !anystr
               policy: !anything
               roles: !anything
