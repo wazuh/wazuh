@@ -1452,6 +1452,7 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
         os_free(hard_links_tmp);
     }
 
+    // When full_log field is too long (max 756), it is fixed to show the last part of the path (more relevant)
     char * aux = NULL;
     if (strlen(lf->fields[FIM_FILE].value) > 756){
         int len = strlen(lf->fields[FIM_FILE].value);
@@ -1459,7 +1460,7 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
     }
 
     snprintf(lf->full_log, OS_MAXSTR,
-            "File '%.728s [...] %s' %s\n"
+            "File '%.719s [...] %s' %s\n"
             "%s"
             "Mode: %s\n"
             "%s"
