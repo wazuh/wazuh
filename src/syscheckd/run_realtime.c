@@ -143,9 +143,11 @@ void realtime_process()
     buf[REALTIME_EVENT_BUFFER] = '\0';
 
     len = read(syscheck.realtime->fd, buf, REALTIME_EVENT_BUFFER);
+
     if (len < 0) {
         merror(FIM_ERROR_REALTIME_READ_BUFFER);
-    } else if (len > 0) {
+    }
+    else if (len > 0) {
         rb_tree * tree = rbtree_init();
 
         for (size_t i = 0; i < (size_t) len; i += REALTIME_EVENT_SIZE + event->len) {
@@ -154,7 +156,8 @@ void realtime_process()
             if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {
                 mwarn("Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
                 send_log_msg("ossec: Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
-            } else {
+            }
+            else {
                 char wdchar[33];
                 char final_name[MAX_LINE + 1];
                 char *entry;
@@ -163,19 +166,22 @@ void realtime_process()
 
                 snprintf(wdchar, 33, "%d", event->wd);
 
-                //The configured paths can end at / or not, we must check it.
+                // The configured paths can end at / or not, we must check it.
                 entry = (char *)OSHash_Get(syscheck.realtime->dirtb, wdchar);
+
                 if (entry) {
                     // Check file entries with realtime
                     if (event->len == 0) {
                         snprintf(final_name, MAX_LINE, "%s", entry);
-                    } else {
+                    }
+                    else {
                         // Check directories entries with realtime
                         if (entry[strlen(entry) - 1] == PATH_SEP) {
                             snprintf(final_name, MAX_LINE, "%s%s",
                                     entry,
                                     event->name);
-                        } else {
+                        }
+                        else {
                             snprintf(final_name, MAX_LINE, "%s/%s",
                                     entry,
                                     event->name);
@@ -188,10 +194,15 @@ void realtime_process()
 
                     switch(event->mask) {
                     case IN_MOVE_SELF:
+                        delete_subdirectories_watches(entry);
+                        // fall through
                     case IN_DELETE_SELF:
                         w_mutex_lock(&syscheck.fim_realtime_mutex);
+
                         char * data = OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar);
+                        mdebug2(FIM_INOTIFY_WATCH_DELETED, data);
                         os_free(data);
+                        
                         w_mutex_unlock(&syscheck.fim_realtime_mutex);
                         break;
                     }
@@ -212,6 +223,50 @@ void realtime_process()
 
 void free_syscheck_dirtb_data(char *data) {
     free(data);
+}
+
+void delete_subdirectories_watches(char *dir) {
+    OSHashNode *hash_node;
+    char *data;
+    unsigned int inode_it = 0;
+    char *dir_slash;
+
+    os_calloc(strlen(dir) + 1, sizeof(char), dir_slash);  // Length of dir plus an extra slash
+
+    /*
+        Copy the content of dir into dir_slash and add an extra slash
+     */
+    strncpy(dir_slash, dir, strlen(dir));
+    strncat(dir_slash, "/", strlen(dir_slash) + 1);
+
+    if(syscheck.realtime->fd) {
+        w_mutex_lock(&syscheck.fim_entry_mutex);
+        hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
+
+        while(hash_node) {
+            data = hash_node->data;
+
+            if (data) {
+                if (strncmp(dir_slash, data, strlen(dir_slash)) == 0) {
+                    OSHash_Delete_ex(syscheck.realtime->dirtb, hash_node->key);
+                    mdebug2(FIM_INOTIFY_WATCH_DELETED, data);
+
+                    /* 
+                        If an element of the hash table is deleted, it needs to start from the
+                        beginning again to prevent going out of boundaries.
+                     */
+                    hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
+                    continue;
+                }
+            }
+
+            hash_node = OSHash_Next(syscheck.realtime->dirtb, &inode_it, hash_node);
+        }
+
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
+    }
+
+    os_free(dir_slash);
 }
 
 #elif defined(WIN32)
