@@ -519,5 +519,5 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: No user was deleted
+        message: Users deleted correctly
 
