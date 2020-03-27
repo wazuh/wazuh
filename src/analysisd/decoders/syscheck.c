@@ -1458,7 +1458,6 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
     if (path_log_len > 756){
         char * aux = lf->fields[FIM_FILE].value + path_log_len - 30;
         snprintf(path_splitted, 757, "%.719s [...] %s", lf->fields[FIM_FILE].value, aux);
-        mdebug2("AAAAAAAAAAAAAAAA: %s", path_splitted);
     }
 
     snprintf(lf->full_log, OS_MAXSTR,
