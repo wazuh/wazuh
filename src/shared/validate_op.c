@@ -10,6 +10,10 @@
 
 #include "shared.h"
 
+#ifdef UNIT_TESTING
+#define static
+#endif
+
 static char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
 static void _init_masks(void);
 static const char *__gethour(const char *str, char *ossec_hour) __attribute__((nonnull));
@@ -145,6 +149,10 @@ int getNetmask(unsigned int mask, char *strmask, size_t size)
     if (mask == 0) {
         snprintf(strmask, size, "/any");
         return (1);
+    }
+
+    if (!_mask_inited) {
+        _init_masks();
     }
 
     for (i = 0; i <= 31; i++) {

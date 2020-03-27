@@ -218,7 +218,6 @@
 <!--
     Shellshock detected
     Pattern: "(){:;};" (with spaces)
-    Code: 200, 404
     Decoder: web-accesslog_decoders.xml
 
     Examples:
@@ -232,19 +231,45 @@
     192.168.2.100 - - [02/Nov/2015:01:35:55 +0100] "GET /cgi-bin/test.sh HTTP/1.1" 200 292 "-" "() { _; foo; } >_[$($())] { /usr/bin/perl ... }"
     -->
 
-  <rule id="31166" level="15">
-    <if_sid>31101,31108</if_sid>
-    <regex>"\(\)\s*{\s*:;\s*}\s*;|"\(\)\s*{\s*foo:;\s*}\s*;|"\(\)\s*{\s*ignored;\s*}\s*|"\(\)\s*{\s*gry;\s*}\s*;</regex>
+  <!--
+    Shellshock attempt
+    Code: 4xx, 5xx
+  -->
+  <rule id="31166" level="6">
+    <if_sid>31101, 31120</if_sid>
+    <regex>"\(\)\s*{\s*\w*:;\s*}\s*;|"\(\)\s*{\s*\w*;\s*}\s*;</regex>
     <description>Shellshock attack attempt</description>
     <info type="cve">CVE-2014-6271</info>
     <info type="link">https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-6271</info>
     <group>attack,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,</group>
   </rule>
 
-  <rule id="31167" level="15">
-    <if_sid>31101,31108</if_sid>
+  <rule id="31167" level="6">
+    <if_sid>31101, 31120</if_sid>
     <regex>"\(\)\s*{\s*_;\.*}\s*>_[\$\(\$\(\)\)]\s*{</regex>
     <description>Shellshock attack attempt</description>
+    <info type="cve">CVE-2014-6278</info>
+    <info type="link">https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-6278</info>
+    <group>attack,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,</group>
+  </rule>
+
+  <!--
+    Shellshock detected
+    Code: 2xx, 3xx
+  -->
+  <rule id="31168" level="15">
+    <if_sid>31108</if_sid>
+    <regex>"\(\)\s*{\s*\w*:;\s*}\s*;|"\(\)\s*{\s*\w*;\s*}\s*;</regex>
+    <description>Shellshock attack detected</description>
+    <info type="cve">CVE-2014-6271</info>
+    <info type="link">https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-6271</info>
+    <group>attack,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,</group>
+  </rule>
+
+  <rule id="31169" level="15">
+    <if_sid>31108</if_sid>
+    <regex>"\(\)\s*{\s*_;\.*}\s*>_[\$\(\$\(\)\)]\s*{</regex>
+    <description>Shellshock attack detected</description>
     <info type="cve">CVE-2014-6278</info>
     <info type="link">https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-6278</info>
     <group>attack,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,</group>

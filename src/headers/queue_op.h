@@ -35,5 +35,6 @@ int queue_push_ex_block(w_queue_t * queue, void * data);
 void * queue_pop(w_queue_t * queue);
 void * queue_pop_ex(w_queue_t * queue);
 void * queue_pop_ex_block(w_queue_t * queue);
+void * queue_pop_ex_timedwait(w_queue_t * queue, const struct timespec * abstime);
 
 #endif // QUEUE_OP_H

@@ -245,9 +245,9 @@ def test_get_basic_information(test_data, select, a_id, a_ip, a_status):
 
 
 @pytest.mark.parametrize('fields, expected_items', [
-    ({'fields': ['os.platform']}, [{'os': {'platform': 'ubuntu'}, 'count': 4}, {'count': 2}]),
-    ({'fields': ['version']}, [{'version': 'Wazuh v3.9.0', 'count': 1}, {'version': 'Wazuh v3.8.2', 'count': 2}, {'version': 'Wazuh v3.6.2', 'count': 1}, {'count': 2}]),
-    ({'fields': ['os.platform', 'os.major']}, [{'os': {'major': '18', 'platform': 'ubuntu'}, 'count': 3}, {'os': {'major': '16', 'platform': 'ubuntu'}, 'count': 1}, {'count': 2}])
+    ({'fields': ['os.platform']}, [{'count': 2}, {'os': {'platform': 'ubuntu'}, 'count': 4}]),
+    ({'fields': ['version']}, [{'version': 'Wazuh v3.9.0', 'count': 1}, {'version': 'Wazuh v3.6.2', 'count': 1}, {'count': 2}, {'version': 'Wazuh v3.8.2', 'count': 2}]),
+    ({'fields': ['os.platform', 'os.major']}, [{'os': {'major': '16', 'platform': 'ubuntu'}, 'count': 1}, {'count': 2}, {'os': {'major': '18', 'platform': 'ubuntu'}, 'count': 3}])
 ])
 @patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
 def test_get_distinct_agents(test_data, fields, expected_items):
@@ -276,7 +276,7 @@ def test_get_os_summary(test_data):
     with patch('sqlite3.connect') as mock_db:
         mock_db.return_value = test_data.global_db
         summary = Agent.get_os_summary()
-        assert summary['items'] == ['ubuntu']
+        assert summary['items'] == [{'os': {'platform': 'ubuntu'}}]
 
 
 @pytest.mark.parametrize('agent_id, component, configuration, expected_exception', [
@@ -486,8 +486,11 @@ def test_upgrade_not_access_repo(request_mock, ossec_socket_mock, test_data):
 @patch('wazuh.agent.open')
 @patch('wazuh.agent.requests.get')
 @patch('wazuh.agent.Agent._get_versions')
+@patch("wazuh.common.ossec_path", new=test_data_path)
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
-def test_get_wpk_file(versions_mock, get_req_mock, open_mock, sha1_mock, test_data, agent_id):
+@patch("wazuh.common.ossec_uid", return_value=getpwnam("root").pw_uid)
+@patch("wazuh.common.ossec_gid", return_value=getgrnam("root").gr_gid)
+def test_get_wpk_file(grp_mock, pwd_mock, versions_mock, get_req_mock, open_mock, sha1_mock, test_data, agent_id):
     """
     Test _get_wpk_file method
     """
@@ -570,41 +573,6 @@ def test_get_outdated_agents(test_data):
         for item in result['items']:
             assert set(item.keys()) == {'version', 'id', 'name'}
             assert WazuhVersion(item['version']) < WazuhVersion(get_manager_version())
-
-
-@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
-@patch('wazuh.agent.OssecQueue')
-@patch('wazuh.agent.Agent.get_agent_group', return_value={'items': [{'id': '001'}, {'id': '002'}]})
-def test_restart_agents_by_group_ok(mock_get_agent_group, mock_ossec_queue,
-                                    test_data):
-    """Test restart_agents_by_group method when all agents are restarted."""
-    with patch('sqlite3.connect') as mock_db:
-        mock_db.return_value = test_data.global_db
-        result = Agent.restart_agents_by_group('dmz')
-        # check result fields
-        assert set(result.keys()) == {'msg', 'affected_agents'}
-        assert result['msg'] == 'All selected agents were restarted'
-        assert set(result['affected_agents']) == {'001', '002'}
-
-
-@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
-@patch('wazuh.agent.OssecQueue')
-@patch('wazuh.agent.Agent.get_agent_group', return_value={'items': [{'id': '001'}, {'id': '002'}, {'id': '003'}, {'id': '005'}]})
-def test_restart_agents_by_group_ko(mock_get_agent_group, mock_ossec_queue,
-                                    test_data):
-    """Test restart_agents_by_group method when some agents are not restarted."""
-    with patch('sqlite3.connect') as mock_db:
-        mock_db.return_value = test_data.global_db
-        result = Agent.restart_agents_by_group('dmz')
-        # check result fields
-        assert set(result.keys()) == {'failed_ids', 'msg', 'affected_agents'}
-        assert result['msg'] == 'Some agents were not restarted'
-        assert set(result['affected_agents']) == {'001', '002'}
-        assert isinstance(result['failed_ids'], list)
-        for failed_id in result['failed_ids']:
-            assert set(failed_id.keys()) == {'id', 'error'}
-            assert isinstance(failed_id['id'], str)
-            assert set(failed_id['error']) == {'message', 'code'}
 
 
 @patch('wazuh.agent.Agent.get_all_groups')

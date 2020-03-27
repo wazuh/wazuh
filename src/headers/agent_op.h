@@ -11,15 +11,22 @@
 #ifndef AGENT_OP_H
 #define AGENT_OP_H
 
-/* Check if syscheck is to be executed/restarted
- * Returns 1 on success or 0 on failure (shouldn't be executed now)
+/**
+ * @brief Check if syscheck is to be executed/restarted
+ * @return 1 on success or 0 on failure (shouldn't be executed now).
  */
 int os_check_restart_syscheck(void);
 
-/* Set syscheck to be restarted
- * Returns 1 on success or 0 on failure
+/**
+ * @brief Check if rootcheck is to be executed/restarted
+ * @return 1 on success or 0 on failure (shouldn't be executed now).
  */
-int os_set_restart_syscheck(void);
+int os_check_restart_rootcheck(void);
+
+/**
+ * @brief Set syscheck and rootcheck to be restarted
+ */
+void os_set_restart_syscheck(void);
 
 /* Read the agent name for the current agent
  * Returns NULL on error
@@ -85,7 +92,7 @@ int auth_add_agent(int sock, char *id, const char *name, const char *ip, const c
 char * get_agent_id_from_name(const char *agent_name);
 
 /* Check control module availability */
-#if defined (__linux__) || defined (__MACH__)
+#if defined (__linux__) || defined (__MACH__) || defined (sun)
 int control_check_connection();
 #endif
 
