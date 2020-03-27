@@ -436,7 +436,7 @@ void test_getSyscheckConfig_no_directories(void **state)
     assert_int_equal(cJSON_GetArraySize(ret), 1);
 
     cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
-    assert_int_equal(cJSON_GetArraySize(sys_items), 14);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 15);
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
     assert_string_equal(cJSON_GetStringValue(disabled), "yes");
     cJSON *frequency = cJSON_GetObjectItem(sys_items, "frequency");
