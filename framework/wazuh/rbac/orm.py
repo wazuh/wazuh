@@ -29,7 +29,7 @@ _Session = sessionmaker(bind=_engine)
 admin_usernames = ['wazuh', 'wazuh-wui']
 
 # IDs reserved for administrator roles and policies, these can not be modified or deleted
-admin_role_ids = [1, 2, 3, 4, 5, 6]
+admin_role_ids = [1, 2, 3, 4, 5, 6, 7]
 admin_policy_ids = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 
@@ -295,13 +295,15 @@ class AuthenticationManager:
             return SecurityError.ADMIN_RESOURCES
 
         try:
-            relations = self.session.query(UserRoles).filter_by(user_id=username).all()
+            if self.session.query(User).filter_by(username=username).first():
             # If the user has one or more roles associated with it, the associations will be eliminated.
-            for user_role in relations:
-                self.session.delete(user_role)
-            self.session.delete(self.session.query(User).filter_by(username=username).first())
-            self.session.commit()
-            return True
+                with UserRolesManager() as urm:
+                    urm.remove_all_roles_in_user(username=username)
+                self.session.delete(self.session.query(User).filter_by(username=username).first())
+                self.session.commit()
+                return True
+            else:
+                return False
         except UnmappedInstanceError:
             # User already deleted
             return False
