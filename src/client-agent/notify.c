@@ -69,7 +69,7 @@ char *get_agent_ip()
     }
 
     if(sock < 0) {
-        merror("Unable to bind to socket '%s': (%d) %s.", CONTROL_SOCK_PATH, errno, strerror(errno));
+        mdebug1("Cannot get the agent host's IP because the control module is not available: (%d) %s.", errno, strerror(errno));
     }
 #endif
     return agent_ip;
