@@ -42,7 +42,7 @@ def main(args):
 
     # Read args
     alert_file_location = args[1]
-    webhook = args[2]
+    webhook = args[3]
 
     debug("# Webhook")
     debug(webhook)
