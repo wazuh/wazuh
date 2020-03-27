@@ -259,7 +259,7 @@ stages:
 
   # DELETE /security/roles
   - name: Try to delete one existent role and no existent one
-    request: &delete_all_roles_request
+    request: &delete_roles_request
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -288,7 +288,7 @@ stages:
   # DELETE /security/roles
   - name: Try to delete all roles of the system
     request:
-      <<: *delete_all_roles_request
+      <<: *delete_roles_request
     response:
       status_code: 200
       body:
@@ -299,7 +299,7 @@ stages:
   # DELETE /security/roles
   - name: Try to delete the administrator role
     request:
-      <<: *delete_all_roles_request
+      <<: *delete_roles_request
       params:
         role_ids: 1
     response:
@@ -509,8 +509,7 @@ stages:
         data:
           affected_items:
             - username: administrator
-              roles:
-                - 9
+              roles: []
             - username: guest
               roles: []
             - username: ossec
@@ -519,6 +518,6 @@ stages:
               roles: []
           failed_items: []
           total_affected_items: 4
-          "total_failed_items": 0
+          total_failed_items: 0
         message: No user was deleted
 

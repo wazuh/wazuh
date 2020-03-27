@@ -442,14 +442,14 @@ class RolesManager:
         """
         try:
             if int(role_id) not in admin_role_ids:
-                relations = self.session.query(RolesPolicies).filter_by(role_id=role_id).all()
-                # If the role has one or more policies associated with it, the associations will be eliminated.
-                # If the role does not exist continue
-                for role_policy in relations:
-                    self.session.delete(role_policy)
                 # If the role does not exist we rollback the changes
                 if self.session.query(Roles).filter_by(id=role_id).first() is None:
                     return False
+                # If the role has one or more policies associated with it, the associations will be eliminated.
+                with UserRolesManager() as urm:
+                    urm.remove_all_users_in_role(role_id=role_id)
+                with RolesPoliciesManager() as rpm:
+                    rpm.remove_all_policies_in_role(role_id=role_id)
                 # Finally we delete the role
                 self.session.query(Roles).filter_by(id=role_id).delete()
                 self.session.commit()
@@ -467,14 +467,9 @@ class RolesManager:
         """
         try:
             if self.get_role(role_name) is not None and self.get_role(role_name).id not in admin_role_ids:
-                relations = self.session.query(RolesPolicies).filter_by(role_id=self.get_role(role_name).id).all()
-                for role_policy in relations:
-                    self.session.delete(role_policy)
-                if self.session.query(Roles).filter_by(name=role_name).first() is None:
-                    return False
-                self.session.query(Roles).filter_by(name=role_name).delete()
-                self.session.commit()
-                return True
+                role_id = self.session.query(Roles).filter_by(name=role_name).role_id
+                if role_id:
+                    self.delete_role(role_id=role_id)
             return False
         except (IntegrityError, AttributeError):
             self.session.rollback()
@@ -490,9 +485,8 @@ class RolesManager:
             roles = self.session.query(Roles).all()
             for role in roles:
                 if int(role.id) not in admin_role_ids:
-                    relations = self.session.query(RolesPolicies).filter_by(role_id=role.id).all()
-                    for role_policy in relations:
-                        self.session.delete(role_policy)
+                    with RolesPoliciesManager() as rpm:
+                        rpm.remove_all_policies_in_role(role_id=role.id)
                     list_roles.append(int(role.id))
                     self.session.query(Roles).filter_by(id=role.id).delete()
                     self.session.commit()
@@ -632,13 +626,12 @@ class PoliciesManager:
         """
         try:
             if int(policy_id) not in admin_policy_ids:
-                relations = self.session.query(RolesPolicies).filter_by(policy_id=policy_id).all()
-                # If the policy has relationships with roles, it first eliminates those relationships.
                 # If there is no policy continues
-                for role_policy in relations:
-                    self.session.delete(role_policy)
                 if self.session.query(Policies).filter_by(id=policy_id).first() is None:
                     return False
+                # If the policy has relationships with roles, it first eliminates those relationships.
+                with RolesPoliciesManager() as rpm:
+                    rpm.remove_all_roles_in_policy(policy_id=policy_id)
                 self.session.query(Policies).filter_by(id=policy_id).delete()
                 self.session.commit()
                 return True
@@ -656,15 +649,9 @@ class PoliciesManager:
         try:
             if self.get_policy(policy_name) is not None and \
                     self.get_policy(name=policy_name).id not in admin_policy_ids:
-                relations = self.session.query(RolesPolicies).filter_by(
-                    policy_id=self.get_policy(name=policy_name).id).all()
-                for role_policy in relations:
-                    self.session.delete(role_policy)
-                if self.session.query(Policies).filter_by(name=policy_name).delete() is None:
-                    return False
-                self.session.query(Policies).filter_by(name=policy_name).delete()
-                self.session.commit()
-                return True
+                policy_id = self.session.query(Policies).filter_by(name=policy_name).policy_id
+                if policy_id:
+                    self.delete_policy(policy_id=policy_id)
             return False
         except (IntegrityError, AttributeError):
             self.session.rollback()
@@ -680,9 +667,8 @@ class PoliciesManager:
             policies = self.session.query(Policies).all()
             for policy in policies:
                 if int(policy.id) not in admin_policy_ids:
-                    relations = self.session.query(RolesPolicies).filter_by(policy_id=policy.id).all()
-                    for role_policy in relations:
-                        self.session.delete(role_policy)
+                    with RolesPoliciesManager() as rpm:
+                        rpm.remove_all_roles_in_policy(policy_id=policy.id)
                     list_policies.append(int(policy.id))
                     self.session.query(Policies).filter_by(id=policy.id).delete()
                     self.session.commit()
