@@ -332,7 +332,7 @@ int main(void) {
     TAP_TEST_MSG(test_get_ip(), "Get primary IP address collection.");
 
     TAP_PLAN;
-    TAP_SUMMARY;
+    int r = tap_summary();
     printf("\n    ENDING TEST  - OS_NET   \n\n");
-    return 0;
+    return r;
 }
