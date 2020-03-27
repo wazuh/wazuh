@@ -550,12 +550,40 @@ stages:
       body:
         data:
           affected_items:
-            - username: new_user
-            - username: new_user1
+            - username: administrator
+              roles:
+                - 9
+            - username: guest
+              roles: []
+            - username: normal
+              roles:
+                - 11
+                - 12
+                - 13
+            - username: ossec
+              roles:
+                - 9
+                - 12
+            - username: python
+              roles: []
+            - username: rbac
+              roles:
+                - 10
+                - 11
+                - 12
             - username: wazuh
+              roles:
+                - 1
+                - 8
             - username: wazuh-wui
-          total_affected_items: 4
-        message: !anystr
+              roles:
+                - 2
+                - 9
+          total_affected_items: 8
+          total_failed_items: 0
+          failed_items: []
+        message: All specified users were shown
+
 ---
 test_name: GET /security/users
 
@@ -735,7 +763,7 @@ marks:
       key: field
       vals:
         - wazuh-wui
-        - new_user1
+        - normal
 
 stages:
   - name: Testing search
@@ -770,12 +798,31 @@ stages:
       body:
         data:
           affected_items:
-            - username: new_user
-            - username: new_user1
-          failed_items: []
-          total_affected_items: 2
+            - username: administrator
+              roles:
+                - 9
+            - username: guest
+              roles: []
+            - username: normal
+              roles:
+                - 11
+                - 12
+                - 13
+            - username: ossec
+              roles:
+                - 9
+                - 12
+            - username: python
+              roles: []
+            - username: rbac
+              roles:
+                - 10
+                - 11
+                - 12
+          total_affected_items: 6
           total_failed_items: 0
-        message: !anystr
+          failed_items: []
+        message: All specified users were shown
 
 ---
 test_name: GET /security/users/?sort
@@ -795,11 +842,38 @@ stages:
         data:
           affected_items:
             - username: wazuh-wui
+              roles:
+                - 2
+                - 9
             - username: wazuh
-            - username: new_user1
-            - username: new_user
-          total_affected_items: 4
-        message: !anystr
+              roles:
+                - 1
+                - 8
+            - username: rbac
+              roles:
+                - 10
+                - 11
+                - 12
+            - username: python
+              roles: []
+            - username: ossec
+              roles:
+                - 9
+                - 12
+            - username: normal
+              roles:
+                - 11
+                - 12
+                - 13
+            - username: guest
+              roles: []
+            - username: administrator
+              roles:
+                - 9
+          total_affected_items: 8
+          total_failed_items: 0
+          failed_items: []
+        message: All specified users were shown
 
   - name: Testing sort
     request:
@@ -814,12 +888,39 @@ stages:
       body:
         data:
           affected_items:
-            - username: new_user
-            - username: new_user1
+            - username: administrator
+              roles:
+                - 9
+            - username: guest
+              roles: []
+            - username: normal
+              roles:
+                - 11
+                - 12
+                - 13
+            - username: ossec
+              roles:
+                - 9
+                - 12
+            - username: python
+              roles: []
+            - username: rbac
+              roles:
+                - 10
+                - 11
+                - 12
             - username: wazuh
+              roles:
+                - 1
+                - 8
             - username: wazuh-wui
-          total_affected_items: 4
-        message: !anystr
+              roles:
+                - 2
+                - 9
+          total_affected_items: 8
+          total_failed_items: 0
+          failed_items: []
+        message: All specified users were shown
 
 ---
 test_name: GET /security/users/?limit,offset
@@ -838,9 +939,29 @@ stages:
       body:
         data:
           affected_items:
+            - username: ossec
+              roles:
+                - 9
+                - 12
+            - username: python
+              roles: []
+            - username: rbac
+              roles:
+                - 10
+                - 11
+                - 12
+            - username: wazuh
+              roles:
+                - 1
+                - 8
             - username: wazuh-wui
-          total_affected_items: 4
-        message: !anystr
+              roles:
+                - 2
+                - 9
+          total_affected_items: 8
+          total_failed_items: 0
+          failed_items: []
+        message: All specified users were shown
 
   - name: Testing limit
     request:
@@ -855,7 +976,11 @@ stages:
       body:
         data:
           affected_items:
-            - username: new_user
-          total_affected_items: 4
-        message: !anystr
+            - username: administrator
+              roles:
+                - 9
+          total_affected_items: 8
+          total_failed_items: 0
+          failed_items: []
+        message: All specified users were shown
 
