@@ -133,11 +133,11 @@ if __name__ == '__main__':
     else:
         ssl_context = None
 
+    pyDaemonModule.create_pid('wazuh-apid', os.getpid())
+
     app.run(port=configuration['port'],
             host=configuration['host'],
             ssl_context=ssl_context,
             access_log_class=alogging.AccessLogger,
             use_default_access_log=True
             )
-
-    pyDaemonModule.create_pid('wazuh-apid', os.getpid())
