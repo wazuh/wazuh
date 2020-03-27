@@ -34,7 +34,7 @@ int test_tcpv4_local() {
 
     w_assert_int_eq(OS_SendTCP(client_socket, SENDSTRING), 0);
 
-    w_assert_int_eq(OS_RecvTCPBuffer(server_client_socket, buffer, BUFFERSIZE), 0);
+    w_assert_int_eq(OS_RecvTCPBuffer(server_client_socket, buffer, BUFFERSIZE), 13);
 
     w_assert_str_eq(buffer, SENDSTRING);
 
@@ -69,7 +69,7 @@ int test_tcpv4_inet() {
 
     w_assert_int_eq(OS_SendTCP(client_socket, SENDSTRING), 0);
 
-    w_assert_int_eq(OS_RecvTCPBuffer(server_client_socket, buffer, BUFFERSIZE), 0);
+    w_assert_int_eq(OS_RecvTCPBuffer(server_client_socket, buffer, BUFFERSIZE), 13);
 
     w_assert_str_eq(buffer, SENDSTRING);
 
@@ -104,7 +104,7 @@ int test_tcpv6() {
 
     w_assert_int_eq(OS_SendTCP(client_socket, SENDSTRING), 0);
 
-    w_assert_int_eq(OS_RecvTCPBuffer(server_client_socket, buffer, BUFFERSIZE), 0);
+    w_assert_int_eq(OS_RecvTCPBuffer(server_client_socket, buffer, BUFFERSIZE), 13);
 
     w_assert_str_eq(buffer, SENDSTRING);
 
