@@ -44,8 +44,7 @@ volatile int audit_db_consistency_flag;
 #define REALTIME_EVENT_SIZE     (sizeof (struct inotify_event))
 #define REALTIME_EVENT_BUFFER   (2048 * (REALTIME_EVENT_SIZE + 16))
 
-int realtime_start()
-{
+int realtime_start() {
     os_calloc(1, sizeof(rtfim), syscheck.realtime);
 
     syscheck.realtime->dirtb = OSHash_Create();
@@ -134,8 +133,7 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata, __attr
 }
 
 /* Process events in the real time queue */
-void realtime_process()
-{
+void realtime_process() {
     ssize_t len;
     char buf[REALTIME_EVENT_BUFFER + 1];
     struct inotify_event *event;
@@ -200,7 +198,7 @@ void realtime_process()
                         w_mutex_lock(&syscheck.fim_realtime_mutex);
 
                         char * data = OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar);
-                        mdebug2(FIM_INOTIFY_WATCH_DELETED, data);
+                        mdebug2(FIM_INOTIFY_WATCH_DELETED, entry);
                         os_free(data);
                         
                         w_mutex_unlock(&syscheck.fim_realtime_mutex);
@@ -231,13 +229,23 @@ void delete_subdirectories_watches(char *dir) {
     unsigned int inode_it = 0;
     char *dir_slash;
 
-    os_calloc(strlen(dir) + 1, sizeof(char), dir_slash);  // Length of dir plus an extra slash
-
-    /*
-        Copy the content of dir into dir_slash and add an extra slash
+    /* 
+        If the directory already ends with an slash, there is no need for adding
+        an extra one
      */
-    strncpy(dir_slash, dir, strlen(dir));
-    strncat(dir_slash, "/", strlen(dir_slash) + 1);
+    if (dir[strlen(dir) - 1] != '/') {
+        os_calloc(strlen(dir) + 1, sizeof(char), dir_slash);  // Length of dir plus an extra slash
+
+        /*
+            Copy the content of dir into dir_slash and add an extra slash
+        */
+        strncpy(dir_slash, dir, strlen(dir));
+        strncat(dir_slash, "/", strlen(dir_slash) + 1);
+    }
+    else {
+        os_calloc(strlen(dir), sizeof(char), dir_slash);
+        strncpy(dir_slash, dir, strlen(dir));
+    }
 
     if(syscheck.realtime->fd) {
         w_mutex_lock(&syscheck.fim_entry_mutex);
