@@ -1,20 +1,39 @@
 #!/var/ossec/framework/python/bin/python3
 
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import argparse
+import asyncio
 import os
-import subprocess
+import ssl
 import sys
-from signal import SIGABRT, SIGTERM, SIGINT, signal
-import yaml
 
-from api import api
-from api.constants import UWSGI_CONFIG_PATH, UWSGI_EXE
+import aiohttp_cache
+import aiohttp_cors
+import connexion
+import uvloop
+from aiohttp_swagger import setup_swagger
+
+from api import alogging, configuration, __path__ as api_path
+# noinspection PyUnresolvedReferences
+from api import validator
+from api.api_exception import APIException
+from api.constants import CONFIG_FILE_PATH
+from api.middlewares import set_user_name
+from api.util import to_relative_path
 from wazuh import pyDaemonModule, common
 from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licence__
+from wazuh.core.cluster.utils import read_config
+
+
+def set_logging(foreground_mode=False, debug_mode='info'):
+    for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh'):
+        api_logger = alogging.APILogger(log_path='logs/api.log', foreground_mode=foreground_mode,
+                                        debug_level=debug_mode,
+                                        logger_name=logger_name)
+        api_logger.setup_logger()
 
 
 def print_version():
@@ -30,14 +49,14 @@ if __name__ == '__main__':
     parser.add_argument('-t', help="Test configuration", action='store_true', dest='test_config')
     parser.add_argument('-r', help="Run as root", action='store_true', dest='root')
     parser.add_argument('-c', help="Configuration file to use", type=str, metavar='config', dest='config_file',
-                        default=UWSGI_CONFIG_PATH)
+                        default=common.api_config_path)
     args = parser.parse_args()
 
     if args.test_config:
         try:
-            with open(args.config_file, 'r') as stream:
-                yaml.safe_load(stream)
+            configuration.read_api_config(config_file=args.config_file)
         except Exception as e:
+            print(f"Configuration not valid: {e}")
             sys.exit(1)
         sys.exit(0)
 
@@ -54,33 +73,71 @@ if __name__ == '__main__':
         os.setgid(common.ossec_gid())
         os.setuid(common.ossec_uid())
 
-    uwsgi_logger = api.main_logger
+    cluster_config = read_config()
+    configuration = configuration.read_api_config(config_file=args.config_file)
+    cache_conf = configuration['cache']
+    cors = configuration['cors']
 
-    proc = subprocess.Popen([UWSGI_EXE,
-                             "--yaml", args.config_file,
-                             "--wsgi-file", api.__file__,
-                             "--callable", "wazuh_api"
-                             ],
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT,
-                            encoding='utf8'
-                            )
+    set_logging(debug_mode=configuration['logs']['level'], foreground_mode=args.foreground)
 
-    pyDaemonModule.create_pid('wazuh-apid', proc.pid)
+    # set correct permissions on api.log file
+    if os.path.exists('{0}/logs/api.log'.format(common.ossec_path)):
+        os.chown('{0}/logs/api.log'.format(common.ossec_path), common.ossec_uid(), common.ossec_gid())
+        os.chmod('{0}/logs/api.log'.format(common.ossec_path), 0o660)
 
-    # Set termination handlers to kill subprocesses on exit
-    def clean(*args):
-        proc.kill()
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+    app = connexion.AioHttpApp(__name__, host=configuration['host'],
+                               port=configuration['port'],
+                               specification_dir=os.path.join(api_path[0], 'spec'),
+                               options={"swagger_ui": False}
+                               )
+    app.add_api('spec.yaml',
+                arguments={'title': 'Wazuh API',
+                           'protocol': 'https' if configuration['https']['enabled'] else 'http',
+                           'host': configuration['host'],
+                           'port': configuration['port']
+                           },
+                strict_validation=True,
+                validate_responses=True,
+                pass_context_arg_name='request',
+                options={"middlewares": [set_user_name]})
+    # Enable CORS
+    if cors:
+        aiohttp_cors.setup(app.app)
 
-    for sig in (SIGABRT, SIGINT, SIGTERM):
-        signal(sig, clean)
+    # Enable cache plugin
+    aiohttp_cache.setup_cache(app.app)
 
-    while True:
-        output = proc.stdout.readline()
-        if output == '' and proc.poll() is not None:
-            break
-        if output:
-            uwsgi_logger.info("[UWSGI]" + output.strip())
-    rc = proc.poll()
+    # Enable swagger UI plugin
+    setup_swagger(app.app,
+                  ui_version=3,
+                  swagger_url='/ui',
+                  swagger_from_file=os.path.join(app.specification_dir, 'spec.yaml'))
 
-    sys.exit(rc)
+    # Configure https
+    if configuration['https']['enabled']:
+        try:
+            ssl_context = ssl.SSLContext()
+            if configuration['https']['use_ca']:
+                ssl_context.verify_mode = ssl.CERT_REQUIRED
+                ssl_context.load_verify_locations(configuration['https']['ca'])
+            ssl_context.load_cert_chain(certfile=configuration['https']['cert'],
+                                        keyfile=configuration['https']['key'])
+        except ssl.SSLError as e:
+            raise APIException(2003, details='Private key does not match with the certificate')
+        except IOError as e:
+            raise APIException(2003, details='Please, ensure '
+                                             'if path to certificates is correct in '
+                                             'the configuration file '
+                                             f'(WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)})')
+    else:
+        ssl_context = None
+
+    pyDaemonModule.create_pid('wazuh-apid', os.getpid())
+
+    app.run(port=configuration['port'],
+            host=configuration['host'],
+            ssl_context=ssl_context,
+            access_log_class=alogging.AccessLogger,
+            use_default_access_log=True
+            )

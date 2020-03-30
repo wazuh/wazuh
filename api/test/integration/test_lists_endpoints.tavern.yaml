@@ -18,7 +18,7 @@ stages:
   - name: Try to get all lists
     request: &get_lists
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/lists"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -191,7 +191,7 @@ stages:
   - name: Try to get a CBD list from a bad format etc path
     request:
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/lists"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -203,7 +203,7 @@ stages:
   - name: Try to get a CBD list from a non existing filename
     request:
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/lists"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -226,7 +226,7 @@ stages:
   - name: Try to get paths from all CDB lists
     request: &get_lists_files
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/lists/files"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:

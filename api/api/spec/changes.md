@@ -27,11 +27,15 @@ a human readable message is shown, the new field `message` will be used instead.
 * In response, `msg` key is now moved to new `message` key
 
 ### GET /agents/groups/{group_id}
+* Endpoint deleted, use `GET /groups?list_groups=group_id`
+* To get all agents in a group use `GET /groups/{group_id}/agents`
 
 ### GET /agents/groups/{group_id}/configuration
+* Endpoint renamed to `GET /groups/{group_id}/configuration`
 * In response, `filter` key is now moved to new `filters` key
 
 ### PUT /agents/groups/{group_id}
+* Endpoint deleted, use `POST /groups?group_id=group_id`
 * In response, `msg` key is now moved to new `message` key
 * Verb changed to POST
 
@@ -42,19 +46,21 @@ a human readable message is shown, the new field `message` will be used instead.
 * Verb changed to POST
 
 ### DELETE /agents/:agent_id
-* Error: parameter **purge** type must be *boolean*, not *string*
-* In response, `msg` key is now moved to new `message` key
+* Endpoint deleted. Use `DELETE /agents?list_agents=agent_id&older_than=0s`
+* Be aware that `DELETE /agents` older_than filter is not defaulted to '0s'
 
 ### DELETE /agents/:agent_id/group
 * In response, `data` key is now moved to new `message` key
 
 ### DELETE /agents/group/:group_id
+* Endpoint renamed to `DELETE /agents/group`, now param group_id must be passed in the query string.
 * Parameter **agent_id** must be in query, not in body because DELETE operations can't have a requestBody in OpenAPI 3
 * Changed parameter **agent_id** name to **list_agents**
 * In response, `msg` key is now moved to new `message` key
 
 ### PUT /agents/group/:group_id
 * Verb changed to PUT
+* Endpoint renamed to `PUT /agents/group`, now param group_id must be passed in the query string.
 
 ### DELETE /agents/{agent_id}/group/{group_id}
 * In response, `data` key is now moved to new `message` key
@@ -63,6 +69,7 @@ a human readable message is shown, the new field `message` will be used instead.
 * In response, `data` key is now moved to new `message` key
 
 ### DELETE /agents/groups
+* Endpoint renamed to `DELETE /groups`
 * Changed parameter **ids** name to **list_groups**
 * Changed request parameters **ids** and **failed_ids** to **affected_groups** and **failed_groups**
 * In response, `msg` key is now moved to new `message` key
@@ -77,13 +84,16 @@ a human readable message is shown, the new field `message` will be used instead.
 * In response, `data` key is now moved to new `message` key
 
 ### PUT /agents/groups/:group_id/configuration
+* Endpoint renamed to `PUT /groups/:group_id/configuration`
 * In response, `data` key is now moved to new `message` key
 * Verb changed to PUT
 
 ### GET /agents/groups/{group_id}/files/{file_name}
-* This endpoint has been split into 2 new endpoints (`GET /agents/groups/{group_id}/files/{file_name}/json` & `GET /agents/groups/{group_id}/files/{file_name}/xml`) because the response changes depending on the format.
+* Renamed by removing the `/agents` prefix
+* This endpoint has been split into 2 new endpoints (`GET /groups/{group_id}/files/{file_name}/json` & `GET /groups/{group_id}/files/{file_name}/xml`) because the response changes depending on the format.
 
 ### PUT /agents/groups/{group_id}/files/{file_name}
+* Renamed by removing the `/agents` prefix
 * In response, `data` key is now moved to new `message` key
 * Verb changed to PUT
 
@@ -112,6 +122,19 @@ a human readable message is shown, the new field `message` will be used instead.
 
 ### PUT /agents/restart
 * In response, `data` key is now moved to new `message` key
+
+### GET /agents/name
+* Endpoint deleted. Use `GET /agents?name=agent_name` instead.
+* Be aware that with the new endpoint, you won't get a 400 response in agent name cannot be found,
+you will get a 200 response with 0 items in the result.
+
+### POST /agents/{agent_name}
+* Endpoint renamed to `POST /agents/insert/quick`
+* Path parameter `agent_name` now is passed in the query string
+
+### DELETE /agents/{agent_id}
+* Endpoint deleted. Use `DELETE /agents?list_agents=agent_id` instead
+
 
 ## Cache
 ### DELETE /cache 
