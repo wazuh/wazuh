@@ -48,7 +48,7 @@ stages:
       status_code: 400
       body: &permission_denied
         code: 4000
-        detail: "Permission denied"
+        detail: !anystr
 
   - name: Get a list of agents (Partially allowed, user aware)
     request:
@@ -98,16 +98,18 @@ stages:
         message: !anystr
 
 ---
-test_name: GET /agents/{agent_id}
+test_name: GET /agents?list_agents=agent_id
 
 stages:
 
   - name: Try to get agent 009 (Denied)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/009"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: '009'
     response:
       status_code: 400
       body:
@@ -115,10 +117,12 @@ stages:
 
   - name: Get agent 010 (Allowed)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/010"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: '010'
     response:
       status_code: 200
       body:
@@ -230,13 +234,13 @@ stages:
          total_failed_items: 0
 
 ---
-test_name: GET /agents/groups
+test_name: GET /groups
 
 stages:
 
  - name: Get all groups (Partially allowed, user agnostic)
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -254,7 +258,7 @@ stages:
 
  - name: Try to read group3 (Denied)
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -267,7 +271,7 @@ stages:
 
  - name: Get a list of groups (Partially allowed, user aware)
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -290,7 +294,7 @@ stages:
 
  - name: Get a list of groups (Allowed)
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -308,13 +312,13 @@ stages:
          total_failed_items: 0
 
 ---
-test_name: GET /agents/groups/{group_id}
+test_name: GET /groups/{group_id}/agents
 
 stages:
 
  - name: Try get all agents in one group (Partially allowed, user agnostic)
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/group2"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group2/agents"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -332,13 +336,13 @@ stages:
          total_failed_items: 0
 
 ---
-test_name: GET /agents/groups/{group_id}/configuration
+test_name: GET /groups/{group_id}/configuration
 
 stages:
 
  - name: Try to get the configuration of a group (Denied)
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/group3/configuration"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group3/configuration"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -349,7 +353,7 @@ stages:
 
  - name: Try get the configuration of a group (Allowed)
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/group1/configuration"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group1/configuration"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -363,13 +367,13 @@ stages:
          totalItems: !anyint
 
 ---
-test_name: GET /agents/groups/{group_id}/files
+test_name: GET /groups/{group_id}/files
 
 stages:
 
  - name: Try get the files of a group (Denied)
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/group3/files"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group3/files"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -380,7 +384,7 @@ stages:
 
  - name: Try get the files of a group (Denied)
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/group2/files"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group2/files"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -399,13 +403,13 @@ stages:
          totalItems: !anyint
 
 ---
-test_name: GET /agents/groups/{group_id}/files/{filename}/json
+test_name: GET /groups/{group_id}/files/{filename}/json
 
 stages:
 
  - name: Try get one file of a group (Denied)
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/group3/files/agent.conf/json"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group3/files/agent.conf/json"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -416,7 +420,7 @@ stages:
 
  - name: Try get one file of a group (Allowed)
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/default/files/agent.conf/json"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/default/files/agent.conf/json"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -426,13 +430,13 @@ stages:
        data: !anything
 
 ---
-test_name: GET /agents/groups/{group_id}/files/{filename}/xml
+test_name: GET /groups/{group_id}/files/{filename}/xml
 
 stages:
 
  - name: Try get one file of a group (Denied)
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/group3/files/agent.conf/xml"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group3/files/agent.conf/xml"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -443,37 +447,42 @@ stages:
 
  - name: Try get one file of a group (Allowed)
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/group2/files/agent.conf/xml"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group2/files/agent.conf/xml"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
      headers:
-       content-type: application/xml
+       content-type: "application/xml; charset=utf-8"
 
 ---
-test_name: GET /agents/name/{agent_name}
+test_name: GET /agents?name=agent_name
 
 stages:
 
  - name: Basic response agents name (Denied)
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/name/wazuh-agent1"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
+     params:
+       name: 'wazuh-agent1'
    response:
-     status_code: 400
+     status_code: 200
      body:
-       code: 1754
+       data:
+         total_affected_items: 0
 
  - name: Basic response agents name (Allowed)
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/name/wazuh-agent2"
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
+     params:
+       name: 'wazuh-agent2'
    response:
      status_code: 200
      body:
@@ -781,16 +790,18 @@ stages:
     delay_after: 1
 
 ---
-test_name: DELETE /agents/group/{group_id}
+test_name: DELETE /agents/group?group_id={group_id}
 
 stages:
 
   - name: Try to remove all agents from a non existing group
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group/wrong_group"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: 'wrong_group'
     response:
       status_code: 400
       body:
@@ -798,10 +809,12 @@ stages:
 
   - name: Try to remove all agents from group1 (Denied)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group/group1"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: 'group1'
     response:
       status_code: 400
       body:
@@ -809,10 +822,12 @@ stages:
 
   - name: Remove all agents from group2 (Partially allowed, user agnostic)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group/group2"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: 'group2'
     response:
       status_code: 200
       body:
@@ -827,12 +842,13 @@ stages:
 
   - name: Remove a list of agents from group3 (Partially allowed, user aware)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group/group3"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         list_agents: '004,007,008,998,999'
+        group_id: 'group3'
     response:
       status_code: 200
       body:
@@ -860,12 +876,13 @@ stages:
 
   - name: Remove a list of agents from group default (Allowed)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group/default"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         list_agents: '001,008'
+        group_id: 'default'
     response:
       status_code: 200
       body:
@@ -880,16 +897,18 @@ stages:
     delay_after: 1
 
 ---
-test_name: DELETE /agents/groups/{group_id}
+test_name: DELETE /groups?list_groups={group_id}
 
 stages:
 
   - name: Try to delete group2 (Group denied)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/group2"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        list_groups: 'group2'
     response:
       status_code: 400
       body:
@@ -897,10 +916,12 @@ stages:
 
   - name: Try to delete group1 (Group modification denied, indirectly denied)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/group1"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        list_groups: 'group1'
     response:
       status_code: 200
       body:
@@ -918,10 +939,12 @@ stages:
 
   - name: Delete group3
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/group3"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        list_groups: 'group3'
     response:
       status_code: 200
       body:
@@ -937,14 +960,14 @@ stages:
     delay_after: 11
 
 ---
-test_name: DELETE /agents/groups
+test_name: DELETE /groups
 
 stages:
 
 # THIS ONE FAILS AS THE GROUP3 REMAINS IN GLOBAL.DB AFTER DELETING IT IN THE PREVIOUS STAGE
   - name: Try to delete all groups (Partially allowed, indirectly denied to delete group1, user agnostic)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -966,7 +989,7 @@ stages:
 
   - name: Try to delete a list of groups (Partially allowed, indirectly denied to delete group1, user aware)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1001,16 +1024,18 @@ stages:
         message: !anystr
 
 ---
-test_name: DELETE /agents/{agent_id}
+test_name: DELETE /agents?list_agents=agent_id
 
 stages:
 
   - name: Try to delete agent 002 (Denied)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/002"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: '002'
     response:
       status_code: 400
       body:
@@ -1018,10 +1043,13 @@ stages:
 
   - name: Delete agent 001 (Allowed)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: '001'
+        older_than: '0s'
     response:
       status_code: 200
       body:
@@ -1164,48 +1192,54 @@ stages:
         <<: *permission_denied
 
 ---
-test_name: POST /agents/{agent_name}
+test_name: POST /agents/insert/quick
 
 stages:
 
   - name: Try to create new agent specifying its name (Denied)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/test_agent"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/insert/quick"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        agent_name: 'test_agent'
     response:
       status_code: 400
       body:
         <<: *permission_denied
 
 ---
-test_name: POST /agents/groups/{group_id}
+test_name: POST /groups
 
 stages:
 
   - name: Try to create a group called group4 (Denied)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/group4"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: 'group4'
     response:
       status_code: 400
       body:
         <<: *permission_denied
 
 ---
-test_name: PUT /agents/group/{group_id}
+test_name: PUT /agents/group
 
 stages:
 
   - name: Try to assign all agents to a non existing group (Allowed)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group/wrong_group"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: 'wrong_group'
     response:
       status_code: 400
       body:
@@ -1213,10 +1247,12 @@ stages:
 
   - name: Try to assign all agents to group1 (Group denied)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group/group1"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: 'group1'
     response:
       status_code: 400
       body:
@@ -1224,12 +1260,13 @@ stages:
 
   - name: Try to assign a list of agents to group2 (Agents denied)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group/group2"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         list_agents: '004,009,010'
+        group_id: 'group2'
     response:
       status_code: 400
       body:
@@ -1237,12 +1274,13 @@ stages:
 
   - name: Try to assign a list of agents to group2 (Partially allowed, user aware)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group/group2"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         list_agents: '001,002,005'
+        group_id: 'group2'
     response:
       status_code: 200
       body:
@@ -1261,10 +1299,12 @@ stages:
 
   - name: Try to assign all agents to group2 (Partially allowed, user agnostic)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group/group2"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: 'group2'
     response:
       status_code: 200
       body:
@@ -1278,13 +1318,13 @@ stages:
         message: !anystr
 
 ---
-test_name: PUT /agents/groups/{group_id}/configuration
+test_name: PUT /groups/{group_id}/configuration
 
 stages:
 
   - name: Update group2 configuration (Allowed)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/group2/configuration"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group2/configuration"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1298,7 +1338,7 @@ stages:
 
   - name: Try to update group1 configuration (Denied)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/groups/group1/configuration"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group1/configuration"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"

@@ -50,21 +50,10 @@ stages:
       params:
         list_agents: '002'
     response:
-      status_code: 200
+      status_code: 400
       body:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 4000
-                message: 'Permission denied: Resource type: agent:id'
-                remediation: Please, make sure you have permissions to execute current request,
-                  for more information on setting up permissions please visit XXXX
-              id:
-                - '002'
-          total_affected_items: 0
-          total_failed_items: 1
-        message: Could not send command to any agent
+        code: 4000
+        detail: "Permission denied: Resource type: agent:id"
 
   - name: Send a message to a list of agents
     request:
@@ -144,22 +133,10 @@ stages:
       params:
         list_agents: 251,252
     response:
-      status_code: 200
+      status_code: 400
       body:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 4000
-                message: 'Permission denied: Resource type: agent:id'
-                remediation: Please, make sure you have permissions to execute current request,
-                  for more information on setting up permissions please visit XXXX
-              id:
-                - '251'
-                - '252'
-          total_affected_items: 0
-          total_failed_items: 2
-        message: Could not send command to any agent
+        code: 4000
+        detail: "Permission denied: Resource type: agent:id"
 
 ---
 test_name: PUT /active-response
