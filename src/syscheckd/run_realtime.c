@@ -277,6 +277,26 @@ void delete_subdirectories_watches(char *dir) {
     os_free(dir_slash);
 }
 
+unsigned int count_watches() {
+    OSHashNode *hash_node;
+    unsigned int inode_it = 0;
+    unsigned int num_watches = 0;
+
+    if(syscheck.realtime->fd) {
+        w_mutex_lock(&syscheck.fim_entry_mutex);
+        hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
+
+        while(hash_node) {
+            num_watches++;
+            hash_node = OSHash_Next(syscheck.realtime->dirtb, &inode_it, hash_node);
+        }
+        
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
+    }
+
+    return num_watches;
+}
+
 #elif defined(WIN32)
 
 static pthread_mutex_t adddir_mutex;

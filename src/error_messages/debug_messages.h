@@ -230,5 +230,6 @@
 #define FIM_DELETE_DB_TRY                   "(6340): Failed to delete FIM database '%s'- %dº try."
 #define FIM_DELETE_DB                       "(6341): Failed to delete FIM database '%s'."
 #define FIM_INOTIFY_WATCH_DELETED           "(6342): Inotify watch deleted for '%s'"
+#define FIM_NUM_WATCHES                     "(6343): Folders monitored with inotify engine: %u"
 
 #endif /* DEBUG_MESSAGES_H */

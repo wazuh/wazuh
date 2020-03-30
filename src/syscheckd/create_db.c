@@ -54,7 +54,6 @@ void fim_scan() {
     struct timespec end;
     clock_t cputime_start;
 
-
     cputime_start = clock();
     gettime(&start);
     minfo(FIM_FREQUENCY_STARTED);
@@ -98,6 +97,10 @@ void fim_scan() {
     if (isDebug()) {
         fim_print_info(start, end, cputime_start); // LCOV_EXCL_LINE
     }
+
+#ifdef __linux__
+    mdebug2(FIM_NUM_WATCHES, count_watches());
+#endif
 }
 
 void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) {

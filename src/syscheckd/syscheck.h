@@ -344,6 +344,13 @@ void free_syscheck_dirtb_data(char *data);
 void delete_subdirectories_watches(char *dir);
 
 /**
+ * @brief Count inotify watches
+ * 
+ * @return Number of inotify watches
+ */
+unsigned int count_watches();
+
+/**
  * @brief Check if a file has changed
  *
  * @param filename The name of the file to be checked
