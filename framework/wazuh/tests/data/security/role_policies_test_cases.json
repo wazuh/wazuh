@@ -6,7 +6,7 @@
           "1"
         ],
         "policy_ids": [
-          "5", "4", "6"
+          "15", "14", "16"
         ]
       },
       "result": {
@@ -24,7 +24,7 @@
           "99"
         ],
         "policy_ids": [
-          "5", "4", "6"
+          "15", "14", "16"
         ]
       },
       "result": {
@@ -39,15 +39,15 @@
     {
       "params": {
         "role_id": [
-          "3"
+          "10"
         ],
         "policy_ids": [
-          "2", "1", "8", "5", "4"
+          "12", "11", "18", "15", "14"
         ]
       },
       "result": {
         "affected_items": [{
-          "id": 3,
+          "id": 10,
           "name": "technical",
           "rule": {
             "MATCH": {
@@ -55,7 +55,7 @@
             }
           },
           "policies": [{
-            "id": 1,
+            "id": 11,
             "name": "wazuhPolicy",
             "policy": {
               "actions": ["*:*"],
@@ -63,7 +63,7 @@
               "effect": "allow"
             }
           }, {
-            "id": 2,
+            "id": 12,
             "name": "wazuh-wuiPolicy",
             "policy": {
               "actions": ["agent:create"],
@@ -71,7 +71,7 @@
               "resources": ["agent:id:001", "agent:id:002", "agent:id:003"]
             }
           }, {
-            "id": 4,
+            "id": 14,
             "name": "administratorPolicy",
             "policy": {
               "actions": ["agent:update", "agent:delete"],
@@ -79,7 +79,7 @@
               "resources": ["agent:id:*"]
             }
           }, {
-            "id": 5,
+            "id": 15,
             "name": "normalPolicy",
             "policy": {
               "actions": ["agent:update", "agent:delete"],
@@ -87,7 +87,7 @@
               "resources": ["agent:id:*"]
             }
           }, {
-            "id": 8,
+            "id": 18,
             "name": "policy2",
             "policy": {
               "actions": ["role:read"],
@@ -99,7 +99,7 @@
         }],
         "failed_items": {
           "4011": [
-            "2", "1", "8", "5"
+            "12", "11", "18", "15"
           ]
         }
       }
@@ -107,23 +107,23 @@
     {
       "params": {
         "role_id": [
-          "4"
+          "11"
         ],
         "policy_ids": [
-          "4", "6", "99"
+          "14", "16", "99"
         ]
       },
       "result": {
         "affected_items": [{
-          "id": 4,
-          "name": "administrator",
+          "id": 11,
+          "name": "administrator_test",
           "rule": {
             "MATCH": {
               "definition": "administratorRule"
             }
           },
           "policies": [{
-            "id": 4,
+            "id": 14,
             "name": "administratorPolicy",
             "policy": {
               "actions": ["agent:update", "agent:delete"],
@@ -131,7 +131,7 @@
               "resources": ["agent:id:*"]
             }
           }, {
-            "id": 5,
+            "id": 15,
             "name": "normalPolicy",
             "policy": {
               "actions": ["agent:update", "agent:delete"],
@@ -139,7 +139,7 @@
               "resources": ["agent:id:*"]
             }
           }, {
-            "id": 6,
+            "id": 16,
             "name": "ossecPolicy",
             "policy": {
               "actions": ["role:read"],
@@ -154,7 +154,7 @@
             "99"
           ],
           "4011": [
-            "4"
+            "14"
           ]
         }
       }
@@ -167,7 +167,7 @@
           "1"
         ],
         "policy_ids": [
-          "5", "4", "6"
+          "15", "14", "16"
         ]
       },
       "result": {
@@ -185,7 +185,7 @@
           "99"
         ],
         "policy_ids": [
-          "5", "4", "6"
+          "15", "14", "16"
         ]
       },
       "result": {
@@ -200,15 +200,15 @@
     {
       "params": {
         "role_id": [
-          "3"
+          "10"
         ],
         "policy_ids": [
-          "5", "4", "6"
+          "15", "14", "16"
         ]
       },
       "result": {
         "affected_items": [{
-          "id": 3,
+          "id": 10,
           "name": "technical",
           "rule": {
             "MATCH": {
@@ -216,7 +216,7 @@
             }
           },
           "policies": [{
-            "id": 1,
+            "id": 11,
             "name": "wazuhPolicy",
             "policy": {
               "actions": ["*:*"],
@@ -224,7 +224,7 @@
               "effect": "allow"
             }
           }, {
-            "id": 2,
+            "id": 12,
             "name": "wazuh-wuiPolicy",
             "policy": {
               "actions": ["agent:create"],
@@ -232,7 +232,7 @@
               "resources": ["agent:id:001", "agent:id:002", "agent:id:003"]
             }
           }, {
-            "id": 8,
+            "id": 18,
             "name": "policy2",
             "policy": {
               "actions": ["role:read"],
@@ -244,7 +244,7 @@
         }],
         "failed_items": {
           "4010": [
-            "4", "6"
+            "14", "16"
           ]
         }
       }
@@ -252,20 +252,20 @@
     {
       "params": {
         "role_id": [
-          "6"
+          "13"
         ],
         "policy_ids": [
-          "2", "5", "6", "16"
+          "12", "15", "16", "26"
         ]
       },
       "result": {
         "affected_items": [
           {
-            "id": 6,
+            "id": 13,
             "name": "ossec",
             "policies": [
               {
-                "id": 1,
+                "id": 11,
                 "name": "wazuhPolicy",
                 "policy": {
                   "actions": [
@@ -278,7 +278,7 @@
                 }
               },
               {
-                "id": 3,
+                "id": 13,
                 "name": "technicalPolicy",
                 "policy": {
                   "actions": [
@@ -291,7 +291,7 @@
                 }
               },
               {
-                "id": 4,
+                "id": 14,
                 "name": "administratorPolicy",
                 "policy": {
                   "actions": [
@@ -305,7 +305,7 @@
                 }
               },
               {
-                "id": 7,
+                "id": 17,
                 "name": "policy1",
                 "policy": {
                   "actions": [
@@ -318,7 +318,7 @@
                 }
               },
               {
-                "id": 8,
+                "id": 18,
                 "name": "policy2",
                 "policy": {
                   "actions": [
@@ -331,7 +331,7 @@
                 }
               },
               {
-                "id": 9,
+                "id": 19,
                 "name": "policy3",
                 "policy": {
                   "actions": [
@@ -344,7 +344,7 @@
                 }
               },
               {
-                "id": 10,
+                "id": 20,
                 "name": "policy4",
                 "policy": {
                   "actions": [
@@ -369,10 +369,10 @@
         ],
         "failed_items": {
           "4007": [
-            "16"
+            "26"
           ],
           "4010": [
-            "2", "6"
+            "12", "16"
           ]
         }
       }
