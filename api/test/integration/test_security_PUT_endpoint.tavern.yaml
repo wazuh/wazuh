@@ -321,7 +321,7 @@ stages:
 
   - name: Update an existent user (empty body)
     request: &put_users_request
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/new_user"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/python"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -353,7 +353,7 @@ stages:
       body:
         data:
           affected_items:
-            - username: new_user
+            - username: python
           total_affected_items: 1
 
   - name: Update an non-existent user
@@ -384,7 +384,7 @@ stages:
     request:
       <<: *put_users_request
       json:
-        pass: "new_user"
+        pass: "ossec"
     response:
       status_code: 400
       body:
@@ -400,5 +400,5 @@ stages:
       body:
         data:
           affected_items:
-            - username: new_user
+            - username: python
           total_affected_items: 1
