@@ -21,16 +21,16 @@ from api import alogging, configuration, __path__ as api_path
 from api import validator
 from api.api_exception import APIException
 from api.constants import CONFIG_FILE_PATH
-from api.middlewares import set_user_name
+from api.middlewares import set_user_name, check_experimental
 from api.util import to_relative_path
 from wazuh import pyDaemonModule, common
 from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licence__
 from wazuh.core.cluster.utils import read_config
 
 
-def set_logging(foreground_mode=False, debug_mode='info'):
+def set_logging(log_path='logs/api.log', foreground_mode=False, debug_mode='info'):
     for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh'):
-        api_logger = alogging.APILogger(log_path='logs/api.log', foreground_mode=foreground_mode,
+        api_logger = alogging.APILogger(log_path=log_path, foreground_mode=foreground_mode,
                                         debug_level=debug_mode,
                                         logger_name=logger_name)
         api_logger.setup_logger()
@@ -68,22 +68,25 @@ if __name__ == '__main__':
     if not args.foreground:
         pyDaemonModule.pyDaemon()
 
-    # Drop privileges to ossec
-    if not args.root:
-        os.setgid(common.ossec_gid())
-        os.setuid(common.ossec_uid())
-
     cluster_config = read_config()
     configuration = configuration.read_api_config(config_file=args.config_file)
     cache_conf = configuration['cache']
     cors = configuration['cors']
+    log_path = configuration['logs']['path']
+    experimental = configuration['experimental_features']
 
-    set_logging(debug_mode=configuration['logs']['level'], foreground_mode=args.foreground)
+    # Drop privileges to ossec
+    if not args.root:
+        if configuration['drop_privileges']:
+            os.setgid(common.ossec_gid())
+            os.setuid(common.ossec_uid())
+
+    set_logging(log_path=log_path, debug_mode=configuration['logs']['level'], foreground_mode=args.foreground)
 
     # set correct permissions on api.log file
-    if os.path.exists('{0}/logs/api.log'.format(common.ossec_path)):
-        os.chown('{0}/logs/api.log'.format(common.ossec_path), common.ossec_uid(), common.ossec_gid())
-        os.chmod('{0}/logs/api.log'.format(common.ossec_path), 0o660)
+    if os.path.exists(os.path.join(common.ossec_path, log_path)):
+        os.chown(os.path.join(common.ossec_path, log_path), common.ossec_uid(), common.ossec_gid())
+        os.chmod(os.path.join(common.ossec_path, log_path), 0o660)
 
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     app = connexion.AioHttpApp(__name__, host=configuration['host'],
@@ -100,13 +103,24 @@ if __name__ == '__main__':
                 strict_validation=True,
                 validate_responses=True,
                 pass_context_arg_name='request',
-                options={"middlewares": [set_user_name]})
+                options={"middlewares": [set_user_name, check_experimental(experimental)]})
+
     # Enable CORS
-    if cors:
-        aiohttp_cors.setup(app.app)
+    if cors['enabled']:
+        cors = aiohttp_cors.setup(app.app, defaults={
+            cors['source_route']: aiohttp_cors.ResourceOptions(
+                expose_headers=cors['expose_headers'],
+                allow_headers=cors['allow_headers'],
+                allow_credentials=cors['allow_credentials']
+            )
+        })
+        # Configure CORS on all endpoints.
+        for route in list(app.app.router.routes()):
+            cors.add(route)
 
     # Enable cache plugin
-    aiohttp_cache.setup_cache(app.app)
+    # if cache_conf['enabled']:
+    # aiohttp_cache.setup_cache(app.app)
 
     # Enable swagger UI plugin
     setup_swagger(app.app,
@@ -126,7 +140,7 @@ if __name__ == '__main__':
         except ssl.SSLError as e:
             raise APIException(2003, details='Private key does not match with the certificate')
         except IOError as e:
-            raise APIException(2003, details='Please, ensure '
+            raise APIException(2003, details=f'{e} - Please, ensure '
                                              'if path to certificates is correct in '
                                              'the configuration file '
                                              f'(WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)})')
