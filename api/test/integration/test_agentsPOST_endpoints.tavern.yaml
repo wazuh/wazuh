@@ -17,14 +17,14 @@ stages:
     # POST /agents
   - name: Try to create a new agent without body
     request: &agent_request
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
       body:
-        code: 1750
+        code: 2005
 
     # POST /agents
   - name: Create a new agent
@@ -156,41 +156,47 @@ stages:
         <<: *agent_create_response
 
 ---
-test_name: POST /agents/groups/{group_id}
+test_name: POST /groups/{group_id}
 
 stages:
 
-    # POST /agents/groups/group4
+    # POST /groups?group_id=group4
   - name: Create a group called group4
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/group4"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: group4
     response:
       status_code: 200
       body:
         message: !anystr
 
-    # POST /agents/groups/group1
+    # POST /groups?group_id=group1
   - name: Try to create a group that already exists
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/group1"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: group1
     response:
       status_code: 400
       body:
         code: 1711
 
-    # POST /agents/groups/;wrong_name
+    # POST /groups?group_id=;wrong_name
   - name: Try to create a group with an invalid name
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/;wrong_name"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: ';wrong_name'
     response:
       status_code: 400
       body:
@@ -204,14 +210,14 @@ stages:
     # POST /agents/insert
   - name: Try to create a new agent without body
     request: &agent_insert_request
-      url: "{protocol:s}://{host:s}:{port:d}/agents/insert"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/insert"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
       body:
-        code: 1750
+        code: 2005
 
     # POST /agents/insert
   - name: Create a new agent specifying id, ip, key and name
@@ -383,17 +389,19 @@ stages:
         <<: *agent_create_response
 
 ---
-test_name: POST /agents/{agent_name}
+test_name: POST /agents/insert/quick
 
 stages:
 
-    # POST /agents/test_agent
+    # POST /agents/insert/quick?agent_name=test_agent
   - name: Create new agent specifying its name
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/test_agent"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/insert/quick"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        agent_name: test_agent
     response:
       status_code: 200
       body:
@@ -401,25 +409,29 @@ stages:
           id: !anystr
           key: !anystr
 
-    # POST /agents/wrong%name
+    # POST /agents/insert/quick?agent_name=wrong%name
   - name: Try to create agent with an invalid name (invalid_character)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/wrong%name"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/insert/quick"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        agent_name: 'wrong%name'
     response:
       status_code: 400
       body:
         <<: *error_spec
 
-    # POST /agents/test_agent
+    # POST /agents/insert/quick?agent_name=test_agent
   - name: Try to create an already existing agent
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/test_agent"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/insert/quick"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        agent_name: test_agent
     response:
       status_code: 400
       body:

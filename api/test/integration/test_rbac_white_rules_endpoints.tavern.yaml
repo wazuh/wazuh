@@ -14,7 +14,7 @@ stages:
 
   - name: Try to show the rules of the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -50,7 +50,7 @@ stages:
 
   - name: Try to show the rules of the system (try q parameter to bypass a denied resource)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -68,7 +68,7 @@ stages:
 
   - name: Try to show the rules of the system (list)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -106,7 +106,7 @@ stages:
 
   - name: Try to show the rules files of the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/files"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -128,7 +128,7 @@ stages:
 
   - name: Try to show the rules files of the system (list)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/files"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -150,7 +150,7 @@ stages:
 
   - name: Try to show the rules files of the system (no permissions)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/files"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -176,7 +176,7 @@ stages:
 
   - name: Try get one rule file
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/0015-ossec_rules.xml/download"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/files/0015-ossec_rules.xml/download"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -187,7 +187,7 @@ stages:
 
   - name: Try get one rule file (no permissions)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/0011-ossec_rules.xml/download"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/files/0011-ossec_rules.xml/download"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -203,7 +203,7 @@ stages:
 
   - name: Try to show the groups of rules in the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/groups"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/groups"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -224,7 +224,7 @@ stages:
 
   - name: Try to show the groups of rules in the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/pci_dss"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/requirement/pci_dss"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET

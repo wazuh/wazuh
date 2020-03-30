@@ -529,7 +529,7 @@ def environment_black_cluster_rbac():
 
 
 @pytest.fixture(name="experimental_white_rbac_tests", scope="session")
-def environment_white_ciscat_rbac():
+def environment_experimental_white_ciscat_rbac():
     values = build_and_up("experimental_white_rbac")
     while values['retries'] < values['max_retries']:
         master_health = check_health()
@@ -545,7 +545,7 @@ def environment_white_ciscat_rbac():
 
 
 @pytest.fixture(name="experimental_black_rbac_tests", scope="session")
-def environment_black_ciscat_rbac():
+def environment_experimental_black_ciscat_rbac():
     values = build_and_up("experimental_black_rbac")
     while values['retries'] < values['max_retries']:
         master_health = check_health()

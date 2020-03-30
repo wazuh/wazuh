@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install python python3 git gnupg2 gcc make vim lib
 RUN git clone https://github.com/wazuh/wazuh && cd /wazuh && git checkout $wazuhbranch
 COPY base/wazuh-manager/preloaded-vars.conf /wazuh/etc/preloaded-vars.conf
 RUN /wazuh/install.sh
-RUN sed -i 's,"mode": \("white"\|"black"\),"mode": "black",g' /var/ossec/framework/python/lib/python3.7/site-packages/api-3.11.0-py3.7.egg/api/configuration.py
+RUN sed -i 's,"mode": \("white"\|"black"\),"mode": "black",g' /var/ossec/framework/python/lib/python3.7/site-packages/api-4.0.0-py3.7.egg/api/configuration.py
 #####
 
 COPY configurations/base/wazuh-master/config/ossec.conf /var/ossec/etc/ossec.conf

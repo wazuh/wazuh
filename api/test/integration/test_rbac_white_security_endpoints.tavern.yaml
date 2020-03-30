@@ -15,7 +15,7 @@ stages:
 
   - name: Get all users in the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -35,7 +35,7 @@ stages:
 
   - name: Get a specified user by its username (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -54,7 +54,7 @@ stages:
 
   - name: Get a specified user by its username (Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -73,7 +73,7 @@ stages:
 
   - name: Get a list of users by its username (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -94,7 +94,7 @@ stages:
 
   - name: Get a list of users by its username (Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -107,7 +107,7 @@ stages:
 
   - name: Get a list of users by its username (Both)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -141,7 +141,7 @@ stages:
 
   - name: Get all roles in the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -374,7 +374,7 @@ stages:
 
   - name: Get a specified role by its id (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -407,7 +407,7 @@ stages:
 
   - name: Get a specified role by its id (It doesn't exist but we have all the permissions on the resource roles)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -431,7 +431,7 @@ stages:
 
   - name: Get a list of roles by its id (Existent and no existent)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -490,7 +490,7 @@ stages:
 
   - name: Get all policies in the system (All denied)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -506,7 +506,7 @@ stages:
 
   - name: Get a specified policy by its id (Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -524,7 +524,7 @@ stages:
 
   - name: Update one specified user in the system (All denied)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users/guest"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/guest"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -537,7 +537,7 @@ stages:
 
   - name: Update one specified user in the system (All denied)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users/wazuh"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/wazuh"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -555,7 +555,7 @@ stages:
 
   - name: Update one specified role in the system (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/3"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/3"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -617,7 +617,7 @@ stages:
 
   - name: Update one specified role in the system (Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/2"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/2"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -638,7 +638,7 @@ stages:
 
   - name: Update one specified policy in the system (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies/5"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/5"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -690,7 +690,7 @@ stages:
 
   - name: Update one specified policy in the system (Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies/4"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/4"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -714,7 +714,7 @@ stages:
 
   - name: Create one specified link between one user and a list of roles (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/user/python/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/python/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -727,7 +727,7 @@ stages:
 
   - name: Create one specified link between one user and a list of roles (Allow and Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/user/rbac/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/rbac/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -745,7 +745,7 @@ stages:
 
   - name: Create one specified link between one role and a list of policies (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/4/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/4/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -781,7 +781,7 @@ stages:
 
   - name: Create one specified link between one user and a list of roles (Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/user/python/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/python/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -794,7 +794,7 @@ stages:
 
   - name: Create one specified link between one user and a list of roles (Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/user/rbac/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/rbac/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -812,7 +812,7 @@ stages:
 
   - name: Delete one specified link between one user and a list of roles (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/user/python/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/python/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -825,7 +825,7 @@ stages:
 
   - name: Delete one specified link between one user and a list of roles (Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/user/rbac/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/rbac/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -843,7 +843,7 @@ stages:
 
   - name: Delete one specified link between one role and a list of policies (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/4/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/4/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -861,7 +861,7 @@ stages:
 
   - name: Delete one specified user in the system (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -880,7 +880,7 @@ stages:
 
   - name: Delete all allowed user in the system (All)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -897,7 +897,7 @@ stages:
 
   - name: Delete all allowed user in the system (All)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -913,7 +913,7 @@ stages:
 
   - name: Delete a list of users in the system (Allow and deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -950,7 +950,7 @@ stages:
 
   - name: Delete all roles in the system (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -966,7 +966,7 @@ stages:
 
   - name: Delete one specified role in the system (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -984,7 +984,7 @@ stages:
 
   - name: Delete one specified policy in the system (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -1000,7 +1000,7 @@ stages:
 
   - name: Delete one specified policy in the system (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -1018,7 +1018,7 @@ stages:
 
   - name: Create one specified user (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -1037,7 +1037,7 @@ stages:
 
   - name: Create one specified role (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -1064,7 +1064,7 @@ stages:
 
   - name: Create one specified policy (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -1104,7 +1104,7 @@ stages:
 
   - name: Revoke all tokens (Denied)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/user/revoke"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/revoke"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT

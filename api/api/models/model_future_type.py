@@ -23,7 +23,7 @@ class ApiResponseData(Model):
         """
 
         self.all_of = [api_response, confirmation_message]
-		self.all_of_model = [APIResponse,ConfirmationMessage]
+        self.all_of_model = [APIResponse, ConfirmationMessage]
 
     @classmethod
     def from_dict(cls, dikt) -> Dict:
