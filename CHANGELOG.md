@@ -1,6 +1,12 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.12.1]
+
+### Fixed
+
+- Fix XML validation with paths ending in `\`. ([#4783](https://github.com/wazuh/wazuh/pull/4783))
+
 ## [v3.12.0] - 2020-03-24
 
 ### Added

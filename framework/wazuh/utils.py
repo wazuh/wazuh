@@ -544,6 +544,15 @@ def load_wazuh_xml(xml_path):
         data = data.replace(comment.group(2), good_comment)
 
     # < characters should be scaped as &lt; unless < is starting a <tag> or a comment
+
+    custom_entities = {
+        'backslash': '\\'
+    }
+
+    # replace every custom entity
+    for character, replacement in custom_entities.items():
+        data = re.sub(replacement.replace('\\', '\\\\'), f'&{character};', data)
+
     data = re.sub(r"<(?!/?\w+.+>|!--)", "&lt;", data)
 
     # replace \< by &lt;
@@ -552,10 +561,17 @@ def load_wazuh_xml(xml_path):
     # replace \> by &gt;
     data = re.sub(r'\\>', '&gt;', data)
 
-    # & characters should be scaped if they don't represent an &entity;
-    data = re.sub(r"&(?!(amp|lt|gt|apos|quot);)", "&amp;", data)
+    # default entities
+    default_entities = ['amp', 'lt', 'gt', 'apos', 'quot']
 
-    return fromstring('<root_tag>' + data + '</root_tag>')
+    # & characters should be scaped if they don't represent an &entity;
+    data = re.sub(f"&(?!({'|'.join(default_entities + list(custom_entities))});)", "&amp;", data)
+
+    entities = '<!DOCTYPE xmlfile [\n' + \
+               '\n'.join([f'<!ENTITY {name} "{value}">' for name, value in custom_entities.items()]) +\
+               '\n]>\n'
+
+    return fromstring(entities + '<root_tag>' + data + '</root_tag>')
 
 
 class WazuhVersion:
