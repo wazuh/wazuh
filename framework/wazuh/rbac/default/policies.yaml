@@ -20,7 +20,7 @@ default_policies:
       effect: allow
 
   agents_read:
-    description: Provide read access to all agents related functionalities.
+    description: Grant read access to all agents related functionalities.
     policy:
       actions:
         - agent:read
