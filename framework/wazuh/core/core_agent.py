@@ -692,8 +692,6 @@ class Agent:
         :param q: Defines query to filter in DB.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        # import pydevd_pycharm
-        # pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
                                       filters=filters, query=q, distinct=True)
         data = db_query.run()

@@ -149,7 +149,7 @@ def files(agent_list=None, offset=0, limit=common.database_limit, sort=None, sea
     :param search: Looks for items with the specified string.
     :param select: Select fields to return. Format: ["field1","field2"].
     :param q: Query to filter by
-    :param distinct: Look for distinct values
+    :param distinct: If true, removes duplicate items in the query result.
     :return: AffectedItemsWazuhResult.
     """
 

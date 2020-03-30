@@ -69,7 +69,7 @@ async def get_syscheck_agent(request, agent_id, pretty=False, wait_for_complete=
     :type sha1: str
     :param sha256: Filters files with the specified SHA256 checksum.
     :type sha256: str
-    :param distinct: Look for distinct values.
+    :param distinct: If true, removes duplicate items in the query result.
     :type distinct: bool
     """
 
