@@ -1,6 +1,6 @@
 default_policies:
   agents_all:
-    description: Provide full access to all agents related functionalities.
+    description: Grant full access to all agents related functionalities.
     policy:
       actions:
         - agent:read
