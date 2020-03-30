@@ -897,7 +897,7 @@ stages:
     delay_after: 1
 
 ---
-test_name: DELETE /groups/{group_id}
+test_name: DELETE /groups?list_groups={group_id}
 
 stages:
 
@@ -908,7 +908,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_groups: 'group3'
+        list_groups: 'group2'
     response:
       status_code: 400
       body:
@@ -1034,7 +1034,8 @@ stages:
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
-      list_agents: '002'
+      params:
+        list_agents: '002'
     response:
       status_code: 400
       body:
@@ -1048,6 +1049,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         list_agents: '001'
+        older_than: '0s'
     response:
       status_code: 200
       body:
@@ -1232,7 +1234,7 @@ stages:
 
   - name: Try to assign all agents to a non existing group (Allowed)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/group"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1245,7 +1247,7 @@ stages:
 
   - name: Try to assign all agents to group1 (Group denied)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/group"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1258,7 +1260,7 @@ stages:
 
   - name: Try to assign a list of agents to group2 (Agents denied)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/group"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1272,7 +1274,7 @@ stages:
 
   - name: Try to assign a list of agents to group2 (Partially allowed, user aware)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/group"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1297,7 +1299,7 @@ stages:
 
   - name: Try to assign all agents to group2 (Partially allowed, user agnostic)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/group"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"

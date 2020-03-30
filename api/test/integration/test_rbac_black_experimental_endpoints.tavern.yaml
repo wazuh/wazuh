@@ -62,9 +62,6 @@ stages:
 ---
 test_name: GET /experimental/ciscat/results
 
-marks:
-  - xfail
-
 stages:
 
   - name: Request all agents (Partially allowed, user agnostic)
