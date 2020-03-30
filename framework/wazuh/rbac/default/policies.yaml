@@ -31,7 +31,7 @@ default_policies:
       effect: allow
 
   agents_commands:
-    description: Allow send commands to agents.
+    description: Allow sending commands to agents.
     policy:
       actions:
         - active_response:send_command
