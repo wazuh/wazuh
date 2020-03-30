@@ -146,7 +146,7 @@ void run_rk_check()
 
 #ifdef WIN32
     /* Get process list */
-    plist = os_get_process_list();
+    plist = w_os_get_process_list();
 
     /* Windows audit check */
     if (rootcheck.checks.rc_winaudit) {
@@ -194,7 +194,7 @@ void run_rk_check()
     }
 
     /* Free the process list */
-    del_plist((void *)plist);
+    OSList_Delete((void *)plist);
 
 #else
     size_t i;
@@ -204,7 +204,7 @@ void run_rk_check()
     if (rootcheck.checks.rc_unixaudit) {
         if (rootcheck.unixaudit) {
             /* Get process list */
-            plist = os_get_process_list();
+            plist = w_os_get_process_list();
 
             i = 0;
             while (rootcheck.unixaudit[i]) {
@@ -221,7 +221,7 @@ void run_rk_check()
             }
 
             /* Free list */
-            del_plist(plist);
+            OSList_Delete(plist);
         }
     }
 

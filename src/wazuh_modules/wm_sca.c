@@ -1339,7 +1339,10 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
 /* Clean up memory */
 clean_return:
     os_free(reason);
-    w_del_plist(p_list);
+
+    if (p_list) {
+        OSList_Delete(p_list);
+    }
 
     return ret_val;
 }

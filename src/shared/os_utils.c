@@ -113,10 +113,13 @@ OSList *w_os_get_process_list()
         }
     }
 
+    OSList_SetFreeDataPointer(p_list, w_delete_w_proc_info);
+
     return (p_list);
 }
 
 #endif
+
 /* Check if a file exists */
 int w_is_file(const char * const file)
 {
@@ -129,52 +132,16 @@ int w_is_file(const char * const file)
     return (0);
 }
 
-/* Delete the process list */
-int w_del_plist(OSList *p_list)
+/* Delete W_Process_Info */
+void w_delete_w_proc_info(W_Proc_Info *pinfo)
 {
-    OSListNode *l_node;
-    OSListNode *p_node = NULL;
-
-    if (p_list == NULL) {
-        return (0);
+    if (pinfo->p_name) {
+        free(pinfo->p_name);
     }
 
-    l_node = OSList_GetFirstNode(p_list);
-    while (l_node) {
-        W_Proc_Info *pinfo;
-
-        pinfo = (W_Proc_Info *)l_node->data;
-
-        if (pinfo->p_name) {
-            free(pinfo->p_name);
-        }
-
-        if (pinfo->p_path) {
-            free(pinfo->p_path);
-        }
-
-        free(l_node->data);
-
-        if (p_node) {
-            free(p_node);
-            p_node = NULL;
-        }
-        p_node = l_node;
-
-        l_node = OSList_GetNextNode(p_list);
+    if (pinfo->p_path) {
+        free(pinfo->p_path);
     }
-
-    if (p_node) {
-        free(p_node);
-        p_node = NULL;
-    }
-
-    pthread_mutex_destroy(&(p_list->mutex));
-    pthread_rwlock_destroy(&(p_list->wr_mutex));
-
-    free(p_list);
-
-    return (1);
 }
 
 #ifdef WIN32
@@ -257,7 +224,11 @@ OSList *w_os_get_process_list()
     /* Enable debug privilege */
     if (!w_os_win32_setdebugpriv(hpriv, 1)) {
         mterror(ARGV0, "w_os_win32_setdebugpriv");
-        CloseHandle(hpriv);
+
+        if(CloseHandle(hpriv) == 0) {
+            mdebug2("Can't close handle");
+        }
+
         return (NULL);
     }
 
@@ -265,20 +236,41 @@ OSList *w_os_get_process_list()
     hsnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (hsnap == INVALID_HANDLE_VALUE) {
         mterror(ARGV0, "CreateToolhelp32Snapshot");
+
+        if (CloseHandle(hpriv) == 0) {
+            mdebug2("Can't close handle");
+        }
+
         return (NULL);
     }
 
     /* Get first and second processes -- system entries */
     if (!Process32First(hsnap, &p_entry) && !Process32Next(hsnap, &p_entry )) {
         mterror(ARGV0, "Process32First");
-        CloseHandle(hsnap);
+
+        if (CloseHandle(hsnap) == 0) {
+            mdebug2("Can't close handle");
+        }
+
+        if (CloseHandle(hpriv) == 0) {
+            mdebug2("Can't close handle");
+        }
+
         return (NULL);
     }
 
     /* Create process list */
     p_list = OSList_Create();
     if (!p_list) {
-        CloseHandle(hsnap);
+
+        if (CloseHandle(hsnap) == 0) {
+            mdebug2("Can't close handle");
+        }
+
+        if (CloseHandle(hpriv) == 0) {
+            mdebug2("Can't close handle");
+        }
+
         mterror(ARGV0, LIST_ERROR);
         return (0);
     }
@@ -304,11 +296,17 @@ OSList *w_os_get_process_list()
             os_strdup(p_name, p_path);
         } else if (!Module32First(hmod, &m_entry)) {
             /* Get executable path (first entry in the module list) */
-            CloseHandle(hmod);
+
+            if (CloseHandle(hmod) == 0){
+                mdebug2("Can't close handle");
+            }
+
             os_strdup(p_name, p_path);
         } else {
             os_strdup(m_entry.szExePath, p_path);
-            CloseHandle(hmod);
+            if (CloseHandle(hmod) == 0) {
+                mdebug2("Can't close handle");
+            }
         }
 
         os_calloc(1, sizeof(W_Proc_Info), p_info);
@@ -320,7 +318,16 @@ OSList *w_os_get_process_list()
     /* Remove debug privileges */
     w_os_win32_setdebugpriv(hpriv, 0);
 
-    CloseHandle(hsnap);
+    if (CloseHandle(hsnap) == 0) {
+        mdebug2("Can't close handle");
+    }
+
+    if (CloseHandle(hpriv) == 0) {
+        mdebug2("Can't close handle");
+    }
+
+    OSList_SetFreeDataPointer(p_list, w_delete_w_proc_info);
+
     return (p_list);
 }
 #endif
