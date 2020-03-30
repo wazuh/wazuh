@@ -50,6 +50,7 @@ static const char *FIM_ENTRY_TYPE[] = {
 
 void fim_scan() {
     int it = 0;
+    int rt_active = false;
     struct timespec start;
     struct timespec end;
     clock_t cputime_start;
@@ -69,6 +70,7 @@ void fim_scan() {
 #ifndef WIN32
         if (syscheck.opts[it] & REALTIME_ACTIVE) {
             realtime_adddir(syscheck.dir[it], 0, (syscheck.opts[it] & CHECK_FOLLOW) ? 1 : 0);
+            rt_active = true;
         }
 #endif
         fim_checker(syscheck.dir[it], item, NULL, 1);
@@ -99,7 +101,12 @@ void fim_scan() {
     }
 
 #ifdef __linux__
-    mdebug2(FIM_NUM_WATCHES, count_watches());
+    if (rt_active) {
+        mdebug2(FIM_NUM_WATCHES, count_watches());
+    }
+    else {
+        mdebug2(FIM_NUM_WATCHES, 0);
+    }
 #endif
 }
 
