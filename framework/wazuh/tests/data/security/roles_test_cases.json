@@ -17,7 +17,7 @@
               }
             },
             "policies": [
-              1
+              11
             ],
             "users": ["wazuh"]
           },
@@ -30,7 +30,7 @@
               }
             },
             "policies": [
-              5, 4
+              15, 14
             ],
             "users": ["normal", "rbac"]}
         ],
@@ -53,12 +53,12 @@
             }
           },
           "policies": [
-            2, 1, 8, 5
+            12, 11, 18, 15
           ],
           "users": ["rbac"]
           },
           {
-            "id": 5,
+            "id": 12,
             "name": "normalUser",
             "rule": {
               "MATCH": {
@@ -66,7 +66,7 @@
               }
             },
             "policies": [
-              2, 3, 10
+              12, 13, 20
             ],
             "users": ["normal", "ossec", "rbac"]
           }, {
@@ -78,7 +78,7 @@
               }
             },
             "policies": [
-              2, 8, 7, 10, 5, 9, 1, 6, 3, 4
+              12, 18, 17, 20, 15, 19, 11, 16, 13, 14
             ],
             "users": ["normal"]
           }
@@ -189,7 +189,7 @@
             }
           },
           "policies": [
-            2, 8, 7, 10, 5, 9, 1, 6, 3, 4
+            12, 18, 17, 20, 15, 19, 11, 16, 13, 14
           ],
           "users": ["normal"]
         }],
@@ -280,7 +280,7 @@
             "id": 11,
             "name": "administrator_test",
             "policies": [
-              5, 4
+              15, 14
             ],
             "rule": {
               "MATCH": {
@@ -312,7 +312,7 @@
             "id": 10,
             "name": "technical",
             "policies": [
-              2, 1, 8, 5
+              12, 11, 18, 15
             ],
             "rule": {
               "MATCH": {
@@ -327,7 +327,7 @@
             "id": 12,
             "name": "normalUser",
             "policies": [
-              2, 3, 10
+              12, 13, 20
             ],
             "rule": {
               "MATCH": {
@@ -344,7 +344,7 @@
             "id": 13,
             "name": "ossec",
             "policies": [
-              2, 8, 7, 10, 5, 9, 1, 6, 3, 4
+              12, 18, 17, 20, 15, 19, 11, 16, 13, 14
             ],
             "rule": {
               "MATCH": {

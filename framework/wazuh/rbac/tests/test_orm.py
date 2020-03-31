@@ -365,7 +365,7 @@ def test_get_all_policy_from_role(import_RBAC):
         for role in roles_ids:
             policies = rpm.get_all_policies_from_role(role_id=role)
         for index, policy in enumerate(policies):
-            assert policy['id'] == policies_ids[index]
+            assert policy.id == policies_ids[index]
 
 
 def test_get_all_role_from_policy(import_RBAC):
@@ -375,7 +375,7 @@ def test_get_all_role_from_policy(import_RBAC):
         for policy in policies_ids:
             roles = rpm.get_all_roles_from_policy(policy_id=policy)
         for index, role in enumerate(roles):
-            assert role['id'] == roles_ids[index]
+            assert role.id == roles_ids[index]
 
 
 def test_remove_all_policies_from_role(import_RBAC):

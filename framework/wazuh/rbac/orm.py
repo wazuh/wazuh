@@ -826,8 +826,11 @@ class UserRolesManager:
         List of roles related with the user -> Success | False -> Failure
         """
         try:
-            user = self.session.query(User).filter_by(username=username).first()
-            return map(Roles.to_dict, user.roles)
+            user_roles = self.session.query(UserRoles).filter_by(user_id=username).order_by(UserRoles.level).all()
+            roles = list()
+            for relation in user_roles:
+                roles.append(self.session.query(Roles).filter_by(id=relation.role_id).first())
+            return roles
         except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
@@ -1130,8 +1133,12 @@ class RolesPoliciesManager:
         :return: List of policies related with the role -> Success | False -> Failure
         """
         try:
-            role = self.session.query(Roles).filter_by(id=role_id).first()
-            return map(Policies.to_dict, role.policies)
+            role_policies = self.session.query(RolesPolicies).filter_by(role_id=role_id).order_by(
+                RolesPolicies.level).all()
+            policies = list()
+            for relation in role_policies:
+                policies.append(self.session.query(Policies).filter_by(id=relation.policy_id).first())
+            return policies
         except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
@@ -1144,7 +1151,8 @@ class RolesPoliciesManager:
         """
         try:
             policy = self.session.query(Policies).filter_by(id=policy_id).first()
-            return map(Roles.to_dict, policy.roles)
+            roles = policy.roles
+            return roles
         except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
@@ -1318,11 +1326,11 @@ with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:
     with UserRolesManager() as urm:
         for d_username, payload in default_relationships[next(iter(default_relationships))]['users'].items():
             for d_role_name in payload['role_ids']:
-                urm.add_role_to_user_admin(username=d_username, role_id=rm.get_role(name=d_role_name)['id'])
+                urm.add_role_to_user(username=d_username, role_id=rm.get_role(name=d_role_name)['id'], force_admin=True)
 
     # Role-Policies relationships
     with RolesPoliciesManager() as rpm:
         for d_role_name, payload in default_relationships[next(iter(default_relationships))]['roles'].items():
             for d_policy_name in payload['policy_ids']:
-                rpm.add_policy_to_role_admin(role_id=rm.get_role(name=d_role_name)['id'],
-                                             policy_id=pm.get_policy(name=d_policy_name)['id'])
+                rpm.add_policy_to_role(role_id=rm.get_role(name=d_role_name)['id'],
+                                       policy_id=pm.get_policy(name=d_policy_name)['id'], force_admin=True)

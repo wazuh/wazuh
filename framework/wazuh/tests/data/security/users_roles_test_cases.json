@@ -1,187 +1,253 @@
 {
-  "set_user_role": [
+  "get_users": [
     {
       "params": {
-        "user_id": [
-          "normal"
-        ],
-        "role_ids": [
-          "12"
+        "username_list": [
+          "wazuh", "wazuh-wui"
         ]
       },
       "result": {
-        "affected_items": [],
-        "failed_items": {
-          "4017": [
-            "12"
-          ]
-        }
-      }
-    },
-    {
-      "params": {
-        "user_id": [
-          "ossec"
+        "affected_items": [
+          {
+            "username": "wazuh",
+            "roles": [1, 8]
+          },
+          {
+            "username": "wazuh-wui",
+            "roles": [2, 9]
+          }
         ],
-        "role_ids": [
-          "10", "11"
-        ]
-      },
-      "result": {
-        "affected_items": [{
-          "username": "ossec",
-          "roles": [2, 5, 3, 4]
-        }],
         "failed_items": {}
       }
     },
     {
       "params": {
-        "user_id": [
-          "rbac"
-        ],
-        "role_ids": [
-          "6", "2"
-        ],
-        "position": 1
+        "username_list": [
+          "wazuh", "wazuh-wui", "ossec", "python"
+        ]
       },
       "result": {
-        "affected_items": [{
-          "username": "rbac",
-          "roles": [5, 6, 2, 3, 4]
-        }],
+        "affected_items": [
+          {
+            "username": "wazuh",
+            "roles": [1, 8]
+          },
+          {
+            "username": "wazuh-wui",
+            "roles": [2, 9]
+          },
+          {
+            "username": "ossec",
+            "roles": [9, 12]
+          },
+          {
+            "username": "python",
+            "roles": []
+          }
+        ],
         "failed_items": {}
       }
     },
     {
       "params": {
-        "user_id": [
-          "wazuh"
-        ],
-        "role_ids": [
-          "12", "13"
+        "username_list": [
+          "python", "normal", "noexists"
         ]
       },
       "result": {
-        "affected_items": [],
+        "affected_items": [
+          {
+            "username": "python",
+            "roles": []
+          },
+          {
+            "username": "normal",
+            "roles": [12, 13, 11]
+          }
+        ],
         "failed_items": {
-          "4008": [
-            "wazuh"
-          ]
+          "5001": ["noexists"]
         }
       }
     },
     {
       "params": {
-        "user_id": [
-          "noexists"
-        ],
-        "role_ids": [
-          "7", "2"
+        "username_list": [
+          "n", "m", "l"
         ]
       },
       "result": {
         "affected_items": [],
         "failed_items": {
           "5001": [
-            "noexists"
-          ]
-        }
-      }
-    },
-    {
-      "params": {
-        "user_id": [
-          "normal"
-        ],
-        "role_ids": [
-          "55", "66"
-        ]
-      },
-      "result": {
-        "affected_items": [],
-        "failed_items": {
-          "4002": [
-            "55", "66"
+            "l", "m", "n"
           ]
         }
       }
     }
   ],
-  "remove_user_role": [
+  "create_user": [
     {
       "params": {
-        "user_id": [
-          "wazuh"
-        ],
-        "role_ids": [
-          "12", "11", "13"
-        ]
+        "username": "new_user",
+        "password": "wazuh1A!"
       },
       "result": {
-        "affected_items": [],
-        "failed_items": {
-          "4008": [
-            "wazuh"
-          ]
-        }
-      }
-    },
-    {
-      "params": {
-        "user_id": [
-          "wazuhhh"
+        "affected_items": [
+          {
+            "username": "new_user",
+            "roles": []
+          }
         ],
-        "role_ids": [
-          "12", "11", "13"
-        ]
-      },
-      "result": {
-        "affected_items": [],
-        "failed_items": {
-          "5001": [
-            "wazuhhh"
-          ]
-        }
-      }
-    },
-    {
-      "params": {
-        "user_id": [
-          "normal"
-        ],
-        "role_ids": [
-          "12", "11", "13"
-        ]
-      },
-      "result": {
-        "affected_items": [{
-          "roles": [],
-          "username": "normal"
-        }],
         "failed_items": {}
       }
     },
     {
       "params": {
-        "user_id": [
-          "ossec"
-        ],
-        "role_ids": [
-          "9", "12", "13", "23"
-        ]
+        "username": "ossec",
+        "password": "wazuh1A!"
       },
       "result": {
-        "affected_items": [{
-          "username": "ossec",
-          "roles": []
-        }],
+        "affected_items": [],
         "failed_items": {
-          "4002": [
-            "23"
-          ],
-          "4016": [
-            "13"
+          "5000": [
+            "ossec"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "username": "new_user1",
+        "password": "wazuh1"
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "5007": [
+            "new_user1"
+          ]
+        }
+      }
+    }
+  ],
+  "update_user": [
+    {
+      "params": {
+        "username": ["ossec"],
+        "password": "wazuh2A!"
+      },
+      "result": {
+        "affected_items": [
+          {
+            "username": "ossec",
+            "roles": [9, 12]
+          }
+        ],
+        "failed_items": {}
+      }
+    },
+    {
+      "params": {
+        "username": ["new_user1"],
+        "password": "wazuh3A!"
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "5001": [
+            "new_user1"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "username": ["new_user1"],
+        "password": "wazuh1"
+      },
+      "result": {
+        "affected_items": [],
+        "failed_items": {
+          "5007": [
+            "new_user1"
+          ]
+        }
+      }
+    }
+  ],
+  "remove_users": [
+    {
+      "params": {
+        "username_list": ["python", "ossec"]
+      },
+      "result": {
+        "affected_items": [
+          {
+            "username": "ossec",
+            "roles": [9, 12]},
+          {
+            "username": "python",
+            "roles": []
+          }
+        ],
+        "failed_items": {}
+      }
+    },
+    {
+      "params": {
+        "username_list": ["python", "new_user"]
+      },
+      "result": {
+        "affected_items": [
+          {
+            "username": "python",
+            "roles": []
+          }
+        ],
+        "failed_items": {
+          "5001": [
+            "new_user"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "username_list": ["new_user1", "normal", "python", "new_user"]
+      },
+      "result": {
+        "affected_items": [
+          {
+            "username": "normal",
+            "roles": [12, 13, 11]
+          },
+          {
+            "username": "python",
+            "roles": []
+          }
+        ],
+        "failed_items": {
+          "5001": [
+            "new_user1", "new_user"
+          ]
+        }
+      }
+    },
+    {
+      "params": {
+        "username_list": ["wazuh", "normal"]
+      },
+      "result": {
+        "affected_items": [
+          {
+            "username": "normal",
+            "roles": [12, 13, 11]
+          }
+        ],
+        "failed_items": {
+          "5004": [
+            "wazuh"
           ]
         }
       }
