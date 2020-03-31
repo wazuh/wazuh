@@ -116,6 +116,7 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata, __attr
                         mdebug2(FIM_REALTIME_HASH_DUP, data);
                         os_free(data);
                     }
+
                     mdebug1(FIM_REALTIME_NEWDIRECTORY, dir);
                 }
                 else {
@@ -200,7 +201,7 @@ void realtime_process() {
                         char * data = OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar);
                         mdebug2(FIM_INOTIFY_WATCH_DELETED, entry);
                         os_free(data);
-                        
+
                         w_mutex_unlock(&syscheck.fim_realtime_mutex);
                         break;
                     }
@@ -227,14 +228,14 @@ void delete_subdirectories_watches(char *dir) {
     OSHashNode *hash_node;
     char *data;
     unsigned int inode_it = 0;
-    char *dir_slash;
+    char *dir_slash = NULL;
 
-    /* 
+    /*
         If the directory already ends with an slash, there is no need for adding
         an extra one
      */
     if (dir[strlen(dir) - 1] != '/') {
-        os_calloc(strlen(dir) + 1, sizeof(char), dir_slash);  // Length of dir plus an extra slash
+        os_calloc(strlen(dir) + 2, sizeof(char), dir_slash);  // Length of dir plus an extra slash
 
         /*
             Copy the content of dir into dir_slash and add an extra slash
@@ -256,10 +257,11 @@ void delete_subdirectories_watches(char *dir) {
 
             if (data) {
                 if (strncmp(dir_slash, data, strlen(dir_slash)) == 0) {
-                    OSHash_Delete_ex(syscheck.realtime->dirtb, hash_node->key);
+                    char * data_node = OSHash_Delete_ex(syscheck.realtime->dirtb, hash_node->key);
                     mdebug2(FIM_INOTIFY_WATCH_DELETED, data);
+                    os_free(data_node);
 
-                    /* 
+                    /*
                         If an element of the hash table is deleted, it needs to start from the
                         beginning again to prevent going out of boundaries.
                      */
@@ -290,7 +292,7 @@ unsigned int count_watches() {
             num_watches++;
             hash_node = OSHash_Next(syscheck.realtime->dirtb, &inode_it, hash_node);
         }
-        
+
         w_mutex_unlock(&syscheck.fim_entry_mutex);
     }
 
