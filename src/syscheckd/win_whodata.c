@@ -763,7 +763,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
 
                 fim_whodata_event(w_evt);
 
-                // free_win_whodata_evt(w_evt);
+                free_whodata_event(w_evt);
             break;
             // Write fd
             case 4663:
