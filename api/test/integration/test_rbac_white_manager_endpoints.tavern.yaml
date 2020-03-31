@@ -54,14 +54,11 @@ stages:
 ---
 test_name: DELETE /manager/files
 
-marks:
-  - xfail
-
 stages:
 
   - name: Delete a file (Denied)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}//manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -74,7 +71,7 @@ stages:
 
   - name: Delete a file (Allowed)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}//manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -86,33 +83,40 @@ stages:
 ---
 test_name: GET /manager/files
 
-marks:
-  - xfail
-
 stages:
 
   - name: Read a file (Allowed)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}//manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: 'etc/decoders/local_decoder.xml'
+    response:
+      status_code: 200
+
+  - name: Read a file (Allowed, Does not exist)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         path: 'etc/rules/local_rules.xml'
     response:
-      status_code: 200
+      status_code: 400
+      body:
+        code: 1906
 
 ---
 test_name: PUT /manager/files
-
-marks:
-  - xfail
 
 stages:
 
   - name: Upload a file (Denied)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}//manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"

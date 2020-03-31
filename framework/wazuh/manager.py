@@ -231,7 +231,7 @@ def get_file(path, validate=False):
 
     # check if file exists
     if not exists(full_path):
-        raise WazuhError(1006)
+        raise WazuhError(1906)
 
     try:
         with open(full_path) as f:
