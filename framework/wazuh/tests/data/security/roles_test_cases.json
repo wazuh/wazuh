@@ -3,13 +3,13 @@
     {
       "params": {
         "role_ids": [
-          "1", "4"
+          "8", "11"
         ]
       },
       "result": {
         "affected_items": [
           {
-            "id": 1,
+            "id": 8,
             "name": "wazuh",
             "rule": {
               "FIND": {
@@ -22,8 +22,8 @@
             "users": ["wazuh"]
           },
           {
-            "id": 4,
-            "name": "administrator",
+            "id": 11,
+            "name": "administrator_test",
             "rule": {
               "MATCH": {
                 "definition": "administratorRule"
@@ -40,12 +40,12 @@
     {
       "params": {
         "role_ids": [
-          "3", "5", "6", "9"
+          "10", "12", "13", "16"
         ]
       },
       "result": {
         "affected_items": [{
-          "id": 3,
+          "id": 10,
           "name": "technical",
           "rule": {
             "MATCH": {
@@ -70,7 +70,7 @@
             ],
             "users": ["normal", "ossec", "rbac"]
           }, {
-            "id": 6,
+            "id": 13,
             "name": "ossec",
             "rule": {
               "MATCH": {
@@ -85,7 +85,7 @@
         ],
         "failed_items": {
           "4002": [
-            "9"
+            "16"
           ]
         }
       }
@@ -93,14 +93,14 @@
     {
       "params": {
         "role_ids": [
-          "10", "11", "12"
+          "17", "18", "19"
         ]
       },
       "result": {
         "affected_items": [],
         "failed_items": {
           "4002": [
-            "10", "11", "12"
+            "17", "18", "19"
           ]
         }
       }
@@ -118,7 +118,7 @@
       },
       "result": {
         "affected_items": [{
-          "id": 7,
+          "id": 14,
           "name": "new_role",
           "rule": {
             "MATCH": {
@@ -171,7 +171,7 @@
   "update_role": [
     {
       "params": {
-        "role_id": ["6"],
+        "role_id": ["13"],
         "name": "ossec1",
         "rule": {
           "MATCH": {
@@ -181,7 +181,7 @@
       },
       "result": {
         "affected_items": [{
-          "id": 6,
+          "id": 13,
           "name": "ossec1",
           "rule": {
             "MATCH": {
@@ -217,20 +217,20 @@
     },
     {
       "params": {
-        "role_id": ["3"]
+        "role_id": ["10"]
       },
       "result": {
         "affected_items": [],
         "failed_items": {
           "4001": [
-            "3"
+            "10"
           ]
         }
       }
     },
     {
       "params": {
-        "role_id": ["5"],
+        "role_id": ["12"],
         "name": "normalUser",
         "rule": {
           "MATCH": {
@@ -242,7 +242,7 @@
         "affected_items": [],
         "failed_items": {
           "4005": [
-            "5"
+            "12"
           ]
         }
       }
@@ -250,7 +250,7 @@
     {
       "params": {
         "role_id": ["1"],
-        "name": "wazuhh",
+        "name": "administrator",
         "rule": {
           "MATCH": {
             "definition": "wazuhh"
@@ -271,14 +271,14 @@
     {
       "params": {
         "role_ids": [
-          "1", "4"
+          "1", "11"
         ]
       },
       "result": {
         "affected_items": [
           {
-            "id": 4,
-            "name": "administrator",
+            "id": 11,
+            "name": "administrator_test",
             "policies": [
               5, 4
             ],
@@ -303,13 +303,13 @@
     {
       "params": {
         "role_ids": [
-          "3", "5", "6", "9"
+          "10", "12", "13", "16"
         ]
       },
       "result": {
         "affected_items": [
           {
-            "id": 3,
+            "id": 10,
             "name": "technical",
             "policies": [
               2, 1, 8, 5
@@ -324,7 +324,7 @@
             ]
           },
           {
-            "id": 5,
+            "id": 12,
             "name": "normalUser",
             "policies": [
               2, 3, 10
@@ -341,7 +341,7 @@
             ]
           },
           {
-            "id": 6,
+            "id": 13,
             "name": "ossec",
             "policies": [
               2, 8, 7, 10, 5, 9, 1, 6, 3, 4
@@ -358,7 +358,7 @@
         ],
         "failed_items": {
           "4002": [
-            "9"
+            "16"
           ]
         }
       }
@@ -366,14 +366,14 @@
     {
       "params": {
         "role_ids": [
-          "10", "11", "12"
+          "20", "21", "22"
         ]
       },
       "result": {
         "affected_items": [],
         "failed_items": {
           "4002": [
-            "10", "11", "12"
+            "20", "21", "22"
           ]
         }
       }

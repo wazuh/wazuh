@@ -94,7 +94,7 @@ async def create_user(request):
         raise_if_exc(APIError(code=2005, details=e.msg))
     validate = _check_body(f_kwargs)
     if validate is not True:
-        raise WazuhError(5005, extra_message='Invalid field found {}'.format(validate))
+        raise_if_exc(WazuhError(5005, extra_message='Invalid field found {}'.format(f_kwargs)))
     dapi = DistributedAPI(f=security.create_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',

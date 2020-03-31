@@ -10,11 +10,11 @@
         "affected_items": [
           {
             "username": "wazuh",
-            "roles": [1]
+            "roles": [1, 8]
           },
           {
             "username": "wazuh-wui",
-            "roles": []
+            "roles": [2, 9]
           }
         ],
         "failed_items": {}
@@ -30,15 +30,15 @@
         "affected_items": [
           {
             "username": "wazuh",
-            "roles": [1]
+            "roles": [1, 8]
           },
           {
             "username": "wazuh-wui",
-            "roles": []
+            "roles": [2, 9]
           },
           {
             "username": "ossec",
-            "roles": [2, 5]
+            "roles": [9, 12]
           },
           {
             "username": "python",
@@ -62,7 +62,7 @@
           },
           {
             "username": "normal",
-            "roles": [5, 6, 4]
+            "roles": [11, 12, 13]
           }
         ],
         "failed_items": {
@@ -141,7 +141,7 @@
         "affected_items": [
           {
             "username": "ossec",
-            "roles": [2, 5]
+            "roles": [9, 12]
           }
         ],
         "failed_items": {}
@@ -185,7 +185,7 @@
         "affected_items": [
           {
             "username": "ossec",
-            "roles": [2, 5]},
+            "roles": [9, 12]},
           {
             "username": "python",
             "roles": []
@@ -220,7 +220,7 @@
         "affected_items": [
           {
             "username": "normal",
-            "roles": [5, 6, 4]
+            "roles": [11, 12, 13]
           },
           {
             "username": "python",
@@ -242,7 +242,7 @@
         "affected_items": [
           {
             "username": "normal",
-            "roles": [5, 6, 4]
+            "roles": [11, 12, 13]
           }
         ],
         "failed_items": {

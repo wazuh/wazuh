@@ -21,7 +21,6 @@ FROM base AS wazuh-env-sca
 FROM base AS wazuh-env-syscheck
 FROM base AS wazuh-env-ciscat
 FROM base AS wazuh-env-syscollector
-FROM base AS wazuh-env-security
 
 FROM base as wazuh-env-rules_white_rbac
 FROM base as wazuh-env-rules_black_rbac
@@ -35,6 +34,10 @@ FROM base as wazuh-env-lists_white_rbac
 FROM base as wazuh-env-lists_black_rbac
 FROM base AS wazuh-env-syscheck_white_rbac
 FROM base AS wazuh-env-syscheck_black_rbac
+
+FROM base AS wazuh-env-security
+COPY configurations/security/wazuh-master/schema_security_test.sql /var/ossec/api/configuration/security/schema_security_test.sql
+RUN sqlite3 /var/ossec/api/configuration/security/rbac.db < /var/ossec/api/configuration/security/schema_security_test.sql
 
 FROM base AS wazuh-env-manager
 ADD configurations/manager/wazuh-manager/entrypoint.sh /scripts/entrypoint.sh
