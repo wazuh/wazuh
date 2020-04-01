@@ -25,6 +25,7 @@ EXTERNAL_AUDIT=external/audit-userspace/
 EXTERNAL_LIBFFI=external/libffi/
 EXTERNAL_CPYTHON=external/cpython/
 EXTERNAL_MSGPACK=external/msgpack/
+EXTERNAL_BZIP2=external/bzip2/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
@@ -656,13 +657,14 @@ LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.a
 AUDIT_LIB = $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
 LIBFFI_LIB = $(EXTERNAL_LIBFFI)$(TARGET)/.libs/libffi.a
 MSGPACK_LIB = $(EXTERNAL_MSGPACK)libmsgpack.a
+BZIP2_LIB   = $(EXTERNAL_BZIP2)libbz2.a
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB)
 
 ifneq (${TARGET},winagent)
 EXTERNAL_LIBS += $(MSGPACK_LIB)
 ifneq (${TARGET},agent)
-EXTERNAL_LIBS += $(LIBCURL_LIB) $(LIBFFI_LIB)
+EXTERNAL_LIBS += $(LIBCURL_LIB) $(LIBFFI_LIB) $(BZIP2_LIB)
 endif
 ifeq (${uname_S},Linux)
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
@@ -739,6 +741,38 @@ os_zlib_o := $(os_zlib_c:.c=.o)
 
 os_zlib/%.o: os_zlib/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $< -o $@
+
+#### bzip2 ##########
+
+BZIP2_CFLAGS   = -fpic -Wall -O2 -g -D_FILE_OFFSET_BITS=64
+
+BZIP2_O       := ${EXTERNAL_BZIP2}blocksort.o \
+	             ${EXTERNAL_BZIP2}huffman.o \
+	             ${EXTERNAL_BZIP2}crctable.o \
+	             ${EXTERNAL_BZIP2}randtable.o \
+	             ${EXTERNAL_BZIP2}compress.o \
+	             ${EXTERNAL_BZIP2}decompress.o \
+	             ${EXTERNAL_BZIP2}bzlib.o
+
+
+$(BZIP2_LIB): $(BZIP2_O)
+	$(OSSEC_LINK) $(BZIP2_LIB) $(BZIP2_O)
+
+${EXTERNAL_BZIP2}blocksort.o: ${EXTERNAL_BZIP2}blocksort.c
+	$(OSSEC_CC) $(BZIP2_CFLAGS) -c ${EXTERNAL_BZIP2}blocksort.c -o ${EXTERNAL_BZIP2}blocksort.o
+${EXTERNAL_BZIP2}huffman.o: ${EXTERNAL_BZIP2}huffman.c
+	$(OSSEC_CC) $(BZIP2_CFLAGS) -c ${EXTERNAL_BZIP2}huffman.c -o ${EXTERNAL_BZIP2}huffman.o
+${EXTERNAL_BZIP2}crctable.o: ${EXTERNAL_BZIP2}crctable.c
+	$(OSSEC_CC) $(BZIP2_CFLAGS) -c ${EXTERNAL_BZIP2}crctable.c -o ${EXTERNAL_BZIP2}crctable.o
+${EXTERNAL_BZIP2}randtable.o: ${EXTERNAL_BZIP2}randtable.c
+	$(OSSEC_CC) $(BZIP2_CFLAGS) -c ${EXTERNAL_BZIP2}randtable.c -o ${EXTERNAL_BZIP2}randtable.o
+${EXTERNAL_BZIP2}compress.o: ${EXTERNAL_BZIP2}compress.c
+	$(OSSEC_CC) $(BZIP2_CFLAGS) -c ${EXTERNAL_BZIP2}compress.c -o ${EXTERNAL_BZIP2}compress.o
+${EXTERNAL_BZIP2}decompress.o: ${EXTERNAL_BZIP2}decompress.c
+	$(OSSEC_CC) $(BZIP2_CFLAGS) -c ${EXTERNAL_BZIP2}decompress.c -o ${EXTERNAL_BZIP2}decompress.o
+${EXTERNAL_BZIP2}bzlib.o: ${EXTERNAL_BZIP2}bzlib.c
+	$(OSSEC_CC) $(BZIP2_CFLAGS) -c ${EXTERNAL_BZIP2}bzlib.c -o ${EXTERNAL_BZIP2}bzlib.o
+
 
 #### SQLite #########
 
@@ -885,7 +919,7 @@ endif
 endif
 
 
-EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack
+EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2
 EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
