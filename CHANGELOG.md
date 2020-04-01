@@ -27,6 +27,7 @@ All notable changes to this project will be documented in this file.
 - Make Logcollector continuously attempt to reconnect with the agent daemon. ([#4435](https://github.com/wazuh/wazuh/pull/4435))
 - Make Windows agents to send the keep-alive independently. ([#4077](https://github.com/wazuh/wazuh/pull/4077))
 - Do not enforce source IP checking by default in the registration process. ([#4083](https://github.com/wazuh/wazuh/pull/4083))
+- Updated API manager/configuration endpoint to also return the new synchronization and whodata syscheck fields ([#4818](https://github.com/wazuh/wazuh/pull/4818))
 
 ### Fixed
 
