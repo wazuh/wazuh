@@ -255,19 +255,17 @@ void delete_subdirectories_watches(char *dir) {
         while(hash_node) {
             data = hash_node->data;
 
-            if (data) {
-                if (strncmp(dir_slash, data, strlen(dir_slash)) == 0) {
-                    char * data_node = OSHash_Delete_ex(syscheck.realtime->dirtb, hash_node->key);
-                    mdebug2(FIM_INOTIFY_WATCH_DELETED, data);
-                    os_free(data_node);
+            if (strncmp(dir_slash, data, strlen(dir_slash)) == 0) {
+                char * data_node = OSHash_Delete_ex(syscheck.realtime->dirtb, hash_node->key);
+                mdebug2(FIM_INOTIFY_WATCH_DELETED, data);
+                os_free(data_node);
 
-                    /*
-                        If an element of the hash table is deleted, it needs to start from the
-                        beginning again to prevent going out of boundaries.
-                     */
-                    hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
-                    continue;
-                }
+                /*
+                    If an element of the hash table is deleted, it needs to start from the
+                    beginning again to prevent going out of boundaries.
+                */
+                hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
+                continue;
             }
 
             hash_node = OSHash_Next(syscheck.realtime->dirtb, &inode_it, hash_node);
