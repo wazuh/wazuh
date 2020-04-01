@@ -348,7 +348,22 @@ void fim_whodata_event(whodata_evt * w_evt) {
     }
     // Otherwise, it could be a file deleted or a directory moved (or renamed).
     else {
-        fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt);
+        #ifdef WIN32
+            fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt);
+        #else
+            char** paths = NULL;
+            const unsigned long int inode = strtoul(w_evt->inode,NULL,10);
+            const unsigned long int dev = strtoul(w_evt->dev,NULL,10);
+
+            w_mutex_lock(&syscheck.fim_entry_mutex);
+            paths = fim_db_get_paths_from_inode(syscheck.database, inode, dev);
+            w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+            for(int i = 0; paths[i]; i++) {
+                w_evt->path = paths[i];
+                fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt);
+            }
+        #endif
     }
 }
 
