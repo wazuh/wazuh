@@ -382,9 +382,6 @@ stages:
 ---
 test_name: GET HOTFIXES SYSCOLLECTOR RBAC
 
-marks:
-  - xfail
-
 stages:
 
   - name: Get all hotfixes from an agent (Allow)
