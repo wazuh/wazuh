@@ -268,6 +268,10 @@ char *__wrap_get_user(__attribute__((unused)) const char *path, int uid, __attri
     return mock_type(char*);
 }
 
+int __wrap_readlink(void **state) {
+    return mock();
+}
+
 /* setup/teardown */
 static int setup_group(void **state) {
     (void) state;
@@ -1269,6 +1273,55 @@ void test_gen_audit_path8(void **state)
     assert_string_equal(ret, "/root/file");
 }
 
+void test_get_process_parent_info_failed(void **state)
+{
+    (void) state;
+
+    char *parent_name;
+    char *parent_cwd;
+
+    parent_name = malloc(10);
+    parent_cwd = malloc(10);
+
+    will_return(__wrap_readlink, -1);
+    expect_string(__wrap__merror, formatted_msg, "Failure to obtain the name of the process: '1515'. Error: File exists");
+
+    will_return(__wrap_readlink, -1);
+    expect_string(__wrap__merror, formatted_msg, "Failure to obtain the cwd of the process: '1515'. Error: File exists");
+
+    state[0] = parent_name;
+    state[1] = parent_cwd;
+    state[2] = NULL;
+
+    get_parent_process_info("1515", &parent_name, &parent_cwd);
+
+    assert_string_equal(parent_name, "");
+    assert_string_equal(parent_cwd, "");
+
+}
+
+void test_get_process_parent_info_passsed(void **state)
+{
+    (void) state;
+
+    char *parent_name;
+    char *parent_cwd;
+
+    parent_name = malloc(10);
+    parent_cwd = malloc(10);
+
+    will_return(__wrap_readlink, 0);
+    will_return(__wrap_readlink, 0);
+
+    get_parent_process_info("1515", &parent_name, &parent_cwd);
+
+    state[0] = parent_name;
+    state[1] = parent_cwd;
+    state[2] = NULL;
+
+    assert_string_equal(parent_name, "");
+    assert_string_equal(parent_cwd, "");
+}
 
 void test_audit_parse(void **state)
 {
@@ -1293,6 +1346,9 @@ void test_audit_parse(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "(6334): Audit: Invalid 'auid' value read. Check Audit configuration (PAM).");
 
     will_return(__wrap_get_group, "root");
+
+    will_return(__wrap_readlink, 0);
+    will_return(__wrap_readlink, 0);
 
     expect_string(__wrap__mdebug2, msg,
         "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
@@ -1338,6 +1394,9 @@ void test_audit_parse3(void **state)
 
     will_return(__wrap_get_group, "root");
 
+    will_return(__wrap_readlink, 0);
+    will_return(__wrap_readlink, 0);
+
     expect_string(__wrap__mdebug2, msg,
         "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg,
@@ -1382,6 +1441,9 @@ void test_audit_parse4(void **state)
     will_return(__wrap_get_user, strdup("root"));
 
     will_return(__wrap_get_group, "root");
+
+    will_return(__wrap_readlink, 0);
+    will_return(__wrap_readlink, 0);
 
     expect_string(__wrap__mdebug2, msg,
         "(6248): audit_event_1/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
@@ -1441,6 +1503,9 @@ void test_audit_parse_hex(void **state)
     will_return(__wrap_get_user, strdup("root"));
 
     will_return(__wrap_get_group, "root");
+
+    will_return(__wrap_readlink, 0);
+    will_return(__wrap_readlink, 0);
 
     expect_string(__wrap__mdebug2, msg,
         "(6248): audit_event_1/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
@@ -1621,6 +1686,9 @@ void test_audit_parse_mv(void **state)
 
     will_return(__wrap_get_group, "src");
 
+    will_return(__wrap_readlink, 0);
+    will_return(__wrap_readlink, 0);
+
     expect_string(__wrap__mdebug2, msg,
         "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg,
@@ -1667,6 +1735,9 @@ void test_audit_parse_mv_hex(void **state)
 
     will_return(__wrap_get_group, "src");
 
+    will_return(__wrap_readlink, 0);
+    will_return(__wrap_readlink, 0);
+
     expect_string(__wrap__mdebug2, msg,
         "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg,
@@ -1711,6 +1782,9 @@ void test_audit_parse_rm(void **state)
 
     will_return(__wrap_get_group, "tty");
 
+    will_return(__wrap_readlink, 0);
+    will_return(__wrap_readlink, 0);
+
     expect_string(__wrap__mdebug2, msg,
         "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg,
@@ -1752,6 +1826,9 @@ void test_audit_parse_chmod(void **state)
     will_return(__wrap_get_user, strdup("user29"));
 
     will_return(__wrap_get_group, "");
+
+    will_return(__wrap_readlink, 0);
+    will_return(__wrap_readlink, 0);
 
     expect_string(__wrap__mdebug2, msg,
         "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
@@ -1868,6 +1945,9 @@ void test_audit_parse_delete_folder(void **state)
 
     will_return(__wrap_get_group, "root");
 
+    will_return(__wrap_readlink, 0);
+    will_return(__wrap_readlink, 0);
+
     expect_string(__wrap__mdebug2, msg, "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg, "(6247): audit_event: uid=root, auid=root, euid=root, gid=root, pid=62845, ppid=4340, inode=110, path=/root/test, pname=/usr/bin/rm");
 
@@ -1913,6 +1993,9 @@ void test_audit_parse_delete_folder_hex(void **state)
     will_return(__wrap_get_user, strdup("root"));
 
     will_return(__wrap_get_group, "root");
+
+    will_return(__wrap_readlink, 0);
+    will_return(__wrap_readlink, 0);
 
     expect_string(__wrap__mdebug2, msg, "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg, "(6247): audit_event: uid=root, auid=root, euid=root, gid=root, pid=62845, ppid=4340, inode=110, path=/root/test, pname=/usr/bin/rm");
@@ -1964,6 +2047,9 @@ void test_audit_parse_delete_folder_hex3_error(void **state)
 
     will_return(__wrap_get_group, "root");
 
+    will_return(__wrap_readlink, 0);
+    will_return(__wrap_readlink, 0);
+
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '1'");
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '2'");
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '3'");
@@ -2006,6 +2092,9 @@ void test_audit_parse_delete_folder_hex4_error(void **state)
     will_return(__wrap_get_user, strdup("root"));
 
     will_return(__wrap_get_group, "root");
+
+    will_return(__wrap_readlink, 0);
+    will_return(__wrap_readlink, 0);
 
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '1'");
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '2'");
@@ -2051,6 +2140,9 @@ void test_audit_parse_delete_folder_hex5_error(void **state)
     will_return(__wrap_get_user, strdup("root"));
 
     will_return(__wrap_get_group, "root");
+
+    will_return(__wrap_readlink, 0);
+    will_return(__wrap_readlink, 0);
 
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '1'");
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '2'");
@@ -2106,6 +2198,8 @@ int main(void) {
         cmocka_unit_test_teardown(test_gen_audit_path6, free_string),
         cmocka_unit_test_teardown(test_gen_audit_path7, free_string),
         cmocka_unit_test_teardown(test_gen_audit_path8, free_string),
+        cmocka_unit_test_teardown(test_get_process_parent_info_failed, free_string),
+        cmocka_unit_test_teardown(test_get_process_parent_info_passsed, free_string),
         cmocka_unit_test(test_audit_parse),
         cmocka_unit_test(test_audit_parse3),
         cmocka_unit_test(test_audit_parse4),

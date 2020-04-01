@@ -362,6 +362,9 @@ static int setup_group(void **state) {
     fim_data->w_evt->dev = strdup("12345678");
     fim_data->w_evt->ppid = 1000;
     fim_data->w_evt->process_id = 1001;
+    fim_data->w_evt->cwd = strdup("process_cwd");
+    fim_data->w_evt->parent_cwd = strdup("parent_cwd");
+    fim_data->w_evt->parent_name = strdup("parent_name");
 
     // Setup mock old fim_entry
     fim_data->old_data->size = 1500;
@@ -619,7 +622,7 @@ static void test_fim_json_event_whodata(void **state) {
     #ifdef TEST_WINAGENT
     assert_int_equal(cJSON_GetArraySize(audit), 5);
     #else
-    assert_int_equal(cJSON_GetArraySize(audit), 12);
+    assert_int_equal(cJSON_GetArraySize(audit), 15);
     #endif
     cJSON *diff = cJSON_GetObjectItem(data, "content_changes");
     assert_string_equal(cJSON_GetStringValue(diff), "diff");
@@ -923,7 +926,7 @@ static void test_fim_audit_json(void **state) {
     #ifdef TEST_WINAGENT
     assert_int_equal(cJSON_GetArraySize(fim_data->json), 5);
     #else
-    assert_int_equal(cJSON_GetArraySize(fim_data->json), 12);
+    assert_int_equal(cJSON_GetArraySize(fim_data->json), 15);
     #endif
 
     cJSON *path = cJSON_GetObjectItem(fim_data->json, "path");
@@ -939,6 +942,8 @@ static void test_fim_audit_json(void **state) {
     assert_int_equal(process_id->valueint, 1001);
 
     #ifndef TEST_WINAGENT
+    cJSON *cwd = cJSON_GetObjectItem(fim_data->json, "cwd");
+    assert_string_equal(cJSON_GetStringValue(cwd), "process_cwd");
     cJSON *group_id = cJSON_GetObjectItem(fim_data->json, "group_id");
     assert_string_equal(cJSON_GetStringValue(group_id), "1000");
     cJSON *group_name = cJSON_GetObjectItem(fim_data->json, "group_name");
@@ -954,6 +959,10 @@ static void test_fim_audit_json(void **state) {
     cJSON *ppid = cJSON_GetObjectItem(fim_data->json, "ppid");
     assert_non_null(ppid);
     assert_int_equal(ppid->valueint, 1000);
+    cJSON *parent_cwd = cJSON_GetObjectItem(fim_data->json, "parent_cwd");
+    assert_string_equal(cJSON_GetStringValue(parent_cwd), "parent_cwd");
+    cJSON *parent_name = cJSON_GetObjectItem(fim_data->json, "parent_name");
+    assert_string_equal(cJSON_GetStringValue(parent_name), "parent_name");
     #endif
 }
 
