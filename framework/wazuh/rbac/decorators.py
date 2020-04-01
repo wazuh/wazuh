@@ -85,7 +85,7 @@ def _expand_resource(resource):
         elif resource_type == 'node:id':
             return set(cluster_nodes.get())
         elif resource_type == 'file:path':
-            return get_files
+            return get_files()
         elif resource_type == '*:*':  # Resourceless
             return {'*'}
         return set()
