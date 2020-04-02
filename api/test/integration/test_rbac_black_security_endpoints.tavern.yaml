@@ -283,7 +283,7 @@ stages:
 
   - name: Update one specified user in the system (All allowed)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/wazuh"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/python"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -294,7 +294,7 @@ stages:
       body:
         data:
           affected_items:
-            - username: wazuh
+            - username: python
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -323,39 +323,20 @@ stages:
           affected_items:
             - id: 12
               name: normalUserModified
-              policies:
-                - id: 12
-                  name: wazuh-wuiPolicy
-                  policy:
-                    actions:
-                      - agent:create
-                    effect: allow
-                    resources:
-                      - agent:id:001
-                      - agent:id:002
-                      - agent:id:003
-                - id: 13
-                  name: technicalPolicy
-                  policy:
-                    actions:
-                      - agent:create
-                    effect: allow
-                    resources:
-                      - "*:*:*"
-                - id: 20
-                  name: policy4
-                  policy:
-                    actions:
-                      - policy:delete
-                    effect: deny
-                    resources:
-                      - policy:id:*
               rule:
                 FIND$:
                   definition: normalUserRuleModified
-          failed_items: []
+              policies:
+                - 12
+                - 13
+                - 20
+              users:
+                - normal
+                - ossec
+                - rbac
           total_affected_items: 1
           total_failed_items: 0
+          failed_items: []
         message: Role updated correctly
 
   - name: Update one specified role in the system (Deny)
@@ -481,7 +462,7 @@ stages:
 
   - name: Create one specified link between one user and a list of roles (Allow and Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/python/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/python/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -514,7 +495,7 @@ stages:
 
   - name: Create one specified link between one user and a list of roles (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/ossec/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/ossec/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -526,9 +507,9 @@ stages:
         data:
           affected_items:
             - roles:
-                - 8
                 - 9
                 - 12
+                - 8
               username: ossec
           failed_items:
             - error:
@@ -547,7 +528,7 @@ stages:
 
   - name: Delete one specified link between one user and a list of roles (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/rbac/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/rbac/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -592,55 +573,20 @@ stages:
           affected_items:
             - id: 12
               name: normalUserModified
-              policies:
-                - id: 12
-                  name: wazuh-wuiPolicy
-                  policy:
-                    actions:
-                      - agent:create
-                    effect: allow
-                    resources:
-                      - agent:id:001
-                      - agent:id:002
-                      - agent:id:003
-                - id: 13
-                  name: technicalPolicy
-                  policy:
-                    actions:
-                      - agent:create
-                    effect: allow
-                    resources:
-                      - "*:*:*"
-                - id: 16
-                  name: ossecPolicy
-                  policy:
-                    actions:
-                      - role:read
-                    effect: allow
-                    resources:
-                      - role:id:*
-                - id: 17
-                  name: policy1
-                  policy:
-                    actions:
-                      - role:read
-                    effect: deny
-                    resources:
-                      - role:id:*
-                - id: 20
-                  name: policy4
-                  policy:
-                    actions:
-                      - policy:delete
-                    effect: deny
-                    resources:
-                      - policy:id:*
               rule:
                 FIND$:
                   definition: normalUserRuleModified
+              policies:
+                - 12
+                - 13
+                - 20
+                - 16
+                - 17
               users:
                 - normal
                 - ossec
+          total_affected_items: 2
+          total_failed_items: 1
           failed_items:
             - error:
                 code: 4000
@@ -649,8 +595,6 @@ stages:
                   for more information on setting up permissions please visit XXXX
               id:
                 - '15'
-          total_affected_items: 2
-          total_failed_items: 1
         message: Some policies could not be linked to role 12
 
 ---
@@ -673,39 +617,18 @@ stages:
           affected_items:
             - id: 12
               name: normalUserModified
-              policies:
-                - id: 12
-                  name: wazuh-wuiPolicy
-                  policy:
-                    actions:
-                      - agent:create
-                    effect: allow
-                    resources:
-                      - agent:id:001
-                      - agent:id:002
-                      - agent:id:003
-                - id: 13
-                  name: technicalPolicy
-                  policy:
-                    actions:
-                      - agent:create
-                    effect: allow
-                    resources:
-                      - "*:*:*"
-                - id: 20
-                  name: policy4
-                  policy:
-                    actions:
-                      - policy:delete
-                    effect: deny
-                    resources:
-                      - policy:id:*
               rule:
                 FIND$:
                   definition: normalUserRuleModified
+              policies:
+                - 12
+                - 13
+                - 20
               users:
                 - normal
                 - ossec
+          total_affected_items: 2
+          total_failed_items: 1
           failed_items:
             - error:
                 code: 4010
@@ -713,8 +636,6 @@ stages:
                 remediation: !anystr
               id:
                 - '15'
-          total_affected_items: 2
-          total_failed_items: 1
         message: Some policies could not be unlinked from role 12
 
 ---
@@ -831,32 +752,17 @@ stages:
           affected_items:
             - id: 11
               name: administrator_test
-              policies:
-                - id: 14
-                  name: administratorPolicyModified
-                  policy:
-                    actions:
-                      - agent:read
-                    effect: deny
-                    resources:
-                      - agent:id:097
-                      - agent:id:002
-                      - agent:id:003
-                - id: 15
-                  name: normalPolicy
-                  policy:
-                    actions:
-                      - agent:update
-                      - agent:delete
-                    effect: deny
-                    resources:
-                      - agent:id:*
               rule:
                 MATCH:
                   definition: administratorRule
-          failed_items: []
+              policies:
+                - 15
+                - 14
+              users:
+                - normal
           total_affected_items: 1
           total_failed_items: 0
+          failed_items: []
         message: All specified roles were deleted
 
   - name: Delete all roles in the system (Allow and deny)
