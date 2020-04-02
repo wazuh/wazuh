@@ -75,7 +75,14 @@ stages:
       status_code: 200
       body:
         data:
-          <<: *even_affected_agents
+          affected_items:
+            - agent_id: '002'
+            - agent_id: '004'
+            - agent_id: '006'
+            - agent_id: '008'
+          failed_items: []
+          total_affected_items: 4
+          total_failed_items: 0
         message: !anystr
 
   - name: Request a list of agents (Partially allowed, user aware)
