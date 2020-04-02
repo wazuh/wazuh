@@ -1,25 +1,22 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import asyncio
 import logging
 
-import connexion
+from aiohttp import web
 
 import wazuh.ciscat as ciscat
 import wazuh.syscheck as syscheck
 import wazuh.syscollector as syscollector
-from api.authentication import get_permissions
-from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
+from api.encoder import dumps
+from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
-loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
 
-@exception_handler
-def clear_syscheck_database(pretty=False, wait_for_complete=False, list_agents='*'):
+async def clear_syscheck_database(request, pretty=False, wait_for_complete=False, list_agents='*'):
     """ Clear the syscheck database for all agents.
 
     :param pretty: Show results in human-readable format
@@ -37,17 +34,16 @@ def clear_syscheck_database(pretty=False, wait_for_complete=False, list_agents='
                           pretty=pretty,
                           logger=logger,
                           broadcasting=list_agents == '*',
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-def get_cis_cat_results(pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None, select=None,
-                        sort=None, search=None, benchmark=None, profile=None, fail=None, error=None, notchecked=None,
-                        unknown=None, score=None):
+async def get_cis_cat_results(request, pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None,
+                              select=None, sort=None, search=None, benchmark=None, profile=None, fail=None, error=None,
+                              notchecked=None, unknown=None, score=None):
     """ Get ciscat results info from all agents or a list of them.
 
     :param pretty: Show results in human-readable format
@@ -82,7 +78,7 @@ def get_cis_cat_results(pretty=False, wait_for_complete=False, list_agents='*', 
                     'notchecked': notchecked,
                     'unknown': unknown,
                     'score': score,
-                    'pass': connexion.request.args.get('pass', None)
+                    'pass': request.query.get('pass', None)
                     }
                 }
 
@@ -94,16 +90,15 @@ def get_cis_cat_results(pretty=False, wait_for_complete=False, list_agents='*', 
                           pretty=pretty,
                           logger=logger,
                           broadcasting=list_agents == '*',
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-def get_hardware_info(pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None, select=None, 
-                      sort=None, search=None, board_serial=None):
+async def get_hardware_info(request, pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None,
+                            select=None, sort=None, search=None, board_serial=None):
     """ Get hardware info from all agents or a list of them.
 
     :param pretty: Show results in human-readable format
@@ -124,7 +119,7 @@ def get_hardware_info(pretty=False, wait_for_complete=False, list_agents='*', of
     # Add nested fields to kwargs filters
     nested = ['ram.free', 'ram.total', 'cpu.cores', 'cpu.mhz', 'cpu.name']
     for field in nested:
-        filters[field] = connexion.request.args.get(field, None)
+        filters[field] = request.query.get(field, None)
     f_kwargs = {'agent_list': list_agents,
                 'offset': offset,
                 'limit': limit,
@@ -143,17 +138,16 @@ def get_hardware_info(pretty=False, wait_for_complete=False, list_agents='*', of
                           pretty=pretty,
                           logger=logger,
                           broadcasting=list_agents == '*',
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-def get_network_address_info(pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None, select=None,
-                             sort=None, search=None, iface_name=None, proto=None, address=None, broadcast=None,
-                             netmask=None):
+async def get_network_address_info(request, pretty=False, wait_for_complete=False, list_agents='*', offset=0,
+                                   limit=None, select=None, sort=None, search=None, iface_name=None, proto=None,
+                                   address=None, broadcast=None, netmask=None):
     """ Get the IPv4 and IPv6 addresses associated to all network interfaces
 
     :param pretty: Show results in human-readable format
@@ -196,16 +190,16 @@ def get_network_address_info(pretty=False, wait_for_complete=False, list_agents=
                           pretty=pretty,
                           logger=logger,
                           broadcasting=list_agents == '*',
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-def get_network_interface_info(pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None,
-                               select=None, sort=None, search=None, adapter=None, state=None, mtu=None):
+async def get_network_interface_info(request, pretty=False, wait_for_complete=False, list_agents='*', offset=0,
+                                     limit=None, select=None, sort=None, search=None, adapter=None, state=None,
+                                     mtu=None):
     """ Get all network interfaces from all agents or a list of them.
 
     :param pretty: Show results in human-readable format
@@ -224,14 +218,14 @@ def get_network_interface_info(pretty=False, wait_for_complete=False, list_agent
     """
     filters = {
         'adapter': adapter,
-        'type': connexion.request.args.get('type', None),
+        'type': request.query.get('type', None),
         'state': state,
         'mtu': mtu
         }
     # Add nested fields to kwargs filters
     nested = ['tx.packets', 'rx.packets', 'tx.bytes', 'rx.bytes', 'tx.errors', 'rx.errors', 'tx.dropped', 'rx.dropped']
     for field in nested:
-        filters[field] = connexion.request.args.get(field, None)
+        filters[field] = request.query.get(field, None)
 
     f_kwargs = {'agent_list': list_agents,
                 'offset': offset,
@@ -251,16 +245,16 @@ def get_network_interface_info(pretty=False, wait_for_complete=False, list_agent
                           pretty=pretty,
                           logger=logger,
                           broadcasting=list_agents == '*',
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-def get_network_protocol_info(pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None, select=None,
-                              sort=None, search=None, iface=None, gateway=None, dhcp=None):
+async def get_network_protocol_info(request, pretty=False, wait_for_complete=False, list_agents='*', offset=0,
+                                    limit=None, select=None, sort=None, search=None, iface=None, gateway=None,
+                                    dhcp=None):
     """ Get network protocol info from all agents or a list of them.
 
     :param pretty: Show results in human-readable format
@@ -285,7 +279,7 @@ def get_network_protocol_info(pretty=False, wait_for_complete=False, list_agents
                 'search': parse_api_param(search, 'search'),
                 'filters': {
                     'iface': iface,
-                    'type': connexion.request.args.get('type', None),
+                    'type': request.query.get('type', None),
                     'gateway': gateway,
                     'dhcp': dhcp
                     },
@@ -300,16 +294,16 @@ def get_network_protocol_info(pretty=False, wait_for_complete=False, list_agents
                           pretty=pretty,
                           logger=logger,
                           broadcasting=list_agents == '*',
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-def get_os_info(pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None, select=None, sort=None,
-                search=None, os_name=None, architecture=None, os_version=None, version=None, release=None):
+async def get_os_info(request, pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None,
+                      select=None, sort=None, search=None, os_name=None, architecture=None, os_version=None,
+                      version=None, release=None):
     """ Get OS info from all agents or a list of them.
 
     :param pretty: Show results in human-readable format
@@ -352,16 +346,15 @@ def get_os_info(pretty=False, wait_for_complete=False, list_agents='*', offset=0
                           pretty=pretty,
                           logger=logger,
                           broadcasting=list_agents == '*',
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-def get_packages_info(pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None, select=None,
-                      sort=None, search=None, vendor=None, name=None, architecture=None, version=None):
+async def get_packages_info(request, pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None, select=None,
+                            sort=None, search=None, vendor=None, name=None, architecture=None, version=None):
     """ Get packages info from all agents or a list of them.
 
     :param pretty: Show results in human-readable format
@@ -389,7 +382,7 @@ def get_packages_info(pretty=False, wait_for_complete=False, list_agents='*', of
                     'vendor': vendor,
                     'name': name,
                     'architecture': architecture,
-                    'format': connexion.request.args.get('format', None),
+                    'format': request.query.get('format', None),
                     'version': version
                     },
                 'element_type': 'packages'
@@ -403,16 +396,16 @@ def get_packages_info(pretty=False, wait_for_complete=False, list_agents='*', of
                           pretty=pretty,
                           logger=logger,
                           broadcasting=list_agents == '*',
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-def get_ports_info(pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None, select=None, sort=None,
-                   search=None, pid=None, protocol=None, tx_queue=None, state=None, process=None):
+async def get_ports_info(request, pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None,
+                         select=None, sort=None, search=None, pid=None, protocol=None, tx_queue=None, state=None,
+                         process=None):
     """ Get ports info from all agents or a list of them.
 
     :param pretty: Show results in human-readable format
@@ -441,7 +434,7 @@ def get_ports_info(pretty=False, wait_for_complete=False, list_agents='*', offse
     # Add nested fields to kwargs filters
     nested = ['local.ip', 'local.port', 'remote.ip']
     for field in nested:
-        filters[field] = connexion.request.args.get(field, None)
+        filters[field] = request.query.get(field, None)
 
     f_kwargs = {'agent_list': list_agents,
                 'offset': offset,
@@ -461,18 +454,17 @@ def get_ports_info(pretty=False, wait_for_complete=False, list_agents='*', offse
                           pretty=pretty,
                           logger=logger,
                           broadcasting=list_agents == '*',
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-def get_processes_info(pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None, select=None,
-                       sort=None, search=None, pid=None, state=None, ppid=None, egroup=None, euser=None, fgroup=None,
-                       name=None, nlwp=None, pgrp=None, priority=None, rgroup=None, ruser=None, sgroup=None,
-                       suser=None):
+async def get_processes_info(request, pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None,
+                             select=None, sort=None, search=None, pid=None, state=None, ppid=None, egroup=None,
+                             euser=None, fgroup=None, name=None, nlwp=None, pgrp=None, priority=None, rgroup=None,
+                             ruser=None, sgroup=None, suser=None):
     """ Get processes info from all agents or a list of them.
 
     :param pretty: Show results in human-readable format
@@ -533,16 +525,15 @@ def get_processes_info(pretty=False, wait_for_complete=False, list_agents='*', o
                           pretty=pretty,
                           logger=logger,
                           broadcasting=list_agents == '*',
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@exception_handler
-def get_hotfixes_info(pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None, sort=None,
-                      search=None, select=None, hotfix=None):
+async def get_hotfixes_info(request, pretty=False, wait_for_complete=False, list_agents='*', offset=0, limit=None,
+                            sort=None, search=None, select=None, hotfix=None):
     """ Get hotfixes info from all agents or a list of them.
 
     :param pretty: Show results in human-readable format
@@ -577,8 +568,8 @@ def get_hotfixes_info(pretty=False, wait_for_complete=False, list_agents='*', of
                           pretty=pretty,
                           logger=logger,
                           broadcasting=list_agents == '*',
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=dumps)

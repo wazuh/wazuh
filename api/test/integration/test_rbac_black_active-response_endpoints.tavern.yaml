@@ -16,7 +16,7 @@ stages:
 
   - name: Runs an Active Response command on a specified agent (Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -27,25 +27,14 @@ stages:
       params:
         list_agents: '001'
     response:
-      status_code: 200
+      status_code: 400
       body:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 4000
-                message: 'Permission denied: Resource type: agent:id'
-                remediation: Please, make sure you have permissions to execute current request,
-                  for more information on setting up permissions please visit XXXX
-              id:
-                - '001'
-          total_affected_items: 0
-          total_failed_items: 1
-        message: Could not send command to any agent
+        code: 4000
+        detail: "Permission denied: Resource type: agent:id"
 
   - name: Send a message to an agent (Status=Active) (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -68,7 +57,7 @@ stages:
 
   - name: Send a message to a list of agents
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -107,7 +96,7 @@ stages:
 
   - name: Try to send a message to an agent (status=disconnected/never_connected) (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -118,25 +107,14 @@ stages:
       params:
         list_agents: '009'
     response:
-      status_code: 200
+      status_code: 400
       body:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 4000
-                message: 'Permission denied: Resource type: agent:id'
-                remediation: Please, make sure you have permissions to execute current request,
-                  for more information on setting up permissions please visit XXXX
-              id:
-                - 009
-          total_affected_items: 0
-          total_failed_items: 1
-        message: Could not send command to any agent
+        code: 4000
+        detail: "Permission denied: Resource type: agent:id"
 
   - name: Try to send a message to an unexisting agent (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -172,7 +150,7 @@ stages:
     # PUT /active-response
   - name: Runs an Active Response command on all agents
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"

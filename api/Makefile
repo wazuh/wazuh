@@ -24,7 +24,6 @@ install:
 	$(INSTALL_RW_DIR) $(PREFIX)/api/configuration/security
 
 	$(INSTALL_FILE) api/configuration/template-api.yaml ${PREFIX}/api/configuration
-	$(INSTALL_FILE) api/configuration/uwsgi.yaml ${PREFIX}/api/configuration
 
 	$(INSTALL_DIR) $(PREFIX)/api/scripts
 	$(INSTALL_FILE) scripts/*.py ${PREFIX}/api/scripts

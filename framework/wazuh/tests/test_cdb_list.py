@@ -2,11 +2,12 @@
 # Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
-from functools import wraps
-from unittest.mock import patch, MagicMock
+
 import os
-import pytest
 import sys
+from unittest.mock import patch, MagicMock
+
+import pytest
 
 DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "test_cdb_list")
 
@@ -18,16 +19,9 @@ with patch('wazuh.common.getgrnam'):
             import wazuh.rbac.decorators
             del sys.modules['wazuh.rbac.orm']
             del sys.modules['api']
-
-            def RBAC_bypasser(**kwargs):
-                def decorator(f):
-                    @wraps(f)
-                    def wrapper(*args, **kwargs):
-                        return f(*args, **kwargs)
-                    return wrapper
-                return decorator
+            from wazuh.tests.util import RBAC_bypasser
             wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-            sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
+
             from wazuh.cdb_list import get_lists, get_path_lists
             from wazuh import common
             from wazuh.results import AffectedItemsWazuhResult
@@ -45,20 +39,23 @@ RESULT_GET_LIST_FILE_1 = [{'items': [{'key': 'test-wazuh-w', 'value': 'write'},
                                      {'key': 'test-wazuh-x', 'value': 'execute'},
                                      {'key': 'test-wazuh-c', 'value': 'command'}
                                      ],
-                           'path': PATH_FILE_1
+                           'relative_dirname': RELATIVE_PATH,
+                           'filename': NAME_FILE_1
                            }]
 RESULT_GET_LIST_FILE_2 = [{'items': [{'key': 'test-ossec-w', 'value': 'write'},
                                      {'key': 'test-ossec-r', 'value': 'read'},
                                      {'key': 'test-ossec-x', 'value': 'execute'}
                                      ],
-                           'path': PATH_FILE_2
+                           'relative_dirname': RELATIVE_PATH,
+                           'filename': NAME_FILE_2
                            }]
-RESULT_GET_PATH_LIST_FILE_1 = [{'folder': RELATIVE_PATH, 'name': NAME_FILE_1, 'path': PATH_FILE_1}]
-RESULT_GET_PATH_LIST_FILE_2 = [{'folder': RELATIVE_PATH, 'name': NAME_FILE_2, 'path': PATH_FILE_2}]
+RESULT_GET_PATH_LIST_FILE_1 = [{'filename': NAME_FILE_1, 'relative_dirname': RELATIVE_PATH}]
+RESULT_GET_PATH_LIST_FILE_2 = [{'filename': NAME_FILE_2, 'relative_dirname': RELATIVE_PATH}]
 
 RESULTS_GET_LIST = RESULT_GET_LIST_FILE_1 + RESULT_GET_LIST_FILE_2
 RESULTS_GET_PATH_LIST = RESULT_GET_PATH_LIST_FILE_1 + RESULT_GET_PATH_LIST_FILE_2
 
+TOTAL_LISTS = len(PATHS_FILES)
 
 # Tests
 
@@ -96,7 +93,7 @@ def test_get_lists_limit(limit):
     result = get_lists(path=PATHS_FILES, limit=limit)
     assert limit > 0
     assert isinstance(result, AffectedItemsWazuhResult)
-    assert result.total_affected_items == limit
+    assert result.total_affected_items == TOTAL_LISTS
     assert result.affected_items == RESULTS_GET_LIST[:limit]
 
 
@@ -111,7 +108,7 @@ def test_get_lists_offset(offset):
     """
     result = get_lists(path=PATHS_FILES, offset=offset)
     assert isinstance(result, AffectedItemsWazuhResult)
-    assert result.total_affected_items == len(PATHS_FILES) - offset
+    assert result.total_affected_items == TOTAL_LISTS
     assert result.affected_items == RESULTS_GET_LIST[offset:]
 
 
@@ -162,8 +159,8 @@ def test_get_lists_search(search_text, complementary_search, search_in_fields, p
 
 def test_get_lists_sort():
     """Test `get_lists` functionality when using the `sort` parameter."""
-    result_a = get_lists(path=PATHS_FILES, sort_by=['path'], sort_ascending=True)
-    result_b = get_lists(path=PATHS_FILES, sort_by=['path'], sort_ascending=False)
+    result_a = get_lists(path=PATHS_FILES, sort_by=['filename'], sort_ascending=True)
+    result_b = get_lists(path=PATHS_FILES, sort_by=['filename'], sort_ascending=False)
 
     assert isinstance(result_a, AffectedItemsWazuhResult)
     assert isinstance(result_b, AffectedItemsWazuhResult)
@@ -196,11 +193,10 @@ def test_get_path_lists_limit(limit):
         Maximum number of items to be returned by `get_path_lists`
     """
     common.reset_context_cache()
-    result = get_path_lists(path=PATHS_FILES, limit=limit)
+    result = get_path_lists(path=PATHS_FILES, limit=limit, sort_by=['filename'])
 
-    assert limit > 0
     assert isinstance(result, AffectedItemsWazuhResult)
-    assert result.total_affected_items == limit
+    assert result.total_affected_items == TOTAL_LISTS
     assert result.affected_items == RESULTS_GET_PATH_LIST[:limit]
 
 
@@ -214,10 +210,10 @@ def test_get_path_lists_offset(offset):
          Indicates the first item to return.
     """
     common.reset_context_cache()
-    result = get_path_lists(path=PATHS_FILES, offset=offset)
+    result = get_path_lists(path=PATHS_FILES, offset=offset, sort_by=['filename'])
 
     assert isinstance(result, AffectedItemsWazuhResult)
-    assert result.total_affected_items == len(PATHS_FILES) - offset
+    assert result.total_affected_items == TOTAL_LISTS
     assert result.affected_items == RESULTS_GET_PATH_LIST[offset:]
 
 
@@ -225,24 +221,18 @@ def test_get_path_lists_offset(offset):
     ("lists_1", False, None, PATHS_FILES, RESULT_GET_PATH_LIST_FILE_1),
     ("lists_2", False, None, PATHS_FILES, RESULT_GET_PATH_LIST_FILE_2),
     ("invalid", False, None, PATHS_FILES, []),
-    ("lists_1", False, "path", PATHS_FILES, RESULT_GET_PATH_LIST_FILE_1),
-    ("lists_2", False, "path", PATHS_FILES, RESULT_GET_PATH_LIST_FILE_2),
-    ("invalid", False, "path", PATHS_FILES, []),
-    ("lists_1", False, "name", PATHS_FILES, RESULT_GET_PATH_LIST_FILE_1),
-    ("lists_2", False, "name", PATHS_FILES, RESULT_GET_PATH_LIST_FILE_2),
-    ("invalid", False, "name", PATHS_FILES, []),
-    ("test_cdb_list", False, "folder", PATHS_FILES, RESULTS_GET_PATH_LIST),
-
+    ("test_cdb_list", False, "relative_dirname", PATHS_FILES, RESULTS_GET_PATH_LIST),
+    ("invalid", False, "relative_dirname", PATHS_FILES, []),
+    ("lists_1", False, "filename", PATHS_FILES, RESULT_GET_PATH_LIST_FILE_1),
+    ("lists_2", False, "filename", PATHS_FILES, RESULT_GET_PATH_LIST_FILE_2),
+    ("invalid", False, "filename", PATHS_FILES, []),
     ("lists_1", True, None, PATHS_FILES, RESULT_GET_PATH_LIST_FILE_2),
     ("lists_2", True, None, PATHS_FILES, RESULT_GET_PATH_LIST_FILE_1),
     ("invalid", True, None, PATHS_FILES, RESULTS_GET_PATH_LIST),
-    ("lists_1", True, "path", PATHS_FILES, RESULT_GET_PATH_LIST_FILE_2),
-    ("lists_2", True, "path", PATHS_FILES, RESULT_GET_PATH_LIST_FILE_1),
-    ("invalid", True, "path", PATHS_FILES, RESULTS_GET_PATH_LIST),
-    ("lists_1", True, "name", PATHS_FILES, RESULT_GET_PATH_LIST_FILE_2),
-    ("lists_2", True, "name", PATHS_FILES, RESULT_GET_PATH_LIST_FILE_1),
-    ("invalid", True, "name", PATHS_FILES, RESULTS_GET_PATH_LIST),
-    ("test_cdb_list", True, "folder", PATHS_FILES, [])
+    ("invalid", True, "relative_dirname", PATHS_FILES, RESULTS_GET_PATH_LIST),
+    ("lists_1", True, "filename", PATHS_FILES, RESULT_GET_PATH_LIST_FILE_2),
+    ("lists_2", True, "filename", PATHS_FILES, RESULT_GET_PATH_LIST_FILE_1),
+    ("invalid", True, "filename", PATHS_FILES, RESULTS_GET_PATH_LIST)
 ])
 def test_get_path_lists_search(search_text, complementary_search, search_in_fields, paths, expected_result):
     """Test `get_path_lists` functionality when using the `search` parameter.
@@ -263,7 +253,7 @@ def test_get_path_lists_search(search_text, complementary_search, search_in_fiel
     """
     common.reset_context_cache()
     result = get_path_lists(path=paths, search_text=search_text, complementary_search=complementary_search,
-                            search_in_fields=search_in_fields)
+                            search_in_fields=search_in_fields, sort_by=['filename'])
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == len(expected_result)
     assert result.affected_items == expected_result
@@ -271,8 +261,8 @@ def test_get_path_lists_search(search_text, complementary_search, search_in_fiel
 
 def test_get_path_lists_sort():
     """Test `get_path_lists` functionality when using the `sort` parameter."""
-    result_a = get_path_lists(path=PATHS_FILES, sort_by=['name'], sort_ascending=True)
-    result_b = get_path_lists(path=PATHS_FILES, sort_by=['name'], sort_ascending=False)
+    result_a = get_path_lists(path=PATHS_FILES, sort_by=['filename'], sort_ascending=True)
+    result_b = get_path_lists(path=PATHS_FILES, sort_by=['filename'], sort_ascending=False)
 
     assert isinstance(result_a, AffectedItemsWazuhResult)
     assert isinstance(result_b, AffectedItemsWazuhResult)

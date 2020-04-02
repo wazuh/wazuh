@@ -17,7 +17,7 @@ stages:
   # GET /manager/status
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/status"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -56,7 +56,7 @@ stages:
   # GET /manager/info
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/info"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/info"
       method: GET
       headers:
           Authorization: "Bearer {test_login_token}"
@@ -107,7 +107,7 @@ stages:
   # GET /manager/configuration
   - name: Request all sections
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration"
       method: GET
       headers:
           Authorization: "Bearer {test_login_token}"
@@ -130,7 +130,7 @@ stages:
   # GET /manager/configuration
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration"
       method: GET
       headers:
           Authorization: "Bearer {test_login_token}"
@@ -168,7 +168,7 @@ stages:
   # GET /manager/configuration
   - name: Request section and field (1)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration"
       method: GET
       headers:
           Authorization: "Bearer {test_login_token}"
@@ -190,7 +190,7 @@ stages:
   # GET /manager/configuration
   - name: Request section and field (2)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration"
       method: GET
       headers:
           Authorization: "Bearer {test_login_token}"
@@ -212,7 +212,7 @@ stages:
   # GET /manager/configuration
   - name: Request invalid section
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration"
       method: GET
       headers:
           Authorization: "Bearer {test_login_token}"
@@ -224,7 +224,7 @@ stages:
   # GET /manager/configuration
   - name: Request invalid field
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration"
       method: GET
       headers:
           Authorization: "Bearer {test_login_token}"
@@ -253,7 +253,7 @@ stages:
   # GET /manager/stats
   - name: Manager stats
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/stats"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -270,7 +270,7 @@ stages:
 
   - name: Manager stats
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/stats"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -290,7 +290,7 @@ stages:
   # GET /manager/stats
   - name: Manager stats with old date
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/stats"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -299,7 +299,7 @@ stages:
     response:
       status_code: 400
       body:
-        code: 1310
+        code: 1308
         dapi_errors: !anything
         detail: !anystr
         remediation: !anystr
@@ -315,7 +315,7 @@ stages:
   # GET /manager/stats/hourly
   - name: Hourly stats
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/hourly"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats/hourly"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -333,7 +333,7 @@ stages:
   # GET /manager/stats/weekly
   - name: Weekly stats
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/weekly"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats/weekly"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -370,7 +370,7 @@ stages:
   # GET /manager/stats/analysisd
   - name: Analysisd stats
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/analysisd"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats/analysisd"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -432,7 +432,7 @@ stages:
   # GET /manager/stats/remoted
   - name: Remoted stats
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/remoted"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats/remoted"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -457,7 +457,7 @@ stages:
   # GET /manager/logs
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -474,7 +474,7 @@ stages:
   # GET /manager/logs
   - name: Filters -> limit=4
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -501,7 +501,7 @@ stages:
   # GET /manager/logs
   - name: Filters -> limit=2, sort=-level
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -523,7 +523,7 @@ stages:
   # GET /manager/logs
   - name: Filters -> offset=3, limit=3
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -546,7 +546,7 @@ stages:
   # GET /manager/logs
   - name: Filters -> offset=3, type_log=info, limit=4
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -571,7 +571,7 @@ stages:
   # GET /manager/logs
   - name: Filters -> category=ossec-analysisd, limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -592,7 +592,7 @@ stages:
   # GET /manager/logs
   - name: Filters -> category=ossec-syscheckd, limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -618,7 +618,7 @@ stages:
   # GET /manager/logs/summary
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/logs/summary"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/logs/summary"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -662,7 +662,7 @@ stages:
   # GET /manager/files
   - name: Get ossec.conf
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -679,7 +679,7 @@ stages:
   # GET /manager/files
   - name: Get local rules
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -693,7 +693,7 @@ stages:
   # GET /manager/files
   - name: Get rules from ruleset
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -707,7 +707,7 @@ stages:
   # GET /manager/files
   - name: Get local decoder
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -721,7 +721,7 @@ stages:
   # GET /manager/files
   - name: Get decoder from ruleset
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -735,7 +735,7 @@ stages:
   # GET /manager/files
   - name: Get CDB list
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -749,7 +749,7 @@ stages:
   # GET /manager/files
   - name: Get file with wrong path
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -766,7 +766,7 @@ stages:
   # GET /manager/files
   - name: Get file with empty path
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -783,7 +783,7 @@ stages:
   # GET /manager/files
   - name: Get unexisting rules file with right path
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -803,7 +803,7 @@ stages:
   # GET /manager/files
   - name: Get unexisting decoder file with right path
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -823,7 +823,7 @@ stages:
   # GET /manager/files
   - name: Get unexisting list file with right path
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -848,7 +848,7 @@ stages:
   # PUT /manager/files
   - name: Upload ossec.conf
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: PUT
       data: "{ossec_conf}"
       headers:
@@ -871,7 +871,7 @@ stages:
   # PUT /manager/files
   - name: Upload new rules
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: PUT
       data: "<!-- Local rules -->\n <group name=\"local,\">\n    <!--   NEW RULE    -->\n    <rule id=\"111111\" level=\"5\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
       headers:
@@ -893,7 +893,7 @@ stages:
   # PUT /manager/files
   - name: Upload rules (overwrite=false)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: PUT
       data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716</if_sid>\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
       headers:
@@ -919,7 +919,7 @@ stages:
   # PUT /manager/files
   - name: Upload rules (overwrite=true)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: PUT
       data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716</if_sid>\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
       headers:
@@ -942,7 +942,7 @@ stages:
   # PUT /manager/files
   - name: Upload rules with XML syntax error (overwrite=true)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: PUT
       data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
       headers:
@@ -968,7 +968,7 @@ stages:
   # PUT /manager/files
   - name: Upload new decoder
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: PUT
       data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
       headers:
@@ -990,7 +990,7 @@ stages:
   # PUT /manager/files
   - name: Upload decoder (overwrite=false)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: PUT
       data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
       headers:
@@ -1016,7 +1016,7 @@ stages:
   # PUT /manager/files
   - name: Upload decoder (overwrite=true)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: PUT
       data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
       headers:
@@ -1039,7 +1039,7 @@ stages:
   # PUT /manager/files
   - name: Upload decoder with XML syntax error (overwrite=true)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: PUT
       data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\" NEW DECODER</program_name>\n </decoder>\n"
       headers:
@@ -1065,7 +1065,7 @@ stages:
   # PUT /manager/files
   - name: Upload new CDB list
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: PUT
       data: "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
       headers:
@@ -1087,7 +1087,7 @@ stages:
   # PUT /manager/files
   - name: Upload CDB list (overwrite=false)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: PUT
       data: "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
       headers:
@@ -1113,7 +1113,7 @@ stages:
   # PUT /manager/files
   - name: Upload CDB list (overwrite=true)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: PUT
       data: "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
       headers:
@@ -1136,7 +1136,7 @@ stages:
   # PUT /manager/files
   - name: Upload CDB list with a syntax error (overwrite=true)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: PUT
       data: ":write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
       headers:
@@ -1167,7 +1167,7 @@ stages:
   # DELETE /manager/files
   - name: Delete rules file
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1187,7 +1187,7 @@ stages:
   # DELETE /manager/files
   - name: Delete unexisting rules file
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1210,7 +1210,7 @@ stages:
   # DELETE /manager/files
   - name: Delete decoder file
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1230,7 +1230,7 @@ stages:
   # DELETE /manager/files
   - name: Delete unexisting decoder file
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1253,7 +1253,7 @@ stages:
   # DELETE /manager/files
   - name: Delete CDB list file
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1273,7 +1273,7 @@ stages:
   # DELETE /manager/files
   - name: Delete unexisting CDB list file
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1301,7 +1301,7 @@ stages:
   # GET /manager/configuration/validation
   - name: Request validation
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/validation"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/validation"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1326,7 +1326,7 @@ stages:
   # PUT /manager/files
   - name: Upload corrupted
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: PUT
       data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n  <rule id=\"111111\" level=\"XXX\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
       headers:
@@ -1340,7 +1340,7 @@ stages:
   # GET /manager/configuration/validation
   - name: Request validation
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/validation"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/validation"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1365,7 +1365,7 @@ stages:
 
   - name: Try to show the config of agentless/agentless in the manager
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/agentless/agentless"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/agentless/agentless"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1382,7 +1382,7 @@ stages:
 
   - name: Try to show the config of analysis/global in the manager
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/analysis/global"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/analysis/global"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1399,7 +1399,7 @@ stages:
 
   - name: Try to show the config of analysis/active_response in the manager
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/analysis/active_response"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/analysis/active_response"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1416,7 +1416,7 @@ stages:
 
   - name: Try to show the config of analysis/alerts in the manager
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/analysis/alerts"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/analysis/alerts"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1433,7 +1433,7 @@ stages:
 
   - name: Try to show the config of analysis/command in the manager
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/analysis/command"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/analysis/command"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1450,7 +1450,7 @@ stages:
 
   - name: Try to show the config of analysis/internal in the manager
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/analysis/internal"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/analysis/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1467,7 +1467,7 @@ stages:
 
   - name: Try to show the config of auth in the manager
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/auth/auth"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/auth/auth"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1484,7 +1484,7 @@ stages:
 
   - name: Try to show the config of com/internal in the manager
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/com/internal"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/com/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1501,7 +1501,7 @@ stages:
 
   - name: Try to show the config of csyslog/csyslog in the manager
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/csyslog/csyslog"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/csyslog/csyslog"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1518,7 +1518,7 @@ stages:
 
   - name: Try to show the config of integrator/integration in the manager
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/integrator/integration"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/integrator/integration"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1535,7 +1535,7 @@ stages:
 
   - name: Try to show the config of logcollector/localfile in the manager
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/logcollector/localfile"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/logcollector/localfile"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1552,7 +1552,7 @@ stages:
 
   - name: Try to show the config of logcollector/socket in the manager
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/logcollector/socket"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/logcollector/socket"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1568,7 +1568,7 @@ stages:
 
   - name: Try to show the config of logcollector/internal in the manager
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/logcollector/internal"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/logcollector/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1585,7 +1585,7 @@ stages:
 
   - name: Try to show the config of mail/global in the manager
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/mail/global"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/mail/global"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1602,7 +1602,7 @@ stages:
 
   - name: Try to show the config of mail/alerts in the manager
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/mail/alerts"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/mail/alerts"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1619,7 +1619,7 @@ stages:
 
   - name: Try to show the config of mail/internal in the manager
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/mail/internal"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/mail/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1636,7 +1636,7 @@ stages:
 
   - name: Try to show the config of monitor/internal in the manager
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/monitor/internal"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/monitor/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1653,7 +1653,7 @@ stages:
 
   - name: Try to show the config of request/remote in the manager
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/request/remote"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/request/remote"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1670,7 +1670,7 @@ stages:
 
   - name: Try to show the config of request/internal in the manager
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/request/internal"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/request/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1687,7 +1687,7 @@ stages:
 
   - name: Try to show the config of syscheck/syscheck in the manager
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/syscheck/syscheck"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/syscheck/syscheck"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1704,7 +1704,7 @@ stages:
 
   - name: Try to show the config of syscheck/rootcheck in the manager
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/syscheck/rootcheck"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/syscheck/rootcheck"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1721,7 +1721,7 @@ stages:
 
   - name: Try to show the config of syscheck/internal in the manager
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/syscheck/internal"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/syscheck/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1738,7 +1738,7 @@ stages:
 
   - name: Try to show the config of wmodules/wmodules in the manager
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/wmodules/wmodules"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/wmodules/wmodules"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1762,7 +1762,7 @@ stages:
   - name: Restart manager
     delay_before: 5
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/restart"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"

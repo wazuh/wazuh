@@ -14,7 +14,7 @@ stages:
 
   - name: Try to show the decoders of the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/decoders"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -27,9 +27,9 @@ stages:
           affected_items:
             - &full_item_decoders
               details: !anything
-              file: 0005-wazuh_decoders.xml
+              filename: 0005-wazuh_decoders.xml
               name: !anystr
-              path: !anystr
+              relative_dirname: !anystr
               position: !anyint
               status: !anystr
             - <<: *full_item_decoders
@@ -43,12 +43,12 @@ stages:
 
   - name: Try to show the decoders of the system (try q parameter to bypass a denied resource)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/decoders"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        q: 'file=0006-json_decoders.xml'
+        q: 'filename=0006-json_decoders.xml'
     response:
       status_code: 200
       body:
@@ -61,7 +61,7 @@ stages:
 
   - name: Try to show the decoders of the system (list)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/decoders"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -79,7 +79,7 @@ stages:
             - <<: *full_item_decoders
             - <<: *full_item_decoders
             - <<: *full_item_decoders
-              file: 0160-netscaler_decoders.xml
+              filename: 0160-netscaler_decoders.xml
           failed_items:
             - error:
                 code: 1504
@@ -98,7 +98,7 @@ stages:
 
   - name: Try to show the decoders files of the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -107,11 +107,11 @@ stages:
       body:
         data:
           affected_items:
-            - file: 0005-wazuh_decoders.xml
-              path: ruleset/decoders
+            - filename: 0005-wazuh_decoders.xml
+              relative_dirname: ruleset/decoders
               status: enabled
-            - file: 0160-netscaler_decoders.xml
-              path: ruleset/decoders
+            - filename: 0160-netscaler_decoders.xml
+              relative_dirname: ruleset/decoders
               status: enabled
           failed_items: []
           total_affected_items: !anyint
@@ -120,22 +120,22 @@ stages:
 
   - name: Try to show the decoders files of the system (list)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        file: 0005-wazuh_decoders.xml,0160-netscaler_decoders.xml
+        filename: 0005-wazuh_decoders.xml,0160-netscaler_decoders.xml
     response:
       status_code: 200
       body:
         data:
           affected_items:
-            - file: 0005-wazuh_decoders.xml
-              path: ruleset/decoders
+            - filename: 0005-wazuh_decoders.xml
+              relative_dirname: ruleset/decoders
               status: enabled
-            - file: 0160-netscaler_decoders.xml
-              path: ruleset/decoders
+            - filename: 0160-netscaler_decoders.xml
+              relative_dirname: ruleset/decoders
               status: enabled
           failed_items: []
           total_affected_items: !anyint
@@ -144,12 +144,12 @@ stages:
 
   - name: Try to show the decoders files of the system (no permissions)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        file: 0064-cisco-asa_decoders.xml,0100-fortigate_decoders.xml
+        filename: 0064-cisco-asa_decoders.xml,0100-fortigate_decoders.xml
     response:
       status_code: 400
       body: &permissions_denied
@@ -168,20 +168,20 @@ test_name: GET DECODERS FILES RBAC (Download)
 
 stages:
 
-  - name: Try get one decoder file
+  - name: Try to get one decoder file
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0005-wazuh_decoders.xml/download"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files/0005-wazuh_decoders.xml/download"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
       headers:
-        content-type: application/xml
+        content-type: "application/xml; charset=utf-8"
 
-  - name: Try get one decoder file (no permissions)
+  - name: Try to get one decoder file (no permissions)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0064-cisco-asa_decoders.xml/download"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files/0064-cisco-asa_decoders.xml/download"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -197,7 +197,7 @@ stages:
 
   - name: Try to show the groups of rules in the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/parents"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/parents"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET

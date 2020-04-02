@@ -41,10 +41,8 @@ def get_status():
                                       none_msg=f"Could not read processes status"
                                                f"{' in specified node' if node_id != 'manager' else ''}"
                                       )
-    try:
-        result.affected_items.append(status())
-    except WazuhError as e:
-        result.add_failed_item(id_=node_id, error=e)
+
+    result.affected_items.append(status())
     result.total_affected_items = len(result.affected_items)
 
     return result
@@ -80,42 +78,39 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
     first_date = previous_month(months)
     statfs_error = "ERROR: statfs('******') produced error: No such file or directory"
 
-    try:
-        for line in tail(common.ossec_log, 2000):
-            log_fields = get_ossec_log_fields(line)
-            if log_fields:
-                log_date, log_category, level, description = log_fields
+    for line in tail(common.ossec_log, 2000):
+        log_fields = get_ossec_log_fields(line)
+        if log_fields:
+            log_date, log_category, level, description = log_fields
 
-                if log_date < first_date:
-                    continue
+            if log_date < first_date:
+                continue
 
-                if category != 'all':
-                    if log_category:
-                        if log_category != category:
-                            continue
-                    else:
+            if category != 'all':
+                if log_category:
+                    if log_category != category:
                         continue
-                # We transform local time (ossec.log) to UTC with ISO8601 maintaining time integrity
-                log_line = {'timestamp': log_date.astimezone(timezone.utc),
-                            'tag': log_category, 'level': level, 'description': description}
-
-                if type_log == 'all':
-                    logs.append(log_line)
-                elif type_log.lower() == level.lower():
-                    if "ERROR: statfs(" in line:
-                        if statfs_error in logs:
-                            continue
-                        else:
-                            logs.append(statfs_error)
-                    else:
-                        logs.append(log_line)
                 else:
                     continue
+            # We transform local time (ossec.log) to UTC with ISO8601 maintaining time integrity
+            log_line = {'timestamp': log_date.astimezone(timezone.utc),
+                        'tag': log_category, 'level': level, 'description': description}
+
+            if type_log == 'all':
+                logs.append(log_line)
+            elif type_log.lower() == level.lower():
+                if "ERROR: statfs(" in line:
+                    if statfs_error in logs:
+                        continue
+                    else:
+                        logs.append(statfs_error)
+                else:
+                    logs.append(log_line)
             else:
-                if logs and line and log_category == logs[-1]['tag'] and level == logs[-1]['level']:
-                    logs[-1]['description'] += "\n" + line
-    except WazuhError as e:
-        result.add_failed_item(id_=node_id, error=e)
+                continue
+        else:
+            if logs and line and log_category == logs[-1]['tag'] and level == logs[-1]['level']:
+                logs[-1]['description'] += "\n" + line
 
     data = process_array(logs, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by,
@@ -236,7 +231,7 @@ def get_file(path, validate=False):
 
     # check if file exists
     if not exists(full_path):
-        raise WazuhError(1006)
+        raise WazuhError(1906)
 
     try:
         with open(full_path) as f:

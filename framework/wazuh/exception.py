@@ -20,7 +20,8 @@ class WazuhException(Exception):
         # Wazuh: 0999 - 1099
         999: 'Incompatible version of Python',
         1000: {'message': 'Wazuh Internal Error',
-               'remediation': 'Please, check `WAZUH_HOME/logs/ossec.log` to get more information about the error'},
+               'remediation': 'Please, check `WAZUH_HOME/logs/ossec.log`, `WAZUH_HOME/logs/cluster.log` and '
+                              '`WAZUH_HOME/logs/api.log` to get more information about the error'},
         1001: 'Error importing module',
         1002: 'Error executing command',
         1003: 'Command output not in json',
@@ -123,12 +124,9 @@ class WazuhException(Exception):
         1307: {'message': 'Invalid parameters',
                'remediation': 'Please, check that the update is correct, there is a problem while reading the results, contact us at [official repository](https://github.com/wazuh/wazuh/issues)'
                },
-        1308: {'message': 'Stats file has not been created yet',
-              'remediation': 'Stats files are generated at 12 PM. '
-              'Please, try again later'},
+        1308: {'message': 'Stats file does not exist',
+               'remediation': 'Stats files are usually generated at 12 PM on a daily basis'},
         1309: 'Statistics file damaged',
-        1310: {'message': 'Stats file does not exist',
-              'remediation': 'Please, try to use another date'},
 
         # Utils: 1400 - 1499
         1400: 'Invalid offset',
@@ -375,14 +373,14 @@ class WazuhException(Exception):
                },
         1908: {'message': 'Error validating configuration',
                'remediation': 'Please, fix the corrupted files'
-              },
+               },
         1909: {'message': 'Content of file is empty',
                'remediation': 'Try to upload another non-empty file'},
         1910: {'message': 'Content-type header is mandatory',
                'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/current/user-manual/api/reference.html#update-local-file-at-any-cluster-node)'
                               ' to get more information about how to configure a cluster'},
         1911: {'message': 'Error parsing body request to UTF-8',
-               'remediation': 'Please, check if the file content to be uploaded is right'},
+               'remediation': 'Please, check if the file content is valid UTF-8'},
         1912: {'message': 'Body is empty',
                'remediation': 'Please, check the content of the file to be uploaded'},
 
@@ -675,13 +673,6 @@ class WazuhError(WazuhException):
         result = super().to_dict()
         result['ids'] = list(self.ids)
 
-        return result
-
-    def __or__(self, other):
-        result: WazuhError = super().__or__(other)
-        if isinstance(result, WazuhError):
-            if hasattr(other, 'ids'):
-                result._ids = self.ids | other.ids
         return result
 
 

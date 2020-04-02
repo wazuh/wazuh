@@ -15,7 +15,7 @@ class Status(Enum):
     S_ENABLED = 'enabled'
     S_DISABLED = 'disabled'
     S_ALL = 'all'
-    SORT_FIELDS = ['file', 'path', 'name', 'position', 'status']
+    SORT_FIELDS = ['filename', 'relative_dirname', 'name', 'position', 'status']
 
 
 def add_detail(detail, value, details):
@@ -54,7 +54,7 @@ def load_decoders_from_file(decoder_file, decoder_path, decoder_status):
         for xml_decoder in list(root):
             # New decoder
             if xml_decoder.tag.lower() == "decoder":
-                decoder = {'file': decoder_file, 'path': decoder_path, 'status': decoder_status,
+                decoder = {'filename': decoder_file, 'relative_dirname': decoder_path, 'status': decoder_status,
                            'name': xml_decoder.attrib['name'], 'position': position, 'details': dict()}
                 position += 1
 
@@ -71,31 +71,3 @@ def load_decoders_from_file(decoder_file, decoder_path, decoder_status):
         raise WazuhInternalError(1501, extra_message=os.path.join('WAZUH_HOME', decoder_path, decoder_file))
 
     return decoders
-
-
-def read_decoders_files():
-    tmp_data = list()
-    tags = ['decoder_include', 'decoder_exclude']
-    exclude_filenames = list()
-    for tag in tags:
-        if tag in ruleset_conf:
-            item_status = Status.S_DISABLED if tag == 'decoder_exclude' else Status.S_ENABLED
-            items = ruleset_conf[tag] if type(ruleset_conf[tag]) is list else [ruleset_conf[tag]]
-
-            for item in items:
-                item_name = os.path.basename(item)
-                full_dir = os.path.dirname(item)
-                item_dir = os.path.relpath(full_dir if full_dir else common.ruleset_rules_path,
-                                           start=common.ossec_path)
-                if tag == 'decoder_exclude':
-                    exclude_filenames.append(item_name)
-                else:
-                    tmp_data.append({'file': item_name, 'path': item_dir, 'status': item_status})
-
-    tag = 'decoder_dir'
-    if tag in ruleset_conf:
-        items = ruleset_conf[tag] if type(ruleset_conf[tag]) is list else [ruleset_conf[tag]]
-
-        for item_dir in items:
-            all_decoders = "{0}/{1}/*.xml".format(common.ossec_path, item_dir)
-            item_format(tmp_data, all_decoders, exclude_filenames)

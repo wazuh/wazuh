@@ -1,11 +1,10 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
 import sys
-from functools import wraps
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -20,18 +19,12 @@ with patch('wazuh.common.ossec_uid'):
         import wazuh.rbac.decorators
         del sys.modules['wazuh.rbac.orm']
         del sys.modules['api']
-
-        def RBAC_bypasser(**kwargs_decorator):
-            def decorator(f):
-                @wraps(f)
-                def wrapper(*args, **kwargs):
-                    return f(*args, **kwargs)
-                return wrapper
-            return decorator
+        from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+
         from wazuh.active_response import run_command
 
-# All necessary params
+
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
 
@@ -51,7 +44,7 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
 @patch("wazuh.ossec_queue.OssecQueue._connect")
 @patch("wazuh.syscheck.OssecQueue._send", return_value='1')
 @patch("wazuh.ossec_queue.OssecQueue.close")
-@patch('wazuh.common.ossec_path', new='wazuh/tests/data')
+@patch('wazuh.common.ossec_path', new=test_data_path)
 def test_run_command(mock_close,  mock_send, mock_conn, message_exception, send_exception, agent_id, command,
                      arguments, custom):
     """Verify the proper operation of active_response module.

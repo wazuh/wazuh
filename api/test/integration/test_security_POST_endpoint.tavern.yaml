@@ -17,7 +17,7 @@ stages:
   # POST /security/roles
   - name: Add a role to the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -42,7 +42,7 @@ stages:
   # POST /security/roles
   - name: Add a role to the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -67,7 +67,7 @@ stages:
   # POST /security/roles
   - name: Add a role to the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -92,7 +92,7 @@ stages:
   # POST /security/roles
   - name: Add an existent role (name) to the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -119,7 +119,7 @@ stages:
   # POST /security/roles
   - name: Add an existent role (rule) to the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -150,7 +150,7 @@ stages:
   # POST /security/policies
   - name: Add a policy to the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -187,7 +187,7 @@ stages:
   # POST /security/policies
   - name: Add a policy to the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -222,7 +222,7 @@ stages:
   # POST /security/policies
   - name: Add a policy to the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -257,7 +257,7 @@ stages:
   # POST /security/policies
   - name: Add an existent policy (name) to the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -290,7 +290,7 @@ stages:
   # POST /security/policies
   - name: Add an existent policy (policy) to the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -323,7 +323,7 @@ stages:
   # POST /security/policies
   - name: Add an invalid policy to the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -356,7 +356,7 @@ stages:
   # POST /security/policies
   - name: Add an invalid policy to the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -383,12 +383,12 @@ stages:
   # POST /security/roles/{role_id}/policies/{policy}
   - name: Create link role-policy
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/4/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/11/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        policy_ids: 2
+        policy_ids: 12
     response:
       status_code: 200
       body:
@@ -399,12 +399,12 @@ stages:
   # POST /security/roles/{role_id}/policies/{policy}
   - name: Create link role-policy
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/3/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/10/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        policy_ids: 3
+        policy_ids: 13
     response:
       status_code: 200
       body:
@@ -415,12 +415,12 @@ stages:
   # POST /security/roles/{non-existent role_id}/policies/{policy}
   - name: Create link role-policy (non-existent role)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/999/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        policy_ids: 2,3
+        policy_ids: 12,13
     response:
       status_code: 200
       body: &error
@@ -439,7 +439,7 @@ stages:
   # POST /security/roles/{role_id}/policies/{non-existent policy}
   - name: Create link role-policy (non-existent policy)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/2/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/9/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -464,12 +464,12 @@ stages:
   # POST /security/roles/{non-existent role_id}/policies/{non-existent policy}
   - name: Create link role-policy (Both non-existent)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/999/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        policy_ids: 999,2
+        policy_ids: 999,12
     response:
       status_code: 200
       body:
@@ -479,10 +479,34 @@ stages:
 test_name: POST /security/user/{username}/roles/{role_id}
 
 stages:
+  - name: Create a new user (empty body)
+    request: &post_users_request
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+    response:
+      status_code: 400
+      body: &error_spec
+        detail: !anystr
+        status: !anyint
+        title: !anystr
+        type: !anystr
+
+  - name: Create a new user (insecure password)
+    request:
+      <<: *post_users_request
+      json:
+        username: "new_user"
+        password: "new_user"
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
 
   - name: Create a new user (secure password)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       json:
@@ -492,9 +516,115 @@ stages:
     response:
       status_code: 200
 
+  - name: Create a new user (user already exists)
+    request:
+      <<: *post_users_request
+      json:
+        username: "new_user"
+        password: "new_user1B!"
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 5000
+                message: !anystr
+                remediation: !anystr
+              id:
+                - new_user
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
+
+  - name: Create a new user (invalid parameters)
+    request:
+      <<: *post_users_request
+      json:
+        user: "new_user1"
+        pass: "new_user11A"
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Create a new user (extra parameter)
+    request:
+      <<: *post_users_request
+      json:
+        username: "new_user1"
+        password: "new_user11A"
+        pass: "extra"
+    response:
+      status_code: 400
+      body:
+        code: 5005
+
+  - name: Create a new user (extra parameters)
+    request:
+      <<: *post_users_request
+      json:
+        pass: "extra"
+        username: "new_user1"
+        pass1: "extra"
+        pass2: "extra"
+        pass3: "extra"
+        pass4: "extra"
+        pass5: "extra"
+        pass6: "extra"
+        password: "new_user11A"
+        pass7: "extra"
+    response:
+      status_code: 400
+      body:
+        code: 5005
+
+  - name: Create a new user (missing password parameter)
+    request:
+      <<: *post_users_request
+      json:
+        username: "new_user1"
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Create a new user (missing username parameter)
+    request:
+      <<: *post_users_request
+      json:
+        password: "new_user11A"
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Create a new user (invalid username parameter)
+    request:
+      <<: *post_users_request
+      json:
+        password: "new_user11A"
+        username: 1
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Create a new user (invalid password parameter)
+    request:
+      <<: *post_users_request
+      json:
+        password: 1
+        username: "new_user1"
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
   - name: Create a new user (secure password)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       json:
@@ -507,7 +637,7 @@ stages:
   # POST /security/user/{username}/roles/{role_id}
   - name: Create link user-role
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/user/new_user/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/new_user/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -523,7 +653,7 @@ stages:
   # POST /security/user/{username}/roles/{role_id}
   - name: Create link user-role
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/user/new_user1/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/new_user1/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -539,7 +669,7 @@ stages:
   # POST /security/user/{username}/roles/{role_id}
   - name: Create link user-role (non-existent roles)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/user/new_user1/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/new_user1/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -564,7 +694,7 @@ stages:
   # POST /security/user/{username}/roles/{role_id}
   - name: Create link user-role (valid roles, already linked roles, non-existent roles)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/user/new_user/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/new_user/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST

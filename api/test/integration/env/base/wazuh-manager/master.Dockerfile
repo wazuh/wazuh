@@ -7,12 +7,12 @@ ARG wazuhbranch
 RUN apt-get update && apt-get install -y supervisor
 ADD base/wazuh-manager/supervisord.conf /etc/supervisor/conf.d/
 
-RUN apt-get update && apt-get install python python3 git gnupg2 gcc make vim libc6-dev curl policycoreutils automake autoconf libtool apt-transport-https lsb-release python-cryptography -y && curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | apt-key add - && echo "deb https://s3-us-west-1.amazonaws.com/packages-dev.wazuh.com/staging/apt/ unstable main" | tee -a /etc/apt/sources.list.d/wazuh.list
+RUN apt-get update && apt-get install python python3 git gnupg2 gcc make vim libc6-dev curl policycoreutils automake autoconf libtool apt-transport-https lsb-release python-cryptography sqlite3 -y && curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | apt-key add - && echo "deb https://s3-us-west-1.amazonaws.com/packages-dev.wazuh.com/staging/apt/ unstable main" | tee -a /etc/apt/sources.list.d/wazuh.list
 
 RUN git clone https://github.com/wazuh/wazuh && cd /wazuh && git checkout $wazuhbranch
 COPY base/wazuh-manager/preloaded-vars.conf /wazuh/etc/preloaded-vars.conf
 RUN /wazuh/install.sh
-RUN sed -i 's,"mode": \("white"\|"black"\),"mode": "black",g' /var/ossec/framework/python/lib/python3.7/site-packages/api-3.11.0-py3.7.egg/api/configuration.py
+RUN sed -i 's,"mode": \("white"\|"black"\),"mode": "black",g' /var/ossec/framework/python/lib/python3.7/site-packages/api-4.0.0-py3.7.egg/api/configuration.py
 #####
 
 COPY configurations/base/wazuh-master/config/ossec.conf /var/ossec/etc/ossec.conf
@@ -37,7 +37,8 @@ COPY configurations/syscheck/wazuh-master/healthcheck/healthcheck.py /tmp/health
 FROM base AS wazuh-env-syscollector
 
 FROM base AS wazuh-env-security
-COPY configurations/security/wazuh-master/rbac.db /var/ossec/api/configuration/security/rbac.db
+COPY configurations/security/wazuh-master/schema_security_test.sql /var/ossec/api/configuration/security/schema_security_test.sql
+RUN sqlite3 /var/ossec/api/configuration/security/rbac.db < /var/ossec/api/configuration/security/schema_security_test.sql
 
 FROM base AS wazuh-env-manager
 COPY configurations/manager/wazuh-master/ossec-totals-27.log /var/ossec/stats/totals/2019/Aug/ossec-totals-27.log
@@ -47,14 +48,16 @@ FROM base AS wazuh-env-cluster
 COPY configurations/cluster/wazuh-master/ossec-totals-27.log /var/ossec/stats/totals/2019/Aug/ossec-totals-27.log
 
 FROM base as wazuh-env-security_white_rbac
-COPY configurations/rbac/security/rbac.db /var/ossec/api/configuration/security/rbac.db
+COPY configurations/security/wazuh-master/schema_security_test.sql /var/ossec/api/configuration/security/schema_security_test.sql
+RUN sqlite3 /var/ossec/api/configuration/security/rbac.db < /var/ossec/api/configuration/security/schema_security_test.sql
 ADD configurations/rbac/security/white_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 COPY configurations/base/wazuh-master/healthcheck/healthcheck_daemons.py /tmp/healthcheck.py
 COPY configurations/base/wazuh-master/healthcheck/daemons_check.txt /tmp/daemons_check.txt
 
 FROM base as wazuh-env-security_black_rbac
-COPY configurations/rbac/security/rbac.db /var/ossec/api/configuration/security/rbac.db
+COPY configurations/security/wazuh-master/schema_security_test.sql /var/ossec/api/configuration/security/schema_security_test.sql
+RUN sqlite3 /var/ossec/api/configuration/security/rbac.db < /var/ossec/api/configuration/security/schema_security_test.sql
 ADD configurations/rbac/security/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 COPY configurations/base/wazuh-master/healthcheck/healthcheck_daemons.py /tmp/healthcheck.py
