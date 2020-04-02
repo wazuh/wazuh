@@ -2646,17 +2646,47 @@ static void test_fim_whodata_event_file_missing(void **state) {
     #endif
     errno = ENOENT;
 
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "./test/test.file");
-    will_return(__wrap_fim_db_get_path, NULL);
+    char **paths = calloc(4, sizeof(char *));
+    paths[0] = strdup("/testdir/dir1/file1");
+    paths[1] = strdup("/testdir/dir1/file2");
+    paths[2] = strdup("/testdir/dir1/file3");
+    paths[3] = NULL;
 
-    expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
-    will_return(__wrap_fim_db_get_path_range, NULL);
-    will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
+#ifdef TEST_WINAGENT
+    // Inside fim_process_missing_entry
+    {
+        expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+        expect_string(__wrap_fim_db_get_path, file_path, "./test/test.file");
+        will_return(__wrap_fim_db_get_path, NULL);
 
+        expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+        expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+        will_return(__wrap_fim_db_get_path_range, NULL);
+        will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
+    }
+#else
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
+    will_return(__wrap_fim_db_get_paths_from_inode, paths);
+
+    for(int i = 0; paths[i]; i++) {
+        // Inside fim_process_missing_entry
+        {
+            expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+            expect_string(__wrap_fim_db_get_path, file_path, paths[i]);
+            will_return(__wrap_fim_db_get_path, NULL);
+
+            expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+            expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+            will_return(__wrap_fim_db_get_path_range, NULL);
+            will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
+        }
+    }
+#endif
     fim_whodata_event(fim_data->w_evt);
-    errno = 0;
+    free (paths);
+    errno=0;
 }
 
 static void test_fim_process_missing_entry_no_data(void **state) {
