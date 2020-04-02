@@ -9,9 +9,6 @@ sed -i "s:<node_name>node01</node_name>:<node_name>$2</node_name>:g" /var/ossec/
 sed -i "s:<use_source_ip>yes</use_source_ip>:<use_source_ip>no</use_source_ip>:g" /var/ossec/etc/ossec.conf
 sed -i "s:<protocol>udp</protocol>:<protocol>tcp</protocol>:g" /var/ossec/etc/ossec.conf
 
-# Add debug wazuh_db debug level 2
-echo "wazuh_db.debug=2" >> /var/ossec/etc/local_internal_options.conf
-
 if [ "$3" != "master" ]; then
     sed -i "s:<node_type>master</node_type>:<node_type>worker</node_type>:g" /var/ossec/etc/ossec.conf
 else
