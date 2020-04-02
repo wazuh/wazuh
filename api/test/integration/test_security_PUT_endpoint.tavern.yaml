@@ -55,31 +55,18 @@ stages:
           affected_items:
             - id: 11
               name: testModified2
-              policies:
-                - id: 14
-                  name: administratorPolicy
-                  policy:
-                    actions:
-                      - agent:update
-                      - agent:delete
-                    effect: allow
-                    resources:
-                      - agent:id:*
-                - id: 15
-                  name: normalPolicy
-                  policy:
-                    actions:
-                      - agent:update
-                      - agent:delete
-                    effect: deny
-                    resources:
-                      - agent:id:*
               rule:
                 MATCH:
                   definition: administratorRule
-          failed_items: []
+              policies:
+                - 15
+                - 14
+              users:
+                - normal
+                - rbac
           total_affected_items: 1
           total_failed_items: 0
+          failed_items: []
         message: Role updated correctly
 
   # PUT /security/roles/{role_id}
