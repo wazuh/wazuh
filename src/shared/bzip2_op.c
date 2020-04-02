@@ -19,20 +19,20 @@ int bzip2_compress(const char *file, const char *filebz2) {
     int bzerror;
 
     if (!file || !filebz2) {
-        return OS_INVALID;
+        return -1;
     }
 
     input = fopen(file, "rb");
     if (!input) {
         merror(FOPEN_ERROR, file, errno, strerror(errno));
-        return OS_INVALID;
+        return -1;
     }
 
     output = fopen(filebz2, "wb" );
     if (!output) {
         merror(FOPEN_ERROR, filebz2, errno, strerror(errno));
         fclose(input);
-        return OS_INVALID;
+        return -1;
     }
 
     compressfile = BZ2_bzWriteOpen(&bzerror, output, 9, 0, 1);
@@ -41,7 +41,7 @@ int bzip2_compress(const char *file, const char *filebz2) {
                 bzerror, errno, strerror(errno));
         fclose(input);
         fclose(output);
-        return OS_INVALID;
+        return -1;
     }
 
     char buf[2048];
@@ -55,7 +55,7 @@ int bzip2_compress(const char *file, const char *filebz2) {
             fclose(input);
             fclose(output);
             BZ2_bzReadClose(&bzerror, compressfile);
-            return OS_INVALID;
+            return -1;
         }
     }
 
@@ -72,7 +72,7 @@ int bzip2_compress(const char *file, const char *filebz2) {
         fclose(input);
         fclose(output);
         BZ2_bzReadClose(&bzerror, compressfile);
-        return OS_INVALID;
+        return -1;
     }
 
     fclose(input);
@@ -90,20 +90,20 @@ int bzip2_uncompress(const char *filebz2, const char *file) {
     int nUnused = 0;
 
     if (!file || !filebz2) {
-        return OS_INVALID;
+        return -1;
     }
 
     input = fopen(filebz2, "rb");
     if (!input) {
         merror(FOPEN_ERROR, file, errno, strerror(errno));
-        return OS_INVALID;
+        return -1;
     }
 
     output = fopen(file, "wb" );
     if (!output) {
         merror(FOPEN_ERROR, filebz2, errno, strerror(errno));
         fclose(input);
-        return OS_INVALID;
+        return -1;
     }
 
     compressfile = BZ2_bzReadOpen(&bzerror, input, 0, 0, unused, nUnused);
@@ -111,7 +111,7 @@ int bzip2_uncompress(const char *filebz2, const char *file) {
         merror("BZ2_bzReadOpen(%d): (%d)-%s", bzerror, errno, strerror(errno));
         fclose(input);
         fclose(output);
-        return OS_INVALID;
+        return -1;
     }
 
     char buf[2048];
@@ -127,7 +127,7 @@ int bzip2_uncompress(const char *filebz2, const char *file) {
                 fclose(input);
                 fclose(output);
                 BZ2_bzReadClose(&bzerror, compressfile);
-                return OS_INVALID;
+                return -1;
             }
         }
     } while (readbuff > 0);
