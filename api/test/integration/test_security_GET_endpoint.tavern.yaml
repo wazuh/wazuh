@@ -34,7 +34,7 @@ stages:
               policies: !anything
               rule: !anything
           failed_items: []
-          total_affected_items: 1
+          total_affected_items: !anyint
           total_failed_items: 0
         message: All specified roles were shown
 
@@ -52,7 +52,7 @@ stages:
           affected_items:
             - <<: *roles
             - <<: *roles
-          total_affected_items: 2
+          total_affected_items: !anyint
       save:
         body:
           second_role_id: data.affected_items.1.id
@@ -73,7 +73,7 @@ stages:
           - id: !int "{second_role_id}"
             name: "{second_role_name}"
           - <<: *roles
-          total_affected_items: 2
+          total_affected_items: !anyint
 
   # GET /security/roles
   - name: Try to show the roles of the system, without limit

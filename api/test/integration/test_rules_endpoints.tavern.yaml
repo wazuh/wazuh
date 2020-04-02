@@ -1360,7 +1360,7 @@ stages:
         data:
           affected_items: []
           failed_items: []
-          total_affected_items: 1
+          total_affected_items: 0
           total_failed_items: 0
 
   - name: Invalid filter

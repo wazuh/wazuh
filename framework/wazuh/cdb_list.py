@@ -39,11 +39,11 @@ def get_lists(path=None, offset=0, limit=common.database_limit, sort_by=None, so
                           'relative_dirname': os.path.dirname(rel_p),
                           'filename': os.path.split(rel_p)[1]})
 
-    result.affected_items = process_array(lists, search_text=search_text, search_in_fields=search_in_fields,
-                                          complementary_search=complementary_search, sort_by=sort_by,
-                                          sort_ascending=sort_ascending, offset=offset, limit=limit,
-                                          allowed_sort_fields=['relative_dirname', 'filename'])['items']
-    result.total_affected_items += len(result.affected_items)
+    data = process_array(lists, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                         offset=offset, limit=limit, allowed_sort_fields=['relative_dirname', 'filename'])
+    result.affected_items = data['items']
+    result.total_affected_items = data['totalItems']
 
     return result
 
@@ -77,9 +77,10 @@ def get_path_lists(path=None, offset=0, limit=common.database_limit, sort_by=Non
                os.path.join(item['relative_dirname'], item['filename']) not in path]):
             lists.remove(item)
 
-    result.affected_items = process_array(lists, search_text=search_text, search_in_fields=search_in_fields,
-                                          complementary_search=complementary_search, sort_by=sort_by,
-                                          sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
-    result.total_affected_items += len(result.affected_items)
+    data = process_array(lists, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                         offset=offset, limit=limit)
+    result.affected_items = data['items']
+    result.total_affected_items = data['totalItems']
 
     return result
