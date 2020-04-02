@@ -3,7 +3,7 @@ test_name: GET /agents
 
 marks:
   - usefixtures:
-    - base_tests
+    - agents_tests
   - xfail # STAGE (Filter by agent status 2) XFAILS DUE TO https://github.com/wazuh/wazuh/issues/4825
 
 includes:

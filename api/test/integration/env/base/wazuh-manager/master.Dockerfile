@@ -28,6 +28,10 @@ COPY configurations/base/wazuh-master/healthcheck/agent_control_check.txt /tmp/a
 ADD base/wazuh-manager/entrypoint.sh /scripts/entrypoint.sh
 
 FROM base AS wazuh-env-base
+
+FROM base AS wazuh-env-agents
+COPY configurations/agents/test_custom_upgrade_3.10.2.wpk /var/ossec/test_custom_upgrade_3.10.2.wpk
+
 FROM base AS wazuh-env-ciscat
 FROM base AS wazuh-env-sca
 
@@ -63,11 +67,11 @@ RUN /scripts/configuration_rbac.sh
 COPY configurations/base/wazuh-master/healthcheck/healthcheck_daemons.py /tmp/healthcheck.py
 COPY configurations/base/wazuh-master/healthcheck/daemons_check.txt /tmp/daemons_check.txt
 
-FROM base as wazuh-env-agents_white_rbac
+FROM wazuh-env-agents as wazuh-env-agents_white_rbac
 ADD configurations/rbac/agents/white_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
-FROM base as wazuh-env-agents_black_rbac
+FROM wazuh-env-agents as wazuh-env-agents_black_rbac
 ADD configurations/rbac/agents/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 

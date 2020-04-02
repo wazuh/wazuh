@@ -1392,7 +1392,7 @@ class Agent:
         else:
             raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
 
-    def upgrade_custom(self, file_path, installer, debug=False, show_progress=None, chunk_size=None, rl_timeout=-1):
+    def upgrade_custom(self, file_path, installer=None, debug=False, show_progress=None, chunk_size=None, rl_timeout=-1):
         """Upgrade agent using a custom WPK file.
         """
         if self.id == "000":
@@ -1411,6 +1411,8 @@ class Agent:
 
         # Send installing command
         s = OssecSocket(common.REQUEST_SOCKET)
+        installer = installer if installer is not None \
+            else 'upgrade.bat' if self.os['platform'] == 'windows' else 'upgrade.sh'
         msg = "{0} com upgrade {1} {2}".format(str(self.id).zfill(3), sending_result[1], installer)
         s.send(msg.encode())
         if debug:

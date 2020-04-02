@@ -22,10 +22,11 @@ def build_and_up(env: str):
 
 
 def down_env():
-    pwd = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'env')
-    os.chdir(pwd)
-    current_process = subprocess.Popen(["docker-compose", "down", "-t", "0"])
-    current_process.wait()
+    # pwd = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'env')
+    # os.chdir(pwd)
+    # current_process = subprocess.Popen(["docker-compose", "down", "-t", "0"])
+    # current_process.wait()
+    pass
 
 
 def check_health(interval=10, node_type='master', agents=None):
@@ -46,6 +47,20 @@ def check_health(interval=10, node_type='master', agents=None):
 @pytest.fixture(name="base_tests", scope="session")
 def environment_base():
     values = build_and_up("base")
+    while values['retries'] < values['max_retries']:
+        health = check_health()
+        if health:
+            time.sleep(10)
+            yield
+            break
+        else:
+            values['retries'] += 1
+    down_env()
+
+
+@pytest.fixture(name="agents_tests", scope="session")
+def environment_agents():
+    values = build_and_up("agents")
     while values['retries'] < values['max_retries']:
         health = check_health()
         if health:

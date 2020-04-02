@@ -3,7 +3,7 @@ test_name: PUT /agents/group
 
 marks:
   - usefixtures:
-    - base_tests
+    - agents_tests
 
 includes:
  - !include common.yaml
@@ -550,10 +550,6 @@ stages:
 ---
 test_name: PUT /agents/{agent_id}/upgrade
 
-# SKIPPED UNTIL UPGRADES ARE WORKING CORRECTLY
-marks:
-  - skip
-
 stages:
 
     # PUT /agents/002/upgrade
@@ -599,6 +595,8 @@ stages:
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        force: True
     response:
       status_code: 200
       body:
@@ -615,7 +613,7 @@ stages:
     response:
       status_code: 400
       body:
-        code: 1716
+        code: 1749
 
     # PUT /agents/003/upgrade
   - name: Downgrade agent to an specific version using force
@@ -657,6 +655,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         wpk_repo: "wazuh_agent_v3.9.0_linux_x86_64.wpk"
+        force: true
     response:
       status_code: 200
       body:
@@ -665,43 +664,48 @@ stages:
 ---
 test_name: PUT /agents/{agent_id}/upgrade_custom
 
-# SKIPPED UNTIL UPGRADES ARE WORKING CORRECTLY
-marks:
-  - skip
-
 stages:
 
-    # PUT /agents/002/upgrade_custom?installer=agent_upgrade.py&file_path=/var/ossec
+    # PUT /agents/002/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
   - name: Try to customly upgrade a not existing agent
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/999/upgrade_custom?installer=agent_upgrade.py&file_path=/var/ossec"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/999/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        installer: upgrade.sh
+        file_path: "{custom_wpk_path:s}"
     response:
       status_code: 400
       body:
         code: 1701
 
-    # PUT /agents/000/upgrade_custom?installer=agent_upgrade.py&file_path=/var/ossec
+    # PUT /agents/000/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
   - name: Try to customly upgrade agent 000 (manager)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/upgrade_custom?installer=agent_upgrade.py&file_path=/var/ossec"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        installer: upgrade.sh
+        file_path: "{custom_wpk_path:s}"
     response:
       status_code: 400
       body:
         code: 1703
 
-    # PUT /agents/wrong_id/upgrade_custom?installer=agent_upgrade.py&file_path=/var/ossec
+    # PUT /agents/wrong_id/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
   - name: Try to customly upgrade an agent using an invalid id
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/wrong_id/upgrade_custom?installer=agent_upgrade.py&file_path=/var/ossec"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/wrong_id/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        installer: upgrade.sh
+        file_path: "{custom_wpk_path:s}"
     response:
       status_code: 400
       body:
@@ -719,15 +723,69 @@ stages:
       body:
         code: 1307
 
-    # PUT /agents/007/upgrade_custom?installer=wa&file_path=/var/ossec
-  - name: Customly upgrade an agent
+    # PUT /agents/003/upgrade_custom?installer=invalid.sh&file_path=custom_wpk_path
+  - name: Try to customly upgrade an agent with an invalid installer
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/006/upgrade_custom?wait_for_complete=true&installer=agent_upgrade.py&file_path=/var/ossec"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/003/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        installer: invalid.sh
+        file_path: "{custom_wpk_path:s}"
+    response:
+      status_code: 400
+      body:
+        code: 1716
+
+    # PUT /agents/007/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
+  - name: Customly upgrade agent 007 selecting installer
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/007/upgrade_custom?wait_for_complete=true"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        installer: upgrade.sh
+        file_path: "{custom_wpk_path:s}"
     response:
       status_code: 200
       body:
-        message: !anystr
-    delay_after: 30
+        message: "Installation started"
+
+    # PUT /agents/008/upgrade_custom?file_path=custom_wpk_path
+  - name: Customly upgrade agent 008 using default installer
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/008/upgrade_custom?wait_for_complete=true"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        file_path: "{custom_wpk_path:s}"
+    response:
+      status_code: 200
+      body:
+        message: "Installation started"
+    delay_after: 60
+
+ - name: Get agent 007 upgrade result
+   request:
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/007/upgrade_result?wait_for_complete=true"
+     method: GET
+     headers:
+       Authorization: "Bearer {test_login_token}"
+   response:
+     status_code: 200
+     body:
+       message: Agent upgraded successfully
+
+ - name: Get agent 008 upgrade result
+   request:
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/008/upgrade_result?wait_for_complete=true"
+     method: GET
+     headers:
+       Authorization: "Bearer {test_login_token}"
+   response:
+     status_code: 200
+     body:
+       message: Agent upgraded successfully

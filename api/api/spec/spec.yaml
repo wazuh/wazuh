@@ -4124,14 +4124,14 @@ components:
     file_path:
       in: query
       name: file_path
-      description: Path to the WPK file. The file must be on a folder on the Wazuh's installation directory (by default, <code>/var/ossec</code>).
+      description: Full path to the WPK file. The file must be on a folder on the Wazuh's installation directory (by default, <code>/var/ossec</code>).
       schema:
         type: string
         format: path
     installer:
       in: query
       name: installer
-      description: Installation script.
+      description: Installation script. Default is <code>upgrade.sh</code> or <code>upgrade.bat</code> for windows agents.
       schema:
         type: string
         format: alphanumeric
