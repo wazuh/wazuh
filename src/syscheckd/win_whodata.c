@@ -125,7 +125,7 @@ int check_object_sacl(char *obj, int is_file);
 int whodata_hash_add(OSHash *table, char *id, void *data, char *tag);
 void notify_SACL_change(char *dir);
 int whodata_path_filter(char **path);
-void whodata_adapt_path(char **path);
+void whodata_adapt_path(char **path, int build);
 int whodata_check_arch();
 
 // Whodata list operations
@@ -1480,26 +1480,47 @@ char *get_whodata_path(const short unsigned int *win_path) {
 }
 
 int whodata_path_filter(char **path) {
+
     if (check_removed_file(*path)) {
         mdebug2(FIM_DISCARD_RECYCLEBIN, *path);
         return 1;
     }
 
     if (sys_64) {
-        whodata_adapt_path(path);
+        whodata_adapt_path(path, syscheck.win_build);
     }
 
     return 0;
 }
 
-void whodata_adapt_path(char **path) {
+
+void whodata_adapt_path(char **path, int build) {
     const char *system_32 = ":\\windows\\system32";
     const char *system_wow64 = ":\\windows\\syswow64";
     const char *system_native = ":\\windows\\sysnative";
     char *new_path = NULL;
+    int win7build = 7600;
+    int i;
+
+    const char * exept_all[] = {
+        ":\\windows\\system32\\catroot",
+        ":\\windows\\system32\\catroot2",
+        ":\\windows\\system32\\drivers\\etc",
+        ":\\windows\\system32\\logfiles",
+        ":\\windows\\system32\\spool",
+        NULL
+    };
+
+    const char * exept_win7 = ":\\windows\\system32\\driverstore";
 
     if (strstr(*path, system_32)) {
-        new_path = wstr_replace(*path, system_32, system_native);
+        for (i=0; exept_all[i] != NULL; ++i){
+            if ((strstr(*path, exept_all[i]))){
+                return;
+            }
+        }
+        if (build < win7build || !(strstr(*path, exept_win7)))
+                    new_path = wstr_replace(*path, system_32, system_native);
 
     } else if (strstr(*path, system_wow64)) {
         new_path = wstr_replace(*path, system_wow64, system_32);

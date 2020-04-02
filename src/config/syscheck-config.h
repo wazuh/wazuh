@@ -317,6 +317,7 @@ typedef struct _config {
     int max_fd_win_rt;
     whodata wdata;
     whodata_event_list w_clist; // List of events cached from Whodata mode in the last seconds
+    int win_build;
 #endif
     int max_audit_entries;          /* Maximum entries for Audit (whodata) */
     char **audit_key;               // Listen audit keys

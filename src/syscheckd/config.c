@@ -58,6 +58,16 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.realtime_change = 0;
     syscheck.registry       = NULL;
     syscheck.max_fd_win_rt  = 0;
+
+    {
+        os_info * info = get_win_version();
+
+        if (info) {
+            syscheck.win_build = atoi(info->os_build);
+            free_osinfo(info);
+        }
+    }
+
 #endif
     syscheck.prefilter_cmd  = NULL;
     syscheck.sync_interval  = 300;
