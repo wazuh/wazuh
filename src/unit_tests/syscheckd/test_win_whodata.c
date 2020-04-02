@@ -25,7 +25,7 @@ extern int set_winsacl(const char *dir, int position);
 extern int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 extern char *get_whodata_path(const short unsigned int *win_path);
 extern int whodata_path_filter(char **path);
-extern void whodata_adapt_path(char **path);
+extern void whodata_adapt_path(char **path, int build);
 extern int whodata_check_arch();
 extern int is_valid_sacl(PACL sacl, int is_file);
 extern void replace_device_path(char **path);
@@ -2910,10 +2910,43 @@ void test_whodata_check_arch_arm64(void **state) {
 void test_whodata_adapt_path_no_changes (void **state) {
     char *path = "C:\\a\\path\\not\\replaced";
 
-    whodata_adapt_path(&path);
+    whodata_adapt_path(&path, 0);
 
     assert_string_equal(path, "C:\\a\\path\\not\\replaced");
 }
+
+void test_whodata_adapt_path_exempt_drivestore_win7_or_higher (void **state) {
+    char *path = "C:\\windows\\system32\\driverstore\\test";
+
+    whodata_adapt_path(&path, 7600);
+
+    assert_string_equal(path, "C:\\windows\\system32\\driverstore\\test");
+}
+
+void test_whodata_adapt_path_exempt_drivestore_winVista_or_less (void **state) {
+    char *path = "C:\\windows\\system32\\driverstore\\test";
+
+    expect_string(__wrap_wstr_replace, string, path);
+    expect_string(__wrap_wstr_replace, search, ":\\windows\\system32");
+    expect_string(__wrap_wstr_replace, replace, ":\\windows\\sysnative");
+    will_return(__wrap_wstr_replace, "C:\\windows\\sysnative\\driverstore\\test");
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6307): Convert 'C:\\windows\\system32\\driverstore\\test' to 'C:\\windows\\sysnative\\driverstore\\test' to process the whodata event.");
+
+    whodata_adapt_path(&path, 0);
+
+    assert_string_equal(path, "C:\\windows\\sysnative\\driverstore\\test");
+}
+
+void test_whodata_adapt_path_exempt (void **state) {
+    char *path = "C:\\windows\\system32\\catroot\\test";
+
+    whodata_adapt_path(&path, 0);
+
+    assert_string_equal(path, "C:\\windows\\system32\\catroot\\test");
+}
+
 
 void test_whodata_adapt_path_convert_system32 (void **state) {
     char *path = strdup("C:\\windows\\system32\\test");
@@ -2926,7 +2959,7 @@ void test_whodata_adapt_path_convert_system32 (void **state) {
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6307): Convert 'C:\\windows\\system32\\test' to 'C:\\windows\\sysnative\\test' to process the whodata event.");
 
-    whodata_adapt_path(&path);
+    whodata_adapt_path(&path, 0);
 
     assert_string_equal(path, "C:\\windows\\sysnative\\test");
 }
@@ -2942,7 +2975,7 @@ void test_whodata_adapt_path_convert_syswow64 (void **state) {
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6307): Convert 'C:\\windows\\syswow64\\test' to 'C:\\windows\\system32\\test' to process the whodata event.");
 
-    whodata_adapt_path(&path);
+    whodata_adapt_path(&path, 0);
 
     assert_string_equal(path, "C:\\windows\\system32\\test");
 }
@@ -8422,6 +8455,9 @@ int main(void) {
         cmocka_unit_test(test_whodata_check_arch_arm64),
         /* whodata_adapt_path */
         cmocka_unit_test(test_whodata_adapt_path_no_changes),
+        cmocka_unit_test(test_whodata_adapt_path_exempt_drivestore_win7_or_higher),
+        cmocka_unit_test(test_whodata_adapt_path_exempt_drivestore_winVista_or_less),
+        cmocka_unit_test(test_whodata_adapt_path_exempt),
         cmocka_unit_test(test_whodata_adapt_path_convert_system32),
         cmocka_unit_test(test_whodata_adapt_path_convert_syswow64),
         /* whodata_path_filter */
