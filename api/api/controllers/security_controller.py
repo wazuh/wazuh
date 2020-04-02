@@ -451,7 +451,7 @@ async def remove_user_role(request, username, role_ids, pretty=False, wait_for_c
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-async def set_role_policy(request, role_id, policy_ids, position=None pretty=False, wait_for_complete=False):
+async def set_role_policy(request, role_id, policy_ids, position=None, pretty=False, wait_for_complete=False):
     """Add a list of policies to one specified role
 
     Parameters
