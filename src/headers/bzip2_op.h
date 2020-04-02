@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2015-2020, Wazuh Inc.
- * December 18, 2018.
+ * April, 2020.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
