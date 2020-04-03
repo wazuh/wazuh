@@ -419,16 +419,17 @@ char *OS_RecvTCP(int socket, int sizet)
     return (ret);
 }
 
-/* Receive a TCP packet (from an open socket) */
+/* Receive a TCP packet (from an open socket)
+   Returns the number of bytes received,
+   or -1 if an error occurred */
 int OS_RecvTCPBuffer(int socket, char *buffer, int sizet)
 {
     int retsize;
 
     if ((retsize = recv(socket, buffer, sizet - 1, 0)) > 0) {
         buffer[retsize] = '\0';
-        return (0);
     }
-    return (-1);
+    return (retsize);
 }
 
 /* Receive a UDP packet */
