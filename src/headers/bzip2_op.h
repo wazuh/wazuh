@@ -13,7 +13,24 @@
 
 #include <bzlib.h>
 
+/**
+ * @brief bzpi2 library, function to compress
+ *
+ * @param file File path to compress
+ * @param filebz2 File name compressed
+ *
+ * @retval 0 on success, -1 on error
+ */
 int bzip2_compress(const char *file, const char *filebz2);
-int bzip2_uncompress(const char *file, const char *filebz2);
+
+/**
+ * @brief bzpi2 library, function to uncompress
+ *
+ * @param filebz2 File path to uncompress
+ * @param file File name uncompressed
+ *
+ * @retval 0 on success, -1 on error
+ */
+int bzip2_uncompress(const char *filebz2, const char *file);
 
 #endif /* BZIP2_OP_H */
