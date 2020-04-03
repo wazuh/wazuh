@@ -167,7 +167,8 @@ int rootcheck_init(int test_config)
 
     /* Read configuration  --function specified twice (check makefile) */
     if (Read_Rootcheck_Config(cfg) < 0) {
-        mterror_exit(ARGV0, CONFIG_ERROR, cfg);
+        merror(RCONFIG_ERROR, ARGV0, cfg);
+        return (1);
     }
 
 #ifndef WIN32

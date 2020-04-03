@@ -110,7 +110,8 @@ int Start_win32_Syscheck()
 
     /* Read syscheck config */
     if ((r = Read_Syscheck_Config(cfg)) < 0) {
-        merror_exit(CONFIG_ERROR, cfg);
+        merror(RCONFIG_ERROR, SYSCHECK, cfg);
+        syscheck.disabled = 1;
     } else if ((r == 1) || (syscheck.disabled == 1)) {
         /* Disabled */
         if (!syscheck.dir) {
