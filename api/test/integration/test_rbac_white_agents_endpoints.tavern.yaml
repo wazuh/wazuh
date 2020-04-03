@@ -1353,9 +1353,6 @@ stages:
 ---
 test_name: PUT /agents/restart
 
-marks:
-  - xfail
-
 stages:
 
   - name: Try to restart non existing agent (Allowed)
@@ -1393,7 +1390,6 @@ stages:
       body:
         <<: *permission_denied
 
-# THIS FAILS BECAUSE ONE OF THE DISTRIBUTED RESPONSES IS A 4000 EXCEPTION AND IT KILLS THE WAZUH RESULTS
   - name: Try to restart a list of agents (Partially allowed, user aware)
     request:
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/restart"
@@ -1407,7 +1403,6 @@ stages:
       body:
         data:
           affected_items:
-            - '002'
             - '004'
           failed_items:
             - error:
@@ -1418,12 +1413,15 @@ stages:
                 code: 1703
               id:
                 - '000'
-          total_affected_items: 2
-          total_failed_items: 2
+            - error:
+                code: 4000
+              id:
+                - '002'
+          total_affected_items: 1
+          total_failed_items: 3
         message: !anystr
     delay_after: 45
 
-# THIS FAILS BECAUSE ONE OF THE DISTRIBUTED RESPONSES IS A 4000 EXCEPTION AND IT KILLS THE WAZUH RESULTS
   - name: Try to restart all agents (Partially allowed, user agnostic)
     request:
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/restart"
@@ -1439,7 +1437,7 @@ stages:
           failed_items:
             - error:
                 code: 1707
-                message": "Impossible to restart non-active agent: never_connected"
+                message: "Impossible to restart non-active agent: never_connected"
               id:
                 - '012'
           total_affected_items: 1
