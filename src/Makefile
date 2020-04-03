@@ -747,7 +747,7 @@ os_zlib/%.o: os_zlib/%.c
 #### bzip2 ##########
 
 $(BZIP2_LIB):
-	cd ${EXTERNAL_BZIP2} && make CFLAGS=-fpic -Wall -O2 -D_FILE_OFFSET_BITS=64 libbz2.a
+	cd ${EXTERNAL_BZIP2} && make CFLAGS="-fpic -Wall -O2 -D_FILE_OFFSET_BITS=64" libbz2.a
 
 #### SQLite #########
 
