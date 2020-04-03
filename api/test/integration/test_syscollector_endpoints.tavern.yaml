@@ -3831,9 +3831,6 @@ stages:
 ---
 test_name: GET /syscollector/{agent_id}/hotfixes
 
-marks:
-  - xfail
-
 stages:
 
   - name: Get all hotfixes from agent
