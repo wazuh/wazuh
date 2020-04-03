@@ -720,9 +720,9 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 500
+      status_code: 400
       body:
-        code: 1307
+        <<: *error_spec
 
     # PUT /agents/003/upgrade_custom?installer=invalid.sh&file_path=custom_wpk_path
   - name: Try to customly upgrade an agent with an invalid installer
