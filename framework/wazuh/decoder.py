@@ -71,11 +71,11 @@ def get_decoders(names=None, status=None, filename=None, relative_dirname=None, 
     for decoder_name in no_existent_files:
         result.add_failed_item(id_=decoder_name, error=WazuhError(1504))
 
-    result.affected_items = process_array(
-        decoders, search_text=search_text, search_in_fields=search_in_fields, complementary_search=complementary_search,
-        sort_by=sort_by, sort_ascending=sort_ascending, allowed_sort_fields=Status.SORT_FIELDS.value, offset=offset,
-        limit=limit, q=q)['items']
-    result.total_affected_items = len(decoders)
+    data = process_array(decoders, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                         allowed_sort_fields=Status.SORT_FIELDS.value, offset=offset, limit=limit, q=q)
+    result.affected_items = data['items']
+    result.total_affected_items = data['totalItems']
 
     return result
 
@@ -118,10 +118,12 @@ def get_decoders_files(status=None, relative_dirname=None, filename=None, offset
             ruleset_conf,
             {'status': status, 'relative_dirname': relative_dirname, 'filename': filename},
             tags)
-    result.affected_items = process_array(decoders_files, search_text=search_text, search_in_fields=search_in_fields,
-                                          complementary_search=complementary_search, sort_by=sort_by,
-                                          sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
-    result.total_affected_items = len(decoders_files)
+
+    data = process_array(decoders_files, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                         offset=offset, limit=limit)
+    result.affected_items = data['items']
+    result.total_affected_items = data['totalItems']
 
     return result
 

@@ -44,11 +44,11 @@ def get_users(username_list=None, offset=0, limit=common.database_limit, sort_by
             user = auth.get_user(username)
             affected_items.append(user) if user else result.add_failed_item(id_=username, error=WazuhError(5001))
 
-    processed_items = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
-                                    complementary_search=complementary_search, sort_by=sort_by,
-                                    sort_ascending=sort_ascending, offset=offset, limit=limit)
-    result.affected_items = processed_items['items']
-    result.total_affected_items = processed_items['totalItems']
+    data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                         offset=offset, limit=limit)
+    result.affected_items = data['items']
+    result.total_affected_items = data['totalItems']
 
     return result
 
@@ -159,11 +159,11 @@ def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None
                 # Role id does not exist
                 result.add_failed_item(id_=r_id, error=WazuhError(4002))
 
-    affected_items = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
-                                   complementary_search=complementary_search, sort_by=sort_by,
-                                   sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
-    result.affected_items = affected_items
-    result.total_affected_items = len(affected_items)
+    data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                         offset=offset, limit=limit)
+    result.affected_items = data['items']
+    result.total_affected_items = data['totalItems']
 
     return result
 
@@ -277,11 +277,11 @@ def get_policies(policy_ids, offset=0, limit=common.database_limit, sort_by=None
                 # Policy id does not exist
                 result.add_failed_item(id_=p_id, error=WazuhError(4007))
 
-    affected_items = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
-                                   complementary_search=complementary_search, sort_by=sort_by,
-                                   sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
-    result.affected_items = affected_items
-    result.total_affected_items = len(affected_items)
+    data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                         offset=offset, limit=limit)
+    result.affected_items = data['items']
+    result.total_affected_items = data['totalItems']
 
     return result
 

@@ -5,6 +5,7 @@
 import fcntl
 import json
 import logging
+import os
 import re
 import socket
 import typing
@@ -172,7 +173,8 @@ def manager_restart():
 @lru_cache()
 def get_cluster_items():
     try:
-        with open('{0}/framework/wazuh/core/cluster/cluster.json'.format(common.ossec_path)) as f:
+        here = os.path.abspath(os.path.dirname(__file__))
+        with open(os.path.join(common.ossec_path, here, 'cluster.json')) as f:
             cluster_items = json.load(f)
         list(map(lambda x: setitem(x, 'permissions', int(x['permissions'], base=0)),
                  filter(lambda x: 'permissions' in x, cluster_items['files'].values())))

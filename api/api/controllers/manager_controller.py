@@ -312,9 +312,9 @@ async def put_files(request, body, overwrite=False, pretty=False, wait_for_compl
     try:
         body = body.decode('utf-8')
     except UnicodeDecodeError:
-        raise WazuhError(1911)
+        raise_if_exc(WazuhError(1911))
     except AttributeError:
-        raise WazuhError(1912)
+        raise_if_exc(WazuhError(1912))
 
     f_kwargs = {'path': path,
                 'overwrite': overwrite,
