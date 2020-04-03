@@ -20,10 +20,10 @@ PYTHON_BIN     = $(PREFIX)/framework/python/bin/python3
 all: install
 
 install:
-	$(INSTALL_DIR) $(PREFIX)/api/configuration
+	$(INSTALL_RW_DIR) $(PREFIX)/api/configuration
 	$(INSTALL_RW_DIR) $(PREFIX)/api/configuration/security
 
-	$(INSTALL_FILE) api/configuration/template-api.yaml ${PREFIX}/api/configuration
+	$(INSTALL_FILE) api/configuration/api.yaml ${PREFIX}/api/configuration
 
 	$(INSTALL_DIR) $(PREFIX)/api/scripts
 	$(INSTALL_FILE) scripts/*.py ${PREFIX}/api/scripts

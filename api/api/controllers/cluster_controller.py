@@ -503,9 +503,9 @@ async def put_files_node(request, body, node_id, path, overwrite=False, pretty=F
     try:
         body = body.decode('utf-8')
     except UnicodeDecodeError:
-        raise WazuhError(1911)
+        raise_if_exc(WazuhError(1911))
     except AttributeError:
-        raise WazuhError(1912)
+        raise_if_exc(WazuhError(1912))
 
     f_kwargs = {'node_id': node_id,
                 'path': path,
