@@ -7759,12 +7759,12 @@ void test_set_subscription_query(void **state) {
     wchar_t *expected_output = L"Event[ System[band(Keywords, 9007199254740992)] and "
                                 "( ( ( EventData/Data[@Name='ObjectType'] = 'File' ) and "
                                 "( (  System/EventID = 4656 or System/EventID = 4663 ) and "
-                                "( EventData[band(Data[@Name='AccessMask'], 327938‬)] ) ) ) or "
-                                "System/EventID = 4658 or System/EventID = 4660 ) ]";
+                                "( EventData[band(Data[@Name='AccessMask'], 327938)] ) ) ) or "
+                                "System/EventID = 4658 or System/EventID = 4659 or System/EventID = 4660 ) ]";
 
     set_subscription_query(output);
 
-    assert_memory_equal(output, expected_output, wcslen(expected_output));
+    assert_memory_equal(output, expected_output, sizeof(wchar_t) * wcslen(expected_output));
 }
 
 void test_set_policies_unable_to_remove_backup_file(void **state) {
