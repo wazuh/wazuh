@@ -22,11 +22,10 @@ def build_and_up(env: str):
 
 
 def down_env():
-    # pwd = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'env')
-    # os.chdir(pwd)
-    # current_process = subprocess.Popen(["docker-compose", "down", "-t", "0"])
-    # current_process.wait()
-    pass
+    pwd = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'env')
+    os.chdir(pwd)
+    current_process = subprocess.Popen(["docker-compose", "down", "-t", "0"])
+    current_process.wait()
 
 
 def check_health(interval=10, node_type='master', agents=None):

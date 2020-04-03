@@ -634,12 +634,13 @@ stages:
     # PUT /agents/004/upgrade
   - name: Upgrade an agent using http
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/004/upgrade"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/004/upgrade?wait_for_complete=true"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         use_http: true
+        force: true
     response:
       status_code: 200
       body:
@@ -649,12 +650,12 @@ stages:
     # PUT /agents/005/upgrade
   - name: Upgrade an agent using wkp repo
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/005/upgrade"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/005/upgrade?wait_for_complete=true"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        wpk_repo: "wazuh_agent_v3.9.0_linux_x86_64.wpk"
+        wpk_repo: "packages.wazuh.com/wpk/"
         force: true
     response:
       status_code: 200
@@ -667,7 +668,7 @@ test_name: PUT /agents/{agent_id}/upgrade_custom
 stages:
 
     # PUT /agents/002/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
-  - name: Try to customly upgrade a not existing agent
+  - name: Try to customly upgrade a non existing agent
     request:
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/999/upgrade_custom"
       method: PUT
@@ -768,24 +769,24 @@ stages:
         message: "Installation started"
     delay_after: 60
 
- - name: Get agent 007 upgrade result
-   request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/007/upgrade_result?wait_for_complete=true"
-     method: GET
-     headers:
-       Authorization: "Bearer {test_login_token}"
-   response:
-     status_code: 200
-     body:
-       message: Agent upgraded successfully
+  - name: Get agent 007 upgrade result
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/007/upgrade_result?wait_for_complete=true"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        message: Agent upgraded successfully
 
- - name: Get agent 008 upgrade result
-   request:
-     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/008/upgrade_result?wait_for_complete=true"
-     method: GET
-     headers:
-       Authorization: "Bearer {test_login_token}"
-   response:
-     status_code: 200
-     body:
-       message: Agent upgraded successfully
+  - name: Get agent 008 upgrade result
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/008/upgrade_result?wait_for_complete=true"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        message: Agent upgraded successfully
