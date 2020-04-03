@@ -34,6 +34,7 @@ FROM base as wazuh-env-lists_white_rbac
 FROM base as wazuh-env-lists_black_rbac
 FROM base AS wazuh-env-syscheck_white_rbac
 FROM base AS wazuh-env-syscheck_black_rbac
+FROM base AS wazuh-env-experimental
 
 FROM base AS wazuh-env-security
 COPY configurations/security/wazuh-master/schema_security_test.sql /var/ossec/api/configuration/security/schema_security_test.sql
