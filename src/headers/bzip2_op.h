@@ -11,9 +11,7 @@
 #ifndef BZIP2_OP_H
 #define BZIP2_OP_H
 
-#include "shared.h"
-#include "../external/bzip2/bzlib.h"
-#include "../error_messages/error_messages.h"
+#include <bzlib.h>
 
 int bzip2_compress(const char *file, const char *filebz2);
 int bzip2_uncompress(const char *file, const char *filebz2);

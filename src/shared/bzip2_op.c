@@ -9,7 +9,7 @@
  */
 
 
-#include "../headers/bzip2_op.h"
+#include "../headers/shared.h"
 
 
 int bzip2_compress(const char *file, const char *filebz2) {
@@ -24,21 +24,21 @@ int bzip2_compress(const char *file, const char *filebz2) {
 
     input = fopen(file, "rb");
     if (!input) {
-        merror(FOPEN_ERROR, file, errno, strerror(errno));
+        mdebug2(FOPEN_ERROR, file, errno, strerror(errno));
         return -1;
     }
 
     output = fopen(filebz2, "wb" );
     if (!output) {
-        merror(FOPEN_ERROR, filebz2, errno, strerror(errno));
+        mdebug2(FOPEN_ERROR, filebz2, errno, strerror(errno));
         fclose(input);
         return -1;
     }
 
     compressfile = BZ2_bzWriteOpen(&bzerror, output, 9, 0, 1);
     if (bzerror != BZ_OK) {
-        merror("Could not open to write bz2 file (bz2error:%d): (%d)-%s",
-                bzerror, errno, strerror(errno));
+        mdebug2("Could not open to write bz2 file (%d)'%s': (%d)-%s",
+                bzerror, filebz2, errno, strerror(errno));
         fclose(input);
         fclose(output);
         return -1;
@@ -50,8 +50,8 @@ int bzip2_compress(const char *file, const char *filebz2) {
         BZ2_bzWrite(&bzerror, compressfile, (void*)buf, readbuff);
 
         if (bzerror != BZ_OK) {
-            merror("Could not write bz2 file (bz2error:%d): (%d)-%s",
-                    bzerror, errno, strerror(errno));
+            mdebug2("Could not write bz2 file (bz2error:%d): (%d)-%s",
+                    bzerror, filebz2, errno, strerror(errno));
             fclose(input);
             fclose(output);
             BZ2_bzReadClose(&bzerror, compressfile);
@@ -68,7 +68,8 @@ int bzip2_compress(const char *file, const char *filebz2) {
                        &nbytes_out_lo32, &nbytes_out_hi32);
 
     if (bzerror != BZ_OK) {
-        merror("BZ2_bzWriteClose64(%d): (%d)-%s", bzerror, errno, strerror(errno));
+        mdebug2("BZ2_bzWriteClose64(%d)'%s': (%d)-%s",
+                bzerror, filebz2, errno, strerror(errno));
         fclose(input);
         fclose(output);
         BZ2_bzReadClose(&bzerror, compressfile);
@@ -95,20 +96,21 @@ int bzip2_uncompress(const char *filebz2, const char *file) {
 
     input = fopen(filebz2, "rb");
     if (!input) {
-        merror(FOPEN_ERROR, file, errno, strerror(errno));
+        mdebug2(FOPEN_ERROR, file, errno, strerror(errno));
         return -1;
     }
 
     output = fopen(file, "wb" );
     if (!output) {
-        merror(FOPEN_ERROR, filebz2, errno, strerror(errno));
+        mdebug2(FOPEN_ERROR, filebz2, errno, strerror(errno));
         fclose(input);
         return -1;
     }
 
     compressfile = BZ2_bzReadOpen(&bzerror, input, 0, 0, unused, nUnused);
     if (compressfile == NULL || bzerror != BZ_OK) {
-        merror("BZ2_bzReadOpen(%d): (%d)-%s", bzerror, errno, strerror(errno));
+        mdebug2("BZ2_bzReadOpen(%d)'%s': (%d)-%s",
+                bzerror, filebz2, errno, strerror(errno));
         fclose(input);
         fclose(output);
         return -1;
@@ -119,11 +121,12 @@ int bzip2_uncompress(const char *filebz2, const char *file) {
     do {
         readbuff = BZ2_bzRead(&bzerror, compressfile, buf, 2048);
 
-        if (readbuff > 0) {
-            if (bzerror == BZ_OK || bzerror == BZ_STREAM_END) {
+        if (bzerror == BZ_OK || bzerror == BZ_STREAM_END) {
+            if (readbuff > 0) {
                 fwrite(buf, sizeof(char), readbuff, output);
             } else {
-                merror("BZ2_bzRead(%d): (%d)-%s", bzerror, errno, strerror(errno));
+                mdebug2("BZ2_bzRead(%d)'%s': (%d)-%s",
+                        bzerror, filebz2, errno, strerror(errno));
                 fclose(input);
                 fclose(output);
                 BZ2_bzReadClose(&bzerror, compressfile);
