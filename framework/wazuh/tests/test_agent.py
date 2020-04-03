@@ -5,7 +5,6 @@
 
 import os
 import shutil
-import sqlite3
 import sys
 from pwd import getpwnam
 from grp import getgrnam
@@ -36,38 +35,17 @@ with patch('wazuh.common.ossec_uid'):
         from wazuh.core.core_agent import Agent
         from wazuh import WazuhError, WazuhException, WazuhInternalError
         from wazuh.results import WazuhResult, AffectedItemsWazuhResult
-
+        from wazuh.core.tests.test_core_agent import InitAgent
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_agent_path = os.path.join(test_data_path, 'agent')
 test_shared_path = os.path.join(test_agent_path, 'shared')
 test_multigroup_path = os.path.join(test_agent_path, 'multigroups')
+test_global_bd_path = os.path.join(test_data_path, 'global.db')
 
-
-class InitAgent:
-
-    def __init__(self):
-        """Sets up necessary test environment for agents:
-            * One active agent.
-            * One pending agent.
-            * One never_connected agent.
-            * One disconnected agent.
-        """
-        self.global_db = sqlite3.connect(':memory:')
-        self.cur = self.global_db.cursor()
-        with open(os.path.join(test_data_path, 'schema_global_test.sql')) as f:
-            self.cur.executescript(f.read())
-
-        self.never_connected_fields = {'status', 'name', 'ip', 'registerIP', 'node_name', 'dateAdd', 'id'}
-        self.pending_fields = self.never_connected_fields | {'manager', 'lastKeepAlive'}
-        self.manager_fields = self.pending_fields | {'version', 'os'}
-        self.active_fields = self.manager_fields | {'group', 'mergedSum', 'configSum'}
-        self.manager_fields -= {'registerIP'}
-
-
-test_data = InitAgent()
+test_data = InitAgent(data_path=test_data_path)
 full_agent_list = ['000', '001', '002', '003', '004', '005', '006', '007', '008']
-sample_agent_list = ['000', '001', '002', '003', '004', '005']
+short_agent_list = ['000', '001', '002', '003', '004', '005']
 
 
 @pytest.mark.parametrize('fields, expected_items', [
@@ -82,7 +60,7 @@ sample_agent_list = ['000', '001', '002', '003', '004', '005']
         {'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '16.04.1 LTS'}, 'count': 1},
         {'count': 2}]),
 ])
-@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('sqlite3.connect', return_value=test_data.global_db)
 def test_agent_get_distinct_agents(sqlite_mock, fields, expected_items):
     """Test `get_distinct_agents` function from agent module.
@@ -94,16 +72,16 @@ def test_agent_get_distinct_agents(sqlite_mock, fields, expected_items):
     expected_items : list
         List of expected values for the provided fields.
     """
-    distinct = get_distinct_agents(sample_agent_list, fields=fields, sort={'fields': fields, 'order': 'desc'})
+    distinct = get_distinct_agents(short_agent_list, fields=fields, sort={'fields': fields, 'order': 'desc'})
     assert isinstance(distinct, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
     assert distinct.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
 
 
-@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('sqlite3.connect', return_value=test_data.global_db)
 def test_agent_get_agents_summary_status(sqlite_mock):
     """Test `get_agents_summary` function from agent module."""
-    summary = get_agents_summary_status(sample_agent_list)
+    summary = get_agents_summary_status(short_agent_list)
     assert isinstance(summary, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
     # Asserts are based on what it should get from the fake database
     expected_results = {'active': 3, 'disconnected': 1, 'never_connected': 1, 'pending': 1, 'total': 6}
@@ -115,11 +93,11 @@ def test_agent_get_agents_summary_status(sqlite_mock):
     assert summary['total'] == expected_results['total']
 
 
-@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('sqlite3.connect', return_value=test_data.global_db)
 def test_agent_get_agents_summary_os(sqlite_mock):
     """Tests `get_os_summary function`."""
-    summary = get_agents_summary_os(sample_agent_list)
+    summary = get_agents_summary_os(short_agent_list)
     assert isinstance(summary, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
     assert summary['items'] == ['ubuntu'], f"Expected ['ubuntu'] OS but received '{summary['items']} instead."
 
@@ -129,9 +107,9 @@ def test_agent_get_agents_summary_os(sqlite_mock):
     (['000'], [], 1703),
     (['001', '500'], ['001'], 1701)
 ])
-@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('wazuh.core.core_agent.Agent.restart')
-@patch('wazuh.agent.get_agents_info', return_value=sample_agent_list)
+@patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
 @patch('sqlite3.connect', return_value=test_data.global_db)
 def test_agent_restart_agents(sqlite_mock, agents_info_mock, restart_mock, agent_list, expected_items, error_code):
     """Test `restart_agents` function from agent module.
@@ -157,7 +135,7 @@ def test_agent_restart_agents(sqlite_mock, agents_info_mock, restart_mock, agent
     (['001', '002', '003'], ['001', '002', '003']),
     (['001', '400', '002', '500'], ['001', '002'])
 ])
-@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('sqlite3.connect', return_value=test_data.global_db)
 def test_agent_get_agents(sqlite_mock, agent_list, expected_items):
     """Test `get_agents` function from agent module.
@@ -186,7 +164,7 @@ def test_agent_get_agents(sqlite_mock, agent_list, expected_items):
     ('master', 4000),
     ('master', 1000)
 ])
-@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('sqlite3.connect', return_value=test_data.global_db)
 def test_agent_get_agent_by_name(sqlite_mock, name, expected_id):
     """Test `get_agent_by_name` function from agent module.
@@ -214,7 +192,7 @@ def test_agent_get_agent_by_name(sqlite_mock, name, expected_id):
     ('default', True, ['001', '002', '005']),
     ('not_exists_group', False, None)
 ])
-@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('wazuh.agent.get_agents')
 @patch('wazuh.core.core_agent.Agent.group_exists')
 @patch('sqlite3.connect', return_value=test_data.global_db)
@@ -236,7 +214,7 @@ def test_agent_get_agents_in_group(sqlite_mock, mock_group_exists, mock_get_agen
         # Since the decorator is mocked, pass `agent_list` using `call_args` from mock
         get_agents_in_group(group_id=group, select=['id'])
         kwargs = mock_get_agents.call_args[1]
-        agents = get_agents(agent_list=sample_agent_list, **kwargs)
+        agents = get_agents(agent_list=short_agent_list, **kwargs)
         assert agents.affected_items
         assert len(agents.affected_items) == len(expected_agents)
         for expected_agent, affected_agent in zip(expected_agents, agents.affected_items):
@@ -251,7 +229,7 @@ def test_agent_get_agents_in_group(sqlite_mock, mock_group_exists, mock_get_agen
     (['001', '002', '003'], ['001', '002', '003']),
     (['001', '400', '002', '500'], ['001', '002'])
 ])
-@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('sqlite3.connect', return_value=test_data.global_db)
 def test_agent_get_agents_keys(sqlite_mock, agent_list, expected_items):
     """Test `get_agents_keys` from agent module.
@@ -273,15 +251,15 @@ def test_agent_get_agents_keys(sqlite_mock, agent_list, expected_items):
             assert (failed_item.message == 'Agent does not exist' for failed_item in agent_keys.failed_items.keys())
 
 
-@pytest.mark.parametrize('agent_list, remove_msg, error_code, expected_items', [
-    (['002', '001'], 'Agent deleted successfully.', None, ['001', '002']),
-    (['000'], None, 1703, []),
-    (['001', '500'], 'Agent deleted successfully.', 1701, ['001']),
-    (['001', '002'], WazuhException(1700), 1700, []),
+@pytest.mark.parametrize('agent_list, older_than, remove_msg, error_code, expected_items', [
+    (['001', '002', '003'], "1s", 'Agent deleted successfully.', None, ['001', '002', '003']),
+    (['000'], "1s", None, 1703, []),
+    (['001', '500'], "1s", 'Agent deleted successfully.', 1701, ['001']),
+    (['001', '002'], "1s", WazuhException(1700), 1700, []),
 ])
-@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('wazuh.agent.Agent.remove')
-def test_agent_delete_agents(mock_remove, agent_list, remove_msg, error_code, expected_items):
+def test_agent_delete_agents(mock_remove, agent_list, older_than, remove_msg, error_code, expected_items):
     """Test `delete_agents` function from agent module.
 
     Parameters
@@ -296,15 +274,15 @@ def test_agent_delete_agents(mock_remove, agent_list, remove_msg, error_code, ex
         List of expected agent ID's returned by
     """
     mock_remove.side_effect = remove_msg
-    result = delete_agents(agent_list)
+    result = delete_agents(agent_list, older_than=older_than)
     assert result.affected_items == sorted(expected_items), \
-        f'"Affected_items" does not match. Should be "{expected_items}".'
+        f'"Affected_items" does not match. Should be "{result.affected_items}".'
     if result.failed_items:
         assert next(iter(result.failed_items)).code == error_code
-    assert result['older_than'] == "7d"
+    assert result['older_than'] == older_than
 
 
-@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 def test_agent_delete_agents_different_status():
     """Test `delete_agents` function from agent module.
 
@@ -323,7 +301,8 @@ def test_agent_delete_agents_different_status():
     ('agent-1', '001', 'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f'),
     ('a' * 129, '002', 'f304f582f2417a3fddad69d9ae2b4f3b6e6fda788229668af9a6934d454ef44d')
 ])
-@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
+@patch('wazuh.core.core_agent.api_configuration.read_api_config', return_value={'use_only_authd': False})
 @patch('wazuh.core.core_agent.fcntl.lockf')
 @patch('wazuh.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.core_agent.chown')
@@ -334,7 +313,7 @@ def test_agent_delete_agents_different_status():
 @patch('wazuh.core.core_agent.safe_move')
 @patch('builtins.open')
 def test_agent_add_agent(open_mock, safe_move_mock, common_gid_mock, common_uid_mock, copyfile_mock, chmod_mock,
-                         chown_mock, fcntl_mock, name, agent_id, key):
+                         chown_mock, fcntl_mock, read_api_mock, name, agent_id, key):
     """Test `add_agent` from agent module.
 
     Parameters
@@ -358,7 +337,7 @@ def test_agent_add_agent(open_mock, safe_move_mock, common_gid_mock, common_uid_
     (['group-1', 'group-2'], ['group-1', 'group-2']),
     (['invalid_group'], [])
 ])
-@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('wazuh.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.common.shared_path', new=test_shared_path)
 @patch('sqlite3.connect', return_value=test_data.global_db)
@@ -384,7 +363,7 @@ def test_agent_get_agent_groups(sqlite_mock, group_list, expected_result):
 
 @pytest.mark.parametrize('db_global', [
     'Invalid path',
-    os.path.join(test_data_path, 'var', 'db', 'global.db')
+    test_global_bd_path
 ])
 @patch('wazuh.agent.Connection.execute', side_effect=WazuhException(1000))
 def test_agent_get_agent_groups_exceptions(execute_mock, db_global):
@@ -405,7 +384,7 @@ def test_agent_get_agent_groups_exceptions(execute_mock, db_global):
     ['group-1'],
     ['invalid-group']
 ])
-@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('wazuh.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.common.shared_path', new=test_shared_path)
 def test_agent_get_group_files(group_list):
@@ -417,11 +396,12 @@ def test_agent_get_group_files(group_list):
         List of groups to get their files.
     """
     try:
-        file_result = get_group_files(group_list=group_list)
+        result = get_group_files(group_list=group_list)
         # Assert 'items' contains agent.conf, merged.mg and ar.conf and 'hash' is not empty
-        assert len(file_result.dikt['items']) == 3
-        for item, filename in zip(file_result.dikt['items'], ['agent.conf', 'merged.mg', 'ar.conf']):
-            assert item['filename'] == filename
+        assert len(result.dikt['items']) == 3
+        assert set(item['filename'] for item in result.dikt['items']).difference(
+            set(['agent.conf', 'merged.mg', 'ar.conf'])) == set()
+        for item in result.dikt['items']:
             assert item['hash']
     except WazuhError as e:
         assert e.code == 1710, 'The exception was raised as expected but "error_code" does not match.'
@@ -470,9 +450,9 @@ def test_agent_get_group_files_exceptions(mock_group_exists, mock_process_array,
     'invalid-group'
 ])
 @patch('wazuh.common.shared_path', new=test_shared_path)
-@patch("wazuh.common.ossec_gid", return_value=getgrnam("root"))
-@patch("wazuh.common.ossec_uid", return_value=getpwnam("root"))
-@patch("wazuh.agent.chown_r")
+@patch('wazuh.common.ossec_gid', return_value=getgrnam('root'))
+@patch('wazuh.common.ossec_uid', return_value=getpwnam('root'))
+@patch('wazuh.agent.chown_r')
 def test_create_group(chown_mock, uid_mock, gid_mock, group_id):
     """Test `create_group` function from agent module.
 
@@ -490,7 +470,7 @@ def test_create_group(chown_mock, uid_mock, gid_mock, group_id):
         assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
         assert len(result.dikt) == 1, \
             f'Result dikt lenght is "{len(result.dikt)}" instead of "1". Result dikt content is: {result.dikt}'
-        assert result.dikt["message"] == expected_msg, \
+        assert result.dikt['message'] == expected_msg, \
             f'The "result.dikt[\'message\']" received is not the expected.\n'\
             f'Expected: "{expected_msg}"\n' \
             f'Received: "{result.dikt["message"]}"'
@@ -537,7 +517,7 @@ def test_create_group_exceptions(group_id, exception, exception_code):
 @patch('wazuh.agent.get_groups')
 @patch('wazuh.agent.remove_agents_from_group', return_value=AffectedItemsWazuhResult())
 @patch('wazuh.agent.Agent.delete_single_group')
-@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 def test_agent_delete_groups(mock_delete, mock_remove_agent, mock_get_groups, group_list):
     """Test `delete_groups` function from agent module.
 
@@ -561,10 +541,10 @@ def test_agent_delete_groups(mock_delete, mock_remove_agent, mock_get_groups, gr
 
 
 @pytest.mark.parametrize('group_name', ['test_group'])
-@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('wazuh.agent.remove_agents_from_group')
 @patch('wazuh.agent.get_groups')
-def test_delete_groups_permission_exception(mock_get_groups, mock_remove_agents, group_name):
+def test_agent_delete_groups_permission_exception(mock_get_groups, mock_remove_agents, group_name):
     """Test delete_group function when trying to delete an existant group but without enough privileges.
 
     Parameters
@@ -594,8 +574,9 @@ def test_delete_groups_permission_exception(mock_get_groups, mock_remove_agents,
     (['default', 'none-1'], [WazuhError(1712), WazuhError(1710)]),
 ])
 @patch('wazuh.common.shared_path', new=test_shared_path)
-@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
-def test_delete_groups_other_exceptions(group_list, expected_errors):
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
+@patch('wazuh.agent.get_groups')
+def test_agent_delete_groups_other_exceptions(mock_get_groups, group_list, expected_errors):
     """Test `delete_groups` function from agent module returns the expected exceptions when using invalid group lists.
 
     Parameters
@@ -606,6 +587,7 @@ def test_delete_groups_other_exceptions(group_list, expected_errors):
         List of expected WazuhError to be raised by delete_groups if a group is not valid. An exception will be returned
         for each invalid group.
     """
+    mock_get_groups.side_effect = {'default'}
     result = delete_groups(group_list)
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
     assert isinstance(result.failed_items, dict)
@@ -620,7 +602,7 @@ def test_delete_groups_other_exceptions(group_list, expected_errors):
     (['group-1'], ['001', '002', '003'], 0),
     (['group-1'], ['001', '002', '003', '100'], 1),
 ])
-@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('wazuh.common.shared_path', new=test_shared_path)
 @patch('wazuh.agent.Agent.add_group_to_agent')
 def test_assign_agents_to_group(add_group_mock, group_list, agent_list, num_failed):
@@ -651,11 +633,11 @@ def test_assign_agents_to_group(add_group_mock, group_list, agent_list, num_fail
     (['group-1'], ['100'], WazuhError(1701), False),
     (['default'], ['000'], WazuhError(1703), False)
 ])
-@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('wazuh.agent.Agent.group_exists')
 @patch('wazuh.agent.Agent.add_group_to_agent')
-def test_assign_agents_to_group_exceptions(mock_add_group, mock_group_exists, group_list, agent_list, expected_error,
-                                           catch_exception):
+def test_agent_assign_agents_to_group_exceptions(mock_add_group, mock_group_exists, group_list, agent_list,
+                                                 expected_error, catch_exception):
     """Test `assign_agents_to_group` function from agent module raises the expected exceptions when using invalid groups.
 
     Parameters
@@ -695,7 +677,7 @@ def test_assign_agents_to_group_exceptions(mock_add_group, mock_group_exists, gr
     ('default', '001'),
     ('group-1', '005')
 ])
-@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('wazuh.core.core_agent.Agent.unset_single_group_agent')
 @patch('wazuh.agent.get_groups')
 @patch('wazuh.agent.get_agents_info')
@@ -710,16 +692,9 @@ def test_agent_remove_agent_from_group(mock_get_agents, mock_get_groups, mock_un
         ID of the agent to be removed from the group.
     """
     expected_msg = f"Agent '{agent_id}' removed from '{group_id}'"
-
-    def groups():
-        return set([group_id])
-
-    def unset_single_group_agent(agent_id, group_id, force=False):
-        return expected_msg
-
-    mock_get_agents.return_value = sample_agent_list
-    mock_unset.side_effect = unset_single_group_agent
-    mock_get_groups.side_effect = groups
+    mock_get_agents.return_value = short_agent_list
+    mock_unset.return_value = expected_msg
+    mock_get_groups.return_value = set([group_id])
 
     result = remove_agent_from_group(group_list=[group_id], agent_list=[agent_id])
     mock_unset.assert_called_once_with(agent_id=agent_id, group_id=group_id, force=True)
@@ -732,7 +707,7 @@ def test_agent_remove_agent_from_group(mock_get_agents, mock_get_groups, mock_un
     ('any-group', '000', WazuhError(1703)),
     ('group-1', '005', WazuhError(1710)),
 ])
-@patch('wazuh.agent.get_agents_info', return_value=sample_agent_list)
+@patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
 @patch('wazuh.agent.get_groups', side_effect={'default'})
 def test_agent_remove_agent_from_group_exceptions(group_mock, agents_info_mock, group_id, agent_id, expected_error):
     """Test `remove_agent_from_group` function from agent module raises the expected exceptions if an invalid 'agent_id'
@@ -758,7 +733,7 @@ def test_agent_remove_agent_from_group_exceptions(group_mock, agents_info_mock, 
     (['group-1'], ['001'])
 ])
 @patch('wazuh.core.core_agent.Agent.unset_single_group_agent')
-@patch('wazuh.agent.get_agents_info', return_value=sample_agent_list)
+@patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
 @patch('wazuh.agent.get_groups', return_value={'group-1'})
 def test_agent_remove_agent_from_groups(mock_get_groups, mock_get_agents, mock_unset, group_list, agent_list):
     """Test `remove_agent_from_groups` function from agent module.
@@ -771,11 +746,7 @@ def test_agent_remove_agent_from_groups(mock_get_groups, mock_get_agents, mock_u
         List of agent ID's.
     """
     expected_msg = f"Agent '{group_list[0]}' removed from '{group_list[0]}'"
-
-    def unset_single_group_agent(agent_id, group_id, force=False):
-        return expected_msg
-
-    mock_unset.side_effect = unset_single_group_agent
+    mock_unset.return_value = expected_msg
     result = remove_agent_from_groups(agent_list=agent_list, group_list=group_list)
     # Check typing
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
@@ -793,7 +764,7 @@ def test_agent_remove_agent_from_groups(mock_get_groups, mock_get_agents, mock_u
     (['any-group'],   ['005'], WazuhError(1710), False),
 ])
 @patch('wazuh.core.core_agent.Agent.unset_single_group_agent')
-@patch('wazuh.agent.get_agents_info', return_value=sample_agent_list)
+@patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
 @patch('wazuh.agent.get_groups', return_value={'group-1'})
 def test_agent_remove_agent_from_groups_exceptions(mock_get_groups, mock_get_agents, mock_unset, group_list, agent_list,
                                                    expected_error, catch_exception):
@@ -813,11 +784,7 @@ def test_agent_remove_agent_from_groups_exceptions(mock_get_groups, mock_get_age
         `AffectedItemsWazuhResult` containing the exceptions in its 'failed_items'.
     """
     expected_msg = f"Agent '{group_list[0]}' removed from '{group_list[0]}'"
-
-    def unset_single_group_agent(agent_id, group_id, force=False):
-        return expected_msg
-
-    mock_unset.side_effect = unset_single_group_agent
+    mock_unset.return_value = expected_msg
     try:
         result = remove_agent_from_groups(group_list=group_list, agent_list=agent_list)
         assert not catch_exception, \
@@ -848,7 +815,7 @@ def test_agent_remove_agent_from_groups_exceptions(mock_get_groups, mock_get_age
     (['group-1'], ['001'])
 ])
 @patch('wazuh.core.core_agent.Agent.unset_single_group_agent')
-@patch('wazuh.agent.get_agents_info', return_value=sample_agent_list)
+@patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
 @patch('wazuh.agent.get_groups', return_value={'group-1'})
 def test_agent_remove_agents_from_group(mock_get_groups, mock_get_agents, mock_unset, group_list, agent_list):
     """Test `remove_agents_from_group` function from agent module.
@@ -861,11 +828,7 @@ def test_agent_remove_agents_from_group(mock_get_groups, mock_get_agents, mock_u
         List of agent ID's.
     """
     expected_msg = f"Agent '{group_list[0]}' removed from '{group_list[0]}'"
-
-    def unset_single_group_agent(agent_id, group_id, force=False):
-        return expected_msg
-
-    mock_unset.side_effect = unset_single_group_agent
+    mock_unset.return_value = expected_msg
     result = remove_agents_from_group(agent_list=agent_list, group_list=group_list)
     # Check typing
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
@@ -882,7 +845,7 @@ def test_agent_remove_agents_from_group(mock_get_groups, mock_get_agents, mock_u
     (['group-1'], ['000'], WazuhError(1703), False),
     (['group-1'], ['100'], WazuhError(1701), False),
 ])
-@patch('wazuh.agent.get_agents_info', return_value=sample_agent_list)
+@patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
 @patch('wazuh.agent.get_groups', return_value={'group-1'})
 def test_agent_remove_agents_from_group_exceptions(group_mock, agents_info_mock, group_list, agent_list,
                                                    expected_error, catch_exception):
@@ -917,9 +880,9 @@ def test_agent_remove_agents_from_group_exceptions(group_mock, agents_info_mock,
 
 
 @pytest.mark.parametrize('agent_list, outdated_agents', [
-    (sample_agent_list, ['001', '002', '005'])
+    (short_agent_list, ['001', '002', '005'])
 ])
-@patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('sqlite3.connect', return_value=test_data.global_db)
 def test_agent_get_outdated_agents(sqlite_mock, agent_list, outdated_agents):
     """Test get_oudated_agents function from agent module.
@@ -936,7 +899,7 @@ def test_agent_get_outdated_agents(sqlite_mock, agent_list, outdated_agents):
         agent = Agent(agentID)
         agent.load_info_from_db()
         expected_results.append({'version': agent.version, 'id': agentID, 'name': agent.name})
-    result = get_outdated_agents(agent_list=sample_agent_list)
+    result = get_outdated_agents(agent_list=short_agent_list)
     # Check typing
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
     assert isinstance(result.affected_items, list), \
@@ -959,7 +922,7 @@ def test_agent_get_outdated_agents(sqlite_mock, agent_list, outdated_agents):
 @patch('wazuh.core.core_agent.OssecSocket')
 @patch('wazuh.core.core_agent.Agent._send_wpk_file')
 @patch('socket.socket.sendto', return_value=1)
-@patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('sqlite3.connect', return_value=test_data.global_db)
 def test_agent_upgrade_agents(sqlite_mock, socket_sendto, _send_wpk_file, ossec_socket_mock, agent_list):
     """Test `upgrade_agents` function from agent module.
@@ -978,7 +941,7 @@ def test_agent_upgrade_agents(sqlite_mock, socket_sendto, _send_wpk_file, ossec_
 @patch('wazuh.core.core_agent.OssecSocket')
 @patch('wazuh.core.core_agent.Agent._send_wpk_file')
 @patch('socket.socket.sendto', return_value=1)
-@patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('sqlite3.connect', return_value=test_data.global_db)
 def test_agent_get_upgrade_result(sqlite_mock, socket_sendto, _send_wpk_file, ossec_socket_mock, agent_list):
     """Test `get_upgrade_result` function from agent module.
@@ -997,7 +960,7 @@ def test_agent_get_upgrade_result(sqlite_mock, socket_sendto, _send_wpk_file, os
 @patch('wazuh.core.core_agent.OssecSocket')
 @patch('wazuh.core.core_agent.Agent._send_custom_wpk_file')
 @patch('socket.socket.sendto', return_value=1)
-@patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('sqlite3.connect', return_value=test_data.global_db)
 def test_agent_upgrade_agents_custom(sqlite_mock, socket_sendto, _send_wpk_file, ossec_socket_mock, agent_list):
     """Test `upgrade_agents_custom` function from agent module.
@@ -1017,7 +980,7 @@ def test_agent_upgrade_agents_custom(sqlite_mock, socket_sendto, _send_wpk_file,
     ("any-path", None),
     (None, None)
 ])
-@patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('sqlite3.connect', return_value=test_data.global_db)
 def test_agent_upgrade_agents_custom_exceptions(sqlite_mock, file_path, installer):
     """Test `upgrade_agents_custom` function from agent module raises the expected `WazuhInternalError` exception when
@@ -1041,7 +1004,7 @@ def test_agent_upgrade_agents_custom_exceptions(sqlite_mock, file_path, installe
     (['001'], 'logcollector', 'internal')
 ])
 @patch('wazuh.configuration.OssecSocket')
-@patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('sqlite3.connect', return_value=test_data.global_db)
 def test_agent_get_agent_config(sqlite_mock, ossec_socket_mock, agent_list, component, configuration):
     """Test `get_agent_config` function from agent module.
@@ -1065,7 +1028,7 @@ def test_agent_get_agent_config(sqlite_mock, ossec_socket_mock, agent_list, comp
 @pytest.mark.parametrize('agent_list', [
     ['005']
 ])
-@patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('sqlite3.connect', return_value=test_data.global_db)
 def test_agent_get_agent_config_exceptions(sqlite_mock, agent_list):
     """Test `get_agent_config` function from agent module raises the expected exceptions when using invalid parameters.
@@ -1085,7 +1048,7 @@ def test_agent_get_agent_config_exceptions(sqlite_mock, agent_list):
 @pytest.mark.parametrize('agent_list', [
      full_agent_list[1:]
 ])
-@patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('wazuh.common.shared_path', new=test_shared_path)
 @patch('wazuh.common.multi_groups_path', new=test_multigroup_path)
 @patch('wazuh.agent.get_agents_info', return_value=full_agent_list)
@@ -1109,7 +1072,7 @@ def test_agent_get_agents_sync_group(sqlite_mock, get_agent_mock, agent_list):
     (['000'], WazuhError(1703)),
     (['100'], WazuhError(1701))
 ])
-@patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('sqlite3.connect', return_value=test_data.global_db)
 def test_agent_get_agents_sync_group_exceptions(sqlite_mock, agent_list, expected_error):
     """Test `get_agents_sync_group` function from agent module returns the expected exceptions when using invalid
@@ -1133,7 +1096,7 @@ def test_agent_get_agents_sync_group_exceptions(sqlite_mock, agent_list, expecte
 @pytest.mark.parametrize('filename, group_list', [
     ('agent.conf', ['default'])
 ])
-@patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('wazuh.common.shared_path', new=test_shared_path)
 def test_agent_get_file_conf(filename, group_list):
     """Test `get_file_conf` from agent module.
@@ -1156,7 +1119,7 @@ def test_agent_get_file_conf(filename, group_list):
 @pytest.mark.parametrize('group_list', [
     ['default']
 ])
-@patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('wazuh.common.shared_path', new=test_shared_path)
 def test_agent_get_agent_conf(group_list):
     """Test `get_agent_agent_conf` function from agent module.
@@ -1200,7 +1163,7 @@ def test_agent_upload_group_file(mock_upload, group_list):
     (full_agent_list, ['group-1'], False, '004'),
     (full_agent_list, ['group-1'], True, None)
 ])
-@patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('wazuh.common.shared_path', new=test_shared_path)
 @patch('wazuh.agent.get_distinct_agents')
 @patch('wazuh.agent.get_agent_groups')
