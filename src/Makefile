@@ -230,8 +230,8 @@ ifeq (${COVERITY}, YES)
 endif
 
 OSSEC_CFLAGS+=${DEFINES}
-OSSEC_CFLAGS+=-pipe -Wall -Wextra
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include
+OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2}
 
 
 
@@ -744,35 +744,8 @@ os_zlib/%.o: os_zlib/%.c
 
 #### bzip2 ##########
 
-BZIP2_CFLAGS   = -fpic -Wall -O2 -g -D_FILE_OFFSET_BITS=64
-
-BZIP2_O       := ${EXTERNAL_BZIP2}blocksort.o \
-	             ${EXTERNAL_BZIP2}huffman.o \
-	             ${EXTERNAL_BZIP2}crctable.o \
-	             ${EXTERNAL_BZIP2}randtable.o \
-	             ${EXTERNAL_BZIP2}compress.o \
-	             ${EXTERNAL_BZIP2}decompress.o \
-	             ${EXTERNAL_BZIP2}bzlib.o
-
-
-$(BZIP2_LIB): $(BZIP2_O)
-	$(OSSEC_LINK) $(BZIP2_LIB) $(BZIP2_O)
-
-${EXTERNAL_BZIP2}blocksort.o: ${EXTERNAL_BZIP2}blocksort.c
-	$(OSSEC_CC) $(BZIP2_CFLAGS) -c ${EXTERNAL_BZIP2}blocksort.c -o ${EXTERNAL_BZIP2}blocksort.o
-${EXTERNAL_BZIP2}huffman.o: ${EXTERNAL_BZIP2}huffman.c
-	$(OSSEC_CC) $(BZIP2_CFLAGS) -c ${EXTERNAL_BZIP2}huffman.c -o ${EXTERNAL_BZIP2}huffman.o
-${EXTERNAL_BZIP2}crctable.o: ${EXTERNAL_BZIP2}crctable.c
-	$(OSSEC_CC) $(BZIP2_CFLAGS) -c ${EXTERNAL_BZIP2}crctable.c -o ${EXTERNAL_BZIP2}crctable.o
-${EXTERNAL_BZIP2}randtable.o: ${EXTERNAL_BZIP2}randtable.c
-	$(OSSEC_CC) $(BZIP2_CFLAGS) -c ${EXTERNAL_BZIP2}randtable.c -o ${EXTERNAL_BZIP2}randtable.o
-${EXTERNAL_BZIP2}compress.o: ${EXTERNAL_BZIP2}compress.c
-	$(OSSEC_CC) $(BZIP2_CFLAGS) -c ${EXTERNAL_BZIP2}compress.c -o ${EXTERNAL_BZIP2}compress.o
-${EXTERNAL_BZIP2}decompress.o: ${EXTERNAL_BZIP2}decompress.c
-	$(OSSEC_CC) $(BZIP2_CFLAGS) -c ${EXTERNAL_BZIP2}decompress.c -o ${EXTERNAL_BZIP2}decompress.o
-${EXTERNAL_BZIP2}bzlib.o: ${EXTERNAL_BZIP2}bzlib.c
-	$(OSSEC_CC) $(BZIP2_CFLAGS) -c ${EXTERNAL_BZIP2}bzlib.c -o ${EXTERNAL_BZIP2}bzlib.o
-
+$(BZIP2_LIB):
+	cd ${EXTERNAL_BZIP2} && make CFLAGS=-fpic -Wall -O2 -D_FILE_OFFSET_BITS=64 libbz2.a
 
 #### SQLite #########
 
@@ -1722,6 +1695,7 @@ ifneq ($(wildcard external/*/*),)
 	-cd ${EXTERNAL_AUDIT} && make distclean
 	-cd ${EXTERNAL_LIBFFI} && make clean
 	rm -f $(msgpack_o) $(EXTERNAL_MSGPACK)libmsgpack.a
+	-make -C $(EXTERNAL_BZIP2) clean
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && make realclean
