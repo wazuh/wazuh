@@ -25,4 +25,6 @@ sleep 1
 
 /var/ossec/bin/ossec-control restart
 
+/var/ossec/framework/python/bin/python3 /wdb_checker.py
+
 /usr/bin/supervisord

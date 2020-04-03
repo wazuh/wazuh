@@ -33,6 +33,7 @@ COPY configurations/ciscat/wazuh-agent-ciscat/healthcheck/healthcheck.py /tmp/he
 COPY configurations/ciscat/wazuh-agent-ciscat/ciscat /var/ossec/wodles/ciscat
 RUN cd /var/ossec/wodles/ciscat && if [ -e CIS-CAT.sh ]; then chmod +x CIS-CAT.sh ; fi
 
+FROM wazuh-env-agent-ciscat AS wazuh-env-agent-experimental
 FROM base_agent AS wazuh-env-agent-security_white_rbac
 FROM base_agent AS wazuh-env-agent-security_black_rbac
 FROM base_agent AS wazuh-env-agent-agents_white_rbac

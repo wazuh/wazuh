@@ -194,6 +194,9 @@ def _single_processor(req_resources, user_permissions_for_resource, final_user_p
     """
     req_resources = _optimize_resources(req_resources)
     for user_resource, user_resource_effect in user_permissions_for_resource.items():
+        # Skip combined resources
+        if '&' in user_resource:
+            continue
         user_resource_identifier = ':'.join(user_resource.split(':')[:-1])
         # Modify the identifier agent:group by agent:id in the user's resources
         if user_resource_identifier == 'agent:group':
