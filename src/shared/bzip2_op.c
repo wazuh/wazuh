@@ -8,7 +8,6 @@
  * Foundation.
  */
 
-
 #include "../headers/shared.h"
 
 
@@ -50,7 +49,7 @@ int bzip2_compress(const char *file, const char *filebz2) {
         BZ2_bzWrite(&bzerror, compressfile, (void*)buf, readbuff);
 
         if (bzerror != BZ_OK) {
-            mdebug2("Could not write bz2 file (bz2error:%d): (%d)-%s",
+            mdebug2("Could not write bz2 file (%d)'%s': (%d)-%s",
                     bzerror, filebz2, errno, strerror(errno));
             fclose(input);
             fclose(output);
@@ -96,13 +95,13 @@ int bzip2_uncompress(const char *filebz2, const char *file) {
 
     input = fopen(filebz2, "rb");
     if (!input) {
-        mdebug2(FOPEN_ERROR, file, errno, strerror(errno));
+        mdebug2(FOPEN_ERROR, filebz2, errno, strerror(errno));
         return -1;
     }
 
-    output = fopen(file, "wb" );
+     output= fopen(file, "wb" );
     if (!output) {
-        mdebug2(FOPEN_ERROR, filebz2, errno, strerror(errno));
+        mdebug2(FOPEN_ERROR, file, errno, strerror(errno));
         fclose(input);
         return -1;
     }
@@ -120,18 +119,17 @@ int bzip2_uncompress(const char *filebz2, const char *file) {
     int readbuff;
     do {
         readbuff = BZ2_bzRead(&bzerror, compressfile, buf, 2048);
-
         if (bzerror == BZ_OK || bzerror == BZ_STREAM_END) {
             if (readbuff > 0) {
                 fwrite(buf, sizeof(char), readbuff, output);
-            } else {
-                mdebug2("BZ2_bzRead(%d)'%s': (%d)-%s",
-                        bzerror, filebz2, errno, strerror(errno));
-                fclose(input);
-                fclose(output);
-                BZ2_bzReadClose(&bzerror, compressfile);
-                return -1;
             }
+        } else {
+            mdebug2("BZ2_bzRead(%d)'%s': (%d)-%s",
+                    bzerror, filebz2, errno, strerror(errno));
+            fclose(input);
+            fclose(output);
+            BZ2_bzReadClose(&bzerror, compressfile);
+            return -1;
         }
     } while (readbuff > 0);
 

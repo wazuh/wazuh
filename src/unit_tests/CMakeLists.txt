@@ -15,6 +15,7 @@ message(Source folder: ${SRC_FOLDER})
 include_directories(${SRC_FOLDER}/headers)
 include_directories(${SRC_FOLDER}/external/openssl/include)
 include_directories(${SRC_FOLDER}/external/audit-userspace/lib)
+include_directories(${SRC_FOLDER}/external/bzip2)
 include_directories(${SRC_FOLDER})
 
 # Wazuh libraries
