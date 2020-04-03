@@ -11,34 +11,11 @@ from unittest.mock import patch
 
 import pytest
 from sqlalchemy import create_engine
-from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
 from wazuh.exception import WazuhError
-from wazuh.rbac.decorators import expose_resources
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
-        import wazuh.rbac.decorators
-        from wazuh.tests.util import RBAC_bypasser
-
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        from wazuh import security
-        from wazuh.results import WazuhResult
-
-# Params
-
-security_cases = list()
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'security/')
-os.chdir(test_data_path)
-
-for file in glob.glob('*.json'):
-    with open(os.path.join(test_data_path + file)) as f:
-        tests_cases = json.load(f)
-
-    for function_, test_cases in tests_cases.items():
-        for test_case in test_cases:
-            security_cases.append((function_, test_case['params'], test_case['result']))
 
 
 def create_memory_db(sql_file, session):
@@ -48,6 +25,48 @@ def create_memory_db(sql_file, session):
             if '* ' not in line and '/*' not in line and '*/' not in line and line != '':
                 session.execute(line)
                 session.commit()
+
+
+def db_setup():
+    db_engine = create_engine('sqlite://')
+    session = sessionmaker(bind=db_engine)
+    create_memory_db('schema_security_test.sql', session())
+
+    return db_engine
+
+
+engine = db_setup()
+
+with patch('wazuh.common.ossec_uid'):
+    with patch('wazuh.common.ossec_gid'):
+        with patch('sqlalchemy.create_engine', return_value=engine):
+            with patch('os.chmod', side_effect=None):
+                with patch('shutil.chown', side_effect=None):
+                    # with patch('os.path.exists', return_value=True):
+                    #     with patch('api.authentication', side_effect=None):
+                    from wazuh.rbac.decorators import expose_resources
+                    import wazuh.rbac.decorators
+                    from wazuh.tests.util import RBAC_bypasser
+
+                    wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+                    from wazuh.results import WazuhResult
+
+with patch('os.path.exists', return_value=True):
+    with patch('builtins.open', side_effect=None):
+        from wazuh import security
+
+# Params
+
+security_cases = list()
+os.chdir(test_data_path)
+
+for file in glob.glob('*.json'):
+    with open(os.path.join(test_data_path + file)) as f:
+        tests_cases = json.load(f)
+
+    for function_, test_cases in tests_cases.items():
+        for test_case in test_cases:
+            security_cases.append((function_, test_case['params'], test_case['result']))
 
 
 def affected_are_equal(target_dict, expected_dict):
@@ -67,21 +86,8 @@ def failed_are_equal(target_dict, expected_dict):
     return result
 
 
-@pytest.fixture
-def db_setup():
-    def _method(session):
-        try:
-            create_memory_db('schema_security_test.sql', session)
-        except OperationalError:
-            pass
-
-    return _method
-
-
 @pytest.mark.parametrize('security_function, params, expected_result', security_cases)
-@patch('wazuh.security.orm._engine', create_engine(f'sqlite://'))
-@patch('wazuh.security.orm._Session', sessionmaker(bind=create_engine(f'sqlite://')))
-def test_get_users(db_setup, security_function, params, expected_result):
+def test_get_users(security_function, params, expected_result):
     """Checks that the dict returned is correct
 
     Parameters

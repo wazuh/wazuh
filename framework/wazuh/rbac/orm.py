@@ -1073,7 +1073,7 @@ class RolesPoliciesManager:
                     if position is not None and \
                             self.session.query(RolesPolicies).filter_by(role_id=role_id, level=position).first() and \
                             self.session.query(RolesPolicies).filter_by(role_id=role_id,
-                                                                    policy_id=policy_id).first() is None:
+                                                                        policy_id=policy_id).first() is None:
                         role_policies = [row for row in self.session.query(
                             RolesPolicies).filter(RolesPolicies.role_id == role_id, RolesPolicies.level >= position
                                                   ).order_by(RolesPolicies.level).all()]
