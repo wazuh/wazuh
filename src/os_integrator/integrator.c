@@ -266,7 +266,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                         int log_count = 0;
                         char *srcip = NULL;
                         json_field = cJSON_GetObjectItem(al_json, "full_log");
-                        char *full_log = json_field->valuestring;
+                        char *full_log = json_field ? json_field->valuestring : "";
                         char *tmpstr = full_log;
 
                         while(*tmpstr != '\0')
@@ -356,19 +356,19 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                         char *rule_description = NULL;
 
                         json_field = cJSON_GetObjectItem(al_json,"timestamp");
-                        date = json_field->valuestring;
+                        date = json_field ? json_field->valuestring : "";
 
                         json_field = cJSON_GetObjectItem(al_json,"location");
-                        location = json_field->valuestring;
+                        location = json_field ? json_field->valuestring : "";
 
                         json_field = cJSON_GetObjectItem(rule,"id");
-                        rule_id = json_field->valuestring;
+                        rule_id = json_field ? json_field->valuestring : "";
 
                         json_field = cJSON_GetObjectItem(rule,"level");
-                        alert_level = json_field->valueint;
+                        alert_level = json_field ? json_field->valueint : "";
 
                         json_field = cJSON_GetObjectItem(rule,"description");
-                        rule_description = json_field->valuestring;
+                        rule_description = json_field ? json_field->valuestring : "";
 
 
                         fprintf(fp, "alertdate='%s'\nalertlocation='%s'\nruleid='%s'\nalertlevel='%d'\nruledescription='%s'\nalertlog='%s'\nsrcip='%s'", date, location, rule_id, alert_level, rule_description, full_log, srcip == NULL?"":srcip);
