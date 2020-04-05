@@ -258,10 +258,12 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 else
                 {
                     if(integrator_config[s]->alert_format != NULL && strncmp(integrator_config[s]->alert_format, "json", 4) == 0){
-                        fprintf(fp, "%s", cJSON_PrintUnformatted(al_json));
+                        char * unformatted = cJSON_PrintUnformatted(al_json);
+                        fprintf(fp, "%s", unformatted);
                         temp_file_created = 1;
                         mdebug2("file %s was written.", exec_tmp_file);
                         fclose(fp);
+                        free(unformatted);
                     }else{
                         int log_count = 0;
                         char *srcip = NULL;
