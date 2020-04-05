@@ -417,7 +417,7 @@ fim_tmp_file *fim_db_create_temp_file(int storage) {
 
         file->fd = fopen(file->path, "w+");
         if (file->fd == NULL) {
-            merror("Failed to create temporal storage '%s': '%s' (%d)", file->path, strerror(errno), errno);
+            merror("Failed to create temporal storage '%s': %s (%d)", file->path, strerror(errno), errno);
             os_free(file->path);
             os_free(file);
             return NULL;
@@ -837,7 +837,7 @@ int fim_db_get_count_range(fdb_t *fim_sql, char *start, char *top, int *count) {
     fim_db_bind_range(fim_sql, FIMDB_STMT_GET_COUNT_RANGE, start, top);
 
     if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_COUNT_RANGE]) != SQLITE_ROW) {
-        merror("Error stepping on get count range: %s", sqlite3_errmsg(fim_sql->db));
+        merror("Step error getting count range 'start %s' 'top %s': %s", start, top,  sqlite3_errmsg(fim_sql->db));
         return FIMDB_ERR;
     }
 
@@ -855,7 +855,7 @@ int fim_db_insert_data(fdb_t *fim_sql, fim_entry_data *entry, int *row_id) {
         fim_db_bind_insert_data(fim_sql, entry);
 
         if (res = sqlite3_step(fim_sql->stmt[FIMDB_STMT_INSERT_DATA]), res != SQLITE_DONE) {
-            merror("Error stepping on insert data: %s", sqlite3_errmsg(fim_sql->db));
+            merror("Step error inserting data row_id '%d': %s", *row_id, sqlite3_errmsg(fim_sql->db));
             return FIMDB_ERR;
         }
 
@@ -866,7 +866,7 @@ int fim_db_insert_data(fdb_t *fim_sql, fim_entry_data *entry, int *row_id) {
         fim_db_bind_update_data(fim_sql, entry, row_id);
 
         if (res = sqlite3_step(fim_sql->stmt[FIMDB_STMT_UPDATE_DATA]), res != SQLITE_DONE) {
-            merror("Error stepping on update data: %s", sqlite3_errmsg(fim_sql->db));
+            merror("Step error updating data row_id '%d': %s", *row_id, sqlite3_errmsg(fim_sql->db));
             return FIMDB_ERR;
         }
     }
@@ -893,13 +893,13 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_entry_data *en
         fim_db_bind_update_path(fim_sql, file_path, entry, inode_id);
 
         if (res = sqlite3_step(fim_sql->stmt[FIMDB_STMT_UPDATE_PATH]), res != SQLITE_DONE) {
-            merror("Error stepping on update path: %s", sqlite3_errmsg(fim_sql->db));
+            merror("Step error updating path '%s': %s", file_path, sqlite3_errmsg(fim_sql->db));
             return FIMDB_ERR;
         }
         break;
 
     default:
-        merror("Error stepping on insert path: %s", sqlite3_errmsg(fim_sql->db));
+        merror("Step error inserting path '%s': %s", file_path, sqlite3_errmsg(fim_sql->db));
         return FIMDB_ERR;
     }
 
@@ -979,20 +979,20 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry, 
                     fim_db_bind_delete_data_id(fim_sql, inode_id);
 
                     if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_DELETE_DATA]) != SQLITE_DONE) {
-                        merror("Error stepping on delete data: %s", sqlite3_errmsg(fim_sql->db));
+                        merror("Step error deleting data '%s' to insert in new row, the inode has changed: %s", file_path, sqlite3_errmsg(fim_sql->db));
                         return FIMDB_ERR;
                     }
 
                     fim_db_force_commit(fim_sql);
                 }
                 else if (res_inode_id == SQLITE_ERROR) {
-                    merror("Error stepping on get inode ID '%d': %s", res_inode_id, sqlite3_errmsg(fim_sql->db));
+                    merror("Step error getting inode ID for file path '%s': %s", file_path, sqlite3_errmsg(fim_sql->db));
                     return FIMDB_ERR;
                 }
             }
         }
         else if (res_inode == SQLITE_ERROR) {
-            merror("Error stepping on get inode '%d': %s", res_inode, sqlite3_errmsg(fim_sql->db));
+            merror("Step error getting path inode '%s': %s", file_path, sqlite3_errmsg(fim_sql->db));
             return FIMDB_ERR;
         }
 #endif
@@ -1001,7 +1001,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry, 
     break;
 
     default:
-        merror("Error stepping on get data row: %s", sqlite3_errmsg(fim_sql->db));
+        merror("Step error getting data row: %s", sqlite3_errmsg(fim_sql->db));
         return FIMDB_ERR;
     }
 
@@ -1049,7 +1049,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
     // Calculate checksum of the first half
     for (i = 0; i < m; i++) {
         if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]) != SQLITE_ROW) {
-            merror("Error stepping on get path range: %s", sqlite3_errmsg(fim_sql->db));
+            merror("Step error getting path range, first half 'start %s' 'top %s' (i:%d): %s", start, top, i, sqlite3_errmsg(fim_sql->db));
             w_mutex_unlock(mutex);
             goto end;
         }
@@ -1065,7 +1065,7 @@ int fim_db_data_checksum_range(fdb_t *fim_sql, const char *start, const char *to
     //Calculate checksum of the second half
     for (i = m; i < n; i++) {
         if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATH_RANGE]) != SQLITE_ROW) {
-            merror("Error stepping on get path range: %s", sqlite3_errmsg(fim_sql->db));
+            merror("Step error getting path range, second half 'start %s' 'top %s' (i:%d): %s", start, top, i, sqlite3_errmsg(fim_sql->db));
             w_mutex_unlock(mutex);
             goto end;
         }
@@ -1235,7 +1235,7 @@ int fim_db_get_row_path(fdb_t * fim_sql, int mode, char **path) {
     fim_db_clean_stmt(fim_sql, index);
 
     if (result = sqlite3_step(fim_sql->stmt[index]), result != SQLITE_ROW && result != SQLITE_DONE) {
-        merror("Error stepping on get row path: %s", sqlite3_errmsg(fim_sql->db));
+        merror("Step error getting row path '%s': %s", *path, sqlite3_errmsg(fim_sql->db));
         return FIMDB_ERR;
     }
 
@@ -1258,7 +1258,7 @@ int fim_db_set_scanned(fdb_t *fim_sql, char *path) {
     fim_db_bind_set_scanned(fim_sql, path);
 
     if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_SET_SCANNED]) != SQLITE_DONE) {
-        merror("Error stepping on set scanned: %s", sqlite3_errmsg(fim_sql->db));
+        merror("Step error setting scanned path '%s': %s", path, sqlite3_errmsg(fim_sql->db));
         return FIMDB_ERR;
     }
 
@@ -1311,7 +1311,7 @@ int fim_db_get_count_entry_data(fdb_t * fim_sql) {
         return sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_COUNT_DATA], 0);
     }
     else {
-        merror("Error stepping on get count data: %s", sqlite3_errmsg(fim_sql->db));
+        merror("Step error getting count entry data: %s", sqlite3_errmsg(fim_sql->db));
         return FIMDB_ERR;
     }
 }
@@ -1324,7 +1324,7 @@ int fim_db_get_count_entry_path(fdb_t * fim_sql) {
         return sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_COUNT_PATH], 0);
     }
     else {
-        merror("Error stepping on get count path: %s", sqlite3_errmsg(fim_sql->db));
+        merror("Step error getting count entry path: %s", sqlite3_errmsg(fim_sql->db));
         return FIMDB_ERR;
     }
 }
