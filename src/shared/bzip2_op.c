@@ -45,7 +45,7 @@ int bzip2_compress(const char *file, const char *filebz2) {
 
     char buf[2048];
     int readbuff;
-    while (readbuff = fread(buf, sizeof(char), 2048, input), readbuff > 0) {
+    while (readbuff = fread(buf, sizeof(char), sizeof(buf), input), readbuff > 0) {
         BZ2_bzWrite(&bzerror, compressfile, (void*)buf, readbuff);
 
         if (bzerror != BZ_OK) {
