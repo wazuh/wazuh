@@ -514,26 +514,7 @@ static int teardown_struct_dirent(void **state) {
 }
 
 static int teardown_fim_scan_realtime(void **state) {
-    int *dir_opts = calloc(6, sizeof(int));
-    int it = 0;
-
-    if (!dir_opts) {
-        return -1;
-    }
-
-    while (syscheck.dir[it] != NULL) {
-        if (it == 3 || it == 4 || it == 5) {
-            dir_opts[it] |= REALTIME_ACTIVE;
-        }
-        else {
-            dir_opts[it] &= ~REALTIME_ACTIVE;
-        }
-
-        syscheck.opts[it] = dir_opts[it];
-        it++;
-    }
-
-    *state = dir_opts;
+    syscheck.opts = *state;
 
     return 0;
 }
@@ -2998,6 +2979,10 @@ int main(void) {
         cmocka_unit_test(test_fim_file_no_attributes),
         cmocka_unit_test_setup(test_fim_file_error_on_insert, setup_fim_entry),
 
+        /* fim_scan */
+        cmocka_unit_test_teardown(test_fim_scan_no_realtime, teardown_fim_scan_realtime),
+        cmocka_unit_test_teardown(test_fim_scan_realtime_enabled, teardown_fim_scan_realtime),
+
         /* fim_checker */
         cmocka_unit_test(test_fim_checker_scheduled_configuration_directory_error),
         cmocka_unit_test(test_fim_checker_not_scheduled_configuration_directory_error),
@@ -3013,10 +2998,6 @@ int main(void) {
         cmocka_unit_test(test_fim_checker_fim_regular_ignore),
         cmocka_unit_test(test_fim_checker_fim_regular_restrict),
         cmocka_unit_test_setup_teardown(test_fim_checker_fim_directory, setup_struct_dirent, teardown_struct_dirent),
-
-        /* fim_scan */
-        cmocka_unit_test_teardown(test_fim_scan_no_realtime, teardown_fim_scan_realtime),
-        cmocka_unit_test_teardown(test_fim_scan_realtime_enabled, teardown_fim_scan_realtime),
 
         /* fim_directory */
         cmocka_unit_test_setup_teardown(test_fim_directory, setup_struct_dirent, teardown_struct_dirent),
