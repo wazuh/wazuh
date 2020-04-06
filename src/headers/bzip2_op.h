@@ -30,7 +30,8 @@ int bzip2_compress(const char *file, const char *filebz2);
  * @param filebz2 File path to uncompress
  * @param file File name uncompressed
  *
- * @retval 0 on success, -1 on error
+ * @retval 0 on success
+ * @retval -1 on error
  */
 int bzip2_uncompress(const char *filebz2, const char *file);
 
