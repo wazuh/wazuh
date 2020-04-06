@@ -3281,6 +3281,14 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/Role_id'
+    security_position:
+      in: query
+      name: 'position'
+      description: 'Security position for roles/policies'
+      required: False
+      schema:
+        type: integer
+        minimum: 0
     role_name:
       in: query
       name: role_name
@@ -10700,6 +10708,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/role_id'
         - $ref: '#/components/parameters/policy_ids_rbac_required'
+        - $ref: '#/components/parameters/security_position'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -10784,16 +10793,17 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /security/user/{username}/roles:
+  /security/users/{username}/roles:
     post:
       tags:
         - security
-      summary: 'Create a specify relation between one user and one or more roles'
+      summary: 'Create a specify relation between one user and one role'
       description: 'Create a specify relation role-policy, one user may have multiples roles'
       operationId: api.controllers.security_controller.set_user_role
       parameters:
         - $ref: '#/components/parameters/username'
         - $ref: '#/components/parameters/role_ids_required'
+        - $ref: '#/components/parameters/security_position'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:

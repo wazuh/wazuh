@@ -150,7 +150,7 @@ stages:
   # DELETE /security/user/{user_id}/roles/{role_id}
   - name: Try to delete a existent user-role
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/normal/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/normal/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -168,7 +168,7 @@ stages:
   # DELETE /security/user/{user_id}/roles/{role_id}
   - name: Try to delete a non-existent user-role
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/no_user/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/no_user/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -182,7 +182,7 @@ stages:
   # DELETE /security/user/{user_id}/roles/{role_id}
   - name: Try to delete a non-existent user-role (role non-existent)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/new_user/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/new_user/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -200,10 +200,6 @@ includes:
   - !include common.yaml
 
 stages:
-
-  # Authentication stage
-  - type: ref
-    id: login_get_token
 
   # DELETE /security/policies/{role_id}
   - name: Try to delete a existent policy
@@ -387,9 +383,6 @@ includes:
   - !include common.yaml
 
 stages:
-
-  - type: ref
-    id: login_get_token
 
   - name: Delete a non-existent user
     request:

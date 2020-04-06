@@ -183,9 +183,6 @@ stages:
             - <<: *roles
             - <<: *roles
             - <<: *roles
-            - <<: *roles
-            - <<: *roles
-            - <<: *roles
           total_affected_items: !anyint
 
   # GET /security/roles
@@ -557,9 +554,9 @@ stages:
               roles: []
             - username: normal
               roles:
-                - 11
                 - 12
                 - 13
+                - 11
             - username: ossec
               roles:
                 - 9
@@ -568,9 +565,9 @@ stages:
               roles: []
             - username: rbac
               roles:
+                - 12
                 - 10
                 - 11
-                - 12
             - username: wazuh
               roles:
                 - 1
@@ -805,9 +802,9 @@ stages:
               roles: []
             - username: normal
               roles:
-                - 11
                 - 12
                 - 13
+                - 11
             - username: ossec
               roles:
                 - 9
@@ -816,9 +813,9 @@ stages:
               roles: []
             - username: rbac
               roles:
+                - 12
                 - 10
                 - 11
-                - 12
           total_affected_items: 6
           total_failed_items: 0
           failed_items: []
@@ -851,9 +848,9 @@ stages:
                 - 8
             - username: rbac
               roles:
+                - 12
                 - 10
                 - 11
-                - 12
             - username: python
               roles: []
             - username: ossec
@@ -862,9 +859,9 @@ stages:
                 - 12
             - username: normal
               roles:
-                - 11
                 - 12
                 - 13
+                - 11
             - username: guest
               roles: []
             - username: administrator
@@ -895,9 +892,9 @@ stages:
               roles: []
             - username: normal
               roles:
-                - 11
                 - 12
                 - 13
+                - 11
             - username: ossec
               roles:
                 - 9
@@ -906,9 +903,9 @@ stages:
               roles: []
             - username: rbac
               roles:
+                - 12
                 - 10
                 - 11
-                - 12
             - username: wazuh
               roles:
                 - 1
@@ -947,9 +944,9 @@ stages:
               roles: []
             - username: rbac
               roles:
+                - 12
                 - 10
                 - 11
-                - 12
             - username: wazuh
               roles:
                 - 1
