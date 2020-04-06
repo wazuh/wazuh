@@ -19,7 +19,8 @@
  * @param file File path to compress
  * @param filebz2 File name compressed
  *
- * @retval 0 on success, -1 on error
+ * @retval 0 on success
+ * @retval -1 on error
  */
 int bzip2_compress(const char *file, const char *filebz2);
 
