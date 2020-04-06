@@ -57,6 +57,20 @@ def environment_base():
     down_env()
 
 
+@pytest.fixture(name="agents_tests", scope="session")
+def environment_agents():
+    values = build_and_up("agents")
+    while values['retries'] < values['max_retries']:
+        health = check_health()
+        if health:
+            time.sleep(10)
+            yield
+            break
+        else:
+            values['retries'] += 1
+    down_env()
+
+
 @pytest.fixture(name="security_tests", scope="session")
 def environment_security():
     values = build_and_up("security")

@@ -3,7 +3,8 @@ test_name: GET /agents
 
 marks:
   - usefixtures:
-    - base_tests
+    - agents_tests
+  - xfail # STAGE (Filter by agent status 2) XFAILS DUE TO https://github.com/wazuh/wazuh/issues/4825
 
 includes:
  - !include common.yaml
@@ -597,24 +598,23 @@ stages:
          total_affected_items: 2
          total_failed_items: 0
 
-# THIS FAILS RIGHT NOW, SEVERAL STATUSES DOES NOT WORK
-# - name: Filter by agent status 2
-#   request:
-#     <<: *get_agents
-#     params:
-#       status: disconnected,never_connected
-#   response:
-#     status_code: 200
-#     body:
-#       data:
-#         affected_items:
-#           - id: '009'
-#           - id: '010'
-#           - id: '011'
-#           - id: '012'
-#         failed_items: []
-#         total_affected_items: 4
-#         total_failed_items: 0
+ - name: Filter by agent status 2
+   request:
+     <<: *get_agents
+     params:
+       status: disconnected,never_connected
+   response:
+     status_code: 200
+     body:
+       data:
+         affected_items:
+           - id: '009'
+           - id: '010'
+           - id: '011'
+           - id: '012'
+         failed_items: []
+         total_affected_items: 4
+         total_failed_items: 0
 
  - name: Try to show agents with a non existing status
    request:
@@ -1564,15 +1564,16 @@ stages:
      body:
        data:
          internal:
+           syscheck:
+             rt_delay: !anyint
+             default_max_depth: !anyint
+             symlink_scan_interval: !anyint
+             debug: !anyint
+             file_max_size: !anyint
+             max_audit_entries: !anyint
            rootcheck:
              sleep: !anyint
-           syscheck:
-             debug: !anyint
-             default_max_depth: !anyint
-             max_audit_entries: !anyint
-             rt_delay: !anyint
-             sleep: !anyint
-             sleep_after: !anyint
+
 
  - name: Request-Wmodules-Wmodules (Manager)
    request:
@@ -2038,6 +2039,9 @@ stages:
 ---
 test_name: GET /groups/{group_id}/agents
 
+marks:
+  - xfail # STAGE (Status multiple) XFAILS DUE TO https://github.com/wazuh/wazuh/issues/4825
+
 stages:
 
  - name: Try get all agents in one group
@@ -2277,20 +2281,24 @@ stages:
      body:
        <<: *error_spec
 
-# THIS FAILS RIGHT NOW, SEVERAL STATUSES DOES NOT WORK
-# - name: Status multiple
-#   request:
-#     <<: *groups_id_request
-#     params:
-#       limit: 1
-#       status: active,disconnected
-#   response:
-#     status_code: 200
-#     body:
-#       <<: *groups_id_response
-#       data:
-#        totalItems: !anyint
-#
+ - name: Status multiple
+   request:
+     <<: *groups_id_request
+     params:
+       status: active,disconnected
+   response:
+     status_code: 200
+     body:
+       data:
+         affected_items:
+           - id: '003'
+           - id: '006'
+           - id: '007'
+           - id: '008'
+         failed_items: []
+         total_affected_items: 4
+         total_failed_items: 0
+
  - name: Try show agents with not allowed status
    request:
      <<: *groups_id_request
@@ -3587,9 +3595,6 @@ stages:
 ---
 test_name: GET /agents/{agent_id}/upgrade_result
 
-marks:
-  - skip
-
 stages:
 
  - name: Try get upgrade result agent 000 (manager)
@@ -3647,6 +3652,8 @@ stages:
      method: PUT
      headers:
        Authorization: "Bearer {test_login_token}"
+     params:
+       force: True
    response:
      status_code: 200
      body:

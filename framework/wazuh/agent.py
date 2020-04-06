@@ -720,9 +720,6 @@ def upgrade_agents_custom(agent_list=None, file_path=None, installer=None):
     :param installer: Selected installer.
     :return: Upgrade message.
     """
-    if not file_path or not installer:
-        raise WazuhInternalError(1307)
-
     # We access unique agent_id from list, this may change if and when we decide to add option to upgrade a list of
     # agents
     agent_id = agent_list[0]

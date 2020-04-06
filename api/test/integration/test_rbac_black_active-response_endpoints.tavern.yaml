@@ -30,7 +30,7 @@ stages:
       status_code: 400
       body:
         code: 4000
-        detail: "Permission denied: Resource type: agent:id"
+        detail: !anystr
 
   - name: Send a message to an agent (Status=Active) (Allow)
     request:
@@ -77,15 +77,14 @@ stages:
           failed_items:
             - error:
                 code: 1651
-                message: Active response - Agent is not active
+                message: !anystr
                 remediation: !anything
               id:
                 - '010'
             - error:
                 code: 4000
-                message: 'Permission denied: Resource type: agent:id'
-                remediation: Please, make sure you have permissions to execute current request,
-                  for more information on setting up permissions please visit XXXX
+                message: !anystr
+                remediation: !anystr
               id:
                 - '004'
                 - '007'
@@ -110,7 +109,7 @@ stages:
       status_code: 400
       body:
         code: 4000
-        detail: "Permission denied: Resource type: agent:id"
+        detail: !anystr
 
   - name: Try to send a message to an unexisting agent (Allow)
     request:
@@ -132,9 +131,8 @@ stages:
           failed_items:
             - error:
                 code: 1701
-                message: Agent does not exist
-                remediation: Please, use `GET /agents?select=id,name` to find all available
-                  agents
+                message: !anystr
+                remediation: !anystr
               id:
                 - '251'
                 - '252'
@@ -166,7 +164,7 @@ stages:
           failed_items:
             - error:
                 code: 1651
-                message: Active response - Agent is not active
+                message: !anystr
                 remediation: !anything
               id:
                 - '010'

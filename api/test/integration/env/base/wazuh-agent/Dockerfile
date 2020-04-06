@@ -14,6 +14,7 @@ COPY configurations/base/wazuh-agent/config/ossec.conf /var/ossec/etc/ossec.conf
 COPY configurations/base/wazuh-agent/healthcheck/healthcheck.py /tmp/healthcheck.py
 
 FROM base_agent AS wazuh-env-agent-base
+FROM base_agent AS wazuh-env-agent-agents
 FROM base_agent AS wazuh-env-agent-syscollector
 FROM base_agent AS wazuh-env-agent-security
 FROM base_agent AS wazuh-env-agent-manager
