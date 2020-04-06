@@ -83,7 +83,7 @@ if(${TARGET} STREQUAL "winagent")
                                      -Wl,--wrap=decode_win_permissions,--wrap=pthread_mutex_lock \
                                      -Wl,--wrap=pthread_mutex_unlock,--wrap=w_get_file_attrs,--wrap=os_winreg_check")
 else()
-  list(APPEND syscheckd_tests_flags "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat")
+  list(APPEND syscheckd_tests_flags "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches")
 endif()
 
 list(APPEND syscheckd_tests_names "test_syscheck_audit")
@@ -119,7 +119,10 @@ set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watc
 
 list(APPEND syscheckd_tests_names "test_run_realtime")
 if(${TARGET} STREQUAL "agent")
-  list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot")
+  list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot \
+                                                                -Wl,--wrap=OSHash_Begin -Wl,--wrap=OSHash_Next \
+                                                                -Wl,--wrap=pthread_mutex_lock \
+                                                                -Wl,--wrap=pthread_mutex_unlock")
 elseif(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=fim_configuration_directory")
 
@@ -128,7 +131,9 @@ elseif(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_event_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=whodata_audit_start \
                                            -Wl,--wrap=check_path_type,--wrap=set_winsacl,--wrap=w_directory_exists")
 else()
-  list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS}")
+  list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=OSHash_Begin -Wl,--wrap=OSHash_Next \
+                                                                -Wl,--wrap=pthread_mutex_lock \
+                                                                -Wl,--wrap=pthread_mutex_unlock")
 endif()
 
 set(SYSCHECK_CONFIG_BASE_FLAGS "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1")

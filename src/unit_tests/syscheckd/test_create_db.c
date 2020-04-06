@@ -314,6 +314,11 @@ int __wrap_fim_db_get_count_entry_path(fdb_t * fim_sql){
     return mock();
 }
 
+int __wrap_count_watches() {
+    function_called();
+
+    return 6;
+}
 
 #ifdef TEST_WINAGENT
 int __wrap_pthread_mutex_lock (pthread_mutex_t *__mutex) {
@@ -504,6 +509,31 @@ static int teardown_struct_dirent(void **state) {
     fim_data_t *fim_data = *state;
 
     free(fim_data->entry);
+
+    return 0;
+}
+
+static int teardown_fim_scan_realtime(void **state) {
+    int *dir_opts = calloc(6, sizeof(int));
+    int it = 0;
+
+    if (!dir_opts) {
+        return -1;
+    }
+
+    while (syscheck.dir[it] != NULL) {
+        if (it == 3 || it == 4 || it == 5) {
+            dir_opts[it] |= REALTIME_ACTIVE;
+        }
+        else {
+            dir_opts[it] &= ~REALTIME_ACTIVE;
+        }
+
+        syscheck.opts[it] = dir_opts[it];
+        it++;
+    }
+
+    *state = dir_opts;
 
     return 0;
 }
@@ -1872,7 +1902,22 @@ static void test_fim_checker_fim_directory(void **state) {
     fim_checker(path, fim_data->item, NULL, 1);
 }
 
-static void test_fim_scan(void **state) {
+static void test_fim_scan_no_realtime(void **state) {
+    int *dir_opts = calloc(6, sizeof(int));
+    int it = 0;
+
+    if (!dir_opts) {
+        fail();
+    }
+
+    while (syscheck.dir[it] != NULL) {
+        dir_opts[it] = syscheck.opts[it];
+        syscheck.opts[it] &= ~REALTIME_ACTIVE;
+        it++;
+    }
+
+    *state = dir_opts;
+
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // In fim_checker
@@ -1886,6 +1931,58 @@ static void test_fim_scan(void **state) {
     expect_string(__wrap_HasFilesystem, path, "/boot");
     will_return_count(__wrap_HasFilesystem, 0, 6);
 
+    // expect_string(__wrap_realtime_adddir, dir, "/media");
+    // expect_string(__wrap_realtime_adddir, dir, "/home");
+    // expect_string(__wrap_realtime_adddir, dir, "/boot");
+
+    expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_not_scanned, NULL);
+    will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
+
+    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_set_all_unscanned, 0);
+
+    // In fim_scan
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6343): Folders monitored with inotify engine: 0");
+
+    fim_scan();
+}
+
+static void test_fim_scan_realtime_enabled(void **state) {
+    int *dir_opts = calloc(6, sizeof(int));
+    int it = 0;
+
+    if (!dir_opts) {
+        fail();
+    }
+
+    while (syscheck.dir[it] != NULL) {
+        dir_opts[it] = syscheck.opts[it];
+        syscheck.opts[it] |= REALTIME_ACTIVE;
+        it++;
+    }
+
+    *state = dir_opts;
+
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+
+    // In fim_checker
+    will_return_count(__wrap_lstat, 0, 6);
+
+    expect_string(__wrap_HasFilesystem, path, "/etc");
+    expect_string(__wrap_HasFilesystem, path, "/usr/bin");
+    expect_string(__wrap_HasFilesystem, path, "/usr/sbin");
+    expect_string(__wrap_HasFilesystem, path, "/media");
+    expect_string(__wrap_HasFilesystem, path, "/home");
+    expect_string(__wrap_HasFilesystem, path, "/boot");
+    will_return_count(__wrap_HasFilesystem, 0, 6);
+
+    expect_string(__wrap_realtime_adddir, dir, "/etc");
+    expect_string(__wrap_realtime_adddir, dir, "/usr/bin");
+    expect_string(__wrap_realtime_adddir, dir, "/usr/sbin");
     expect_string(__wrap_realtime_adddir, dir, "/media");
     expect_string(__wrap_realtime_adddir, dir, "/home");
     expect_string(__wrap_realtime_adddir, dir, "/boot");
@@ -1898,10 +1995,16 @@ static void test_fim_scan(void **state) {
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_set_all_unscanned, 0);
 
+    // In fim_scan
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
+
+    expect_function_call(__wrap_count_watches);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6343): Folders monitored with inotify engine: 6");
 
     fim_scan();
 }
+
 #else
 static void test_fim_checker_invalid_fim_mode(void **state) {
     fim_data_t *fim_data = *state;
@@ -2896,7 +2999,8 @@ int main(void) {
         cmocka_unit_test_setup(test_fim_file_error_on_insert, setup_fim_entry),
 
         /* fim_scan */
-        cmocka_unit_test(test_fim_scan),
+        cmocka_unit_test_teardown(test_fim_scan_no_realtime, teardown_fim_scan_realtime),
+        cmocka_unit_test_teardown(test_fim_scan_realtime_enabled, teardown_fim_scan_realtime),
 
         /* fim_checker */
         cmocka_unit_test(test_fim_checker_scheduled_configuration_directory_error),
