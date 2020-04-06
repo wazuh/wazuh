@@ -361,23 +361,26 @@ def test_agent_get_agent_groups(sqlite_mock, group_list, expected_result):
         assert item['configSum']
 
 
-@pytest.mark.parametrize('db_global', [
-    'Invalid path',
-    test_global_bd_path
+@pytest.mark.parametrize('db_global, system_groups, error_code', [
+    ('Invalid path', 'valid-group', 1600),
+    (test_global_bd_path, 'valid-group', 1000),
+    (test_global_bd_path, 'invalid-group', 1710)
 ])
+@patch('wazuh.agent.get_groups')
 @patch('wazuh.agent.Connection.execute', side_effect=WazuhException(1000))
-def test_agent_get_agent_groups_exceptions(execute_mock, db_global):
+def test_agent_get_agent_groups_exceptions(mock_execute, mock_get_groups, db_global, system_groups, error_code):
     """Test `get_agent_groups` function from agent module raises the expected exceptions if an invalid 'global.db' path
-    is specified.
+    or group is specified.
 
     """
+    mock_get_groups.return_value = {'valid-group'}
     with patch('wazuh.common.database_path_global', new=db_global):
         try:
-            group_result = get_agent_groups(group_list=['invalid group'])
+            group_result = get_agent_groups(group_list=[system_groups])
             assert group_result.failed_items
-            assert next(iter(group_result.failed_items)).code == 1000
+            assert next(iter(group_result.failed_items)).code == error_code
         except WazuhInternalError as e:
-            assert e.code == 1600, 'The exception was raised as expected but "error_code" does not match.'
+            assert e.code == error_code, 'The exception was raised as expected but "error_code" does not match.'
 
 
 @pytest.mark.parametrize('group_list', [
@@ -694,7 +697,7 @@ def test_agent_remove_agent_from_group(mock_get_agents, mock_get_groups, mock_un
     expected_msg = f"Agent '{agent_id}' removed from '{group_id}'"
     mock_get_agents.return_value = short_agent_list
     mock_unset.return_value = expected_msg
-    mock_get_groups.return_value = set([group_id])
+    mock_get_groups.return_value = {group_id}
 
     result = remove_agent_from_group(group_list=[group_id], agent_list=[agent_id])
     mock_unset.assert_called_once_with(agent_id=agent_id, group_id=group_id, force=True)

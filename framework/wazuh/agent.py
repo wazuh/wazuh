@@ -323,8 +323,13 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort_by=None, sort_a
                                       )
 
     # Group names
+    system_groups = get_groups()
     for group_id in group_list:
         try:
+            # Check if group exists
+            if group_id not in system_groups:
+                raise WazuhError(1710)
+
             full_entry = path.join(common.shared_path, group_id)
 
             # Get the id of the group
@@ -332,9 +337,6 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort_by=None, sort_a
             request = {'group_id': group_id}
             conn.execute(query, request)
             id_group = conn.fetch()
-
-            if id_group is None:
-                continue
 
             # Group count
             query = "SELECT {0} FROM belongs WHERE id_group = :id"
