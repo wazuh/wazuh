@@ -22,6 +22,29 @@ typedef struct agent_server {
     int protocol;
 } agent_server;
 
+typedef struct w_enrollment_target {
+    char *manager_name;
+    int port;
+    char *agent_name;
+    char *centralized_group;
+    char *sender_ip;
+} w_enrollment_target;
+
+typedef struct w_enrollment_cert {
+    char *ciphers;
+    char *authpass;
+    char *agent_cert;
+    char *agent_key;
+    char *ca_cert;
+    unsigned int auto_method:1;
+} w_enrollment_cert;
+
+typedef struct w_enrollment_cfg {
+    w_enrollment_target target;
+    w_enrollment_cert certificates;
+    unsigned int enabled:1;
+} w_enrollment_cfg;
+
 /* Configuration structure */
 typedef struct _agent {
     agent_server * server;
@@ -40,6 +63,7 @@ typedef struct _agent {
     int crypto_method;
     wlabel_t *labels; /* null-ended label set */
     agent_flags_t flags;
+    w_enrollment_cfg enrollment_cfg;
 } agent;
 
 /* Frees the Client struct  */
