@@ -102,3 +102,16 @@ def test_sort_response(response, affected_items):
     for index, item_response in enumerate(response.json()['data']['affected_items']):
         assert item_response != affected_items[reverse_index - index]
     return
+
+
+def test_validate_data_dict_field(response, fields_dict):
+    assert fields_dict, f'Fields dict is empty'
+    for field, dikt in fields_dict.items():
+        field_list = response.json()['data'][field]
+
+        for element in field_list:
+            try:
+                assert (isinstance(element[key], eval(value)) for key, value in dikt.items())
+            except KeyError:
+                assert len(element) == 1
+                assert isinstance(element['count'], int)
