@@ -514,7 +514,15 @@ static int teardown_struct_dirent(void **state) {
 }
 
 static int teardown_fim_scan_realtime(void **state) {
-    syscheck.opts = *state;
+    int *dir_opts = *state;
+    int it = 0;
+
+    while (dir_opts[it]) {
+        syscheck.opts[it] = dir_opts[it];
+        it++;
+    }
+
+    free(dir_opts);
 
     return 0;
 }
@@ -1911,10 +1919,6 @@ static void test_fim_scan_no_realtime(void **state) {
     expect_string(__wrap_HasFilesystem, path, "/home");
     expect_string(__wrap_HasFilesystem, path, "/boot");
     will_return_count(__wrap_HasFilesystem, 0, 6);
-
-    // expect_string(__wrap_realtime_adddir, dir, "/media");
-    // expect_string(__wrap_realtime_adddir, dir, "/home");
-    // expect_string(__wrap_realtime_adddir, dir, "/boot");
 
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
