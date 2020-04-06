@@ -21,7 +21,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 # Start a session and set the default security elements
 _auth_db_file = os.path.join(SECURITY_PATH, 'rbac.db')
-_engine = create_engine(os.path.join('sqlite://' + _auth_db_file), echo=False)
+_engine = create_engine('sqlite:///' + _auth_db_file, echo=False)
 _Base = declarative_base()
 _Session = sessionmaker(bind=_engine)
 
