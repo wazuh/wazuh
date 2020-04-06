@@ -808,27 +808,25 @@ void test_realtime_process_move_self(void **state) {
 
     syscheck.realtime->fd = 1;
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Begin, node);
 
-    // char *data;
-    // will_return_always(__wrap_OSHash_Delete_ex, data);
     expect_string(__wrap__mdebug2, formatted_msg, "(6342): Inotify watch deleted for 'test/sub'");
-    
+
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Begin, NULL);
 
+    expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     // Back to realtime_process
     expect_function_call(__wrap_pthread_mutex_lock);
-    char *data;
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    char *data = strdup("delete this");
     will_return_always(__wrap_OSHash_Delete_ex, data);
     expect_string(__wrap__mdebug2, formatted_msg, "(6342): Inotify watch deleted for 'test'");
-    expect_function_call(__wrap_pthread_mutex_unlock);
-    
+
     char **paths = NULL;
     paths = os_AddStrArray("/test", paths);
     will_return(__wrap_rbtree_keys, paths);
@@ -1393,5 +1391,5 @@ int main(void) {
     };
     #endif
 
-    return cmocka_run_group_tests(tests, setup_group, teardown_group);
+    return cmocka_run_group_tests(tests, setup_group, NULL);
 }
