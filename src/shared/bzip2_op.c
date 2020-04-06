@@ -99,7 +99,7 @@ int bzip2_uncompress(const char *filebz2, const char *file) {
         return -1;
     }
 
-     output= fopen(file, "wb" );
+     output = fopen(file, "wb");
     if (!output) {
         mdebug2(FOPEN_ERROR, file, errno, strerror(errno));
         fclose(input);
