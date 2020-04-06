@@ -5,32 +5,22 @@
 
 
 import glob
-import json
-from yaml import safe_load
 import os
+from importlib import reload
 from unittest.mock import patch
 
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import sessionmaker
+from yaml import safe_load
 
 from wazuh.exception import WazuhError
-from wazuh.rbac.decorators import expose_resources
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
-        import wazuh.rbac.decorators
-        from wazuh.tests.util import RBAC_bypasser
-
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        from wazuh import security
-        from wazuh.results import WazuhResult
+test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'security/')
 
 # Params
 
 security_cases = list()
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'security/')
 os.chdir(test_data_path)
 
 for file in glob.glob('*.yml'):
@@ -51,6 +41,28 @@ def create_memory_db(sql_file, session):
                 session.commit()
 
 
+@pytest.fixture(scope='function')
+def db_setup():
+    with patch('wazuh.common.ossec_uid'), patch('wazuh.common.ossec_gid'):
+        with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
+            with patch('shutil.chown'), patch('os.chmod'):
+                with patch('api.constants.SECURITY_PATH', new=test_data_path):
+                    import wazuh.rbac.orm as orm
+                    reload(orm)
+                    import wazuh.rbac.decorators as decorators
+                    from wazuh.tests.util import RBAC_bypasser
+
+                    decorators.expose_resources = RBAC_bypasser
+                    from wazuh import security
+                    from wazuh.results import WazuhResult
+    try:
+        create_memory_db('schema_security_test.sql', security.orm._Session())
+    except OperationalError:
+        pass
+
+    yield security, WazuhResult
+
+
 def affected_are_equal(target_dict, expected_dict):
     return target_dict['affected_items'] == expected_dict['affected_items']
 
@@ -68,22 +80,9 @@ def failed_are_equal(target_dict, expected_dict):
     return result
 
 
-@pytest.fixture
-def db_setup():
-    def _method(session):
-        try:
-            create_memory_db('schema_security_test.sql', session)
-        except OperationalError:
-            pass
-
-    return _method
-
-
 @pytest.mark.parametrize('security_function, params, expected_result', security_cases)
-@patch('wazuh.security.orm._engine', create_engine(f'sqlite://'))
-@patch('wazuh.security.orm._Session', sessionmaker(bind=create_engine(f'sqlite://')))
-def test_get_users(db_setup, security_function, params, expected_result):
-    """Checks that the dict returned is correct
+def test_security(db_setup, security_function, params, expected_result):
+    """Verify the entire security module.
 
     Parameters
     ----------
@@ -96,18 +95,19 @@ def test_get_users(db_setup, security_function, params, expected_result):
     expected_result : list of dict
         This is a list that contains the expected results .
     """
-    with patch('wazuh.security.orm._engine', create_engine(f'sqlite://')):
-        with patch('wazuh.security.orm._Session', sessionmaker(bind=create_engine(f'sqlite://'))):
-            db_setup(security.orm._Session())
-            try:
-                result = getattr(security, security_function)(**params).to_dict()
-                assert affected_are_equal(result, expected_result)
-                assert failed_are_equal(result, expected_result)
-            except WazuhError as e:
-                assert str(e.code) == list(expected_result['failed_items'].keys())[0]
+    # with patch('wazuh.security.orm._engine', create_engine(f'sqlite://')):
+    #     with patch('wazuh.security.orm._Session', sessionmaker(bind=create_engine(f'sqlite://'))):
+    try:
+        security, _ = db_setup
+        result = getattr(security, security_function)(**params).to_dict()
+        assert affected_are_equal(result, expected_result)
+        assert failed_are_equal(result, expected_result)
+    except WazuhError as e:
+        assert str(e.code) == list(expected_result['failed_items'].keys())[0]
 
 
-def test_revoke_tokens():
+def test_revoke_tokens(db_setup):
     """Checks that the return value of revoke_tokens is a WazuhResult."""
+    security, WazuhResult = db_setup
     result = security.revoke_tokens()
     assert isinstance(result, WazuhResult)

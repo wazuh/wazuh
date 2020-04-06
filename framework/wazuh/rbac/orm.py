@@ -6,7 +6,7 @@ import json
 import os
 import re
 from datetime import datetime
-from enum import Enum
+from enum import IntEnum
 from shutil import chown
 
 import yaml
@@ -21,7 +21,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 # Start a session and set the default security elements
 _auth_db_file = os.path.join(SECURITY_PATH, 'rbac.db')
-_engine = create_engine(f'sqlite:///' + _auth_db_file, echo=False)
+_engine = create_engine(os.path.join('sqlite://' + _auth_db_file), echo=False)
 _Base = declarative_base()
 _Session = sessionmaker(bind=_engine)
 
@@ -46,9 +46,9 @@ def json_validator(data):
 
 
 # Error codes for Roles and Policies managers
-class SecurityError(Enum):
+class SecurityError(IntEnum):
     # The element already exist in the database
-    ALREADY_EXIST = False
+    ALREADY_EXIST = 0
     # The element is invalid, missing format or property
     INVALID = -1
     # The role does not exist in the database

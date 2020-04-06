@@ -4,11 +4,27 @@
 
 import json
 import os
+from unittest.mock import patch
 
-from wazuh.rbac.auth_context import RBAChecker
+import pytest
+from sqlalchemy import create_engine
+
+from wazuh.rbac.tests.utils import init_db
 
 test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data/')
+
+
+@pytest.fixture(scope='function')
+def db_setup():
+    with patch('wazuh.common.ossec_uid'), patch('wazuh.common.ossec_gid'):
+        with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
+            with patch('shutil.chown'), patch('os.chmod'):
+                with patch('api.constants.SECURITY_PATH', new=test_data_path):
+                    from wazuh.rbac.auth_context import RBAChecker
+    init_db('schema_security_test.sql', test_data_path)
+
+    yield RBAChecker
 
 
 class Map(dict):
@@ -59,7 +75,7 @@ def values():
     return authorization_contexts, roles, results
 
 
-def test_load_files():
+def test_load_files(db_setup):
     authorization_contexts, roles, results = values()
     assert len(authorization_contexts) > 0
     assert len(roles)
@@ -69,11 +85,11 @@ def test_load_files():
         assert type(role) == Map
 
 
-def test_auth_roles():
+def test_auth_roles(db_setup):
     authorization_contexts, roles, results = values()
     for index, auth in enumerate(authorization_contexts):
         for role in roles:
-            test = RBAChecker(json.dumps(auth.auth), role)
+            test = db_setup(json.dumps(auth.auth), role)
             if role.name in results[index].roles:
                 assert test.get_user_roles()[0] == role.id
             else:

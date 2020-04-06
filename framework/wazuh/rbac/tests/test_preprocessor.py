@@ -2,16 +2,31 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from unittest.mock import patch
-
 import json
 import os
-import pytest
-from wazuh.rbac.preprocessor import optimize_resources
+from unittest.mock import patch
 
+import pytest
+from sqlalchemy import create_engine
+
+from wazuh.rbac.tests.utils import init_db
 
 test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data/')
+
+
+@pytest.fixture(scope='function')
+def db_setup():
+    with patch('wazuh.common.ossec_uid'), patch('wazuh.common.ossec_gid'):
+        with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
+            with patch('shutil.chown'), patch('os.chmod'):
+                with patch('api.constants.SECURITY_PATH', new=test_data_path):
+                    from wazuh.rbac.preprocessor import optimize_resources
+    init_db('schema_security_test.sql', test_data_path)
+
+    yield optimize_resources
+
+
 permissions = list()
 results = list()
 actual_test = 0
@@ -23,8 +38,7 @@ outputs = [test_case['processed_policies'] for test_case in file]
 
 
 @pytest.mark.parametrize('input_, output', zip(inputs, outputs))
-def test_expose_resources(input_, output):
-
+def test_expose_resources(db_setup, input_, output):
     with patch('wazuh.rbac.preprocessor.RBAChecker.run_user_role_link', return_value=input_):
-        preprocessed_policies = optimize_resources()
+        preprocessed_policies = db_setup()
         assert preprocessed_policies == output
