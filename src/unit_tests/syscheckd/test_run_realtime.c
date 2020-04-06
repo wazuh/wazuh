@@ -81,6 +81,30 @@ void *__wrap_OSHash_Delete_ex() {
     return (void*)ret;
 }
 
+void *__wrap_OSHash_Begin(const OSHash *self, unsigned int *i) {
+    check_expected_ptr(self);
+
+    return mock_type(OSHashNode*);
+}
+
+void *__wrap_OSHash_Next(const OSHash *self, unsigned int *i, OSHashNode *current) {
+    check_expected_ptr(self);
+
+    return mock_type(OSHashNode*);
+}
+
+int __wrap_pthread_mutex_lock(pthread_mutex_t *x) {
+    function_called();
+
+    return 0;
+}
+
+int __wrap_pthread_mutex_unlock(pthread_mutex_t *x) {
+    function_called();
+
+    return 0;
+}
+
 void * __wrap_rbtree_insert() {
     return NULL;
 }
@@ -350,6 +374,30 @@ static int teardown_realtime_start(void **state) {
     return 0;
 }
 
+static int setup_hash_node(void **state) {
+    OSHashNode *node = (OSHashNode *)calloc(1, sizeof(OSHashNode *));
+
+    if (!node) {
+        return -1;
+    }
+
+    node->key = "dummy_key";
+
+    *state = node;
+
+    return 0;
+}
+
+static int teardown_hash_node(void **state) {
+    OSHashNode *node = *state;
+
+    if (node) {
+        free(node);
+    }
+
+    return 0;
+}
+
 #ifdef WIN_WHODATA
 static int setup_realtime_adddir_realtime_start_error(void **state) {
     *state = syscheck.realtime;
@@ -430,9 +478,11 @@ void test_realtime_adddir_whodata(void **state) {
 
     audit_thread_active = 1;
 
+    expect_function_call(__wrap_pthread_mutex_lock);
     expect_value(__wrap_W_Vector_insert_unique, v, audit_added_dirs);
     expect_string(__wrap_W_Vector_insert_unique, element, "/etc/folder");
     will_return(__wrap_W_Vector_insert_unique, 1);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     ret = realtime_adddir(path, 1, 0);
 
@@ -447,11 +497,13 @@ void test_realtime_adddir_whodata_new_directory(void **state) {
 
     audit_thread_active = 1;
 
+    expect_function_call(__wrap_pthread_mutex_lock);
     expect_value(__wrap_W_Vector_insert_unique, v, audit_added_dirs);
     expect_string(__wrap_W_Vector_insert_unique, element, "/etc/folder");
     will_return(__wrap_W_Vector_insert_unique, 0);
     expect_string(__wrap__mdebug1, formatted_msg, "(6230): Monitoring with Audit: '/etc/folder'");
     will_return(__wrap__mdebug1, 1);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     ret = realtime_adddir(path, 1, 0);
 
@@ -722,8 +774,61 @@ void test_realtime_process_delete(void **state)
     will_return(__wrap_read, 16);
     will_return(__wrap_OSHash_Get, "test");
     expect_string(__wrap__mdebug2, formatted_msg, "Duplicate event in real-time buffer: test/test");
+    expect_function_call(__wrap_pthread_mutex_lock);
     char *data;
     will_return_always(__wrap_OSHash_Delete_ex, data);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6342): Inotify watch deleted for 'test'");
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    char **paths = NULL;
+    paths = os_AddStrArray("/test", paths);
+    will_return(__wrap_rbtree_keys, paths);
+    expect_string(__wrap_fim_realtime_event, file, "/test");
+
+    realtime_process();
+}
+
+void test_realtime_process_move_self(void **state) {
+    (void) state;
+
+    // IN_MOVE_SELF event for /test
+    char event[] = {1, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 't', 'e', 's', 't', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+    syscheck.realtime->fd = 1;
+
+    will_return(__wrap_read, 2); // Use wrap
+    will_return(__wrap_read, event);
+    will_return(__wrap_read, 16);
+    will_return(__wrap_OSHash_Get, "test");
+    expect_string(__wrap__mdebug2, formatted_msg, "Duplicate event in real-time buffer: test/test");
+
+    // In delete_subdirectories_watches
+    OSHashNode *node = *state;
+
+    node->data = "test/sub";
+
+    syscheck.realtime->fd = 1;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
+    will_return(__wrap_OSHash_Begin, node);
+
+    // char *data;
+    // will_return_always(__wrap_OSHash_Delete_ex, data);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6342): Inotify watch deleted for 'test/sub'");
+    
+    expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
+    will_return(__wrap_OSHash_Begin, NULL);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    // Back to realtime_process
+    expect_function_call(__wrap_pthread_mutex_lock);
+    char *data;
+    will_return_always(__wrap_OSHash_Delete_ex, data);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6342): Inotify watch deleted for 'test'");
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    
     char **paths = NULL;
     paths = os_AddStrArray("/test", paths);
     will_return(__wrap_rbtree_keys, paths);
@@ -745,6 +850,122 @@ void test_realtime_process_failure(void **state)
 
     realtime_process();
 }
+
+void test_delete_subdirectories_watches_realtime_fd_null(void **state) {
+    (void) state;
+    char *dir = "/test";
+
+    syscheck.realtime->fd = 0;
+
+    delete_subdirectories_watches(dir);
+}
+
+void test_delete_subdirectories_watches_hash_node_null(void **state) {
+    (void) state;
+    char *dir = "/test";
+    int inode_it = 0;
+
+    syscheck.realtime->fd = 1;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
+    will_return(__wrap_OSHash_Begin, NULL);
+    
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    delete_subdirectories_watches(dir);
+}
+
+void test_delete_subdirectories_watches_not_same_name(void **state) {
+    (void) state;
+    char *dir = "/test/";
+    OSHashNode *node = *state;
+
+    node->data = "/other/sub";
+
+    syscheck.realtime->fd = 1;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
+    will_return(__wrap_OSHash_Begin, node);
+
+    expect_value(__wrap_OSHash_Next, self, syscheck.realtime->dirtb);
+    will_return(__wrap_OSHash_Next, NULL);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    delete_subdirectories_watches(dir);
+}
+
+void test_delete_subdirectories_watches_deletes(void **state) {
+    (void) state;
+    char *dir = "/test";
+    OSHashNode *node = *state;
+
+    node->data = "/test/sub";
+
+    syscheck.realtime->fd = 1;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
+    will_return(__wrap_OSHash_Begin, node);
+    
+    char *data;
+    will_return_always(__wrap_OSHash_Delete_ex, data);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6342): Inotify watch deleted for '/test/sub'");
+    
+    expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
+    will_return(__wrap_OSHash_Begin, NULL);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    delete_subdirectories_watches(dir);
+}
+
+void test_count_watches_realtime_fd_null(void **state) {
+    (void) state;
+
+    syscheck.realtime->fd = 0;
+
+    count_watches();
+}
+
+void test_count_watches_hash_node_null(void **state) {
+    (void) state;
+
+    syscheck.realtime->fd = 1;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
+    will_return(__wrap_OSHash_Begin, NULL);
+    
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    
+    count_watches();
+}
+
+void test_count_watches_counting(void **state) {
+    (void) state;
+    OSHashNode *node = *state;
+
+    node->data = "/test/sub";
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
+    will_return(__wrap_OSHash_Begin, node);
+
+    expect_value(__wrap_OSHash_Next, self, syscheck.realtime->dirtb);
+    will_return(__wrap_OSHash_Next, NULL);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    count_watches();
+}
+
 #else // TEST_WINAGENT
 void test_realtime_win32read_success(void **state) {
     win32rtfim rtlocal;
@@ -1098,10 +1319,13 @@ void test_RTCallBack_acquired_changes(void **state) {
 int main(void) {
     #ifndef WIN_WHODATA
     const struct CMUnitTest tests[] = {
+        /* realtime_start */
         cmocka_unit_test_setup_teardown(test_realtime_start_success, setup_realtime_start, teardown_realtime_start),
         cmocka_unit_test_setup_teardown(test_realtime_start_failure_hash, setup_realtime_start, teardown_realtime_start),
         #if defined(TEST_SERVER) || defined(TEST_AGENT)
         cmocka_unit_test_setup_teardown(test_realtime_start_failure_inotify, setup_realtime_start, teardown_realtime_start),
+
+        /* realtime_adddir */
         cmocka_unit_test_setup_teardown(test_realtime_adddir_whodata, setup_w_vector, teardown_w_vector),
         cmocka_unit_test_setup_teardown(test_realtime_adddir_whodata_new_directory, setup_w_vector, teardown_w_vector),
         cmocka_unit_test(test_realtime_adddir_realtime_failure),
@@ -1111,22 +1335,40 @@ int main(void) {
         cmocka_unit_test(test_realtime_adddir_realtime_add_hash_failure),
         cmocka_unit_test(test_realtime_adddir_realtime_update),
         cmocka_unit_test(test_realtime_adddir_realtime_update_failure),
+
+        /* free_syscheck_dirtb_data */
         cmocka_unit_test(test_free_syscheck_dirtb_data),
         cmocka_unit_test(test_free_syscheck_dirtb_data_null),
+
+        /* realtime_process */
         cmocka_unit_test(test_realtime_process),
         cmocka_unit_test(test_realtime_process_len),
         cmocka_unit_test(test_realtime_process_len_zero),
         cmocka_unit_test(test_realtime_process_len_path_separator),
         cmocka_unit_test(test_realtime_process_overflow),
         cmocka_unit_test(test_realtime_process_delete),
+        cmocka_unit_test_setup(test_realtime_process_move_self, setup_hash_node),
         cmocka_unit_test(test_realtime_process_failure),
+
+        /* delete_subdirectories_watches */
+        cmocka_unit_test_setup_teardown(test_delete_subdirectories_watches_realtime_fd_null, setup_hash_node, teardown_hash_node),
+        cmocka_unit_test_setup_teardown(test_delete_subdirectories_watches_hash_node_null, setup_hash_node, teardown_hash_node),
+        cmocka_unit_test_setup(test_delete_subdirectories_watches_not_same_name, setup_hash_node),
+        cmocka_unit_test_setup(test_delete_subdirectories_watches_deletes, setup_hash_node),
+
+        /* count_watches */
+        cmocka_unit_test_setup_teardown(test_count_watches_realtime_fd_null, setup_hash_node, teardown_hash_node),
+        cmocka_unit_test_setup_teardown(test_count_watches_hash_node_null, setup_hash_node, teardown_hash_node),
+        cmocka_unit_test_setup(test_count_watches_counting, setup_hash_node),
         #else
         // realtime_win32read
         cmocka_unit_test(test_realtime_win32read_success),
         cmocka_unit_test(test_realtime_win32read_unable_to_read_directory),
+
         // free_win32rtfim_data
         cmocka_unit_test(test_free_win32rtfim_data_null_input),
         cmocka_unit_test(test_free_win32rtfim_data_full_data),
+        
         // RTCallBack
         cmocka_unit_test(test_RTCallBack_error_on_callback),
         cmocka_unit_test(test_RTCallBack_empty_hash_table),
