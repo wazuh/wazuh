@@ -118,7 +118,7 @@ int bzip2_uncompress(const char *filebz2, const char *file) {
     char buf[2048];
     int readbuff;
     do {
-        readbuff = BZ2_bzRead(&bzerror, compressfile, buf, 2048);
+        readbuff = BZ2_bzRead(&bzerror, compressfile, buf, sizeof(buf));
         if (bzerror == BZ_OK || bzerror == BZ_STREAM_END) {
             if (readbuff > 0) {
                 fwrite(buf, sizeof(char), readbuff, output);
