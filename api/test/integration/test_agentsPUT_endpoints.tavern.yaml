@@ -597,6 +597,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         force: True
+        wait_for_complete: 'true'
     response:
       status_code: 200
       body:
@@ -625,6 +626,7 @@ stages:
       params:
         version: v3.9.3
         force: true
+        wait_for_complete: 'true'
     response:
       status_code: 200
       body:
@@ -634,13 +636,14 @@ stages:
     # PUT /agents/004/upgrade
   - name: Upgrade an agent using http
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/004/upgrade?wait_for_complete=true"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/004/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         use_http: true
         force: true
+        wait_for_complete: 'true'
     response:
       status_code: 200
       body:
@@ -650,13 +653,14 @@ stages:
     # PUT /agents/005/upgrade
   - name: Upgrade an agent using wkp repo
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/005/upgrade?wait_for_complete=true"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/005/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         wpk_repo: "packages.wazuh.com/wpk/"
         force: true
+        wait_for_complete: 'true'
     response:
       status_code: 200
       body:
@@ -742,13 +746,14 @@ stages:
     # PUT /agents/007/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
   - name: Customly upgrade agent 007 selecting installer
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/007/upgrade_custom?wait_for_complete=true"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/007/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         installer: upgrade.sh
         file_path: "{custom_wpk_path:s}"
+        wait_for_complete: 'true'
     response:
       status_code: 200
       body:
@@ -757,12 +762,13 @@ stages:
     # PUT /agents/008/upgrade_custom?file_path=custom_wpk_path
   - name: Customly upgrade agent 008 using default installer
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/008/upgrade_custom?wait_for_complete=true"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/008/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         file_path: "{custom_wpk_path:s}"
+        wait_for_complete: 'true'
     response:
       status_code: 200
       body:
@@ -771,7 +777,7 @@ stages:
 
   - name: Get agent 007 upgrade result
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/007/upgrade_result?wait_for_complete=true"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/007/upgrade_result"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -782,7 +788,7 @@ stages:
 
   - name: Get agent 008 upgrade result
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/008/upgrade_result?wait_for_complete=true"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/008/upgrade_result"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
