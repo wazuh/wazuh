@@ -27,7 +27,7 @@ int bzip2_compress(const char *file, const char *filebz2) {
         return -1;
     }
 
-    output = fopen(filebz2, "wb" );
+    output = fopen(filebz2, "wb");
     if (!output) {
         mdebug2(FOPEN_ERROR, filebz2, errno, strerror(errno));
         fclose(input);
@@ -43,7 +43,7 @@ int bzip2_compress(const char *file, const char *filebz2) {
         return -1;
     }
 
-    char buf[2048];
+    char buf[BZIP2_BUFFER_SIZE];
     int readbuff;
     while (readbuff = fread(buf, sizeof(char), sizeof(buf), input), readbuff > 0) {
         BZ2_bzWrite(&bzerror, compressfile, (void*)buf, readbuff);
@@ -115,7 +115,7 @@ int bzip2_uncompress(const char *filebz2, const char *file) {
         return -1;
     }
 
-    char buf[2048];
+    char buf[BZIP2_BUFFER_SIZE];
     int readbuff;
     do {
         readbuff = BZ2_bzRead(&bzerror, compressfile, buf, sizeof(buf));

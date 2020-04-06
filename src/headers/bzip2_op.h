@@ -13,6 +13,8 @@
 
 #include <bzlib.h>
 
+#define BZIP2_BUFFER_SIZE 4096
+
 /**
  * @brief bzpi2 library, function to compress
  *
