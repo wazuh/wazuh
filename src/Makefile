@@ -686,7 +686,7 @@ endif
 
 test_external:
 ifeq ($(wildcard external/*/*),)
-	$(error No external directory found. Run "make deps" before compiling external libraries)
+	$(error No external directory found. Run "${MAKE} deps" before compiling external libraries)
 endif
 
 #### OpenSSL ##########
@@ -745,7 +745,7 @@ os_zlib/%.o: os_zlib/%.c
 #### bzip2 ##########
 
 $(BZIP2_LIB):
-	cd ${EXTERNAL_BZIP2} && make CFLAGS="-fpic -Wall -O2 -D_FILE_OFFSET_BITS=64" libbz2.a
+	cd ${EXTERNAL_BZIP2} && ${MAKE} CFLAGS="-fpic -Wall -O2 -D_FILE_OFFSET_BITS=64" libbz2.a
 
 #### SQLite #########
 
@@ -832,10 +832,9 @@ endif
 #### Audit lib ####
 
 ${AUDIT_LIB}: $(EXTERNAL_AUDIT)Makefile
-	make -C $(EXTERNAL_AUDIT)lib CC=$(CC)
+	${MAKE} -C $(EXTERNAL_AUDIT)lib CC=$(CC)
 
 $(EXTERNAL_AUDIT)Makefile:
-
 	cd $(EXTERNAL_AUDIT) && ./autogen.sh && ./configure CFLAGS=-fPIC --with-libcap-ng=no
 
 #### msgpack #########
@@ -1692,13 +1691,13 @@ ifneq ($(wildcard external/*/*),)
 	-cd ${EXTERNAL_CURL} && ${MAKE} distclean
 	rm -f ${procps_o} $(PROCPS_LIB)
 	rm -f $(sqlite_o) $(EXTERNAL_SQLITE)/libsqlite3.*
-	-cd ${EXTERNAL_AUDIT} && make distclean
-	-cd ${EXTERNAL_LIBFFI} && make clean
+	-cd ${EXTERNAL_AUDIT} && ${MAKE} distclean
+	-cd ${EXTERNAL_LIBFFI} && ${MAKE} clean
 	rm -f $(msgpack_o) $(EXTERNAL_MSGPACK)libmsgpack.a
-	-make -C $(EXTERNAL_BZIP2) clean
+	-${MAKE} -C $(EXTERNAL_BZIP2) clean
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
-	cd ${EXTERNAL_LIBDB} && make realclean
+	cd ${EXTERNAL_LIBDB} && ${MAKE} realclean
 endif
 endif
 
