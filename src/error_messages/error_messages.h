@@ -370,6 +370,9 @@
 #define VU_FEED_NODE_NULL_ELM       "(5564): Null elements needing value have been found in a node of the feed. The update will not continue."
 #define VU_INVALID_TERM_CONDITION   "(5571): Could not get the CPE term condition. Error in: %s term (%d:%d)."
 #define VU_WDB_LASTSCAN_ERROR       "(5575): Could not update the last scan for agent %s."
+#define VU_AGENT_NOT_INITIALIZED    "(5580): The agent structure is not initialized."
+#define VU_DB_NOT_INITIALIZED       "(5581): The DB is not initialized."
+#define VU_OSINFOLNX_ERROR          "(5582): Couldn't get the OS information of the agent %s."
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"
