@@ -86,6 +86,7 @@
 #define VU_NO_PACKAGE_SCAN    "(5576): The package inventory of the agent %s is not available, but a hotfix analysis will be launched."
 #define VU_NO_HOTFIX_AVAIL    "(5577): It is not possible to perform a hotfix scan on agent %s."
 #define VU_NO_HOTFIX_FEED     "(5578): We have not found a hotfix that solves %s for agent %s in the Microsoft feed, so it is not possible to know it is vulnerable."
+#define VU_COMPARISSION_ERROR "(5579): The '%s' and '%s' versions of '%s' package could not be compared. Possible false positive."
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
