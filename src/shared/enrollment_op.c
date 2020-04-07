@@ -56,17 +56,27 @@ w_enrollment_ctx * w_enrollment_init(const w_enrollment_target *target, const w_
 }
 
 void w_enrollment_destroy(w_enrollment_ctx *cfg) {
+    if (cfg->ssl) {
+        BIO *bio = SSL_get_rbio(cfg->ssl);
+        if (bio) {
+            BIO_free(bio);
+        }
+        SSL_free(cfg->ssl);
+    }
     os_free(cfg);
 }
 
 int w_enrollment_request_key(w_enrollment_ctx *cfg, const char * server_address) {
+    assert(cfg != NULL);
     int ret = -1;
     int socket = w_enrollment_connect(cfg, server_address ? server_address : cfg->target_cfg->manager_name);
-    if ( socket >= 0 && w_enrollment_send_message(cfg) == 0) {
-        ret = w_enrollment_process_response(cfg->ssl);
+    if ( socket >= 0) {
+        if (w_enrollment_send_message(cfg) == 0) {
+            ret = w_enrollment_process_response(cfg->ssl);
+        }
         close(socket);
     }
-    return -1;
+    return ret;
 }
 
 /**
@@ -83,7 +93,7 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
     assert(cfg != NULL);
     assert(server_address != NULL);
 
-    const char *ip_address = OS_GetHost(server_address, 3);
+    char *ip_address = OS_GetHost(server_address, 3);
     /* Translate hostname to an ip_adress */
     if (!ip_address) {
         merror("Could not resolve hostname: %s\n", server_address);
@@ -95,6 +105,7 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
         cfg->cert_cfg->agent_cert, cfg->cert_cfg->agent_key, cfg->cert_cfg->ca_cert, cfg->cert_cfg->auto_method);
     if (!ctx) {
         merror("Could not set up SSL connection! Check ceritification configuration.");
+        os_free(ip_address);
         return ENROLLMENT_WRONG_CONFIGURATION;
     }
 
@@ -102,6 +113,7 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
     int sock = OS_ConnectTCP((u_int16_t) cfg->target_cfg->port, ip_address, 0);
     if (sock <= 0) {
         merror("Unable to connect to %s:%d", ip_address, cfg->target_cfg->port);
+        os_free(ip_address);
         SSL_CTX_free(ctx);
         return ENROLLMENT_CONNECTION_FAILURE;
     }
@@ -116,6 +128,7 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
     if (ret <= 0) {
         merror("SSL error (%d). Connection refused by the manager. Maybe the port specified is incorrect. Exiting.", SSL_get_error(cfg->ssl, ret));
         ERR_print_errors_fp(stderr);  // This function empties the error queue
+        os_free(ip_address);
         SSL_CTX_free(ctx);
         return ENROLLMENT_CONNECTION_FAILURE;
     }
@@ -123,7 +136,8 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
     minfo("Connected to %s:%d", ip_address, cfg->target_cfg->port);
 
     w_enrollment_verify_ca_certificate(cfg->ssl, cfg->cert_cfg->ca_cert, server_address);
-
+    
+    os_free(ip_address);
     SSL_CTX_free(ctx);
     return sock;
 }
@@ -278,13 +292,15 @@ static int w_enrollment_store_key_entry(const char* keys) {
 static int w_enrollment_process_agent_key(char *buffer) {
     assert(buffer != NULL);
     assert(strlen(buffer) > 9);
+    int ret = -1;
     char *keys = &buffer[9]; //Start of the information
     char *tmpstr = strchr(keys, '\'');
     if (!tmpstr) {
         // No end of string found
         merror("Invalid keys format received.");
-        return -1;
+        return ret;
     }
+    
     *tmpstr = '\0';
     char **entrys = OS_StrBreak(' ', keys, 4);
     if (OS_IsValidID(entrys[ENTRY_ID]) && OS_IsValidName(entrys[ENTRY_NAME]) &&
@@ -292,12 +308,17 @@ static int w_enrollment_process_agent_key(char *buffer) {
         if( !w_enrollment_store_key_entry(keys) ) {
             // Key was stored
             minfo("Valid key created. Finished.");
-            return 0;
+            ret = 0;
         }
     } else {
         merror("One of the received key parameters does not have a valid format.");
     }
-    return -1;
+    int i;
+    for(i=0; i<4; i++){
+        os_free(entrys[i]);
+    }
+    os_free(entrys);
+    return ret;
 }
 
 /**

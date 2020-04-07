@@ -42,7 +42,7 @@ list(APPEND shared_tests_flags "-Wl,--wrap=OS_IsValidIP,--wrap=_merror,--wrap=_m
                                 -Wl,--wrap=_minfo,--wrap=OS_GetHost,--wrap=os_ssl_keys,--wrap=OS_ConnectTCP \
                                 -Wl,--wrap=SSL_new,--wrap=SSL_connect,--wrap=SSL_get_error,--wrap=SSL_set_bio \
                                 -Wl,--wrap=gethostname,--wrap=SSL_write,--wrap=fopen,--wrap=fprintf,--wrap=fclose \
-                                -Wl,--wrap=SSL_read")
+                                -Wl,--wrap=SSL_read,--wrap=BIO_new_socket")
 
 endif()
 

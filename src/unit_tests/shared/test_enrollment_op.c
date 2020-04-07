@@ -19,7 +19,8 @@ extern int w_enrollment_process_agent_key(char *buffer);
 extern int w_enrollment_process_response(SSL *ssl);
 
 static int flag_fopen = 0;
-
+static w_enrollment_target* local_target;
+static w_enrollment_cert* local_cert;
 /*************** WRAPS ************************/
 void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
     char formatted_msg[OS_MAXSTR];
@@ -111,6 +112,10 @@ int __wrap_SSL_read(SSL *ssl, void *buf, int num) {
     return mock_type(int);
 }
 
+BIO *__wrap_BIO_new_socket(int sock, int close_flag) {
+    return NULL;
+}
+
 int __wrap_OS_ConnectTCP(u_int16_t _port, const char *_ip, int ipv6)
 {
     check_expected(_port);
@@ -178,7 +183,7 @@ int teardown_file_ops(void **state) {
 int test_setup_concats(void **state) {
     char *buf;
     os_calloc(OS_SIZE_65536, sizeof(char), buf);
-    buf[OS_SIZE_65536 + OS_SIZE_4096] = '\0';
+    buf[OS_SIZE_65536 - 1] = '\0';
     *state = buf;
     return 0;
 }
@@ -190,44 +195,105 @@ int test_teardown_concats(void **state) {
 
 // Setup
 int test_setup_context(void **state) {
-    w_enrollment_target *target_cfg;
-    os_malloc(sizeof(w_enrollment_target), target_cfg);
-    target_cfg->manager_name = strdup("valid_hostname");
-    target_cfg->agent_name = NULL;
-    target_cfg->sender_ip = NULL;
-    target_cfg->port = 1234; 
-    target_cfg->centralized_group = NULL;
-    w_enrollment_cert *cert_cfg;
-    os_malloc(sizeof(w_enrollment_cert), cert_cfg);
-    cert_cfg->ciphers = DEFAULT_CIPHERS;
-    cert_cfg->auto_method = 0;
-    cert_cfg->authpass = NULL;
-    cert_cfg->agent_cert = strdup("CERT");
-    cert_cfg->agent_key = strdup("KEY");
-    cert_cfg->ca_cert = strdup("CA_CERT");
-    w_enrollment_ctx *cfg = w_enrollment_init(target_cfg, cert_cfg);
+    os_malloc(sizeof(w_enrollment_target), local_target);
+    local_target->manager_name = strdup("valid_hostname");
+    local_target->agent_name = NULL;
+    local_target->sender_ip = NULL;
+    local_target->port = 1234; 
+    local_target->centralized_group = NULL;
+    os_malloc(sizeof(w_enrollment_cert), local_cert);
+    local_cert->ciphers = DEFAULT_CIPHERS;
+    local_cert->auto_method = 0;
+    local_cert->authpass = NULL;
+    local_cert->agent_cert = strdup("CERT");
+    local_cert->agent_key = strdup("KEY");
+    local_cert->ca_cert = strdup("CA_CERT");
+    w_enrollment_ctx *cfg = w_enrollment_init(local_target, local_cert);
     *state = cfg;
     return 0;
 }
 
+//Teardown 
+int test_teardown_context(void **state) {
+    w_enrollment_ctx *cfg = *state;
+    os_free(local_target->manager_name);
+    os_free(local_target);
+    os_free(local_cert->agent_cert);
+    os_free(local_cert->agent_key);
+    os_free(local_cert->ca_cert);
+    os_free(local_cert);
+    w_enrollment_destroy(cfg);
+    return 0;
+}
+
+//Setup
 int test_setup_context_2(void **state) {
-    w_enrollment_target *target_cfg;
-    os_malloc(sizeof(w_enrollment_target), target_cfg);
-    target_cfg->manager_name = strdup("valid_hostname");
-    target_cfg->agent_name = "test_agent";
-    target_cfg->sender_ip = "192.168.1.1";
-    target_cfg->port = 1234; 
-    target_cfg->centralized_group = "test_group";
-    w_enrollment_cert *cert_cfg;
-    os_malloc(sizeof(w_enrollment_cert), cert_cfg);
-    cert_cfg->ciphers = DEFAULT_CIPHERS;
-    cert_cfg->auto_method = 0;
-    cert_cfg->authpass = "test_password";
-    cert_cfg->agent_cert = strdup("CERT");
-    cert_cfg->agent_key = strdup("KEY");
-    cert_cfg->ca_cert = strdup("CA_CERT");
-    w_enrollment_ctx *cfg = w_enrollment_init(target_cfg, cert_cfg);
+    os_malloc(sizeof(w_enrollment_target), local_target);
+    local_target->manager_name = strdup("valid_hostname");
+    local_target->agent_name = "test_agent";
+    local_target->sender_ip = "192.168.1.1";
+    local_target->port = 1234; 
+    local_target->centralized_group = "test_group";
+    os_malloc(sizeof(w_enrollment_cert), local_cert);
+    local_cert->ciphers = DEFAULT_CIPHERS;
+    local_cert->auto_method = 0;
+    local_cert->authpass = "test_password";
+    local_cert->agent_cert = strdup("CERT");
+    local_cert->agent_key = strdup("KEY");
+    local_cert->ca_cert = strdup("CA_CERT");
+    w_enrollment_ctx *cfg = w_enrollment_init(local_target, local_cert);
     *state = cfg;
+    return 0;
+}
+
+//Setup
+int test_setup_w_enrolment_request_key(void **state) {
+    os_malloc(sizeof(w_enrollment_target), local_target);
+    local_target->manager_name = strdup("valid_hostname");
+    local_target->agent_name = "test_agent";
+    local_target->sender_ip = "192.168.1.1";
+    local_target->port = 1234; 
+    local_target->centralized_group = "test_group";
+    os_malloc(sizeof(w_enrollment_cert), local_cert);
+    local_cert->ciphers = DEFAULT_CIPHERS;
+    local_cert->auto_method = 0;
+    local_cert->authpass = "test_password";
+    local_cert->agent_cert = strdup("CERT");
+    local_cert->agent_key = strdup("KEY");
+    local_cert->ca_cert = strdup("CA_CERT");
+    w_enrollment_ctx *cfg = w_enrollment_init(local_target, local_cert);
+    *state = cfg;
+    flag_fopen = 1;
+    return 0;
+}
+
+//Teardown
+int test_teardown_w_enrolment_request_key(void **state){
+    w_enrollment_ctx *cfg = *state;
+    os_free(local_target->manager_name);
+    os_free(local_target);
+    os_free(local_cert->agent_cert);
+    os_free(local_cert->agent_key);
+    os_free(local_cert->ca_cert);
+    os_free(local_cert);
+    w_enrollment_destroy(cfg);
+    flag_fopen = 0;
+    return 0;
+}
+
+//Setup
+int test_setup_ssl_context(void **state) {
+    SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS, 0);
+    SSL *ssl = __real_SSL_new(ctx);
+    SSL_CTX_free(ctx);
+    *state = ssl;
+    setup_file_ops(state);
+    return 0;
+}
+//Teardown
+int test_teardow_ssl_context(void **state) {
+    SSL_free(*state);
+    teardown_file_ops(state);
     return 0;
 }
 /**********************************************/
@@ -292,13 +358,13 @@ void test_w_enrollment_verify_ca_certificate_null_connection(void **state) {
 }
 
 void test_w_enrollment_verify_ca_certificate_no_certificate(void **state) {
-    SSL *ssl;
+    SSL *ssl = *state;
     expect_string(__wrap__mwarn, formatted_msg, "Registering agent to unverified manager.");
     w_enrollment_verify_ca_certificate(ssl, NULL, "hostname");
 }
 
 void test_verificy_ca_certificate_invalid_certificate(void **state) {
-    SSL *ssl;
+    SSL *ssl = *state;
     const char *hostname = "hostname";
     expect_value(__wrap_check_x509_cert, ssl, ssl);
     expect_string(__wrap_check_x509_cert, manager, hostname);
@@ -310,7 +376,7 @@ void test_verificy_ca_certificate_invalid_certificate(void **state) {
 }
 
 void test_verificy_ca_certificate_valid_certificate(void **state) {
-    SSL *ssl;
+    SSL *ssl = *state;
     const char *hostname = "hostname";
     expect_value(__wrap_check_x509_cert, ssl, ssl);
     expect_string(__wrap_check_x509_cert, manager, hostname);
@@ -327,7 +393,7 @@ void test_w_enrollment_connect_empty_address(void **state) {
 }
 
 void test_w_enrollment_connect_empty_config(void **state) {
-    expect_assert_failure(w_enrollment_connect(NULL, strdup("hostname")));
+    expect_assert_failure(w_enrollment_connect(NULL, "hostname"));
 }
 
 void test_w_enrollment_connect_invalid_hostname(void **state) {
@@ -375,7 +441,7 @@ void test_w_enrollment_connect_socket_error(void **state) {
     expect_string(__wrap_os_ssl_keys, key, "KEY");
     expect_string(__wrap_os_ssl_keys, ca_cert, "CA_CERT");
     expect_value(__wrap_os_ssl_keys, auto_method, 0);
-    will_return(__wrap_os_ssl_keys, &ctx);
+    will_return(__wrap_os_ssl_keys, ctx);
     // OS_ConnectTCP
     expect_value(__wrap_OS_ConnectTCP, _port, 1234);
     expect_string(__wrap_OS_ConnectTCP, _ip, "127.0.0.1");
@@ -409,7 +475,8 @@ void test_w_enrollment_connect_SSL_connect_error(void **state) {
     will_return(__wrap_OS_ConnectTCP, 5);
     // Connect SSL
     expect_value(__wrap_SSL_new, ctx, ctx);
-    will_return(__wrap_SSL_new, __real_SSL_new);
+    cfg->ssl = __real_SSL_new(ctx);
+    will_return(__wrap_SSL_new, cfg->ssl);
     will_return(__wrap_SSL_connect, -1);
 
     expect_value(__wrap_SSL_get_error, i, -1);
@@ -538,22 +605,23 @@ void test_w_enrollment_process_agent_key_short_buff(void **state) {
 }
 
 void test_w_enrollment_process_agent_key_invalid_format(void **state) {
-    char *key = strdup("OSSEC KEY WRONG FORMAT");
+    char key[] = "OSSEC KEY WRONG FORMAT";
     expect_string(__wrap__merror, formatted_msg, "Invalid keys format received.");
     w_enrollment_process_agent_key(key);
 }
 
 void test_w_enrollment_process_agent_key_invalid_key(void **state) {
-    char *key = strdup("OSSEC K:'006 ubuntu1610 NOT_AN_IP 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'\n\n");
+    char key[] = "OSSEC K:'006 ubuntu1610 NOT_AN_IP 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'\n\n";
     expect_string(__wrap_OS_IsValidIP, ip_address, "NOT_AN_IP");
     expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
     will_return(__wrap_OS_IsValidIP, 0);
     expect_string(__wrap__merror, formatted_msg, "One of the received key parameters does not have a valid format.");
-    w_enrollment_process_agent_key(key);
+    int ret = w_enrollment_process_agent_key(key);
+    assert_int_equal(ret,-1);
 }
 
 void test_w_enrollment_process_agent_key_valid_key(void **state) {
-    char *key = strdup("OSSEC K:'006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'\n\n");
+    char key[] = "OSSEC K:'006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'\n\n";
     expect_string(__wrap_OS_IsValidIP, ip_address, "192.168.1.1");
     expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
     will_return(__wrap_OS_IsValidIP, 1);
@@ -563,7 +631,8 @@ void test_w_enrollment_process_agent_key_valid_key(void **state) {
     expect_value(__wrap_fprintf, stream, 4);
     expect_string(__wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
     expect_string(__wrap__minfo, formatted_msg, "Valid key created. Finished.");
-    w_enrollment_process_agent_key(key);
+    int ret = w_enrollment_process_agent_key(key);
+    assert_int_equal(ret,0);
 }
 /**********************************************/
 /******* w_enrollment_process_response ********/
@@ -571,8 +640,21 @@ void test_w_enrollment_process_response_ssl_null(void **state) {
     expect_assert_failure(w_enrollment_process_response(NULL));
 }
 
+void test_w_enrollment_process_response_ssl_error(void **state) {
+     SSL *ssl = *state;
+    expect_string(__wrap__minfo, formatted_msg, "Waiting for manager reply");
+    expect_value(__wrap_SSL_read, ssl, ssl);
+    will_return(__wrap_SSL_read, "");
+    will_return(__wrap_SSL_read, -1);
+    expect_value(__wrap_SSL_get_error, i, -1);
+    will_return(__wrap_SSL_get_error, SSL_ERROR_WANT_READ);
+    expect_string(__wrap__merror, formatted_msg, "SSL read (unable to receive message)");
+    int ret = w_enrollment_process_response(ssl);
+    assert_int_equal(ret, -1);
+}
+
 void test_w_enrollment_process_response_message_error(void **state) {
-    SSL *ssl;
+    SSL *ssl = *state;
     expect_string(__wrap__minfo, formatted_msg, "Waiting for manager reply");
     expect_value(__wrap_SSL_read, ssl, ssl);
     will_return(__wrap_SSL_read, "ERROR: Unable to add agent.\n\n");
@@ -584,7 +666,117 @@ void test_w_enrollment_process_response_message_error(void **state) {
     expect_value(__wrap_SSL_get_error, i, 0);
     will_return(__wrap_SSL_get_error, SSL_ERROR_NONE);
     expect_string(__wrap__minfo, formatted_msg, "Connection closed.");
-    w_enrollment_process_response(ssl);
+    int ret = w_enrollment_process_response(ssl);
+    assert_int_equal(ret, -1);
+}
+
+void test_w_enrollment_process_response_success(void **state) { 
+    const char *string = "OSSEC K:'006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'\n\n";
+    SSL *ssl = *state;
+    expect_string(__wrap__minfo, formatted_msg, "Waiting for manager reply");
+    expect_value(__wrap_SSL_read, ssl, ssl);
+    will_return(__wrap_SSL_read, string);
+    will_return(__wrap_SSL_read, strlen(string));
+    expect_string(__wrap__minfo, formatted_msg, "Received response with agent key");
+    // w_enrollment_process_agent_key
+    {
+        expect_string(__wrap_OS_IsValidIP, ip_address, "192.168.1.1");
+        expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
+        will_return(__wrap_OS_IsValidIP, 1);
+        expect_string(__wrap_fopen, filename, KEYSFILE_PATH);
+        expect_string(__wrap_fopen, mode, "w");
+        will_return(__wrap_fopen, 4);
+        expect_value(__wrap_fprintf, stream, 4);
+        expect_string(__wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
+        expect_string(__wrap__minfo, formatted_msg, "Valid key created. Finished.");
+    }
+    expect_value(__wrap_SSL_get_error, i, strlen(string));
+    will_return(__wrap_SSL_get_error, SSL_ERROR_NONE);
+    expect_string(__wrap__minfo, formatted_msg, "Connection closed.");
+
+    int ret = w_enrollment_process_response(ssl);
+    assert_int_equal(ret, 0);
+}
+/**********************************************/
+/******* w_enrollment_request_key ********/
+void test_w_enrollment_request_key_null_cfg(void **state) {
+    expect_assert_failure(w_enrollment_request_key(NULL, "server_adress"));
+}
+
+void test_w_enrollment_request_key(void **state) {
+    w_enrollment_ctx *cfg = *state; 
+    SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS, 0);
+    
+    // w_enrollment_connect
+    {
+        // GetHost
+        expect_string(__wrap_OS_GetHost, host, cfg->target_cfg->manager_name);
+        will_return(__wrap_OS_GetHost, "192.168.1.1");
+        // os_ssl_keys
+        expect_value(__wrap_os_ssl_keys, is_server, 0);
+        expect_value(__wrap_os_ssl_keys, os_dir, NULL);
+        expect_string(__wrap_os_ssl_keys, ciphers, DEFAULT_CIPHERS);
+        expect_string(__wrap_os_ssl_keys, cert, "CERT");
+        expect_string(__wrap_os_ssl_keys, key, "KEY");
+        expect_string(__wrap_os_ssl_keys, ca_cert, "CA_CERT");
+        expect_value(__wrap_os_ssl_keys, auto_method, 0);
+        will_return(__wrap_os_ssl_keys, ctx);
+        // OS_ConnectTCP
+        expect_value(__wrap_OS_ConnectTCP, _port, 1234);
+        expect_string(__wrap_OS_ConnectTCP, _ip, "192.168.1.1");
+        expect_value(__wrap_OS_ConnectTCP, ipv6, 0);
+        will_return(__wrap_OS_ConnectTCP, 5);
+        // Connect SSL
+        expect_value(__wrap_SSL_new, ctx, ctx);
+        cfg->ssl = __real_SSL_new(ctx);
+        will_return(__wrap_SSL_new, cfg->ssl);
+        will_return(__wrap_SSL_connect, 1);
+
+        expect_string(__wrap__minfo, formatted_msg, "Connected to 192.168.1.1:1234");
+
+        // verify_ca_certificate
+        expect_value(__wrap_check_x509_cert, ssl, cfg->ssl);
+        expect_string(__wrap_check_x509_cert, manager, cfg->target_cfg->manager_name);
+        will_return(__wrap_check_x509_cert, VERIFY_TRUE);
+        expect_string(__wrap__minfo, formatted_msg, "Verifying manager's certificate");
+    }
+    // w_enrollment_send_message
+    {
+        expect_string(__wrap__minfo, formatted_msg, "Using agent name as: test_agent");
+        expect_string(__wrap_OS_IsValidIP, ip_address, "192.168.1.1");
+        expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
+        will_return(__wrap_OS_IsValidIP, 1);
+        expect_value(__wrap_SSL_write, ssl, cfg->ssl);
+        expect_string(__wrap_SSL_write, buf, "OSSEC PASS: test_password OSSEC A:'test_agent' G:'test_group' IP:'192.168.1.1'\n");
+        will_return(__wrap_SSL_write, 0);
+        expect_string(__wrap__minfo, formatted_msg,"Request sent to manager");
+    }
+    // w_enrollment_process_repsonse
+    {
+        const char *string = "OSSEC K:'006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'\n\n";
+        expect_string(__wrap__minfo, formatted_msg, "Waiting for manager reply");
+        expect_value(__wrap_SSL_read, ssl, cfg->ssl);
+        will_return(__wrap_SSL_read, string);
+        will_return(__wrap_SSL_read, strlen(string));
+        expect_string(__wrap__minfo, formatted_msg, "Received response with agent key");
+        // w_enrollment_process_agent_key
+        {
+            expect_string(__wrap_OS_IsValidIP, ip_address, "192.168.1.1");
+            expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
+            will_return(__wrap_OS_IsValidIP, 1);
+            expect_string(__wrap_fopen, filename, KEYSFILE_PATH);
+            expect_string(__wrap_fopen, mode, "w");
+            will_return(__wrap_fopen, 4);
+            expect_value(__wrap_fprintf, stream, 4);
+            expect_string(__wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
+            expect_string(__wrap__minfo, formatted_msg, "Valid key created. Finished.");
+        }
+        expect_value(__wrap_SSL_get_error, i, strlen(string));
+        will_return(__wrap_SSL_get_error, SSL_ERROR_NONE);
+        expect_string(__wrap__minfo, formatted_msg, "Connection closed.");
+    }
+    int ret = w_enrollment_request_key(cfg, NULL);
+    assert_int_equal(ret, 0);
 }
 /**********************************************/
 int main()
@@ -601,23 +793,23 @@ int main()
         cmocka_unit_test_setup_teardown(test_w_enrollment_concat_group_empty_group, test_setup_concats, test_teardown_concats),
         cmocka_unit_test_setup_teardown(test_w_enrollment_concat_group, test_setup_concats, test_teardown_concats),
         //  w_enrollment_verify_ca_certificate
-        cmocka_unit_test(test_w_enrollment_verify_ca_certificate_null_connection),
-        cmocka_unit_test(test_w_enrollment_verify_ca_certificate_no_certificate),
-        cmocka_unit_test(test_verificy_ca_certificate_invalid_certificate),
-        cmocka_unit_test(test_verificy_ca_certificate_valid_certificate),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_verify_ca_certificate_null_connection, test_setup_ssl_context, test_teardow_ssl_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_verify_ca_certificate_no_certificate, test_setup_ssl_context, test_teardow_ssl_context),
+        cmocka_unit_test_setup_teardown(test_verificy_ca_certificate_invalid_certificate, test_setup_ssl_context, test_teardow_ssl_context),
+        cmocka_unit_test_setup_teardown(test_verificy_ca_certificate_valid_certificate, test_setup_ssl_context, test_teardow_ssl_context),
         // w_enrollment_connect
-        cmocka_unit_test_setup_teardown(test_w_enrollment_connect_empty_address, test_setup_context, NULL),
-        cmocka_unit_test_setup_teardown(test_w_enrollment_connect_empty_config, test_setup_context, NULL),
-        cmocka_unit_test_setup_teardown(test_w_enrollment_connect_invalid_hostname, test_setup_context, NULL),
-        cmocka_unit_test_setup_teardown(test_w_enrollment_connect_could_not_setup, test_setup_context, NULL),
-        cmocka_unit_test_setup_teardown(test_w_enrollment_connect_socket_error, test_setup_context, NULL),
-        cmocka_unit_test_setup_teardown(test_w_enrollment_connect_SSL_connect_error, test_setup_context, NULL),
-        cmocka_unit_test_setup_teardown(test_w_enrollment_connect_success, test_setup_context, NULL),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_connect_empty_address, test_setup_context, test_teardown_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_connect_empty_config, test_setup_context, test_teardown_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_connect_invalid_hostname, test_setup_context, test_teardown_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_connect_could_not_setup, test_setup_context, test_teardown_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_connect_socket_error, test_setup_context, test_teardown_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_connect_SSL_connect_error, test_setup_context, test_teardown_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_connect_success, test_setup_context, test_teardown_context),
         // w_enrollment_send_message
         cmocka_unit_test(test_w_enrollment_send_message_empty_config),
-        cmocka_unit_test_setup_teardown(test_w_enrollment_send_message_wrong_hostname, test_setup_context, NULL),
-        cmocka_unit_test_setup_teardown(test_w_enrollment_send_message_ssl_error, test_setup_context, NULL),
-        cmocka_unit_test_setup_teardown(test_w_enrollment_send_message_success, test_setup_context_2, NULL),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_send_message_wrong_hostname, test_setup_context, test_teardown_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_send_message_ssl_error, test_setup_context, test_teardown_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_send_message_success, test_setup_context_2, test_teardown_context),
         // w_enrollment_store_key_entry
         cmocka_unit_test_setup_teardown(test_w_enrollment_store_key_entry_null_key, setup_file_ops, teardown_file_ops),
         cmocka_unit_test_setup_teardown(test_w_enrollment_store_key_entry_cannot_open, setup_file_ops, teardown_file_ops),
@@ -630,7 +822,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_w_enrollment_process_agent_key_valid_key, setup_file_ops, teardown_file_ops),
         // w_enrollment_process_response
         cmocka_unit_test(test_w_enrollment_process_response_ssl_null),
-        cmocka_unit_test(test_w_enrollment_process_response_message_error),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_process_response_ssl_error, test_setup_ssl_context, test_teardow_ssl_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_process_response_message_error, test_setup_ssl_context, test_teardow_ssl_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_process_response_success, test_setup_ssl_context, test_teardow_ssl_context),
+        // w_enrollment_request_key (wrapper)
+        cmocka_unit_test(test_w_enrollment_request_key_null_cfg),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_request_key, test_setup_w_enrolment_request_key, test_teardown_w_enrolment_request_key)  
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
