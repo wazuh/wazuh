@@ -229,5 +229,6 @@
 #define FIM_DELETE_EVENT_PATH_NOCONF        "(6339): Delete event from path without configuration: '%s'"
 #define FIM_DELETE_DB_TRY                   "(6340): Failed to delete FIM database '%s'- %dº try."
 #define FIM_DELETE_DB                       "(6341): Failed to delete FIM database '%s'."
+#define FIM_FILE_LIMIT_VALUE                "(6342): Maximum number of files to be monitored: '%u'"
 
 #endif /* DEBUG_MESSAGES_H */
