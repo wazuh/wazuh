@@ -504,7 +504,7 @@ int wdb_create_file(const char *path, const char *source) {
         gid = Privsep_GetGroup(GROUPGLOBAL);
 
         if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-            merror(USER_ERROR, ROOT, GROUPGLOBAL);
+            merror(USER_ERROR, ROOT, GROUPGLOBAL, strerror(errno), errno);
             return -1;
         }
 
