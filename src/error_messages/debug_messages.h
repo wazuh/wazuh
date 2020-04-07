@@ -68,6 +68,7 @@
 #define VU_UPDATING_RH_YEAR   "(5539): Synchronizing the page %d from the vulnerability database."
 #define VU_INS_RH_SEC         "(5543): Inserting Red Hat section."
 #define VU_OSINFO_DISABLED    "(5544): Could not get the agent %s os_release, so its OS vulnerabilities will not be analysed. It may not have os_info scan activated."
+#define VU_OSINFOLNX_DISABLED "(5544): Could not get the agent %s os_version nor release, so its OS and kernel vulnerabilities will not be analysed. It may not have os_info scan activated."
 #define VU_ANAL_ACC_REPORTS   "(5545): Analyzing accumulated reports for %s in %s."
 #define VU_DISC_ACC_REPORTS   "(5546): Discarding report %s with check %s because %s is higher."
 #define VU_ADD_ACC_REPORTS    "(5547): Setting report %s with check %s because %s is lower."
