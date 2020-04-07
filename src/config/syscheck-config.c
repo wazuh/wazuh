@@ -1167,8 +1167,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             }
 
             syscheck->file_limit = atoi(node[i]->content);
-
-            mdebug2(FIM_FILE_LIMIT_VALUE, syscheck->file_limit);
         }
 
         /* Get if xml_scan_on_start */

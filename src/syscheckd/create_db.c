@@ -144,8 +144,12 @@ void fim_scan() {
 
     gettime(&end);
 
-    if (syscheck.file_limit) {
+    if (syscheck.file_limit != 0) {
+        mdebug2(FIM_FILE_LIMIT_VALUE, syscheck.file_limit);
         fim_check_db_state();
+    }
+    else {
+        mdebug2(FIM_FILE_LIMIT_UNLIMITED);
     }
 
     if (_base_line == 0) {

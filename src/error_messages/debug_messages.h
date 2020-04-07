@@ -230,5 +230,6 @@
 #define FIM_DELETE_DB_TRY                   "(6340): Failed to delete FIM database '%s'- %dº try."
 #define FIM_DELETE_DB                       "(6341): Failed to delete FIM database '%s'."
 #define FIM_FILE_LIMIT_VALUE                "(6342): Maximum number of files to be monitored: '%u'"
+#define FIM_FILE_LIMIT_UNLIMITED            "(6343): No limit set to maximum number of files to be monitored"
 
 #endif /* DEBUG_MESSAGES_H */
