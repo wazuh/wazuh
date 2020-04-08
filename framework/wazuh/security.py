@@ -53,7 +53,7 @@ def get_users(username_list=None, offset=0, limit=common.database_limit, sort_by
     return result
 
 
-@expose_resources(actions=['security:create_user'], resources=['*:*:*'])
+@expose_resources(actions=['security:create'], resources=['*:*:*'])
 def create_user(username: str = None, password: str = None):
     """Create a new user
 
