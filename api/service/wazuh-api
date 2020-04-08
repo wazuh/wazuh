@@ -1,0 +1,64 @@
+#!/bin/sh
+# WAZUH API Service
+# Copyright (C) 2015-2020 Wazuh, Inc. All rights reserved.
+# Wazuh.com
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation.
+
+### BEGIN INIT INFO
+# Provides:          wazuh_api
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Should-Start:      $network
+# Should-Stop:       $network
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Wazuh API
+# Description:       Wazuh API daemon
+#
+### END INIT INFO
+
+# Instructions:
+#  sudo install -m 755 -o root -g root /var/ossec/api/service/wazuh-api /etc/init.d/
+#  sudo systemctl enable wazuh-api
+#  sudo systemctl daemon-reload
+#  sudo systemctl restart wazuh-api
+
+APP_PATH=
+API_LOGS="$OSSEC_PATH/logs/api.log"
+
+start() {
+    $APP_PATH start
+}
+
+stop() {
+    $APP_PATH stop
+}
+
+status() {
+  $APP_PATH status
+}
+
+restart() {
+  $APP_PATH restart
+}
+
+case "$1" in
+start)
+  start
+  ;;
+stop)
+  stop
+  ;;
+restart)
+  restart
+  ;;
+status)
+  status
+  ;;
+*)
+  echo "*** Usage: $0 {start|stop|restart|status}"
+  exit 1
+esac
