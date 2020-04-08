@@ -518,6 +518,11 @@ functions = {
         'type': 'local_any',
         'is_async': False
     },
+    '/rules/tsc': {
+        'function': Rule.get_tsc,
+        'type': 'local_any',
+        'is_async': False
+    },
     '/rules/files': {
         'function': Rule.get_rules_files,
         'type': 'local_any',

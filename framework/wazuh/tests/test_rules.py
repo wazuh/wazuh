@@ -30,7 +30,7 @@ rule_contents = '''
     <options>alert_by_email</options>
     <match>Agent started</match>
     <description>New ossec agent connected.</description>
-    <group>pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3</group>
+    <group>pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3,tsc_CC6.8</group>
     <list field="user" lookup="match_key">etc/lists/list-user</list>
     <field name="netinfo.iface.name">ens33</field>
     <regex>$(\\d+.\\d+.\\d+.\\d+)</regex>
@@ -64,6 +64,7 @@ def test_rule__init__():
     assert isinstance(rule.gdpr, list)
     assert isinstance(rule.hipaa, list)
     assert isinstance(rule.nist_800_53, list)
+    assert isinstance(rule.tsc, list)
     assert isinstance(rule.details, dict)
 
 
@@ -136,6 +137,8 @@ def test_set_hippa():
 def test_nist_800_53():
     Rule().set_nist_800_53('test')
 
+def test_tsc():
+    Rule().set_tsc('test')
 
 @pytest.mark.parametrize('detail, value, details', [
     ('if_sid', '400', {}),
@@ -344,6 +347,7 @@ def test_failed_get_rules_file(mock_config):
     {'filters': {'gdpr': 'IV_35.7.a'}},
     {'filters': {'hipaa': '164.312.a'}},
     {'filters': {'nist_800_53': 'AU.1'}},
+    {'filters': {'tsc': 'CC6.8'}},
     {'filters': {'id': '510'}},
     {'filters': {'level': '2'}},
     {'filters':{'level': '2-2'}}
@@ -431,6 +435,14 @@ def test_get_nist_800_53(mocked_config, mocked_glob):
         assert isinstance(result, dict)
         assert 'AU.3' in result['items'][0]
 
+@patch('wazuh.rule.glob', side_effect=rules_files)
+@patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
+def test_get_tsc(mocked_config, mocked_glob):
+    m = mock_open(read_data=rule_contents)
+    with patch('builtins.open', m):
+        result = Rule.get_tsc()
+        assert isinstance(result, dict)
+        assert 'CC6.8' in result['items'][0]
 
 @pytest.mark.parametrize('sort', [
     None,
