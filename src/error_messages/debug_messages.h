@@ -72,6 +72,7 @@
 #define VU_DISC_ACC_REPORTS   "(5546): Discarding report %s with check %s because %s is higher."
 #define VU_ADD_ACC_REPORTS    "(5547): Setting report %s with check %s because %s is lower."
 #define VU_NO_VER_REPORT      "(5548): There is no check version in %s, so the vulnerability will be reported directly."
+#define VU_OSINFOLNX_DISABLED "(5549): Could not get the agent %s os_version nor release, so its OS and kernel vulnerabilities will not be analysed. It may not have os_info scan activated."
 #define VU_UPDATE_PACK_NAME   "(5553): Inserting package names."
 #define VU_DOWNLOAD_START     "(5554): Trying to download '%s'."
 #define VU_DOWNLOAD_PAGE_SUC  "(5555): Page %d successfully downloaded."
