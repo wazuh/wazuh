@@ -1,18 +1,11 @@
 ---
 test_name: GET /security/roles
 
-includes:
-  - !include common.yaml
-
 marks:
   - usefixtures:
     - security_tests
 
 stages:
-
-  # Authentication stage
-  - type: ref
-    id: login_get_token
 
   # GET /security/roles
   - name: Try to show the roles of the system
@@ -26,7 +19,7 @@ stages:
         offset: 0
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: &roles
             - id: !anyint
@@ -47,14 +40,14 @@ stages:
         offset: 0
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *roles
             - <<: *roles
           total_affected_items: !anyint
       save:
-        body:
+        json:
           second_role_id: data.affected_items.1.id
           second_role_name: data.affected_items.1.name
 
@@ -67,7 +60,7 @@ stages:
         offset: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
           - id: !int "{second_role_id}"
@@ -81,7 +74,7 @@ stages:
       <<: *all_roles_request
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
           - <<: *roles
@@ -94,7 +87,7 @@ stages:
         limit: 0
     response:
       status_code: 400
-      body: &error_response
+      json: &error_response
         detail: !anystr
         status: 400
         title: !anystr
@@ -109,14 +102,14 @@ stages:
         limit: 2
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *roles
             - <<: *roles
           total_affected_items: !anyint
       save:
-        body:
+        json:
           second_role_id: data.affected_items.1.id
           second_role_name: data.affected_items.1.name
 
@@ -130,7 +123,7 @@ stages:
         offset: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
           - id: !int "{second_role_id}"
@@ -146,7 +139,7 @@ stages:
         sort: -name
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
 
@@ -162,7 +155,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *roles
@@ -176,7 +169,7 @@ stages:
         search: wazuh
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *roles
@@ -193,7 +186,7 @@ stages:
         sort: +noexist
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_response
 
   # GET /security/roles
@@ -204,7 +197,7 @@ stages:
         search: noexist
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: 0
 
@@ -216,7 +209,7 @@ stages:
         noexist: nothing
     response:
       status_code: 400
-      body: &error_null
+      json: &error_null
         detail: "Extra query parameter(s) noexist not in spec"
         status: 400
         title: null
@@ -231,7 +224,7 @@ stages:
         noexist: True
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_null
 
   # GET /security/roles
@@ -245,7 +238,7 @@ stages:
         search: notexist
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: 0
 ---
@@ -265,7 +258,7 @@ stages:
         offset: 0
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: &policies
             - id: !anyint
@@ -282,14 +275,14 @@ stages:
         offset: 0
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *policies
             - <<: *policies
           total_affected_items: !anyint
       save:
-        body:
+        json:
           second_policy_id: data.affected_items.1.id
           second_policy_name: data.affected_items.1.name
 
@@ -302,7 +295,7 @@ stages:
         offset: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
           - id: !int "{second_policy_id}"
@@ -316,7 +309,7 @@ stages:
       <<: *all_policies_request
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
 
@@ -328,7 +321,7 @@ stages:
         limit: 0
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_response
 
   # GET /security/policies
@@ -340,7 +333,7 @@ stages:
         limit: 2
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *policies
@@ -355,7 +348,7 @@ stages:
         sort: -name
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
 
@@ -371,14 +364,14 @@ stages:
         limit: 2
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *policies
             - <<: *policies
           total_affected_items: !anyint
       save:
-        body:
+        json:
           policy_id: data.affected_items.0.id
 
   # GET /security/policies
@@ -389,7 +382,7 @@ stages:
         search: wazuh
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: 2
 
@@ -401,7 +394,7 @@ stages:
         search: noexist
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: 0
 
@@ -413,7 +406,7 @@ stages:
         noexist: nothing
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_null
 
   # GET /security/policies
@@ -425,7 +418,7 @@ stages:
         noexist: True
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_null
 
   # GET /security/policies
@@ -439,7 +432,7 @@ stages:
         search: notexist
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: 0
 ---
@@ -458,7 +451,7 @@ stages:
         role_ids: 2,3,4
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *roles
@@ -476,7 +469,7 @@ stages:
         role_ids: 999
     response:
       status_code: 200
-      body: &response_error
+      json: &response_error
         data:
           affected_items: []
           failed_items:
@@ -504,7 +497,7 @@ stages:
         policy_ids: 2,3,4
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *policies
@@ -522,14 +515,11 @@ stages:
         policy_ids: 999
     response:
       status_code: 200
-      body:
+      json:
         <<: *response_error
 
 ---
 test_name: GET /security/users
-
-includes:
-  - !include common.yaml
 
 stages:
 
@@ -544,7 +534,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: administrator
@@ -596,7 +586,7 @@ stages:
         usernames: wazuh
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: &user
             - username: !anystr
@@ -612,7 +602,7 @@ stages:
         usernames: wazuh,wazuh-wui
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *user
@@ -629,7 +619,7 @@ stages:
         usernames: "!!!"
     response:
       status_code: 400
-      body:
+      json:
         detail: !anystr
         status: !anyint
         title: !anystr
@@ -645,7 +635,7 @@ stages:
         usernames: "####@@@|#|"
     response:
       status_code: 400
-      body:
+      json:
         detail: !anystr
         status: !anyint
         title: !anystr
@@ -661,7 +651,7 @@ stages:
         usernames: NotFound
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -685,7 +675,7 @@ stages:
         usernames: NotFound,NotFound1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -710,7 +700,7 @@ stages:
         usernames: NotFound,NotFound1,wazuh
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: wazuh
@@ -736,7 +726,7 @@ stages:
         usernames: NotFound,NotFound1,wazuh-wui,wazuh
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: wazuh
@@ -773,7 +763,7 @@ stages:
         search: "{field}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: "{field}"
@@ -792,7 +782,7 @@ stages:
         search: "-wazuh"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: administrator
@@ -835,7 +825,7 @@ stages:
         sort: "-username"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: wazuh-wui
@@ -882,7 +872,7 @@ stages:
         sort: "username"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: administrator
@@ -933,7 +923,7 @@ stages:
         offset: 3
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: ossec
@@ -970,7 +960,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: administrator

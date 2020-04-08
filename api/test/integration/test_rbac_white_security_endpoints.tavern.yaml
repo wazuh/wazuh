@@ -1,17 +1,11 @@
 ---
 test_name: GET USERS RBAC
 
-includes:
-  - !include common.yaml
-
 marks:
   - usefixtures:
       - security_white_rbac_tests
 
 stages:
-
-  - type: ref
-    id: login_get_token
 
   - name: Get all users in the system
     request:
@@ -21,7 +15,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: administrator
@@ -43,7 +37,7 @@ stages:
         usernames: normal
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: normal
@@ -62,7 +56,7 @@ stages:
         usernames: wazuh
     response:
       status_code: 400
-      body: &permission_denied
+      json: &permission_denied
         code: 4000
         dapi_errors: !anything
         detail: !anystr
@@ -81,7 +75,7 @@ stages:
         usernames: normal,python,guest
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: guest
@@ -102,7 +96,7 @@ stages:
         usernames: wazuh,ossec
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Get a list of users by its username (Both)
@@ -115,7 +109,7 @@ stages:
         usernames: normal,python,guest,ossec,wazuh,administrator
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: administrator
@@ -147,7 +141,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: 1
@@ -316,7 +310,7 @@ stages:
         role_ids: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: 1
@@ -350,7 +344,7 @@ stages:
         role_ids: 99
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -374,7 +368,7 @@ stages:
         role_ids: 1,2,99
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: 1
@@ -430,7 +424,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items: []
@@ -448,7 +442,7 @@ stages:
         policy_ids: 1,2,3
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -466,7 +460,7 @@ stages:
         password: stringA1!
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Update one specified user in the system (All denied)
@@ -479,7 +473,7 @@ stages:
         password: stringA1!
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -500,7 +494,7 @@ stages:
             definition: technicalRuleModified
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: 10
@@ -533,7 +527,7 @@ stages:
             definition: wazuh-wuiRuleModified
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -559,7 +553,7 @@ stages:
             - agent:id:003
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: 15
@@ -609,7 +603,7 @@ stages:
             - agent:id:*
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -627,7 +621,7 @@ stages:
         role_ids: 10,11
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Create one specified link between one user and a list of roles (Allow and Deny)
@@ -640,7 +634,7 @@ stages:
         role_ids: 10,11,12,13
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -658,7 +652,7 @@ stages:
         policy_ids: 15,16,17
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           total_affected_items: 0
@@ -694,7 +688,7 @@ stages:
         role_ids: 10,11
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Create one specified link between one user and a list of roles (Deny)
@@ -707,7 +701,7 @@ stages:
         role_ids: 10,11,12,13
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -725,7 +719,7 @@ stages:
         role_ids: 10,11
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Delete one specified link between one user and a list of roles (Deny)
@@ -738,7 +732,7 @@ stages:
         role_ids: 10,11,12,13
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -756,7 +750,7 @@ stages:
         policy_ids: 15,16,17
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -774,7 +768,7 @@ stages:
         usernames: guest
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: guest
@@ -791,7 +785,7 @@ stages:
       method: DELETE
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: normal
@@ -808,7 +802,7 @@ stages:
       method: DELETE
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items: []
@@ -826,7 +820,7 @@ stages:
         usernames: wazuh,normal,guest
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -861,7 +855,7 @@ stages:
       method: DELETE
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items: []
@@ -879,7 +873,7 @@ stages:
         role_ids: 9,10
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -895,7 +889,7 @@ stages:
       method: DELETE
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items: []
@@ -913,7 +907,7 @@ stages:
         policy_ids: 12,13
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -932,7 +926,7 @@ stages:
         password: stringA1!
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -953,7 +947,7 @@ stages:
             definition: newUser
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: 14
@@ -984,7 +978,7 @@ stages:
             - policy:id:*
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: 21
@@ -1015,5 +1009,5 @@ stages:
       method: PUT
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
