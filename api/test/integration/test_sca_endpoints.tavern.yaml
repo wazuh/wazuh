@@ -1,17 +1,10 @@
 test_name: GET /sca/001
 
-includes:
-  - !include common.yaml
-
 marks:
   - usefixtures:
     - sca_tests
 
 stages:
-
-    # Authentication stage
-  - type: ref
-    id: login_get_token
 
   - name: Request
     request:
@@ -21,7 +14,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data: !anything
 
   - name: Parameters -> limit=2
@@ -34,7 +27,7 @@ stages:
         limit: 2
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - &sca_agent_result_001
@@ -66,7 +59,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -85,7 +78,7 @@ stages:
         sort: -score
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -105,7 +98,7 @@ stages:
         sort: -score
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -124,7 +117,7 @@ stages:
         search: cis
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -143,7 +136,7 @@ stages:
         q: score>40
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -161,7 +154,7 @@ stages:
         limit: 2500
     response:
       status_code: 400
-      body:
+      json:
         code: 1405
         dapi_errors: !anything
         detail: !anystr
@@ -180,7 +173,7 @@ stages:
         name: CIS benchmark for Debian/Linux 9 L2
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -200,7 +193,7 @@ stages:
         references: https://www.cisecurity.org/cis-benchmarks/
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -220,7 +213,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -242,7 +235,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data: !anything
 
   - name: Parameters -> limit=1
@@ -255,7 +248,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -284,7 +277,7 @@ stages:
         limit: 4
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -304,7 +297,7 @@ stages:
         sort: -id
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -323,7 +316,7 @@ stages:
         search: passwd
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -341,7 +334,7 @@ stages:
         q: id=3098
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -361,7 +354,7 @@ stages:
         result: failed
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -381,7 +374,7 @@ stages:
         file: /etc/shadow
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -400,7 +393,7 @@ stages:
         limit: 2500
     response:
       status_code: 400
-      body:
+      json:
         code: 1405
         dapi_errors: !anything
         detail: !anystr
@@ -419,7 +412,7 @@ stages:
         title: Ensure shadow group is empty
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -439,7 +432,7 @@ stages:
         remediation: Remove any legacy + entries from /etc/group if they exist.
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -461,7 +454,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data: !anything
 
   - name: Parameters -> limit=2
@@ -474,7 +467,7 @@ stages:
         limit: 2
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - &sca_agent_result_002
@@ -506,7 +499,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -525,7 +518,7 @@ stages:
         sort: -score
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -545,7 +538,7 @@ stages:
         sort: -score
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -564,7 +557,7 @@ stages:
         search: cis
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -583,7 +576,7 @@ stages:
         q: score>40
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -601,7 +594,7 @@ stages:
         limit: 2500
     response:
       status_code: 400
-      body:
+      json:
         code: 1405
         dapi_errors: !anything
         detail: !anystr
@@ -620,7 +613,7 @@ stages:
         name: CIS benchmark for Debian/Linux 9 L2
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -640,7 +633,7 @@ stages:
         references: https://www.cisecurity.org/cis-benchmarks/
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -660,7 +653,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -682,7 +675,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data: !anything
 
   - name: Parameters -> limit=1
@@ -695,7 +688,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -724,7 +717,7 @@ stages:
         limit: 4
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -744,7 +737,7 @@ stages:
         sort: -id
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -763,7 +756,7 @@ stages:
         search: passwd
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -781,7 +774,7 @@ stages:
         q: id=3098
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -801,7 +794,7 @@ stages:
         result: failed
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -821,7 +814,7 @@ stages:
         file: /etc/shadow
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -840,7 +833,7 @@ stages:
         limit: 2500
     response:
       status_code: 400
-      body:
+      json:
         code: 1405
         dapi_errors: !anything
         detail: !anystr
@@ -859,7 +852,7 @@ stages:
         title: Ensure shadow group is empty
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -879,7 +872,7 @@ stages:
         remediation: Remove any legacy + entries from /etc/group if they exist.
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -901,7 +894,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data: !anything
 
   - name: Parameters -> limit=2
@@ -914,7 +907,7 @@ stages:
         limit: 2
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - &sca_agent_result_003
@@ -946,7 +939,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -965,7 +958,7 @@ stages:
         sort: -score
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -985,7 +978,7 @@ stages:
         sort: -score
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1004,7 +997,7 @@ stages:
         search: cis
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1023,7 +1016,7 @@ stages:
         q: score>40
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1041,7 +1034,7 @@ stages:
         limit: 2500
     response:
       status_code: 400
-      body:
+      json:
         code: 1405
         dapi_errors: !anything
         detail: !anystr
@@ -1060,7 +1053,7 @@ stages:
         name: CIS benchmark for Debian/Linux 9 L2
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1080,7 +1073,7 @@ stages:
         references: https://www.cisecurity.org/cis-benchmarks/
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1100,7 +1093,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1122,7 +1115,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data: !anything
 
   - name: Parameters -> limit=1
@@ -1135,7 +1128,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1164,7 +1157,7 @@ stages:
         limit: 4
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1184,7 +1177,7 @@ stages:
         sort: -id
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1203,7 +1196,7 @@ stages:
         search: passwd
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1221,7 +1214,7 @@ stages:
         q: id=3098
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1241,7 +1234,7 @@ stages:
         result: failed
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1261,7 +1254,7 @@ stages:
         file: /etc/shadow
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1280,7 +1273,7 @@ stages:
         limit: 2500
     response:
       status_code: 400
-      body:
+      json:
         code: 1405
         dapi_errors: !anything
         detail: !anystr
@@ -1299,7 +1292,7 @@ stages:
         title: Ensure shadow group is empty
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1319,7 +1312,7 @@ stages:
         remediation: Remove any legacy + entries from /etc/group if they exist.
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:

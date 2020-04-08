@@ -6,14 +6,7 @@ marks:
     - agents_tests
   - xfail # STAGE (Filter by agent status 2) XFAILS DUE TO https://github.com/wazuh/wazuh/issues/4825
 
-includes:
- - !include common.yaml
-
 stages:
-
- # Authentication stage
- - type: ref
-   id: login_get_token
 
  - name: Get all agents
    request: &get_agents
@@ -23,7 +16,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body: &basic_response
+     json: &basic_response
        data:
          affected_items:
            - id: '000'
@@ -50,7 +43,7 @@ stages:
        sort: -id
    response:
      status_code: 200
-     body: &basic_response_inverse
+     json: &basic_response_inverse
        data:
          affected_items:
            - id: '012'
@@ -79,16 +72,16 @@ stages:
    response:
      status_code: 200
      save:
-       body:
-         expected_agent_name: data.affected_items.0.name
-         expected_os_platform: data.affected_items.0.os.platform
-         expected_os_version: data.affected_items.0.os.version
-         expected_os_name: data.affected_items.0.os.name
-         expected_manager_host: data.affected_items.0.manager
-         expected_node_name: data.affected_items.0.node_name
-         expected_name: data.affected_items.0.name
-         expected_ip: data.affected_items.0.ip
-     body:
+       json:
+         expected_agent_name: data.affected_items[0].name
+         expected_os_platform: data.affected_items[0].os.platform
+         expected_os_version: data.affected_items[0].os.version
+         expected_os_name: data.affected_items[0].os.name
+         expected_manager_host: data.affected_items[0].manager
+         expected_node_name: data.affected_items[0].node_name
+         expected_name: data.affected_items[0].name
+         expected_ip: data.affected_items[0].ip
+     json:
        data:
          affected_items:
            - status: active
@@ -106,7 +99,7 @@ stages:
        offset: -1
    response:
      status_code: 400
-     body: &error_spec
+     json: &error_spec
        detail: !anystr
        status: !anyint
        title: !anystr
@@ -119,7 +112,7 @@ stages:
        offset: wrong_offset
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try to show agents with offset too large 9999999999999999999
@@ -129,7 +122,7 @@ stages:
        offset: 9999999999999999999
    response:
      status_code: 400
-     body:
+     json:
        code: 2003
 
  - name: Try to show agents with limit 0
@@ -139,7 +132,7 @@ stages:
        limit: 0
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try to show agents with an invalid limit value
@@ -149,7 +142,7 @@ stages:
        limit: wrong_limit
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try to show agents with limit 9999
@@ -159,7 +152,7 @@ stages:
        limit: 9999
    response:
      status_code: 400
-     body:
+     json:
        code: 1405
 
  - name: Sort
@@ -170,7 +163,7 @@ stages:
        limit: 2
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '012'
@@ -186,7 +179,7 @@ stages:
        sort: -wrong_sort
    response:
      status_code: 400
-     body:
+     json:
        code: 1403
 
  - name: Search
@@ -196,7 +189,7 @@ stages:
        search: '000'
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '000'
@@ -211,7 +204,7 @@ stages:
        search: wrong_search
    response:
      status_code: 200
-     body:
+     json:
        data: &affected_empty_answer
          affected_items: []
          failed_items: []
@@ -226,7 +219,7 @@ stages:
        limit: 2
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '000'
@@ -248,7 +241,7 @@ stages:
        offset: 1
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '001'
@@ -268,7 +261,7 @@ stages:
        select: param_test
    response:
      status_code: 400
-     body:
+     json:
        code: 1724
 
  - name: Try to show agents using not allowed selector (invalid character)
@@ -278,7 +271,7 @@ stages:
        select: param_%_test
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Filter by agent version
@@ -288,7 +281,7 @@ stages:
        version: 'Wazuh v3.9.2'
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '009'
@@ -304,7 +297,7 @@ stages:
        version: 'TestVersion'
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *affected_empty_answer
 
@@ -315,7 +308,7 @@ stages:
        version: 'Test%Version'
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Filter by agent OS Platform
@@ -326,7 +319,7 @@ stages:
        limit: 1
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '000'
@@ -343,7 +336,7 @@ stages:
        os.platform: test_platform
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *affected_empty_answer
 
@@ -354,7 +347,7 @@ stages:
        os.platform: test_%_platform
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Filter by agent OS Version
@@ -365,7 +358,7 @@ stages:
        limit: 1
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '000'
@@ -382,7 +375,7 @@ stages:
        os.version: test_version
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *affected_empty_answer
 
@@ -393,7 +386,7 @@ stages:
        os.version: test_version_%
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Filter by agent OS Name
@@ -404,7 +397,7 @@ stages:
        limit: 1
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '000'
@@ -421,7 +414,7 @@ stages:
        os.name: test_name
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *affected_empty_answer
 
@@ -432,7 +425,7 @@ stages:
        os.name: test_name_%
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Filter by agent Node Name
@@ -443,7 +436,7 @@ stages:
        limit: 1
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '000'
@@ -458,7 +451,7 @@ stages:
        node_name: test_node_name
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *affected_empty_answer
 
@@ -469,7 +462,7 @@ stages:
        node_name: test_node_name_%
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Filter by agent name
@@ -479,7 +472,7 @@ stages:
        name: "{expected_name:s}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '000'
@@ -495,7 +488,7 @@ stages:
        name: test_name
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *affected_empty_answer
 
@@ -506,7 +499,7 @@ stages:
        name: test_name_%
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Filter by agent IP
@@ -516,7 +509,7 @@ stages:
        ip: "{expected_ip:s}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '000'
@@ -532,7 +525,7 @@ stages:
        ip: test_ip
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *affected_empty_answer
 
@@ -543,7 +536,7 @@ stages:
        ip: test_ip_%
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Filter by agent ManagerHost
@@ -554,7 +547,7 @@ stages:
        limit: 1
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - manager: "{expected_manager_host:s}"
@@ -568,7 +561,7 @@ stages:
        manager: test_manager
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *affected_empty_answer
 
@@ -579,7 +572,7 @@ stages:
        manager: test_manager_%
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Filter by agent status
@@ -589,7 +582,7 @@ stages:
        status: disconnected
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '009'
@@ -605,7 +598,7 @@ stages:
        status: disconnected,never_connected
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '009'
@@ -623,7 +616,7 @@ stages:
        status: test_status
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Filter agents by group
@@ -633,7 +626,7 @@ stages:
        group: group1
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '001'
@@ -652,7 +645,7 @@ stages:
        group: test_group
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *affected_empty_answer
 
@@ -663,7 +656,7 @@ stages:
        group: test_group_%
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Filter agents by query
@@ -673,7 +666,7 @@ stages:
        q: group=group2;lastKeepAlive<1d
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '002'
@@ -691,7 +684,7 @@ stages:
        q: group=default;lastKeepAe<1d
    response:
      status_code: 400
-     body:
+     json:
        code: 1408
 
  - name: Try to show agents using an invalid query
@@ -701,7 +694,7 @@ stages:
        q: group=default;lastKeep%<1d
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Filter agents using older_than param
@@ -711,7 +704,7 @@ stages:
        older_than: 30s
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '009'
@@ -729,7 +722,7 @@ stages:
        older_than: bad_time
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try to show a list of agents
@@ -739,7 +732,7 @@ stages:
        list_agents: "001,002,003"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - status: active
@@ -768,7 +761,7 @@ stages:
        list_agents: '000'
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            -  dateAdd: !anystr
@@ -805,7 +798,7 @@ stages:
        list_agents: '999'
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items: []
          failed_items:
@@ -827,7 +820,7 @@ stages:
        list_agents: wrong_name
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
   # GET /agents?list_agents=000&select=os.platform
@@ -839,7 +832,7 @@ stages:
        list_agents: '000'
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '000'
@@ -858,7 +851,7 @@ stages:
        list_agents: '000'
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '000'
@@ -877,7 +870,7 @@ stages:
        list_agents: '000'
    response:
      status_code: 400
-     body:
+     json:
        code: 1724
 
   # GET /agents?list_agents=000&select=param_%_test
@@ -889,7 +882,7 @@ stages:
        list_agents: '000'
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
 ---
@@ -906,7 +899,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          client:
            auto_restart: !anystr
@@ -925,7 +918,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          buffer:
            disabled: !anystr
@@ -940,7 +933,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          labels: !anything
 
@@ -952,7 +945,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          internal:
            agent:
@@ -988,7 +981,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          agentless:
            - arguments: !anystr
@@ -1006,7 +999,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          global:
            alerts_log: !anystr
@@ -1033,7 +1026,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          active-response: !anything
 
@@ -1045,7 +1038,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          alerts:
            email_alert_level: !anyint
@@ -1059,7 +1052,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          command: !anything
 
@@ -1071,7 +1064,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          internal:
            analysisd:
@@ -1097,7 +1090,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          auth:
            ciphers: !anystr
@@ -1122,7 +1115,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          active-response:
            ca_verification: !anystr
@@ -1136,7 +1129,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          active-response:
            ca_store: !anything
@@ -1151,7 +1144,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          internal:
            execd:
@@ -1166,7 +1159,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          internal:
            execd:
@@ -1181,7 +1174,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          bind_addr: !anystr
          disabled: !anybool
@@ -1201,7 +1194,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          syslog_output:
            - format: !anystr
@@ -1218,7 +1211,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          integration:
            - alert_format: !anystr
@@ -1236,7 +1229,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          localfile: !anything
 
@@ -1248,7 +1241,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          localfile: !anything
 
@@ -1278,7 +1271,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          internal:
            logcollector:
@@ -1306,7 +1299,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          internal:
            logcollector:
@@ -1334,7 +1327,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          global:
            email_from: !anystr
@@ -1351,7 +1344,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          email_alerts: !anything
 
@@ -1363,7 +1356,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          internal:
            mail:
@@ -1378,7 +1371,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          monitord:
            compress: !anyint
@@ -1399,7 +1392,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          remote:
            - connection: !anystr
@@ -1416,7 +1409,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          internal:
            remoted:
@@ -1448,7 +1441,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          syscheck:
            directories: !anything
@@ -1468,7 +1461,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          syscheck:
            directories: !anything
@@ -1488,7 +1481,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          rootcheck:
            check_dev: !anystr
@@ -1514,7 +1507,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          rootcheck:
            check_dev: !anystr
@@ -1540,7 +1533,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          internal:
            rootcheck:
@@ -1561,7 +1554,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          internal:
            syscheck:
@@ -1583,7 +1576,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          wmodules: !anything
 
@@ -1595,7 +1588,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          wmodules: !anything
 
@@ -1607,7 +1600,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        code: 1701
 
  - name: Try to show config of an invalid agent
@@ -1618,7 +1611,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Request Error
@@ -1629,7 +1622,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        code: 1117
 
  - name: Request Error Component Parameter
@@ -1640,7 +1633,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Request Error Configuration Parameter
@@ -1651,7 +1644,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Request Error Component and Configuration Parameters
@@ -1662,7 +1655,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
 ---
@@ -1678,7 +1671,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items: []
          failed_items:
@@ -1697,7 +1690,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items: []
          failed_items:
@@ -1716,7 +1709,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Get agent sync
@@ -1727,7 +1720,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '001'
@@ -1749,7 +1742,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items: []
          failed_items:
@@ -1768,7 +1761,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items: []
          failed_items:
@@ -1787,7 +1780,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Get agent key
@@ -1798,7 +1791,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '001'
@@ -1820,9 +1813,9 @@ stages:
    response:
      status_code: 200
      save:
-       body:
-         expected_total_agents: data.affected_items.2.count
-     body:
+       json:
+         expected_total_agents: data.affected_items[2].count
+     json:
        data: &get_groups_answer
          affected_items:
            - name: 'default'
@@ -1845,7 +1838,7 @@ stages:
        limit: 1
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - name: 'group2'
@@ -1861,7 +1854,7 @@ stages:
        offset: -1
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show groups with offset not integer value
@@ -1871,7 +1864,7 @@ stages:
        offset: wrong_offset
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show groups with offset too large 9999999999999999999
@@ -1881,7 +1874,7 @@ stages:
        offset: 9999999999999999999
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items: []
          failed_items: []
@@ -1895,7 +1888,7 @@ stages:
        limit: 0
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show groups with limit not integer value
@@ -1905,7 +1898,7 @@ stages:
        limit: wrong_limit
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show groups with limit 9999
@@ -1915,7 +1908,7 @@ stages:
        limit: 9999
    response:
      status_code: 400
-     body:
+     json:
        code: 1405
 
  - name: Sort
@@ -1925,7 +1918,7 @@ stages:
        sort: -name
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - name: 'group3'
@@ -1947,7 +1940,7 @@ stages:
        sort: -wrong_sort
    response:
      status_code: 400
-     body:
+     json:
        code: 1403
 
  - name: Search
@@ -1957,7 +1950,7 @@ stages:
        search: default
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - name: 'default'
@@ -1973,7 +1966,7 @@ stages:
        search: wrong_search
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *affected_empty_answer
 
@@ -1984,7 +1977,7 @@ stages:
        hash: wrong_hash
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try to get a list of groups information
@@ -1994,7 +1987,7 @@ stages:
        list_groups: 'group1,group3'
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - name: 'group1'
@@ -2032,7 +2025,7 @@ stages:
        hash: "{hash:s}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *get_groups_answer
 
@@ -2052,7 +2045,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '003'
@@ -2071,7 +2064,7 @@ stages:
        limit: 2
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '006'
@@ -2087,7 +2080,7 @@ stages:
        offset: -1
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with offset not integer value
@@ -2097,7 +2090,7 @@ stages:
        offset: wrong_offset
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with offset too large 9999999999999999999
@@ -2107,7 +2100,7 @@ stages:
        offset: 9999999999999999999
    response:
      status_code: 400
-     body:
+     json:
        code: 2003
 
  - name: Try show agents with limit 0
@@ -2117,7 +2110,7 @@ stages:
        limit: 0
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with limit not integer value
@@ -2127,7 +2120,7 @@ stages:
        limit: wrong_limit
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with limit 9999
@@ -2137,7 +2130,7 @@ stages:
        limit: 9999
    response:
      status_code: 400
-     body:
+     json:
        code: 1405
 
  - name: Params, bad group name
@@ -2148,7 +2141,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        code: 1710
 
  - name: Params, invalid group name (not alphanumeric)
@@ -2159,7 +2152,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Sort
@@ -2170,7 +2163,7 @@ stages:
        limit: 3
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '008'
@@ -2187,7 +2180,7 @@ stages:
        sort: -wrong_sort
    response:
      status_code: 400
-     body:
+     json:
        code: 1403
 
  - name: Search
@@ -2197,7 +2190,7 @@ stages:
        search: '008'
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '008'
@@ -2212,7 +2205,7 @@ stages:
        search: wrong_search
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *affected_empty_answer
 
@@ -2223,7 +2216,7 @@ stages:
        select: 'os.platform'
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '003'
@@ -2251,7 +2244,7 @@ stages:
        offset: 2
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '007'
@@ -2268,7 +2261,7 @@ stages:
        select: param_test
    response:
      status_code: 400
-     body:
+     json:
        code: 1724
 
  - name: Try show agents with not allowed selector (invalid character)
@@ -2278,7 +2271,7 @@ stages:
        select: param_%_test
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Status multiple
@@ -2288,7 +2281,7 @@ stages:
        status: active,disconnected
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '003'
@@ -2306,7 +2299,7 @@ stages:
        status: wrong_status
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Filter agents by query
@@ -2316,7 +2309,7 @@ stages:
        q: group=group1;lastKeepAlive<1d
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '007'
@@ -2332,7 +2325,7 @@ stages:
        q: group=default;lastKeepAe<1d
    response:
      status_code: 400
-     body:
+     json:
        code: 1408
 
  - name: Try show agents with bad query (invalid character)
@@ -2342,7 +2335,7 @@ stages:
        q: group=default;lastKeep%<1d
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
 ---
@@ -2384,7 +2377,7 @@ stages:
        select: "{field}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '003'
@@ -2402,7 +2395,7 @@ stages:
        sort: "{field}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: !anystr
@@ -2428,7 +2421,7 @@ stages:
        limit: 1
    response:
      status_code: 200
-     body: &groups_id_config_response
+     json: &groups_id_config_response
        data:
          items:
            - config: !anything
@@ -2445,7 +2438,7 @@ stages:
        limit: 1
    response:
      status_code: 400
-     body:
+     json:
        code: 1710
 
  - name: Try get the configuration of a bad group (not alphanumeric)
@@ -2458,7 +2451,7 @@ stages:
        limit: 1
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Pagination
@@ -2469,7 +2462,7 @@ stages:
        limit: 1
    response:
      status_code: 200
-     body:
+     json:
        <<: *groups_id_config_response
 
  - name: Try show agents with offset -1
@@ -2479,7 +2472,7 @@ stages:
        offset: -1
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with offset not integer value
@@ -2489,7 +2482,7 @@ stages:
        offset: wrong_offset
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with offset too large 9999999999999999999
@@ -2499,7 +2492,7 @@ stages:
        offset: 9999999999999999999
    response:
      status_code: 200
-     body:
+     json:
        data:
          items: []
          totalItems: !anyint
@@ -2511,7 +2504,7 @@ stages:
        limit: 0
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with limit not integer value
@@ -2521,7 +2514,7 @@ stages:
        limit: wrong_limit
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with limit 9999
@@ -2531,7 +2524,7 @@ stages:
        limit: 9999
    response:
      status_code: 400
-     body:
+     json:
        code: 1405
 
 ---
@@ -2550,7 +2543,7 @@ stages:
        offset: 0
    response:
      status_code: 200
-     body:
+     json:
        data:
          items:
            - filename: agent.conf
@@ -2559,9 +2552,9 @@ stages:
              hash: !anystr
          totalItems: !anyint
      save:
-       body:
-         filename_saved: data.items.1.filename
-         hash_saved: data.items.1.hash
+       json:
+         filename_saved: data.items[1].filename
+         hash_saved: data.items[1].hash
 
  - name: Pagination
    request:
@@ -2571,7 +2564,7 @@ stages:
        offset: 1
    response:
      status_code: 200
-     body:
+     json:
        data:
          items:
            - filename: "{filename_saved}"
@@ -2585,7 +2578,7 @@ stages:
        offset: -1
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try get the files of a group with offset not integer value
@@ -2595,7 +2588,7 @@ stages:
        offset: wrong_offset
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try get the files of a group with offset too large 9999999999999999999
@@ -2605,7 +2598,7 @@ stages:
        offset: 9999999999999999999
    response:
      status_code: 200
-     body:
+     json:
        data:
          items: []
          totalItems: !anyint
@@ -2617,7 +2610,7 @@ stages:
        limit: 0
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try get the files of a group with limit not integer value
@@ -2627,7 +2620,7 @@ stages:
        limit: wrong_limit
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try get the files of a group with limit 9999
@@ -2637,7 +2630,7 @@ stages:
        limit: 9999
    response:
      status_code: 400
-     body:
+     json:
        code: 1405
 
  - name: Try get the files of a bad group name
@@ -2650,7 +2643,7 @@ stages:
        limit: 1
    response:
      status_code: 400
-     body:
+     json:
        code: 1710
 
  - name: Try get the files of a bad group name (no alphanumeric)
@@ -2663,7 +2656,7 @@ stages:
        limit: 1
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Sort
@@ -2673,7 +2666,7 @@ stages:
        sort: -hash
    response:
      status_code: 200
-     body:
+     json:
        data:
          items: !anything
          totalItems: !anyint
@@ -2685,7 +2678,7 @@ stages:
        sort: -wrong_sort
    response:
      status_code: 400
-     body:
+     json:
        code: 1403
 
  - name: Search
@@ -2695,7 +2688,7 @@ stages:
        search: agent.conf
    response:
      status_code: 200
-     body:
+     json:
        data:
          items: !anything
            filename: agent.conf
@@ -2708,7 +2701,7 @@ stages:
        search: wrong_search
    response:
      status_code: 200
-     body:
+     json:
        data:
          items: !anything
          totalItems: 0
@@ -2720,7 +2713,7 @@ stages:
        hash: wrong_hash
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
 ---
@@ -2752,7 +2745,7 @@ stages:
        hash: "{hash:s}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          items: !anything
          totalItems: !anyint
@@ -2770,7 +2763,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data: !anything
 
  - name: Try get one file of a group, bad group
@@ -2781,7 +2774,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        code: 1710
 
  - name: Try get one file of a group, bad group (not aplhanumeric)
@@ -2792,7 +2785,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
 ---
@@ -2820,7 +2813,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        code: 1710
 
  - name: Try get one file of a group, bad group (not aplhanumeric)
@@ -2831,7 +2824,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
 ---
@@ -2849,7 +2842,7 @@ stages:
        name: wazuh-agent1
    response:
      status_code: 200
-     body:
+     json:
        data: &get_agents_by_name_response
          affected_items:
            - id: '001'
@@ -2868,7 +2861,7 @@ stages:
        name: wrong_agent
    response:
      status_code: 200
-     body:
+     json:
        data:
          total_affected_items: 0
 
@@ -2880,7 +2873,7 @@ stages:
        name: wazuh-agent1
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *get_agents_by_name_response
 
@@ -2892,7 +2885,7 @@ stages:
        name: wazuh-agent1
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '001'
@@ -2910,7 +2903,7 @@ stages:
        name: wazuh-agent1
    response:
      status_code: 400
-     body:
+     json:
        code: 1724
 
 ---
@@ -2926,7 +2919,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body: &no_group_response
+     json: &no_group_response
        data:
          affected_items:
            - id: '011'
@@ -2943,7 +2936,7 @@ stages:
        limit: 1
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '011'
@@ -2958,7 +2951,7 @@ stages:
        offset: -1
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with offset not integer value
@@ -2968,7 +2961,7 @@ stages:
        offset: wrong_offset
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with offset too large 9999999999999999999
@@ -2978,7 +2971,7 @@ stages:
        offset: 9999999999999999999
    response:
      status_code: 400
-     body:
+     json:
        code: 2003
 
  - name: Try show agents with limit 0
@@ -2988,7 +2981,7 @@ stages:
        limit: 0
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with limit not integer value
@@ -2998,7 +2991,7 @@ stages:
        limit: wrong_limit
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with limit 9999
@@ -3008,7 +3001,7 @@ stages:
        limit: 9999
    response:
      status_code: 400
-     body:
+     json:
        code: 1405
 
  - name: Sort
@@ -3018,7 +3011,7 @@ stages:
        sort: -id
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '012'
@@ -3034,7 +3027,7 @@ stages:
        sort: -wrong_sort
    response:
      status_code: 400
-     body:
+     json:
        code: 1403
 
  - name: Search
@@ -3044,7 +3037,7 @@ stages:
        search: wazuh-agent11
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '011'
@@ -3059,7 +3052,7 @@ stages:
        search: wrong_search
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *affected_empty_answer
 
@@ -3070,7 +3063,7 @@ stages:
        q: registerIP=any
    response:
      status_code: 200
-     body:
+     json:
        <<: *no_group_response
 
  - name: Try show agents with bad query
@@ -3080,7 +3073,7 @@ stages:
        q: group=default;lastKeepAe<1d
    response:
      status_code: 400
-     body:
+     json:
        code: 1408
 
  - name: Try show agents with bad query (invalid character)
@@ -3090,7 +3083,7 @@ stages:
        q: group=default;lastKeep%<1d
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
 ---
@@ -3120,7 +3113,7 @@ stages:
        sort: "{field}"
    response:
      status_code: 200
-     body:
+     json:
        <<: *no_group_response
 
  - name: Select
@@ -3133,7 +3126,7 @@ stages:
        select: "{field}"
    response:
      status_code: 200
-     body:
+     json:
        <<: *no_group_response
 
 ---
@@ -3152,7 +3145,7 @@ stages:
        sort: -id
    response:
      status_code: 200
-     body:
+     json:
        data: &outdated_agents_response
          affected_items:
            - id: '010'
@@ -3170,7 +3163,7 @@ stages:
        sort: -id
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '009'
@@ -3185,7 +3178,7 @@ stages:
        offset: -1
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with offset not integer value
@@ -3195,7 +3188,7 @@ stages:
        offset: wrong_offset
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with offset too large 9999999999999999999
@@ -3205,7 +3198,7 @@ stages:
        offset: 9999999999999999999
    response:
      status_code: 400
-     body:
+     json:
        code: 2003
 
  - name: Try show agents with limit 0
@@ -3215,7 +3208,7 @@ stages:
        limit: 0
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with limit not integer value
@@ -3225,7 +3218,7 @@ stages:
        limit: wrong_limit
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with limit 9999
@@ -3235,7 +3228,7 @@ stages:
        limit: 9999
    response:
      status_code: 400
-     body:
+     json:
        code: 1405
 
  - name: Try show agents with wrong sort
@@ -3245,7 +3238,7 @@ stages:
        sort: -wrong_sort
    response:
      status_code: 400
-     body:
+     json:
        code: 1403
 
  - name: Filter agents by query
@@ -3256,7 +3249,7 @@ stages:
        sort: -id
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *outdated_agents_response
 
@@ -3267,7 +3260,7 @@ stages:
        q: group=default;lastKeepAe<1d
    response:
      status_code: 400
-     body:
+     json:
        code: 1408
 
  - name: Try show agents with bad query (invalid character)
@@ -3277,7 +3270,7 @@ stages:
        q: group=default;lastKeep%<1d
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
 ---
@@ -3293,7 +3286,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        <<: *basic_response
 
  - name: Get the different combinations for os.platform
@@ -3304,7 +3297,7 @@ stages:
        fields: os.platform
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - count: !anyint
@@ -3323,7 +3316,7 @@ stages:
        fields: wrong_field
    response:
      status_code: 400
-     body:
+     json:
        code: 1724
 
  - name: Get the different combinations for os.platform, search
@@ -3337,7 +3330,7 @@ stages:
        search: linux
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - count: !anyint
@@ -3359,7 +3352,7 @@ stages:
        select: invalid
    response:
      status_code: 400
-     body:
+     json:
        code: 1724
 
  - name: Pagination
@@ -3370,7 +3363,7 @@ stages:
        limit: 1
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - count: !anyint
@@ -3385,7 +3378,7 @@ stages:
        offset: -1
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with offset not integer value
@@ -3395,7 +3388,7 @@ stages:
        offset: wrong_offset
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with offset too large 9999999999999999999
@@ -3405,7 +3398,7 @@ stages:
        offset: 9999999999999999999
    response:
      status_code: 400
-     body:
+     json:
        code: 2003
 
  - name: Try show agents with limit 0
@@ -3415,7 +3408,7 @@ stages:
        limit: 0
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with limit not integer value
@@ -3425,7 +3418,7 @@ stages:
        limit: wrong_limit
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with limit 9999
@@ -3435,7 +3428,7 @@ stages:
        limit: 9999
    response:
      status_code: 400
-     body:
+     json:
        code: 1405
 
  - name: Sort
@@ -3445,7 +3438,7 @@ stages:
        sort: -id
    response:
      status_code: 200
-     body:
+     json:
        <<: *basic_response_inverse
 
  - name: Try show agents with wrong sort
@@ -3455,7 +3448,7 @@ stages:
        sort: -wrong_sort
    response:
      status_code: 400
-     body:
+     json:
        code: 1403
 
  - name: Search
@@ -3466,7 +3459,7 @@ stages:
        fields: node_name
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - count: 2
@@ -3482,7 +3475,7 @@ stages:
        search: wrong_search
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *affected_empty_answer
 
@@ -3493,7 +3486,7 @@ stages:
        q: group=default;lastKeepAe<1d
    response:
      status_code: 400
-     body:
+     json:
        code: 1408
 
  - name: Try show agents with bad query (invalid character)
@@ -3503,7 +3496,7 @@ stages:
        q: group=default;lastKeep%<1d
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
 ---
@@ -3545,7 +3538,7 @@ stages:
        fields: "{field}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items: !anything
          failed_items: []
@@ -3565,7 +3558,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          active: 9
          disconnected: 2
@@ -3586,7 +3579,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          items:
            - 'ubuntu'
@@ -3605,7 +3598,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        code: 1703
 
  - name: Try get upgrade result not existing agent
@@ -3616,7 +3609,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        code: 1701
 
  - name: Try get upgrade result agent by name
@@ -3627,7 +3620,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Get agent upgrade result not upgrade
@@ -3638,7 +3631,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        code: !anyint
        dapi_errors: !anything
        detail: !anystr
@@ -3656,7 +3649,7 @@ stages:
        force: True
    response:
      status_code: 200
-     body:
+     json:
        message: !anystr
    delay_after: 60
 
@@ -3668,5 +3661,5 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        message: Agent upgraded successfully

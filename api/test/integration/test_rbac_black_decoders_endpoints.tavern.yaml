@@ -5,12 +5,7 @@ marks:
   - usefixtures:
     - decoders_black_rbac_tests
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
 
   - name: Try to show the decoders of the system
     request:
@@ -22,7 +17,7 @@ stages:
         limit: 5
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - &full_item_decoders
@@ -55,7 +50,7 @@ stages:
         q: 'filename=0005-wazuh_decoders.xml'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items: []
@@ -73,7 +68,7 @@ stages:
         decoder_names: wazuh,agent-buffer,netscaler,netinfo,agent-upgrade
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -104,7 +99,7 @@ stages:
         limit: 5
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - filename: 0006-json_decoders.xml
@@ -137,7 +132,7 @@ stages:
         filename: 0005-wazuh_decoders.xml,0006-json_decoders.xml,0025-apache_decoders.xml
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - filename: 0006-json_decoders.xml
@@ -165,7 +160,7 @@ stages:
         filename: 0160-netscaler_decoders.xml,0005-wazuh_decoders.xml
     response:
       status_code: 400
-      body: &permissions_denied
+      json: &permissions_denied
         code: 4000
         dapi_errors:
           master-node:
@@ -200,7 +195,7 @@ stages:
       method: GET
     response:
       status_code: 400
-      body:
+      json:
         <<: *permissions_denied
 
 ---
@@ -218,7 +213,7 @@ stages:
         limit: 5
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - &full_item_decoders_parent

@@ -5,14 +5,7 @@ marks:
   - usefixtures:
     - syscheck_tests
 
-includes:
-  - !include common.yaml
-
 stages:
-
-    # Authentication stage
-  - type: ref
-    id: login_get_token
 
     # GET /syscheck/000
   - name: Try to get syscheck scan results for agent 000
@@ -23,7 +16,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         # We get totalItems number of arrays in items, using !anything to check items key is in the response
         data:
           affected_items: !anything
@@ -39,7 +32,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           # We define this items answer as a common one array full answer
           affected_items: &full_items_array
@@ -63,7 +56,7 @@ stages:
           total_failed_items: 0
       # Save some data for future use in the test
       save:
-        body:
+        json:
           returned_file: data.affected_items.0.file
           returned_md5: data.affected_items.0.md5
           returned_sha1: data.affected_items.0.sha1
@@ -79,7 +72,7 @@ stages:
         summary: True
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - date: !anystr
@@ -99,7 +92,7 @@ stages:
         offset: 0
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *full_items_array
@@ -109,7 +102,7 @@ stages:
           total_failed_items: 0
       # Save second item to check offset in next stage
       save:
-        body:
+        json:
           offset_item: data.affected_items.1
 
     # GET /syscheck/000?limit=1&offset=1
@@ -121,7 +114,7 @@ stages:
         offset: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
               # Save second item to check offset in next stage
@@ -153,7 +146,7 @@ stages:
         search: a
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: *full_items_array
           failed_items: []
@@ -169,7 +162,7 @@ stages:
         type: file
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -185,7 +178,7 @@ stages:
         type: registry
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -201,7 +194,7 @@ stages:
         md5: "{returned_md5:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - md5: "{tavern.request_vars.params.md5}"
@@ -218,7 +211,7 @@ stages:
         sha1: "{returned_sha1:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - sha1: "{tavern.request_vars.params.sha1}"
@@ -235,7 +228,7 @@ stages:
         sha256: "{returned_sha256:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - sha256: "{tavern.request_vars.params.sha256}"
@@ -252,7 +245,7 @@ stages:
         hash: "{returned_md5:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - md5: "{tavern.request_vars.params.hash}"
@@ -269,7 +262,7 @@ stages:
         hash: "{returned_sha1:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - sha1: "{tavern.request_vars.params.hash}"
@@ -286,7 +279,7 @@ stages:
         hash: "{returned_sha256:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - sha256: "{tavern.request_vars.params.hash}"
@@ -303,7 +296,7 @@ stages:
         file: "{returned_file:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - file: "{tavern.request_vars.params.file}"
@@ -321,7 +314,7 @@ stages:
         sort: file,date
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *full_items_array
@@ -329,11 +322,11 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
       save:
-        $ext:
+        verify_response_with:
           function: tavern_utils:calc_offset
           extra_kwargs:
             total: "{returned_total}"
-        body:
+        json:
           sort_item: data.affected_items.0
 
     # GET /syscheck/000?limit=1&sort=-file,date&offset={sort_offset}
@@ -346,7 +339,7 @@ stages:
         offset: "{sort_offset:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - attributes: !int "{sort_item.attributes}"
@@ -377,7 +370,7 @@ stages:
         sort: wrongparam
     response:
       status_code: 400
-      body:
+      json:
         code: 1403
 
     # GET /syscheck/000?limit=1&select=wrongparam
@@ -389,7 +382,7 @@ stages:
         select: wrongparam
     response:
       status_code: 400
-      body:
+      json:
         code: 1724
 
 ---
@@ -426,7 +419,7 @@ stages:
         sort: "{field}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: *full_items_array
           failed_items: []
@@ -442,12 +435,12 @@ stages:
         select: "{field}"
     response:
       status_code: 200
-      body:
-        $ext:
+      verify_response_with:
           # Check response item keys are the selected keys
           function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
             select_key: "{field:s}"
+      json:
         data:
           total_affected_items: !anyint
 
@@ -465,7 +458,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - end: !anything
@@ -488,7 +481,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items:
@@ -524,7 +517,7 @@ stages:
         list_agents: '000'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '000'
@@ -542,7 +535,7 @@ stages:
         list_agents: '000,002,004,006,008,010,012'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '000'
@@ -579,7 +572,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -594,7 +587,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           # We define this items answer as a common one array full answer
           affected_items: &full_items_array_002
@@ -618,7 +611,7 @@ stages:
           total_failed_items: 0
       # Save some data for future use in the test
       save:
-        body:
+        json:
           returned_file: data.affected_items.0.file
           returned_md5: data.affected_items.0.md5
           returned_sha1: data.affected_items.0.sha1
@@ -634,7 +627,7 @@ stages:
         summary: True
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - date: !anystr
@@ -654,7 +647,7 @@ stages:
         offset: 0
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *full_items_array_002
@@ -664,7 +657,7 @@ stages:
           total_failed_items: 0
       # Save second item to check offset in next stage
       save:
-        body:
+        json:
           offset_item: data.affected_items.1
 
     # GET /syscheck/002?limit=1&offset=1
@@ -676,7 +669,7 @@ stages:
         offset: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
               # Save second item to check offset in next stage
@@ -708,7 +701,7 @@ stages:
         search: a
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: *full_items_array_002
           failed_items: []
@@ -724,7 +717,7 @@ stages:
         type: file
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -740,7 +733,7 @@ stages:
         type: registry
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -756,7 +749,7 @@ stages:
         md5: "{returned_md5:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - md5: "{tavern.request_vars.params.md5}"
@@ -773,7 +766,7 @@ stages:
         sha1: "{returned_sha1:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - sha1: "{tavern.request_vars.params.sha1}"
@@ -790,7 +783,7 @@ stages:
         sha256: "{returned_sha256:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - sha256: "{tavern.request_vars.params.sha256}"
@@ -807,7 +800,7 @@ stages:
         hash: "{returned_md5:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - md5: "{tavern.request_vars.params.hash}"
@@ -824,7 +817,7 @@ stages:
         hash: "{returned_sha1:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - sha1: "{tavern.request_vars.params.hash}"
@@ -841,7 +834,7 @@ stages:
         hash: "{returned_sha256:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - sha256: "{tavern.request_vars.params.hash}"
@@ -858,7 +851,7 @@ stages:
         file: "{returned_file:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - file: "{tavern.request_vars.params.file}"
@@ -876,7 +869,7 @@ stages:
         sort: file,date
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *full_items_array_002
@@ -885,11 +878,11 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
       save:
-        $ext:
+        verify_response_with:
           function: tavern_utils:calc_offset
           extra_kwargs:
             total: "{returned_total}"
-        body:
+        json:
           sort_item: data.affected_items.0
 
     # GET /syscheck/002?limit=1&sort=-file,date&offset={sort_offset}
@@ -902,7 +895,7 @@ stages:
         offset: "{sort_offset:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - attributes: !int "{sort_item.attributes}"
@@ -933,7 +926,7 @@ stages:
         sort: wrongparam
     response:
       status_code: 400
-      body:
+      json:
         code: 1403
 
     # GET /syscheck/002?limit=1&select=wrongparam
@@ -945,7 +938,7 @@ stages:
         select: wrongparam
     response:
       status_code: 400
-      body:
+      json:
         code: 1724
 
 ---
@@ -982,7 +975,7 @@ stages:
         sort: "{field}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: *full_items_array_002
           failed_items: []
@@ -998,12 +991,12 @@ stages:
         select: "{field}"
     response:
       status_code: 200
-      body:
-        $ext:
-          # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items
-          extra_kwargs:
-            select_key: "{field:s}"
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: "{field:s}"
+      json:
         data:
           total_affected_items: !anyint
 
@@ -1021,7 +1014,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - end: !anything
@@ -1043,7 +1036,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []

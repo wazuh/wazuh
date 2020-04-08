@@ -4,13 +4,7 @@ marks:
   - usefixtures:
     - overview_white_rbac_tests
 
-includes:
- - !include common.yaml
-
 stages:
-   # Authentication stage
- - type: ref
-   id: login_get_token
 
  - name: Get full agents overview
    request:
@@ -30,7 +24,7 @@ stages:
              node: str
              count: int
      status_code: 200
-     body:
+     json:
        data:
          agent_os:
            - count: !anyint

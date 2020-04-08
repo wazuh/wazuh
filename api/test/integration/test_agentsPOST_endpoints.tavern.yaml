@@ -5,14 +5,7 @@ marks:
   - usefixtures:
     - agents_tests
 
-includes:
-  - !include common.yaml
-
 stages:
-
-    # Authentication stage
-  - type: ref
-    id: login_get_token
 
     # POST /agents
   - name: Try to create a new agent without body
@@ -23,7 +16,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 2005
 
     # POST /agents
@@ -35,7 +28,7 @@ stages:
         ip: "any"
     response:
       status_code: 200
-      body: &agent_create_response
+      json: &agent_create_response
         data:
           id: !anystr
           key: !anystr
@@ -49,7 +42,7 @@ stages:
         ip: "any"
     response:
       status_code: 400
-      body:
+      json:
         code: 1705
 
     # POST /agents
@@ -63,7 +56,7 @@ stages:
         force_time: 1
     response:
       status_code: 400
-      body:
+      json:
         code: 1738
 
     # POST /agents
@@ -74,7 +67,7 @@ stages:
         ip: "any"
     response:
       status_code: 400
-      body: &error_spec
+      json: &error_spec
         detail: !anystr
         status: !anyint
         title: !anystr
@@ -88,7 +81,7 @@ stages:
         name: "NewAgentPost2"
     response:
       status_code: 200
-      body:
+      json:
         <<: *agent_create_response
 
     # POST /agents
@@ -101,7 +94,7 @@ stages:
         ip: "100.100.100.100"
     response:
       status_code: 200
-      body:
+      json:
         <<: *agent_create_response
 
     # POST /agents
@@ -114,7 +107,7 @@ stages:
         ip: "100.100.100.100"
     response:
       status_code: 400
-      body:
+      json:
         code: 1706
 
     # POST /agents
@@ -126,7 +119,7 @@ stages:
         ip: "A.B.C.D"
     response:
       status_code: 400
-      body:
+      json:
         code: 1706
 
     # POST /agents
@@ -138,7 +131,7 @@ stages:
         ip: "333.333.333.333"
     response:
       status_code: 400
-      body:
+      json:
         code: 1706
 
     # POST /agents
@@ -152,7 +145,7 @@ stages:
         force_time: 1
     response:
       status_code: 200
-      body:
+      json:
         <<: *agent_create_response
 
 ---
@@ -171,7 +164,7 @@ stages:
         group_id: group4
     response:
       status_code: 200
-      body:
+      json:
         message: !anystr
 
     # POST /groups?group_id=group1
@@ -185,7 +178,7 @@ stages:
         group_id: group1
     response:
       status_code: 400
-      body:
+      json:
         code: 1711
 
     # POST /groups?group_id=;wrong_name
@@ -199,7 +192,7 @@ stages:
         group_id: ';wrong_name'
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
 ---
@@ -216,7 +209,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 2005
 
     # POST /agents/insert
@@ -230,7 +223,7 @@ stages:
         key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
     response:
       status_code: 200
-      body:
+      json:
         <<: *agent_create_response
 
     # POST /agents/insert
@@ -244,7 +237,7 @@ stages:
         key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
     response:
       status_code: 400
-      body:
+      json:
         code: 1705
 
     # POST /agents/insert
@@ -258,7 +251,7 @@ stages:
         key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
     response:
       status_code: 400
-      body:
+      json:
         code: 1708
 
     # POST /agents/insert
@@ -272,7 +265,7 @@ stages:
         key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64EXTRA"
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
     # POST /agents/insert
@@ -285,7 +278,7 @@ stages:
         key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
 
@@ -303,7 +296,7 @@ stages:
         extra: "Nothing"
     response:
       status_code: 200
-      body:
+      json:
         <<: *agent_create_response
 
     # POST /agents/insert
@@ -316,7 +309,7 @@ stages:
         key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
     response:
       status_code: 400
-      body:
+      json:
         code: 1706
 
     # POST /agents/insert
@@ -330,7 +323,7 @@ stages:
         key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
     response:
       status_code: 200
-      body:
+      json:
         <<: *agent_create_response
 
     # POST /agents/insert
@@ -344,7 +337,7 @@ stages:
         key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
     response:
       status_code: 400
-      body:
+      json:
         code: 1706
 
     # POST /agents/insert
@@ -358,7 +351,7 @@ stages:
         key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
     response:
       status_code: 400
-      body:
+      json:
         code: 1706
 
     # POST /agents/insert
@@ -372,7 +365,7 @@ stages:
         key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
     response:
       status_code: 400
-      body:
+      json:
         code: 1706
 
     # POST /agents/insert
@@ -385,7 +378,7 @@ stages:
         force_time: 1
     response:
       status_code: 200
-      body:
+      json:
         <<: *agent_create_response
 
 ---
@@ -404,7 +397,7 @@ stages:
         agent_name: test_agent
     response:
       status_code: 200
-      body:
+      json:
         data:
           id: !anystr
           key: !anystr
@@ -420,7 +413,7 @@ stages:
         agent_name: 'wrong%name'
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
     # POST /agents/insert/quick?agent_name=test_agent
@@ -434,5 +427,5 @@ stages:
         agent_name: test_agent
     response:
       status_code: 400
-      body:
+      json:
         code: 1705
