@@ -10727,6 +10727,98 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
+  /security/actions:
+    get:
+      tags:
+        - security
+      summary: 'Get all RBAC actions'
+      description: 'Get all RBAC actions, including the potential related resources and endpoints.'
+      operationId: api.controllers.security_controller.get_rbac_actions
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+      responses:
+        '200':
+          description: "Return a list of RBAC actions"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+              example:
+                active-response:command:
+                  description: Allow to execute active response commands in the agents
+                  resources:
+                    - "$ref": "#/x-rbac-catalog/resources/agent:id"
+                  example:
+                    actions:
+                      - active-response:command
+                    resources:
+                      - agent:id:001
+                    effect: allow
+                  related_endpoints:
+                    - PUT /active-response
+                agent:create:
+                  description: Create new agents
+                  resources:
+                    - "$ref": "#/x-rbac-catalog/resources/*:*"
+                  example:
+                    actions:
+                      - agent:create
+                    resources:
+                      - "*:*:*"
+                    effect: allow
+                  related_endpoints:
+                    - POST /agents
+                    - POST /agents/insert
+                    - POST /agents/insert/quick
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /security/resources:
+    get:
+      tags:
+        - security
+      summary: 'Get RBAC resources'
+      description: 'This method should be called to get all current defined RBAC resources.'
+      operationId: api.controllers.security_controller.get_rbac_resources
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+      responses:
+        '200':
+          description: "Return all RBAC resources"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+              example:
+                "*:*":
+                  description: 'Resource applied in functions acting on resources that do not yet exist in the system We call these functions, resourceless functions. Example: agent:create'
+                agent:id:
+                  description: 'Reference agents via agent ID (i.e. agent:id:001)'
+                group:id:
+                  description: 'Reference agent groups via group ID (i.e. group:id:default)'
+                node:id:
+                  description: 'Reference cluster node via node ID (i.e. node:id:worker1)'
+                file:path:
+                  description: 'Reference file via its path (i.e. file:path:etc/rules/new_rule.xml)'
+                decoder:file:
+                  description: 'Reference decoder file via its path (i.e. decoder:file:0005-wazuh_decoders.xml)'
+                lists:path:
+                  description: 'Reference list file via its path (i.e. lists:path:etc/lists/audit-keys)'
+                rules:file:
+                  description: 'Reference rule file via its path (i.e. rules:file:0610-win-ms_logs_rules.xml)'
+                policy:id:
+                  description: 'Reference security policy via its id (i.e. policy:id:1)'
+                role:id:
+                  description: 'Reference security role via its id (i.e. role:id:1)'
+                user:id:
+                  description: 'Reference security user via its username (i.e. user:id:wazuh)'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
   /security/user/revoke:
     put:
       tags:

@@ -2,9 +2,13 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import os
 import re
 from time import time
 
+import yaml
+
+from api import __path__ as api_path
 from api.authentication import validation
 from wazuh import common
 from wazuh.exception import WazuhError
@@ -541,3 +545,45 @@ def revoke_tokens():
     validation.key = int(time())
 
     return WazuhResult({'msg': 'Tokens revoked succesfully'})
+
+
+def get_rbac_resources():
+    """Get the RBAC resources from the catalog
+
+    Returns
+    -------
+    dict
+        RBAC resources
+    """
+    with open(os.path.join(api_path[0], 'spec', 'spec.yaml'), 'r') as stream:
+        info_data = yaml.safe_load(stream)
+
+    return WazuhResult(info_data['x-rbac-catalog']['resources'])
+
+
+def get_rbac_actions():
+    """Get the RBAC actions from the catalog
+
+    Returns
+    -------
+    dict
+        RBAC resources
+    """
+    import pydevd_pycharm
+    pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
+    with open(os.path.join(api_path[0], 'spec', 'spec.yaml'), 'r') as stream:
+        info_data = yaml.safe_load(stream)
+
+    for path, path_info in info_data['paths'].items():
+        for method, payload in path_info.items():
+            try:
+                for ref in payload['x-rbac-actions']:
+                    action = list(ref.values())[0].split('/')[-1]
+                    if 'related_endpoints' not in info_data['x-rbac-catalog']['actions'][action].keys():
+                        info_data['x-rbac-catalog']['actions'][action]['related_endpoints'] = list()
+                    info_data['x-rbac-catalog']['actions'][action]['related_endpoints'].append(
+                        f'{method.upper()} {path}')
+            except KeyError:
+                pass
+
+    return WazuhResult(info_data['x-rbac-catalog']['actions'])

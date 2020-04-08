@@ -513,6 +513,58 @@ async def remove_role_policy(request, role_id, policy_ids, pretty=False, wait_fo
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
+async def get_rbac_resources(pretty=False):
+    """Gets all the current defined resources for RBAC
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format
+
+    Returns
+    -------
+    dict
+        RBAC resources
+    """
+
+    dapi = DistributedAPI(f=security.get_rbac_resources,
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=True,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=dumps)
+
+
+async def get_rbac_actions(pretty=False):
+    """Gets all the current defined actions for RBAC
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format
+
+    Returns
+    -------
+    dict
+        RBAC actions
+    """
+
+    dapi = DistributedAPI(f=security.get_rbac_actions,
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=True,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=dumps)
+
+
 async def revoke_all_tokens(request):
     """ Revoke all tokens """
 
