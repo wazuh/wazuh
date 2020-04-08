@@ -46,7 +46,7 @@ int add_groupGPG13(cJSON* rule, char* group, int firstGPG13);
 int add_groupHIPAA(cJSON* rule, char* group, int firstHIPAA);
 // Parsing NIST_500_83 Compliance groups
 int add_groupNIST(cJSON* rule, char* group, int firstNIST);
-// Parsing NIST_500_83 Compliance groups
+// Parsing TSC Compliance groups
 int add_groupTSC(cJSON* rule, char* group, int firstTSC);
 // Add SCA compliance groups to rule groups
 void add_SCA_groups(cJSON *rule, char* compliance, char* value);
