@@ -118,9 +118,9 @@ INSERT INTO user_roles VALUES(1,'wazuh',1,0,'2020-03-25 10:22:38.704654');
 INSERT INTO user_roles VALUES(2,'wazuh-wui',2,0,'2020-03-25 10:22:38.704654');
 
 /* Testing */
-INSERT INTO user_roles VALUES(3,'administrator',8,1,'2020-03-25 10:22:38.704654');
-INSERT INTO user_roles VALUES(4,'python',9,1,'2020-03-25 10:22:38.704654');
-INSERT INTO user_roles VALUES(5,'administrator',9,0,'2019-12-10 12:47:07.035057');
+INSERT INTO user_roles VALUES(3,'administrator',8,0,'2020-03-25 10:22:38.704654');
+INSERT INTO user_roles VALUES(4,'python',9,0,'2020-03-25 10:22:38.704654');
+INSERT INTO user_roles VALUES(5,'administrator',9,1,'2019-12-10 12:47:07.035057');
 INSERT INTO user_roles VALUES(6,'normal',12,0,'2019-12-10 12:47:07.035057');
 INSERT INTO user_roles VALUES(7,'normal',13,1,'2019-12-10 12:47:07.035057');
 INSERT INTO user_roles VALUES(8,'normal',11,2,'2019-12-10 12:47:07.035057');

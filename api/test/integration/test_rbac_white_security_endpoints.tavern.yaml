@@ -227,7 +227,7 @@ stages:
               policies:
                 - 11
               users:
-                - wazuh
+                - administrator
             - id: 9
               name: wazuh-wui
               rule:
@@ -237,9 +237,9 @@ stages:
               policies:
                 - 11
               users:
-                - wazuh-wui
                 - administrator
                 - ossec
+                - python
             - id: 10
               name: technical
               rule:
@@ -298,7 +298,6 @@ stages:
           total_failed_items: 0
           failed_items: []
         message: All specified roles were shown
-
 
   - name: Get a specified role by its id (Allow)
     request:

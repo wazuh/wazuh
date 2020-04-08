@@ -48,8 +48,8 @@ stages:
           total_affected_items: !anyint
       save:
         json:
-          second_role_id: data.affected_items.1.id
-          second_role_name: data.affected_items.1.name
+          second_role_id: data.affected_items[1].id
+          second_role_name: data.affected_items[1].name
 
   # GET /security/roles
   - name: Try to show the roles of the system, offset = 1
@@ -110,8 +110,8 @@ stages:
           total_affected_items: !anyint
       save:
         json:
-          second_role_id: data.affected_items.1.id
-          second_role_name: data.affected_items.1.name
+          second_role_id: data.affected_items[1].id
+          second_role_name: data.affected_items[1].name
 
   # GET /security/roles
   - name: Sort the roles, limit=2, offset=1
@@ -283,8 +283,8 @@ stages:
           total_affected_items: !anyint
       save:
         json:
-          second_policy_id: data.affected_items.1.id
-          second_policy_name: data.affected_items.1.name
+          second_policy_id: data.affected_items[1].id
+          second_policy_name: data.affected_items[1].name
 
   # GET /security/policies
   - name: Try to show the policies of the system, offset = 1
@@ -372,7 +372,7 @@ stages:
           total_affected_items: !anyint
       save:
         json:
-          policy_id: data.affected_items.0.id
+          policy_id: data.affected_items[0].id
 
   # GET /security/policies
   - name: Search without limit
@@ -523,9 +523,6 @@ test_name: GET /security/users
 
 stages:
 
-  - type: ref
-    id: login_get_token
-
   - name: Get all users in the system
     request:
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
@@ -539,6 +536,7 @@ stages:
           affected_items:
             - username: administrator
               roles:
+                - 8
                 - 9
             - username: guest
               roles: []
@@ -552,7 +550,8 @@ stages:
                 - 9
                 - 12
             - username: python
-              roles: []
+              roles:
+                - 9
             - username: rbac
               roles:
                 - 12
@@ -561,11 +560,9 @@ stages:
             - username: wazuh
               roles:
                 - 1
-                - 8
             - username: wazuh-wui
               roles:
                 - 2
-                - 9
           total_affected_items: 8
           total_failed_items: 0
           failed_items: []
@@ -831,18 +828,17 @@ stages:
             - username: wazuh-wui
               roles:
                 - 2
-                - 9
             - username: wazuh
               roles:
                 - 1
-                - 8
             - username: rbac
               roles:
                 - 12
                 - 10
                 - 11
             - username: python
-              roles: []
+              roles:
+                - 9
             - username: ossec
               roles:
                 - 9
@@ -856,6 +852,7 @@ stages:
               roles: []
             - username: administrator
               roles:
+                - 8
                 - 9
           total_affected_items: 8
           total_failed_items: 0
@@ -877,6 +874,7 @@ stages:
           affected_items:
             - username: administrator
               roles:
+                - 8
                 - 9
             - username: guest
               roles: []
@@ -890,7 +888,8 @@ stages:
                 - 9
                 - 12
             - username: python
-              roles: []
+              roles:
+                - 9
             - username: rbac
               roles:
                 - 12
@@ -899,11 +898,9 @@ stages:
             - username: wazuh
               roles:
                 - 1
-                - 8
             - username: wazuh-wui
               roles:
                 - 2
-                - 9
           total_affected_items: 8
           total_failed_items: 0
           failed_items: []
@@ -931,7 +928,8 @@ stages:
                 - 9
                 - 12
             - username: python
-              roles: []
+              roles:
+                - 9
             - username: rbac
               roles:
                 - 12
@@ -940,11 +938,9 @@ stages:
             - username: wazuh
               roles:
                 - 1
-                - 8
             - username: wazuh-wui
               roles:
                 - 2
-                - 9
           total_affected_items: 8
           total_failed_items: 0
           failed_items: []
