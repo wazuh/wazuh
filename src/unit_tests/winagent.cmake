@@ -1,5 +1,5 @@
 # WINAGENT NEEDS TO BE BUILT WITH WIN32 toolchain
-# cmake ../ -DCMAKE_TOOLCHAIN_FILE=../Toolchain-win32.cmake
+# cmake ../ -DTARGET=winagent -DCMAKE_TOOLCHAIN_FILE=../Toolchain-win32.cmake
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a;.dll")
 
