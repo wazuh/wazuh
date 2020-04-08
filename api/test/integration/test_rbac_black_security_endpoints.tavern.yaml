@@ -1,17 +1,11 @@
 ---
 test_name: GET USERS RBAC
 
-includes:
- - !include common.yaml
-
 marks:
   - usefixtures:
     - security_black_rbac_tests
 
 stages:
-
-  - type: ref
-    id: login_get_token
 
   - name: Get all users in the system
     request:
@@ -21,7 +15,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: ossec
@@ -43,7 +37,7 @@ stages:
         usernames: ossec
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: ossec
@@ -62,7 +56,7 @@ stages:
         usernames: administrator
     response:
       status_code: 400
-      body: &permission_denied
+      json: &permission_denied
         code: 4000
         dapi_errors: !anything
         detail: !anystr
@@ -81,7 +75,7 @@ stages:
         usernames: wazuh,ossec,rbac
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: ossec
@@ -102,7 +96,7 @@ stages:
         usernames: administrator,normal
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Get a list of users by its username (Both)
@@ -115,7 +109,7 @@ stages:
         usernames: normal,python,guest,ossec,wazuh,administrator
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: ossec
@@ -148,7 +142,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items: []
@@ -166,7 +160,7 @@ stages:
         role_ids: 1
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -182,7 +176,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -201,7 +195,7 @@ stages:
         policy_ids: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -219,7 +213,7 @@ stages:
         policy_ids: 99
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -243,7 +237,7 @@ stages:
         policy_ids: 1,2,99
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items:
@@ -272,7 +266,7 @@ stages:
         password: stringA1!
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: guest
@@ -291,7 +285,7 @@ stages:
         password: stringA1!
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: python
@@ -318,7 +312,7 @@ stages:
             definition: normalUserRuleModified
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: 12
@@ -352,7 +346,7 @@ stages:
             definition: wazuh-wuiRuleModified
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Update one admin role in the system (Allow)
@@ -368,7 +362,7 @@ stages:
             definition: wazuhRuleModified
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -405,7 +399,7 @@ stages:
             - agent:id:003
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: 14
@@ -452,7 +446,7 @@ stages:
             - agent:id:003
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -470,7 +464,7 @@ stages:
         role_ids: 9,10,11,14
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - roles:
@@ -503,7 +497,7 @@ stages:
         role_ids: 8,12
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - roles:
@@ -536,7 +530,7 @@ stages:
         role_ids: 8,11,12,10,9,5
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - roles: []
@@ -568,7 +562,7 @@ stages:
         policy_ids: 15,16,17
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: 12
@@ -612,7 +606,7 @@ stages:
         policy_ids: 15,16,17
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: 12
@@ -653,7 +647,7 @@ stages:
         usernames: administrator
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: administrator
@@ -670,7 +664,7 @@ stages:
       method: DELETE
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: ossec
@@ -689,7 +683,7 @@ stages:
       method: DELETE
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items: []
@@ -707,7 +701,7 @@ stages:
         usernames: wazuh,administrator,guest
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -747,7 +741,7 @@ stages:
         role_ids: 11
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: 11
@@ -773,7 +767,7 @@ stages:
       method: DELETE
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -796,7 +790,7 @@ stages:
         policy_ids: 14
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: 14
@@ -823,7 +817,7 @@ stages:
       method: DELETE
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -847,7 +841,7 @@ stages:
         password: stringA1!
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: newUser
@@ -874,7 +868,7 @@ stages:
             definition: newUser
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Create one specified policy (Deny)
@@ -894,7 +888,7 @@ stages:
             - policy:id:*
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
