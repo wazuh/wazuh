@@ -14,11 +14,12 @@ All notable changes to this project will be documented in this file.
 - Fixed a bug in Logcollector that made it forward a log to an external socket infinite times. ([#4802](https://github.com/wazuh/wazuh/pull/4802))
 - Fixed a buffer overflow when receiving large messages from Syslog over TCP connections. ([#4778](https://github.com/wazuh/wazuh/pull/4778))
 - Fixed a malfunction in the Integrator module when analyzing events without a certain field. ([#4851](https://github.com/wazuh/wazuh/pull/4851))
-
-
-### Fixed
-
 - Fix XML validation with paths ending in `\`. ([#4783](https://github.com/wazuh/wazuh/pull/4783))
+
+### Removed
+
+- Removed support for Ubuntu 12.04 (Precise) in Vulneratiliby Detector as its feed is no longer available.
+
 
 ## [v3.12.0] - 2020-03-24
 

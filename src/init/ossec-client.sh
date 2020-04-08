@@ -150,7 +150,7 @@ start()
                     if [ $? = 1 ]; then
                         break;
                     fi
-                    sleep 0.5;
+                    sleep 1;
                     j=`expr $j + 1`;
                     if [ "$j" = "${MAX_ITERATION}" ]; then
                         failed=true

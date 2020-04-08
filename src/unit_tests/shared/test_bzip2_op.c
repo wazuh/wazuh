@@ -402,12 +402,14 @@ void test_bzip2_uncompress_bzReadsuccess(void **state) {
     will_return(__wrap_BZ2_bzRead, 11);
     will_return(__wrap_BZ2_bzRead, "teststring");
 
-    will_return(__wrap_fwrite, 4);
+    will_return(__wrap_fwrite, 11);
 
     expect_value(__wrap_BZ2_bzRead, f, 3);
-    will_return(__wrap_BZ2_bzRead, BZ_OK);
+    will_return(__wrap_BZ2_bzRead, BZ_STREAM_END);
     will_return(__wrap_BZ2_bzRead, 0);
     will_return(__wrap_BZ2_bzRead, "");
+
+    will_return(__wrap_fwrite, 0);
 
     ret = bzip2_uncompress(file1, file2);
     assert_int_equal(ret, 0);
