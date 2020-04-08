@@ -1933,6 +1933,8 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
     will_return(__wrap_fim_db_get_count_entry_path, 50000);
 
+    expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
+
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_set_all_unscanned, 0);
 
@@ -1971,6 +1973,8 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     will_return(__wrap_fim_db_get_not_scanned, NULL);
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
 
+    expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
+
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_set_all_unscanned, 0);
 
@@ -2002,6 +2006,9 @@ static void test_fim_scan_db_free(void **state) {
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_not_scanned, NULL);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
+
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
 
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
@@ -2034,6 +2041,8 @@ static void test_fim_scan_no_limit(void **state) {
     expect_string(__wrap_realtime_adddir, dir, "/boot");
     expect_string(__wrap_realtime_adddir, dir, "/home");
     expect_string(__wrap_realtime_adddir, dir, "/media");
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6343): No limit set to maximum number of files to be monitored");
 
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
