@@ -193,7 +193,7 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf)
         } else if (add_groupNIST(rule, token, firstNIST)) {
             firstNIST = 0;
         } else if (add_groupTSC(rule, token, firstTSC)) {
-            firstNIST = 0;
+            firstTSC = 0;
         } else {
             if (token) cJSON_AddItemToArray(groups, cJSON_CreateString(token));
         }
