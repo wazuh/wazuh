@@ -209,9 +209,9 @@ void test_decode_syscollector_hardware_connect_send_receive(void **state)
 
     char * wdb_msg = "agent 000 inventory hardware save {\"type\":\"added\"}";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK_PATH);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_128);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_6144);
     will_return(__wrap_OS_ConnectUnixDomain, 1);
 
     expect_value(__wrap_OS_SendSecureTCP, sock, 1);
@@ -220,7 +220,7 @@ void test_decode_syscollector_hardware_connect_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -249,7 +249,7 @@ void test_decode_syscollector_hardware_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -304,7 +304,7 @@ void test_decode_syscollector_hardware_send_receive_response_error(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "error");
     will_return(__wrap_OS_RecvSecureTCP, 5);
 
@@ -335,9 +335,9 @@ void test_decode_syscollector_hardware_send_receive_no_response(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
-    will_return(__wrap_OS_RecvSecureTCP, 0);
+    will_return(__wrap_OS_RecvSecureTCP, -1);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Unable to send hardware information to Wazuh DB.");
 
@@ -398,9 +398,9 @@ void test_decode_syscollector_os_connect_send_receive(void **state)
 
     char * wdb_msg = "agent 000 inventory OS save {\"type\":\"modified\"}";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK_PATH);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_128);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_6144);
     will_return(__wrap_OS_ConnectUnixDomain, 2);
 
     expect_value(__wrap_OS_SendSecureTCP, sock, 2);
@@ -409,7 +409,7 @@ void test_decode_syscollector_os_connect_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 2);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -438,7 +438,7 @@ void test_decode_syscollector_os_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -493,7 +493,7 @@ void test_decode_syscollector_os_send_receive_response_error(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "error");
     will_return(__wrap_OS_RecvSecureTCP, 5);
 
@@ -524,9 +524,9 @@ void test_decode_syscollector_os_send_receive_no_response(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
-    will_return(__wrap_OS_RecvSecureTCP, 0);
+    will_return(__wrap_OS_RecvSecureTCP, -1);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Unable to send osinfo message to Wazuh DB.");
 
@@ -587,9 +587,9 @@ void test_decode_syscollector_network_connect_send_receive(void **state)
 
     char * wdb_msg = "agent 000 inventory network delete {\"type\":\"deleted\"}";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK_PATH);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_128);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_6144);
     will_return(__wrap_OS_ConnectUnixDomain, 3);
 
     expect_value(__wrap_OS_SendSecureTCP, sock, 3);
@@ -598,7 +598,7 @@ void test_decode_syscollector_network_connect_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 3);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -627,7 +627,7 @@ void test_decode_syscollector_network_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -682,7 +682,7 @@ void test_decode_syscollector_network_send_receive_response_error(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "error");
     will_return(__wrap_OS_RecvSecureTCP, 5);
 
@@ -713,9 +713,9 @@ void test_decode_syscollector_network_send_receive_no_response(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
-    will_return(__wrap_OS_RecvSecureTCP, 0);
+    will_return(__wrap_OS_RecvSecureTCP, -1);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Unable to send netinfo message to Wazuh DB.");
 
@@ -776,9 +776,9 @@ void test_decode_syscollector_program_connect_send_receive(void **state)
 
     char * wdb_msg = "agent 000 inventory program save {\"type\":\"added\"}";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK_PATH);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_128);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_6144);
     will_return(__wrap_OS_ConnectUnixDomain, 4);
 
     expect_value(__wrap_OS_SendSecureTCP, sock, 4);
@@ -787,7 +787,7 @@ void test_decode_syscollector_program_connect_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 4);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -816,7 +816,7 @@ void test_decode_syscollector_program_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -871,7 +871,7 @@ void test_decode_syscollector_program_send_receive_response_error(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "error");
     will_return(__wrap_OS_RecvSecureTCP, 5);
 
@@ -902,9 +902,9 @@ void test_decode_syscollector_program_send_receive_no_response(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
-    will_return(__wrap_OS_RecvSecureTCP, 0);
+    will_return(__wrap_OS_RecvSecureTCP, -1);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Unable to send packages information to Wazuh DB.");
 
@@ -965,9 +965,9 @@ void test_decode_syscollector_hotfix_connect_send_receive(void **state)
 
     char * wdb_msg = "agent 000 inventory hotfix save {\"type\":\"modified\"}";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK_PATH);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_128);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_6144);
     will_return(__wrap_OS_ConnectUnixDomain, 5);
 
     expect_value(__wrap_OS_SendSecureTCP, sock, 5);
@@ -976,7 +976,7 @@ void test_decode_syscollector_hotfix_connect_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 5);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -1005,7 +1005,7 @@ void test_decode_syscollector_hotfix_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -1060,7 +1060,7 @@ void test_decode_syscollector_hotfix_send_receive_response_error(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "error");
     will_return(__wrap_OS_RecvSecureTCP, 5);
 
@@ -1091,9 +1091,9 @@ void test_decode_syscollector_hotfix_send_receive_no_response(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
-    will_return(__wrap_OS_RecvSecureTCP, 0);
+    will_return(__wrap_OS_RecvSecureTCP, -1);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Unable to send hotfixes information to Wazuh DB.");
 
@@ -1154,9 +1154,9 @@ void test_decode_syscollector_port_connect_send_receive(void **state)
 
     char * wdb_msg = "agent 000 inventory port delete {\"type\":\"deleted\"}";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK_PATH);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_128);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_6144);
     will_return(__wrap_OS_ConnectUnixDomain, 6);
 
     expect_value(__wrap_OS_SendSecureTCP, sock, 6);
@@ -1165,7 +1165,7 @@ void test_decode_syscollector_port_connect_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 6);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -1194,7 +1194,7 @@ void test_decode_syscollector_port_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -1249,7 +1249,7 @@ void test_decode_syscollector_port_send_receive_response_error(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "error");
     will_return(__wrap_OS_RecvSecureTCP, 5);
 
@@ -1280,9 +1280,9 @@ void test_decode_syscollector_port_send_receive_no_response(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
-    will_return(__wrap_OS_RecvSecureTCP, 0);
+    will_return(__wrap_OS_RecvSecureTCP, -1);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Unable to send ports information to Wazuh DB.");
 
@@ -1343,9 +1343,9 @@ void test_decode_syscollector_process_connect_send_receive(void **state)
 
     char * wdb_msg = "agent 000 inventory process save {\"type\":\"added\"}";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK_PATH);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_128);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_6144);
     will_return(__wrap_OS_ConnectUnixDomain, 7);
 
     expect_value(__wrap_OS_SendSecureTCP, sock, 7);
@@ -1354,7 +1354,7 @@ void test_decode_syscollector_process_connect_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 7);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -1383,7 +1383,7 @@ void test_decode_syscollector_process_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -1438,7 +1438,7 @@ void test_decode_syscollector_process_send_receive_response_error(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "error");
     will_return(__wrap_OS_RecvSecureTCP, 5);
 
@@ -1469,9 +1469,9 @@ void test_decode_syscollector_process_send_receive_no_response(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
-    will_return(__wrap_OS_RecvSecureTCP, 0);
+    will_return(__wrap_OS_RecvSecureTCP, -1);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Unable to send processes information to Wazuh DB.");
 
@@ -1494,9 +1494,9 @@ void test_decode_syscollector_hardware_scan_connect_send_receive(void **state)
 
     char * wdb_msg = "agent 000 inventory hardware_scan update {\"timestamp\":12345}";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK_PATH);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_128);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_6144);
     will_return(__wrap_OS_ConnectUnixDomain, 1);
 
     expect_value(__wrap_OS_SendSecureTCP, sock, 1);
@@ -1505,7 +1505,7 @@ void test_decode_syscollector_hardware_scan_connect_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -1534,7 +1534,7 @@ void test_decode_syscollector_hardware_scan_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -1589,7 +1589,7 @@ void test_decode_syscollector_hardware_scan_send_receive_response_error(void **s
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "error");
     will_return(__wrap_OS_RecvSecureTCP, 5);
 
@@ -1620,9 +1620,9 @@ void test_decode_syscollector_hardware_scan_send_receive_no_response(void **stat
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
-    will_return(__wrap_OS_RecvSecureTCP, 0);
+    will_return(__wrap_OS_RecvSecureTCP, -1);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Unable to send hardware scan information to Wazuh DB.");
 
@@ -1645,9 +1645,9 @@ void test_decode_syscollector_os_scan_connect_send_receive(void **state)
 
     char * wdb_msg = "agent 000 inventory OS_scan update {\"timestamp\":12345}";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK_PATH);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_128);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_6144);
     will_return(__wrap_OS_ConnectUnixDomain, 2);
 
     expect_value(__wrap_OS_SendSecureTCP, sock, 2);
@@ -1656,7 +1656,7 @@ void test_decode_syscollector_os_scan_connect_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 2);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -1685,7 +1685,7 @@ void test_decode_syscollector_os_scan_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -1740,7 +1740,7 @@ void test_decode_syscollector_os_scan_send_receive_response_error(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "error");
     will_return(__wrap_OS_RecvSecureTCP, 5);
 
@@ -1771,9 +1771,9 @@ void test_decode_syscollector_os_scan_send_receive_no_response(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
-    will_return(__wrap_OS_RecvSecureTCP, 0);
+    will_return(__wrap_OS_RecvSecureTCP, -1);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Unable to send OS scan information to Wazuh DB.");
 
@@ -1796,9 +1796,9 @@ void test_decode_syscollector_network_scan_connect_send_receive(void **state)
 
     char * wdb_msg = "agent 000 inventory network_scan update {\"timestamp\":12345}";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK_PATH);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_128);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_6144);
     will_return(__wrap_OS_ConnectUnixDomain, 3);
 
     expect_value(__wrap_OS_SendSecureTCP, sock, 3);
@@ -1807,7 +1807,7 @@ void test_decode_syscollector_network_scan_connect_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 3);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -1836,7 +1836,7 @@ void test_decode_syscollector_network_scan_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -1891,7 +1891,7 @@ void test_decode_syscollector_network_scan_send_receive_response_error(void **st
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "error");
     will_return(__wrap_OS_RecvSecureTCP, 5);
 
@@ -1922,9 +1922,9 @@ void test_decode_syscollector_network_scan_send_receive_no_response(void **state
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
-    will_return(__wrap_OS_RecvSecureTCP, 0);
+    will_return(__wrap_OS_RecvSecureTCP, -1);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Unable to send network scan information to Wazuh DB.");
 
@@ -1947,9 +1947,9 @@ void test_decode_syscollector_program_scan_connect_send_receive(void **state)
 
     char * wdb_msg = "agent 000 inventory program_scan update {\"timestamp\":12345}";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK_PATH);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_128);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_6144);
     will_return(__wrap_OS_ConnectUnixDomain, 4);
 
     expect_value(__wrap_OS_SendSecureTCP, sock, 4);
@@ -1958,7 +1958,7 @@ void test_decode_syscollector_program_scan_connect_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 4);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -1987,7 +1987,7 @@ void test_decode_syscollector_program_scan_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -2042,7 +2042,7 @@ void test_decode_syscollector_program_scan_send_receive_response_error(void **st
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "error");
     will_return(__wrap_OS_RecvSecureTCP, 5);
 
@@ -2073,9 +2073,9 @@ void test_decode_syscollector_program_scan_send_receive_no_response(void **state
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
-    will_return(__wrap_OS_RecvSecureTCP, 0);
+    will_return(__wrap_OS_RecvSecureTCP, -1);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Unable to send program scan information to Wazuh DB.");
 
@@ -2098,9 +2098,9 @@ void test_decode_syscollector_hotfix_scan_connect_send_receive(void **state)
 
     char * wdb_msg = "agent 000 inventory hotfix_scan update {\"timestamp\":12345}";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK_PATH);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_128);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_6144);
     will_return(__wrap_OS_ConnectUnixDomain, 5);
 
     expect_value(__wrap_OS_SendSecureTCP, sock, 5);
@@ -2109,7 +2109,7 @@ void test_decode_syscollector_hotfix_scan_connect_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 5);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -2138,7 +2138,7 @@ void test_decode_syscollector_hotfix_scan_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -2193,7 +2193,7 @@ void test_decode_syscollector_hotfix_scan_send_receive_response_error(void **sta
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "error");
     will_return(__wrap_OS_RecvSecureTCP, 5);
 
@@ -2224,9 +2224,9 @@ void test_decode_syscollector_hotfix_scan_send_receive_no_response(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
-    will_return(__wrap_OS_RecvSecureTCP, 0);
+    will_return(__wrap_OS_RecvSecureTCP, -1);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Unable to send hotfix scan information to Wazuh DB.");
 
@@ -2249,9 +2249,9 @@ void test_decode_syscollector_port_scan_connect_send_receive(void **state)
 
     char * wdb_msg = "agent 000 inventory port_scan update {\"timestamp\":12345}";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK_PATH);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_128);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_6144);
     will_return(__wrap_OS_ConnectUnixDomain, 6);
 
     expect_value(__wrap_OS_SendSecureTCP, sock, 6);
@@ -2260,7 +2260,7 @@ void test_decode_syscollector_port_scan_connect_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 6);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -2289,7 +2289,7 @@ void test_decode_syscollector_port_scan_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -2344,7 +2344,7 @@ void test_decode_syscollector_port_scan_send_receive_response_error(void **state
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "error");
     will_return(__wrap_OS_RecvSecureTCP, 5);
 
@@ -2375,9 +2375,9 @@ void test_decode_syscollector_port_scan_send_receive_no_response(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
-    will_return(__wrap_OS_RecvSecureTCP, 0);
+    will_return(__wrap_OS_RecvSecureTCP, -1);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Unable to send port scan information to Wazuh DB.");
 
@@ -2400,9 +2400,9 @@ void test_decode_syscollector_process_scan_connect_send_receive(void **state)
 
     char * wdb_msg = "agent 000 inventory process_scan update {\"timestamp\":12345}";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK_PATH);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_128);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_6144);
     will_return(__wrap_OS_ConnectUnixDomain, 7);
 
     expect_value(__wrap_OS_SendSecureTCP, sock, 7);
@@ -2411,7 +2411,7 @@ void test_decode_syscollector_process_scan_connect_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 7);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -2440,7 +2440,7 @@ void test_decode_syscollector_process_scan_send_receive(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
     will_return(__wrap_OS_RecvSecureTCP, 2);
 
@@ -2495,7 +2495,7 @@ void test_decode_syscollector_process_scan_send_receive_response_error(void **st
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "error");
     will_return(__wrap_OS_RecvSecureTCP, 5);
 
@@ -2526,9 +2526,9 @@ void test_decode_syscollector_process_scan_send_receive_no_response(void **state
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_value(__wrap_OS_RecvSecureTCP, sock, 1);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_128);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
     will_return(__wrap_OS_RecvSecureTCP, "ok");
-    will_return(__wrap_OS_RecvSecureTCP, 0);
+    will_return(__wrap_OS_RecvSecureTCP, -1);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Unable to send process scan information to Wazuh DB.");
 

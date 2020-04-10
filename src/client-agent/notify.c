@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -22,7 +22,7 @@ char *getsharedfiles()
     char *ret;
     os_md5 md5sum;
 
-    if (OS_MD5_File(SHAREDCFG_FILE, md5sum, OS_TEXT) != 0) {
+    if (OS_MD5_File(SHAREDCFG_FILEPATH, md5sum, OS_TEXT) != 0) {
         md5sum[0] = 'x';
         md5sum[1] = '\0';
     }
@@ -69,7 +69,7 @@ char *get_agent_ip()
     }
 
     if(sock < 0) {
-        merror("Unable to bind to socket '%s': (%d) %s.", CONTROL_SOCK, errno, strerror(errno));
+        mdebug1("Cannot get the agent host's IP because the control module is not available: (%d) %s.", errno, strerror(errno));
     }
 #endif
     return agent_ip;
@@ -146,8 +146,8 @@ void run_notify()
     if(agent_ip && strcmp(agent_ip, "Err")) {
         char label_ip[60];
         snprintf(label_ip, sizeof label_ip, "#\"_agent_ip\":%s", agent_ip);
-        if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
-                (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
+        if ((File_DateofChange(AGENTCONFIG) > 0 ) &&
+                (OS_MD5_File(AGENTCONFIG, md5sum, OS_TEXT) == 0)) {
             snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s%s\n",
                     getuname(), md5sum, tmp_labels, shared_files, label_ip);
         } else {
@@ -156,8 +156,8 @@ void run_notify()
         }
     }
     else {
-        if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
-                (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
+        if ((File_DateofChange(AGENTCONFIG) > 0 ) &&
+                (OS_MD5_File(AGENTCONFIG, md5sum, OS_TEXT) == 0)) {
             snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s\n",
                     getuname(), md5sum, tmp_labels, shared_files);
         } else {

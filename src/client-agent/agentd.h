@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -54,7 +54,7 @@ cJSON *getLabelsConfig(void);
 cJSON *getAgentInternalOptions(void);
 
 /* Agentd init function */
-void AgentdStart(const char *dir, int uid, int gid, const char *user, const char *group) __attribute__((noreturn));
+void AgentdStart(int uid, int gid, const char *user, const char *group) __attribute__((noreturn));
 
 /* Event Forwarder */
 void *EventForward(void);
@@ -64,9 +64,6 @@ int receive_msg(void);
 
 /* Receiver messages for Windows */
 void *receiver_thread(void *none);
-
-/* Send integrity checking information about a file to the server */
-int intcheck_file(const char *file_name, const char *dir);
 
 /* Initialize agent buffer */
 void buffer_init();

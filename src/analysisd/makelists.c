@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2010 Trend Micro Inc.
  * All rights reserved.
  *
@@ -54,6 +54,9 @@ static void help_makelists(void)
     exit(1);
 }
 
+#ifdef UNIT_TESTING
+__attribute((weak))
+#endif
 int main(int argc, char **argv)
 {
     int test_config = 0;
@@ -174,7 +177,7 @@ int main(int argc, char **argv)
     }
 
     printf(" Since Wazuh v3.11.0, this binary is deprecated\n");
-    printf(" CDB lists are now compiled at manager start-up time as well as each time ossec-logtest is ran\n");
+    printf(" CDB lists are now compiled at manager start-up time as well as each time ossec-logtest is run.\n");
     Lists_OP_MakeAll(force, 1);
     exit(0);
 }

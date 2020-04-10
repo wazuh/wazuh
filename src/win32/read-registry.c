@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -8,8 +8,6 @@
 */
 
 #include "shared.h"
-#include "os_crypto/md5/md5_op.h"
-#include "os_crypto/sha1/sha1_op.h"
 
 /* Default values */
 #define MAX_KEY_LENGTH   255
@@ -92,10 +90,6 @@ void os_winreg_querykey(HKEY hKey, char *p_key)
 
     /* Get Values (if available) */
     if (value_count) {
-        /* MD5 and SHA-1 */
-        os_md5 mf_sum;
-        os_sha1 sf_sum;
-
         /* Clear the values for value_size and data_size */
         value_buffer[MAX_VALUE_NAME] = '\0';
         data_buffer[MAX_VALUE_NAME] = '\0';
@@ -187,4 +181,3 @@ int main(void)
 
     return (0);
 }
-

@@ -1,170 +1,67 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
+cmake_minimum_required(VERSION 3.10)
 
-cmake_minimum_required(VERSION 3.10.2)
+PROJECT(UnitTests C)
 
-set(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../)
+# message("${TARGET}")
+get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
 
+message(Source folder: ${SRC_FOLDER})
 include_directories(${SRC_FOLDER}/headers)
 include_directories(${SRC_FOLDER}/external/openssl/include)
+include_directories(${SRC_FOLDER}/external/audit-userspace/lib)
+include_directories(${SRC_FOLDER}/external/bzip2)
 include_directories(${SRC_FOLDER})
-
 
 # Wazuh libraries
 find_library(WAZUHLIB NAMES libwazuh.a HINTS "${SRC_FOLDER}")
 if(NOT WAZUHLIB)
-  message(FATAL_ERROR "libwazuh.a not found! Aborting...")
+  message(FATAL_ERROR "libwazuh.a not found in ${SRC_FOLDER} Aborting...")
 endif()
-
-find_library(WAZUHEXT NAMES libwazuhext.so HINTS "${SRC_FOLDER}")
-if(NOT WAZUHEXT)
-  message(FATAL_ERROR "libwazuhext.so not found! Aborting...")
-endif()
-
-
-# Add compiling flags
-add_compile_options(-ggdb -O0 -g -coverage -DENABLE_SYSC)
-
 
 # Enable testing
 enable_testing()
 
+# Add target specific file
+if(NOT TARGET)
+  message(FATAL_ERROR "No TARGET specified. Aborting...")
+elseif(${TARGET} STREQUAL "server")
+  include("./server.cmake")
+elseif(${TARGET} STREQUAL "agent")
+  include("./agent.cmake")
+elseif(${TARGET} STREQUAL "winagent")
+  include("./winagent.cmake")
+else()
+  message(FATAL_ERROR "Invalid TARGET '${TARGET}'. Aborting...")
+endif()
 
-# Tests list and flags
-list(APPEND tests_names "test_syscollector_common")
-list(APPEND tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,rbtree_insert -Wl,--wrap,rbtree_replace \
-                         -Wl,--wrap,rbtree_delete -Wl,--wrap,rbtree_get -Wl,--wrap,rbtree_keys -Wl,--wrap,w_get_timestamp -Wl,--wrap,wm_sendmsg")
+if(NOT WAZUHEXT)
+  message(FATAL_ERROR "libwazuhext not found! Aborting...")
+endif()
 
-list(APPEND tests_names "test_decoder_syscollector")
-list(APPEND tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,fillData \
-                         -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP")
 
-list(APPEND tests_names "test_wdb_parser")
-list(APPEND tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,wdb_open_agent2 -Wl,--wrap,wdb_leave \
-                         -Wl,--wrap,wdb_inventory_save_hw -Wl,--wrap,wdb_inventory_save_os -Wl,--wrap,wdb_inventory_save_network -Wl,--wrap,wdb_inventory_delete_network \
-                         -Wl,--wrap,wdb_inventory_save_program -Wl,--wrap,wdb_inventory_delete_program -Wl,--wrap,wdb_inventory_save_hotfix -Wl,--wrap,wdb_inventory_delete_hotfix \
-                         -Wl,--wrap,wdb_inventory_save_port -Wl,--wrap,wdb_inventory_delete_port -Wl,--wrap,wdb_inventory_save_process -Wl,--wrap,wdb_inventory_delete_process \
-                         -Wl,--wrap,wdb_inventory_save_scan_info")
-
-list(APPEND tests_names "test_wdb_inventory")
-list(APPEND tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,wdb_hardware_save -Wl,--wrap,wdb_osinfo_save -Wl,--wrap,wdb_netinfo_save \
-                         -Wl,--wrap,wdb_netproto_save -Wl,--wrap,wdb_netaddr_save -Wl,--wrap,wdb_netinfo_delete2 -Wl,--wrap,wdb_package_save \
-                         -Wl,--wrap,wdb_package_delete2 -Wl,--wrap,wdb_hotfix_save -Wl,--wrap,wdb_set_hotfix_metadata -Wl,--wrap,wdb_hotfix_delete2 \
-                         -Wl,--wrap,wdb_port_save -Wl,--wrap,wdb_port_delete2 -Wl,--wrap,wdb_process_save -Wl,--wrap,wdb_process_delete2 \
-                         -Wl,--wrap,wdb_sys_scan_info_save")
+add_subdirectory(syscheckd)
+add_subdirectory(shared)
 
 # Config files
-configure_file("test_syscollector.conf" "test_syscollector.conf" COPYONLY)
-
-
-# Generate modulesd library
-file(GLOB modulesd_files
-  ../wazuh_modules/*.o
-  ../wazuh_modules/syscollector/*.o)
-list(REMOVE_ITEM modulesd_files ../wazuh_modules/main.o)
-
-add_library(MODULESD_O STATIC ${modulesd_files})
-
-set_source_files_properties(
-  ${modulesd_files}
-  PROPERTIES
-  EXTERNAL_OBJECT true
-  GENERATED true
-  )
-
-set_target_properties(
-  MODULESD_O
-  PROPERTIES
-  LINKER_LANGUAGE C
-  )
-
-target_link_libraries(MODULESD_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
-
-
-# Generate analysisd library
-file(GLOB analysisd_files
-  ../analysisd/*.o
-  ../analysisd/alerts/*.o
-  ../analysisd/cdb/*.o
-  ../analysisd/compiled_rules/*.o
-  ../analysisd/decoders/*.o
-  ../analysisd/decoders/plugins/*.o
-  ../analysisd/format/*.o
-  ../analysisd/output/*.o)
-
-add_library(ANALYSISD_O STATIC ${analysisd_files})
-
-set_source_files_properties(
-  ${analysisd_files}
-  PROPERTIES
-  EXTERNAL_OBJECT true
-  GENERATED true
-  )
-
-set_target_properties(
-  ANALYSISD_O
-  PROPERTIES
-  LINKER_LANGUAGE C
-  )
-
-target_link_libraries(ANALYSISD_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
-
-
-# Generate wazuh_db library
-file(GLOB wazuhdb_files ../wazuh_db/*.o)
-list(REMOVE_ITEM modulesd_files ../wazuh_db/main.o)
-
-add_library(WAZUHDB_O STATIC ${wazuhdb_files})
-
-set_source_files_properties(
-  ${wazuhdb_files}
-  PROPERTIES
-  EXTERNAL_OBJECT true
-  GENERATED true
-  )
-
-set_target_properties(
-  WAZUHDB_O
-  PROPERTIES
-  LINKER_LANGUAGE C
-  )
-
-target_link_libraries(WAZUHDB_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
-
-
-# Compiling tests
-list(LENGTH tests_names count)
-math(EXPR count "${count} - 1")
-foreach(counter RANGE ${count})
-    list(GET tests_names ${counter} test_name)
-    list(GET tests_flags ${counter} test_flags)
-
-    add_executable(${test_name} ${test_name}.c)
-
-    target_link_libraries(
-        ${test_name}
-        ${WAZUHLIB}
-        ${WAZUHEXT}
-        MODULESD_O
-        ANALYSISD_O
-        WAZUHDB_O
-        -lcmocka
-        -fprofile-arcs
-        -ftest-coverage
-    )
-    if(NOT test_flags STREQUAL " ")
-        target_link_libraries(
-            ${test_name}
-            ${test_flags}
-        )
-    endif()
-    add_test(${test_name} ${test_name})
-endforeach()
-
+if(${TARGET} STREQUAL "winagent")
+  configure_file("test_syscheck_win.conf" "syscheckd/test_syscheck.conf" NEWLINE_STYLE WIN32)
+  configure_file("test_syscheck_win2.conf" "syscheckd/test_syscheck2.conf" NEWLINE_STYLE WIN32)
+  configure_file("test_syscheck_win.conf" "syscheckd/ossec.conf" NEWLINE_STYLE WIN32)
+  configure_file("test_empty_config.conf" "syscheckd/test_empty_config.conf" NEWLINE_STYLE WIN32)
+  configure_file("test_internal_options.conf" "syscheckd/internal_options.conf" NEWLINE_STYLE WIN32)
+else()
+  configure_file("test_syscheck.conf" "syscheckd/test_syscheck.conf" COPYONLY)
+  configure_file("test_syscheck2.conf" "syscheckd/test_syscheck2.conf" COPYONLY)
+  configure_file("test_empty_config.conf" "syscheckd/test_empty_config.conf" COPYONLY)
+  configure_file("test_internal_options.conf" "syscheckd/internal_options.conf" COPYONLY)
+  configure_file("test_syscollector.conf" "wazuh_modules/syscollector/test_syscollector.conf" COPYONLY)
+endif()
 
 # Coverage
 find_program(LCOV_PATH lcov)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -376,6 +376,7 @@ char *OSX_ReleaseName(const int version) {
     else
         return "Unknown";
 }
+
 
 os_info *get_unix_version()
 {
@@ -795,6 +796,7 @@ free_os_info:
 
 #endif /* WIN32 */
 
+
 void free_osinfo(os_info * osinfo) {
     if (osinfo) {
         free(osinfo->os_name);
@@ -813,8 +815,6 @@ void free_osinfo(os_info * osinfo) {
     }
 }
 
-// Get number of processors
-// Returns 1 on error
 
 int get_nproc() {
 #ifdef __linux__
