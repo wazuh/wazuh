@@ -164,6 +164,60 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     return 0;
 }
 
+int Read_Office365(const OS_XML* xml, xml_node* node, void* d1) {
+    wmodule** wmodules = (wmodule**)d1;
+    wmodule* cur_wmodule;
+    xml_node** children = NULL;
+    wmodule* cur_wmodule_exists;
+
+    // Allocate memory
+    if ((cur_wmodule = *wmodules)) {
+        cur_wmodule_exists = *wmodules;
+        int found = 0;
+
+        while (cur_wmodule_exists) {
+            if (cur_wmodule_exists->tag) {
+                if (strcmp(cur_wmodule_exists->tag,node->element) == 0) {
+                    cur_wmodule = cur_wmodule_exists;
+                    found = 1;
+                    break;
+                }
+            }
+            cur_wmodule_exists = cur_wmodule_exists->next;
+        }
+
+        if (!found) {
+            while (cur_wmodule->next)
+                cur_wmodule = cur_wmodule->next;
+
+            os_calloc(1, sizeof(wmodule), cur_wmodule->next);
+            cur_wmodule = cur_wmodule->next;
+        }
+    } else
+        *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
+
+    if (!cur_wmodule) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        return OS_INVALID;
+    }
+
+    // Get children
+    if (children = OS_GetElementsbyNode(xml, node), !children) {
+        mdebug1("Empty configuration for module '%s'.", node->element);
+    }
+
+    // Microsoft Office 365 module
+    if (!strcmp(node->element, WM_OFFICE365_CONTEXT.name)) {
+        if (wm_office365_read(xml, children, cur_wmodule) < 0) {
+            OS_ClearNode(children);
+            return OS_INVALID;
+        }
+    }
+
+    OS_ClearNode(children);
+    return 0;
+}
+
 int Read_SCA(const OS_XML *xml, xml_node *node, void *d1)
 {
     wmodule **wmodules = (wmodule**)d1;

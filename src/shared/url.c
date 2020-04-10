@@ -11,10 +11,6 @@
 
 #include "shared.h"
 #include <os_net/os_net.h>
-struct MemoryStruct {
-  char *memory;
-  size_t size;
-};
 
 int wurl_get(const char * url, const char * dest, const char * header, const char *data){
     CURL *curl;
@@ -217,58 +213,188 @@ int wurl_check_connection() {
     }
 }
 
-static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
-{
-  size_t realsize = size * nmemb;
-  struct MemoryStruct *mem = (struct MemoryStruct *)userp;
+// Callback function to extract the body from the HTTP response
+static size_t body_callback(void* contents, size_t size, size_t n_items, void* user_data) {
+    // Static/automatic memory allocation variables
+    size_t new_size;
 
-  char *ptr = realloc(mem->memory, mem->size + realsize + 1);
-  if(ptr == NULL) {
-    return 0;
-  }
+    // Dynamic memory allocation variables
+    char* new_body; // No need to be freed
+    whttp_response_t* response; // No need to be freed. It is the purpose of this callback
 
-  mem->memory = ptr;
-  memcpy(&(mem->memory[mem->size]), contents, realsize);
-  mem->size += realsize;
-  mem->memory[mem->size] = 0;
+    // Calculate new size
+    new_size = size * n_items;
+    // Cast user data to HTTP response struct
+    response = (whttp_response_t*)user_data;
 
-  return realsize;
+    // Allocate memory to adapt to new body size
+    new_body = realloc(response->body, response->body_size + new_size + 1);
+
+    // Return 0 if reallocation failed (needed by libcurl)
+    if(!new_body) {
+        return 0;
+    }
+
+    // Assign new body to the HTTP response struct
+    response->body = new_body;
+
+    // Copy the new contents at the end of the previous chunk
+    memcpy(&(response->body[response->body_size]), contents, new_size);
+    // Update body size
+    response->body_size += new_size;
+    // Include end of string
+    response->body[response->body_size] = 0;
+
+    // Return new size (needed by libcurl)
+    return new_size;
 }
 
-char * wurl_http_get(const char * url) {
-    CURL *curl;
-    CURLcode res;
-    curl = curl_easy_init();
+// Callback function to extract the header from the HTTP response
+static size_t header_callback(void* contents, size_t size, size_t n_items, void* user_data) {
+    // Static/automatic memory allocation variables
+    size_t new_size;
+
+    // Dynamic memory allocation variables
+    char* new_header; // No need to be freed
+    whttp_response_t* response; // No need to be freed. It is the purpose of this callback
+
+    // Calculate new size
+    new_size = size * n_items;
+    // Cast user data to HTTP response struct
+    response = (whttp_response_t*)user_data;
+
+    // Allocate memory to adapt to new header size
+    new_header = realloc(response->header, response->header_size + new_size + 1);
+
+    // Return 0 if reallocation failed (needed by libcurl)
+    if(!new_header) {
+        return 0;
+    }
+
+    // Assign new header to the HTTP response struct
+    response->header = new_header;
+
+    // Copy the new content at the end of the previous chunk
+    memcpy(&(response->header[response->header_size]), contents, new_size);
+    // Update header size
+    response->header_size += new_size;
+    // Include end of string
+    response->header[response->header_size] = 0;
+
+    // Return new size (needed by libcurl)
+    return new_size;
+}
+
+// Helper function to create a new HTTP response struct
+static whttp_response_t* new_whttp_response() {
+    whttp_response_t* new_response = malloc(sizeof(whttp_response_t));
+
+    new_response->body = malloc(1);
+    new_response->header = malloc(1);
+    new_response->status_code = 0;
+    new_response->body_size = 0;
+    new_response->header_size = 0;
+
+    return new_response;
+}
+
+// HTTP request
+whttp_response_t* whttp_request(const char* method, const char* url, const char* header, const char* data, long timeout) {
+    // Static/automatic memory allocation variables
+    CURLcode result;
     char errbuf[CURL_ERROR_SIZE];
+    long status_code;
 
-    struct MemoryStruct chunk;
+    // Dynamic memory allocation variables
+    CURL* curl = NULL;
+    whttp_response_t* response = NULL;
+    struct curl_slist* libcurl_header = NULL;
 
-    chunk.memory = malloc(1);  /* will be grown as needed by the realloc above */
-    chunk.size = 0;    /* no data at this point */
+    // Check method
+    if (strcmp(method, "GET") != 0 && strcmp(method, "POST") != 0) {
+        merror("Invalid method for the HTTP request. Valid ones are GET, POST.");
+        return NULL;
+    }
 
-    if (curl){
+    // Check the url parameter
+    if (!url) {
+        merror("No url was provided for HTTP request.");
+        return NULL;
+    }
+
+    // Check the timeout parameter
+    if (timeout < 0) {
+        merror("Invalid negative timeout for HTTP request.");
+        return NULL;
+    }
+
+    // Initialize response object
+    response = new_whttp_response();
+
+    curl = curl_easy_init();
+
+    if (curl) {
+        // Set the url for the request
         curl_easy_setopt(curl, CURLOPT_URL, url);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
+
+        // Set timeout
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
+
+        // Error settings
+        curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
+        curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
+
+        // Check if the HTTP request is POST
+        if (strcmp(method, "POST") == 0) {
+            // Set POST request
+            curl_easy_setopt(curl, CURLOPT_POST, 1L);
+
+            // If there's data to add to the request 
+            if (data) {
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(data));
+            // Otherwise set the content length to 0 in the header as most servers won't accept the request without it
+            } else {
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, 0);
+            }
+        }
+
+        // Add body call back and response object
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, body_callback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)response);
+
+        // Add header callback and response object
+        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_callback);
+        curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void*)response);
+
+        // Add header if necessary
+        if (header) {
+            libcurl_header = curl_slist_append(libcurl_header, header);
+            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, libcurl_header);
+        }
 
         // Enable SSL check if url is HTTPS
-        if(!strncmp(url,"https",5)){
+        if (!strncmp(url, "https", 5)) {
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 1L);
         }
 
-        curl_easy_setopt(curl, CURLOPT_ERRORBUFFER,errbuf);
-        curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
-        res = curl_easy_perform(curl);
+        // Perform HTTP request
+        result = curl_easy_perform(curl);
 
-        if(res){
-            mdebug1("CURL ERROR %s",errbuf);
-            curl_easy_cleanup(curl);
-            free(chunk.memory);
-            return NULL;
+        // Get response status code
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status_code);
+        response->status_code = status_code;
+
+        // Check if there's an error
+        if (result != CURLE_OK) {
+            mdebug1("CURL ERROR %s", errbuf);
         }
+
+        // Clean libcurl objects
         curl_easy_cleanup(curl);
+        curl_slist_free_all(libcurl_header);
     }
 
-    return chunk.memory;
+    return response;
 }
