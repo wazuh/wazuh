@@ -209,7 +209,7 @@ static void FileAccess_PreludeLog(idmef_message_t *idmef,
         add_idmef_object(idmef, "alert.target(0).file(-1).checksum(-1).value", sha1);
     }
     if (sha256) {
-        add_idmef_object(idmef, "alert.target(0).file(-1).checksum(>>).algorithm", "SHA256");
+        add_idmef_object(idmef, "alert.target(0).file(-1).checksum(>>).algorithm", "SHA2-256");
         add_idmef_object(idmef, "alert.target(0).file(-1).checksum(-1).value", sha256);
     }
 
