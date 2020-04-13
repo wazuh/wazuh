@@ -21,8 +21,8 @@
 #  ca: "api/configuration/ssl/ca.crt"
 
 # Logging configuration
+# Values for API log level: disabled, info, warning, error, debug, debug2 (each level includes the previous level).
 # logs:
-  # Values for API log level: disabled, info, warning, error, debug, debug2 (each level includes the previous level).
   # level: "info"
   # path: "logs/api.log"
 

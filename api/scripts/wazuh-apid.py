@@ -10,7 +10,6 @@ import os
 import ssl
 import sys
 
-import aiohttp_cache
 import aiohttp_cors
 import connexion
 import uvloop
@@ -19,6 +18,7 @@ from aiohttp_swagger import setup_swagger
 from api import alogging, configuration, __path__ as api_path
 # noinspection PyUnresolvedReferences
 from api import validator
+from api.aiohttp_cache import setup_cache
 from api.api_exception import APIException
 from api.constants import CONFIG_FILE_PATH
 from api.middlewares import set_user_name, check_experimental
@@ -119,8 +119,8 @@ if __name__ == '__main__':
             cors.add(route)
 
     # Enable cache plugin
-    # if cache_conf['enabled']:
-    # aiohttp_cache.setup_cache(app.app)
+    if cache_conf['enabled']:
+        setup_cache(app.app)
 
     # Enable swagger UI plugin
     setup_swagger(app.app,
