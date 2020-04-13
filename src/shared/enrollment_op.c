@@ -118,7 +118,7 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
 
     /* Connect via TCP */
     int sock = OS_ConnectTCP((u_int16_t) cfg->target_cfg->port, ip_address, 0);
-    if (sock <= 0) {
+    if (sock < 0) {
         merror("Unable to connect to %s:%d", ip_address, cfg->target_cfg->port);
         os_free(ip_address);
         SSL_CTX_free(ctx);
@@ -239,9 +239,11 @@ static int w_enrollment_process_response(SSL *ssl) {
             // Process error message
             char *tmpbuf;
             tmpbuf = strchr(buf, ' ');
-            tmpbuf++;
-            if (tmpbuf && tmpbuf[0] != '\0') {
-                merror("%s (from manager)", tmpbuf);
+            if (tmpbuf) {
+                tmpbuf++;
+                if (tmpbuf && tmpbuf[0] != '\0') {
+                    merror("%s (from manager)", tmpbuf);
+                }
             }
         } else if (strncmp(buf, "OSSEC K:'", 9) == 0) {
             minfo("Received response with agent key");
