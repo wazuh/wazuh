@@ -455,6 +455,49 @@ void test_realtime_start_failure_hash(void **state) {
     assert_int_equal(ret, -1);
 }
 
+
+void test_count_watches_realtime_fd_null(void **state) {
+    (void) state;
+
+    syscheck.realtime->fd = 0;
+
+    count_watches();
+}
+
+void test_count_watches_hash_node_null(void **state) {
+    (void) state;
+
+    syscheck.realtime->fd = 1;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
+    will_return(__wrap_OSHash_Begin, NULL);
+    
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    
+    count_watches();
+}
+
+void test_count_watches_counting(void **state) {
+    (void) state;
+    OSHashNode *node = *state;
+
+    node->data = "/test/sub";
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
+    will_return(__wrap_OSHash_Begin, node);
+
+    expect_value(__wrap_OSHash_Next, self, syscheck.realtime->dirtb);
+    will_return(__wrap_OSHash_Next, NULL);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    count_watches();
+}
+
 #if defined(TEST_SERVER) || defined(TEST_AGENT)
 
 void test_realtime_start_failure_inotify(void **state) {
@@ -922,48 +965,6 @@ void test_delete_subdirectories_watches_deletes(void **state) {
     delete_subdirectories_watches(dir);
 }
 
-void test_count_watches_realtime_fd_null(void **state) {
-    (void) state;
-
-    syscheck.realtime->fd = 0;
-
-    count_watches();
-}
-
-void test_count_watches_hash_node_null(void **state) {
-    (void) state;
-
-    syscheck.realtime->fd = 1;
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-
-    expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
-    will_return(__wrap_OSHash_Begin, NULL);
-    
-    expect_function_call(__wrap_pthread_mutex_unlock);
-    
-    count_watches();
-}
-
-void test_count_watches_counting(void **state) {
-    (void) state;
-    OSHashNode *node = *state;
-
-    node->data = "/test/sub";
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-
-    expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
-    will_return(__wrap_OSHash_Begin, node);
-
-    expect_value(__wrap_OSHash_Next, self, syscheck.realtime->dirtb);
-    will_return(__wrap_OSHash_Next, NULL);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    count_watches();
-}
-
 #else // TEST_WINAGENT
 void test_realtime_win32read_success(void **state) {
     win32rtfim rtlocal;
@@ -1320,6 +1321,12 @@ int main(void) {
         /* realtime_start */
         cmocka_unit_test_setup_teardown(test_realtime_start_success, setup_realtime_start, teardown_realtime_start),
         cmocka_unit_test_setup_teardown(test_realtime_start_failure_hash, setup_realtime_start, teardown_realtime_start),
+
+        /* count_watches */
+        cmocka_unit_test_setup_teardown(test_count_watches_realtime_fd_null, setup_hash_node, teardown_hash_node),
+        cmocka_unit_test_setup_teardown(test_count_watches_hash_node_null, setup_hash_node, teardown_hash_node),
+        cmocka_unit_test_setup(test_count_watches_counting, setup_hash_node),
+
         #if defined(TEST_SERVER) || defined(TEST_AGENT)
         cmocka_unit_test_setup_teardown(test_realtime_start_failure_inotify, setup_realtime_start, teardown_realtime_start),
 
@@ -1354,10 +1361,6 @@ int main(void) {
         cmocka_unit_test_setup(test_delete_subdirectories_watches_not_same_name, setup_hash_node),
         cmocka_unit_test_setup(test_delete_subdirectories_watches_deletes, setup_hash_node),
 
-        /* count_watches */
-        cmocka_unit_test_setup_teardown(test_count_watches_realtime_fd_null, setup_hash_node, teardown_hash_node),
-        cmocka_unit_test_setup_teardown(test_count_watches_hash_node_null, setup_hash_node, teardown_hash_node),
-        cmocka_unit_test_setup(test_count_watches_counting, setup_hash_node),
         #else
         // realtime_win32read
         cmocka_unit_test(test_realtime_win32read_success),

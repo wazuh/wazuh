@@ -317,7 +317,7 @@ int __wrap_fim_db_get_count_entry_path(fdb_t * fim_sql){
 int __wrap_count_watches() {
     function_called();
 
-    return 6;
+    return mock();
 }
 
 #ifdef TEST_WINAGENT
@@ -1931,7 +1931,10 @@ static void test_fim_scan_no_realtime(void **state) {
     // In fim_scan
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6343): Folders monitored with inotify engine: 0");
+    expect_function_call(__wrap_count_watches);
+    will_return(__wrap_count_watches, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6343): Folders monitored with real-time engine: 0");
 
     fim_scan();
 }
@@ -1984,8 +1987,9 @@ static void test_fim_scan_realtime_enabled(void **state) {
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
     expect_function_call(__wrap_count_watches);
+    will_return(__wrap_count_watches, 6);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6343): Folders monitored with inotify engine: 6");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6343): Folders monitored with real-time engine: 6");
 
     fim_scan();
 }
@@ -2366,7 +2370,13 @@ static void test_fim_scan(void **state) {
     will_return(__wrap_fim_db_get_not_scanned, NULL);
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
 
+    // In fim_scan
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
+
+    expect_function_call(__wrap_count_watches);
+    will_return(__wrap_count_watches, 2);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6343): Folders monitored with real-time engine: 2");
 
     fim_scan();
 }
@@ -2984,8 +2994,12 @@ int main(void) {
         cmocka_unit_test_setup(test_fim_file_error_on_insert, setup_fim_entry),
 
         /* fim_scan */
+        #ifndef TEST_WINAGENT
         cmocka_unit_test_teardown(test_fim_scan_no_realtime, teardown_fim_scan_realtime),
         cmocka_unit_test_teardown(test_fim_scan_realtime_enabled, teardown_fim_scan_realtime),
+        #else
+        cmocka_unit_test(test_fim_scan),
+        #endif
 
         /* fim_checker */
         cmocka_unit_test(test_fim_checker_scheduled_configuration_directory_error),
