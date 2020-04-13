@@ -201,6 +201,7 @@ static int w_enrollment_send_message(w_enrollment_ctx *cfg) {
     int ret = SSL_write(cfg->ssl, buf, strlen(buf));
     if (ret < 0) {
         merror("SSL write error (unable to send message.)");
+        merror("If Agent verification is enabled, agent key and certifiates are required!");
         ERR_print_errors_fp(stderr);
         os_free(buf);
         if(lhostname != cfg->target_cfg->agent_name)
@@ -249,7 +250,8 @@ static int w_enrollment_process_response(SSL *ssl) {
         }
     }
 
-    switch (SSL_get_error(ssl, ret))
+    int error_code = SSL_get_error(ssl, ret);
+    switch (error_code)
     {
     case SSL_ERROR_NONE:
     case SSL_ERROR_ZERO_RETURN:
@@ -257,6 +259,7 @@ static int w_enrollment_process_response(SSL *ssl) {
         break;
     default:
         merror("SSL read (unable to receive message)");
+        merror("If Agent verification is enabled, agent key and certifiates may be incorrect!");
         break;
     }
 
@@ -341,6 +344,8 @@ static void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_ce
         minfo("Verifying manager's certificate");
         if (check_x509_cert(ssl, hostname) != VERIFY_TRUE) {
             merror("Unable to verify server certificate.");
+        } else {
+            minfo("Manager has been verified successfully");
         }
     }
     else {
