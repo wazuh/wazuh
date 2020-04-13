@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Bump source version
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # May 2, 2017
 
 # Syntax:

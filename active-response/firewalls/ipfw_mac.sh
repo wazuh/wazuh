@@ -2,7 +2,7 @@
 # Adds an IP to the IPFW drop list.
 # Only works with IPFW.
 # Expect: srcip
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Author: Rafael Capovilla - under @ ( at ) underlinux.com.br
 # Author: Daniel B. Cid - dcid @ ( at ) ossec.net
 # Author: Charles W. Kefauver ckefauver @ ( at ) ibacom.es
