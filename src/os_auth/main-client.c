@@ -84,10 +84,10 @@ int main(int argc, char **argv)
     cert_cfg.agent_key = NULL;
     cert_cfg.ca_cert = NULL;
     cert_cfg.auto_method = 0;
-    char *dir = DEFAULTDIR;
+    //char *dir = DEFAULTDIR;
     int use_src_ip = 0;
     char * buf;
-    char *server_address;
+    char *server_address = NULL;
     bio_err = 0;
     int debug_level = 0;
 
@@ -128,7 +128,7 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-g needs an argument");
                 }
-                dir = optarg;
+                // dir = optarg; (NEVER USED)
                 break;
 #endif
             case 't':
@@ -294,8 +294,8 @@ int main(int argc, char **argv)
         minfo("No authentication password provided.");
     }
     w_enrollment_ctx *cfg = w_enrollment_init(&target_cfg, &cert_cfg);
-    w_enrollment_request_key(cfg, server_address); 
+    int ret = w_enrollment_request_key(cfg, server_address); 
     
     free(buf);
-    exit(0);
+    exit((ret == 0) ? 0 : 1);
 }

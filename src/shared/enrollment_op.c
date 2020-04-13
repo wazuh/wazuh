@@ -228,6 +228,7 @@ static int w_enrollment_process_response(SSL *ssl) {
     char *buf;
     int ret;
     int status = -1;
+    int manager_error = 0; // IF manager sends error message, set this flag
     os_calloc(OS_SIZE_65536 + OS_SIZE_4096 + 1, sizeof(char), buf);
     buf[OS_SIZE_65536 + OS_SIZE_4096] = '\0';
 
@@ -243,6 +244,7 @@ static int w_enrollment_process_response(SSL *ssl) {
                 tmpbuf++;
                 if (tmpbuf && tmpbuf[0] != '\0') {
                     merror("%s (from manager)", tmpbuf);
+                    manager_error = 1;
                 }
             }
         } else if (strncmp(buf, "OSSEC K:'", 9) == 0) {
@@ -260,8 +262,10 @@ static int w_enrollment_process_response(SSL *ssl) {
         minfo("Connection closed.");
         break;
     default:
-        merror("SSL read (unable to receive message)");
-        merror("If Agent verification is enabled, agent key and certifiates may be incorrect!");
+        if(!manager_error) {
+            merror("SSL read (unable to receive message)");
+            merror("If Agent verification is enabled, agent key and certifiates may be incorrect!");
+        }
         break;
     }
 
