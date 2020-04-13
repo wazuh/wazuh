@@ -277,26 +277,6 @@ void delete_subdirectories_watches(char *dir) {
     os_free(dir_slash);
 }
 
-unsigned int count_watches() {
-    OSHashNode *hash_node;
-    unsigned int inode_it = 0;
-    unsigned int num_watches = 0;
-
-    if(syscheck.realtime && syscheck.realtime->fd) {
-        w_mutex_lock(&syscheck.fim_entry_mutex);
-        hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
-
-        while(hash_node) {
-            num_watches++;
-            hash_node = OSHash_Next(syscheck.realtime->dirtb, &inode_it, hash_node);
-        }
-
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
-    }
-
-    return num_watches;
-}
-
 #elif defined(WIN32)
 
 static pthread_mutex_t adddir_mutex;
@@ -547,6 +527,33 @@ int realtime_adddir(const char *dir, int whodata, __attribute__((unused)) int fo
     return (1);
 }
 
+#else /* !WIN32 */
+
+int realtime_start()
+{
+    merror(FIM_ERROR_REALTIME_INITIALIZE);
+
+    return (0);
+}
+
+int realtime_adddir(__attribute__((unused)) const char *dir, __attribute__((unused))int whodata, __attribute__((unused))int followsl)
+{
+    return (0);
+}
+
+void realtime_process()
+{
+    return;
+}
+
+unsigned int count_watches() {
+    return 0;
+}
+
+#endif /* WIN32 */
+
+#if defined(WIN32) || defined(INOTIFY_ENABLED)
+
 unsigned int count_watches() {
     OSHashNode *hash_node;
     unsigned int inode_it = 0;
@@ -567,23 +574,4 @@ unsigned int count_watches() {
     return num_watches;
 }
 
-#else /* !WIN32 */
-
-int realtime_start()
-{
-    merror(FIM_ERROR_REALTIME_INITIALIZE);
-
-    return (0);
-}
-
-int realtime_adddir(__attribute__((unused)) const char *dir, __attribute__((unused))int whodata, __attribute__((unused))int followsl)
-{
-    return (0);
-}
-
-void realtime_process()
-{
-    return;
-}
-
-#endif /* WIN32 */
+#endif
