@@ -569,8 +569,6 @@ def get_rbac_actions():
     dict
         RBAC resources
     """
-    import pydevd_pycharm
-    pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
     with open(os.path.join(api_path[0], 'spec', 'spec.yaml'), 'r') as stream:
         info_data = yaml.safe_load(stream)
 
