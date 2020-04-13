@@ -2,15 +2,13 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import os
 import re
+from copy import deepcopy
 from time import time
 
-import yaml
-
-from api import __path__ as api_path
 from api.authentication import validation
 from wazuh import common
+from wazuh.core.security import load_spec
 from wazuh.exception import WazuhError
 from wazuh.rbac import orm
 from wazuh.rbac.decorators import expose_resources
@@ -555,33 +553,38 @@ def get_rbac_resources():
     dict
         RBAC resources
     """
-    with open(os.path.join(api_path[0], 'spec', 'spec.yaml'), 'r') as stream:
-        info_data = yaml.safe_load(stream)
-
-    return WazuhResult(info_data['x-rbac-catalog']['resources'])
+    return WazuhResult(load_spec()['x-rbac-catalog']['resources'])
 
 
-def get_rbac_actions():
+def get_rbac_actions(endpoint: str = None):
     """Get the RBAC actions from the catalog
+
+    Parameters
+    ----------
+    endpoint : str
+        Show actions and resources for the specified endpoint. Ex: GET /agents
 
     Returns
     -------
     dict
         RBAC resources
     """
-    with open(os.path.join(api_path[0], 'spec', 'spec.yaml'), 'r') as stream:
-        info_data = yaml.safe_load(stream)
-
+    info_data = load_spec()
+    data = dict()
     for path, path_info in info_data['paths'].items():
         for method, payload in path_info.items():
             try:
                 for ref in payload['x-rbac-actions']:
                     action = list(ref.values())[0].split('/')[-1]
-                    if 'related_endpoints' not in info_data['x-rbac-catalog']['actions'][action].keys():
-                        info_data['x-rbac-catalog']['actions'][action]['related_endpoints'] = list()
-                    info_data['x-rbac-catalog']['actions'][action]['related_endpoints'].append(
-                        f'{method.upper()} {path}')
+                    if endpoint and \
+                            f'{method.upper()} {path}'.encode('ascii', 'ignore') != endpoint.encode('ascii', 'ignore'):
+                        continue
+                    if action not in data.keys():
+                        data[action] = deepcopy(info_data['x-rbac-catalog']['actions'][action])
+                    if 'related_endpoints' not in data[action].keys():
+                        data[action]['related_endpoints'] = list()
+                    data[action]['related_endpoints'].append(f'{method.upper()} {path}')
             except KeyError:
                 pass
 
-    return WazuhResult(info_data['x-rbac-catalog']['actions'])
+    return WazuhResult(data)

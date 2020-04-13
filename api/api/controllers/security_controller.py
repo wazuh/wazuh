@@ -539,21 +539,23 @@ async def get_rbac_resources(pretty=False):
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-async def get_rbac_actions(pretty=False):
+async def get_rbac_actions(pretty=False, endpoint: str = None):
     """Gets all the current defined actions for RBAC
 
     Parameters
     ----------
     pretty : bool
         Show results in human-readable format
+    endpoint : str
+        Show actions and resources for the specified endpoint. Ex: GET /agents
 
     Returns
     -------
     dict
         RBAC actions
     """
-
     dapi = DistributedAPI(f=security.get_rbac_actions,
+                          f_kwargs=remove_nones_to_dict({'endpoint': endpoint}),
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=True,

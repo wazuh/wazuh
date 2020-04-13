@@ -985,7 +985,7 @@ stages:
 test_name: GET /security/actions
 
 stages:
-  - name: Testing offset
+  - name: Testing RBAC's actions catalog
     request:
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/actions"
       headers:

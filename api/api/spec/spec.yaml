@@ -76,14 +76,6 @@ x-rbac-catalog:
         actions: ['agent:read']
         resources: ['agent:id:*']
         effect: "allow"
-    'agent:update':
-      description: "Update agents basic information (id, name, group, last keep alive, etc)"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/agent:id'
-      example:
-        actions: ['agent:update']
-        resources: ['agent:id:002', 'agent:id:004']
-        effect: "allow"
     'agent:delete':
       description: "Delete system's agents"
       resources:
@@ -3122,6 +3114,11 @@ components:
         </tr>
         <tr>
         <td>com</td>
+        <td>logging</td>
+        <td><code>&lt;logging&gt;</code></td>
+        </tr>
+        <tr>
+        <td>com</td>
         <td>internal</td>
         <td>execd</td>
         </tr>
@@ -3176,6 +3173,11 @@ components:
         <td>monitord</td>
         </tr>
         <tr>
+        <td>monitor</td>
+        <td>internal</td>
+        <td>reports</td>
+        </tr>
+        <tr>
         <td>request</td>
         <td>remote</td>
         <td><code>&lt;remote&gt;</code></td>
@@ -3223,6 +3225,8 @@ components:
         - rules
         - decoders
         - auth
+        - logging
+        - reports
         - active-response
         - cluster
         - csyslog
@@ -4483,7 +4487,150 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/Username'
-
+    endpoints_list:
+      in: query
+      name: endpoint
+      description: List of current API's endpoints.
+      schema:
+        type: string
+        enum:
+          - 'PUT /active-response'
+          - 'DELETE /agents'
+          - 'GET /agents'
+          - 'POST /agents'
+          - 'GET /agents/{agent_id}/config/{component}/{configuration}'
+          - 'DELETE ​/agents​/{agent_id}​/group'
+          - 'GET ​/agents​/{agent_id}​/group​/is_sync'
+          - 'DELETE ​/agents​/{agent_id}​/group​/{group_id}'
+          - 'PUT ​/agents​/{agent_id}​/group​/{group_id}'
+          - 'GET ​/agents​/{agent_id}​/key'
+          - 'PUT ​/agents​/{agent_id}​/restart'
+          - 'PUT ​/agents​/{agent_id}​/upgrade'
+          - 'PUT ​/agents​/{agent_id}​/upgrade_custom'
+          - 'GET ​/agents​/{agent_id}​/upgrade_result'
+          - 'DELETE ​/agents​/group'
+          - 'PUT ​/agents​/group'
+          - 'POST ​/agents​/insert'
+          - 'POST ​/agents​/insert​/quick'
+          - 'GET ​/agents​/no_group'
+          - 'GET ​/agents​/outdated'
+          - 'PUT ​/agents​/restart'
+          - 'GET ​/agents​/stats​/distinct'
+          - 'GET ​/agents​/summary​/os'
+          - 'GET ​/agents​/summary​/status'
+          - 'GET ​/ciscat​/{agent_id}​/results'
+          - 'GET /cluster/local/info'
+          - 'GET /cluster/nodes'
+          - 'GET /cluster/healthcheck'
+          - 'GET /cluster/status'
+          - 'GET /cluster/local/config'
+          - 'GET /cluster/{node_id}/status'
+          - 'GET /cluster/{node_id}/info'
+          - 'GET /cluster/{node_id}/configuration'
+          - 'GET /cluster/{node_id}/stats'
+          - 'GET /cluster/{node_id}/stats/hourly'
+          - 'GET /cluster/{node_id}/stats/weekly'
+          - 'GET /cluster/{node_id}/stats/analysisd'
+          - 'GET /cluster/{node_id}/stats/remoted'
+          - 'GET /cluster/{node_id}/logs'
+          - 'GET /cluster/{node_id}/logs/summary'
+          - 'GET ​/cluster​/{node_id}​/files'
+          - 'PUT ​/cluster​/{node_id}​/files'
+          - 'DELETE ​/cluster​/{node_id}​/files'
+          - 'PUT ​/cluster​/restart'
+          - 'GET /cluster/configuration/validation'
+          - 'GET /cluster/{node_id}/configuration/{component}/{configuration}'
+          - 'GET /decoders'
+          - 'GET /decoders/files'
+          - 'GET /decoders/files/{filename}/download'
+          - 'GET /decoders/parents'
+          - 'DELETE ​/experimental​/syscheck'
+          - 'GET ​/experimental​/ciscat​/results'
+          - 'GET ​/experimental​/syscollector​/hardware'
+          - 'GET ​/experimental​/syscollector​/netaddr'
+          - 'GET ​/experimental​/syscollector​/netiface'
+          - 'GET ​/experimental​/syscollector​/netproto'
+          - 'GET ​/experimental​/syscollector​/os'
+          - 'GET ​/experimental​/syscollector​/packages'
+          - 'GET ​/experimental​/syscollector​/ports'
+          - 'GET ​/experimental​/syscollector​/processes'
+          - 'GET ​/experimental​/syscollector​/hotfixes'
+          - 'DELETE ​/groups'
+          - 'GET ​/groups'
+          - 'POST ​/groups'
+          - 'GET ​/groups/{group_id}/agents'
+          - 'GET ​/groups​/{group_id}​/configuration'
+          - 'PUT ​/groups​/{group_id}​/configuration'
+          - 'GET ​/groups​/{group_id}​/files'
+          - 'GET ​/groups​/{group_id}​/files​/{file_name}​/json'
+          - 'GET ​/groups​/{group_id}​/files​/{file_name}​/xml'
+          - 'GET ​/lists'
+          - 'GET ​/lists​/files'
+          - 'GET /manager/status'
+          - 'GET /manager/info'
+          - 'GET /manager/configuration'
+          - 'GET /manager/stats'
+          - 'GET /manager/stats/hourly'
+          - 'GET /manager/stats/weekly'
+          - 'GET /manager/stats/analysisd'
+          - 'GET /manager/stats/remoted'
+          - 'GET /manager/logs'
+          - 'GET /manager/logs/summary'
+          - 'GET /manager/files'
+          - 'PUT /manager/files'
+          - 'PUT /manager/restart'
+          - 'GET /manager/configuration/validation'
+          - 'GET /manager/configuration/{component}/{configuration}'
+          - 'GET /overview/agents'
+          - 'PUT /rootcheck'
+          - 'DELETE /rootcheck'
+          - 'GET /rootcheck/{agent_id}'
+          - 'PUT /rootcheck/{agent_id}'
+          - 'DELETE /rootcheck/{agent_id}'
+          - 'GET ​/rootcheck​/{agent_id}​/pci'
+          - 'GET ​/rootcheck​/{agent_id}​/cis'
+          - 'GET ​/rootcheck​/{agent_id}​/last_scan'
+          - 'GET ​/rules'
+          - 'GET ​/rules/groups'
+          - 'GET ​/rules​/requirement​/{requirement}'
+          - 'GET ​/rules​/files'
+          - 'GET ​/rules​/files​/{filename}​/download'
+          - 'GET ​/sca​/{agent_id}'
+          - 'GET ​/sca​/{agent_id}​/checks​/{policy_id}'
+          - 'GET ​/security​/user​/authenticate'
+          - 'GET ​/security​/actions'
+          - 'GET ​/security​/resources'
+          - 'PUT ​/security​/user/revoke'
+          - 'GET ​/security​/roles'
+          - 'POST ​/security​/roles'
+          - 'DELETE ​/security​/roles'
+          - 'PUT ​/security​/roles/{role_id}'
+          - 'GET ​/security​/policies'
+          - 'POST ​/security​/policies'
+          - 'DELETE ​/security​/policies'
+          - 'PUT ​/security​/policies/{policy_id}'
+          - 'POST ​/security​/roles/{role_id}/policies'
+          - 'DELETE ​/security​/roles/{role_id}/policies'
+          - 'POST ​/security​/users/{username}/roles'
+          - 'DELETE ​/security​/users/{username}/roles'
+          - 'GET ​/security​/users'
+          - 'PUT ​/security​/users'
+          - 'DELETE ​/security​/users'
+          - 'PUT ​/security​/users/{username}'
+          - 'PUT ​/syscheck'
+          - 'GET ​/syscheck/{agent_id}'
+          - 'DELETE ​/syscheck/{agent_id}'
+          - 'GET ​/syscheck/{agent_id}/last_scan'
+          - 'GET ​/syscollector/{agent_id}/hardware'
+          - 'GET ​/syscollector/{agent_id}/hotfixes'
+          - 'GET ​/syscollector/{agent_id}/netaddr'
+          - 'GET ​/syscollector/{agent_id}/netiface'
+          - 'GET ​/syscollector/{agent_id}/netproto'
+          - 'GET ​/syscollector/{agent_id}/os'
+          - 'GET ​/syscollector/{agent_id}/packages'
+          - 'GET ​/syscollector/{agent_id}/ports'
+          - 'GET ​/syscollector/{agent_id}/processes'
+          - 'GET ​/'
 
 tags:
   - name: active-response
@@ -8608,6 +8755,8 @@ paths:
       summary: Get information about a list of Wazuh rules.
       description: Returns a list containing information about each rule such as file where it's defined, description, rule group, status, etc.
       operationId: api.controllers.rules_controller.get_rules
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rules:read'
       parameters:
         - $ref: '#/components/parameters/rule_ids'
         - $ref: '#/components/parameters/pretty'
@@ -8688,6 +8837,8 @@ paths:
       summary: Get all rule groups names.
       description: Returns a list containing all rule groups names.
       operationId: api.controllers.rules_controller.get_rules_groups
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rules:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8730,6 +8881,8 @@ paths:
       summary: Get all specified requirements.
       description: Returns all specified requirement names defined in the Wazuh ruleset.
       operationId: api.controllers.rules_controller.get_rules_requirement
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rules:read'
       parameters:
         - $ref: '#/components/parameters/rule_requirement'
         - $ref: '#/components/parameters/pretty'
@@ -8774,6 +8927,8 @@ paths:
       summary: Get all files which defines rules.
       description: Returns a list containing all files used to define rules and their status.
       operationId: api.controllers.rules_controller.get_rules_files
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rules:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8825,6 +8980,8 @@ paths:
       summary: Download an specified rule file.
       description: Download an specified rule file.
       operationId: api.controllers.rules_controller.get_download_file
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rules:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8846,6 +9003,8 @@ paths:
       summary: 'Get security configuration assessment (SCA) database'
       description: 'Returns the security SCA database of an agent.'
       operationId: api.controllers.sca_controller.get_sca_agent
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/sca:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8913,6 +9072,8 @@ paths:
       summary: 'Get policy monitoring alerts for a given policy'
       description: 'Returns the policy monitoring alerts for a given policy'
       operationId: api.controllers.sca_controller.get_sca_checks
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/sca:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8994,6 +9155,8 @@ paths:
       summary: Run a syscheck scan in all agents.
       description: Runs syscheck and rootcheck in all agents (Wazuh launches both processes simultaneously).
       operationId: api.controllers.syscheck_controller.put_syscheck
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscheck:run'
       parameters:
         - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/pretty'
@@ -9031,6 +9194,8 @@ paths:
       summary: Get File integrity monitoring scan results
       description: Returns FIM findings in the specified agent.
       operationId: api.controllers.syscheck_controller.get_syscheck_agent
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscheck:read'
       parameters:
         - $ref: '#/components/parameters/agent_id'
         - $ref: '#/components/parameters/pretty'
@@ -9107,6 +9272,8 @@ paths:
       summary: Clear FIM scan results for a specified agent.
       description: Clear file integrity monitoring scan results for a specified agent.
       operationId: api.controllers.syscheck_controller.delete_syscheck_agent
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscheck:clear'
       parameters:
         - $ref: '#/components/parameters/agent_id'
         - $ref: '#/components/parameters/pretty'
@@ -9141,6 +9308,8 @@ paths:
       summary: Get last syscheck scan dates.
       description: Returns when the last syscheck scan started and ended. If the scan is still in progress the end date will be unknown.
       operationId: api.controllers.syscheck_controller.get_last_scan_agent
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscheck:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9176,6 +9345,8 @@ paths:
       summary: 'Get all decoders'
       description: "Returns information about all decoders included in ossec.conf. This information include decoder's route, decoder's name, decoder's file among others"
       operationId: api.controllers.decoders_controller.get_decoders
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/decoder:read'
       parameters:
         - $ref: '#/components/parameters/decoder_name'
         - $ref: '#/components/parameters/pretty'
@@ -9230,6 +9401,8 @@ paths:
       summary: 'Get all decoders files'
       description: "Returns information about all decoders files used in Wazuh. This information include decoder's file, decoder's route and decoder's status among others"
       operationId: api.controllers.decoders_controller.get_decoders_files
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/decoder:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9278,6 +9451,8 @@ paths:
       summary: Download an specified decoder file.
       description: Download an specified decoder file.
       operationId: api.controllers.decoders_controller.get_download_file
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/decoder:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9299,6 +9474,8 @@ paths:
       summary: 'Get all parent decoders'
       description: 'Returns information about all parent decoders. A parent decoder is a decoder used as base of other decoders'
       operationId: api.controllers.decoders_controller.get_decoders_parents
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/decoder:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9347,6 +9524,8 @@ paths:
       summary: 'Clear agents syscheck database'
       description: 'Clears the syscheck database for all agents or a list of them'
       operationId: api.controllers.experimental_controller.clear_syscheck_database
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscheck:clear'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9393,6 +9572,8 @@ paths:
       summary: 'Get CIS-CAT results'
       description: "Return CIS-CAT results for all agents or a list of them"
       operationId: api.controllers.experimental_controller.get_cis_cat_results
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/ciscat:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9475,6 +9656,8 @@ paths:
       summary: 'Get hardware info from agents'
       description: "Returns all agents (or a list of them) hardware info. This information include cpu, ram, scan info among others of all agents."
       operationId: api.controllers.experimental_controller.get_hardware_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9558,6 +9741,8 @@ paths:
       summary: 'Get the IPv4 and IPv6 addresses associated to network interfaces'
       description: "Returns all agents (or a list of them) IPv4 and IPv6 addresses associated to their network interfaces. This information include used IP protocol, interface, and IP address among others."
       operationId: api.controllers.experimental_controller.get_network_address_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9624,6 +9809,8 @@ paths:
       summary: 'Get all network interfaces from agents.'
       description: "Returns all agents (or a list of them) network interfaces. This information includes rx, scan, tx info and some network information among other."
       operationId: api.controllers.experimental_controller.get_network_interface_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9732,6 +9919,8 @@ paths:
       summary: 'Get network protocol info from agents'
       description: "Returns all agents (or a list of them) routing configuration for each network interface. This information includes interface, type protocol information among other."
       operationId: api.controllers.experimental_controller.get_network_protocol_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9781,6 +9970,8 @@ paths:
       summary: 'Get OS info from agents'
       description: "Returns all agents (or a list of them) OS info. This information includes os information, architecture information among other."
       operationId: api.controllers.experimental_controller.get_os_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9853,6 +10044,8 @@ paths:
       summary: 'Get packages info from agents'
       description: "Returns all agents (or a list of them) packages info. This information includes name, section, size, and priority information of all packages among other."
       operationId: api.controllers.experimental_controller.get_packages_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9921,6 +10114,8 @@ paths:
       summary: 'Get ports info from agents'
       description: "Returns all agents (or a list of them) ports info. This information includes local IP, Remote IP, protocol information among other"
       operationId: api.controllers.experimental_controller.get_ports_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9992,6 +10187,8 @@ paths:
       summary: 'Get processes info from agents'
       description: "Returns all agents (or a list of them) processes info."
       operationId: api.controllers.experimental_controller.get_processes_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -10101,6 +10298,8 @@ paths:
       summary: 'Get hotfixes info from agents'
       description: "Returns all agents (or a list of them) hotfixes info."
       operationId: api.controllers.experimental_controller.get_hotfixes_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -10148,6 +10347,8 @@ paths:
       summary: 'Get hardware info'
       description: "Returns the agent's hardware info. This information include cpu, ram, scan info among others."
       operationId: api.controllers.syscollector_controller.get_hardware_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -10196,6 +10397,8 @@ paths:
       summary: "Get hotfixes"
       description: "Returns all hotfixes installed by Microsoft(R) in Windows(R) systems (KB... fixes)"
       operationId: api.controllers.syscollector_controller.get_hotfix_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/agent_id'
         - $ref: '#/components/parameters/pretty'
@@ -10239,6 +10442,8 @@ paths:
       summary: 'Get network address info of an agent'
       description: "Returns the agent's network address info. This information include used IP protocol, interface, IP address  among others."
       operationId: api.controllers.syscollector_controller.get_network_address_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -10289,6 +10494,8 @@ paths:
       summary: 'Get network interface info of an agent'
       description: "Returns the agent's network interface info. This information include rx, scan, tx info and some network information among others."
       operationId: api.controllers.syscollector_controller.get_network_interface_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -10373,6 +10580,8 @@ paths:
       summary: 'Get network protocol info of an agent'
       description: "Returns the agent's routing configuration for each network interface."
       operationId: api.controllers.syscollector_controller.get_network_protocol_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -10420,6 +10629,8 @@ paths:
       summary: 'Get OS info of an agent'
       description: "Returns the agent's OS info. This information include os information, architecture information among others of all agents."
       operationId: api.controllers.syscollector_controller.get_os_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -10464,6 +10675,8 @@ paths:
       summary: 'Get packages info of an agent'
       description: "Returns the agent's packages info. This information include name, section, size, priority information of all packages among others."
       operationId: api.controllers.syscollector_controller.get_packages_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -10530,6 +10743,8 @@ paths:
       summary: 'Get ports info of an agent'
       description: "Returns the agent's ports info. This information include local IP, Remote IP, protocol information among others."
       operationId: api.controllers.syscollector_controller.get_ports_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -10601,6 +10816,8 @@ paths:
       summary: 'Get processes info an agent'
       description: "Returns the agent's processes info."
       operationId: api.controllers.syscollector_controller.get_processes_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -10736,6 +10953,7 @@ paths:
       operationId: api.controllers.security_controller.get_rbac_actions
       parameters:
         - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/endpoints_list'
       responses:
         '200':
           description: "Return a list of RBAC actions"
@@ -10839,6 +11057,8 @@ paths:
       summary: 'Gets a list of roles or all roles in the system without specifying anything'
       description: 'For a specific list, indicate the ids separated by commas. Example: ?role_ids=1,2,3'
       operationId: api.controllers.security_controller.get_roles
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:read'
       parameters:
         - $ref: '#/components/parameters/role_ids'
         - $ref: '#/components/parameters/limit'
@@ -10894,6 +11114,8 @@ paths:
       summary: 'Add a new role to the system'
       description: 'Add a new role, all fields need to be specified'
       operationId: api.controllers.security_controller.add_role
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:create'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -10939,6 +11161,8 @@ paths:
       summary: 'Delete a list of roles or all roles in the system'
       description: 'Policies linked to roles are not going to be removed.'
       operationId: api.controllers.security_controller.remove_roles
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
         - $ref: '#/components/parameters/role_ids'
         - $ref: '#/components/parameters/pretty'
@@ -10965,7 +11189,6 @@ paths:
                           name: administratorPolicy
                           policy:
                             actions:
-                              - agent:update
                               - agent:delete
                             effect: allow
                             resources:
@@ -10974,7 +11197,6 @@ paths:
                           name: normalPolicy
                           policy:
                             actions:
-                              - agent:update
                               - agent:delete
                             effect: deny
                             resources:
@@ -11001,6 +11223,8 @@ paths:
       description: 'Modify a role, cannot modify associated policies in this endpoint,
                         at least one property must be indicated'
       operationId: api.controllers.security_controller.update_role
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:update'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -11048,6 +11272,8 @@ paths:
       summary: 'Get all policies in the system'
       description: 'Get all policies in the system, including the administrator policy'
       operationId: api.controllers.security_controller.get_policies
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:read'
       parameters:
         - $ref: '#/components/parameters/policy_ids_rbac'
         - $ref: '#/components/parameters/limit'
@@ -11100,6 +11326,8 @@ paths:
       summary: "Add a new policy"
       description: "Add a new policy, all fields need to be specified"
       operationId: api.controllers.security_controller.add_policy
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:create'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -11150,6 +11378,8 @@ paths:
       summary: 'Delete a list of policies or all policies in the system'
       description: 'Roles linked to policies are not going to be removed.'
       operationId: api.controllers.security_controller.remove_policies
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
         - $ref: '#/components/parameters/policy_ids_rbac'
         - $ref: '#/components/parameters/pretty'
@@ -11202,6 +11432,8 @@ paths:
       summary: 'Modify a specified policy'
       description: 'Modify a policy, at least one property must be indicated'
       operationId: api.controllers.security_controller.update_policy
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:update'
       parameters:
         - $ref: '#/components/parameters/policy_id_rbac'
         - $ref: '#/components/parameters/pretty'
@@ -11260,6 +11492,8 @@ paths:
       summary: 'Create a relation between one role and one or more policies'
       description: 'Create a specify relation role-policy, one role may have multiples policies'
       operationId: api.controllers.security_controller.set_role_policy
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:create'
       parameters:
         - $ref: '#/components/parameters/role_id'
         - $ref: '#/components/parameters/policy_ids_rbac_required'
@@ -11318,6 +11552,8 @@ paths:
       summary: 'Delete a specify relation role-policy'
       description: 'Delete a specify relation role-policy'
       operationId: api.controllers.security_controller.remove_role_policy
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
         - $ref: '#/components/parameters/role_id'
         - $ref: '#/components/parameters/policy_ids_rbac_required'
@@ -11355,6 +11591,8 @@ paths:
       summary: 'Create a specify relation between one user and one role'
       description: 'Create a specify relation role-policy, one user may have multiples roles'
       operationId: api.controllers.security_controller.set_user_role
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:create'
       parameters:
         - $ref: '#/components/parameters/username'
         - $ref: '#/components/parameters/role_ids_required'
@@ -11394,6 +11632,8 @@ paths:
       summary: 'Delete a specify relation user-roles'
       description: 'Delete a specify relation user-roles'
       operationId: api.controllers.security_controller.remove_user_role
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
         - $ref: '#/components/parameters/username'
         - $ref: '#/components/parameters/role_ids_required'
@@ -11430,6 +11670,8 @@ paths:
       summary: 'Get user information'
       description: 'Get the information of a specified user.'
       operationId: api.controllers.security_controller.get_users
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:read'
       parameters:
         - $ref: '#/components/parameters/usernames'
         - $ref: '#/components/parameters/limit'
@@ -11494,6 +11736,8 @@ paths:
       summary: 'Create new user'
       description: 'Adds a new user to the system through the API.'
       operationId: api.controllers.security_controller.create_user
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:create'
       requestBody:
         content:
           application/json:
@@ -11541,6 +11785,8 @@ paths:
       summary: 'Delete an user'
       description: "Delete a user by specifying their name"
       operationId: api.controllers.security_controller.delete_users
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
         - $ref: '#/components/parameters/usernames'
       responses:
@@ -11566,6 +11812,8 @@ paths:
       summary: 'Modify a user'
       description: "Modify a user's password by specifying their name."
       operationId: api.controllers.security_controller.update_user
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:update'
       parameters:
         - $ref: '#/components/parameters/username'
       requestBody:
@@ -11611,6 +11859,9 @@ paths:
       summary: 'Get a full agents overview'
       description: 'Returns a dictionary with a full agents overview.'
       operationId: api.controllers.overview_controller.get_overview_agents
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
+        - $ref: '#/x-rbac-catalog/actions/group:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
