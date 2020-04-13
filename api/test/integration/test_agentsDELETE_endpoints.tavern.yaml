@@ -3,7 +3,7 @@ test_name: DELETE /agents/{agent_id}/group/{group_id}
 
 marks:
   - usefixtures:
-    - agents_tests
+    - base_tests
 
 includes:
   - !include common.yaml
@@ -449,7 +449,6 @@ stages:
 
     # DELETE /groups
   - name: Delete all groups (group2)
-    delay_before: 12
     request:
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
       method: DELETE

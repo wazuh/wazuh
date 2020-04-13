@@ -19,16 +19,6 @@ stages:
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
-     verify_response_with:
-       function: tavern_utils:test_validate_data_dict_field
-       extra_kwargs:
-         fields_dict:
-           agent_version:
-             version: str
-             count: int
-           nodes:
-             node: str
-             count: int
      status_code: 200
      body:
        data:
@@ -55,7 +45,14 @@ stages:
            never_connected: 2
            pending: 0
            total: 13
-         agent_version: !anything
+         agent_version:
+           - count: !anyint
+             version: !anystr
+           - count: !anyint
+             version: !anystr
+           - count: !anyint
+             version: !anystr
+           - count: !anyint
          groups:
            - configSum: !anystr
              count: !anyint
@@ -96,4 +93,12 @@ stages:
              registerIP: any
              status: active
              version: !anystr
-         nodes: !anything
+         nodes:
+           - count: !anyint
+             node_name: !anything
+           - count: !anyint
+             node_name: !anything
+           - count: !anyint
+             node_name: !anything
+           - count: !anyint
+             node_name: !anything

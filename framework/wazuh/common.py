@@ -9,13 +9,13 @@ from functools import wraps
 from grp import getgrnam
 from pwd import getpwnam
 from typing import Dict
-from copy import deepcopy
+
 
 try:
     here = os.path.abspath(os.path.dirname(__file__))
     with open(os.path.join(here, 'wazuh.json'), 'r') as f:
         metadata = json.load(f)
-except (FileNotFoundError, PermissionError):
+except Exception:
     metadata = {
         'install_type': 'server',
         'installation_date': '',
@@ -149,7 +149,7 @@ def context_cached(key):
             if _context_cache[key].get() is None:
                 result = func(*args, **kwargs)
                 _context_cache[key].set(result)
-            return deepcopy(_context_cache[key].get())
+            return _context_cache[key].get()
         return wrapper
     return decorator
 

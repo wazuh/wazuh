@@ -611,7 +611,7 @@ class WazuhJSONEncoder(json.JSONEncoder):
                                            '__object__': obj.encode_json()}
                       }
             return result
-        elif isinstance(obj, (datetime.datetime, datetime.date)):
+        elif isinstance(obj, datetime.datetime):
             return {'__wazuh_datetime__': obj.isoformat()}
 
         return json.JSONEncoder.default(self, obj)

@@ -825,7 +825,7 @@ stages:
     response:
       status_code: 200
       headers:
-        content-type: 'application/xml; charset=utf-8'
+        content-type: application/xml
 
     # GET /decoders/files/{wrong_file}/download
   - name: Try to download a decoders file using a wrong filename

@@ -5,27 +5,36 @@
 
 
 import glob
+import json
 import os
-from importlib import reload
 from unittest.mock import patch
 
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
-from yaml import safe_load
+from sqlalchemy.orm import sessionmaker
 
 from wazuh.exception import WazuhError
+from wazuh.rbac.decorators import expose_resources
 
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'security/')
+with patch('wazuh.common.ossec_uid'):
+    with patch('wazuh.common.ossec_gid'):
+        import wazuh.rbac.decorators
+        from wazuh.tests.util import RBAC_bypasser
+
+        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+        from wazuh import security
+        from wazuh.results import WazuhResult
 
 # Params
 
 security_cases = list()
+test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'security/')
 os.chdir(test_data_path)
 
-for file in glob.glob('*.yml'):
+for file in glob.glob('*.json'):
     with open(os.path.join(test_data_path + file)) as f:
-        tests_cases = safe_load(f)
+        tests_cases = json.load(f)
 
     for function_, test_cases in tests_cases.items():
         for test_case in test_cases:
@@ -39,28 +48,6 @@ def create_memory_db(sql_file, session):
             if '* ' not in line and '/*' not in line and '*/' not in line and line != '':
                 session.execute(line)
                 session.commit()
-
-
-@pytest.fixture(scope='function')
-def db_setup():
-    with patch('wazuh.common.ossec_uid'), patch('wazuh.common.ossec_gid'):
-        with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
-            with patch('shutil.chown'), patch('os.chmod'):
-                with patch('api.constants.SECURITY_PATH', new=test_data_path):
-                    import wazuh.rbac.orm as orm
-                    reload(orm)
-                    import wazuh.rbac.decorators as decorators
-                    from wazuh.tests.util import RBAC_bypasser
-
-                    decorators.expose_resources = RBAC_bypasser
-                    from wazuh import security
-                    from wazuh.results import WazuhResult
-    try:
-        create_memory_db('schema_security_test.sql', security.orm._Session())
-    except OperationalError:
-        pass
-
-    yield security, WazuhResult
 
 
 def affected_are_equal(target_dict, expected_dict):
@@ -80,9 +67,22 @@ def failed_are_equal(target_dict, expected_dict):
     return result
 
 
+@pytest.fixture
+def db_setup():
+    def _method(session):
+        try:
+            create_memory_db('schema_security_test.sql', session)
+        except OperationalError:
+            pass
+
+    return _method
+
+
 @pytest.mark.parametrize('security_function, params, expected_result', security_cases)
-def test_security(db_setup, security_function, params, expected_result):
-    """Verify the entire security module.
+@patch('wazuh.security.orm._engine', create_engine(f'sqlite://'))
+@patch('wazuh.security.orm._Session', sessionmaker(bind=create_engine(f'sqlite://')))
+def test_get_users(db_setup, security_function, params, expected_result):
+    """Checks that the dict returned is correct
 
     Parameters
     ----------
@@ -95,19 +95,18 @@ def test_security(db_setup, security_function, params, expected_result):
     expected_result : list of dict
         This is a list that contains the expected results .
     """
-    # with patch('wazuh.security.orm._engine', create_engine(f'sqlite://')):
-    #     with patch('wazuh.security.orm._Session', sessionmaker(bind=create_engine(f'sqlite://'))):
-    try:
-        security, _ = db_setup
-        result = getattr(security, security_function)(**params).to_dict()
-        assert affected_are_equal(result, expected_result)
-        assert failed_are_equal(result, expected_result)
-    except WazuhError as e:
-        assert str(e.code) == list(expected_result['failed_items'].keys())[0]
+    with patch('wazuh.security.orm._engine', create_engine(f'sqlite://')):
+        with patch('wazuh.security.orm._Session', sessionmaker(bind=create_engine(f'sqlite://'))):
+            db_setup(security.orm._Session())
+            try:
+                result = getattr(security, security_function)(**params).to_dict()
+                assert affected_are_equal(result, expected_result)
+                assert failed_are_equal(result, expected_result)
+            except WazuhError as e:
+                assert str(e.code) == list(expected_result['failed_items'].keys())[0]
 
 
-def test_revoke_tokens(db_setup):
+def test_revoke_tokens():
     """Checks that the return value of revoke_tokens is a WazuhResult."""
-    security, WazuhResult = db_setup
     result = security.revoke_tokens()
     assert isinstance(result, WazuhResult)

@@ -35,7 +35,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: !anystr
+        message: Command sent to all agents
 
   - name: Send a message to an agent (Status=Active) (Deny)
     request:
@@ -50,10 +50,21 @@ stages:
       params:
         list_agents: '002'
     response:
-      status_code: 400
+      status_code: 200
       body:
-        code: 4000
-        detail: !anystr
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4000
+                message: 'Permission denied: Resource type: agent:id'
+                remediation: Please, make sure you have permissions to execute current request,
+                  for more information on setting up permissions please visit XXXX
+              id:
+                - '002'
+          total_affected_items: 0
+          total_failed_items: 1
+        message: Could not send command to any agent
 
   - name: Send a message to a list of agents
     request:
@@ -75,21 +86,22 @@ stages:
           failed_items:
             - error:
                 code: 1651
-                message: !anystr
-                remediation: !anystr
+                message: Active response - Agent is not active
+                remediation: !anything
               id:
                 - '011'
             - error:
                 code: 4000
-                message: !anystr
-                remediation: !anystr
+                message: 'Permission denied: Resource type: agent:id'
+                remediation: Please, make sure you have permissions to execute current request,
+                  for more information on setting up permissions please visit XXXX
               id:
                 - '002'
                 - '005'
                 - '010'
           total_affected_items: 2
           total_failed_items: 4
-        message: !anystr
+        message: Could not send command to some agents
 
   - name: Try to send a message to an agent (status=disconnected/never_connected) (Allow)
     request:
@@ -111,13 +123,13 @@ stages:
           failed_items:
             - error:
                 code: 1651
-                message: !anystr
-                remediation: !anystr
+                message: Active response - Agent is not active
+                remediation: !anything
               id:
                 - '009'
           total_affected_items: 0
           total_failed_items: 1
-        message: !anystr
+        message: Could not send command to any agent
 
   - name: Try to send a message to an unexisting agent (Deny)
     request:
@@ -132,10 +144,22 @@ stages:
       params:
         list_agents: 251,252
     response:
-      status_code: 400
+      status_code: 200
       body:
-        code: 4000
-        detail: !anystr
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4000
+                message: 'Permission denied: Resource type: agent:id'
+                remediation: Please, make sure you have permissions to execute current request,
+                  for more information on setting up permissions please visit XXXX
+              id:
+                - '251'
+                - '252'
+          total_affected_items: 0
+          total_failed_items: 2
+        message: Could not send command to any agent
 
 ---
 test_name: PUT /active-response
@@ -161,17 +185,18 @@ stages:
           failed_items:
             - error:
                 code: 1651
-                message: !anystr
-                remediation: !anystr
+                message: Active response - Agent is not active
+                remediation: !anything
               id:
                 - '009'
                 - '011'
             - error:
                 code: 1750
-                message: !anystr
-                remediation: !anystr
+                message: Could not send restart command, active-response is disabled in the
+                  agent
+                remediation: You can activate it in agents' `WAZUH_HOME/etc/ossec.conf`
               id:
                 - '003'
           total_affected_items: 3
           total_failed_items: 3
-        message: !anystr
+        message: Could not send command to some agents

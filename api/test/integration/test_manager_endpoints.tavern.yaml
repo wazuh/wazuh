@@ -299,7 +299,7 @@ stages:
     response:
       status_code: 400
       body:
-        code: 1308
+        code: 1310
         dapi_errors: !anything
         detail: !anystr
         remediation: !anystr
@@ -792,7 +792,7 @@ stages:
     response:
       status_code: 400
       body:
-        code: 1906
+        code: 1006
         dapi_errors: !anything
         detail: !anystr
         remediation: !anystr
@@ -812,7 +812,7 @@ stages:
     response:
       status_code: 400
       body:
-        code: 1906
+        code: 1006
         dapi_errors: !anything
         detail: !anystr
         remediation: !anystr
@@ -832,7 +832,7 @@ stages:
     response:
       status_code: 400
       body:
-        code: 1906
+        code: 1006
         dapi_errors: !anything
         detail: !anystr
         remediation: !anystr

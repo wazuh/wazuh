@@ -6,12 +6,13 @@ import datetime
 import logging
 
 from aiohttp import web
+from dateutil.parser import parse
 
 import wazuh.manager as manager
 import wazuh.stats as stats
 from api.encoder import dumps
 from api.models.base_model_ import Data
-from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
+from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh import common
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhError
@@ -97,12 +98,18 @@ async def get_stats(request, pretty=False, wait_for_complete=False, date=None):
     :param wait_for_complete: Disable timeout response
     :param date: Selects the date for getting the statistical information. Format ISO 8601.
     """
-    if not date:
-        date = datetime.datetime.today()
+    if date:
+        today = parse(date)
     else:
-        date = deserialize_date(date)
+        today = datetime.datetime.now()
+    year = str(today.year)
+    month = str(today.month)
+    day = str(today.day)
 
-    f_kwargs = {'date': date}
+    f_kwargs = {'year': year,
+                'month': month,
+                'day': day,
+                'date': True if date else False}
 
     dapi = DistributedAPI(f=stats.totals,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -312,9 +319,9 @@ async def put_files(request, body, overwrite=False, pretty=False, wait_for_compl
     try:
         body = body.decode('utf-8')
     except UnicodeDecodeError:
-        raise_if_exc(WazuhError(1911))
+        raise WazuhError(1911)
     except AttributeError:
-        raise_if_exc(WazuhError(1912))
+        raise WazuhError(1912)
 
     f_kwargs = {'path': path,
                 'overwrite': overwrite,

@@ -13,7 +13,7 @@ import wazuh.manager as manager
 import wazuh.stats as stats
 from api.encoder import dumps
 from api.models.base_model_ import Data
-from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
+from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhError
@@ -257,13 +257,21 @@ async def get_stats_node(request, node_id, pretty=False, wait_for_complete=False
     :param wait_for_complete: Disable timeout response
     :param date: Selects the date for getting the statistical information. Format YYYY-MM-DD.
     """
-    if not date:
-        date = datetime.datetime.today()
+    if date:
+        try:
+            date = datetime.datetime.strptime(date, '%Y-%m-%d')
+            today = False
+        except ValueError:
+            raise WazuhError(1301)
     else:
-        date = deserialize_date(date)
+        date = datetime.datetime.today()
+        today = True
 
     f_kwargs = {'node_id': node_id,
-                'date': date}
+                'year': date.year,
+                'month': date.month,
+                'day': date.day,
+                'today': today}
 
     nodes = await get_system_nodes()
     dapi = DistributedAPI(f=stats.totals,
@@ -503,9 +511,9 @@ async def put_files_node(request, body, node_id, path, overwrite=False, pretty=F
     try:
         body = body.decode('utf-8')
     except UnicodeDecodeError:
-        raise_if_exc(WazuhError(1911))
+        raise WazuhError(1911)
     except AttributeError:
-        raise_if_exc(WazuhError(1912))
+        raise WazuhError(1912)
 
     f_kwargs = {'node_id': node_id,
                 'path': path,

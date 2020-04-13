@@ -60,11 +60,14 @@ stages:
 ---
 test_name: DELETE /manager/files
 
+marks:
+  - xfail
+
 stages:
 
   - name: Delete a file (Allowed)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}//manager/files"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -75,7 +78,7 @@ stages:
 
   - name: Delete a file (Denied)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}//manager/files"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -89,11 +92,14 @@ stages:
 ---
 test_name: GET /manager/files
 
+marks:
+  - xfail
+
 stages:
 
   - name: Read a file (Denied)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}//manager/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -107,11 +113,14 @@ stages:
 ---
 test_name: PUT /manager/files
 
+marks:
+  - xfail
+
 stages:
 
   - name: Upload a file (Allowed)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}//manager/files"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -123,7 +132,7 @@ stages:
 
   - name: Upload a file (Indirectly denied, can't delete while overwriting)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}//manager/files"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -132,20 +141,9 @@ stages:
         path: 'etc/rules/local_rules.xml'
         overwrite: True
     response:
-      status_code: 200
+      status_code: 400
       body:
-        data:
-          affected_items: []
-          total_affected_items: 0
-          total_failed_items: 1
-          failed_items:
-            - id:
-                - 'etc/rules/local_rules.xml'
-              error:
-                code: 4000
-                message: !anystr
-                remediation: !anystr
-        message: !anystr
+        code: 4000
 
 ---
 test_name: GET /manager/info

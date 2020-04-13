@@ -3,7 +3,7 @@ test_name: POST /agents
 
 marks:
   - usefixtures:
-    - agents_tests
+    - base_tests
 
 includes:
   - !include common.yaml

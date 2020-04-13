@@ -3281,14 +3281,6 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/Role_id'
-    security_position:
-      in: query
-      name: 'position'
-      description: 'Security position for roles/policies'
-      required: False
-      schema:
-        type: integer
-        minimum: 0
     role_name:
       in: query
       name: role_name
@@ -4132,15 +4124,14 @@ components:
     file_path:
       in: query
       name: file_path
-      description: Full path to the WPK file. The file must be on a folder on the Wazuh's installation directory (by default, <code>/var/ossec</code>).
-      required: True
+      description: Path to the WPK file. The file must be on a folder on the Wazuh's installation directory (by default, <code>/var/ossec</code>).
       schema:
         type: string
         format: path
     installer:
       in: query
       name: installer
-      description: Installation script. Default is <code>upgrade.sh</code> or <code>upgrade.bat</code> for windows agents.
+      description: Installation script.
       schema:
         type: string
         format: alphanumeric
@@ -10708,7 +10699,6 @@ paths:
       parameters:
         - $ref: '#/components/parameters/role_id'
         - $ref: '#/components/parameters/policy_ids_rbac_required'
-        - $ref: '#/components/parameters/security_position'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -10793,17 +10783,16 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /security/users/{username}/roles:
+  /security/user/{username}/roles:
     post:
       tags:
         - security
-      summary: 'Create a specify relation between one user and one role'
+      summary: 'Create a specify relation between one user and one or more roles'
       description: 'Create a specify relation role-policy, one user may have multiples roles'
       operationId: api.controllers.security_controller.set_user_role
       parameters:
         - $ref: '#/components/parameters/username'
         - $ref: '#/components/parameters/role_ids_required'
-        - $ref: '#/components/parameters/security_position'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:

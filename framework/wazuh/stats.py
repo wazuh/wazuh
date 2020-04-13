@@ -27,20 +27,49 @@ node_id = get_node().get('node') if cluster_enabled else None
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_config"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def totals(date):
+def totals(year, month, day, today=False):
     """
     Returns the totals file.
-    :param date: date object with the date value of the stats
+    :param year: Year in YYYY format, e.g. 2016
+    :param month: Month in number or 3 first letters, e.g. Feb or 2
+    :param day: Day, e.g. 9
+    :param today: True if date is today, False otherwise
     :return: Array of dictionaries. Each dictionary represents an hour.
     """
+    try:
+        year = int(year)
+        day = int(day)
 
+        if year < 0 or day < 0 or day > 31:
+            raise WazuhError(1307)
+
+        day = "%02d" % day
+    except ValueError:
+        raise WazuhError(1307)
+
+    if month not in MONTHS:
+        try:
+            index = int(month)
+        except ValueError:
+            raise WazuhError(1307)
+
+        if index < 1 or index > 12:
+            raise WazuhError(1307)
+
+        try:
+            month = MONTHS[index - 1]
+        except IndexError:
+            raise WazuhError(1307)
     stat_filename = ""
     try:
         stat_filename = os.path.join(
-            common.stats_path, "totals", str(date.year), MONTHS[date.month-1], f"ossec-totals-{date.day}.log")
+            common.stats_path, "totals", str(year), str(month), ("ossec-totals-" + str(day) + ".log"))
         stats = open(stat_filename, 'r')
     except IOError:
-        raise WazuhError(1308, extra_message=stat_filename)
+        if today:
+            raise WazuhError(1308, extra_message=stat_filename)
+        else:
+            raise WazuhError(1310, extra_message=stat_filename)
 
     response = []
     alerts = []

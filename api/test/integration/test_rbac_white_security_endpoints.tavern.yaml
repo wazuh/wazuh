@@ -151,160 +151,226 @@ stages:
         data:
           affected_items:
             - id: 1
-              name: administrator
-              rule:
-                FIND:
-                  r'^auth[a-zA-Z]+$':
-                    - full_admin
-              policies:
-                - 1
-                - 3
-                - 4
-                - 9
-                - 6
-                - 7
-                - 8
-              users:
-                - wazuh
-            - id: 2
-              name: readonly
-              rule:
-                FIND:
-                  r'^auth[a-zA-Z]+$':
-                    - readonly
-              policies:
-                - 2
-                - 6
-                - 7
-                - 8
-              users:
-                - wazuh-wui
-            - id: 3
-              name: users_admin
-              rule:
-                FIND:
-                  r'^auth[a-zA-Z]+$':
-                    - users_admin
-              policies:
-                - 5
-              users: []
-            - id: 4
-              name: agents_readonly
-              rule:
-                FIND:
-                  r'^auth[a-zA-Z]+$':
-                    - agents_readonly
-              policies:
-                - 2
-              users: []
-            - id: 5
-              name: agents_admin
-              rule:
-                FIND:
-                  r'^auth[a-zA-Z]+$':
-                    - agents_admin
-              policies:
-                - 1
-              users: []
-            - id: 6
-              name: cluster_readonly
-              rule:
-                FIND:
-                  r'^auth[a-zA-Z]+$':
-                    - cluster_readonly
-              policies:
-                - 10
-              users: []
-            - id: 7
-              name: cluster_admin
-              rule:
-                FIND:
-                  r'^auth[a-zA-Z]+$':
-                    - cluster_admin
-              policies:
-                - 9
-              users: []
-            - id: 8
               name: wazuh
+              policies:
+                - id: 1
+                  name: wazuhPolicy
+                  policy:
+                    actions:
+                      - "*:*"
+                    effect: allow
+                    resources:
+                      - "*:*"
               rule:
                 FIND:
                   r'^auth[a-zA-Z]+$':
                     - administrator
-              policies:
-                - 11
-              users:
-                - wazuh
-            - id: 9
+            - id: 2
               name: wazuh-wui
+              policies:
+                - id: 1
+                  name: wazuhPolicy
+                  policy:
+                    actions:
+                      - "*:*"
+                    effect: allow
+                    resources:
+                      - "*:*"
               rule:
                 FIND:
                   r'^auth[a-zA-Z]+$':
                     - administrator-app
-              policies:
-                - 11
-              users:
-                - wazuh-wui
-                - administrator
-                - ossec
-            - id: 10
+            - id: 3
               name: technical
+              policies:
+                - id: 1
+                  name: wazuhPolicy
+                  policy:
+                    actions:
+                      - "*:*"
+                    effect: allow
+                    resources:
+                      - "*:*"
+                - id: 2
+                  name: wazuh-wuiPolicy
+                  policy:
+                    actions:
+                      - agent:create
+                    effect: allow
+                    resources:
+                      - agent:id:001
+                      - agent:id:002
+                      - agent:id:003
+                - id: 5
+                  name: normalPolicy
+                  policy:
+                    actions:
+                      - agent:update
+                      - agent:delete
+                    effect: deny
+                    resources:
+                      - agent:id:*
+                - id: 8
+                  name: policy2
+                  policy:
+                    actions:
+                      - role:read
+                    effect: allow
+                    resources:
+                      - role:id:1
               rule:
                 MATCH:
                   definition: technicalRule
+            - id: 4
+              name: administrator
               policies:
-                - 12
-                - 11
-                - 18
-                - 15
-              users:
-                - rbac
-            - id: 11
-              name: administrator_test
+                - id: 4
+                  name: administratorPolicy
+                  policy:
+                    actions:
+                      - agent:update
+                      - agent:delete
+                    effect: allow
+                    resources:
+                      - agent:id:*
+                - id: 5
+                  name: normalPolicy
+                  policy:
+                    actions:
+                      - agent:update
+                      - agent:delete
+                    effect: deny
+                    resources:
+                      - agent:id:*
               rule:
                 MATCH:
                   definition: administratorRule
-              policies:
-                - 15
-                - 14
-              users:
-                - normal
-                - rbac
-            - id: 12
+            - id: 5
               name: normalUser
+              policies:
+                - id: 2
+                  name: wazuh-wuiPolicy
+                  policy:
+                    actions:
+                      - agent:create
+                    effect: allow
+                    resources:
+                      - agent:id:001
+                      - agent:id:002
+                      - agent:id:003
+                - id: 3
+                  name: technicalPolicy
+                  policy:
+                    actions:
+                      - agent:create
+                    effect: allow
+                    resources:
+                      - "*:*:*"
+                - id: 10
+                  name: policy4
+                  policy:
+                    actions:
+                      - policy:delete
+                    effect: deny
+                    resources:
+                      - policy:id:*
               rule:
                 MATCH:
                   definition: normalRule
-              policies:
-                - 12
-                - 13
-                - 20
-              users:
-                - normal
-                - ossec
-                - rbac
-            - id: 13
+            - id: 6
               name: ossec
+              policies:
+                - id: 1
+                  name: wazuhPolicy
+                  policy:
+                    actions:
+                      - "*:*"
+                    effect: allow
+                    resources:
+                      - "*:*"
+                - id: 2
+                  name: wazuh-wuiPolicy
+                  policy:
+                    actions:
+                      - agent:create
+                    effect: allow
+                    resources:
+                      - agent:id:001
+                      - agent:id:002
+                      - agent:id:003
+                - id: 3
+                  name: technicalPolicy
+                  policy:
+                    actions:
+                      - agent:create
+                    effect: allow
+                    resources:
+                      - "*:*:*"
+                - id: 4
+                  name: administratorPolicy
+                  policy:
+                    actions:
+                      - agent:update
+                      - agent:delete
+                    effect: allow
+                    resources:
+                      - agent:id:*
+                - id: 5
+                  name: normalPolicy
+                  policy:
+                    actions:
+                      - agent:update
+                      - agent:delete
+                    effect: deny
+                    resources:
+                      - agent:id:*
+                - id: 6
+                  name: ossecPolicy
+                  policy:
+                    actions:
+                      - role:read
+                    effect: allow
+                    resources:
+                      - role:id:*
+                - id: 7
+                  name: policy1
+                  policy:
+                    actions:
+                      - role:read
+                    effect: deny
+                    resources:
+                      - role:id:*
+                - id: 8
+                  name: policy2
+                  policy:
+                    actions:
+                      - role:read
+                    effect: allow
+                    resources:
+                      - role:id:1
+                - id: 9
+                  name: policy3
+                  policy:
+                    actions:
+                      - policy:read
+                    effect: allow
+                    resources:
+                      - policy:id:1
+                - id: 10
+                  name: policy4
+                  policy:
+                    actions:
+                      - policy:delete
+                    effect: deny
+                    resources:
+                      - policy:id:*
               rule:
                 MATCH:
                   definition: ossecRule
-              policies:
-                - 12
-                - 18
-                - 17
-                - 20
-                - 15
-                - 19
-                - 11
-                - 16
-                - 13
-                - 14
-              users:
-                - normal
-          total_affected_items: 13
-          total_failed_items: 0
           failed_items: []
+          total_affected_items: 6
+          total_failed_items: 0
         message: All specified roles were shown
-
 
   - name: Get a specified role by its id (Allow)
     request:
@@ -320,24 +386,23 @@ stages:
         data:
           affected_items:
             - id: 1
-              name: administrator
+              name: wazuh
+              policies:
+                - id: 1
+                  name: wazuhPolicy
+                  policy:
+                    actions:
+                      - "*:*"
+                    effect: allow
+                    resources:
+                      - "*:*"
               rule:
                 FIND:
                   r'^auth[a-zA-Z]+$':
-                    - full_admin
-              policies:
-                - 1
-                - 3
-                - 4
-                - 9
-                - 6
-                - 7
-                - 8
-              users:
-                - wazuh
+                    - administrator
+          failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-          failed_items: []
         message: All specified roles were shown
 
   - name: Get a specified role by its id (It doesn't exist but we have all the permissions on the resource roles)
@@ -378,36 +443,35 @@ stages:
         data:
           affected_items:
             - id: 1
-              name: administrator
+              name: wazuh
+              policies:
+                - id: 1
+                  name: wazuhPolicy
+                  policy:
+                    actions:
+                      - "*:*"
+                    effect: allow
+                    resources:
+                      - "*:*"
               rule:
                 FIND:
                   r'^auth[a-zA-Z]+$':
-                    - full_admin
-              policies:
-                - 1
-                - 3
-                - 4
-                - 9
-                - 6
-                - 7
-                - 8
-              users:
-                - wazuh
+                    - administrator
             - id: 2
-              name: readonly
+              name: wazuh-wui
+              policies:
+                - id: 1
+                  name: wazuhPolicy
+                  policy:
+                    actions:
+                      - "*:*"
+                    effect: allow
+                    resources:
+                      - "*:*"
               rule:
                 FIND:
                   r'^auth[a-zA-Z]+$':
-                    - readonly
-              policies:
-                - 2
-                - 6
-                - 7
-                - 8
-              users:
-                - wazuh-wui
-          total_affected_items: 2
-          total_failed_items: 1
+                    - administrator-app
           failed_items:
             - error:
                 code: 4002
@@ -415,6 +479,8 @@ stages:
                 remediation: Please, create the specified role with the endpoint POST /security/roles
               id:
                 - '99'
+          total_affected_items: 2
+          total_failed_items: 1
         message: Some roles could not be shown
 
 ---
@@ -489,7 +555,7 @@ stages:
 
   - name: Update one specified role in the system (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/10"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/3"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -503,21 +569,50 @@ stages:
       body:
         data:
           affected_items:
-            - id: 10
+            - id: 3
               name: technicalModified
+              policies:
+                - id: 1
+                  name: wazuhPolicy
+                  policy:
+                    actions:
+                      - "*:*"
+                    effect: allow
+                    resources:
+                      - "*:*"
+                - id: 2
+                  name: wazuh-wuiPolicy
+                  policy:
+                    actions:
+                      - agent:create
+                    effect: allow
+                    resources:
+                      - agent:id:001
+                      - agent:id:002
+                      - agent:id:003
+                - id: 5
+                  name: normalPolicy
+                  policy:
+                    actions:
+                      - agent:update
+                      - agent:delete
+                    effect: deny
+                    resources:
+                      - agent:id:*
+                - id: 8
+                  name: policy2
+                  policy:
+                    actions:
+                      - role:read
+                    effect: allow
+                    resources:
+                      - role:id:1
               rule:
                 FIND$:
                   definition: technicalRuleModified
-              policies:
-                - 12
-                - 11
-                - 18
-                - 15
-              users:
-                - rbac
+          failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-          failed_items: []
         message: Role updated correctly
 
   - name: Update one specified role in the system (Deny)
@@ -543,7 +638,7 @@ stages:
 
   - name: Update one specified policy in the system (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/15"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/5"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -562,40 +657,40 @@ stages:
       body:
         data:
           affected_items:
-            - id: 15
+            - id: 5
               name: normalPolicyModified
               policy:
                 actions:
                   - agent:delete
+                effect: deny
                 resources:
                   - agent:id:099
                   - agent:id:002
                   - agent:id:003
-                effect: deny
               roles:
-                - id: 10
+                - id: 3
                   name: technicalModified
                   rule:
                     FIND$:
                       definition: technicalRuleModified
-                - id: 11
-                  name: administrator_test
+                - id: 4
+                  name: administrator
                   rule:
                     MATCH:
                       definition: administratorRule
-                - id: 13
+                - id: 6
                   name: ossec
                   rule:
                     MATCH:
                       definition: ossecRule
+          failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-          failed_items: []
         message: Policy updated correctly
 
   - name: Update one specified policy in the system (Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/14"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/4"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -619,12 +714,12 @@ stages:
 
   - name: Create one specified link between one user and a list of roles (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/python/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/python/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        role_ids: 10,11
+        role_ids: 3,4
     response:
       status_code: 400
       body:
@@ -632,12 +727,12 @@ stages:
 
   - name: Create one specified link between one user and a list of roles (Allow and Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/rbac/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/rbac/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        role_ids: 10,11,12,13
+        role_ids: 3,4,5,6
     response:
       status_code: 400
       body:
@@ -650,34 +745,34 @@ stages:
 
   - name: Create one specified link between one role and a list of policies (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/11/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/4/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        policy_ids: 15,16,17
+        policy_ids: 5,6,7
     response:
       status_code: 200
       body:
         data:
           affected_items: []
-          total_affected_items: 0
-          total_failed_items: 3
           failed_items:
             - error:
                 code: 4000
                 message: 'Permission denied: Resource type: policy:id'
-                remediation: Please, make sure you have permissions to execute current request,
-                  for more information on setting up permissions please visit XXXX
+                remediation: !anystr
               id:
-                - '16'
-                - '17'
+                - '6'
+                - '7'
             - error:
                 code: 4011
-                message: The specified role-policy link already exist
+                message: !anystr
+                remediation: !anything
               id:
-                - '15'
-        message: No link created to role 11
+                - '5'
+          total_affected_items: 0
+          total_failed_items: 3
+        message: No link created to role 4
 
 ---
 test_name: CREATE LINK USER-ROLES RBAC
@@ -686,12 +781,12 @@ stages:
 
   - name: Create one specified link between one user and a list of roles (Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/python/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/python/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        role_ids: 10,11
+        role_ids: 3,4
     response:
       status_code: 400
       body:
@@ -699,12 +794,12 @@ stages:
 
   - name: Create one specified link between one user and a list of roles (Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/rbac/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/rbac/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        role_ids: 10,11,12,13
+        role_ids: 3,4,5,6
     response:
       status_code: 400
       body:
@@ -717,12 +812,12 @@ stages:
 
   - name: Delete one specified link between one user and a list of roles (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/python/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/python/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        role_ids: 10,11
+        role_ids: 3,4
     response:
       status_code: 400
       body:
@@ -730,12 +825,12 @@ stages:
 
   - name: Delete one specified link between one user and a list of roles (Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/rbac/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/rbac/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        role_ids: 10,11,12,13
+        role_ids: 3,4,5,6
     response:
       status_code: 400
       body:
@@ -748,12 +843,12 @@ stages:
 
   - name: Delete one specified link between one role and a list of policies (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/11/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/4/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        policy_ids: 15,16,17
+        policy_ids: 5,6,7
     response:
       status_code: 400
       body:
@@ -876,7 +971,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        role_ids: 9,10
+        role_ids: 2,3
     response:
       status_code: 400
       body:
@@ -910,7 +1005,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        policy_ids: 12,13
+        policy_ids: 2,3
     response:
       status_code: 400
       body:
@@ -956,7 +1051,7 @@ stages:
       body:
         data:
           affected_items:
-            - id: 14
+            - id: 7
               name: newUserRole
               policies: []
               rule:
@@ -987,7 +1082,7 @@ stages:
       body:
         data:
           affected_items:
-            - id: 21
+            - id: 11
               name: newUserPolicy
               policy:
                 actions:

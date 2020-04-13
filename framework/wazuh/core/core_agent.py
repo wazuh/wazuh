@@ -9,6 +9,7 @@ import socket
 from base64 import b64encode
 from datetime import date, datetime, timedelta, timezone
 from glob import glob
+from json import loads
 from os import chown, chmod, path, makedirs, urandom, stat, remove
 from platform import platform
 from shutil import copyfile, rmtree
@@ -16,7 +17,6 @@ from time import time, sleep
 
 import requests
 
-from api import configuration as api_configuration
 from wazuh import common, configuration
 from wazuh.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
@@ -51,7 +51,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         result = datetime.utcnow() - timedelta(seconds=common.limit_seconds)
         self.request['time_active'] = result.replace(tzinfo=timezone.utc).timestamp()
         if status_filter['operator'] == '!=':
-            self.query += ' NOT '
+            self.query += 'NOT '
 
         if status_filter['value'] == 'active':
             self.query += '(last_keepalive >= :time_active AND version IS NOT NULL) or id = 0'
@@ -279,6 +279,19 @@ class Agent:
 
         return send_restart_command(self.id)
 
+    @staticmethod
+    def use_only_authd():
+        """Function to know the value of the option "use_only_authd" in API configuration
+        """
+        try:
+            with open(common.api_config_path) as f:
+                data = f.readlines()
+
+            use_only_authd = list(filter(lambda x: x.strip().startswith('config.use_only_authd'), data))
+
+            return loads(use_only_authd[0][:-2].strip().split(' = ')[1]) if use_only_authd != [] else False
+        except IOError:
+            return False
 
     def remove(self, backup=False, purge=False):
         """Deletes the agent.
@@ -291,7 +304,7 @@ class Agent:
         manager_status = get_manager_status()
         is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
 
-        if api_configuration.read_api_config()['use_only_authd']:
+        if self.use_only_authd():
             if not is_authd_running:
                 raise WazuhInternalError(1726)
 
@@ -448,7 +461,7 @@ class Agent:
                 try:
                     ipaddress.ip_network(ip)
                 except Exception:
-                    raise WazuhError(1706, extra_message=ip)
+                    WazuhError(1706, extra_message=ip)
             else:
                 try:
                     ipaddress.ip_address(ip)
@@ -458,7 +471,7 @@ class Agent:
         manager_status = get_manager_status()
         is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
 
-        if api_configuration.read_api_config()['use_only_authd']:
+        if self.use_only_authd():
             if not is_authd_running:
                 raise WazuhInternalError(1726)
 
@@ -670,7 +683,7 @@ class Agent:
             raise WazuhInternalError(1600)
 
         conn = Connection(db_global[0])
-        query = "SELECT {0} FROM agent WHERE id = {1}".format(attr, self.id)
+        query = "SELECT :attr FROM agent WHERE id = :id"
         request = {'attr': attr, 'id': self.id}
         conn.execute(query, request)
         query_value = str(conn.fetch())
@@ -709,8 +722,6 @@ class Agent:
         :param replace_list: List of Group names that can be replaced
         :return: Agent ID.
         """
-        if replace_list is None:
-            replace_list = []
         if not force:
             # Check if agent exists, it is not 000 and the group exists
             Agent(agent_id).get_basic_information()
@@ -771,10 +782,7 @@ class Agent:
             if agent_info['lastKeepAlive'] == 0:
                 remove_agent = True
             else:
-                if isinstance(agent_info['lastKeepAlive'], datetime):
-                    last_date = agent_info['lastKeepAlive']
-                else:
-                    last_date = datetime.strptime(agent_info['lastKeepAlive'], '%Y-%m-%d %H:%M:%S')
+                last_date = datetime.strptime(agent_info['lastKeepAlive'], '%Y-%m-%d %H:%M:%S')
                 difference = (datetime.utcnow() - last_date).total_seconds()
                 if difference >= seconds:
                     remove_agent = True
@@ -1217,6 +1225,9 @@ class Agent:
             s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): started. "
                       "Current version: {2}".format(str(self.id).zfill(3), self.name, self.version)).encode(),
                      path.join(common.ossec_path, 'queue', 'ossec', 'queue'))
+            s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): started. "
+                      "Current version: {2}".format(str(self.id).zfill(3), self.name, self.version)).encode(),
+                     path.join(common.ossec_path, 'queue', 'ossec', 'queue'))
             s.close()
             return "Upgrade procedure started"
         else:
@@ -1295,7 +1306,6 @@ class Agent:
         s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com lock_restart {1}".format(str(self.id).zfill(3), str(rl_timeout))
         s.send(msg.encode())
-
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
         data = s.receive().decode()
@@ -1338,6 +1348,7 @@ class Agent:
         if not file:
             raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
         try:
+            # start_time = time()
             bytes_read = file.read(chunk_size)
             file_sha1 = hashlib.sha1(bytes_read)
             bytes_read_acum = 0
@@ -1345,7 +1356,7 @@ class Agent:
                 s = OssecSocket(common.REQUEST_SOCKET)
                 msg = "{0} com write {1} {2} ".format(str(self.id).zfill(3), str(len(bytes_read)), wpk_file)
                 s.send(msg.encode() + bytes_read)
-                data = s.receive().decode()
+                # data = s.receive().decode()
                 s.close()
                 if not data.startswith('ok'):
                     raise WazuhException(1715, data.replace("err ",""))
@@ -1355,6 +1366,7 @@ class Agent:
                     bytes_read_acum = bytes_read_acum + len(bytes_read)
                     show_progress(int(bytes_read_acum * 100 / wpk_file_size) +
                                   (bytes_read_acum * 100 % wpk_file_size > 0))
+            # elapsed_time = time() - start_time
             calc_sha1 = file_sha1.hexdigest()
             if debug:
                 print("FILE SHA1: {0}".format(calc_sha1))
@@ -1392,7 +1404,7 @@ class Agent:
         else:
             raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
 
-    def upgrade_custom(self, file_path, installer=None, debug=False, show_progress=None, chunk_size=None, rl_timeout=-1):
+    def upgrade_custom(self, file_path, installer, debug=False, show_progress=None, chunk_size=None, rl_timeout=-1):
         """Upgrade agent using a custom WPK file.
         """
         if self.id == "000":
@@ -1411,8 +1423,6 @@ class Agent:
 
         # Send installing command
         s = OssecSocket(common.REQUEST_SOCKET)
-        installer = installer if installer is not None \
-            else 'upgrade.bat' if self.os['platform'] == 'windows' else 'upgrade.sh'
         msg = "{0} com upgrade {1} {2}".format(str(self.id).zfill(3), sending_result[1], installer)
         s.send(msg.encode())
         if debug:

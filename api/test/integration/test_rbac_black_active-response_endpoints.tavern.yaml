@@ -27,10 +27,21 @@ stages:
       params:
         list_agents: '001'
     response:
-      status_code: 400
+      status_code: 200
       body:
-        code: 4000
-        detail: !anystr
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4000
+                message: 'Permission denied: Resource type: agent:id'
+                remediation: Please, make sure you have permissions to execute current request,
+                  for more information on setting up permissions please visit XXXX
+              id:
+                - '001'
+          total_affected_items: 0
+          total_failed_items: 1
+        message: Could not send command to any agent
 
   - name: Send a message to an agent (Status=Active) (Allow)
     request:
@@ -77,14 +88,15 @@ stages:
           failed_items:
             - error:
                 code: 1651
-                message: !anystr
+                message: Active response - Agent is not active
                 remediation: !anything
               id:
                 - '010'
             - error:
                 code: 4000
-                message: !anystr
-                remediation: !anystr
+                message: 'Permission denied: Resource type: agent:id'
+                remediation: Please, make sure you have permissions to execute current request,
+                  for more information on setting up permissions please visit XXXX
               id:
                 - '004'
                 - '007'
@@ -106,10 +118,21 @@ stages:
       params:
         list_agents: '009'
     response:
-      status_code: 400
+      status_code: 200
       body:
-        code: 4000
-        detail: !anystr
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4000
+                message: 'Permission denied: Resource type: agent:id'
+                remediation: Please, make sure you have permissions to execute current request,
+                  for more information on setting up permissions please visit XXXX
+              id:
+                - 009
+          total_affected_items: 0
+          total_failed_items: 1
+        message: Could not send command to any agent
 
   - name: Try to send a message to an unexisting agent (Allow)
     request:
@@ -131,8 +154,9 @@ stages:
           failed_items:
             - error:
                 code: 1701
-                message: !anystr
-                remediation: !anystr
+                message: Agent does not exist
+                remediation: Please, use `GET /agents?select=id,name` to find all available
+                  agents
               id:
                 - '251'
                 - '252'
@@ -164,7 +188,7 @@ stages:
           failed_items:
             - error:
                 code: 1651
-                message: !anystr
+                message: Active response - Agent is not active
                 remediation: !anything
               id:
                 - '010'

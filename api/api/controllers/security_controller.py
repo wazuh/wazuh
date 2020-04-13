@@ -94,7 +94,7 @@ async def create_user(request):
         raise_if_exc(APIError(code=2005, details=e.msg))
     validate = _check_body(f_kwargs)
     if validate is not True:
-        raise_if_exc(WazuhError(5005, extra_message='Invalid field found {}'.format(f_kwargs)))
+        raise WazuhError(5005, extra_message='Invalid field found {}'.format(validate))
     dapi = DistributedAPI(f=security.create_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -390,28 +390,17 @@ async def update_policy(request, policy_id, pretty=False, wait_for_complete=Fals
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-async def set_user_role(request, username, role_ids, position=None, pretty=False, wait_for_complete=False):
+async def set_user_role(request, username, role_ids, pretty=False, wait_for_complete=False):
     """Add a list of roles to one specified user
 
-    Parameters
-    ----------
-    username : str
-        User's username
-    role_ids : list of int
-        List of role ids
-    position : int
-        Position where the new role will be inserted
-    pretty : bool
-        Show results in human-readable format
-    wait_for_complete : bool
-        Disable timeout response
-
-    Returns
-    -------
-    Dict
-        User-Role information
+    :param username: User's username
+    :param role_ids: List of role ids
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :return User-Role information
     """
-    f_kwargs = {'user_id': username, 'role_ids': role_ids, 'position': position}
+    f_kwargs = {'user_id': username, 'role_ids': role_ids}
+
     dapi = DistributedAPI(f=security.set_user_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -451,28 +440,16 @@ async def remove_user_role(request, username, role_ids, pretty=False, wait_for_c
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-async def set_role_policy(request, role_id, policy_ids, position=None, pretty=False, wait_for_complete=False):
+async def set_role_policy(request, role_id, policy_ids, pretty=False, wait_for_complete=False):
     """Add a list of policies to one specified role
 
-    Parameters
-    ----------
-    role_id : int
-        Role ID
-    policy_ids : list of int
-        List of policy IDs
-    position : int
-        Position where the new role will be inserted
-    pretty : bool
-        Show results in human-readable format
-    wait_for_complete : bool
-        Disable timeout response
-
-    Returns
-    -------
-    dict
-        Role information
+    :param role_id: Role id
+    :param policy_ids: List of policy ids
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :return Role information
     """
-    f_kwargs = {'role_id': role_id, 'policy_ids': policy_ids, 'position': position}
+    f_kwargs = {'role_id': role_id, 'policy_ids': policy_ids}
 
     dapi = DistributedAPI(f=security.set_role_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
