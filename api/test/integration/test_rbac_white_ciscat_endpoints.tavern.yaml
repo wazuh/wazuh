@@ -56,6 +56,6 @@ stages:
       status_code: 400
       body:
         code: 4000
-        detail: "Permission denied"
+        detail: !anystr
 
 

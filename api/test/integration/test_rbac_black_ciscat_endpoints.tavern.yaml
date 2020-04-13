@@ -40,7 +40,7 @@ stages:
       status_code: 400
       body:
         code: 4000
-        detail: "Permission denied"
+        detail: !anystr
 
   - name: Get ciscat result for agent 003 (allowed)
     request:

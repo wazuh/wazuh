@@ -1,0 +1,292 @@
+---
+get_roles:
+- params:
+    role_ids:
+    - '8'
+    - '11'
+  result:
+    affected_items:
+    - id: 8
+      name: wazuh
+      rule:
+        FIND:
+          r'^auth[a-zA-Z]+$':
+          - administrator
+      policies:
+      - 11
+      users:
+      - wazuh
+    - id: 11
+      name: administrator_test
+      rule:
+        MATCH:
+          definition: administratorRule
+      policies:
+      - 15
+      - 14
+      users:
+      - normal
+      - rbac
+    failed_items: {}
+- params:
+    role_ids:
+    - '10'
+    - '12'
+    - '13'
+    - '16'
+  result:
+    affected_items:
+    - id: 10
+      name: technical
+      rule:
+        MATCH:
+          definition: technicalRule
+      policies:
+      - 12
+      - 11
+      - 18
+      - 15
+      users:
+      - rbac
+    - id: 12
+      name: normalUser
+      rule:
+        MATCH:
+          definition: normalRule
+      policies:
+      - 12
+      - 13
+      - 20
+      users:
+      - normal
+      - ossec
+      - rbac
+    - id: 13
+      name: ossec
+      rule:
+        MATCH:
+          definition: ossecRule
+      policies:
+      - 12
+      - 18
+      - 17
+      - 20
+      - 15
+      - 19
+      - 11
+      - 16
+      - 13
+      - 14
+      users:
+      - normal
+    failed_items:
+      '4002':
+      - '16'
+- params:
+    role_ids:
+    - '17'
+    - '18'
+    - '19'
+  result:
+    affected_items: []
+    failed_items:
+      '4002':
+      - '17'
+      - '18'
+      - '19'
+add_role:
+- params:
+    name: new_role
+    rule:
+      MATCH:
+        definition: normalRule1
+  result:
+    affected_items:
+    - id: 14
+      name: new_role
+      rule:
+        MATCH:
+          definition: normalRule1
+      policies: []
+      users: []
+    failed_items: {}
+- params:
+    name: ossec
+    rule:
+      MATCH:
+        definition: normalRule1
+  result:
+    affected_items: []
+    failed_items:
+      '4005':
+      - ossec
+- params:
+    name: wazuh
+    rule:
+      MATCH:
+        definition: wazuh
+  result:
+    affected_items: []
+    failed_items:
+      '4005':
+      - wazuh
+update_role:
+- params:
+    role_id:
+    - '13'
+    name: ossec1
+    rule:
+      MATCH:
+        definition: normalRule3
+  result:
+    affected_items:
+    - id: 13
+      name: ossec1
+      rule:
+        MATCH:
+          definition: normalRule3
+      policies:
+      - 12
+      - 18
+      - 17
+      - 20
+      - 15
+      - 19
+      - 11
+      - 16
+      - 13
+      - 14
+      users:
+      - normal
+    failed_items: {}
+- params:
+    role_id:
+    - '89'
+    name: normalUserw
+    rule:
+      MATCH:
+        definition: normalRuleq1
+  result:
+    affected_items: []
+    failed_items:
+      '4002':
+      - '89'
+- params:
+    role_id:
+    - '10'
+  result:
+    affected_items: []
+    failed_items:
+      '4001':
+      - '10'
+- params:
+    role_id:
+    - '12'
+    name: normalUser
+    rule:
+      MATCH:
+        definition: normalRule
+  result:
+    affected_items: []
+    failed_items:
+      '4005':
+      - '12'
+- params:
+    role_id:
+    - '1'
+    name: administrator
+    rule:
+      MATCH:
+        definition: wazuhh
+  result:
+    affected_items: []
+    failed_items:
+      '4008':
+      - '1'
+remove_roles:
+- params:
+    role_ids:
+    - '1'
+    - '11'
+  result:
+    affected_items:
+    - id: 11
+      name: administrator_test
+      policies:
+      - 15
+      - 14
+      rule:
+        MATCH:
+          definition: administratorRule
+      users:
+      - normal
+      - rbac
+    failed_items:
+      '4008':
+      - '1'
+- params:
+    role_ids:
+    - '10'
+    - '12'
+    - '13'
+    - '16'
+  result:
+    affected_items:
+    - id: 10
+      name: technical
+      policies:
+      - 12
+      - 11
+      - 18
+      - 15
+      rule:
+        MATCH:
+          definition: technicalRule
+      users:
+      - rbac
+    - id: 12
+      name: normalUser
+      policies:
+      - 12
+      - 13
+      - 20
+      rule:
+        MATCH:
+          definition: normalRule
+      users:
+      - normal
+      - ossec
+      - rbac
+    - id: 13
+      name: ossec
+      policies:
+      - 12
+      - 18
+      - 17
+      - 20
+      - 15
+      - 19
+      - 11
+      - 16
+      - 13
+      - 14
+      rule:
+        MATCH:
+          definition: ossecRule
+      users:
+      - normal
+    failed_items:
+      '4002':
+      - '16'
+- params:
+    role_ids:
+    - '20'
+    - '21'
+    - '22'
+  result:
+    affected_items: []
+    failed_items:
+      '4002':
+      - '20'
+      - '21'
+      - '22'

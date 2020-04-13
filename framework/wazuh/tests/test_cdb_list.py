@@ -55,6 +55,7 @@ RESULT_GET_PATH_LIST_FILE_2 = [{'filename': NAME_FILE_2, 'relative_dirname': REL
 RESULTS_GET_LIST = RESULT_GET_LIST_FILE_1 + RESULT_GET_LIST_FILE_2
 RESULTS_GET_PATH_LIST = RESULT_GET_PATH_LIST_FILE_1 + RESULT_GET_PATH_LIST_FILE_2
 
+TOTAL_LISTS = len(PATHS_FILES)
 
 # Tests
 
@@ -92,7 +93,7 @@ def test_get_lists_limit(limit):
     result = get_lists(path=PATHS_FILES, limit=limit)
     assert limit > 0
     assert isinstance(result, AffectedItemsWazuhResult)
-    assert result.total_affected_items == limit
+    assert result.total_affected_items == TOTAL_LISTS
     assert result.affected_items == RESULTS_GET_LIST[:limit]
 
 
@@ -107,7 +108,7 @@ def test_get_lists_offset(offset):
     """
     result = get_lists(path=PATHS_FILES, offset=offset)
     assert isinstance(result, AffectedItemsWazuhResult)
-    assert result.total_affected_items == len(PATHS_FILES) - offset
+    assert result.total_affected_items == TOTAL_LISTS
     assert result.affected_items == RESULTS_GET_LIST[offset:]
 
 
@@ -195,7 +196,7 @@ def test_get_path_lists_limit(limit):
     result = get_path_lists(path=PATHS_FILES, limit=limit, sort_by=['filename'])
 
     assert isinstance(result, AffectedItemsWazuhResult)
-    assert result.total_affected_items == limit
+    assert result.total_affected_items == TOTAL_LISTS
     assert result.affected_items == RESULTS_GET_PATH_LIST[:limit]
 
 
@@ -212,7 +213,7 @@ def test_get_path_lists_offset(offset):
     result = get_path_lists(path=PATHS_FILES, offset=offset, sort_by=['filename'])
 
     assert isinstance(result, AffectedItemsWazuhResult)
-    assert result.total_affected_items == len(PATHS_FILES) - offset
+    assert result.total_affected_items == TOTAL_LISTS
     assert result.affected_items == RESULTS_GET_PATH_LIST[offset:]
 
 

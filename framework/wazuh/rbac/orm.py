@@ -6,22 +6,22 @@ import json
 import os
 import re
 from datetime import datetime
-from enum import Enum
+from enum import IntEnum
 from shutil import chown
 
+import yaml
+from api.constants import SECURITY_PATH
 from sqlalchemy import create_engine, UniqueConstraint, Column, DateTime, String, Integer, ForeignKey, Boolean
 from sqlalchemy.dialects.sqlite import TEXT
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, InvalidRequestError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, backref
 from sqlalchemy.orm.exc import UnmappedInstanceError
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from api.constants import SECURITY_PATH
-
 # Start a session and set the default security elements
 _auth_db_file = os.path.join(SECURITY_PATH, 'rbac.db')
-_engine = create_engine(f'sqlite:///' + _auth_db_file, echo=False)
+_engine = create_engine('sqlite:///' + _auth_db_file, echo=False)
 _Base = declarative_base()
 _Session = sessionmaker(bind=_engine)
 
@@ -29,8 +29,8 @@ _Session = sessionmaker(bind=_engine)
 admin_usernames = ['wazuh', 'wazuh-wui']
 
 # IDs reserved for administrator roles and policies, these can not be modified or deleted
-admin_role_ids = [1, 2]
-admin_policy_ids = [1]
+admin_role_ids = [1, 2, 3, 4, 5, 6, 7]
+admin_policy_ids = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 
 def json_validator(data):
@@ -46,9 +46,9 @@ def json_validator(data):
 
 
 # Error codes for Roles and Policies managers
-class SecurityError(Enum):
+class SecurityError(IntEnum):
     # The element already exist in the database
-    ALREADY_EXIST = False
+    ALREADY_EXIST = 0
     # The element is invalid, missing format or property
     INVALID = -1
     # The role does not exist in the database
@@ -68,6 +68,7 @@ class RolesPolicies(_Base):
         id: ID of the relationship
         role_id: ID of the role
         policy_id: ID of the policy
+        level: Priority in case of multiples policies, higher = more priority
         created_at: Date of the relationship creation
     """
     __tablename__ = "roles_policies"
@@ -76,6 +77,7 @@ class RolesPolicies(_Base):
     id = Column('id', Integer, primary_key=True)
     role_id = Column('role_id', Integer, ForeignKey("roles.id", ondelete='CASCADE'))
     policy_id = Column('policy_id', Integer, ForeignKey("policies.id", ondelete='CASCADE'))
+    level = Column('level', Integer, default=0)
     created_at = Column('created_at', DateTime, default=datetime.utcnow())
     __table_args__ = (UniqueConstraint('role_id', 'policy_id', name='role_policy'),
                       )
@@ -88,6 +90,7 @@ class UserRoles(_Base):
         id: ID of the relationship
         user_id: ID of the user
         role_id: ID of the role
+        level: Priority in case of multiples roles, higher = more priority
         created_at: Date of the relationship creation
     """
     __tablename__ = "user_roles"
@@ -96,6 +99,7 @@ class UserRoles(_Base):
     id = Column('id', Integer, primary_key=True)
     user_id = Column('user_id', Integer, ForeignKey("users.username", ondelete='CASCADE'))
     role_id = Column('role_id', Integer, ForeignKey("roles.id", ondelete='CASCADE'))
+    level = Column('level', Integer, default=0)
     created_at = Column('created_at', DateTime, default=datetime.utcnow())
     __table_args__ = (UniqueConstraint('user_id', 'role_id', name='user_role'),
                       )
@@ -112,7 +116,7 @@ class User(_Base):
 
     # Relations
     roles = relationship("Roles", secondary='user_roles',
-                         backref=backref("rolesu", cascade="all,delete", order_by=UserRoles.role_id), lazy='dynamic')
+                         backref=backref("rolesu", cascade="all, delete", order_by=UserRoles.role_id), lazy='dynamic')
 
     def __init__(self, username, password, auth_context=False):
         self.username = username
@@ -123,26 +127,31 @@ class User(_Base):
     def __repr__(self):
         return f"<User(user={self.username})"
 
-    def _get_roles(self):
+    def _get_roles_id(self):
         roles = list()
         for role in self.roles:
             roles.append(role.get_role()['id'])
 
         return roles
 
+    def get_roles(self):
+        return list(self.roles)
+
     def get_user(self):
         """User's getter
 
         :return: Dict with the information of the user
         """
-        return {'username': self.username, 'roles': self._get_roles(), 'auth_context': self.auth_context}
+        return {'username': self.username, 'roles': self._get_roles_id(), 'auth_context': self.auth_context}
 
     def to_dict(self):
         """Return the information of one policy and the roles that have assigned
 
         :return: Dict with the information
         """
-        return {'username': self.username, 'roles': self._get_roles()}
+        with UserRolesManager() as urm:
+            return {'username': self.username,
+                    'roles': [role.id for role in urm.get_all_roles_from_user(username=self.username)]}
 
 
 class Roles(_Base):
@@ -166,7 +175,7 @@ class Roles(_Base):
 
     # Relations
     policies = relationship("Policies", secondary='roles_policies',
-                            backref=backref("policiess", cascade="all,delete", order_by=id), lazy='dynamic')
+                            backref=backref("policiess", cascade="all, delete", order_by=id), lazy='dynamic')
     users = relationship("User", secondary='user_roles',
                          backref=backref("userss", cascade="all,delete", order_by=UserRoles.user_id), lazy='dynamic')
 
@@ -182,19 +191,22 @@ class Roles(_Base):
         """
         return {'id': self.id, 'name': self.name, 'rule': json.loads(self.rule)}
 
+    def get_policies(self):
+        return list(self.policies)
+
     def to_dict(self):
         """Return the information of one role and the policies that have assigned
 
         :return: Dict with the information
         """
-        policies = list()
-        for policy in self.policies:
-            policies.append(policy.get_policy())
         users = list()
         for user in self.users:
             users.append(user.get_user()['username'])
 
-        return {'id': self.id, 'name': self.name, 'rule': json.loads(self.rule), 'policies': policies, 'users': users}
+        with RolesPoliciesManager() as rpm:
+            return {'id': self.id, 'name': self.name, 'rule': json.loads(self.rule),
+                    'policies': [policy.id for policy in rpm.get_all_policies_from_role(role_id=self.id)],
+                    'users': users}
 
 
 class Policies(_Base):
@@ -218,7 +230,7 @@ class Policies(_Base):
 
     # Relations
     roles = relationship("Roles", secondary='roles_policies',
-                         backref=backref("roless", cascade="all,delete", order_by=id), lazy='dynamic')
+                         backref=backref("roless", cascade="all, delete", order_by=id), lazy='dynamic')
 
     def __init__(self, name, policy):
         self.name = name
@@ -295,13 +307,15 @@ class AuthenticationManager:
             return SecurityError.ADMIN_RESOURCES
 
         try:
-            relations = self.session.query(UserRoles).filter_by(user_id=username).all()
+            if self.session.query(User).filter_by(username=username).first():
             # If the user has one or more roles associated with it, the associations will be eliminated.
-            for user_role in relations:
-                self.session.delete(user_role)
-            self.session.delete(self.session.query(User).filter_by(username=username).first())
-            self.session.commit()
-            return True
+                with UserRolesManager() as urm:
+                    urm.remove_all_roles_in_user(username=username)
+                self.session.delete(self.session.query(User).filter_by(username=username).first())
+                self.session.commit()
+                return True
+            else:
+                return False
         except UnmappedInstanceError:
             # User already deleted
             return False
@@ -318,7 +332,6 @@ class AuthenticationManager:
 
     def get_user(self, username: str = None):
         """Get an specified user in the system
-
         :param username: string Unique user name
         :return: An specified user
         """
@@ -440,14 +453,14 @@ class RolesManager:
         """
         try:
             if int(role_id) not in admin_role_ids:
-                relations = self.session.query(RolesPolicies).filter_by(role_id=role_id).all()
-                # If the role has one or more policies associated with it, the associations will be eliminated.
-                # If the role does not exist continue
-                for role_policy in relations:
-                    self.session.delete(role_policy)
                 # If the role does not exist we rollback the changes
                 if self.session.query(Roles).filter_by(id=role_id).first() is None:
                     return False
+                # If the role has one or more policies associated with it, the associations will be eliminated.
+                with UserRolesManager() as urm:
+                    urm.remove_all_users_in_role(role_id=role_id)
+                with RolesPoliciesManager() as rpm:
+                    rpm.remove_all_policies_in_role(role_id=role_id)
                 # Finally we delete the role
                 self.session.query(Roles).filter_by(id=role_id).delete()
                 self.session.commit()
@@ -465,14 +478,9 @@ class RolesManager:
         """
         try:
             if self.get_role(role_name) is not None and self.get_role(role_name).id not in admin_role_ids:
-                relations = self.session.query(RolesPolicies).filter_by(role_id=self.get_role(role_name).id).all()
-                for role_policy in relations:
-                    self.session.delete(role_policy)
-                if self.session.query(Roles).filter_by(name=role_name).first() is None:
-                    return False
-                self.session.query(Roles).filter_by(name=role_name).delete()
-                self.session.commit()
-                return True
+                role_id = self.session.query(Roles).filter_by(name=role_name).role_id
+                if role_id:
+                    self.delete_role(role_id=role_id)
             return False
         except (IntegrityError, AttributeError):
             self.session.rollback()
@@ -488,9 +496,8 @@ class RolesManager:
             roles = self.session.query(Roles).all()
             for role in roles:
                 if int(role.id) not in admin_role_ids:
-                    relations = self.session.query(RolesPolicies).filter_by(role_id=role.id).all()
-                    for role_policy in relations:
-                        self.session.delete(role_policy)
+                    with RolesPoliciesManager() as rpm:
+                        rpm.remove_all_policies_in_role(role_id=role.id)
                     list_roles.append(int(role.id))
                     self.session.query(Roles).filter_by(id=role.id).delete()
                     self.session.commit()
@@ -602,7 +609,7 @@ class PoliciesManager:
                     if isinstance(policy['actions'], list) and isinstance(policy['resources'], list) \
                             and isinstance(policy['effect'], str):
                         # Regular expression that prevents the creation of invalid policies
-                        regex = r'^[a-z*]+:[a-z0-9*]+(:[a-z0-9*]+)*$'
+                        regex = r'^[a-z_*]+:[a-z0-9_*]+([:|&]{0,1}[a-z0-9_*]+)*$'
                         for action in policy['actions']:
                             if not re.match(regex, action):
                                 return SecurityError.INVALID
@@ -630,13 +637,12 @@ class PoliciesManager:
         """
         try:
             if int(policy_id) not in admin_policy_ids:
-                relations = self.session.query(RolesPolicies).filter_by(policy_id=policy_id).all()
-                # If the policy has relationships with roles, it first eliminates those relationships.
                 # If there is no policy continues
-                for role_policy in relations:
-                    self.session.delete(role_policy)
                 if self.session.query(Policies).filter_by(id=policy_id).first() is None:
                     return False
+                # If the policy has relationships with roles, it first eliminates those relationships.
+                with RolesPoliciesManager() as rpm:
+                    rpm.remove_all_roles_in_policy(policy_id=policy_id)
                 self.session.query(Policies).filter_by(id=policy_id).delete()
                 self.session.commit()
                 return True
@@ -654,15 +660,9 @@ class PoliciesManager:
         try:
             if self.get_policy(policy_name) is not None and \
                     self.get_policy(name=policy_name).id not in admin_policy_ids:
-                relations = self.session.query(RolesPolicies).filter_by(
-                    policy_id=self.get_policy(name=policy_name).id).all()
-                for role_policy in relations:
-                    self.session.delete(role_policy)
-                if self.session.query(Policies).filter_by(name=policy_name).delete() is None:
-                    return False
-                self.session.query(Policies).filter_by(name=policy_name).delete()
-                self.session.commit()
-                return True
+                policy_id = self.session.query(Policies).filter_by(name=policy_name).policy_id
+                if policy_id:
+                    self.delete_policy(policy_id=policy_id)
             return False
         except (IntegrityError, AttributeError):
             self.session.rollback()
@@ -678,9 +678,8 @@ class PoliciesManager:
             policies = self.session.query(Policies).all()
             for policy in policies:
                 if int(policy.id) not in admin_policy_ids:
-                    relations = self.session.query(RolesPolicies).filter_by(policy_id=policy.id).all()
-                    for role_policy in relations:
-                        self.session.delete(role_policy)
+                    with RolesPoliciesManager() as rpm:
+                        rpm.remove_all_roles_in_policy(policy_id=policy.id)
                     list_policies.append(int(policy.id))
                     self.session.query(Policies).filter_by(id=policy.id).delete()
                     self.session.commit()
@@ -733,90 +732,141 @@ class UserRolesManager:
     all the methods needed for the user-roles administration.
     """
 
-    def add_role_to_user_admin(self, username: str, role_id: int):
-        # This function is reserved for internal use, allows to modify the users administrator
-        try:
-            user = self.session.query(User).filter_by(username=username).first()
-            role = self.session.query(Roles).filter_by(id=role_id).first()
-            if role:
-                user.roles.append(role)
-                self.session.commit()
-                return True
-            return False
-        except (IntegrityError, AttributeError):
-            self.session.rollback()
-            return False
+    def add_role_to_user(self, username: str, role_id: int, position: int = None, force_admin: bool = False):
+        """Add a relation between one specified user and one specified role.
 
-    def add_role_to_user(self, username: str, role_id: int):
-        """Add a relation between one specified user and one specified role
+        Parameters
+        ----------
+        username : str
+            Name of the user
+        role_id : int
+            ID of the role
+        position : int
+            Order to be applied in case of multiples roles in the same user
+        force_admin : bool
+            By default, changing an administrator user is not allowed. If True, it will be applied to admin users too
 
-        :param username: Username of the user
-        :param role_id: ID of the policy
-        :return: True -> Success | False -> Failure | User not found | Role not found | Existing relationship
+        Returns
+        -------
+        True -> Success | False -> Failure | User not found | Role not found | Existing relationship | Invalid level
         """
         try:
             # Create a role-policy relationship if both exist
-            if username not in admin_usernames:
+            if username not in admin_usernames or force_admin:
                 user = self.session.query(User).filter_by(username=username).first()
                 if user is None:
                     return SecurityError.USER_NOT_EXIST
                 role = self.session.query(Roles).filter_by(id=role_id).first()
                 if role is None:
                     return SecurityError.ROLE_NOT_EXIST
-                if self.session.query(UserRoles).filter_by(user_id=username, role_id=role_id).first() is None:
+                if position is not None or \
+                        self.session.query(UserRoles).filter_by(user_id=username, role_id=role_id).first() is None:
+                    if position is not None and \
+                            self.session.query(UserRoles).filter_by(user_id=username, level=position).first() and \
+                            self.session.query(UserRoles).filter_by(user_id=username, role_id=role_id).first() is None:
+                        user_roles = [row for row in self.session.query(
+                            UserRoles).filter(UserRoles.user_id == username, UserRoles.level >= position
+                                              ).order_by(UserRoles.level).all()]
+                        new_level = position
+                        for relation in user_roles:
+                            relation.level = new_level + 1
+                            new_level += 1
+
                     user.roles.append(role)
+                    user_role = self.session.query(UserRoles).filter_by(user_id=username, role_id=role_id).first()
+                    if position is None:
+                        roles = user.get_roles()
+                        position = len(roles) - 1
+                    else:
+                        max_position = max([row.level for row in self.session.query(UserRoles).filter_by(
+                            user_id=username).all()])
+                        if max_position == 0 and len(list(user.roles)) - 1 == 0:
+                            position = 0
+                        elif position > max_position + 1:
+                            position = max_position + 1
+                    user_role.level = position
+
                     self.session.commit()
                     return True
                 else:
                     return SecurityError.ALREADY_EXIST
             return SecurityError.ADMIN_RESOURCES
-        except IntegrityError:
+        except (IntegrityError, InvalidRequestError):
             self.session.rollback()
             return SecurityError.INVALID
 
-    def add_user_to_role(self, username: str, role_id: int):
-        """Clone of the previous function
+    def add_user_to_role(self, username: str, role_id: int, position: int = -1):
+        """Clone of the previous function.
 
-        :param username: Username of the user
-        :param role_id: ID of the policy
-        :return: True -> Success | False -> Failure | User not found | Role not found | Existing relationship
+        Parameters
+        ----------
+        username : str
+            Name of the user
+        role_id : int
+            ID of the role
+        position : int
+            Order to be applied in case of multiples roles in the same user
+
+        Returns
+        -------
+        True -> Success | False -> Failure | User not found | Role not found | Existing relationship | Invalid level
         """
-        return self.add_role_to_user(username=username, role_id=role_id)
+        return self.add_role_to_user(username=username, role_id=role_id, position=position)
 
     def get_all_roles_from_user(self, username: str):
-        """Get all the roles related with the specified user
+        """Get all the roles related with the specified user.
 
-        :param username: Username of the user
-        :return: List of roles related with the user -> Success | False -> Failure
+        Parameters
+        ----------
+        username : str
+            Name of the user
+
+        Returns
+        -------
+        List of roles related with the user -> Success | False -> Failure
         """
         try:
-            user = self.session.query(User).filter_by(username=username).first()
-            roles = user.roles
+            user_roles = self.session.query(UserRoles).filter_by(user_id=username).order_by(UserRoles.level).all()
+            roles = list()
+            for relation in user_roles:
+                roles.append(self.session.query(Roles).filter_by(id=relation.role_id).first())
             return roles
         except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
 
     def get_all_users_from_role(self, role_id: int):
-        """Get all the users related with the specified role
+        """Get all the users related with the specified role.
 
-        :param role_id: ID of the role
-        :return: List of users related with the role -> Success | False -> Failure
+        Parameters
+        ----------
+        role_id : int
+            ID of the role
+
+        Returns
+        -------
+        List of users related with the role -> Success | False -> Failure
         """
         try:
             role = self.session.query(Roles).filter_by(id=role_id).first()
-            users = role.users
-            return users
+            return map(User.to_dict, role.users)
         except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
 
     def exist_user_role(self, username: str, role_id: int):
-        """Check if the relationship user-role exist
+        """Check if the relationship user-role exist.
 
-        :param username: Username of the user
-        :param role_id: ID of the role
-        :return: True -> Existent relationship | False -> Failure | User not exist
+        Parameters
+        ----------
+        username : str
+            Name of the user
+        role_id : int
+            ID of th role
+
+        Returns
+        -------
+        True -> Existent relationship | False -> Failure | User not exist
         """
         try:
             user = self.session.query(User).filter_by(username=username).first()
@@ -834,20 +884,34 @@ class UserRolesManager:
             return False
 
     def exist_role_user(self, username: str, role_id: int):
-        """Check if the relationship role-user exist
+        """Clone of the previous function.
 
-        :param username: Username of the user
-        :param role_id: ID of the role
-        :return: True -> Existent relationship | False -> Failure | User not exist
+        Parameters
+        ----------
+        username : str
+            Name of the user
+        role_id : int
+            ID of th role
+
+        Returns
+        -------
+        True -> Existent relationship | False -> Failure | User not exist
         """
         return self.exist_user_role(username=username, role_id=role_id)
 
     def remove_role_in_user(self, username: str, role_id: int):
-        """Create a role-policy relationship if both exist. Does not eliminate role and policy
+        """Remove a role-policy relationship if both exist. Does not eliminate role and policy.
 
-        :param username: Username of the user
-        :param role_id: ID of the role
-        :return: True -> Success | False -> Failure | User not exist | Role not exist | Non-existent relationship
+        Parameters
+        ----------
+        username : str
+            Name of the user
+        role_id : int
+            ID of the role
+
+        Returns
+        -------
+        True -> Success | False -> Failure | User not exist | Role not exist | Non-existent relationship
         """
         try:
             if username not in admin_usernames:  # Administrator
@@ -871,19 +935,32 @@ class UserRolesManager:
             return SecurityError.INVALID
 
     def remove_user_in_role(self, username: str, role_id: int):
-        """Clone of the previous function
+        """Clone of the previous function.
 
-        :param username: Username of the user
-        :param role_id: ID of the role
-        :return: True -> Success | False -> Failure | User not exist | Role not exist | Non-existent relationship
+        Parameters
+        ----------
+        username : str
+            Name of the user
+        role_id : int
+            ID of the role
+
+        Returns
+        -------
+        True -> Success | False -> Failure | User not exist | Role not exist | Non-existent relationship
         """
         return self.remove_role_in_user(username=username, role_id=role_id)
 
     def remove_all_roles_in_user(self, username: str):
-        """Removes all relations with roles. Does not eliminate users and roles
+        """Removes all relations with roles. Does not eliminate users and roles.
 
-        :param username: Username of the user
-        :return: True -> Success | False -> Failure
+        Parameters
+        ----------
+        username : str
+            Name of the user
+
+        Returns
+        -------
+        True -> Success | False -> Failure
         """
         try:
             if username not in admin_usernames:
@@ -897,10 +974,16 @@ class UserRolesManager:
             return False
 
     def remove_all_users_in_role(self, role_id: int):
-        """Removes all relations with roles. Does not eliminate roles and policies
+        """Clone of the previous function.
 
-        :param role_id: ID of the role
-        :return: True -> Success | False -> Failure
+        PParameters
+        ----------
+        username : str
+            Name of the user
+
+        Returns
+        -------
+        True -> Success | False -> Failure
         """
         try:
             if int(role_id) not in admin_role_ids:
@@ -913,18 +996,28 @@ class UserRolesManager:
             self.session.rollback()
             return False
 
-    def replace_user_role(self, username: str, actual_role_id: int, new_role_id: int):
-        """Replace one existing relationship with another one
+    def replace_user_role(self, username: str, actual_role_id: int, new_role_id: int, position: int = -1):
+        """Replace one existing relationship with another one.
 
-        :param username: Username of the user
-        :param actual_role_id: Actual role ID
-        :param new_role_id: New role ID
-        :return: True -> Success | False -> Failure
+        Parameters
+        ----------
+        username : str
+            Name of the user
+        actual_role_id : int
+            ID of the role
+        new_role_id : int
+            ID of the new role
+        position : int
+            Order to be applied in case of multiples roles in the same user
+
+        Returns
+        -------
+        True -> Success | False -> Failure
         """
         if username not in admin_usernames and self.exist_user_role(username=username, role_id=actual_role_id) and \
                 self.session.query(Roles).filter_by(id=new_role_id).first() is not None:
             self.remove_role_in_user(username=username, role_id=actual_role_id)
-            self.add_user_to_role(username=username, role_id=new_role_id)
+            self.add_user_to_role(username=username, role_id=new_role_id, position=position)
             return True
 
         return False
@@ -943,37 +1036,66 @@ class RolesPoliciesManager:
     all the methods needed for the roles-policies administration.
     """
 
-    def add_policy_to_role_admin(self, role_id: int, policy_id: int):
-        # This function is reserved for internal use, allows to modify the role administrator
-        try:
-            role = self.session.query(Roles).filter_by(id=role_id).first()
-            if self.session.query(Policies).filter_by(id=policy_id).first():
-                role.policies.append(self.session.query(Policies).filter_by(id=policy_id).first())
-                self.session.commit()
-                return True
-            return False
-        except (IntegrityError, AttributeError):
-            self.session.rollback()
-            return False
-
-    def add_policy_to_role(self, role_id: int, policy_id: int):
+    def add_policy_to_role(self, role_id: int, policy_id: int, position: int = None, force_admin: bool = False):
         """Add a relation between one specified policy and one specified role
 
-        :param role_id: ID of the role
-        :param policy_id: ID of the policy
-        :return: True -> Success | False -> Failure | Role not found | Policy not found | Existing relationship
+        Parameters
+        ----------
+        role_id : int
+            ID of the role
+        policy_id : int
+            ID of the policy
+        position : int
+            Order to be applied in case of multiples roles in the same user
+        force_admin : bool
+            By default, changing an administrator roles is not allowed. If True, it will be applied to admin roles too
+
+        Returns
+        -------
+        bool
+            True -> Success | False -> Failure | Role not found | Policy not found | Existing relationship
         """
+
+        def check_max_level(role_id_level):
+            return max([r.level for r in self.session.query(RolesPolicies).filter_by(role_id=role_id_level).all()])
+
         try:
             # Create a role-policy relationship if both exist
-            if int(role_id) not in admin_role_ids:
+            if int(role_id) not in admin_role_ids or force_admin:
                 role = self.session.query(Roles).filter_by(id=role_id).first()
                 if role is None:
                     return SecurityError.ROLE_NOT_EXIST
                 policy = self.session.query(Policies).filter_by(id=policy_id).first()
                 if policy is None:
                     return SecurityError.POLICY_NOT_EXIST
-                if self.session.query(RolesPolicies).filter_by(role_id=role_id, policy_id=policy_id).first() is None:
+                if position is not None or self.session.query(
+                        RolesPolicies).filter_by(role_id=role_id, policy_id=policy_id).first() is None:
+                    if position is not None and \
+                            self.session.query(RolesPolicies).filter_by(role_id=role_id, level=position).first() and \
+                            self.session.query(RolesPolicies).filter_by(role_id=role_id,
+                                                                        policy_id=policy_id).first() is None:
+                        role_policies = [row for row in self.session.query(
+                            RolesPolicies).filter(RolesPolicies.role_id == role_id, RolesPolicies.level >= position
+                                                  ).order_by(RolesPolicies.level).all()]
+                        new_level = position
+                        for relation in role_policies:
+                            relation.level = new_level + 1
+                            new_level += 1
+
                     role.policies.append(policy)
+                    role_policy = self.session.query(RolesPolicies).filter_by(role_id=role_id,
+                                                                              policy_id=policy_id).first()
+                    if position is None or position > check_max_level(role_id) + 1:
+                        position = len(role.get_policies()) - 1
+                    else:
+                        max_position = max([row.level for row in self.session.query(RolesPolicies).filter_by(
+                            role_id=role_id).all()])
+                        if max_position == 0 and len(list(role.policies)) - 1 == 0:
+                            position = 0
+                        elif position > max_position + 1:
+                            position = max_position + 1
+                    role_policy.level = position
+
                     self.session.commit()
                     return True
                 else:
@@ -983,14 +1105,26 @@ class RolesPoliciesManager:
             self.session.rollback()
             return SecurityError.INVALID
 
-    def add_role_to_policy(self, policy_id: int, role_id: int):
+    def add_role_to_policy(self, policy_id: int, role_id: int, position: int = None):
         """Clone of the previous function
 
-        :param policy_id: ID of the policy
-        :param role_id: ID of the role
-        :return: True -> Success | False -> Failure | Role not found | Policy not found | Existing relationship
+        Parameters
+        ----------
+        role_id : int
+            ID of the role
+        policy_id : int
+            ID of the policy
+        position : int
+            Order to be applied in case of multiples roles in the same user
+        force_admin : bool
+            By default, changing an administrator roles is not allowed. If True, it will be applied to admin roles too
+
+        Returns
+        -------
+        bool
+            True -> Success | False -> Failure | Role not found | Policy not found | Existing relationship
         """
-        return self.add_policy_to_role(role_id=role_id, policy_id=policy_id)
+        return self.add_policy_to_role(role_id=role_id, policy_id=policy_id, position=position)
 
     def get_all_policies_from_role(self, role_id):
         """Get all the policies related with the specified role
@@ -999,8 +1133,11 @@ class RolesPoliciesManager:
         :return: List of policies related with the role -> Success | False -> Failure
         """
         try:
-            role = self.session.query(Roles).filter_by(id=role_id).first()
-            policies = role.policies
+            role_policies = self.session.query(RolesPolicies).filter_by(role_id=role_id).order_by(
+                RolesPolicies.level).all()
+            policies = list()
+            for relation in role_policies:
+                policies.append(self.session.query(Policies).filter_by(id=relation.policy_id).first())
             return policies
         except (IntegrityError, AttributeError):
             self.session.rollback()
@@ -1151,43 +1288,49 @@ class RolesPoliciesManager:
 # This is the actual sqlite database creation
 _Base.metadata.create_all(_engine)
 # Only if executing as root
-try:
-    chown(_auth_db_file, 'ossec', 'ossec')
-    os.chmod(_auth_db_file, 0o640)
-except PermissionError as e:
-    raise e
+chown(_auth_db_file, 'ossec', 'ossec')
+os.chmod(_auth_db_file, 0o640)
+
+default_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'default')
 
 # Create default users if they don't exist yet
-with AuthenticationManager() as auth:
-    auth.add_user(username='wazuh-wui', password='wazuh-wui', auth_context=True)
-    auth.add_user(username='wazuh', password='wazuh')
+with open(os.path.join(default_path, "users.yaml"), 'r') as stream:
+    default_users = yaml.safe_load(stream)
 
-# These examples are for RBAC development
-with PoliciesManager() as pm:
-    pm.add_policy(name='wazuhPolicy', policy={
-        'actions': ['*:*'],
-        'resources': ['*:*'],
-        'effect': 'allow'
-    })
+    with AuthenticationManager() as auth:
+        for d_username, payload in default_users[next(iter(default_users))].items():
+            auth.add_user(username=d_username, password=payload['password'],
+                          auth_context=payload['auth_context'])
 
-with RolesManager() as rm:
-    rm.add_role('wazuh', {
-        "FIND": {
-            "r'^auth[a-zA-Z]+$'": ["administrator"]
-        }
-    })
-    rm.add_role('wazuh-wui', {
-        "FIND": {
-            "r'^auth[a-zA-Z]+$'": ["administrator-app"]
-        }
-    })
+# Create default roles if they don't exist yet
+with open(os.path.join(default_path, "roles.yaml"), 'r') as stream:
+    default_roles = yaml.safe_load(stream)
 
-with UserRolesManager() as urm:
-    urm.add_role_to_user_admin(username=auth.get_user(username='wazuh')['username'],
-                               role_id=rm.get_role(name='wazuh')['id'])
+    with RolesManager() as rm:
+        for d_role_name, payload in default_roles[next(iter(default_roles))].items():
+            rm.add_role(name=d_role_name, rule=payload['rule'])
 
-with RolesPoliciesManager() as rpm:
-    rpm.add_policy_to_role_admin(role_id=rm.get_role(name='wazuh')['id'],
-                                 policy_id=pm.get_policy(name='wazuhPolicy')['id'])
-    rpm.add_policy_to_role_admin(
-        role_id=rm.get_role(name='wazuh-wui')['id'], policy_id=pm.get_policy(name='wazuhPolicy')['id'])
+# Create default policies if they don't exist yet
+with open(os.path.join(default_path, "policies.yaml"), 'r') as stream:
+    default_policies = yaml.safe_load(stream)
+
+    with PoliciesManager() as pm:
+        for d_policy_name, payload in default_policies[next(iter(default_policies))].items():
+            pm.add_policy(name=d_policy_name, policy=payload['policy'])
+
+# Create the relationships
+with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:
+    default_relationships = yaml.safe_load(stream)
+
+    # User-Roles relationships
+    with UserRolesManager() as urm:
+        for d_username, payload in default_relationships[next(iter(default_relationships))]['users'].items():
+            for d_role_name in payload['role_ids']:
+                urm.add_role_to_user(username=d_username, role_id=rm.get_role(name=d_role_name)['id'], force_admin=True)
+
+    # Role-Policies relationships
+    with RolesPoliciesManager() as rpm:
+        for d_role_name, payload in default_relationships[next(iter(default_relationships))]['roles'].items():
+            for d_policy_name in payload['policy_ids']:
+                rpm.add_policy_to_role(role_id=rm.get_role(name=d_role_name)['id'],
+                                       policy_id=pm.get_policy(name=d_policy_name)['id'], force_admin=True)

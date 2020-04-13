@@ -221,6 +221,10 @@ def get_file(path, validate=False):
     """
     full_path = join(common.ossec_path, path[0])
 
+    # check if file exists
+    if not exists(full_path):
+        raise WazuhError(1906)
+
     # validate CDB lists files
     if validate and re.match(r'^etc/lists', path[0]) and not validate_cdb_list(path[0]):
         raise WazuhError(1800, {'path': path[0]})
@@ -228,10 +232,6 @@ def get_file(path, validate=False):
     # validate XML files
     if validate and not validate_xml(path[0]):
         raise WazuhError(1113)
-
-    # check if file exists
-    if not exists(full_path):
-        raise WazuhError(1006)
 
     try:
         with open(full_path) as f:

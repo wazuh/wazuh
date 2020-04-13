@@ -45,12 +45,14 @@ def test_select_key_affected_items_with_agent_id(response, select_key):
     :param select_key: Parametrized key used for select param in request
     :return: True if request response item key matches used select param
     """
-    position = 0 if select_key < 'agent_id' else 1
     if '.' in select_key:
-        assert list(response.json()["data"]["affected_items"][0])[position] == select_key.split('.')[0]
-        assert list(response.json()["data"]["affected_items"][0][select_key.split('.')[0]])[0] == select_key.split('.')[1]
+        expected_keys_level0 = {'agent_id', select_key.split('.')[0]}
+        expected_keys_level1 = {select_key.split('.')[1]}
+        assert set(response.json()["data"]["affected_items"][0].keys()) == expected_keys_level0
+        assert set(response.json()["data"]["affected_items"][0][select_key.split('.')[0]].keys()) == expected_keys_level1
     else:
-        assert list(response.json()["data"]["affected_items"][0])[position] == select_key
+        expected_keys = {'agent_id', select_key}
+        assert set(response.json()["data"]["affected_items"][0].keys()) == expected_keys
     return
 
 
@@ -100,3 +102,16 @@ def test_sort_response(response, affected_items):
     for index, item_response in enumerate(response.json()['data']['affected_items']):
         assert item_response != affected_items[reverse_index - index]
     return
+
+
+def test_validate_data_dict_field(response, fields_dict):
+    assert fields_dict, f'Fields dict is empty'
+    for field, dikt in fields_dict.items():
+        field_list = response.json()['data'][field]
+
+        for element in field_list:
+            try:
+                assert (isinstance(element[key], eval(value)) for key, value in dikt.items())
+            except KeyError:
+                assert len(element) == 1
+                assert isinstance(element['count'], int)
