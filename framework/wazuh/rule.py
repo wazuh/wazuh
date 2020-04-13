@@ -83,11 +83,11 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
     for rule_id in no_existent_ids:
         result.add_failed_item(id_=rule_id, error=WazuhError(1208))
 
-    result.affected_items = process_array(rules, search_text=search_text, search_in_fields=search_in_fields,
-                                          complementary_search=complementary_search, sort_by=sort_by,
-                                          sort_ascending=sort_ascending, allowed_sort_fields=Status.SORT_FIELDS.value,
-                                          offset=offset, limit=limit, q=q)['items']
-    result.total_affected_items = len(rules)
+    data = process_array(rules, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                         allowed_sort_fields=Status.SORT_FIELDS.value, offset=offset, limit=limit, q=q)
+    result.affected_items = data['items']
+    result.total_affected_items = data['totalItems']
 
     return result
 
@@ -130,10 +130,11 @@ def get_rules_files(status=None, relative_dirname=None, filename=None, offset=0,
                                                {'status': status, 'relative_dirname': relative_dirname, 'filename': filename},
                                                tags)
 
-    result.affected_items = process_array(rules_files, search_text=search_text, search_in_fields=search_in_fields,
-                                          complementary_search=complementary_search, sort_by=sort_by,
-                                          sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
-    result.total_affected_items = len(rules_files)
+    data = process_array(rules_files, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                         offset=offset, limit=limit)
+    result.affected_items = data['items']
+    result.total_affected_items = data['totalItems']
 
     return result
 
@@ -157,10 +158,11 @@ def get_groups(offset=0, limit=common.database_limit, sort_by=None, sort_ascendi
 
     groups = {group for rule in get_rules(limit=None).affected_items for group in rule['groups']}
 
-    result.affected_items = process_array(list(groups), search_text=search_text, search_in_fields=search_in_fields,
-                                          complementary_search=complementary_search, sort_by=sort_by,
-                                          sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
-    result.total_affected_items = len(groups)
+    data = process_array(list(groups), search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                         offset=offset, limit=limit)
+    result.affected_items = data['items']
+    result.total_affected_items = data['totalItems']
 
     return result
 
@@ -190,10 +192,11 @@ def get_requirement(requirement=None, offset=0, limit=common.database_limit, sor
 
     req = list({req for rule in get_rules(limit=None).affected_items for req in rule[requirement]})
 
-    result.affected_items = process_array(req, search_text=search_text, search_in_fields=search_in_fields,
-                                          complementary_search=complementary_search, sort_by=sort_by,
-                                          sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
-    result.total_affected_items = len(req)
+    data = process_array(req, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                         offset=offset, limit=limit)
+    result.affected_items = data['items']
+    result.total_affected_items = data['totalItems']
 
     return result
 

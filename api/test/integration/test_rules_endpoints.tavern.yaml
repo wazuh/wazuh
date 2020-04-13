@@ -802,7 +802,7 @@ stages:
             - '1.3'
             - '10.1'
           failed_items: []
-          total_affected_items: 28
+          total_affected_items: !anyint
           total_failed_items: 0
         message: Selected rules were shown
 
@@ -1242,7 +1242,7 @@ stages:
     response:
       status_code: 200
       headers:
-        content-type: application/xml
+        content-type: "application/xml; charset=utf-8"
 
 ---
 test_name: GET /rules?rule_ids
@@ -1360,7 +1360,7 @@ stages:
         data:
           affected_items: []
           failed_items: []
-          total_affected_items: 1
+          total_affected_items: 0
           total_failed_items: 0
 
   - name: Invalid filter

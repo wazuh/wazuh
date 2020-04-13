@@ -22,13 +22,13 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        role_ids: 3
+        role_ids: 10
     response:
       status_code: 200
       body:
         data:
           affected_items:
-            - id: 3
+            - id: 10
               name: !anystr
               policies: !anything
               rule: !anything
@@ -79,12 +79,12 @@ stages:
   # DELETE /security/roles/{role_id}/policies/{policy_id}
   - name: Try to delete a existent role-policy
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/4/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/11/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        policy_ids: 2,5
+        policy_ids: 12,15
     response:
       status_code: 200
       body:
@@ -92,7 +92,7 @@ stages:
           affected_items: !anything
           failed_items:
             - error:
-                code: 4007
+                code: 4010
                 message: !anystr
                 remediation: !anystr
               id: !anything
@@ -150,12 +150,12 @@ stages:
   # DELETE /security/user/{user_id}/roles/{role_id}
   - name: Try to delete a existent user-role
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/new_user/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/normal/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        role_ids: 5,4
+        role_ids: 12,11
     response:
       status_code: 200
       body:
@@ -168,12 +168,12 @@ stages:
   # DELETE /security/user/{user_id}/roles/{role_id}
   - name: Try to delete a non-existent user-role
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/no_user/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/no_user/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        role_ids: 5
+        role_ids: 12
     response:
       status_code: 200
       body:
@@ -182,7 +182,7 @@ stages:
   # DELETE /security/user/{user_id}/roles/{role_id}
   - name: Try to delete a non-existent user-role (role non-existent)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/new_user/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/new_user/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -201,10 +201,6 @@ includes:
 
 stages:
 
-  # Authentication stage
-  - type: ref
-    id: login_get_token
-
   # DELETE /security/policies/{role_id}
   - name: Try to delete a existent policy
     request:
@@ -213,13 +209,13 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        policy_ids: 2
+        policy_ids: 12
     response:
       status_code: 200
       body:
         data:
           affected_items:
-            - id: 2
+            - id: 12
               name: !anystr
               policy: !anything
               roles: !anything
@@ -259,19 +255,19 @@ stages:
 
   # DELETE /security/roles
   - name: Try to delete one existent role and no existent one
-    request: &delete_all_roles_request
+    request: &delete_roles_request
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        role_ids: 3,4
+        role_ids: 10,11
     response:
       status_code: 200
       body:
         data:
           affected_items:
-            - id: 4
+            - id: 11
               name: !anystr
               policies: !anything
               rule: !anything
@@ -281,14 +277,14 @@ stages:
                 message: The specified role does not exist
                 remediation: Please, create the specified role with the endpoint POST /security/roles
               id:
-                - '3'
+                - '10'
           total_affected_items: 1
           total_failed_items: 1
 
   # DELETE /security/roles
   - name: Try to delete all roles of the system
     request:
-      <<: *delete_all_roles_request
+      <<: *delete_roles_request
     response:
       status_code: 200
       body:
@@ -299,7 +295,7 @@ stages:
   # DELETE /security/roles
   - name: Try to delete the administrator role
     request:
-      <<: *delete_all_roles_request
+      <<: *delete_roles_request
       params:
         role_ids: 1
     response:
@@ -319,17 +315,17 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        policy_ids: 3,4
+        policy_ids: 13,14
     response:
       status_code: 200
       body:
         data:
           affected_items:
-            - id: 3
+            - id: 13
               name: !anystr
               policy: !anything
               roles: !anything
-            - id: 4
+            - id: 14
               name: !anystr
               policy: !anything
               roles: !anything
@@ -379,3 +375,142 @@ stages:
       method: DELETE
     response:
       status_code: 200
+
+---
+test_name: DELETE /security/users
+
+includes:
+  - !include common.yaml
+
+stages:
+
+  - name: Delete a non-existent user
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        usernames: nonexistent
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 5001
+                message: !anystr
+                remediation: !anystr
+              id:
+                - nonexistent
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
+
+  - name: Delete an admin user (wazuh)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        usernames: wazuh
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 5004
+                message: !anystr
+                remediation: !anystr
+              id:
+                - wazuh
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
+
+  - name: Delete an admin user (wazuh-wui)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        usernames: wazuh-wui
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 5004
+                message: !anystr
+                remediation: !anystr
+              id:
+                - wazuh-wui
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
+
+  - name: Delete an existent user (with body)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        usernames: normal
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - username: normal
+          total_affected_items: 1
+        message: Users deleted correctly
+
+  - name: Delete an existent user
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        usernames: rbac
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - username: rbac
+          total_affected_items: 1
+        message: Users deleted correctly
+
+  - name: Delete all users in the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - username: administrator
+              roles: []
+            - username: guest
+              roles: []
+            - username: ossec
+              roles: []
+            - username: python
+              roles: []
+          failed_items: []
+          total_affected_items: 4
+          total_failed_items: 0
+        message: Users deleted correctly
+

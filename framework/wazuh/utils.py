@@ -478,7 +478,7 @@ def get_hash(filename, hash_algorithm='md5', return_hex=True):
         with open(filename, 'rb') as f:
             for chunk in iter(lambda: f.read(65536), b""):
                 hashing.update(chunk)
-    except IOError:
+    except (IOError, OSError):
         return None
 
     return hashing.hexdigest() if return_hex else hashing.digest()
