@@ -21,6 +21,7 @@ all: install
 
 install:
 	$(INSTALL_RW_DIR) $(PREFIX)/api/configuration
+	$(INSTALL_RW_DIR) $(PREFIX)/api/configuration/ssl
 	$(INSTALL_RW_DIR) $(PREFIX)/api/configuration/security
 
 	$(INSTALL_FILE) api/configuration/api.yaml ${PREFIX}/api/configuration

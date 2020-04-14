@@ -8,6 +8,7 @@ import argparse
 import asyncio
 import os
 import ssl
+import logging
 import sys
 
 import aiohttp_cache
@@ -20,7 +21,8 @@ from api import alogging, configuration, __path__ as api_path
 # noinspection PyUnresolvedReferences
 from api import validator
 from api.api_exception import APIException
-from api.constants import CONFIG_FILE_PATH
+from api.configuration import generate_self_signed_certificate, generate_private_key, generate_pem_phrase
+from api.constants import CONFIG_FILE_PATH, SECURITY_PATH
 from api.middlewares import set_user_name
 from api.util import to_relative_path
 from wazuh import pyDaemonModule, common
@@ -116,20 +118,38 @@ if __name__ == '__main__':
 
     # Configure https
     if configuration['https']['enabled']:
+
+        # Generate SSC if it does not exist and HTTPS is enabled
+        if not os.path.exists(configuration['https']['key']) or not os.path.exists(configuration['https']['cert']):
+            logger = logging.getLogger('wazuh')
+            logger.info('HTTPS is enabled but cannot find the private key and/or certificate. '
+                        'Attempting to generate them.')
+            logger.info(f'Generated PEM phrase in WAZUH_PATH/{to_relative_path(SECURITY_PATH)}.')
+            pem_phrase = generate_pem_phrase()
+            private_key = generate_private_key(pem_phrase, configuration['https']['key'])
+            logger.info(f"Generated private key file in WAZUH_PATH/{to_relative_path(configuration['https']['key'])}.")
+            generate_self_signed_certificate(private_key, configuration['https']['cert'])
+            logger.info(f"Generated certificate file in WAZUH_PATH/{to_relative_path(configuration['https']['cert'])}.")
+
         try:
-            ssl_context = ssl.SSLContext()
+            ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS)
             if configuration['https']['use_ca']:
                 ssl_context.verify_mode = ssl.CERT_REQUIRED
                 ssl_context.load_verify_locations(configuration['https']['ca'])
+            try:
+                with open(os.path.join(SECURITY_PATH, 'ssl_secret'), 'r') as f:
+                    pem_phrase = f.read()
+            except FileNotFoundError:
+                raise APIException(2003, details='Could not find the secret file with the PEM phrase. Please check '
+                                                 f'{SECURITY_PATH}/ssl_secret')
             ssl_context.load_cert_chain(certfile=configuration['https']['cert'],
-                                        keyfile=configuration['https']['key'])
+                                        keyfile=configuration['https']['key'],
+                                        password=pem_phrase)
         except ssl.SSLError as e:
             raise APIException(2003, details='Private key does not match with the certificate')
         except IOError as e:
-            raise APIException(2003, details='Please, ensure '
-                                             'if path to certificates is correct in '
-                                             'the configuration file '
-                                             f'(WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)})')
+            raise APIException(2003, details='Please, ensure if path to certificates is correct in the configuration '
+                                             f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}')
     else:
         ssl_context = None
 
