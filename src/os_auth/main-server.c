@@ -37,7 +37,7 @@ static int ssl_error(const SSL *ssl, int ret);
 
 /* Thread for dispatching connection pool */
 static void* run_dispatcher(void *arg);
-w_err_t w_auth_PARSE_verify_conection(char *response, int *acount, int *ret, SSL *ssl, char *srcip, char *agentname, char *fname, char *centralized_group, int *use_client_ip);
+w_err_t w_auth_parse(char* buf,char *response, char *ip, char *agentname, char *groups, int *use_client_ip);
 
 /* Thread for writing keystore onto disk */
 static void* run_writer(void *arg);
@@ -438,7 +438,7 @@ int main(int argc, char **argv)
     } else
         minfo("Accepting connections on port %hu. No password required.", config.port);
 
-    //JJP: Esto podría sacarse.  
+    //JJP: Avoid on worker
     /* Getting SSL cert. */
 
     fp = fopen(KEYSFILE_PATH, "a");
@@ -448,7 +448,7 @@ int main(int argc, char **argv)
     }
     fclose(fp);
 
-    //JJP: Esto podrìa sacarse
+    //JJP: avoid on worker
     /* Start SSL */
     ctx = os_ssl_keys(1, dir, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate);
     if (!ctx) {
@@ -605,9 +605,10 @@ int main(int argc, char **argv)
 void* run_dispatcher(__attribute__((unused)) void *arg) {
     struct client client;
     char srcip[IPSIZE + 1];
+    char *agentname = NULL;
     int ret;
-    
-    
+    char* buf = NULL;  
+    char *tmpstr = NULL;  
     double antiquity;
     int acount;
     char response[2048];
@@ -621,7 +622,8 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     /* Initialize some variables */
     memset(srcip, '\0', IPSIZE + 1);
 
-    //JJP: INIT [0] Esto creo que puede no ir
+    //JJP: INIT [0] 
+    //JJP: Avoid on worker (maybe)
     OS_PassEmptyKeyfile();
     OS_ReadKeys(&keys, 0, !config.flags.clear_removed, 1);
     mdebug1("Dispatch thread ready");
@@ -653,135 +655,105 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
         minfo("New connection from %s", srcip);
 
-        //JJP: Quizas pueda inventar un Verify Request().
-        char *agentname = NULL;
-        char fname[2048];
-        char centralized_group[OS_SIZE_65536] = {0};
-        int use_client_ip = 0;
-        if(OS_SUCCESS == w_auth_PARSE_verify_conection(response, &acount, &ret, ssl, srcip, agentname, fname, centralized_group, &use_client_ip)){
+        /* Additional verification of the agent's certificate. */
 
-            w_mutex_lock(&mutex_keys);
+        if (config.flags.verify_host && config.agent_ca) {
+            if (check_x509_cert(ssl, srcip) != VERIFY_TRUE) {
+                merror("Unable to verify client certificate.");
+                SSL_free(ssl);
+                close(client.socket);
+                continue;
+            }
+        }
 
-            //JJP [2]: Del lado del Master, Verify Agent adition()
+        os_calloc(OS_SIZE_65536 + OS_SIZE_4096 + 1, sizeof(char), buf);
 
-            /* Check for duplicated IP */
-            if (strcmp(srcip, "any") != 0 ) {
-                if (index = OS_IsAllowedIP(&keys, srcip), index >= 0) {
-                    if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
-                        id_exist = keys.keyentries[index]->id;
-                        minfo("Duplicated IP '%s' (%s). Saving backup.", srcip, id_exist);
+        buf[0] = '\0';
+        
+         
+        ret = SSL_read(ssl, buf, OS_SIZE_65536 + OS_SIZE_4096);
+        if (ret <= 0) {
+            switch (ssl_error(ssl, ret)) {
+            case 0:
+                minfo("Client timeout from %s", srcip);
+                break;
+            default:
+                merror("SSL Error (%d)", ret);
+            }
 
-                        OS_RemoveAgentGroup(id_exist);
-                        add_backup(keys.keyentries[index]);
-                        OS_DeleteKey(&keys, id_exist, 0);
-                    } else {
-                        w_mutex_unlock(&mutex_keys);
-                        merror("Duplicated IP %s", srcip);
-                        snprintf(response, 2048, "ERROR: Duplicated IP: %s\n\n", srcip);
-                        SSL_write(ssl, response, strlen(response));
-                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                        SSL_write(ssl, response, strlen(response));
-                        SSL_free(ssl);
-                        close(client.socket);
-                        //JJP: Aca habia un free del buf, pero que ahora no hace falta, igual estar atento
-                        continue;
+            SSL_free(ssl);
+            close(client.socket);
+            free(buf);
+            continue;
+        }
+      
+        int parseok = 0;
+        buf[ret] = '\0';        
+        tmpstr = buf;
+
+        /* Checking for shared password authentication. */
+        if(authpass) {
+            /* Format is pretty simple: OSSEC PASS: PASS WHATEVERACTION */
+            if (strncmp(buf, "OSSEC PASS: ", 12) == 0) {
+                buf = buf + 12;
+
+                if (strlen(buf) > strlen(authpass) && strncmp(buf, authpass, strlen(authpass)) == 0) {
+                    buf += strlen(authpass);
+
+                    if (*buf == ' ') {
+                        buf++;
+                        parseok = 1;
                     }
                 }
             }
 
-            //JJP: Supongo que esto no lo resolvía la logica clusterizada antes de todos modos
-            /* Check whether the agent name is the same as the manager */
-
-            if (!strcmp(agentname, shost)) {
-                w_mutex_unlock(&mutex_keys);
-                merror("Invalid agent name %s (same as manager)", agentname);
-                snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
-                SSL_write(ssl, response, strlen(response));
-                snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                SSL_write(ssl, response, strlen(response));
+            if (parseok == 0) {
+                merror("Invalid password provided by %s. Closing connection.", srcip);
                 SSL_free(ssl);
                 close(client.socket);
-                //JJP: Aca habia un free del buf, pero que ahora no hace falta, igual estar atento
+                free(buf);
                 continue;
             }
+        }
+       
+        mdebug2("Request received: <%s>", buf);
+        
+       
+        char centralized_group[OS_SIZE_65536] = {0};
+        int use_client_ip = 0;
+        response[2047] = '\0';
+        
 
-            /* Check for duplicated names */
+        if(OS_SUCCESS != w_auth_parse(tmpstr, response, srcip, agentname, centralized_group, &use_client_ip)){            
+            SSL_write(ssl, response, strlen(response));
+            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+            SSL_write(ssl, response, strlen(response));
+            SSL_free(ssl);
+            close(client.socket);
+            free(buf);
+        }
+        acount = 2;
+        char fname[2048];
+        fname[2047] = '\0';
 
-            if (index = OS_IsAllowedName(&keys, agentname), index >= 0) {
+        w_mutex_lock(&mutex_keys);
+        
+        //JJP [2]: Verify()
+
+        /* Check for duplicated IP */
+        if (strcmp(srcip, "any") != 0 ) {
+            if (index = OS_IsAllowedIP(&keys, srcip), index >= 0) {
                 if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
                     id_exist = keys.keyentries[index]->id;
-                    minfo("Duplicated name '%s' (%s). Saving backup.", agentname, id_exist);
+                    minfo("Duplicated IP '%s' (%s). Saving backup.", srcip, id_exist);
 
+                    OS_RemoveAgentGroup(id_exist);
                     add_backup(keys.keyentries[index]);
                     OS_DeleteKey(&keys, id_exist, 0);
                 } else {
-                    strncpy(fname, agentname, 2048);
-
-                    while (OS_IsAllowedName(&keys, fname) >= 0) {
-                        snprintf(fname, 2048, "%s%d", agentname, acount);
-
-                        if (++acount > MAX_TAG_COUNTER)
-                            break;
-                    }
-
-                    if (acount > MAX_TAG_COUNTER) {
-                        w_mutex_unlock(&mutex_keys);
-                        merror("Invalid agent name %s (duplicated)", agentname);
-                        snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
-                        SSL_write(ssl, response, strlen(response));
-                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                        SSL_write(ssl, response, strlen(response));
-                        SSL_free(ssl);
-                        close(client.socket);
-                        //JJP: Aca habia un free del buf, pero que ahora no hace falta, igual estar atento
-                        continue;
-                    }
-
-                    agentname = fname;
-                }
-            }
-
-            /* Check for agents limit */
-
-            if (config.flags.register_limit && keys.keysize >= (MAX_AGENTS - 2) ) {
-                w_mutex_unlock(&mutex_keys);
-                merror(AG_MAX_ERROR, MAX_AGENTS - 2);
-                snprintf(response, 2048, "ERROR: The maximum number of agents has been reached\n\n");
-                SSL_write(ssl, response, strlen(response));
-                snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                SSL_write(ssl, response, strlen(response));
-                SSL_free(ssl);
-                close(client.socket);
-                //JJP: Aca habia un free del buf, pero que ahora no hace falta, igual estar atento
-                continue;
-            }
-
-            //JJP: Add agent
-            /* Add the new agent */
-
-            if (index = OS_AddNewAgent(&keys, NULL, agentname, (config.flags.use_source_ip || use_client_ip)? srcip : NULL, NULL), index < 0) {
-                w_mutex_unlock(&mutex_keys);
-                merror("Unable to add agent: %s (internal error)", agentname);
-                snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);
-                SSL_write(ssl, response, strlen(response));
-                snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                SSL_write(ssl, response, strlen(response));
-                SSL_free(ssl);
-                close(client.socket);
-                //JJP: Aca habia un free del buf, pero que ahora no hace falta, igual estar atento
-                continue;
-            }
-
-            /* Add the agent to the centralized configuration group */
-            if(*centralized_group) {
-                char path[PATH_MAX];
-
-                if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
                     w_mutex_unlock(&mutex_keys);
-                    merror("At set_agent_group(): file path too large for agent '%s'.", keys.keyentries[index]->id);
-                    OS_RemoveAgent(keys.keyentries[index]->id);
-                    merror("Unable to set agent centralized group: %s (internal error)", centralized_group);
-                    snprintf(response, 2048, "ERROR: Internal manager error setting agent centralized group: %s\n\n", centralized_group);
+                    merror("Duplicated IP %s", srcip);
+                    snprintf(response, 2048, "ERROR: Duplicated IP: %s\n\n", srcip);
                     SSL_write(ssl, response, strlen(response));
                     snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
                     SSL_write(ssl, response, strlen(response));
@@ -791,30 +763,130 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     continue;
                 }
             }
+        }
 
-            snprintf(response, 2048, "OSSEC K:'%s %s %s %s'\n\n", keys.keyentries[index]->id, agentname, (config.flags.use_source_ip || use_client_ip) ? srcip : "any", keys.keyentries[index]->key);
-            minfo("Agent key generated for '%s' (requested by %s)", agentname, srcip);
-            ret = SSL_write(ssl, response, strlen(response));
+        //JJP: Supongo que esto no lo resolvía la logica clusterizada antes de todos modos
+        /* Check whether the agent name is the same as the manager */
 
-            if (ret < 0) {
-                merror("SSL write error (%d)", ret);
-                merror("Agent key not saved for %s", agentname);
-                ERR_print_errors_fp(stderr);
-                OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id, 1);
-            } else {
-                /* Add pending key to write */
-                add_insert(keys.keyentries[keys.keysize - 1], *centralized_group ? centralized_group : NULL);
-                write_pending = 1;
-                w_cond_signal(&cond_pending);
-            }
-
+        if (!strcmp(agentname, shost)) {
             w_mutex_unlock(&mutex_keys);
-        }
-        else {
-            //JJP: Hay muchisimos mensajes de ssl close repetidos. Traer aca afuera y agregar un campo response.
-            //JJP:El free de SSL. En fin. Revisar
+            merror("Invalid agent name %s (same as manager)", agentname);
+            snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
+            SSL_write(ssl, response, strlen(response));
+            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+            SSL_write(ssl, response, strlen(response));
+            SSL_free(ssl);
             close(client.socket);
+            //JJP: Aca habia un free del buf, pero que ahora no hace falta, igual estar atento
+            //JJP: FIX: Debia conservarse buf por algun otro puntero usandolo, quizas los datos parseados
+            continue;
         }
+
+        /* Check for duplicated names */
+
+        if (index = OS_IsAllowedName(&keys, agentname), index >= 0) {
+            if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
+                id_exist = keys.keyentries[index]->id;
+                minfo("Duplicated name '%s' (%s). Saving backup.", agentname, id_exist);
+
+                add_backup(keys.keyentries[index]);
+                OS_DeleteKey(&keys, id_exist, 0);
+            } else {
+                strncpy(fname, agentname, 2048);
+
+                while (OS_IsAllowedName(&keys, fname) >= 0) {
+                    snprintf(fname, 2048, "%s%d", agentname, acount);
+
+                    if (++acount > MAX_TAG_COUNTER)
+                        break;
+                }
+
+                if (acount > MAX_TAG_COUNTER) {
+                    w_mutex_unlock(&mutex_keys);
+                    merror("Invalid agent name %s (duplicated)", agentname);
+                    snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
+                    SSL_write(ssl, response, strlen(response));
+                    snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                    SSL_write(ssl, response, strlen(response));
+                    SSL_free(ssl);
+                    close(client.socket);
+                    //JJP: Aca habia un free del buf, pero que ahora no hace falta, igual estar atento
+                    continue;
+                }
+
+                agentname = fname;
+            }
+        }
+
+        /* Check for agents limit */
+
+        if (config.flags.register_limit && keys.keysize >= (MAX_AGENTS - 2) ) {
+            w_mutex_unlock(&mutex_keys);
+            merror(AG_MAX_ERROR, MAX_AGENTS - 2);
+            snprintf(response, 2048, "ERROR: The maximum number of agents has been reached\n\n");
+            SSL_write(ssl, response, strlen(response));
+            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+            SSL_write(ssl, response, strlen(response));
+            SSL_free(ssl);
+            close(client.socket);
+            //JJP: Aca habia un free del buf, pero que ahora no hace falta, igual estar atento
+            continue;
+        }
+
+        //JJP: Add agent
+        /* Add the new agent */
+
+        if (index = OS_AddNewAgent(&keys, NULL, agentname, (config.flags.use_source_ip || use_client_ip)? srcip : NULL, NULL), index < 0) {
+            w_mutex_unlock(&mutex_keys);
+            merror("Unable to add agent: %s (internal error)", agentname);
+            snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);
+            SSL_write(ssl, response, strlen(response));
+            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+            SSL_write(ssl, response, strlen(response));
+            SSL_free(ssl);
+            close(client.socket);
+            //JJP: Aca habia un free del buf, pero que ahora no hace falta, igual estar atento
+            continue;
+        }
+
+        /* Add the agent to the centralized configuration group */
+        if(*centralized_group) {
+            char path[PATH_MAX];
+
+            if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
+                w_mutex_unlock(&mutex_keys);
+                merror("At set_agent_group(): file path too large for agent '%s'.", keys.keyentries[index]->id);
+                OS_RemoveAgent(keys.keyentries[index]->id);
+                merror("Unable to set agent centralized group: %s (internal error)", centralized_group);
+                snprintf(response, 2048, "ERROR: Internal manager error setting agent centralized group: %s\n\n", centralized_group);
+                SSL_write(ssl, response, strlen(response));
+                snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                SSL_write(ssl, response, strlen(response));
+                SSL_free(ssl);
+                close(client.socket);
+                //JJP: Aca habia un free del buf, pero que ahora no hace falta, igual estar atento
+                continue;
+            }
+        }
+        //JJP: Response
+        snprintf(response, 2048, "OSSEC K:'%s %s %s %s'\n\n", keys.keyentries[index]->id, agentname, (config.flags.use_source_ip || use_client_ip) ? srcip : "any", keys.keyentries[index]->key);
+        minfo("Agent key generated for '%s' (requested by %s)", agentname, srcip);
+        ret = SSL_write(ssl, response, strlen(response));
+
+        if (ret < 0) {
+            merror("SSL write error (%d)", ret);
+            merror("Agent key not saved for %s", agentname);
+            ERR_print_errors_fp(stderr);
+            OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id, 1);
+        } else {
+            /* Add pending key to write */
+            add_insert(keys.keyentries[keys.keysize - 1], *centralized_group ? centralized_group : NULL);
+            write_pending = 1;
+            w_cond_signal(&cond_pending);
+        }
+
+        w_mutex_unlock(&mutex_keys);       
+        
 
         SSL_free(ssl);
         close(client.socket);
@@ -826,115 +898,37 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     return NULL;
 }
 
-//JJP: Migrar agentname a un parse... Pero mas adelante
-//JJP: Le paso ret pero una vez que separe Parse de Verify no deberia hacer falta, qizas si necesite pasarle el bufer con lo leido.
-//JJP: Acount no tengo ni idea de que es. Por ahora solo se lo paso... Solo lo setea en 2 cuando fue exitoso... Ya vere como lo saco de ahi
-//JJP: response si deberia venir, yo creo. Es la respuesta que vamos a dar. Solo que yo mandaría la respuesta afuera, obviamente.
-w_err_t w_auth_PARSE_verify_conection(char *response, int *acount, int *ret, SSL *ssl, char *srcip, char *agentname, char *fname, char *centralized_group, int *use_client_ip){
-    int parseok;
-    char *tmpstr;
-    char * buf = NULL;
-    //JJP: [1]Verify conection
-    //JJP: Dividir esto en un verify conection y un verify parameters
-    //JJP: Dar returns apropiados para cada caso.
-
-    /* Additional verification of the agent's certificate. */
-
-    if (config.flags.verify_host && config.agent_ca) {
-        if (check_x509_cert(ssl, srcip) != VERIFY_TRUE) {
-            merror("Unable to verify client certificate.");
-            SSL_free(ssl);
-            
-            return OS_INVALID;
-        }
-    }
-
-    os_calloc(OS_SIZE_65536 + OS_SIZE_4096 + 1, sizeof(char), buf);
-
-    buf[0] = '\0';
-    *ret = SSL_read(ssl, buf, OS_SIZE_65536 + OS_SIZE_4096);
-    if (*ret <= 0) {
-        switch (ssl_error(ssl, *ret)) {
-        case 0:
-            minfo("Client timeout from %s", srcip);
-            break;
-        default:
-            merror("SSL Error (%d)", *ret);
-        }
-
-        SSL_free(ssl);
-        
-        free(buf);
-        return OS_INVALID;
-    }
-
-    buf[*ret] = '\0';
-    parseok = 0;
-    tmpstr = buf;
-
-    mdebug2("Request received: <%s>", buf);
-
-    /* Checking for shared password authentication. */
-    if(authpass) {
-        /* Format is pretty simple: OSSEC PASS: PASS WHATEVERACTION */
-        if (strncmp(tmpstr, "OSSEC PASS: ", 12) == 0) {
-            tmpstr = tmpstr + 12;
-
-            if (strlen(tmpstr) > strlen(authpass) && strncmp(tmpstr, authpass, strlen(authpass)) == 0) {
-                tmpstr += strlen(authpass);
-
-                if (*tmpstr == ' ') {
-                    tmpstr++;
-                    parseok = 1;
-                }
-            }
-        }
-
-        if (parseok == 0) {
-            merror("Invalid password provided by %s. Closing connection.", srcip);
-            SSL_free(ssl);
-            
-            free(buf);
-            return OS_INVALID;
-        }
-    }
-
+w_err_t w_auth_parse(char* buf, char *response, char *ip, char *agentname, char *groups, int *use_client_ip){
+    
+    int parseok; //JJP: Remove this
+     
+    //JJP: Bring Different return values   
     /* Checking for action A (add agent) */
     parseok = 0;
-
     
-    if (strncmp(tmpstr, "OSSEC A:'", 9) == 0) {
-        agentname = tmpstr + 9;
-        tmpstr += 9;
-        while (*tmpstr != '\0') {
-            if (*tmpstr == '\'') {
-                *tmpstr = '\0';
-                minfo("Received request for a new agent (%s) from: %s", agentname, srcip);
+    if (strncmp(buf, "OSSEC A:'", 9) == 0) {
+        agentname = buf + 9;
+        buf += 9;
+        while (*buf != '\0') {
+            if (*buf == '\'') {
+                *buf = '\0';
+                minfo("Received request for a new agent (%s) from: %s", agentname, ip);
                 parseok = 1;
                 break;
             }
-            tmpstr++;
+            buf++;
         }
     }
-    tmpstr++;
-
+    buf++;
     
     if (parseok == 0) {
-        merror("Invalid request for new agent from: %s", srcip);
-    } else {
-        *acount = 2;
-        response[2047] = '\0';
-        fname[2047] = '\0';
+        merror("Invalid request for new agent from: %s", ip);
+    } else {      
+
 
         if (!OS_IsValidName(agentname)) {
-            merror("Invalid agent name: %s from %s", agentname, srcip);
-            snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
-            SSL_write(ssl, response, strlen(response));
-            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-            SSL_write(ssl, response, strlen(response));
-            SSL_free(ssl);
-            
-            free(buf);
+            merror("Invalid agent name: %s from %s", agentname, ip);
+            snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);  
             return OS_INVALID;
         }
 
@@ -942,79 +936,60 @@ w_err_t w_auth_PARSE_verify_conection(char *response, int *acount, int *ret, SSL
         
         char centralized_group_token[2] = "G:";
 
-        if(strncmp(++tmpstr,centralized_group_token,2)==0)
+        if(strncmp(++buf,centralized_group_token,2)==0)
         {
 
             char group_path[PATH_MAX] = {0};
-            sscanf(tmpstr," G:\'%65535[^\']\"",centralized_group);
+            sscanf(buf," G:\'%65535[^\']\"",groups);
 
             const char delim[2] = ",";
-            char *multigroup = strchr(centralized_group,MULTIGROUP_SEPARATOR);
+            char *multigroup = strchr(groups,MULTIGROUP_SEPARATOR);
             char groups_path[PATH_MAX + 1] = {0};
             strcpy(groups_path,isChroot() ? "/etc/shared/%s" : DEFAULTDIR"/etc/shared/%s");
 
             /* Validate the group name */
             int valid = 0;
-            valid = w_validate_group_name(centralized_group);
+            valid = w_validate_group_name(groups);
 
             if(valid < 0) {
 
-                merror("Invalid group name: %.255s... ,",centralized_group);
+                merror("Invalid group name: %.255s... ,",groups);
 
                 switch (valid) {
                     case -6:
-                        snprintf(response, 2048, "ERROR: Invalid group name: %.255s... cannot start or end with ','\n\n", centralized_group);
+                        snprintf(response, 2048, "ERROR: Invalid group name: %.255s... cannot start or end with ','\n\n", groups);
                         break;
                     case -5:
-                        snprintf(response, 2048, "ERROR: Invalid group name: %.255s... consecutive ',' are not allowed \n\n, ", centralized_group);
+                        snprintf(response, 2048, "ERROR: Invalid group name: %.255s... consecutive ',' are not allowed \n\n, ", groups);
                         break;
                     case -4:
-                        snprintf(response, 2048, "ERROR: Invalid group name: %.255s... white spaces are not allowed \n\n", centralized_group);
+                        snprintf(response, 2048, "ERROR: Invalid group name: %.255s... white spaces are not allowed \n\n", groups);
                         break;
                     case -3:
-                        snprintf(response, 2048, "ERROR: Invalid group name: %.255s... multigroup is too large \n\n", centralized_group);
+                        snprintf(response, 2048, "ERROR: Invalid group name: %.255s... multigroup is too large \n\n", groups);
                         break;
                     case -2:
-                        snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large\n\n", centralized_group);
+                        snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large\n\n", groups);
                         break;
                     case -1:
-                        snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited\n\n", centralized_group);
+                        snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited\n\n", groups);
                         break;
-                }
-
-                SSL_write(ssl, response, strlen(response));
-                snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                SSL_write(ssl, response, strlen(response));
-                SSL_free(ssl);
-                
-                free(buf);
+                }               
                 return OS_INVALID;
             }
 
             if(!multigroup){
-                if(snprintf(group_path,PATH_MAX,groups_path,centralized_group) >= PATH_MAX){
-                    merror("Invalid group name: %.255s... , group path is too large.",centralized_group);
-                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group path is too large\n\n", centralized_group);
-                    SSL_write(ssl, response, strlen(response));
-                    snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                    SSL_write(ssl, response, strlen(response));
-                    SSL_free(ssl);
-                    
-                    free(buf);
+                if(snprintf(group_path,PATH_MAX,groups_path,groups) >= PATH_MAX){
+                    merror("Invalid group name: %.255s... , group path is too large.",groups);
+                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group path is too large\n\n", groups);                    
                     return OS_INVALID;
                 }
-                //JJP[Esto lo tengo que meter del lado del Master, en verify adition()]
+                //JJP: This should be on Verify function
                 /* Check if group exists */
                 DIR *group_dir = opendir(group_path);
                 if (!group_dir) {
-                    merror("Invalid group: %.255s",centralized_group);
-                    snprintf(response, 2048, "ERROR: Invalid group: %s\n\n", centralized_group);
-                    SSL_write(ssl, response, strlen(response));
-                    snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                    SSL_write(ssl, response, strlen(response));
-                    SSL_free(ssl);
-                    
-                    free(buf);
+                    merror("Invalid group: %.255s",groups);
+                    snprintf(response, 2048, "ERROR: Invalid group: %s\n\n", groups);                   
                     return OS_INVALID;;
                 }
                 closedir(group_dir);
@@ -1024,9 +999,9 @@ w_err_t w_auth_PARSE_verify_conection(char *response, int *acount, int *ret, SSL
                 char *groups_added;
                 char *save_ptr = NULL;
 
-                groups_added = wstr_delete_repeated_groups(centralized_group);
+                groups_added = wstr_delete_repeated_groups(groups);
                 mdebug1("Multigroup is: %s",groups_added);
-                snprintf(centralized_group,OS_SIZE_65536,"%s",groups_added);
+                snprintf(groups,OS_SIZE_65536,"%s",groups_added);
                 char *group = strtok_r(groups_added, delim, &save_ptr);
 
                 while( group != NULL ) {
@@ -1037,11 +1012,7 @@ w_err_t w_auth_PARSE_verify_conection(char *response, int *acount, int *ret, SSL
                     /* Check limit */
                     if(max_multigroups > MAX_GROUPS_PER_MULTIGROUP){
                         merror("Maximum multigroup reached: Limit is %d",MAX_GROUPS_PER_MULTIGROUP);
-                        snprintf(response, 2048, "Maximum multigroup reached: Limit is %d\n\n", MAX_GROUPS_PER_MULTIGROUP);
-                        SSL_write(ssl, response, strlen(response));
-                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                        SSL_write(ssl, response, strlen(response));
-                        SSL_free(ssl);
+                        snprintf(response, 2048, "Maximum multigroup reached: Limit is %d\n\n", MAX_GROUPS_PER_MULTIGROUP);                      
                         
                         error = 1;
                         break;
@@ -1055,23 +1026,15 @@ w_err_t w_auth_PARSE_verify_conection(char *response, int *acount, int *ret, SSL
                         case -2:
                             merror("Invalid group name: %.255s... ,",group);
                             snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large\n\n", group);
-                            SSL_write(ssl, response, strlen(response));
-                            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                            SSL_write(ssl, response, strlen(response));
-                            SSL_free(ssl);
-                            
+                                                        
                             error = 1;
                             break;
 
 
                         case -1:
-                            merror("Invalid group name: %.255s... ,",centralized_group);
+                            merror("Invalid group name: %.255s... ,",groups);
                             snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited\n\n", group);
-                            SSL_write(ssl, response, strlen(response));
-                            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                            SSL_write(ssl, response, strlen(response));
-                            SSL_free(ssl);
-                            
+                                                       
                             error = 1;
                             break;
 
@@ -1083,11 +1046,7 @@ w_err_t w_auth_PARSE_verify_conection(char *response, int *acount, int *ret, SSL
 
                     if (!dp) {
                         merror("Invalid group: %.255s",group);
-                        snprintf(response, 2048, "ERROR: Invalid group: %s\n\n", group);
-                        SSL_write(ssl, response, strlen(response));
-                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                        SSL_write(ssl, response, strlen(response));
-                        SSL_free(ssl);
+                        snprintf(response, 2048, "ERROR: Invalid group: %s\n\n", group);                       
                         
                         error = 1;
                         break;
@@ -1100,15 +1059,14 @@ w_err_t w_auth_PARSE_verify_conection(char *response, int *acount, int *ret, SSL
 
                 os_free(groups_added);
 
-                if(error){
-                    free(buf);
+                if(error){                    
                     return OS_INVALID;
                 }
             }
             /*Forward the string pointer G:'........' 2 for G:, 2 for ''*/
-            tmpstr+= 2+strlen(centralized_group)+2;
+            buf+= 2+strlen(groups)+2;
         }else{
-            tmpstr--;
+            buf--;
         }
 
         /* Check for IP when client uses -i option */
@@ -1116,36 +1074,29 @@ w_err_t w_auth_PARSE_verify_conection(char *response, int *acount, int *ret, SSL
         char client_source_ip[IPSIZE + 1] = {0};
         char client_source_ip_token[3] = "IP:";
 
-        if(strncmp(++tmpstr,client_source_ip_token,3)==0) {
+        if(strncmp(++buf,client_source_ip_token,3)==0) {
             char format[15];
             sprintf(format, " IP:\'%%%d[^\']\"", IPSIZE);
-            sscanf(tmpstr, format ,client_source_ip);
+            sscanf(buf, format ,client_source_ip);
 
-            /* If IP: != 'src' overwrite the srcip */
+            /* If IP: != 'src' overwrite the provided ip */
             if(strncmp(client_source_ip,"src",3) != 0)
             {
                 if (!OS_IsValidIP(client_source_ip, NULL)) {
                     merror("Invalid IP: '%s'", client_source_ip);
-                    snprintf(response, 2048, "ERROR: Invalid IP: %s\n\n", client_source_ip);
-                    SSL_write(ssl, response, strlen(response));
-                    snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                    SSL_write(ssl, response, strlen(response));
-                    SSL_free(ssl);
-                    
-                    free(buf);
+                    snprintf(response, 2048, "ERROR: Invalid IP: %s\n\n", client_source_ip);                    
                     return OS_INVALID;
                 }
 
-                snprintf(srcip, IPSIZE, "%s", client_source_ip);
+                snprintf(ip, IPSIZE, "%s", client_source_ip);
             }
 
             (*use_client_ip) = 1;
         } else if(!config.flags.use_source_ip) {
             // use_source-ip = 0 and no -I argument in agent
-            snprintf(srcip, IPSIZE, "any");
+            snprintf(ip, IPSIZE, "any");
         }
-        // else -> agent IP is already on srcip
-        free(buf);        
+        // else -> agent IP is already on ip         
     }
     return OS_SUCCESS;
 }
