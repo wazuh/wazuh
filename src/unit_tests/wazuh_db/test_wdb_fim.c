@@ -112,6 +112,13 @@ int __wrap_sqlite3_step()
     return mock();
 }
 
+int __wrap_sqlite3_bind_int(sqlite3_stmt* stmt, int index, int value) {
+    check_expected(index);
+    check_expected(value);
+
+    return mock();
+}
+
 /* tests */
 
 static void test_wdb_syscheck_save2_wbs_null(void **state)
@@ -375,12 +382,13 @@ static void test_wdb_fim_insert_entry2_fail_sqlite3_stmt(void **state)
 
 static void test_wdb_fim_insert_entry2_success(void **state)
 {
-    int ret, i;
+    int ret;
 
     wdb_t * wdb = *state;
     wdb->agent_id = strdup("000");
     cJSON* data = cJSON_Parse(VALID_ENTRY);
     cJSON *object = cJSON_CreateObject();
+
     cJSON_AddItemToObject(object, "size", cJSON_CreateNumber(2048));
     cJSON_AddItemToObject(object, "mtime", cJSON_CreateNumber(10));
     cJSON_AddItemToObject(object, "inode", cJSON_CreateNumber(2));
@@ -397,15 +405,71 @@ static void test_wdb_fim_insert_entry2_success(void **state)
     cJSON_AddItemToObject(object, "checksum", cJSON_CreateString("GGGGGGGGGGGG"));
     cJSON_AddItemToObject(object, "attributes", cJSON_CreateString("readonly"));
     cJSON_ReplaceItemInObject(data, "attributes", object);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 4);
+    expect_value(__wrap_sqlite3_bind_int, value, 2048);
+    expect_value(__wrap_sqlite3_bind_int, index, 12);
+    expect_value(__wrap_sqlite3_bind_int, value, 10);
+    expect_value(__wrap_sqlite3_bind_int, index, 13);
+    expect_value(__wrap_sqlite3_bind_int, value, 2);
+    will_return_count(__wrap_sqlite3_bind_int, 0, 3);
+
     will_return(__wrap_cJSON_GetStringValue, "/test");
     will_return(__wrap_cJSON_IsNumber, true);
     will_return(__wrap_cJSON_IsObject, true);
     will_return(__wrap_wdb_stmt_cache, 1);
-    will_return(__wrap_sqlite3_bind_text, 1);
     will_return(__wrap_sqlite3_bind_int64,0);
     will_return(__wrap_sqlite3_step,SQLITE_DONE);
-    for(i=0; i<12; i++)
-        will_return(__wrap_sqlite3_bind_text, 1);
+
+    will_return_count(__wrap_sqlite3_bind_text, 1, 13);
+    ret = wdb_fim_insert_entry2(wdb, data);
+    cJSON_Delete(data);
+    assert_int_equal(ret, 0);
+}
+
+static void test_wdb_fim_insert_entry2_large_inode(void **state)
+{
+    int ret;
+
+    wdb_t * wdb = *state;
+    wdb->agent_id = strdup("000");
+    cJSON* data = cJSON_Parse(VALID_ENTRY);
+    cJSON *object = cJSON_CreateObject();
+
+    cJSON_AddItemToObject(object, "size", cJSON_CreateNumber(2048));
+    cJSON_AddItemToObject(object, "mtime", cJSON_CreateNumber(10));
+    cJSON_AddItemToObject(object, "inode", cJSON_CreateNumber(2311061769));
+    cJSON_AddItemToObject(object, "type", cJSON_CreateString("test_type"));
+    cJSON_AddItemToObject(object, "perm", cJSON_CreateString("yes"));
+    cJSON_AddItemToObject(object, "uid", cJSON_CreateString("00000"));
+    cJSON_AddItemToObject(object, "gid", cJSON_CreateString("AAAAA"));
+    cJSON_AddItemToObject(object, "hash_md5", cJSON_CreateString("AAAA23BCD1113A"));
+    cJSON_AddItemToObject(object, "hash_sha1", cJSON_CreateString("AAAA23BCD1113A"));
+    cJSON_AddItemToObject(object, "user_name", cJSON_CreateString("user"));
+    cJSON_AddItemToObject(object, "group_name", cJSON_CreateString("group"));
+    cJSON_AddItemToObject(object, "hash_sha256", cJSON_CreateString("AAAA23BCD1113AASDASDASD"));
+    cJSON_AddItemToObject(object, "symbolic_path", cJSON_CreateString("/path/second-path"));
+    cJSON_AddItemToObject(object, "checksum", cJSON_CreateString("GGGGGGGGGGGG"));
+    cJSON_AddItemToObject(object, "attributes", cJSON_CreateString("readonly"));
+    cJSON_ReplaceItemInObject(data, "attributes", object);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 4);
+    expect_value(__wrap_sqlite3_bind_int, value, 2048);
+    expect_value(__wrap_sqlite3_bind_int, index, 12);
+    expect_value(__wrap_sqlite3_bind_int, value, 10);
+    expect_value(__wrap_sqlite3_bind_int, index, 13);
+    expect_value(__wrap_sqlite3_bind_int, value, 2311061769);
+    will_return_count(__wrap_sqlite3_bind_int, 0, 3);
+
+    will_return(__wrap_cJSON_GetStringValue, "/test");
+    will_return(__wrap_cJSON_IsNumber, true);
+    will_return(__wrap_cJSON_IsObject, true);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_sqlite3_bind_int64,0);
+    will_return(__wrap_sqlite3_step,SQLITE_DONE);
+
+    will_return_count(__wrap_sqlite3_bind_text, 1, 13);
+
     ret = wdb_fim_insert_entry2(wdb, data);
     cJSON_Delete(data);
     assert_int_equal(ret, 0);
@@ -433,6 +497,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_fail_element_number, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_fail_sqlite3_stmt, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_success, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdb_fim_insert_entry2_large_inode, setup_wdb_t, teardown_wdb_t),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
