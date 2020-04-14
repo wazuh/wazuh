@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2010 Trend Micro Inc.
  * All rights reserved.
  *
@@ -831,11 +831,12 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     int error = 0;
                     int max_multigroups = 0;
                     char *groups_added;
+                    char *save_ptr = NULL;
 
                     groups_added = wstr_delete_repeated_groups(centralized_group);
                     mdebug1("Multigroup is: %s",groups_added);
                     snprintf(centralized_group,OS_SIZE_65536,"%s",groups_added);
-                    char *group = strtok(groups_added, delim);
+                    char *group = strtok_r(groups_added, delim, &save_ptr);
 
                     while( group != NULL ) {
                         DIR * dp;
@@ -901,7 +902,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                             break;
                         }
 
-                        group = strtok(NULL, delim);
+                        group = strtok_r(NULL, delim, &save_ptr);
                         max_multigroups++;
                         closedir(dp);
                     }
@@ -924,9 +925,10 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             char client_source_ip[IPSIZE + 1] = {0};
             char client_source_ip_token[3] = "IP:";
 
-            if(strncmp(++tmpstr,client_source_ip_token,3)==0)
-            {
-                sscanf(tmpstr," IP:\'%15[^\']\"",client_source_ip);
+            if(strncmp(++tmpstr,client_source_ip_token,3)==0) {
+                char format[15];
+                sprintf(format, " IP:\'%%%d[^\']\"", IPSIZE);
+                sscanf(tmpstr, format ,client_source_ip);
 
                 /* If IP: != 'src' overwrite the srcip */
                 if(strncmp(client_source_ip,"src",3) != 0)
@@ -943,17 +945,20 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                         continue;
                     }
 
-                    memcpy(srcip,client_source_ip,IPSIZE);
+                    snprintf(srcip, IPSIZE, "%s", client_source_ip);
                 }
 
                 use_client_ip = 1;
+            } else if(!config.flags.use_source_ip) {
+                // use_source-ip = 0 and no -I argument in agent
+                snprintf(srcip, IPSIZE, "any");
             }
+            // else -> agent IP is already on srcip
 
             w_mutex_lock(&mutex_keys);
 
             /* Check for duplicated IP */
-
-            if (config.flags.use_source_ip || use_client_ip) {
+            if (strcmp(srcip, "any") != 0 ) {
                 if (index = OS_IsAllowedIP(&keys, srcip), index >= 0) {
                     if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
                         id_exist = keys.keyentries[index]->id;
@@ -1117,7 +1122,8 @@ void* run_writer(__attribute__((unused)) void *arg) {
     struct keynode *next;
     time_t cur_time;
     char wdbquery[OS_SIZE_128];
-    char *wdboutput;
+    char wdboutput[128];
+    int wdb_sock = -1;
 
     authd_sigblock();
 
@@ -1171,8 +1177,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
             OS_BackupAgentInfo(cur->id, cur->name, cur->ip);
 
             snprintf(wdbquery, OS_SIZE_128, "agent %s remove", cur->id);
-            wdb_send_query(wdbquery, &wdboutput);
-            os_free(wdboutput);
+            wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
             free(cur->id);
             free(cur->name);
@@ -1190,8 +1195,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
             OS_RemoveAgentGroup(cur->id);
 
             snprintf(wdbquery, OS_SIZE_128, "agent %s remove", cur->id);
-            wdb_send_query(wdbquery, &wdboutput);
-            os_free(wdboutput);
+            wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
             free(cur->id);
             free(cur->name);

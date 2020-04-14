@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -189,7 +189,7 @@ int main(int argc, char **argv)
         /* Clean all agents (and server) db */
         if (strcmp(agent_id, "all") == 0) {
             DIR *sys_dir;
-            struct dirent *entry;
+            struct dirent *entry = NULL;
 
             sys_dir = opendir(ROOTCHECK_DIR);
             if (!sys_dir) {

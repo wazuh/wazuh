@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -193,10 +193,11 @@ extern const char *__local_name;
 
 #define os_clearnl(x,p) if((p = strrchr(x, '\n')))*p = '\0';
 
-
 #define w_fclose(x) if (x) { fclose(x); x=NULL; }
 
 #define w_strdup(x,y) ({ int retstr = 0; if (x) { os_strdup(x, y);} else retstr = 1; retstr;})
+
+#define sqlite_strdup(x,y) ({ if (x) { os_strdup(x, y); } else (void)0; })
 
 #define w_strlen(x) ({ size_t ret = 0; if (x) ret = strlen(x); ret;})
 
@@ -221,6 +222,7 @@ extern const char *__local_name;
 #include "list_op.h"
 #include "dirtree_op.h"
 #include "hash_op.h"
+#include "rbtree_op.h"
 #include "queue_op.h"
 #include "store_op.h"
 #include "rc.h"
@@ -240,6 +242,7 @@ extern const char *__local_name;
 #include "notify_op.h"
 #include "version_op.h"
 #include "utf8_op.h"
+#include "shared.h"
 #include "log_builder.h"
 
 #include "os_xml/os_xml.h"
@@ -255,5 +258,6 @@ extern const char *__local_name;
 #include "cluster_utils.h"
 #include "auth_client.h"
 #include "os_utils.h"
+#include "bzip2_op.h"
 
 #endif /* SHARED_H */

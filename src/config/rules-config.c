@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -81,7 +81,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
     char path[PATH_MAX + 2];
     char f_name[PATH_MAX + 2];
     int att_count = 0;
-    struct dirent *entry;
+    struct dirent *entry = NULL;
     DIR *dfd;
     OSRegex regex;
 

@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Fluent Forwarder
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * January 25, 2019.
  *
  * This program is free software; you can redistribute it
@@ -783,7 +783,7 @@ void wm_fluent_poll_server(wm_fluent_t * fluent) {
 
     // Peek connection
 
-    switch (SSL_read(fluent->ssl, buffer, sizeof(buffer))) {
+    switch (fluent->shared_key ? SSL_read(fluent->ssl, buffer, sizeof(buffer)) : recv(fluent->client_sock, buffer, sizeof(buffer), 0)) {
     case -1:
         // No input data. This is the normal case.
         break;

@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
@@ -146,6 +146,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.node_type = ""
         # dictionary to save loggers for each sync task
         self.task_loggers = {}
+        cluster.context_tag.set(self.tag)
 
     def to_dict(self):
         """

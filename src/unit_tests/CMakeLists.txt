@@ -4,135 +4,63 @@
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
-
 cmake_minimum_required(VERSION 3.10)
 
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../headers)
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../)
+PROJECT(UnitTests C)
 
-FIND_LIBRARY(WAZUHLIB NAMES libwazuh.a HINTS "${CMAKE_SOURCE_DIR}/../")
-FIND_LIBRARY(WAZUHEXT NAMES libwazuhext.so HINTS "${CMAKE_SOURCE_DIR}/../")
+# message("${TARGET}")
+get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
 
+message(Source folder: ${SRC_FOLDER})
+include_directories(${SRC_FOLDER}/headers)
+include_directories(${SRC_FOLDER}/external/openssl/include)
+include_directories(${SRC_FOLDER}/external/audit-userspace/lib)
+include_directories(${SRC_FOLDER}/external/bzip2)
+include_directories(${SRC_FOLDER})
 
 # Wazuh libraries
 find_library(WAZUHLIB NAMES libwazuh.a HINTS "${SRC_FOLDER}")
 if(NOT WAZUHLIB)
-  message(FATAL_ERROR "libwazuh.a not found! Aborting...")
+  message(FATAL_ERROR "libwazuh.a not found in ${SRC_FOLDER} Aborting...")
 endif()
-
-find_library(WAZUHEXT NAMES libwazuhext.so HINTS "${SRC_FOLDER}")
-if(NOT WAZUHEXT)
-  message(FATAL_ERROR "libwazuhext.so not found! Aborting...")
-endif()
-
-
-# Add compiling flags
-add_compile_options(-ggdb -O0 -g -coverage)
-
 
 # Enable testing
 enable_testing()
 
+# Add target specific file
+if(NOT TARGET)
+  message(FATAL_ERROR "No TARGET specified. Aborting...")
+elseif(${TARGET} STREQUAL "server")
+  include("./server.cmake")
+elseif(${TARGET} STREQUAL "agent")
+  include("./agent.cmake")
+elseif(${TARGET} STREQUAL "winagent")
+  include("./winagent.cmake")
+else()
+  message(FATAL_ERROR "Invalid TARGET '${TARGET}'. Aborting...")
+endif()
 
-# Tests list and flags
-LIST(APPEND tests_names "test_same_different_loop")
-LIST(APPEND tests_flags "-W")
-
-# Generate syscheck library
-file(GLOB sysfiles ../syscheckd/*.o)
-list(REMOVE_ITEM sysfiles ../syscheckd/main.o)
-file(GLOB rootfiles ../rootcheck/*.o)
-
-add_library(SYSCHECK_O STATIC ${sysfiles})
-add_library(ROOTCHECK_O STATIC ${rootfiles})
-
-set_source_files_properties(
-  ${sysfiles}
-  ${rootfiles}
-  PROPERTIES
-  EXTERNAL_OBJECT true
-  GENERATED true
-  )
-
-set_target_properties(
-  SYSCHECK_O
-  ROOTCHECK_O
-  PROPERTIES
-  LINKER_LANGUAGE C
-  )
-
-target_link_libraries(SYSCHECK_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+if(NOT WAZUHEXT)
+  message(FATAL_ERROR "libwazuhext not found! Aborting...")
+endif()
 
 
-# Generate analysisd library
- file(GLOB analysisd_files
-  ../analysisd/ac*.o
-  ../analysisd/as*.o
-  ../analysisd/c*.o
-  ../analysisd/d*.o
-  ../analysisd/e*.o
-  ../analysisd/f*.o
-  ../analysisd/l*.o
-  ../analysisd/m*.o
-  ../analysisd/r*.o
-  ../analysisd/s*.o
-  ../analysisd/t*.o
-  ../analysisd/alerts/*.o
-  ../analysisd/decoders/*.o
-  ../analysisd/decoders/plugins/*.o
-  ../analysisd/cdb/*.o
-  ../analysisd/compiled_rules/*.o
-  ../analysisd/format/*.o
-  ../analysisd/output/*.o
-  ../config/*.o
-  ../os_regex/*.o)
+add_subdirectory(syscheckd)
+add_subdirectory(shared)
 
-add_library(ANALYSISD_O STATIC ${analysisd_files})
-
-set_source_files_properties(
-  ${analysisd_files}
-  PROPERTIES
-  EXTERNAL_OBJECT true
-  GENERATED true
-  )
-
-set_target_properties(
-  ANALYSISD_O
-  PROPERTIES
-  LINKER_LANGUAGE C
-  )
-
-target_link_libraries(ANALYSISD_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
-
-
-# Compiling tests
-list(LENGTH tests_names count)
-math(EXPR count "${count} - 1")
-foreach(counter RANGE ${count})
-    list(GET tests_names ${counter} test_name)
-    list(GET tests_flags ${counter} test_flags)
-
-    add_executable(${test_name} ${test_name}.c)
-
-    target_link_libraries(
-        ${test_name}
-        ${WAZUHLIB}
-        ${WAZUHEXT}
-        SYSCHECK_O
-        ANALYSISD_O
-        -lcmocka
-        -fprofile-arcs
-        -ftest-coverage
-    )
-    if(NOT test_flags STREQUAL " ")
-        target_link_libraries(
-            ${test_name}
-            ${test_flags}
-        )
-    endif()
-    add_test(${test_name} ${test_name})
-endforeach()
-
+# Config files
+if(${TARGET} STREQUAL "winagent")
+  configure_file("test_syscheck_win.conf" "syscheckd/test_syscheck.conf" NEWLINE_STYLE WIN32)
+  configure_file("test_syscheck_win2.conf" "syscheckd/test_syscheck2.conf" NEWLINE_STYLE WIN32)
+  configure_file("test_syscheck_win.conf" "syscheckd/ossec.conf" NEWLINE_STYLE WIN32)
+  configure_file("test_empty_config.conf" "syscheckd/test_empty_config.conf" NEWLINE_STYLE WIN32)
+  configure_file("test_internal_options.conf" "syscheckd/internal_options.conf" NEWLINE_STYLE WIN32)
+else()
+  configure_file("test_syscheck.conf" "syscheckd/test_syscheck.conf" COPYONLY)
+  configure_file("test_syscheck2.conf" "syscheckd/test_syscheck2.conf" COPYONLY)
+  configure_file("test_empty_config.conf" "syscheckd/test_empty_config.conf" COPYONLY)
+  configure_file("test_internal_options.conf" "syscheckd/internal_options.conf" COPYONLY)
+endif()
 
 # Coverage
 find_program(LCOV_PATH lcov)
@@ -173,4 +101,3 @@ add_custom_target(coverage
     # Clean counters
     COMMAND ${CMAKE_COMMAND} -E remove coverage.base coverage.total coverage.info.cleaned
 )
-

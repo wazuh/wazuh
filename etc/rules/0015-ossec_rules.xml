@@ -2,7 +2,7 @@
   -  OSSEC rules
   -  Author: Daniel Cid.
   -  Updated by Wazuh, Inc.
-  -  Copyright (C) 2015-2019, Wazuh Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
@@ -225,6 +225,13 @@
     <if_sid>500</if_sid>
     <match>^ossec: agentless: </match>
     <description>Integrity checksum for agentless device changed.</description>
+    <group>syscheck,agentless,pci_dss_11.5,pci_dss_10.6.1,gpg13_4.11,gdpr_II_5.1.f,gdpr_IV_35.7.d,hipaa_164.312.c.1,hipaa_164.312.c.2,hipaa_164.312.b,nist_800_53_SI.7,nist_800_53_AU.6,</group>
+  </rule>
+
+  <rule id="560" level="7">
+    <if_sid>500</if_sid>
+    <match>^ossec: Real-time inotify kernel queue is full.</match>
+    <description>FIM real-time queue is full. Some real-time events may be lost.</description>
     <group>syscheck,agentless,pci_dss_11.5,pci_dss_10.6.1,gpg13_4.11,gdpr_II_5.1.f,gdpr_IV_35.7.d,hipaa_164.312.c.1,hipaa_164.312.c.2,hipaa_164.312.b,nist_800_53_SI.7,nist_800_53_AU.6,</group>
   </rule>
 

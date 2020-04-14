@@ -50,6 +50,41 @@ int test_utf8_random(bool replacement) {
     return r;
 }
 
+static int compare(const struct statfs * statfs) {
+    for (int i = 0; network_file_systems[i].name; i++) {
+        if (network_file_systems[i].f_type == statfs->f_type) {
+            return 1;
+        }
+    }
+
+    for (int i = 0; skip_file_systems[i].name; i++) {
+        if (skip_file_systems[i].f_type == statfs->f_type) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+static int test_fs_magic() {
+    struct statfs statfs = {.f_type = 0x6969};
+    w_assert_int_eq(compare(&statfs), 1);
+
+    statfs.f_type = 0xFF534D42;
+    w_assert_int_eq(compare(&statfs), 1);
+
+    statfs.f_type = 0x9123683E;
+    w_assert_int_eq(compare(&statfs), 1);
+
+    statfs.f_type = 0x61756673;
+    w_assert_int_eq(compare(&statfs), 1);
+
+    statfs.f_type = 0x794c7630;
+    w_assert_int_eq(compare(&statfs), 1);
+
+    return 1;
+}
+
 int test_strnspn_escaped() {
     w_assert_uint_eq(strcspn_escaped("ABC\\D ", ' '), 5);
     w_assert_uint_eq(strcspn_escaped("ABC\\ D", ' '), 6);
@@ -123,6 +158,53 @@ int test_log_builder() {
     return retval;
 }
 
+int test_get_file_content() {
+    int max_size = 100;
+    const char * expected = "{\n"
+                            "    \"test\":[\n"
+                            "        {\n"
+                            "            \"test_name\":\"Test1\",\n"
+                            "            \"test_number\":1\n"
+                            "        }, {\n"
+                            "            \"test_name\":\"Test2\",\n"
+                            "            \"test_number\":2\n"
+                            "        }, {\n"
+                            "            \"test_name\":\"Test3\",\n"
+                            "            \"test_number\":3\n"
+                            "        }\n"
+                            "    ]\n"
+                            "}\n";
+
+    char * content;
+
+    // Test NULL path
+    if (content = w_get_file_content(NULL, max_size), content != NULL) {
+        return 0;
+    }
+
+    // Test invalid path
+    if (content = w_get_file_content("./tests/invalid_path", max_size), content != NULL) {
+        return 0;
+    }
+
+    // Test file size exceeds max size allowed
+    if (content = w_get_file_content("./tests/test_file.json", max_size), content != NULL) {
+        return 0;
+    }
+
+    max_size = 300;
+
+    // Test file content
+    if (content = w_get_file_content("./tests/test_file.json", max_size), content == NULL) {
+        return 0;
+    }
+
+    w_assert_str_eq(content, expected);
+    free(content);
+
+    return 1;
+}
+
 int main(void) {
     printf("\n\n   STARTING TEST - OS_SHARED   \n\n");
 
@@ -134,6 +216,9 @@ int main(void) {
 
     /* Test UTF-8 string operations */
     TAP_TEST_MSG(test_utf8_random(false), "Filter a random string into UTF-8 without character replacement.");
+
+    /* Test filesystem magic code searching */
+    TAP_TEST_MSG(test_fs_magic(), "Filesystem magic code searching.");
 
     /* Test strnspn_escaped function */
     TAP_TEST_MSG(test_strnspn_escaped(), "Check return values for stnspn_escaped.");
@@ -147,8 +232,11 @@ int main(void) {
     /* Test log builder */
     TAP_TEST_MSG(test_log_builder(), "Test log builder.");
 
+    /* Test get_file_content function */
+    TAP_TEST_MSG(test_get_file_content(), "Get the content of a file.");
+
     TAP_PLAN;
-    TAP_SUMMARY;
+    int r = tap_summary();
     printf("\n   ENDING TEST  - OS_SHARED   \n\n");
-    return 0;
+    return r;
 }
