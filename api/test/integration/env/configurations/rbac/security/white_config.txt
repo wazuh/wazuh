@@ -20,5 +20,5 @@
 | security:delete  | role:id   |                                   | *    |
 | security:delete  | policy:id |                                   | *    |
 | security:create  | *         | *                                 |      |
-| security:create  | *         |                                   | *    |
+| security:create  | user:id   |                                   | *    |
 | security:revoke  | *         |                                   | *    |
