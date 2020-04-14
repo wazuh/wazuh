@@ -176,7 +176,7 @@ void _getRulesListJSON(RuleNode *list, cJSON *array) {
     u_int32_t same;
     u_int32_t different;
     int i;
-    
+
     const char * same_fields[] = {
         "same_source_ip",
         "same_id",

@@ -36,7 +36,7 @@ enable_testing()
 
 # Tests list and flags
 LIST(APPEND tests_names "test_same_different_loop")
-LIST(APPEND tests_flags "-Wl,--wrap,_merror")
+LIST(APPEND tests_flags "-W")
 
 # Generate syscheck library
 file(GLOB sysfiles ../syscheckd/*.o)
