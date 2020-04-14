@@ -352,6 +352,7 @@ void fim_whodata_event(whodata_evt * w_evt) {
             fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt);
         #else
             char** paths = NULL;
+            char *evt_path = w_evt->path;
             const unsigned long int inode = strtoul(w_evt->inode,NULL,10);
             const unsigned long int dev = strtoul(w_evt->dev,NULL,10);
 
@@ -362,7 +363,10 @@ void fim_whodata_event(whodata_evt * w_evt) {
             for(int i = 0; paths[i]; i++) {
                 w_evt->path = paths[i];
                 fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt);
+                os_free(paths[i]);
             }
+            os_free(paths);
+            w_evt->path = evt_path;
         #endif
     }
 }

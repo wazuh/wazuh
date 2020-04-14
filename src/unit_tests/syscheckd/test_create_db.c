@@ -2685,7 +2685,6 @@ static void test_fim_whodata_event_file_missing(void **state) {
     }
 #endif
     fim_whodata_event(fim_data->w_evt);
-    free (paths);
     errno=0;
 }
 
