@@ -124,8 +124,6 @@ async def get_status(request, pretty=False, wait_for_complete=False):
     :param wait_for_complete: Disable timeout response
     """
     f_kwargs = {}
-
-    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=cluster.get_status_json,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -133,8 +131,7 @@ async def get_status(request, pretty=False, wait_for_complete=False):
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
