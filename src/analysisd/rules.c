@@ -153,7 +153,6 @@ int Rules_OP_ReadRules(const char *rulefile)
     const char *xml_different_status = "different_status";
     const char *xml_different_system_name = "different_system_name";
     const char *xml_different_dstgeoip = "different_dstgeoip";
-    const char *xml_different_agent = "different_agent";
 
     const char *xml_notsame_source_ip = "not_same_source_ip";
     const char *xml_notsame_user = "not_same_user";
@@ -1158,9 +1157,6 @@ int Rules_OP_ReadRules(const char *rulefile)
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcasecmp(rule_opt[k]->element,
-                                          xml_different_agent) == 0) {
-                        mwarn("Detected a deprecated field option for rule, %s is not longer available.", xml_different_agent);
-                    } else if (strcasecmp(rule_opt[k]->element, 
                                           xml_notsame_agent) == 0) {
                         mwarn("Detected a deprecated field option for rule, %s is not longer available.", xml_notsame_agent);
                     } else if (strcasecmp(rule_opt[k]->element,

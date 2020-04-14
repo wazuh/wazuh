@@ -211,11 +211,11 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         /* Grouping of additional data */
         if (rule->alert_opts & SAME_EXTRAINFO) {
             /* Searching same fields */
-            if(!same_loop(rule, lf, my_lf)) {
+            if (!same_loop(rule, lf, my_lf)) {
                 continue;
             }
             /* Searching different fields */
-            if(!different_loop(rule, lf, my_lf)) {
+            if (!different_loop(rule, lf, my_lf)) {
                 continue;
             }
         }
@@ -391,12 +391,12 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         /* Grouping of additional data */
         if (rule->alert_opts & SAME_EXTRAINFO) {
             /* Searching same fields */
-            if(!same_loop(rule, lf, my_lf)) {
+            if (!same_loop(rule, lf, my_lf)) {
                 continue;
             }
 
             /* Searching different fields */
-            if(!different_loop(rule, lf, my_lf)) {
+            if (!different_loop(rule, lf, my_lf)) {
                 continue;
             }
         }
@@ -530,12 +530,12 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
         }
 
         /* Searching same fields */
-        if(!same_loop(rule, lf, my_lf)) {
+        if (!same_loop(rule, lf, my_lf)) {
             goto next_it;
         }
 
         /* Searching different fields */
-        if(!different_loop(rule, lf, my_lf)) {
+        if (!different_loop(rule, lf, my_lf)) {
             goto next_it;
         }
 
