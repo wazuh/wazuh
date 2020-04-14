@@ -5815,7 +5815,7 @@ paths:
                         description: "The output format depends on the type of file that has been requested: rootkit file, rootkit trojans or rcl."
               example:
                 data:
-                  vars:
+                  vars: None
                   controls:
                     - condition: all required
                       name: CIS - Testing against the CIS Debian Linux Benchmark v1
