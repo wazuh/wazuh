@@ -287,13 +287,21 @@ x-rbac-catalog:
         resources: ['agent:id:*']
         effect: "allow"
     'security:create':
-      description: "Create new system's security resources"
+      description: "Create new system security resources"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
         actions: ['security:create']
-        resources: ['*:*:*',]
+        resources: ['*:*:*']
         effect: "deny"
+    'security:create_user':
+      description: "Create new system user"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['security:create_user']
+        resources: ['*:*:*']
+        effect: "allow"
     'security:read':
       description: "Allow read information about system's security resources"
       resources:
@@ -4614,6 +4622,7 @@ components:
           - 'POST ​/security​/users/{username}/roles'
           - 'DELETE ​/security​/users/{username}/roles'
           - 'GET ​/security​/users'
+          - 'POST ​/security​/users'
           - 'PUT ​/security​/users'
           - 'DELETE ​/security​/users'
           - 'PUT ​/security​/users/{username}'
@@ -11737,7 +11746,7 @@ paths:
       description: 'Adds a new user to the system through the API.'
       operationId: api.controllers.security_controller.create_user
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/security:create'
+        - $ref: '#/x-rbac-catalog/actions/security:create_user'
       requestBody:
         content:
           application/json:
