@@ -37,7 +37,8 @@ static int ssl_error(const SSL *ssl, int ret);
 
 /* Thread for dispatching connection pool */
 static void* run_dispatcher(void *arg);
-w_err_t w_auth_parse(char* buf,char *response, char *ip, char *agentname, char *groups, int *use_client_ip);
+w_err_t w_auth_parse_data(char* buf,char *response, char *ip, char **agentname, char *groups, int *use_client_ip);
+w_err_t w_auth_validate_data (char *response, char *ip, char *agentname, char *groups);
 
 /* Thread for writing keystore onto disk */
 static void* run_writer(void *arg);
@@ -576,7 +577,7 @@ int main(int argc, char **argv)
 
             w_mutex_unlock(&mutex_pool);
         } else if ((errno == EBADF && running) || (errno != EBADF && errno != EINTR))
-            merror("at run_local_server(): accept(): %s", strerror(errno));
+            merror("at main(): accept(): %s", strerror(errno));
     }
 
     close(remote_sock);
@@ -606,16 +607,14 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     struct client client;
     char srcip[IPSIZE + 1];
     char *agentname = NULL;
+    char centralized_group[OS_SIZE_65536] = {0};
+    int use_client_ip = 0;        
     int ret;
     char* buf = NULL;  
-    char *tmpstr = NULL;  
-    double antiquity;
-    int acount;
-    char response[2048];
+    char *tmpstr = NULL;      
     SSL *ssl;
-    char *id_exist = NULL;
-    
-    int index;
+    char response[2048];
+    response[2047] = '\0';
 
     authd_sigblock();
 
@@ -694,14 +693,14 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         /* Checking for shared password authentication. */
         if(authpass) {
             /* Format is pretty simple: OSSEC PASS: PASS WHATEVERACTION */
-            if (strncmp(buf, "OSSEC PASS: ", 12) == 0) {
-                buf = buf + 12;
+            if (strncmp(tmpstr, "OSSEC PASS: ", 12) == 0) {
+                tmpstr = tmpstr + 12;
 
-                if (strlen(buf) > strlen(authpass) && strncmp(buf, authpass, strlen(authpass)) == 0) {
-                    buf += strlen(authpass);
+                if (strlen(buf) > strlen(authpass) && strncmp(tmpstr, authpass, strlen(authpass)) == 0) {
+                    tmpstr += strlen(authpass);
 
-                    if (*buf == ' ') {
-                        buf++;
+                    if (*tmpstr == ' ') {
+                        tmpstr++;
                         parseok = 1;
                     }
                 }
@@ -717,124 +716,33 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         }
        
         mdebug2("Request received: <%s>", buf);
-        
-       
-        char centralized_group[OS_SIZE_65536] = {0};
-        int use_client_ip = 0;
-        response[2047] = '\0';
-        
 
-        if(OS_SUCCESS != w_auth_parse(tmpstr, response, srcip, agentname, centralized_group, &use_client_ip)){            
+        //JJP: Avoid duplicated code here.
+        if(OS_SUCCESS != w_auth_parse_data(tmpstr, response, srcip, &agentname, centralized_group, &use_client_ip)){
             SSL_write(ssl, response, strlen(response));
             snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-            SSL_write(ssl, response, strlen(response));
+            SSL_write(ssl, response, strlen(response));          
             SSL_free(ssl);
             close(client.socket);
             free(buf);
-        }
-        acount = 2;
-        char fname[2048];
-        fname[2047] = '\0';
+            continue;
+        }     
 
         w_mutex_lock(&mutex_keys);
+
+        if(OS_SUCCESS != w_auth_validate_data(response, srcip, agentname, centralized_group)){
+            SSL_write(ssl, response, strlen(response));
+            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+            SSL_write(ssl, response, strlen(response));
+            SSL_free(ssl);
+            close(client.socket);            
+            free(buf);
+            continue;
+        }       
         
-        //JJP [2]: Verify()
-
-        /* Check for duplicated IP */
-        if (strcmp(srcip, "any") != 0 ) {
-            if (index = OS_IsAllowedIP(&keys, srcip), index >= 0) {
-                if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
-                    id_exist = keys.keyentries[index]->id;
-                    minfo("Duplicated IP '%s' (%s). Saving backup.", srcip, id_exist);
-
-                    OS_RemoveAgentGroup(id_exist);
-                    add_backup(keys.keyentries[index]);
-                    OS_DeleteKey(&keys, id_exist, 0);
-                } else {
-                    w_mutex_unlock(&mutex_keys);
-                    merror("Duplicated IP %s", srcip);
-                    snprintf(response, 2048, "ERROR: Duplicated IP: %s\n\n", srcip);
-                    SSL_write(ssl, response, strlen(response));
-                    snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                    SSL_write(ssl, response, strlen(response));
-                    SSL_free(ssl);
-                    close(client.socket);
-                    //JJP: Aca habia un free del buf, pero que ahora no hace falta, igual estar atento
-                    continue;
-                }
-            }
-        }
-
-        //JJP: Supongo que esto no lo resolvía la logica clusterizada antes de todos modos
-        /* Check whether the agent name is the same as the manager */
-
-        if (!strcmp(agentname, shost)) {
-            w_mutex_unlock(&mutex_keys);
-            merror("Invalid agent name %s (same as manager)", agentname);
-            snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
-            SSL_write(ssl, response, strlen(response));
-            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-            SSL_write(ssl, response, strlen(response));
-            SSL_free(ssl);
-            close(client.socket);
-            //JJP: Aca habia un free del buf, pero que ahora no hace falta, igual estar atento
-            //JJP: FIX: Debia conservarse buf por algun otro puntero usandolo, quizas los datos parseados
-            continue;
-        }
-
-        /* Check for duplicated names */
-
-        if (index = OS_IsAllowedName(&keys, agentname), index >= 0) {
-            if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
-                id_exist = keys.keyentries[index]->id;
-                minfo("Duplicated name '%s' (%s). Saving backup.", agentname, id_exist);
-
-                add_backup(keys.keyentries[index]);
-                OS_DeleteKey(&keys, id_exist, 0);
-            } else {
-                strncpy(fname, agentname, 2048);
-
-                while (OS_IsAllowedName(&keys, fname) >= 0) {
-                    snprintf(fname, 2048, "%s%d", agentname, acount);
-
-                    if (++acount > MAX_TAG_COUNTER)
-                        break;
-                }
-
-                if (acount > MAX_TAG_COUNTER) {
-                    w_mutex_unlock(&mutex_keys);
-                    merror("Invalid agent name %s (duplicated)", agentname);
-                    snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
-                    SSL_write(ssl, response, strlen(response));
-                    snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                    SSL_write(ssl, response, strlen(response));
-                    SSL_free(ssl);
-                    close(client.socket);
-                    //JJP: Aca habia un free del buf, pero que ahora no hace falta, igual estar atento
-                    continue;
-                }
-
-                agentname = fname;
-            }
-        }
-
-        /* Check for agents limit */
-
-        if (config.flags.register_limit && keys.keysize >= (MAX_AGENTS - 2) ) {
-            w_mutex_unlock(&mutex_keys);
-            merror(AG_MAX_ERROR, MAX_AGENTS - 2);
-            snprintf(response, 2048, "ERROR: The maximum number of agents has been reached\n\n");
-            SSL_write(ssl, response, strlen(response));
-            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-            SSL_write(ssl, response, strlen(response));
-            SSL_free(ssl);
-            close(client.socket);
-            //JJP: Aca habia un free del buf, pero que ahora no hace falta, igual estar atento
-            continue;
-        }
-
         //JJP: Add agent
         /* Add the new agent */
+        int index;
 
         if (index = OS_AddNewAgent(&keys, NULL, agentname, (config.flags.use_source_ip || use_client_ip)? srcip : NULL, NULL), index < 0) {
             w_mutex_unlock(&mutex_keys);
@@ -844,8 +752,8 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
             SSL_write(ssl, response, strlen(response));
             SSL_free(ssl);
-            close(client.socket);
-            //JJP: Aca habia un free del buf, pero que ahora no hace falta, igual estar atento
+            close(client.socket);            
+            free(buf);
             continue;
         }
 
@@ -863,8 +771,8 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
                 SSL_write(ssl, response, strlen(response));
                 SSL_free(ssl);
-                close(client.socket);
-                //JJP: Aca habia un free del buf, pero que ahora no hace falta, igual estar atento
+                close(client.socket);                
+                free(buf);
                 continue;
             }
         }
@@ -889,8 +797,8 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         
 
         SSL_free(ssl);
-        close(client.socket);
-        //JJP: Aca habia un free del buf, pero que ahora no hace falta, igual estar atento
+        close(client.socket);        
+        free(buf);
     }
 
     SSL_CTX_free(ctx);
@@ -898,22 +806,23 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     return NULL;
 }
 
-w_err_t w_auth_parse(char* buf, char *response, char *ip, char *agentname, char *groups, int *use_client_ip){
+w_err_t w_auth_parse_data(char* buf, char *response, char *ip, char **agentname, char *groups, int *use_client_ip){
     
-    int parseok; //JJP: Remove this
-     
+    bool parseok = FALSE; 
+    //JJP: I prefer allocating space for agentname instead of recyclying the one in buffer. This will avoid handling buffer until end.
+    // Also, I can create a struct with all info required. 
     //JJP: Bring Different return values   
-    /* Checking for action A (add agent) */
-    parseok = 0;
+    
+    /* Checking for action A (add agent) */    
     
     if (strncmp(buf, "OSSEC A:'", 9) == 0) {
-        agentname = buf + 9;
+        *agentname = buf + 9;
         buf += 9;
         while (*buf != '\0') {
             if (*buf == '\'') {
                 *buf = '\0';
-                minfo("Received request for a new agent (%s) from: %s", agentname, ip);
-                parseok = 1;
+                minfo("Received request for a new agent (%s) from: %s", *agentname, ip);
+                parseok = TRUE;
                 break;
             }
             buf++;
@@ -921,183 +830,232 @@ w_err_t w_auth_parse(char* buf, char *response, char *ip, char *agentname, char 
     }
     buf++;
     
-    if (parseok == 0) {
+    if (!parseok) {
         merror("Invalid request for new agent from: %s", ip);
-    } else {      
+        //JJP: Is it ok to add a new message here?
+        snprintf(response, 2048, "ERROR: Invalid request for new agent");  
+        return OS_INVALID;
+    }    
 
 
-        if (!OS_IsValidName(agentname)) {
-            merror("Invalid agent name: %s from %s", agentname, ip);
-            snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);  
+    if (!OS_IsValidName(*agentname)) {
+        merror("Invalid agent name: %s from %s", *agentname, ip);
+        snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", *agentname);  
+        return OS_INVALID;
+    }
+
+    /* Check for valid centralized group */
+    
+    char centralized_group_token[2] = "G:";
+
+    if(strncmp(++buf,centralized_group_token,2)==0)
+    {
+        sscanf(buf," G:\'%65535[^\']\"",groups);
+
+        /* Validate the group name */
+        int valid = 0;
+        valid = w_validate_group_name(groups);
+
+        if(valid < 0) {
+
+            merror("Invalid group name: %.255s... ,",groups);
+
+            switch (valid) {
+                case -6:
+                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... cannot start or end with ','\n\n", groups);
+                    break;
+                case -5:
+                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... consecutive ',' are not allowed \n\n, ", groups);
+                    break;
+                case -4:
+                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... white spaces are not allowed \n\n", groups);
+                    break;
+                case -3:
+                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... multigroup is too large \n\n", groups);
+                    break;
+                case -2:
+                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large\n\n", groups);
+                    break;
+                case -1:
+                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited\n\n", groups);
+                    break;
+            }               
             return OS_INVALID;
         }
-
-        /* Check for valid centralized group */
+        char *tmp_groups = wstr_delete_repeated_groups(groups);
+        if(!tmp_groups){
+            return OS_MEMERR;
+        }
+        mdebug1("Group(s) is: %s",tmp_groups);
         
-        char centralized_group_token[2] = "G:";
+        /*Forward the string pointer G:'........' 2 for G:, 2 for ''*/
+        buf+= 2+strlen(groups)+2;
 
-        if(strncmp(++buf,centralized_group_token,2)==0)
+        snprintf(groups,OS_SIZE_65536,"%s",tmp_groups);
+        os_free(tmp_groups);
+        
+    }else{
+        buf--;
+    }
+
+    /* Check for IP when client uses -i option */
+    
+    char client_source_ip[IPSIZE + 1] = {0};
+    char client_source_ip_token[3] = "IP:";
+
+    if(strncmp(++buf,client_source_ip_token,3)==0) {
+        char format[15];
+        sprintf(format, " IP:\'%%%d[^\']\"", IPSIZE);
+        sscanf(buf, format ,client_source_ip);
+
+        /* If IP: != 'src' overwrite the provided ip */
+        if(strncmp(client_source_ip,"src",3) != 0)
         {
-
-            char group_path[PATH_MAX] = {0};
-            sscanf(buf," G:\'%65535[^\']\"",groups);
-
-            const char delim[2] = ",";
-            char *multigroup = strchr(groups,MULTIGROUP_SEPARATOR);
-            char groups_path[PATH_MAX + 1] = {0};
-            strcpy(groups_path,isChroot() ? "/etc/shared/%s" : DEFAULTDIR"/etc/shared/%s");
-
-            /* Validate the group name */
-            int valid = 0;
-            valid = w_validate_group_name(groups);
-
-            if(valid < 0) {
-
-                merror("Invalid group name: %.255s... ,",groups);
-
-                switch (valid) {
-                    case -6:
-                        snprintf(response, 2048, "ERROR: Invalid group name: %.255s... cannot start or end with ','\n\n", groups);
-                        break;
-                    case -5:
-                        snprintf(response, 2048, "ERROR: Invalid group name: %.255s... consecutive ',' are not allowed \n\n, ", groups);
-                        break;
-                    case -4:
-                        snprintf(response, 2048, "ERROR: Invalid group name: %.255s... white spaces are not allowed \n\n", groups);
-                        break;
-                    case -3:
-                        snprintf(response, 2048, "ERROR: Invalid group name: %.255s... multigroup is too large \n\n", groups);
-                        break;
-                    case -2:
-                        snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large\n\n", groups);
-                        break;
-                    case -1:
-                        snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited\n\n", groups);
-                        break;
-                }               
+            if (!OS_IsValidIP(client_source_ip, NULL)) {
+                merror("Invalid IP: '%s'", client_source_ip);
+                snprintf(response, 2048, "ERROR: Invalid IP: %s\n\n", client_source_ip);                    
                 return OS_INVALID;
             }
 
-            if(!multigroup){
-                if(snprintf(group_path,PATH_MAX,groups_path,groups) >= PATH_MAX){
-                    merror("Invalid group name: %.255s... , group path is too large.",groups);
-                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group path is too large\n\n", groups);                    
-                    return OS_INVALID;
-                }
-                //JJP: This should be on Verify function
-                /* Check if group exists */
-                DIR *group_dir = opendir(group_path);
-                if (!group_dir) {
-                    merror("Invalid group: %.255s",groups);
-                    snprintf(response, 2048, "ERROR: Invalid group: %s\n\n", groups);                   
-                    return OS_INVALID;;
-                }
-                closedir(group_dir);
-            }else{
-                int error = 0;
-                int max_multigroups = 0;
-                char *groups_added;
-                char *save_ptr = NULL;
-
-                groups_added = wstr_delete_repeated_groups(groups);
-                mdebug1("Multigroup is: %s",groups_added);
-                snprintf(groups,OS_SIZE_65536,"%s",groups_added);
-                char *group = strtok_r(groups_added, delim, &save_ptr);
-
-                while( group != NULL ) {
-                    DIR * dp;
-                    char dir[PATH_MAX + 1] = {0};
-                    error = 0;
-
-                    /* Check limit */
-                    if(max_multigroups > MAX_GROUPS_PER_MULTIGROUP){
-                        merror("Maximum multigroup reached: Limit is %d",MAX_GROUPS_PER_MULTIGROUP);
-                        snprintf(response, 2048, "Maximum multigroup reached: Limit is %d\n\n", MAX_GROUPS_PER_MULTIGROUP);                      
-                        
-                        error = 1;
-                        break;
-                    }
-
-                    /* Validate the group name */
-                    int valid = 0;
-                    valid = w_validate_group_name(group);
-
-                    switch(valid){
-                        case -2:
-                            merror("Invalid group name: %.255s... ,",group);
-                            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large\n\n", group);
-                                                        
-                            error = 1;
-                            break;
-
-
-                        case -1:
-                            merror("Invalid group name: %.255s... ,",groups);
-                            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited\n\n", group);
-                                                       
-                            error = 1;
-                            break;
-
-                    }
-
-                    snprintf(dir, PATH_MAX + 1,isChroot() ? SHAREDCFG_DIR"/%s" : DEFAULTDIR SHAREDCFG_DIR"/%s", group);
-
-                    dp = opendir(dir);
-
-                    if (!dp) {
-                        merror("Invalid group: %.255s",group);
-                        snprintf(response, 2048, "ERROR: Invalid group: %s\n\n", group);                       
-                        
-                        error = 1;
-                        break;
-                    }
-
-                    group = strtok_r(NULL, delim, &save_ptr);
-                    max_multigroups++;
-                    closedir(dp);
-                }
-
-                os_free(groups_added);
-
-                if(error){                    
-                    return OS_INVALID;
-                }
-            }
-            /*Forward the string pointer G:'........' 2 for G:, 2 for ''*/
-            buf+= 2+strlen(groups)+2;
-        }else{
-            buf--;
+            snprintf(ip, IPSIZE, "%s", client_source_ip);
         }
 
-        /* Check for IP when client uses -i option */
-        
-        char client_source_ip[IPSIZE + 1] = {0};
-        char client_source_ip_token[3] = "IP:";
-
-        if(strncmp(++buf,client_source_ip_token,3)==0) {
-            char format[15];
-            sprintf(format, " IP:\'%%%d[^\']\"", IPSIZE);
-            sscanf(buf, format ,client_source_ip);
-
-            /* If IP: != 'src' overwrite the provided ip */
-            if(strncmp(client_source_ip,"src",3) != 0)
-            {
-                if (!OS_IsValidIP(client_source_ip, NULL)) {
-                    merror("Invalid IP: '%s'", client_source_ip);
-                    snprintf(response, 2048, "ERROR: Invalid IP: %s\n\n", client_source_ip);                    
-                    return OS_INVALID;
-                }
-
-                snprintf(ip, IPSIZE, "%s", client_source_ip);
-            }
-
-            (*use_client_ip) = 1;
-        } else if(!config.flags.use_source_ip) {
-            // use_source-ip = 0 and no -I argument in agent
-            snprintf(ip, IPSIZE, "any");
-        }
-        // else -> agent IP is already on ip         
+        (*use_client_ip) = 1;
+    } else if(!config.flags.use_source_ip) {
+        // use_source-ip = 0 and no -I argument in agent
+        snprintf(ip, IPSIZE, "any");
     }
+    // else -> agent IP is already on ip         
+   
+    return OS_SUCCESS;
+}
+
+w_err_t w_auth_validate_data (char *response, char *ip, char *agentname, char *groups){
+    //JJP: Split into validate_groups, validate_name, validate_ip
+    /* Validate the group(s) name(s) */     
+    int index = 0;
+    char *id_exist = NULL;
+    double antiquity = 0; 
+    int acount = 2;
+    char fname[2048];
+    fname[2047] = '\0';
+
+    if (*groups){ 
+        if (OS_SUCCESS != w_auth_validate_groups(groups, response)){
+            return OS_INVALID;
+        }        
+    }
+
+    /* Check for duplicated IP */
+    if (strcmp(ip, "any") != 0 ) {
+        if (index = OS_IsAllowedIP(&keys, ip), index >= 0) {
+            if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
+                id_exist = keys.keyentries[index]->id;
+                minfo("Duplicated IP '%s' (%s). Saving backup.", ip, id_exist);
+                
+                OS_RemoveAgentGroup(id_exist);
+                add_backup(keys.keyentries[index]);
+                OS_DeleteKey(&keys, id_exist, 0);
+            } else {
+                w_mutex_unlock(&mutex_keys);
+                merror("Duplicated IP %s", ip);
+                snprintf(response, 2048, "ERROR: Duplicated IP: %s\n\n", ip);
+                return OS_INVALID;
+            }
+        }
+    }
+    
+    /* Check whether the agent name is the same as the manager */
+
+    if (!strcmp(agentname, shost)) {
+        w_mutex_unlock(&mutex_keys);
+        merror("Invalid agent name %s (same as manager)", agentname);
+        snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
+        return OS_INVALID;
+    }
+
+    /* Check for duplicated names */
+
+    if (index = OS_IsAllowedName(&keys, agentname), index >= 0) {
+        if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
+            id_exist = keys.keyentries[index]->id;
+            minfo("Duplicated name '%s' (%s). Saving backup.", agentname, id_exist);
+
+            add_backup(keys.keyentries[index]);
+            OS_DeleteKey(&keys, id_exist, 0);
+        } else {
+            strncpy(fname, agentname, 2048);
+
+            while (OS_IsAllowedName(&keys, fname) >= 0) {
+                snprintf(fname, 2048, "%s%d", agentname, acount);
+
+                if (++acount > MAX_TAG_COUNTER)
+                    break;
+            }
+
+            if (acount > MAX_TAG_COUNTER) {
+                w_mutex_unlock(&mutex_keys);
+                merror("Invalid agent name %s (duplicated)", agentname);
+                snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);                
+                return OS_INVALID;
+            }
+
+            agentname = fname;
+        }
+    }
+
+    /* Check for agents limit */
+
+    if (config.flags.register_limit && keys.keysize >= (MAX_AGENTS - 2) ) {
+        w_mutex_unlock(&mutex_keys);
+        merror(AG_MAX_ERROR, MAX_AGENTS - 2);
+        snprintf(response, 2048, "ERROR: The maximum number of agents has been reached\n\n");
+        return OS_INVALID;
+    }
+
+    return OS_SUCCESS;
+}
+
+w_err_t w_auth_validate_groups(char *groups, char *response) {
+    int max_multigroups = 0;    
+    char *save_ptr = NULL;
+    const char delim[] = {MULTIGROUP_SEPARATOR,'\0'};    
+  
+    char *group = strtok_r(groups, delim, &save_ptr);    
+
+    while( group != NULL ) {
+        DIR * dp;
+        char dir[PATH_MAX + 1] = {0};        
+
+        /* Check limit */
+        if(max_multigroups > MAX_GROUPS_PER_MULTIGROUP){
+            merror("Maximum multigroup reached: Limit is %d",MAX_GROUPS_PER_MULTIGROUP);                
+            return OS_INVALID;
+        }
+        /* Validate the group name */
+        if( 0 != w_validate_group_name(group) ){ 
+            merror("Invalid group name: %.255s... ,",group); 
+            if (response){
+                snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large\n\n", group); 
+            }                                   
+            return OS_INVALID;
+        }       
+
+        snprintf(dir, PATH_MAX + 1,isChroot() ? SHAREDCFG_DIR"/%s" : DEFAULTDIR SHAREDCFG_DIR"/%s", group);
+        dp = opendir(dir);
+        if (!dp) {            
+            merror("Invalid group: %.255s",group);   
+            if (response){
+                snprintf(response, 2048, "ERROR: Invalid group: %s\n\n", group);
+            }             
+            return OS_INVALID;
+        }
+
+        group = strtok_r(NULL, delim, &save_ptr);
+        max_multigroups++;
+        closedir(dp);
+    }       
+   
     return OS_SUCCESS;
 }
 
