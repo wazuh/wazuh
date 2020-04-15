@@ -50,6 +50,19 @@ components:
           schema:
             $ref: '#/components/schemas/ApiError'
 
+    UnauthorizedResponse:
+      description: Response to report a unauthorized error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/UnauthorizedError'
+          example:
+            type: "about:blank"
+            title: "Unauthorized"
+            detail: "No authorization token provided"
+            status: 401
+
+
   schemas:
     ## Common models
     ApiResponse:
@@ -126,6 +139,25 @@ components:
               logfile:
                 type: string
                 format: path
+
+    UnauthorizedError:
+      type: object
+      required:
+        - type
+        - title
+        - detail
+      nullable: true
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        detail:
+          type: string
+        code:
+          type: integer
+          format: int32
 
     ScanIdTime:
       type: object
@@ -4570,6 +4602,8 @@ paths:
                     - group1
                   total_affected_items: 1
                 message: Agent removed from shown groups
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
         default:
           $ref: '#/components/responses/ResponseError'
 
