@@ -48,6 +48,29 @@ static const int ENTRY_NAME = 1;
 static const int ENTRY_IP = 2;
 static const int ENTRY_KEY = 3; 
 
+w_enrollment_target *w_enrollment_target_init() {
+    w_enrollment_target *target_cfg;
+    os_malloc(sizeof(w_enrollment_target), target_cfg);
+    target_cfg->port = DEFAULT_PORT;
+    target_cfg->manager_name = NULL;
+    target_cfg->agent_name = NULL;
+    target_cfg->centralized_group = NULL;
+    target_cfg->sender_ip = NULL;
+    return target_cfg;
+}
+
+w_enrollment_cert *w_enrollment_cert_init(){
+    w_enrollment_cert *cert_cfg;
+    os_malloc(sizeof(w_enrollment_cert), cert_cfg);
+    cert_cfg->ciphers = strdup(DEFAULT_CIPHERS);
+    cert_cfg->authpass = NULL;
+    cert_cfg->agent_cert = NULL;
+    cert_cfg->agent_key = NULL;
+    cert_cfg->ca_cert = NULL;
+    cert_cfg->auto_method = 0;
+    return cert_cfg;
+}
+
 w_enrollment_ctx * w_enrollment_init(const w_enrollment_target *target, const w_enrollment_cert *cert) {
     assert(target != NULL);
     assert(cert != NULL);

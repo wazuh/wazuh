@@ -97,24 +97,32 @@ cJSON *getClientConfig(void) {
         cJSON_AddItemToObject(client,"server",servers);
     }
 
-    if (agt->enrollment_cfg.enabled) {
+    if (agt->enrollment_cfg) {
         cJSON *enrollment_cfg = cJSON_CreateObject();
-        cJSON_AddStringToObject(enrollment_cfg, "manager_address", agt->enrollment_cfg.target.manager_name);
-        cJSON_AddNumberToObject(enrollment_cfg, "port", agt->enrollment_cfg.target.port);
-        cJSON_AddStringToObject(enrollment_cfg, "agent_name", agt->enrollment_cfg.target.agent_name);
-        cJSON_AddStringToObject(enrollment_cfg, "group", agt->enrollment_cfg.target.centralized_group);
-        cJSON_AddStringToObject(enrollment_cfg, "manager_address", agt->enrollment_cfg.target.manager_name);
-
-        cJSON_AddStringToObject(enrollment_cfg, "ssl_cipher", agt->enrollment_cfg.certificates.ciphers);
-        cJSON_AddStringToObject(enrollment_cfg, "server_certificate_path", agt->enrollment_cfg.certificates.ca_cert);
-        cJSON_AddStringToObject(enrollment_cfg, "agent_certificate_path", agt->enrollment_cfg.certificates.agent_cert);
-        cJSON_AddStringToObject(enrollment_cfg, "agent_key_path", agt->enrollment_cfg.certificates.agent_key);
-        cJSON_AddStringToObject(enrollment_cfg, "authrization_pass", agt->enrollment_cfg.certificates.authpass);
-        if (agt->enrollment_cfg.certificates.auto_method)
-            cJSON_AddStringToObject(enrollment_cfg,"auto_method","yes");
-        else
-            cJSON_AddStringToObject(enrollment_cfg,"auto_method","no");
-
+        cJSON_AddStringToObject(enrollment_cfg, "enabled", agt->enrollment_cfg->enabled ? "yes" : "no");
+        
+        if (agt->enrollment_cfg->target_cfg->manager_name)
+            cJSON_AddStringToObject(enrollment_cfg, "manager_address", agt->enrollment_cfg->target_cfg->manager_name);
+        
+        cJSON_AddNumberToObject(enrollment_cfg, "port", agt->enrollment_cfg->target_cfg->port);
+        
+        if (agt->enrollment_cfg->target_cfg->agent_name)
+            cJSON_AddStringToObject(enrollment_cfg, "agent_name", agt->enrollment_cfg->target_cfg->agent_name);
+        if (agt->enrollment_cfg->target_cfg->centralized_group)   
+            cJSON_AddStringToObject(enrollment_cfg, "group", agt->enrollment_cfg->target_cfg->centralized_group);
+        
+        cJSON_AddStringToObject(enrollment_cfg, "ssl_cipher", agt->enrollment_cfg->cert_cfg->ciphers);
+        
+        if (agt->enrollment_cfg->cert_cfg->ca_cert)
+            cJSON_AddStringToObject(enrollment_cfg, "server_certificate_path", agt->enrollment_cfg->cert_cfg->ca_cert);
+        if (agt->enrollment_cfg->cert_cfg->agent_cert)
+            cJSON_AddStringToObject(enrollment_cfg, "agent_certificate_path", agt->enrollment_cfg->cert_cfg->agent_cert);
+        if (agt->enrollment_cfg->cert_cfg->agent_key)    
+            cJSON_AddStringToObject(enrollment_cfg, "agent_key_path", agt->enrollment_cfg->cert_cfg->agent_key);
+        if(agt->enrollment_cfg->cert_cfg->authpass)
+            cJSON_AddStringToObject(enrollment_cfg, "authrization_pass", agt->enrollment_cfg->cert_cfg->authpass);
+        
+        cJSON_AddStringToObject(enrollment_cfg,"auto_method",agt->enrollment_cfg->cert_cfg->auto_method ? "yes": "no");
         cJSON_AddItemToObject(client,"auto_enrollment",enrollment_cfg);
     }
     cJSON_AddItemToObject(root,"client",client);

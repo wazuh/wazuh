@@ -200,13 +200,13 @@ int test_teardown_concats(void **state) {
 
 // Setup
 int test_setup_context(void **state) {
-    os_malloc(sizeof(w_enrollment_target), local_target);
+    local_target = w_enrollment_target_init();
     local_target->manager_name = strdup("valid_hostname");
     local_target->agent_name = NULL;
     local_target->sender_ip = NULL;
     local_target->port = 1234; 
     local_target->centralized_group = NULL;
-    os_malloc(sizeof(w_enrollment_cert), local_cert);
+    local_cert = w_enrollment_cert_init();
     local_cert->ciphers = DEFAULT_CIPHERS;
     local_cert->auto_method = 0;
     local_cert->authpass = NULL;
@@ -234,13 +234,13 @@ int test_teardown_context(void **state) {
 
 //Setup
 int test_setup_context_2(void **state) {
-    os_malloc(sizeof(w_enrollment_target), local_target);
+    local_target = w_enrollment_target_init();
     local_target->manager_name = strdup("valid_hostname");
     local_target->agent_name = strdup("test_agent");
     local_target->sender_ip = "192.168.1.1";
     local_target->port = 1234; 
     local_target->centralized_group = "test_group";
-    os_malloc(sizeof(w_enrollment_cert), local_cert);
+    local_cert = w_enrollment_cert_init();
     local_cert->ciphers = DEFAULT_CIPHERS;
     local_cert->auto_method = 0;
     local_cert->authpass = "test_password";
@@ -274,13 +274,13 @@ int test_setup_context_3(void **state) {
 
 //Setup
 int test_setup_w_enrolment_request_key(void **state) {
-    os_malloc(sizeof(w_enrollment_target), local_target);
+    local_target = w_enrollment_target_init();
     local_target->manager_name = strdup("valid_hostname");
     local_target->agent_name = "test_agent";
     local_target->sender_ip = "192.168.1.1";
     local_target->port = 1234; 
     local_target->centralized_group = "test_group";
-    os_malloc(sizeof(w_enrollment_cert), local_cert);
+    local_cert = w_enrollment_cert_init();
     local_cert->ciphers = DEFAULT_CIPHERS;
     local_cert->auto_method = 0;
     local_cert->authpass = "test_password";

@@ -46,6 +46,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     logr->notify_time = 0;
     logr->max_time_reconnect_try = 0;
     logr->rip_id = 0;
+    logr->enrollment_cfg = NULL;
 
     for (i = 0; node[i]; i++) {
         rip = NULL;
@@ -294,20 +295,23 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
     const char *xml_manager_addr = "manager_address";
     const char *xml_port = "port";
     const char *xml_agent_name = "agent_name";
-    const char *xml_group = "group";
+    const char *xml_groups = "groups";
     const char *xml_agent_addr = "agent_address";
     const char *xml_ssl_cipher = "ssl_cipher";
-    const char *xml_server_certif_path = "server_certificate_path";
+    const char *xml_server_ca_path = "server_ca_path";
     const char *xml_agent_certif_path = "agent_certificate_path";
     const char *xml_agent_key_path = "agent_key_path";
-    const char *xml_auth_password = "authrization_pass";
+    const char *xml_auth_password = "authorization_pass";
     const char *xml_auto_method = "auto_method";
-
-    int j;
     char * remote_ip = NULL;
     int port = 0;
+    int enabled = 1;
+    int j;
     char f_ip[128];
-    char * sender_ip = NULL;
+    
+
+    w_enrollment_cert *cert_cfg = w_enrollment_cert_init();
+    w_enrollment_target *target_cfg = w_enrollment_target_init();
 
     for (j = 0; node[j]; j++) {
         if (!node[j]->element) {
@@ -318,9 +322,9 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
             return (OS_INVALID);
         } else if (!strcmp(node[j]->element, xml_enabled)) {
             if (!strcmp(node[j]->content, "yes"))
-                logr->enrollment_cfg.enabled = 1;
+                enabled = 1;
             else if (!strcmp(node[j]->content, "no")) {
-                logr->enrollment_cfg.enabled = 0;
+                enabled = 0;
             } else {
                 merror("Invalid content for tag '%s'.", node[j]->element);
                 return OS_INVALID;
@@ -336,8 +340,8 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
                 merror(AG_INV_HOST, node[j]->content);
                 return (OS_INVALID);
             }
-            os_free(logr->enrollment_cfg.target.manager_name);
-            os_strdup(remote_ip, logr->enrollment_cfg.target.manager_name);
+            os_free(target_cfg->manager_name);
+            os_strdup(remote_ip, target_cfg->manager_name);
         } else if (strcmp(node[j]->element, xml_port) == 0) {
             if (!OS_StrIsNum(node[j]->content)) {
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
@@ -347,42 +351,41 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
                 merror(PORT_ERROR, port);
                 return (OS_INVALID);
             }
-            logr->enrollment_cfg.target.port = port;
+            target_cfg->port = port;
         } else if (strcmp(node[j]->element, xml_agent_name) == 0) {
-            os_free(logr->enrollment_cfg.target.sender_ip);
-            os_strdup(node[j]->content, logr->enrollment_cfg.target.agent_name);
-        } else if (strcmp(node[j]->element, xml_group) == 0) {
-            os_free(logr->enrollment_cfg.target.centralized_group);
-            os_strdup(node[j]->content, logr->enrollment_cfg.target.centralized_group);
+            os_free(target_cfg->sender_ip);
+            os_strdup(node[j]->content, target_cfg->agent_name);
+        } else if (strcmp(node[j]->element, xml_groups) == 0) {
+            os_free(target_cfg->centralized_group);
+            os_strdup(node[j]->content, target_cfg->centralized_group);
         } else if (strcmp(node[j]->element, xml_agent_addr) == 0) {
             if (OS_IsValidIP(node[j]->content, NULL) == 1) {
-                sender_ip = node[j]->content;
+                os_free(target_cfg->sender_ip);
+                os_strdup(node[j]->content, target_cfg->sender_ip);
             } else {
                 merror(AG_INV_HOST, node[j]->content);
                 return (OS_INVALID);
             }
-            os_free(logr->enrollment_cfg.target.sender_ip);
-            os_strdup(sender_ip, logr->enrollment_cfg.target.sender_ip);
         } else if (strcmp(node[j]->element, xml_ssl_cipher) == 0) {
-            os_free(logr->enrollment_cfg.certificates.ciphers);
-            os_strdup(node[j]->content, logr->enrollment_cfg.certificates.ciphers);
-        } else if (strcmp(node[j]->element, xml_server_certif_path) == 0) {
-            os_free(logr->enrollment_cfg.certificates.ca_cert);
-            os_strdup(node[j]->content, logr->enrollment_cfg.certificates.ca_cert);
+            os_free(cert_cfg->ciphers);
+            os_strdup(node[j]->content, cert_cfg->ciphers);
+        } else if (strcmp(node[j]->element, xml_server_ca_path) == 0) {
+            os_free(cert_cfg->ca_cert);
+            os_strdup(node[j]->content, cert_cfg->ca_cert);
         } else if (strcmp(node[j]->element, xml_agent_certif_path) == 0) {
-            os_free(logr->enrollment_cfg.certificates.agent_cert);
-            os_strdup(node[j]->content, logr->enrollment_cfg.certificates.agent_cert);
+            os_free(cert_cfg->agent_cert);
+            os_strdup(node[j]->content, cert_cfg->agent_cert);
         } else if (strcmp(node[j]->element, xml_agent_key_path) == 0) {
-            os_free(logr->enrollment_cfg.certificates.agent_key);
-            os_strdup(node[j]->content, logr->enrollment_cfg.certificates.agent_key);
+            os_free(cert_cfg->agent_key);
+            os_strdup(node[j]->content, cert_cfg->agent_key);
         } else if (strcmp(node[j]->element, xml_auth_password) == 0) {
-            os_free(logr->enrollment_cfg.certificates.authpass);
-            os_strdup(node[j]->content, logr->enrollment_cfg.certificates.authpass);
+            os_free(cert_cfg->authpass);
+            os_strdup(node[j]->content, cert_cfg->authpass);
         } else if (strcmp(node[j]->element, xml_auto_method) == 0) {
             if (!strcmp(node[j]->content, "yes")) {
-                logr->enrollment_cfg.certificates.auto_method = 1;
+                cert_cfg->auto_method = 1;
             } else if (!strcmp(node[j]->content, "no")) {
-                logr->enrollment_cfg.certificates.auto_method = 0;
+                cert_cfg->auto_method = 0;
             } else {
                 merror("Invalid content for tag '%s'.", node[j]->element);
                 return OS_INVALID;
@@ -392,7 +395,10 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
             return (OS_INVALID);
         }
     }
-
+    // Initialize enrollment_cfg
+    logr->enrollment_cfg = w_enrollment_init(target_cfg, cert_cfg);
+    logr->enrollment_cfg->enabled = enabled;
+    return 0;
 }
 
 int Test_Client(const char * path){
