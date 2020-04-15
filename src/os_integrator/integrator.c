@@ -367,7 +367,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                         rule_id = json_field ? json_field->valuestring : "";
 
                         json_field = cJSON_GetObjectItem(rule,"level");
-                        alert_level = json_field ? json_field->valueint : "";
+                        alert_level = json_field ? json_field->valueint : 0;
 
                         json_field = cJSON_GetObjectItem(rule,"description");
                         rule_description = json_field ? json_field->valuestring : "";

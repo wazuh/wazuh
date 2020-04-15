@@ -182,7 +182,7 @@ disable()
         exit 1;
     fi
     daemon=''
-  
+
     if [ "X$2" = "Xdatabase" ]; then
         echo "$DATABASE_MSG"
     elif [ "X$2" = "Xclient-syslog" ]; then
@@ -384,7 +384,7 @@ start()
                         if [ $? = 1 ]; then
                             break;
                         fi
-                        sleep 0.5;
+                        sleep 1;
                         j=`expr $j + 1`;
                         if [ "$j" = "${MAX_ITERATION}" ]; then
                             failed=true

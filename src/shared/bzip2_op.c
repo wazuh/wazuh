@@ -120,9 +120,7 @@ int bzip2_uncompress(const char *filebz2, const char *file) {
     do {
         readbuff = BZ2_bzRead(&bzerror, compressfile, buf, sizeof(buf));
         if (bzerror == BZ_OK || bzerror == BZ_STREAM_END) {
-            if (readbuff > 0) {
-                fwrite(buf, sizeof(char), readbuff, output);
-            }
+            fwrite(buf, sizeof(char), readbuff, output);
         } else {
             mdebug2("BZ2_bzRead(%d)'%s': (%d)-%s",
                     bzerror, filebz2, errno, strerror(errno));
@@ -131,7 +129,7 @@ int bzip2_uncompress(const char *filebz2, const char *file) {
             BZ2_bzReadClose(&bzerror, compressfile);
             return -1;
         }
-    } while (readbuff > 0);
+    } while (bzerror == BZ_OK);
 
     fclose(input);
     fclose(output);
