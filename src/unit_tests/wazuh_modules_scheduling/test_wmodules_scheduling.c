@@ -16,24 +16,46 @@ static const int TEST_INTERVAL = 5 * 60;
 static const int TEST_DELAY    = 5;
 static const int TEST_DAY_MONTHS[] =  {3, 8, 15, 21};
 
+typedef struct state_structure {
+    OS_XML lxml;
+    sched_scan_config scan_config;
+    XML_NODE nodes;
+} state_structure;
+
+static int test_setup(void **state) {
+    state_structure *test = calloc(1, sizeof(state_structure));
+    *state = test; 
+    sched_scan_init(&test->scan_config);
+    return 0;
+}
+
+static int test_teardown(void **state) {
+    state_structure *test = *state;
+    sched_scan_free(&test->scan_config);
+    OS_ClearNode(test->nodes);
+    OS_ClearXML(&test->lxml);
+    free(test);
+    return 0;
+}
+
 /**
  * Test caclulated time for an INTERVAL with a sleep in 
  * between
  * */
 static void test_interval_mode(void **state){  
+    state_structure *test = *state;
     const char *string =
         "<interval>5m</interval>"
     ;
-    sched_scan_config scan_config = init_config_from_string(string);
-
-    time_t next_time = sched_scan_get_next_time(&scan_config, "TEST_INTERVAL_MODE", 0);
+    test->nodes = string_to_xml_node(string, &test->lxml);
+    sched_scan_read(&test->scan_config, test->nodes, "");
+    time_t next_time = sched_scan_get_next_time(&test->scan_config, "TEST_INTERVAL_MODE", 0);
     // First time
     assert_int_equal((int) next_time, 0);
     // Sleep 5 secs
     wm_delay(1000 * TEST_DELAY);
-    next_time = sched_scan_get_next_time(&scan_config, "TEST_INTERVAL_MODE", 0);
+    next_time = sched_scan_get_next_time(&test->scan_config, "TEST_INTERVAL_MODE", 0);
     assert_int_equal((int) next_time, TEST_INTERVAL - TEST_DELAY);
-    free(scan_config.scan_time);
 }
 
 
@@ -41,98 +63,99 @@ static void test_interval_mode(void **state){
  * Test day of the month mode for different day values
  * */
 static void test_day_of_the_month_mode(void **state){
-    sched_scan_config scan_config;
-    sched_scan_init(&scan_config);
-
+    state_structure *test = *state;
     // Set day of the month
-    scan_config.month_interval = true;
-    scan_config.interval = 1;
-    scan_config.scan_time = strdup("00:00");
+    test->scan_config.month_interval = true;
+    test->scan_config.interval = 1;
+    test->scan_config.scan_time = strdup("00:00");
 
     for(int i = 0; i < (sizeof(TEST_DAY_MONTHS)/ sizeof(int)); i++){
-        scan_config.scan_day = TEST_DAY_MONTHS[i];
+        test->scan_config.scan_day = TEST_DAY_MONTHS[i];
 
-        time_t time_sleep = sched_scan_get_next_time(&scan_config, "TEST_DAY_MONTH_MODE", 0); 
+        time_t time_sleep = sched_scan_get_next_time(&test->scan_config, "TEST_DAY_MONTH_MODE", 0); 
         time_t next_time = time(NULL) + time_sleep;
 
         struct tm *date = localtime(&next_time);
         // Assert execution time is the expected month day
         assert_int_equal(date->tm_mday,  TEST_DAY_MONTHS[i]);
     }
-    free(scan_config.scan_time);
 }
 
 /**
  * Test 2 consecutive day of the month
  * */
 static void test_day_of_the_month_consecutive(void **state){
+    state_structure *test = *state;
     const char *string =
         "<day>20</day>\n"
         "<time>0:00</time>"
     ;
-    sched_scan_config scan_config = init_config_from_string(string);
+    test->nodes = string_to_xml_node(string, &test->lxml);
+    sched_scan_read(&test->scan_config, test->nodes, "");
     // Set to 2 months
-    scan_config.interval = 2;
+    test->scan_config.interval = 2;
 
-    time_t time_sleep = sched_scan_get_next_time(&scan_config, "TEST_DAY_MONTH_MODE", 0); 
+    time_t time_sleep = sched_scan_get_next_time(&test->scan_config, "TEST_DAY_MONTH_MODE", 0); 
     time_t first_time = time(NULL) + time_sleep;
 
     struct tm first_date = *(localtime(&first_time));
     // Assert execution time is the expected month day
-    assert_int_equal(first_date.tm_mday,  scan_config.scan_day);
+    assert_int_equal(first_date.tm_mday,  test->scan_config.scan_day);
 
     // Sleep past execution moment by 1 hour
     wm_delay((time_sleep + 3600) * 1000);
 
-    time_sleep = sched_scan_get_next_time(&scan_config, "TEST_DAY_MONTH_MODE", 0); 
+    time_sleep = sched_scan_get_next_time(&test->scan_config, "TEST_DAY_MONTH_MODE", 0); 
     time_t second_time = time(NULL) + time_sleep;
 
     struct tm second_date = *(localtime(&second_time));
 
-    assert_int_equal(second_date.tm_mday, scan_config.scan_day);
+    assert_int_equal(second_date.tm_mday, test->scan_config.scan_day);
     // Check it is following month
-    assert_int_equal((first_date.tm_mon + scan_config.interval) % 12, second_date.tm_mon);
-    free(scan_config.scan_time);
+    assert_int_equal((first_date.tm_mon + test->scan_config.interval) % 12, second_date.tm_mon);
 }
 
 /**
  * Test 1 day of the week
  * */
 static void test_day_of_the_week(void **state){
+    state_structure *test = *state;
     const char *string =
         "<wday>tuesday</wday>\n"
         "<time>0:00</time>"
     ;
-    sched_scan_config scan_config = init_config_from_string(string);
-
-    time_t time_sleep = sched_scan_get_next_time(&scan_config, "TEST_WDAY_MODE", 0); 
+    test->nodes = string_to_xml_node(string, &test->lxml);
+    sched_scan_read(&test->scan_config, test->nodes, "");
+    
+    time_t time_sleep = sched_scan_get_next_time(&test->scan_config, "TEST_WDAY_MODE", 0); 
     // Sleep past execution moment by 1 hour
     wm_delay((time_sleep + 3600) * 1000);
 
     time_t first_time = time(NULL);
     struct tm first_date = *(localtime(&first_time));
 
-    assert_int_equal(first_date.tm_wday,  scan_config.scan_wday);
+    assert_int_equal(first_date.tm_wday,  test->scan_config.scan_wday);
 
-    time_sleep = sched_scan_get_next_time(&scan_config, "TEST_WDAY_MODE", 0); 
+    time_sleep = sched_scan_get_next_time(&test->scan_config, "TEST_WDAY_MODE", 0); 
     time_t second_time = time(NULL) + time_sleep;
 
     struct tm second_date = *(localtime(&second_time));
-    assert_int_equal(second_date.tm_wday,  scan_config.scan_wday);
+    assert_int_equal(second_date.tm_wday,  test->scan_config.scan_wday);
 
     assert_int_not_equal(first_date.tm_yday, second_date.tm_yday);
-    free(scan_config.scan_time);
 }
 
 /**
  * Test time of day execution
  * */
 static void test_time_of_day(void **state){
+    state_structure *test = *state;
     const char *string =
         "<time>5:18</time>"
     ;
-    sched_scan_config scan_config = init_config_from_string(string);
-    time_t time_sleep = sched_scan_get_next_time(&scan_config, "TEST_WDAY_MODE", 0); 
+    test->nodes = string_to_xml_node(string, &test->lxml);
+    sched_scan_read(&test->scan_config, test->nodes, "");
+    time_t time_sleep = sched_scan_get_next_time(&test->scan_config, "TEST_WDAY_MODE", 0); 
     wm_delay(time_sleep * 1000);
 
     time_t current_time = time(NULL);
@@ -140,35 +163,35 @@ static void test_time_of_day(void **state){
 
     assert_int_equal(date.tm_hour, 5);
     assert_int_equal(date.tm_min, 18);
-    free(scan_config.scan_time);
 }
 
 /**
  * Test Parsing and dumping of configurations
  * */
 static void test_parse_xml_and_dump(void **state){
+    state_structure *test = *state;
     const char *string = 
     "<wday>friday</wday>\n"
     "<time>13:14</time>";
-    sched_scan_config scan_config = init_config_from_string(string);
+    test->nodes = string_to_xml_node(string, &test->lxml);
+    sched_scan_read(&test->scan_config, test->nodes, "");
     cJSON *data = cJSON_CreateObject();
-    sched_scan_dump(&scan_config, data);
+    sched_scan_dump(&test->scan_config, data);
     char *result_str = cJSON_PrintUnformatted(data);
     assert_string_equal(result_str, "{\"interval\":604800,\"wday\":\"friday\",\"time\":\"13:14\"}");
     cJSON_Delete(data);
-    free(scan_config.scan_time);
     free(result_str);
 }
 
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_interval_mode),
-        cmocka_unit_test(test_day_of_the_month_mode),
-        cmocka_unit_test(test_day_of_the_month_consecutive),
-        cmocka_unit_test(test_day_of_the_week),
-        cmocka_unit_test(test_time_of_day),
-        cmocka_unit_test(test_parse_xml_and_dump)
+        cmocka_unit_test_setup_teardown(test_interval_mode, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_day_of_the_month_mode, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_day_of_the_month_consecutive, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_day_of_the_week, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_time_of_day, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_parse_xml_and_dump, test_setup, test_teardown)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

@@ -38,7 +38,7 @@ void *read_postgresql_log(logreader *lf, int *rc, int drop_it) {
     *rc = 0;
 
     /* Get new entry */
-    while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
+    while (can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
         lines++;
         /* Get buffer size */

@@ -81,25 +81,41 @@ void __wrap_wm_delay(unsigned int msec){
 /*********************************/
 static int test_scan_read_setup(void **state) {
     test_structure *test; 
-    os_calloc(1, sizeof(test_structure), test);
+    test = calloc(1, sizeof(test_structure));
     xml_node **nodes;
-    os_calloc(2, sizeof(xml_node*), nodes);
-    os_calloc(1, sizeof(xml_node), nodes[0]);
+    nodes = calloc(2, sizeof(xml_node*));
+    nodes[0] = calloc(1, sizeof(xml_node));
     test->nodes = nodes;
-    os_calloc(1, sizeof(sched_scan_config), test->scan_config);
+    test->scan_config = calloc(1, sizeof(sched_scan_config));
     *state = test;
     return 0;
 }
 
 static int test_scan_read_teardown(void **state) {
     test_structure *test = ( test_structure *) *state; 
-    os_free(test->nodes[0]->element);
-    os_free(test->nodes[0]->content);
-    os_free(test->nodes[0]);
-    os_free(test->nodes);
-    os_free(test->scan_config->scan_time);
-    os_free(test->scan_config);
-    os_free(test);
+    free(test->nodes[0]->element);
+    free(test->nodes[0]->content);
+    free(test->nodes[0]);
+    free(test->nodes);
+    if(test->scan_config->scan_time)
+        free(test->scan_config->scan_time);
+    free(test->scan_config);
+    free(test);
+    return 0;
+}
+
+static int test_sched_scan_validate_setup(void **state) {
+    sched_scan_config *scan_config;
+    scan_config = calloc(1, sizeof(sched_scan_config));
+    sched_scan_init(scan_config);
+    *state = scan_config;
+    return 0;
+}
+
+static int test_sched_scan_validate_teardown(void **state) {
+    sched_scan_config *scan_config = (sched_scan_config *)  *state;
+    sched_scan_free(scan_config);
+    free(scan_config);
     return 0;
 }
 
@@ -303,109 +319,93 @@ void test_sched_scan_read_wrong_interval(void **state) {
 }
 
 void test_sched_scan_validate_incompatible_wday(void **state) {
-    sched_scan_config scan_config;
-    sched_scan_init(&scan_config);
-    scan_config.scan_day = 1;
-    scan_config.scan_wday = 1;
+    sched_scan_config *scan_config = (sched_scan_config *)  *state;
+    scan_config->scan_day = 1;
+    scan_config->scan_wday = 1;
     expect_string(__wrap__merror, formatted_msg, "Options 'day' and 'wday' are not compatible.");
-    int ret = _sched_scan_validate_parameters(&scan_config);
+    int ret = _sched_scan_validate_parameters(scan_config);
     assert_int_equal(ret, -1);
-    os_free(scan_config.scan_time);
 }
 
 void test_sched_scan_validate_day_not_month_interval(void **state) {
-    sched_scan_config scan_config;
-    sched_scan_init(&scan_config);
-    scan_config.scan_day = 1;
-    scan_config.month_interval = false;
-    scan_config.scan_time = NULL;
-    int ret = _sched_scan_validate_parameters(&scan_config);
-    assert_int_equal(scan_config.month_interval, true);
-    assert_int_equal(scan_config.interval, 1);
-    assert_string_equal(scan_config.scan_time, "00:00");
+    sched_scan_config *scan_config = (sched_scan_config *)  *state;
+    scan_config->scan_day = 1;
+    scan_config->month_interval = false;
+    scan_config->scan_time = NULL;
+    int ret = _sched_scan_validate_parameters(scan_config);
+    assert_int_equal(scan_config->month_interval, true);
+    assert_int_equal(scan_config->interval, 1);
+    assert_string_equal(scan_config->scan_time, "00:00");
     assert_int_equal(ret, 0);
-    os_free(scan_config.scan_time);
 }
 
 void test_sched_scan_validate_wday_not_week_interval(void **state) {
-    sched_scan_config scan_config;
-    sched_scan_init(&scan_config);
-    scan_config.scan_wday = 2;
-    scan_config.interval = 7;
-    scan_config.scan_time = NULL;
-    int ret = _sched_scan_validate_parameters(&scan_config);
-    assert_int_equal(scan_config.scan_wday, 2);
-    assert_int_equal(scan_config.interval, 604800);
-    assert_string_equal(scan_config.scan_time, "00:00");
+    sched_scan_config *scan_config = (sched_scan_config *)  *state;
+    scan_config->scan_wday = 2;
+    scan_config->interval = 7;
+    scan_config->scan_time = NULL;
+    int ret = _sched_scan_validate_parameters(scan_config);
+    assert_int_equal(scan_config->scan_wday, 2);
+    assert_int_equal(scan_config->interval, 604800);
+    assert_string_equal(scan_config->scan_time, "00:00");
     assert_int_equal(ret, 0);
-    os_free(scan_config.scan_time);
 }
 
 void test_sched_scan_validate_time_not_day_interval(void **state){
-    sched_scan_config scan_config;
-    sched_scan_init(&scan_config);
-    scan_config.scan_time = strdup("00:00");
-    scan_config.interval = 30;
-    int ret = _sched_scan_validate_parameters(&scan_config);
-    assert_int_equal(scan_config.interval, WM_DEF_INTERVAL);
-    assert_string_equal(scan_config.scan_time, "00:00");
+    sched_scan_config *scan_config = (sched_scan_config *)  *state;
+    scan_config->scan_time = strdup("00:00");
+    scan_config->interval = 30;
+    int ret = _sched_scan_validate_parameters(scan_config);
+    assert_int_equal(scan_config->interval, WM_DEF_INTERVAL);
+    assert_string_equal(scan_config->scan_time, "00:00");
     assert_int_equal(ret, 0);
-    os_free(scan_config.scan_time);
 }
 
 void test_get_next_time_day_configuration(void **state) {
-    sched_scan_config scan_config;
-    sched_scan_init(&scan_config);
-    scan_config.scan_day = 1;
-    scan_config.month_interval = true;
-    scan_config.interval = 2; //Each 2 months
-    scan_config.scan_time = strdup("00:00");
+    sched_scan_config *scan_config = (sched_scan_config *)  *state;
+    scan_config->scan_day = 1;
+    scan_config->month_interval = true;
+    scan_config->interval = 2; //Each 2 months
+    scan_config->scan_time = strdup("00:00");
     expect_value_count(__wrap_check_day_to_scan, day, 1, 2);
     expect_string_count(__wrap_check_day_to_scan, hour, "00:00", 2);
     will_return_always(__wrap_check_day_to_scan, 0);
     expect_string_count(__wrap_get_time_to_hour, hour, "00:00", 2);
     will_return(__wrap_get_time_to_hour, 0);
     will_return(__wrap_get_time_to_hour, 5);
-    time_t ret = _get_next_time(&scan_config, "TEST_MODULE", 0);
+    time_t ret = _get_next_time(scan_config, "TEST_MODULE", 0);
     assert_int_equal((int)ret, 5);
-    os_free(scan_config.scan_time);
 }
 
 
 void test_get_next_time_wday_configuration(void **state) {
-    sched_scan_config scan_config;
-    sched_scan_init(&scan_config);
-    scan_config.scan_wday = 2;
-    scan_config.scan_time = strdup("00:00");
+    sched_scan_config *scan_config = (sched_scan_config *)  *state;
+    scan_config->scan_wday = 2;
+    scan_config->scan_time = strdup("00:00");
     expect_value(__wrap_get_time_to_day, wday, 2);
     expect_string(__wrap_get_time_to_day, hour, "00:00");
     will_return(__wrap_get_time_to_day, 15);
-    time_t ret = _get_next_time(&scan_config, "TEST_MODULE", 0);
+    time_t ret = _get_next_time(scan_config, "TEST_MODULE", 0);
     assert_int_equal((int) ret, 15);
-    os_free(scan_config.scan_time);
 }
 
 void test_get_next_time_daytime_configuration(void **state) {
-    sched_scan_config scan_config;
-    sched_scan_init(&scan_config);
-    scan_config.scan_time = strdup("05:00");
+    sched_scan_config *scan_config = (sched_scan_config *)  *state;
+    scan_config->scan_time = strdup("05:00");
     expect_string(__wrap_get_time_to_hour, hour, "05:00");
     will_return(__wrap_get_time_to_hour, 8);
-    time_t ret = _get_next_time(&scan_config, "TEST_MODULE", 0);
+    time_t ret = _get_next_time(scan_config, "TEST_MODULE", 0);
     assert_int_equal((int) ret, 8);
-    os_free(scan_config.scan_time);
 }
 
-void test_get_next_time_interval_configuration(void **sate) {
-    sched_scan_config scan_config;
-    sched_scan_init(&scan_config);
-    scan_config.interval = 3600;
-    time_t ret = _get_next_time(&scan_config, "TEST_MODULE", 0);
+void test_get_next_time_interval_configuration(void **state) {
+    sched_scan_config *scan_config = (sched_scan_config *)  *state;
+    scan_config->interval = 3600;
+    time_t ret = _get_next_time(scan_config, "TEST_MODULE", 0);
     assert_int_equal((int) ret, 0); //First time in interval is on start
-    scan_config.last_scan_time = time(NULL); // Update last scan time
-    ret = _get_next_time(&scan_config, "TEST_MODULE", 0);
+    scan_config->last_scan_time = time(NULL); // Update last scan time
+    ret = _get_next_time(scan_config, "TEST_MODULE", 0);
     assert_int_equal((int) ret, 3600);
-    os_free(scan_config.scan_time);
 }
 
 
@@ -428,14 +428,14 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_sched_scan_read_correct_interval_minute, test_scan_read_setup, test_scan_read_teardown),
         cmocka_unit_test_setup_teardown(test_sched_scan_read_correct_interval_second, test_scan_read_setup, test_scan_read_teardown),
         cmocka_unit_test_setup_teardown(test_sched_scan_read_wrong_interval, test_scan_read_setup, test_scan_read_teardown),
-        cmocka_unit_test(test_sched_scan_validate_incompatible_wday),
-        cmocka_unit_test(test_sched_scan_validate_day_not_month_interval),
-        cmocka_unit_test(test_sched_scan_validate_wday_not_week_interval),
-        cmocka_unit_test(test_sched_scan_validate_time_not_day_interval),
-        cmocka_unit_test(test_get_next_time_day_configuration),
-        cmocka_unit_test(test_get_next_time_wday_configuration),
-        cmocka_unit_test(test_get_next_time_daytime_configuration),
-        cmocka_unit_test(test_get_next_time_interval_configuration)
+        cmocka_unit_test_setup_teardown(test_sched_scan_validate_incompatible_wday, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
+        cmocka_unit_test_setup_teardown(test_sched_scan_validate_day_not_month_interval, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
+        cmocka_unit_test_setup_teardown(test_sched_scan_validate_wday_not_week_interval, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
+        cmocka_unit_test_setup_teardown(test_sched_scan_validate_time_not_day_interval, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
+        cmocka_unit_test_setup_teardown(test_get_next_time_day_configuration, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
+        cmocka_unit_test_setup_teardown(test_get_next_time_wday_configuration, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
+        cmocka_unit_test_setup_teardown(test_get_next_time_daytime_configuration, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
+        cmocka_unit_test_setup_teardown(test_get_next_time_interval_configuration, test_sched_scan_validate_setup, test_sched_scan_validate_teardown)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

@@ -912,6 +912,7 @@ def test_WazuhDBQuery_protected_get_total_items(mock_socket_conn, mock_isfile,
                          backend=WazuhDBBackend(agent_id=0), count=5,
                          get_data=None, date_fields=['date1', 'date2'])
 
+    query._add_select_to_query()
     query._get_total_items()
 
     mock_conn_db.assert_called_once_with()
@@ -1106,7 +1107,7 @@ def test_WazuhDBQuery_protected_default_count_query(mock_socket_conn,
 
     result = query._default_count_query()
 
-    assert result == "COUNT(*)"
+    assert result == "SELECT COUNT(*) FROM ({0})"
     mock_conn_db.assert_called_once_with()
 
 

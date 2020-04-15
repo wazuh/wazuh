@@ -146,7 +146,7 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
     port[16] = '\0';
     proto[16] = '\0';
 
-    while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
+    while (can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
         lines++;
         /* If need clear is set, we need to clear the line */

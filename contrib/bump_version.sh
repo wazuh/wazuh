@@ -64,6 +64,7 @@ MSI_FILE="../src/win32/wazuh-installer.wxs"
 FW_SETUP="../framework/setup.py"
 FW_INIT="../framework/wazuh/__init__.py"
 CLUSTER_INIT="../framework/wazuh/cluster/__init__.py"
+VERSION_DOCU="../src/Doxyfile"
 
 if [ -n "$version" ]
 then
@@ -116,10 +117,15 @@ then
     # Cluster
 
     sed -E -i'' -e "s/__version__ = '.+'/__version__ = '${version:1}'/g" $CLUSTER_INIT
+
+    # Documentation config file
+
+    sed -E -i'' -e "s/PROJECT_NUMBER         = \".+\"/PROJECT_NUMBER         = \"$version\"/g" $VERSION_DOCU
 fi
 
 if [ -n "$revision" ]
 then
+    CURRENT_VERSION=$(cat $VERSION_FILE)
 
     # File REVISION
 
@@ -140,6 +146,10 @@ then
     # Cluster
 
     sed -E -i'' -e "s/__revision__ = '.+'/__revision__ = '$revision'/g" $CLUSTER_INIT
+
+    # Documentation config file
+
+    sed -E -i'' -e "s/PROJECT_NUMBER         = \".+\"/PROJECT_NUMBER         = \"$CURRENT_VERSION-$revision\"/g" $VERSION_DOCU
 fi
 
 if [ -n "$product" ]

@@ -169,6 +169,7 @@ char * w_strtrim(char * string) {
 
 // Add a dynamic field with object nesting
 void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
+
     cJSON *object;
     char *current;
     char *nest = strchr(key, '.');
@@ -176,7 +177,7 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
 
     if (nest) {
         length = nest - key;
-        current = malloc(length + 1);
+        os_malloc(length + 1, current);
         strncpy(current, key, length);
         current[length] = '\0';
 
@@ -679,7 +680,28 @@ char *w_strtok_r_str_delim(const char *delim, char **remaining_str)
     return token;
 }
 
-const char *find_string_in_array(char * const string_array[], size_t array_len, const char * const str, const size_t str_len)
+
+// Returns the characters number of the string source if, only if, source is included completely in str, 0 in other case.
+int w_compare_str(const char * source, const char * str) {
+    int matching = 0;
+    size_t source_lenght;
+
+    if (!(source && str)) {
+        return -1;
+    }
+
+    source_lenght = strlen(source);
+    if (source_lenght > strlen(str)) {
+        return -2;
+    }
+
+    // Match if result is 0
+    matching = strncmp(source, str, source_lenght);
+
+    return matching == 0 ? source_lenght : 0;
+}
+
+const char * find_string_in_array(char * const string_array[], size_t array_len, const char * const str, const size_t str_len)
 {
     if (!string_array || !str){
         return NULL;
@@ -693,6 +715,46 @@ const char *find_string_in_array(char * const string_array[], size_t array_len, 
     }
 
     return NULL;
+}
+
+// Parse boolean string
+
+int w_parse_bool(const char * string) {
+    return (strcmp(string, "yes") == 0) ? 1 : (strcmp(string, "no") == 0) ? 0 : -1;
+}
+
+// Parse positive time string into seconds
+
+long w_parse_time(const char * string) {
+    char * end;
+    long seconds = strtol(string, &end, 10);
+
+    if (seconds < 0 || (seconds == LONG_MAX && errno == ERANGE)) {
+        return -1;
+    }
+
+    switch (*end) {
+    case '\0':
+        break;
+    case 'd':
+        seconds *= 86400;
+        break;
+    case 'h':
+        seconds *= 3600;
+        break;
+    case 'm':
+        seconds *= 60;
+        break;
+    case 's':
+        break;
+    case 'w':
+        seconds *= 604800;
+        break;
+    default:
+        return -1;
+    }
+
+    return seconds >= 0 ? seconds : -1;
 }
 
 char* decode_hex_buffer_2_ascii_buffer(const char * const encoded_buffer, const size_t buffer_size)
@@ -740,4 +802,110 @@ size_t strcspn_escaped(const char * s, char reject) {
     } while (spn_len < len);
 
     return len;
+}
+
+// Escape JSON reserved characters
+
+char * wstr_escape_json(const char * string) {
+    const char escape_map[] = {
+        ['\b'] = 'b',
+        ['\t'] = 't',
+        ['\n'] = 'n',
+        ['\f'] = 'f',
+        ['\r'] = 'r',
+        ['\"'] = '\"',
+        ['\\'] = '\\'
+    };
+
+    size_t i = 0;   // Read position
+    size_t j = 0;   // Write position
+    size_t z;       // Span length
+
+    char * output;
+    os_malloc(1, output);
+
+    do {
+        z = strcspn(string + i, "\b\t\n\f\r\"\\");
+
+        if (string[i + z] == '\0') {
+            // End of string
+            os_realloc(output, j + z + 1, output);
+            strncpy(output + j, string + i, z);
+        } else {
+            // Reserved character
+            os_realloc(output, j + z + 3, output);
+            strncpy(output + j, string + i, z);
+            output[j + z] = '\\';
+            output[j + z + 1] = escape_map[(int)string[i + z]];
+            z++;
+            j++;
+        }
+
+        j += z;
+        i += z;
+    } while (string[i] != '\0');
+
+    output[j] = '\0';
+    return output;
+}
+
+// Unescape JSON reserved characters
+
+char * wstr_unescape_json(const char * string) {
+    const char UNESCAPE_MAP[] = {
+        ['b'] = '\b',
+        ['t'] = '\t',
+        ['n'] = '\n',
+        ['f'] = '\f',
+        ['r'] = '\r',
+        ['\"'] = '\"',
+        ['\\'] = '\\'
+    };
+
+    size_t i = 0;   // Read position
+    size_t j = 0;   // Write position
+    size_t z;       // Span length
+
+    char * output;
+    os_malloc(1, output);
+
+    do {
+        z = strcspn(string + i, "\\");
+
+        // Extend output and copy
+        os_realloc(output, j + z + 3, output);
+        strncpy(output + j, string + i, z);
+
+        i += z;
+        j += z;
+
+        if (string[i] != '\0') {
+            // Peek byte following '\'
+            switch (string[++i]) {
+            case '\0':
+                // End of string
+                output[j++] = '\\';
+                break;
+
+            case 'b':
+            case 't':
+            case 'n':
+            case 'f':
+            case 'r':
+            case '\"':
+            case '\\':
+                // Escaped character
+                output[j++] = UNESCAPE_MAP[(int)string[i++]];
+                break;
+
+            default:
+                // Bad escape
+                output[j++] = '\\';
+                output[j++] = string[i++];
+            }
+        }
+    } while (string[i] != '\0');
+
+    output[j] = '\0';
+    return output;
 }

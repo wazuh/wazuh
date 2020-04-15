@@ -19,6 +19,7 @@ static const char *SQL_DELETE_EVENT = "DELETE FROM fim_event;";
 static const char *SQL_DELETE_FILE = "DELETE FROM fim_file;";
 
 /* Find file: returns ID, or 0 if it doesn't exists, or -1 on error. */
+// LCOV_EXCL_START
 int wdb_insert_file(sqlite3 *db, const char *path, int type) {
     sqlite3_stmt *stmt = NULL;
     int result;
@@ -165,8 +166,8 @@ int wdb_insert_fim(sqlite3 *db, int type, long timestamp, const char *f_name, co
         else // Old agents
             sqlite3_bind_null(stmt, 14); // sha256
 
-        if (sum->attrs)
-            sqlite3_bind_int(stmt, 15, sum->attrs);
+        if (sum->attributes)
+            sqlite3_bind_text(stmt, 15, sum->attributes, -1, NULL);
         else // Old agents
             sqlite3_bind_null(stmt, 15); // attributes
     } else {
@@ -291,10 +292,10 @@ int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size
         sum.inode = (long)sqlite3_column_int64(stmt, 10);
         sum.sha256 = (char *)sqlite3_column_text(stmt, 11);
         sum.date_alert = (long)sqlite3_column_int64(stmt, 12);
-        sum.attrs = (unsigned int)sqlite3_column_int(stmt, 13);
+        sum.attributes = (char *)sqlite3_column_text(stmt, 13);
         sum.symbolic_path = (char *)sqlite3_column_text(stmt, 14);
 
-        if (*str_perm != '|') {
+        if (str_perm && isdigit(*str_perm)) {
             sum.perm = strtol(str_perm, NULL, 8);
         } else {
             sum.win_perm = str_perm;
@@ -365,7 +366,40 @@ end:
     return retval;
 }
 
+// LCOV_EXCL_STOP
+int wdb_syscheck_save2(wdb_t * wdb, const char * payload) {
+    int retval = -1;
+    cJSON * data = cJSON_Parse(payload);
+
+    if (!wdb) {
+        merror("WDB object cannot be null.");
+        goto end;
+    }
+
+    if (data == NULL) {
+        mdebug1("DB(%s): cannot parse FIM payload: '%s'", wdb->agent_id, payload);
+        goto end;
+    }
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        merror("DB(%s) Can't begin transaction.", wdb->agent_id);
+        goto end;
+    }
+
+    if (wdb_fim_insert_entry2(wdb, data) == -1) {
+        mdebug1("DB(%s) Can't insert file entry.", wdb->agent_id);
+        goto end;
+    }
+
+    retval = 0;
+
+end:
+    cJSON_Delete(data);
+    return retval;
+}
+
 // Find file entry: returns 1 if found, 0 if not, or -1 on error.
+// LCOV_EXCL_START
 int wdb_fim_find_entry(wdb_t * wdb, const char * path) {
     sqlite3_stmt *stmt = NULL;
 
@@ -416,10 +450,17 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
     snprintf(s_perm, sizeof(s_perm), "%06o", sum->perm);
     stmt = wdb->stmt[WDB_STMT_FIM_INSERT_ENTRY];
 
+    // If we have Windows permissions, they will be escaped. We
+    // need to save them unescaped
+    char *unescaped_perms = NULL;
+    if (sum->win_perm) {
+        unescaped_perms = wstr_replace(sum->win_perm, "\\:", ":");
+    }
+
     sqlite3_bind_text(stmt, 1, file, -1, NULL);
     sqlite3_bind_text(stmt, 2, s_ftype, -1, NULL);
     sqlite3_bind_text(stmt, 3, sum->size, -1, NULL);
-    sqlite3_bind_text(stmt, 4, (!sum->win_perm) ? s_perm : sum->win_perm, -1, NULL);
+    sqlite3_bind_text(stmt, 4, (!unescaped_perms) ? s_perm : unescaped_perms, -1, NULL);
     sqlite3_bind_text(stmt, 5, sum->uid, -1, NULL);
     sqlite3_bind_text(stmt, 6, sum->gid, -1, NULL);
     sqlite3_bind_text(stmt, 7, sum->md5, -1, NULL);
@@ -429,17 +470,120 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
     sqlite3_bind_int64(stmt, 11, sum->mtime);
     sqlite3_bind_int64(stmt, 12, sum->inode);
     sqlite3_bind_text(stmt, 13, sum->sha256, -1, NULL);
-    sqlite3_bind_int(stmt, 14, sum->attrs);
+    sqlite3_bind_text(stmt, 14, sum->attributes, -1, NULL);
     sqlite3_bind_text(stmt, 15, sum->symbolic_path, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
+        free(unescaped_perms);
         return 0;
     } else {
+        free(unescaped_perms);
         mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
+// LCOV_EXCL_STOP
 
+int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
+    if (!wdb) {
+        merror("WDB object cannot be null.");
+        return -1;
+    }
+
+    cJSON *json_path = cJSON_GetObjectItem(data, "path");
+
+    if (!json_path) {
+        merror("DB(%s) fim/save request with no file path argument.", wdb->agent_id);
+        return -1;
+    }
+
+    char * path = cJSON_GetStringValue(json_path);
+    cJSON * timestamp = cJSON_GetObjectItem(data, "timestamp");
+
+    if (!cJSON_IsNumber(timestamp)) {
+        merror("DB(%s) fim/save request with no timestamp path argument.", wdb->agent_id);
+        return -1;
+    }
+
+    cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
+
+    if (!cJSON_IsObject(attributes)) {
+        merror("DB(%s) fim/save request with no valid attributes.", wdb->agent_id);
+        return -1;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_FIM_INSERT_ENTRY2) < 0) {
+        merror("DB(%s) Can't cache statement", wdb->agent_id);
+        return -1;
+    }
+
+    sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_FIM_INSERT_ENTRY2];
+    sqlite3_bind_text(stmt, 1, path, -1, NULL);
+    sqlite3_bind_int64(stmt, 3, (long)timestamp->valuedouble);
+
+    cJSON * element;
+
+    cJSON_ArrayForEach(element, attributes) {
+        if (element->string == NULL) {
+            return -1;
+        }
+
+        switch (element->type) {
+        case cJSON_Number:
+            if (strcmp(element->string, "size") == 0) {
+                sqlite3_bind_int(stmt, 4, element->valueint);
+            } else if (strcmp(element->string, "mtime") == 0) {
+                sqlite3_bind_int(stmt, 12, element->valueint);
+            } else if (strcmp(element->string, "inode") == 0) {
+                sqlite3_bind_int(stmt, 13, element->valueint);
+            } else {
+                merror("DB(%s) Invalid attribute name: %s", wdb->agent_id, element->string);
+                return -1;
+            }
+
+            break;
+
+        case cJSON_String:
+            if (strcmp(element->string, "type") == 0) {
+                sqlite3_bind_text(stmt, 2, element->valuestring, -1, NULL);
+            } else if (strcmp(element->string, "perm") == 0) {
+                sqlite3_bind_text(stmt, 5, element->valuestring, -1, NULL);
+            } else if (strcmp(element->string, "uid") == 0) {
+                sqlite3_bind_text(stmt, 6, element->valuestring, -1, NULL);
+            } else if (strcmp(element->string, "gid") == 0) {
+                sqlite3_bind_text(stmt, 7, element->valuestring, -1, NULL);
+            } else if (strcmp(element->string, "hash_md5") == 0) {
+                sqlite3_bind_text(stmt, 8, element->valuestring, -1, NULL);
+            } else if (strcmp(element->string, "hash_sha1") == 0) {
+                sqlite3_bind_text(stmt, 9, element->valuestring, -1, NULL);
+            } else if (strcmp(element->string, "user_name") == 0) {
+                sqlite3_bind_text(stmt, 10, element->valuestring, -1, NULL);
+            } else if (strcmp(element->string, "group_name") == 0) {
+                sqlite3_bind_text(stmt, 11, element->valuestring, -1, NULL);
+            } else if (strcmp(element->string, "hash_sha256") == 0) {
+                sqlite3_bind_text(stmt, 14, element->valuestring, -1, NULL);
+            } else if (strcmp(element->string, "symbolic_path") == 0) {
+                sqlite3_bind_text(stmt, 16, element->valuestring, -1, NULL);
+            } else if (strcmp(element->string, "checksum") == 0) {
+                sqlite3_bind_text(stmt, 17, element->valuestring, -1, NULL);
+            } else if (strcmp(element->string, "attributes") == 0) {
+                sqlite3_bind_text(stmt, 15, element->valuestring, -1, NULL);
+            } else {
+                merror("DB(%s) Invalid attribute name: %s", wdb->agent_id, element->string);
+                return -1;
+            }
+        }
+    }
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+
+    return 0;
+}
+
+// LCOV_EXCL_START
 int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum) {
     sqlite3_stmt *stmt = NULL;
     char s_perm[16];
@@ -452,10 +596,16 @@ int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum) {
     snprintf(s_perm, sizeof(s_perm), "%06o", sum->perm);
     stmt = wdb->stmt[WDB_STMT_FIM_UPDATE_ENTRY];
 
+    // If we have Windows permissions, they will be escaped. We
+    // need to save them unescaped
+    char *unescaped_perms = NULL;
+    if (sum->win_perm) {
+        unescaped_perms = wstr_replace(sum->win_perm, "\\:", ":");
+    }
 
     sqlite3_bind_int64(stmt, 1, sum->changes);
     sqlite3_bind_text(stmt, 2, sum->size, -1, NULL);
-    sqlite3_bind_text(stmt, 3, (!sum->win_perm) ? s_perm : sum->win_perm, -1, NULL);
+    sqlite3_bind_text(stmt, 3, (!unescaped_perms) ? s_perm : unescaped_perms, -1, NULL);
     sqlite3_bind_text(stmt, 4, sum->uid, -1, NULL);
     sqlite3_bind_text(stmt, 5, sum->gid, -1, NULL);
     sqlite3_bind_text(stmt, 6, sum->md5, -1, NULL);
@@ -465,13 +615,15 @@ int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum) {
     sqlite3_bind_int64(stmt, 10, sum->mtime);
     sqlite3_bind_int64(stmt, 11, sum->inode);
     sqlite3_bind_text(stmt, 12, sum->sha256, -1, NULL);
-    sqlite3_bind_int(stmt, 13, sum->attrs);
+    sqlite3_bind_text(stmt, 13, sum->attributes, -1, NULL);
     sqlite3_bind_text(stmt, 14, sum->symbolic_path, -1, NULL);
     sqlite3_bind_text(stmt, 15, file, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
+        free(unescaped_perms);
         return sqlite3_changes(wdb->db);
     } else {
+        free(unescaped_perms);
         mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
         return -1;
     }
@@ -565,3 +717,4 @@ int wdb_fim_clean_old_entries(wdb_t * wdb) {
 
     return 0;
 }
+// LCOV_EXCL_STOP

@@ -18,9 +18,9 @@
 #define SYSLOG_MQ       '2'
 #define HOSTINFO_MQ     '3'
 #define SECURE_MQ       '4'
+#define DBSYNC_MQ       '5'
 #define SYSCHECK_MQ     '8'
 #define ROOTCHECK_MQ    '9'
-#define EVENT_MQ        '10'
 #define SCA_MQ          'p'
 
 /* Queues for additional log types */
@@ -40,5 +40,9 @@ int StartMQ(const char *key, short int type) __attribute__((nonnull));
 int SendMSG(int queue, const char *message, const char *locmsg, char loc) __attribute__((nonnull));
 
 int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logtarget * target) __attribute__((nonnull (2, 3, 5)));
+
+void mq_log_builder_init();
+
+int mq_log_builder_update();
 
 #endif /* MQ_H */

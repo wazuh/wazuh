@@ -758,30 +758,20 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->decoder_info = NULL_Decoder;
 
     lf->filename = NULL;
-    lf->perm_before = 0;
-    lf->perm_after = 0;
-    lf->win_perm_before = NULL;
-    lf->win_perm_after = NULL;
+    lf->perm_before = NULL;
     lf->md5_before = NULL;
-    lf->md5_after = NULL;
     lf->sha1_before = NULL;
-    lf->sha1_after = NULL;
     lf->sha256_before = NULL;
-    lf->sha256_after = NULL;
     lf->size_before = NULL;
-    lf->size_after = NULL;
     lf->owner_before = NULL;
-    lf->owner_after = NULL;
     lf->gowner_before = NULL;
-    lf->gowner_after = NULL;
     lf->uname_before = NULL;
-    lf->uname_after = NULL;
     lf->gname_before = NULL;
-    lf->gname_after = NULL;
     lf->mtime_before = 0;
     lf->mtime_after = 0;
     lf->inode_before = 0;
     lf->inode_after = 0;
+    lf->attributes_before = NULL;
     lf->diff = NULL;
     lf->previous = NULL;
     lf->labels = NULL;
@@ -975,59 +965,35 @@ void Free_Eventinfo(Eventinfo *lf)
     if (lf->sym_path) {
         free(lf->sym_path);
     }
-    if (lf->win_perm_before) {
-        free(lf->win_perm_before);
-    }
-    if (lf->win_perm_after) {
-        free(lf->win_perm_after);
+    if (lf->perm_before) {
+        free(lf->perm_before);
     }
     if (lf->md5_before) {
         free(lf->md5_before);
     }
-    if (lf->md5_after) {
-        free(lf->md5_after);
-    }
     if (lf->sha1_before) {
         free(lf->sha1_before);
-    }
-    if (lf->sha1_after) {
-        free(lf->sha1_after);
     }
     if (lf->sha256_before) {
         free(lf->sha256_before);
     }
-    if (lf->sha256_after) {
-        free(lf->sha256_after);
-    }
     if (lf->size_before) {
         free(lf->size_before);
-    }
-    if (lf->size_after) {
-        free(lf->size_after);
     }
     if (lf->owner_before) {
         free(lf->owner_before);
     }
-    if (lf->owner_after) {
-        free(lf->owner_after);
-    }
     if (lf->gowner_before) {
         free(lf->gowner_before);
-    }
-    if (lf->gowner_after) {
-        free(lf->gowner_after);
     }
     if (lf->uname_before) {
         free(lf->uname_before);
     }
-    if (lf->uname_after) {
-        free(lf->uname_after);
-    }
     if (lf->gname_before) {
         free(lf->gname_before);
     }
-    if (lf->gname_after) {
-        free(lf->gname_after);
+    if (lf->attributes_before) {
+        free(lf->attributes_before);
     }
     if (lf->user_id) {
         free(lf->user_id);
@@ -1297,12 +1263,8 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
     os_calloc(lf->nfields, sizeof(DynamicField), lf_cpy->fields);
 
     for (i = 0; i < lf->nfields; i++) {
-        if (lf->fields[i].value) {
-           os_strdup(lf->fields[i].value,lf_cpy->fields[i].value);
-        }
-        if (lf->fields[i].key) {
-           os_strdup(lf->fields[i].key,lf_cpy->fields[i].key);
-        }
+        w_strdup(lf->fields[i].value, lf_cpy->fields[i].value);
+        w_strdup(lf->fields[i].key, lf_cpy->fields[i].key);
     }
 
     /* Pointer to the rule that generated it */
@@ -1332,86 +1294,48 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
         os_strdup(lf->filename,lf_cpy->filename);
     }
 
-    lf_cpy->perm_before = lf->perm_before;
-    lf_cpy->perm_after = lf->perm_after;
+    if (lf->perm_before) {
+        os_strdup(lf->perm_before, lf_cpy->perm_before);
+    }
 
     if (lf->sk_tag){
         os_strdup(lf->sk_tag, lf_cpy->sk_tag);
-    }
-
-    if (lf->win_perm_before) {
-        os_strdup(lf->win_perm_before, lf_cpy->win_perm_before);
-    }
-
-    if (lf->win_perm_after) {
-        os_strdup(lf->win_perm_after, lf_cpy->win_perm_after);
     }
 
     if(lf->md5_before){
         os_strdup(lf->md5_before,lf_cpy->md5_before);
     }
 
-    if(lf->md5_after){
-        os_strdup(lf->md5_after,lf_cpy->md5_after);
-    }
-
     if(lf->sha1_before){
         os_strdup(lf->sha1_before,lf_cpy->sha1_before);
-    }
-
-    if(lf->sha1_after){
-        os_strdup(lf->sha1_after,lf_cpy->sha1_after);
     }
 
     if(lf->sha256_before){
         os_strdup(lf->sha256_before,lf_cpy->sha256_before);
     }
 
-    if(lf->sha256_after){
-        os_strdup(lf->sha256_after,lf_cpy->sha256_after);
-    }
-
-    lf_cpy->attrs_before = lf->attrs_before;
-    lf_cpy->attrs_after = lf->attrs_after;
-
     if(lf->size_before){
         os_strdup(lf->size_before,lf_cpy->size_before);
-    }
-
-    if(lf->size_after){
-        os_strdup(lf->size_after,lf_cpy->size_after);
     }
 
     if(lf->owner_before){
         os_strdup(lf->owner_before,lf_cpy->owner_before);
     }
 
-    if(lf->owner_after){
-        os_strdup(lf->owner_after,lf_cpy->owner_after);
-    }
-
     if(lf->gowner_before){
         os_strdup(lf->gowner_before,lf_cpy->gowner_before);
-    }
-
-    if(lf->gowner_after){
-        os_strdup(lf->gowner_after,lf_cpy->gowner_after);
     }
 
     if(lf->uname_before){
         os_strdup(lf->uname_before,lf_cpy->uname_before);
     }
 
-    if(lf->uname_after){
-        os_strdup(lf->uname_after,lf_cpy->uname_after);
-    }
-
     if(lf->gname_before){
         os_strdup(lf->gname_before,lf_cpy->gname_before);
     }
 
-    if(lf->gname_after){
-        os_strdup(lf->gname_after,lf_cpy->gname_after);
+    if(lf->attributes_before){
+        os_strdup(lf->attributes_before,lf_cpy->attributes_before);
     }
 
     /* Whodata fields */

@@ -55,7 +55,7 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
 
     *rc = 0;
 
-    for (offset = w_ftell(lf->fp); fgets(buffer, OS_MAXSTR, lf->fp) && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
+    for (offset = w_ftell(lf->fp); can_read() && fgets(buffer, OS_MAXSTR, lf->fp) && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
 
         /* Flow control */

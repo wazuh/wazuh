@@ -153,18 +153,9 @@ def get_path_lists(offset=0, limit=common.database_limit, sort=None, search=None
 
     if limit == 0:
         raise WazuhException(1406)
-
-    if offset:
-        output = output[offset:]
-
     if search:
-        # only search in path field
         output = search_array(output, search['value'], search['negation'], fields=['name', 'path'])
-
     if sort:
         output = sort_array(output, sort['fields'], sort['order'], allowed_sort_fields=['name', 'path'])
 
-    # limit is common.database_limit by default
-    output = output[:limit]
-
-    return {'totalItems': len(output), 'items': output}
+    return {'totalItems': len(output), 'items': output[offset:limit+offset]}

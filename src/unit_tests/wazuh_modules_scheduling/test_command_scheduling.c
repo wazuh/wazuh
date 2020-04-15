@@ -21,28 +21,16 @@ static unsigned test_command_date_counter = 0;
 static struct tm test_command_date_storage[TEST_MAX_DATES];
 
 int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path) {
-    // Will wrap this funciont to check running times in order to check scheduling
+    // Will wrap this function to check running times in order to check scheduling
     time_t current_time = time(NULL);
     struct tm *date = localtime(&current_time);
     test_command_date_storage[test_command_date_counter++] = *date;
     if(test_command_date_counter >= TEST_MAX_DATES){
-        const wm_command_t *ptr = (wm_command_t *) command_module->data;
-        check_function_ptr( &ptr->scan_config, &test_command_date_storage[0], TEST_MAX_DATES);
         // Break infinite loop
         disable_forever_loop();
     }
     *exitcode = 0;
     return 0;
-}
-/****************************************************************/
-
-/******* Helpers **********/
-
-static void set_up_test(void (*ptr)(const sched_scan_config *scan_config, struct tm *date_array, unsigned int MAX_DATES)) {
-    enable_forever_loop();
-    wm_max_eps = 1;
-    test_command_date_counter = 0;
-    check_function_ptr = ptr;
 }
 /****************************************************************/
 static void wmodule_cleanup(wmodule *module){
@@ -87,6 +75,13 @@ static int teardown_module(){
     return 0;
 }
 
+static int setup_test_executions(void **state){
+    enable_forever_loop();
+    wm_max_eps = 1;
+    test_command_date_counter = 0;
+    return 0;
+}
+
 static int teardown_test_executions(void **state){
     wm_command_t* module_data = (wm_command_t *) *state;
     sched_scan_free(&(module_data->scan_config));
@@ -113,20 +108,20 @@ static int teardown_test_read(void **state) {
 
 /** Tests **/
 void test_interval_execution(void **state) {
-    set_up_test(check_time_interval);
     wm_command_t* module_data = (wm_command_t *)command_module->data;
+    *state = module_data;
     module_data->scan_config.last_scan_time = 0;
     module_data->scan_config.scan_day = 0;
     module_data->scan_config.scan_wday = -1;
     module_data->scan_config.interval = 60; // 1min
     module_data->scan_config.month_interval = false;
     command_module->context->start(module_data);
-    *state = module_data;
+    check_time_interval( &module_data->scan_config, &test_command_date_storage[0], TEST_MAX_DATES);     
 }
 
 void test_day_of_month(void **state) {
-    set_up_test(check_day_of_month);
     wm_command_t* module_data = (wm_command_t *)command_module->data;
+    *state = module_data;
     module_data->scan_config.last_scan_time = 0;
     module_data->scan_config.scan_day = 13;
     module_data->scan_config.scan_wday = -1;
@@ -134,12 +129,12 @@ void test_day_of_month(void **state) {
     module_data->scan_config.interval = 1; // 1 month
     module_data->scan_config.month_interval = true;
     command_module->context->start(module_data);
-    *state = module_data;
+    check_day_of_month( &module_data->scan_config, &test_command_date_storage[0], TEST_MAX_DATES);
 }
 
 void test_day_of_week(void **state) {
-    set_up_test(check_day_of_week);
     wm_command_t* module_data = (wm_command_t *)command_module->data;
+    *state = module_data;
     module_data->scan_config.last_scan_time = 0;
     module_data->scan_config.scan_day = 0;
     module_data->scan_config.scan_wday = 4;
@@ -147,12 +142,12 @@ void test_day_of_week(void **state) {
     module_data->scan_config.interval = 604800;  // 1 week
     module_data->scan_config.month_interval = false;
     command_module->context->start(module_data);
-    *state = module_data;
+    check_day_of_week( &module_data->scan_config, &test_command_date_storage[0], TEST_MAX_DATES);
 }
 
 void test_time_of_day(void **state) {
-    set_up_test(check_time_of_day);
     wm_command_t* module_data = (wm_command_t *)command_module->data;
+    *state = module_data;
     module_data->scan_config.last_scan_time = 0;
     module_data->scan_config.scan_day = 0;
     module_data->scan_config.scan_wday = -1;
@@ -160,11 +155,10 @@ void test_time_of_day(void **state) {
     module_data->scan_config.interval = WM_DEF_INTERVAL;  // 1 day
     module_data->scan_config.month_interval = false;
     command_module->context->start(module_data);
-    *state = module_data;
+    check_time_of_day( &module_data->scan_config, &test_command_date_storage[0], TEST_MAX_DATES);
 }
 
 void test_fake_tag(void **state) {
-    set_up_test(check_time_of_day);
     const char *string =
         "<fake>True</fake>\n"
         "<disabled>no</disabled>\n"
@@ -287,10 +281,10 @@ void test_read_scheduling_interval_configuration(void **state) {
 
 int main(void) {
     const struct CMUnitTest tests_with_startup[] = {
-        cmocka_unit_test_setup_teardown(test_interval_execution, NULL, teardown_test_executions),
-        cmocka_unit_test_setup_teardown(test_day_of_month, NULL, teardown_test_executions),
-        cmocka_unit_test_setup_teardown(test_day_of_week, NULL, teardown_test_executions),
-        cmocka_unit_test_setup_teardown(test_time_of_day, NULL, teardown_test_executions)
+        cmocka_unit_test_setup_teardown(test_interval_execution, setup_test_executions, teardown_test_executions),
+        cmocka_unit_test_setup_teardown(test_day_of_month, setup_test_executions, teardown_test_executions),
+        cmocka_unit_test_setup_teardown(test_day_of_week, setup_test_executions, teardown_test_executions),
+        cmocka_unit_test_setup_teardown(test_time_of_day, setup_test_executions, teardown_test_executions)
     };
     const struct CMUnitTest tests_without_startup[] = {
         cmocka_unit_test_setup_teardown(test_fake_tag, setup_test_read, teardown_test_read),

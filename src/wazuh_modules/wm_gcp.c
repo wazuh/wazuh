@@ -139,7 +139,7 @@ void wm_gcp_run(const wm_gcp *data) {
         } else if(status == 2) {
             char * ptr;
             if (ptr = strstr(output, "integration.py: error:"), ptr) {
-                ptr += 14;
+                ptr += 16;
                 mtwarn(WM_GCP_LOGTAG, "Error parsing arguments: %s", ptr);
             } else {
                 mtwarn(WM_GCP_LOGTAG, "Error parsing arguments.");

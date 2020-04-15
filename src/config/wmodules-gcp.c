@@ -46,6 +46,10 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
 
     gcp = module->data;
 
+    if (!nodes) {
+        return OS_INVALID;
+    }
+
     for (i = 0; nodes[i]; i++) {
         if (!nodes[i]->element) {
             merror(XML_ELEMNULL);
@@ -109,7 +113,7 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
             os_strdup(realpath_buffer, gcp->credentials_file);
         }
         else if (!strcmp(nodes[i]->element, XML_MAX_MESSAGES)) {
-            if (!nodes[i]->content) {
+            if (strlen(nodes[i]->content) == 0) {
                 merror("Empty content for tag '%s'", XML_MAX_MESSAGES);
                 return OS_INVALID;
             }
@@ -148,6 +152,9 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
                 gcp->logging = 4;
             } else if (!strcmp(nodes[i]->content, "critical")) {
                 gcp->logging = 5;
+            } else if (strlen(nodes[i]->content) == 0) {
+                merror("Empty content for tag '%s'", XML_LOGGING);
+                return OS_INVALID;
             } else {
                 merror("Invalid content for tag '%s'", XML_LOGGING);
                 return OS_INVALID;
