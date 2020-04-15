@@ -1,6 +1,18 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.11.5] - 2020-04-15
+
+### Fixed
+
+- Fixed compatibility with the Vulnerability Detector feeds for Ubuntu from Canonical, that are available in a compressed format. ([#4834](https://github.com/wazuh/wazuh/pull/4834))
+- Fixed a bug in Vulnerability Detector that made wazuh-modulesd crash when parsing the version of a package from a RHEL feed. ([#4885](https://github.com/wazuh/wazuh/pull/4885))
+
+### Removed
+
+- Removed support for Ubuntu 12.04 (Precise) in Vulneratiliby Detector as its feed is no longer available.
+
+
 ## [v3.11.4] - 2020-02-25
 
 ## Changed
