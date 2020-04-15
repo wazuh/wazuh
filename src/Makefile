@@ -1547,7 +1547,7 @@ install_python:
 python_dependencies := requirements.txt
 
 install_dependencies: install_python
-	cd ../framework && ${WPYTHON_DIR}/bin/pip3 install -r ${python_dependencies} --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
+	cd ../framework && LD_LIBRARY_PATH='${PREFIX}/lib' LDFLAGS='-L${PREFIX}/lib' ${WPYTHON_DIR}/bin/pip3 install -r ${python_dependencies} --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
 
 
 install_framework: install_python
