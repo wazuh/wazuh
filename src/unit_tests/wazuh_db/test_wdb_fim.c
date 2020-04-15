@@ -102,8 +102,11 @@ int __wrap_sqlite3_bind_text()
     return mock();
 }
 
-int __wrap_sqlite3_bind_int64()
+int __wrap_sqlite3_bind_int64(sqlite3_stmt *stmt, int index, sqlite3_int64 value)
 {
+    check_expected(index);
+    check_expected(value);
+
     return mock();
 }
 
@@ -112,7 +115,7 @@ int __wrap_sqlite3_step()
     return mock();
 }
 
-int __wrap_sqlite3_bind_int(sqlite3_stmt* stmt, int index, int value) {
+int __wrap_sqlite3_bind_int(sqlite3_stmt *stmt, int index, int value) {
     check_expected(index);
     check_expected(value);
 
@@ -200,6 +203,8 @@ static void test_wdb_syscheck_save2_success(void **state)
     will_return(__wrap_cJSON_IsObject, true);
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_sqlite3_bind_text,1);
+    expect_value(__wrap_sqlite3_bind_int64, index, 3);
+    expect_value(__wrap_sqlite3_bind_int64, value, 10);
     will_return(__wrap_sqlite3_bind_int64,0);
     will_return(__wrap_sqlite3_step,101);
     ret = wdb_syscheck_save2(wdb, VALID_ENTRY);
@@ -310,6 +315,8 @@ static void test_wdb_fim_insert_entry2_fail_element_null(void **state)
     will_return(__wrap_cJSON_IsObject, true);
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_sqlite3_bind_text, 1);
+    expect_value(__wrap_sqlite3_bind_int64, index, 3);
+    expect_value(__wrap_sqlite3_bind_int64, value, 10);
     will_return(__wrap_sqlite3_bind_int64,0);
     ret = wdb_fim_insert_entry2(wdb, data);
     cJSON_Delete(data);
@@ -331,6 +338,8 @@ static void test_wdb_fim_insert_entry2_fail_element_string(void **state)
     will_return(__wrap_cJSON_IsObject, true);
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_sqlite3_bind_text, 1);
+    expect_value(__wrap_sqlite3_bind_int64, index, 3);
+    expect_value(__wrap_sqlite3_bind_int64, value, 10);
     will_return(__wrap_sqlite3_bind_int64,0);
     expect_string(__wrap__merror, formatted_msg, "DB(000) Invalid attribute name: invalid_attribute");
     ret = wdb_fim_insert_entry2(wdb, data);
@@ -353,6 +362,8 @@ static void test_wdb_fim_insert_entry2_fail_element_number(void **state)
     will_return(__wrap_cJSON_IsObject, true);
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_sqlite3_bind_text, 1);
+    expect_value(__wrap_sqlite3_bind_int64, index, 3);
+    expect_value(__wrap_sqlite3_bind_int64, value, 10);
     will_return(__wrap_sqlite3_bind_int64,0);
     expect_string(__wrap__merror, formatted_msg, "DB(000) Invalid attribute name: invalid_attribute");
     ret = wdb_fim_insert_entry2(wdb, data);
@@ -371,6 +382,8 @@ static void test_wdb_fim_insert_entry2_fail_sqlite3_stmt(void **state)
     will_return(__wrap_cJSON_IsObject, true);
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_sqlite3_bind_text, 1);
+    expect_value(__wrap_sqlite3_bind_int64, index, 3);
+    expect_value(__wrap_sqlite3_bind_int64, value, 10);
     will_return(__wrap_sqlite3_bind_int64,0);
     will_return(__wrap_sqlite3_step,0);
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): out of memory");
@@ -410,17 +423,20 @@ static void test_wdb_fim_insert_entry2_success(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, 2048);
     expect_value(__wrap_sqlite3_bind_int, index, 12);
     expect_value(__wrap_sqlite3_bind_int, value, 10);
-    expect_value(__wrap_sqlite3_bind_int, index, 13);
-    expect_value(__wrap_sqlite3_bind_int, value, 2);
-    will_return_count(__wrap_sqlite3_bind_int, 0, 3);
+    will_return_count(__wrap_sqlite3_bind_int, 0, 2);
 
     will_return(__wrap_cJSON_GetStringValue, "/test");
     will_return(__wrap_cJSON_IsNumber, true);
     will_return(__wrap_cJSON_IsObject, true);
     will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int64, index, 3);
+    expect_value(__wrap_sqlite3_bind_int64, value, 10);
     will_return(__wrap_sqlite3_bind_int64,0);
     will_return(__wrap_sqlite3_step,SQLITE_DONE);
 
+    expect_value(__wrap_sqlite3_bind_int64, index, 13);
+    expect_value(__wrap_sqlite3_bind_int64, value, 2);
+    will_return(__wrap_sqlite3_bind_int64,0);
     will_return_count(__wrap_sqlite3_bind_text, 1, 13);
     ret = wdb_fim_insert_entry2(wdb, data);
     cJSON_Delete(data);
@@ -457,17 +473,21 @@ static void test_wdb_fim_insert_entry2_large_inode(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, 2048);
     expect_value(__wrap_sqlite3_bind_int, index, 12);
     expect_value(__wrap_sqlite3_bind_int, value, 10);
-    expect_value(__wrap_sqlite3_bind_int, index, 13);
-    expect_value(__wrap_sqlite3_bind_int, value, 2311061769);
-    will_return_count(__wrap_sqlite3_bind_int, 0, 3);
+    will_return_count(__wrap_sqlite3_bind_int, 0, 2);
 
     will_return(__wrap_cJSON_GetStringValue, "/test");
     will_return(__wrap_cJSON_IsNumber, true);
     will_return(__wrap_cJSON_IsObject, true);
     will_return(__wrap_wdb_stmt_cache, 1);
-    will_return(__wrap_sqlite3_bind_int64,0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 3);
+    expect_value(__wrap_sqlite3_bind_int64, value, 10);
+    will_return(__wrap_sqlite3_bind_int64, 0);
     will_return(__wrap_sqlite3_step,SQLITE_DONE);
 
+
+    expect_value(__wrap_sqlite3_bind_int64, index, 13);
+    expect_value(__wrap_sqlite3_bind_int64, value, 2311061769);
+    will_return(__wrap_sqlite3_bind_int64, 0);
     will_return_count(__wrap_sqlite3_bind_text, 1, 13);
 
     ret = wdb_fim_insert_entry2(wdb, data);
