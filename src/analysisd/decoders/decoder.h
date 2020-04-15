@@ -19,10 +19,14 @@
 #define AFTER_PREVREGEX 0x004   /* 4   */
 #define AFTER_ERROR     0x010
 
-// JSON decoder null treatment
+// JSON decoder flags
+// null treatment
 #define DISCARD     0
 #define EMPTY       1
 #define SHOW_STRING 2
+// array treatment
+#define CSV_STRING  4
+#define JSON_ARRAY  8
 
 struct _Eventinfo;
 
