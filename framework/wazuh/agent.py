@@ -78,11 +78,16 @@ def get_agents_summary_os(agent_list=None):
     :param agent_list: List of agents ID's.
     :return: WazuhResult.
     """
-    result = WazuhResult({})
+    result = AffectedItemsWazuhResult(none_msg='Could not get the operative system of the agents',
+                                      all_msg='Showing the operative system of all specified agents',
+                                      some_msg='Could not get the operative system of some agents')
     if len(agent_list) != 0:
         db_query = WazuhDBQueryDistinctAgents(select=['os.platform'], filters={'id': agent_list},
                                               default_sort_field='os_platform', min_select_fields=set())
-        result.dikt = db_query.run()
+        data = db_query.run()
+        result.affected_items = data['items']
+        result.total_affected_items = len(result.affected_items)
+
     return result
 
 
@@ -389,13 +394,19 @@ def get_group_files(group_list=None, offset=0, limit=None, search_text=None, sea
     # a list of groups
     group_id = group_list[0]
     group_path = common.shared_path
+    result = AffectedItemsWazuhResult(all_msg='All selected groups files are shown',
+                                      some_msg='Some groups files are not shown',
+                                      none_msg='No groups files are shown'
+                                      )
     if group_id:
         if not Agent.group_exists(group_id):
-            raise WazuhError(1710, extra_message=group_id)
+            result.add_failed_item(id_=group_id, error=WazuhError(1710))
+            return result
         group_path = path.join(common.shared_path, group_id)
 
     if not path.exists(group_path):
-        raise WazuhError(1006, extra_message=group_path)
+        result.add_failed_item(id_=group_path, error=WazuhError(1006))
+        return result
 
     try:
         data = []
@@ -408,14 +419,18 @@ def get_group_files(group_list=None, offset=0, limit=None, search_text=None, sea
         # ar.conf
         ar_path = path.join(common.shared_path, 'ar.conf')
         data.append({'filename': "ar.conf", 'hash': get_hash(ar_path, hash_algorithm)})
-
-        return WazuhResult(process_array(data, search_text=search_text, search_in_fields=search_in_fields,
-                                         complementary_search=complementary_search, sort_by=sort_by,
-                                         sort_ascending=sort_ascending, offset=offset, limit=limit))
+        data = process_array(data, search_text=search_text, search_in_fields=search_in_fields,
+                             complementary_search=complementary_search, sort_by=sort_by,
+                             sort_ascending=sort_ascending, offset=offset, limit=limit)
+        result.affected_items = data['items']
+        result.total_affected_items = data['totalItems']
     except WazuhError as e:
+        result.add_failed_item(id_=group_path, error=e)
         raise e
     except Exception as e:
         raise WazuhInternalError(1727, extra_message=str(e))
+
+    return result
 
 
 @expose_resources(actions=["group:create"], resources=["*:*:*"], post_proc_func=None)

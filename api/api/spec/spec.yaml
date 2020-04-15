@@ -62,9 +62,9 @@ components:
     ListMetadata:
       type: object
       required:
-        - totalItems
+        - total_affected_items
       properties:
-        totalItems:
+        total_affected_items:
           type: integer
           format: int32
           minimum: 0
@@ -5206,64 +5206,25 @@ paths:
           content:
             application/json:
               schema:
-                properties:
-                  data:
-                    allOf:
-                      - $ref: '#/components/schemas/ListMetadata'
-                      - $ref: '#/components/schemas/GroupFile'
-
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
               example:
                 data:
-                  totalItems: 24
-                  items:
+                  affected_items:
                     - filename: agent.conf
                       hash: ab73af41699f13fdd81903b5f23d8d00
                     - filename: ar.conf
                       hash: 76d8be9b97d8eae4c239e530ee7e71c8
-                    - filename: cis_apache2224_rcl.txt
-                      hash: 3c2469443a08b01c454ca35558cb9fa6
-                    - filename: cis_debian_linux_rcl.txt
-                      hash: cc12fdba595817758f308024f61acb71
-                    - filename: cis_mysql5-6_community_rcl.txt
-                      hash: f5f770160baf596373e4f77f987cc422
-                    - filename: cis_mysql5-6_enterprise_rcl.txt
-                      hash: de9865c809f1555d537e5a49872eaf4c
-                    - filename: cis_rhel5_linux_rcl.txt
-                      hash: a3af38b3f81a48332c7bcd9cf8aa6eff
-                    - filename: cis_rhel6_linux_rcl.txt
-                      hash: bdcfa3ab90b553f8e5c84cfa9fd90289
-                    - filename: cis_rhel7_linux_rcl.txt
-                      hash: 039e579029e3edcf8241fb391f46b12f
-                    - filename: cis_rhel_linux_rcl.txt
-                      hash: 569cd8a2cc7527cc75f81f77098de461
-                    - filename: cis_sles11_linux_rcl.txt,
-                      hash: d86ee36d384930293cbcc83c8fb57c93
-                    - filename: cis_sles12_linux_rcl.txt
-                      hash: 6f58710fa8eef659dc782a3fa4699e33
-                    - filename: cis_win2012r2_domainL1_rcl.txt
-                      hash: 8819dfa3523933b113e27a85fc9e568d
-                    - filename: cis_win2012r2_domainL2_rcl.txt
-                      hash: e8a2c7ab57bc8102b237f061b8f82dce
-                    - filename: cis_win2012r2_memberL1_rcl.txt
-                      hash: 38c88156d03af9372efd620e6e57d473
-                    - filename: cis_win2012r2_memberL2_rcl.txt
-                      hash: c4b62b3e01b5f5634a9719eb8a104028
                     - filename: merged.mg
-                      hash: f8d49771911ed9d5c45b03a40babd065
-                    - filename: rootkit_files.txt
-                      hash: e5ddcac443143cef6237d5f9b8d48585
-                    - filename:  rootkit_trojans.txt
-                      hash: 6bcf7016d3e6b4c7faa62cf265c24dcc
-                    - filename: system_audit_rcl.txt
-                      hash: be69b84dd5ee73200bb903a46270e18c
-                    - filename: system_audit_ssh.txt
-                      hash: 407c1f5e103f0cb58249eb7252a84797
-                    - filename: win_applications_rcl.txt
-                      hash: 0a4ad12c8145aca8a28d31de5c448b48
-                    - filename: win_audit_rcl.txt
-                      hash: 92d8011facc8b921ece301ea4ce6a616
-                    - filename: win_malware_rcl.txt
-                      hash: 6a8d3c63a0e77dea35aaed3ee2cca3a1
+                      hash: f5e0305e248bd00e05445f329bd1dd5e
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                message: All selected groups files are shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -5639,12 +5600,60 @@ paths:
                       data:
                         $ref: '#/components/schemas/AllItemsResponseAgentsDistinct'
               example:
-                items:
-                  - count: 11
-                    os:
-                      arch: x86_64
-                  - count: 2
-                totalItems: 13
+                data:
+                  affected_items:
+                    - os:
+                        arch: x86_64
+                        codename: Bionic Beaver
+                        major: '18'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: Linux |wazuh-master |5.3.0-7642-generic |#34~1584408018~19.10~21df4b1-Ubuntu
+                          SMP Tue Mar 17 13:38:51 UTC  |x86_64
+                        version: 18.04.4 LTS
+                      registerIP: 127.0.0.1
+                      count: 1
+                      name: wazuh-master
+                      version: Wazuh v3.12.0
+                      ip: 127.0.0.1
+                      lastKeepAlive: '9999-12-31T23:59:59Z'
+                      dateAdd: '2020-04-14T10:14:16Z'
+                      node_name: master-node
+                      status: active
+                      manager: wazuh-master
+                      id: '000'
+                    - os:
+                        arch: x86_64
+                        codename: Xenial Xerus
+                        major: '16'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: Linux |wazuh-agent1 |5.3.0-7642-generic |#34~1584408018~19.10~21df4b1-Ubuntu
+                          SMP Tue Mar 17 13:38:51 UTC  |x86_64
+                        version: 16.04.6 LTS
+                      group:
+                        - default
+                        - group1
+                      registerIP: any
+                      count: 1
+                      name: wazuh-agent1
+                      mergedSum: a13d9b2edc5bdd5ef7331c0d5b9ecf34
+                      version: Wazuh v3.12.0
+                      ip: 172.24.0.6
+                      lastKeepAlive: '2020-04-15T11:33:31Z'
+                      internal_key: b7efaafcde1bb0f3d3cbbf5b32e6335878305f4e6a19bec2d065f5e53e134e65
+                      dateAdd: '1970-01-01T00:00:00Z'
+                      configSum: 29e0926e5a77442212e824868a2a61df
+                      node_name: master-node
+                      status: active
+                      manager: wazuh-master
+                      id: '001'
+                  total_affected_items: 13
+                  total_failed_items: 0
+                  failed_items: []
+                message: All selected agents information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -5660,29 +5669,20 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
-          description: 'Get summary of agents OS'
+          description: 'Get outdated agents'
           content:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              description: List of Operating system platforms.
-                              type: array
-                              items:
-                                type: string
+                  - $ref: '#/components/schemas/ApiResponse'
               example:
                 data:
-                  items:
+                  affected_items:
                     - ubuntu
-                  totalItems: 1
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: Showing the operative system of all specified agents
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -5846,16 +5846,23 @@ paths:
                       $ref: '#/components/schemas/AllItemsResponseClusterNodes'
               example:
                 data:
-                  totalItems: 2
-                  items:
-                    - name: "node02"
-                      type: "worker"
-                      version: "3.9.0"
-                      ip: "172.17.0.101"
-                    - name: "node01"
-                      type: "master"
-                      version: "3.9.0"
-                      ip: "172.17.0.100"
+                  affected_items:
+                    - name: master-node
+                      type: master
+                      version: 3.12.0
+                      ip: wazuh-master
+                    - name: worker1
+                      type: worker
+                      version: 3.12.0
+                      ip: 172.26.0.5
+                    - name: worker2
+                      type: worker
+                      version: 3.12.0
+                      ip: 172.26.0.4
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                message: All selected nodes information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -6644,20 +6651,23 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseWazuhLogs'
               example:
                 data:
-                  totalItems: 3
-                  items:
-                    - timestamp: "2019-03-07T11:21:17Z"
-                      tag: ossec-syscheckd
-                      level: info
-                      description: "Syscheck scan frequency: 43200 seconds"
-                    - timestamp: "2019-03-07T11:21:17Z"
-                      tag: ossec-syscheckd
-                      level: info
-                      description: Starting syscheck scan.
-                    - timestamp: "2019-03-07T11:21:17Z"
-                      tag: ossec-rootcheck
-                      level: info
-                      description: Starting rootcheck scan.
+                  affected_items:
+                    - timestamp: '2020-04-15T13:43:38+00:00'
+                      tag: ossec-analysisd
+                      level: error
+                      description: " (1277): Invalid syscheck message received."
+                    - timestamp: '2020-04-15T13:43:38+00:00'
+                      tag: ossec-analysisd
+                      level: error
+                      description: " (1277): Invalid syscheck message received."
+                    - timestamp: '2020-04-15T13:43:30+00:00'
+                      tag: ossec-analysisd
+                      level: error
+                      description: " (1277): Invalid syscheck message received."
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                message: Logs read successfully in specified node
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -7637,20 +7647,23 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseWazuhLogs'
               example:
                 data:
-                  totalItems: 3
-                  items:
-                    - timestamp: "2019-03-07T11:21:17Z"
-                      tag: ossec-syscheckd
+                  affected_items:
+                    - timestamp: '2020-04-15T14:47:54+00:00'
+                      tag: wazuh-modulesd:syscollector
                       level: info
-                      description: "Syscheck scan frequency: 43200 seconds"
-                    - timestamp: "2019-03-07T11:21:17Z"
-                      tag: ossec-syscheckd
+                      description: " Evaluation finished."
+                    - timestamp: '2020-04-15T14:47:51+00:00'
+                      tag: wazuh-modulesd:syscollector
                       level: info
-                      description: Starting syscheck scan.
-                    - timestamp: "2019-03-07T11:21:17Z"
-                      tag: ossec-rootcheck
-                      level: info
-                      description: Starting rootcheck scan.
+                      description: " Starting evaluation."
+                    - timestamp: '2020-04-15T13:50:24+00:00'
+                      tag: ossec-maild
+                      level: error
+                      description: " (1223): Error Sending email to 69.172.200.109 (smtp server)"
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                message: Logs read successfully in specified node
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -7959,17 +7972,21 @@ paths:
                                 $ref: '#/components/schemas/RootcheckDatabase'
               example:
                 data:
-                  totalItems: 2
-                  items:
+                  affected_items:
                     - status: outstanding
-                      readDay: "2019-03-08T09:20:05Z"
-                      oldDay: "2019-03-08T09:20:05Z"
-                      event: "System Audit: SSH Hardening - 3: Root can log in. File: /etc/ssh/sshd_config. Reference: 3 ."
+                      readDay: '2019-03-08T09:20:05Z'
+                      oldDay: '2019-03-08T09:20:05Z'
+                      event: 'System Audit: SSH Hardening - 3: Root can log in. File: /etc/ssh/sshd_config.
+                      Reference: 3 .'
                     - status: outstanding
-                      readDay: "2019-03-08T09:20:05Z"
-                      oldDay: "2019-03-08T09:20:05Z"
-                      pci_dss: 2.2.4
-                      event: "System Audit: SSH Hardening - 4: No Public Key authentication {PCI_DSS: 2.2.4}. File: /etc/ssh/sshd_config. Reference: 4 ."
+                      readDay: '2019-03-08T09:20:05Z'
+                      oldDay: '2019-03-08T09:20:05Z'
+                      event: 'System Audit: SSH Hardening - 3: Root can log in. File: /etc/ssh/sshd_config.
+                      Reference: 3 .'
+                  failed_items: []
+                  total_affected_items: '2'
+                  total_failed_items: '0'
+                message: ToDo
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -8053,9 +8070,12 @@ paths:
                                 type: string
               example:
                 data:
-                  totalItems: 1
-                  items:
-                  - 2.2.4
+                  affected_items:
+                    - 2.2.4
+                  failed_items: []
+                  total_affected_items: '1'
+                  total_failed_items: '0'
+                message: ToDo
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -8095,10 +8115,13 @@ paths:
                                 type: string
               example:
                 data:
-                  totalItems: 2
-                  items:
-                  - "2.3 Debian Linux"
-                  - "1.4 Debian Linux"
+                  affected_items:
+                    - 2.3 Debian Linux
+                    - 1.4 Debian Linux
+                  failed_items: []
+                  total_affected_items: '2'
+                  total_failed_items: '0'
+                message: ToDo
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -8733,24 +8756,29 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseDecoders'
               example:
                 data:
-                  totalItems: 571
-                  items:
-                  - file: 0005-wazuh_decoders.xml
-                    name: wazuh
-                    position: 0
-                    status: enabled
-                    details:
-                      prematch: "^wazuh: "
-                  - file: 0005-wazuh_decoders.xml
-                    name: agent-buffer
-                    position: 1
-                    status: enabled
-                    details:
-                      parent: wazuh
-                      prematch: "^Agent buffer:"
-                      regex:
-                        - "^ '(\\S+)'."
-                      order: level
+                  affected_items:
+                    - filename: 0005-wazuh_decoders.xml
+                      relative_dirname: ruleset/decoders
+                      status: enabled
+                      name: wazuh
+                      position: 0
+                      details:
+                        prematch: "^wazuh: "
+                    - filename: 0005-wazuh_decoders.xml
+                      relative_dirname: ruleset/decoders
+                      status: enabled
+                      name: agent-buffer
+                      position: 1
+                      details:
+                        parent: wazuh
+                        prematch: "^Agent buffer:"
+                        regex:
+                          - "^ '(\\S+)'."
+                        order: level
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: []
+                message: All selected decoders were shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -8785,20 +8813,20 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseDecodersFiles'
               example:
                 data:
-                  totalItems: 571
-                  items:
-                  - file: 0185-openldap_decoders.xml
-                    status: enabled
-                    path: /var/ossec/ruleset/decoders
-                  - file: 0220-postfix_decoders.xml
-                    status: enabled
-                    path: /var/ossec/ruleset/decoders
-                  - file: 0400-identity_guard_decoders.xml
-                    status: enabled
-                    path: /var/ossec/ruleset/decoders
-                  - file: 0190-openvpn_decoders.xml
-                    status: enabled
-                    path: /var/ossec/ruleset/decoders
+                  affected_items:
+                    - filename: 0005-wazuh_decoders.xml
+                      relative_dirname: ruleset/decoders
+                      status: enabled
+                    - filename: 0006-json_decoders.xml
+                      relative_dirname: ruleset/decoders
+                      status: enabled
+                    - filename: 0010-active-response_decoders.xml
+                      relative_dirname: ruleset/decoders
+                      status: enabled
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                message: All decoder files were shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -8851,23 +8879,26 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponse'
               example:
                 data:
-                  totalItems: 153
-                  items:
-                  - file: local_decoder.xml
-                    name: local_decoder_example
-                    position: 0
-                    status: enabled
-                    details:
-                      program_name: local_decoder_example
-                  - file: 0465-azure_decoders.xml
-                    name: azure-storage
-                    position: 1
-                    status: enabled
-                    details:
-                      prematch: "^azure_tag: azure-storage. "
-                      regex:
-                        - "^azure_storage_tag: (\\S+)"
-                      order: tag
+                  affected_items:
+                    - filename: 0005-wazuh_decoders.xml
+                      relative_dirname: ruleset/decoders
+                      status: enabled
+                      name: wazuh
+                      position: 0
+                      details:
+                        prematch: "^wazuh: "
+                    - filename: 0006-json_decoders.xml
+                      relative_dirname: ruleset/decoders
+                      status: enabled
+                      name: json
+                      position: 0
+                      details:
+                        prematch: ^{\s*"
+                        plugin_decoder: JSON_Decoder
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: []
+                message: All selected decoders were shown
         default:
           $ref: '#/components/responses/ResponseError'
 
