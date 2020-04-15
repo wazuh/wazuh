@@ -9290,18 +9290,32 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseSyscollectorProtocol'
               example:
                 data:
-                  totalItems: 16
-                  items:
-                  - iface: "enp0s3"
-                    scan_id: 1203337658
-                    type: "ipv6"
-                    dhcp: "enabled"
-                    agent_id: "000"
-                  - iface: "enp0s8"
-                    scan_id: 1203337658
-                    type: "ipv6"
-                    dhcp: "enabled"
-                    agent_id: "000"
+                  affected_items:
+                    - scan:
+                        id: 1248412797
+                      iface: eth0
+                      type: ipv4
+                      gateway: 172.24.0.1
+                      dhcp: "enabled"
+                      agent_id: '000'
+                    - scan:
+                        id: 1213296763
+                      iface: eth0
+                      type: ipv4
+                      gateway: 172.24.0.1
+                      dhcp: "enabled"
+                      agent_id: '001'
+                    - scan:
+                        id: 341262067
+                      type: ipv4
+                      iface: eth0
+                      dhcp: "enabled"
+                      gateway: 172.24.0.1
+                      agent_id: '002'
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                message: All specified syscollector information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9340,40 +9354,59 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseSyscollectorOS'
               example:
                 data:
-                  totalItems: 4
-                  items:
-                  - os:
-                      codename: "Bionic Beaver"
-                      major: "18"
-                      minor: "04"
-                      name: "Ubuntu"
-                      platform: "ubuntu"
-                      version: "18.04.1 LTS (Bionic Beaver)"
-                    scan:
-                      id: 651932304
-                      time: "2019-02-19T10:22:14Z"
-                    release: "4.15.0-43-generic"
-                    architecture: "x86_64"
-                    version: "#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018"
-                    sysname: "Linux"
-                    hostname: "master"
-                    agent_id: "000"
-                  - os:
-                      codename: "Bionic Beaver"
-                      major: "18"
-                      minor: "04"
-                      name: "Ubuntu"
-                      platform: "ubuntu"
-                      version: "18.04.1 LTS (Bionic Beaver)"
-                    scan:
-                      id: 780978297
-                      time: "2019-02-19T10:26:20Z"
-                    release: "4.15.0-43-generic"
-                    architecture: "x86_64"
-                    version: "#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018"
-                    sysname: "Linux"
-                    hostname: "agent-1"
-                    agent_id: "001"
+                  affected_items:
+                    - os:
+                        codename: Bionic Beaver
+                        major: '18'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        version: 18.04.4 LTS (Bionic Beaver)
+                      scan:
+                        id: 496386874
+                        time: '2020-04-15T11:02:03Z'
+                      sysname: Linux
+                      hostname: wazuh-master
+                      version: "#34~1584408018~19.10~21df4b1-Ubuntu SMP Tue Mar 17 13:38:51 UTC "
+                      release: 5.3.0-7642-generic
+                      architecture: x86_64
+                      agent_id: '000'
+                    - os:
+                        codename: Xenial Xerus
+                        major: '16'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        version: 16.04.6 LTS (Xenial Xerus)
+                      scan:
+                        id: 196194860
+                        time: '2020-04-15T11:02:23Z'
+                      sysname: Linux
+                      hostname: wazuh-agent1
+                      version: "#34~1584408018~19.10~21df4b1-Ubuntu SMP Tue Mar 17 13:38:51 UTC "
+                      release: 5.3.0-7642-generic
+                      architecture: x86_64
+                      agent_id: '001'
+                    - os:
+                        codename: Xenial Xerus
+                        major: '16'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        version: 16.04.6 LTS (Xenial Xerus)
+                      scan:
+                        id: 763390318
+                        time: '2020-04-15T11:02:52Z'
+                      hostname: wazuh-agent2
+                      release: 5.3.0-7642-generic
+                      version: "#34~1584408018~19.10~21df4b1-Ubuntu SMP Tue Mar 17 13:38:51 UTC "
+                      architecture: x86_64
+                      sysname: Linux
+                      agent_id: '002'
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                message: All specified syscollector information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9412,36 +9445,56 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseSyscollectorPackages'
               example:
                 data:
-                  totalItems: 2014
-                  items:
-                  - scan:
-                      id: 1631140954
-                      time: "2019-02-19T10:22:14Z"
-                    name: "acl"
-                    section: "utils"
-                    priority: "optional"
-                    size: 200
-                    description: "Access control list utilities"
-                    architecture: "amd64"
-                    multiarch: "foreign"
-                    vendor: "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
-                    version: "2.2.52-3build1"
-                    format: "deb"
-                    agent_id: "000"
-                  - scan:
-                      id: 1631140954
-                      time: "2019-02-19T10:22:14Z"
-                    name: "accountsservice"
-                    section: "admin"
-                    priority: "optional"
-                    size: 440
-                    description: "query and manipulate user account information"
-                    architecture: "amd64"
-                    multiarch: "foreign"
-                    vendor: "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
-                    version: "0.6.45-1ubuntu1"
-                    format: "deb"
-                    agent_id: "000"
+                  affected_items:
+                    - scan:
+                        id: 1137251326
+                        time: '2020-04-15T11:02:03Z'
+                      name: libquadmath0
+                      size: 269
+                      version: 8.4.0-1ubuntu1~18.04
+                      source: gcc-8
+                      format: deb
+                      section: libs
+                      architecture: amd64
+                      multiarch: same
+                      description: GCC Quad-Precision Math Library
+                      priority: optional
+                      vendor: Ubuntu Core developers <ubuntu-devel-discuss@lists.ubuntu.com>
+                      agent_id: '000'
+                    - scan:
+                        id: 1137251326
+                        time: '2020-04-15T11:02:03Z'
+                      name: libnpth0
+                      size: 32
+                      version: 1.5-3
+                      source: npth
+                      format: deb
+                      section: libs
+                      architecture: amd64
+                      multiarch: same
+                      description: replacement for GNU Pth using system threads
+                      priority: optional
+                      vendor: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+                      agent_id: '000'
+                    - scan:
+                        id: 1137251326
+                        time: '2020-04-15T11:02:03Z'
+                      name: fdisk
+                      size: 427
+                      version: 2.31.1-0.4ubuntu3.5
+                      source: util-linux
+                      format: deb
+                      section: utils
+                      architecture: amd64
+                      multiarch: foreign
+                      description: collection of partitioning utilities
+                      priority: important
+                      vendor: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+                      agent_id: '000'
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                message: All specified syscollector information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9483,36 +9536,56 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseSyscollectorPorts'
               example:
                 data:
-                  totalItems: 18
-                  items:
-                  - local:
-                      ip: 172.17.0.100
-                      port: 1516
-                    remote:
-                      ip: 172.17.0.101
-                      port: 54550
-                    scan:
-                      id: 1672337392
-                      time: "2019-03-14T10:38:21Z"
-                    state: established
-                    protocol: tcp
-                    rx_queue: 0
-                    tx_queue: 0
-                    inode: 321208
-                  - local:
-                      ip: "::"
-                      port: 55000
-                    remote:
-                      ip: "::"
-                      port: 0
-                    scan:
-                      id: 1672337392
-                      time: "2019-03-14T10:38:21Z"
-                    state: listening
-                    protocol: tcp6
-                    rx_queue: 0
-                    inode: 18153
-                    tx_queue: 0
+                  affected_items:
+                    - local:
+                        ip: 127.0.0.11
+                        port: 46841
+                      remote:
+                        ip: 0.0.0.0
+                        port: 0
+                      scan:
+                        id: 315935312
+                        time: '2020-04-15T11:02:07Z'
+                      rx_queue: 0
+                      state: listening
+                      protocol: tcp
+                      inode: 12387152
+                      tx_queue: 0
+                      agent_id: '000'
+                    - local:
+                        ip: 0.0.0.0
+                        port: 1514
+                      remote:
+                        ip: 0.0.0.0
+                        port: 0
+                      scan:
+                        id: 315935312
+                        time: '2020-04-15T11:02:07Z'
+                      rx_queue: 0
+                      state: listening
+                      protocol: tcp
+                      inode: 12397927
+                      tx_queue: 0
+                      agent_id: '000'
+                    - local:
+                        ip: 0.0.0.0
+                        port: 1515
+                      remote:
+                        ip: 0.0.0.0
+                        port: 0
+                      scan:
+                        id: 315935312
+                        time: '2020-04-15T11:02:07Z'
+                      rx_queue: 0
+                      state: listening
+                      protocol: tcp
+                      inode: 12397153
+                      tx_queue: 0
+                      agent_id: '000'
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                message: All specified syscollector information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9560,68 +9633,75 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseSyscollectorProcesses'
               example:
                 data:
-                  totalItems: 420
-                  items:
-                  - scan:
-                      id: 225991434
-                      time: "2019-03-08T08:30:59Z"
-                    fgroup: "root"
-                    state: "S"
-                    priority: 20
-                    suser: "root"
-                    ppid: 0
-                    vm_size: 0
-                    session: 0
-                    pid: "2"
-                    nlwp: 1
-                    name: "kthreadd"
-                    euser: "root"
-                    sgroup: "root"
-                    size: 0
-                    stime: 0
-                    nice: 0
-                    share: 0
-                    processor: 1
-                    ruser: "root"
-                    egroup: "root"
-                    rgroup: "root"
-                    pgrp: 0
-                    resident: 0
-                    utime: 0
-                    tgid: 2
-                    start_time: 8
-                    tty: 0
-                    agent_id: "000"
-                  - scan:
-                      id: 225991434
-                      time: "2019-03-08T08:30:59Z"
-                    fgroup: "root"
-                    state: "S"
-                    priority: 25
-                    suser: "root"
-                    ppid: 2
-                    vm_size: 0
-                    session: 0
-                    pid: "28"
-                    nlwp: 1
-                    name: "ksmd"
-                    euser: "root"
-                    sgroup: "root"
-                    size: 0
-                    stime: 0
-                    nice: 5
-                    share: 0
-                    processor: 1
-                    ruser: "root"
-                    egroup: "root"
-                    rgroup: "root"
-                    pgrp: 0
-                    resident: 0
-                    utime: 0
-                    tgid: 28
-                    start_time: 22
-                    tty: 0
-                    agent_id: "000"
+                  affected_items:
+                    - scan:
+                        id: 28643647
+                        time: '2020-04-15T11:02:07Z'
+                      name: bash
+                      suser: root
+                      nlwp: 1
+                      pgrp: 1
+                      state: S
+                      session: 1
+                      utime: 23
+                      egroup: root
+                      ruser: root
+                      argvs: "/scripts/entrypoint.sh,wazuh-master,master-node,master"
+                      size: 4593
+                      euser: root
+                      processor: 3
+                      resident: 793
+                      tty: 0
+                      nice: 0
+                      pid: '1'
+                      vm_size: 18372
+                      sgroup: root
+                      rgroup: root
+                      fgroup: root
+                      start_time: 1093372
+                      tgid: 1
+                      stime: 1
+                      ppid: 0
+                      share: 726
+                      priority: 20
+                      cmd: bash
+                      agent_id: '000'
+                    - scan:
+                        id: 28643647
+                        time: '2020-04-15T11:02:07Z'
+                      name: ossec-control
+                      suser: root
+                      nlwp: 1
+                      pgrp: 1
+                      state: S
+                      session: 1
+                      utime: 0
+                      egroup: root
+                      ruser: root
+                      argvs: "/var/ossec/bin/ossec-control,restart"
+                      size: 1156
+                      euser: root
+                      processor: 6
+                      resident: 457
+                      tty: 0
+                      nice: 0
+                      pid: '15'
+                      vm_size: 4624
+                      sgroup: root
+                      rgroup: root
+                      fgroup: root
+                      start_time: 1093547
+                      tgid: 15
+                      stime: 3
+                      ppid: 1
+                      share: 417
+                      priority: 20
+                      cmd: "/bin/sh"
+                      agent_id: '000'
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: []
+                message: All specified syscollector information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9856,44 +9936,30 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseSyscollectorInterface'
               example:
                 data:
-                  totalItems: 2
-                  items:
-                  - rx:
-                      bytes: 151695946
-                      dropped: 0
-                      errors: 0
-                      packets: 111792
-                    scan:
-                      id: 1478544824
-                      time: "2019-03-08T08:30:53Z"
-                    tx:
-                      bytes: 2408059
-                      dropped: 0
-                      errors: 0
-                      packets: 35104
-                    name: "enp0s3"
-                    state: "up"
-                    type: "ethernet"
-                    mtu: 1500
-                    mac: "02:f9:71:d7:9d:11"
-                  - rx:
-                      bytes: 0
-                      dropped: 0
-                      errors: 0
-                      packets: 0
-                    scan:
-                      id: 1478544824
-                      time: "2019-03-08T08:30:53Z"
-                    tx:
-                      bytes: 5312
-                      dropped: 0
-                      errors: 0
-                      packets: 24
-                    name: "enp0s8"
-                    state: "up"
-                    type: "ethernet"
-                    mtu: 1500
-                    mac: "08:00:27:78:05:d4"
+                  affected_items:
+                    - rx:
+                        bytes: 7774
+                        dropped: 0
+                        errors: 0
+                        packets: 59
+                      scan:
+                        id: 1248412797
+                        time: '2020-04-15T11:02:03Z'
+                      tx:
+                        bytes: 211
+                        dropped: 0
+                        errors: 0
+                        packets: 4
+                      name: eth0
+                      state: up
+                      type: ethernet
+                      mac: 02:42:ac:18:00:02
+                      mtu: 1500
+                      agent_id: '000'
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: All specified syscollector information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9931,16 +9997,18 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseSyscollectorProtocol'
               example:
                 data:
-                  totalItems: 4
-                  items:
-                  - type: "ipv6"
-                    iface: "enp0s3"
-                    dhcp: "enabled"
-                    scan_id: 1478544824
-                  - type: "ipv6"
-                    iface: "enp0s8"
-                    dhcp: "enabled"
-                    scan_id: 1478544824
+                  affected_items:
+                    - scan:
+                        id: 1248412797
+                      iface: eth0
+                      type: ipv4
+                      gateway: 172.24.0.1
+                      dhcp: "enabled"
+                      agent_id: '000'
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: All specified syscollector information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9970,21 +10038,27 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseSyscollectorOS'
               example:
                 data:
-                  os:
-                    codename: "Bionic Beaver"
-                    major: "18"
-                    minor: "04"
-                    name: "Ubuntu"
-                    platform: "ubuntu"
-                    version: "18.04.1 LTS (Bionic Beaver)"
-                  scan:
-                    id: 242764188
-                    time: "2019-03-08T08:30:53Z"
-                  architecture: "x86_64"
-                  release: "4.15.0-43-generic"
-                  version: "#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018"
-                  sysname: "Linux"
-                  hostname: "master"
+                  affected_items:
+                    - os:
+                        codename: Bionic Beaver
+                        major: '18'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        version: 18.04.4 LTS (Bionic Beaver)
+                      scan:
+                        id: 496386874
+                        time: '2020-04-15T11:02:03Z'
+                      sysname: Linux
+                      hostname: wazuh-master
+                      version: "#34~1584408018~19.10~21df4b1-Ubuntu SMP Tue Mar 17 13:38:51 UTC "
+                      release: 5.3.0-7642-generic
+                      architecture: x86_64
+                      agent_id: '000'
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: All specified syscollector information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -10023,34 +10097,56 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseSyscollectorPackages'
               example:
                 data:
-                  totalItems: 535
-                  items:
-                  - scan:
-                      id: 520922172
-                      time: "2019-03-08T08:30:53Z"
-                    vendor: "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
-                    name: "base-files"
-                    priority: "required"
-                    description: "Debian base system miscellaneous files"
-                    architecture: "amd64"
-                    format: "deb"
-                    size: 386
-                    version: "10.1ubuntu2.3"
-                    section: "admin"
-                    multiarch: "foreign"
-                  - scan:
-                      id: 520922172
-                      time: "2019-03-08T08:30:53Z"
-                    vendor: "Colin Watson <cjwatson@debian.org>"
-                    name: "base-passwd"
-                    priority: "required"
-                    description: "Debian base system master password and group files"
-                    architecture: "amd64"
-                    format: "deb"
-                    size: 228
-                    version: "3.5.44"
-                    section: "admin"
-                    multiarch: "foreign"
+                  affected_items:
+                    - scan:
+                        id: 1137251326
+                        time: '2020-04-15T11:02:03Z'
+                      name: libquadmath0
+                      size: 269
+                      version: 8.4.0-1ubuntu1~18.04
+                      source: gcc-8
+                      format: deb
+                      section: libs
+                      architecture: amd64
+                      multiarch: same
+                      description: GCC Quad-Precision Math Library
+                      priority: optional
+                      vendor: Ubuntu Core developers <ubuntu-devel-discuss@lists.ubuntu.com>
+                      agent_id: '000'
+                    - scan:
+                        id: 1137251326
+                        time: '2020-04-15T11:02:03Z'
+                      name: libnpth0
+                      size: 32
+                      version: 1.5-3
+                      source: npth
+                      format: deb
+                      section: libs
+                      architecture: amd64
+                      multiarch: same
+                      description: replacement for GNU Pth using system threads
+                      priority: optional
+                      vendor: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+                      agent_id: '000'
+                    - scan:
+                        id: 1137251326
+                        time: '2020-04-15T11:02:03Z'
+                      name: fdisk
+                      size: 427
+                      version: 2.31.1-0.4ubuntu3.5
+                      source: util-linux
+                      format: deb
+                      section: utils
+                      architecture: amd64
+                      multiarch: foreign
+                      description: collection of partitioning utilities
+                      priority: important
+                      vendor: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+                      agent_id: '000'
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                  message: All specified syscollector information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -10092,36 +10188,56 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseSyscollectorPorts'
               example:
                 data:
-                  totalItems: 18
-                  items:
-                  - local:
-                      ip: 172.17.0.100
-                      port: 1516
-                    remote:
-                      ip: 172.17.0.101
-                      port: 54550
-                    scan:
-                      id: 1672337392
-                      time: "2019-03-14T10:38:21Z"
-                    state: established
-                    protocol: tcp
-                    rx_queue: 0
-                    tx_queue: 0
-                    inode: 321208
-                  - local:
-                      ip: "::"
-                      port: 55000
-                    remote:
-                      ip: "::"
-                      port: 0
-                    scan:
-                      id: 1672337392
-                      time: "2019-03-14T10:38:21Z"
-                    state: listening
-                    protocol: tcp6
-                    rx_queue: 0
-                    inode: 18153
-                    tx_queue: 0
+                  affected_items:
+                    - local:
+                        ip: 127.0.0.11
+                        port: 46841
+                      remote:
+                        ip: 0.0.0.0
+                        port: 0
+                      scan:
+                        id: 315935312
+                        time: '2020-04-15T11:02:07Z'
+                      rx_queue: 0
+                      state: listening
+                      protocol: tcp
+                      inode: 12387152
+                      tx_queue: 0
+                      agent_id: '000'
+                    - local:
+                        ip: 0.0.0.0
+                        port: 1514
+                      remote:
+                        ip: 0.0.0.0
+                        port: 0
+                      scan:
+                        id: 315935312
+                        time: '2020-04-15T11:02:07Z'
+                      rx_queue: 0
+                      state: listening
+                      protocol: tcp
+                      inode: 12397927
+                      tx_queue: 0
+                      agent_id: '000'
+                    - local:
+                        ip: 0.0.0.0
+                        port: 1515
+                      remote:
+                        ip: 0.0.0.0
+                        port: 0
+                      scan:
+                        id: 315935312
+                        time: '2020-04-15T11:02:07Z'
+                      rx_queue: 0
+                      state: listening
+                      protocol: tcp
+                      inode: 12397153
+                      tx_queue: 0
+                      agent_id: '000'
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                message: All specified syscollector information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -10169,68 +10285,75 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseSyscollectorProcesses'
               example:
                 data:
-                  totalItems: 120
-                  items:
-                  - scan:
-                      id: 225991434
-                      time: "2019-03-08T08:30:59Z"
-                    fgroup: "root"
-                    state: "S"
-                    priority: 20
-                    suser: "root"
-                    ppid: 2196
-                    vm_size: 13312
-                    session: 2195
-                    pid: "2204"
-                    nlwp: 1
-                    name: "bash"
-                    euser: "root"
-                    sgroup: "root"
-                    size: 3328
-                    stime: 0
-                    nice: 0
-                    argvs: "/tmp/vagrant-shell,172.17.0.100,master,node01"
-                    share: 595
-                    processor: 1
-                    ruser: "root"
-                    cmd: "bash"
-                    egroup: "root"
-                    rgroup: "root"
-                    pgrp: 2195
-                    resident: 659
-                    utime: 0
-                    tgid: 2204
-                    start_time: 8
-                    tty: 0
-                  - scan:
-                      id: 225991434
-                      time: "2019-03-08T08:30:59Z"
-                    fgroup: "root"
-                    state: "I"
-                    priority: 0
-                    suser: "root"
-                    ppid: 2
-                    vm_size: 0
-                    session: 0
-                    pid: "121"
-                    nlwp: 1
-                    name: "charger_manager"
-                    euser: "root"
-                    sgroup: "root"
-                    size: 0
-                    stime: 0
-                    nice: -20
-                    share: 0
-                    processor: 1
-                    ruser: "root"
-                    egroup: "root"
-                    rgroup: "root"
-                    pgrp: 0
-                    resident: 0
-                    utime: 0
-                    tgid: 121
-                    start_time: 1009
-                    tty: 0
+                  affected_items:
+                    - scan:
+                        id: 28643647
+                        time: '2020-04-15T11:02:07Z'
+                      name: bash
+                      suser: root
+                      nlwp: 1
+                      pgrp: 1
+                      state: S
+                      session: 1
+                      utime: 23
+                      egroup: root
+                      ruser: root
+                      argvs: "/scripts/entrypoint.sh,wazuh-master,master-node,master"
+                      size: 4593
+                      euser: root
+                      processor: 3
+                      resident: 793
+                      tty: 0
+                      nice: 0
+                      pid: '1'
+                      vm_size: 18372
+                      sgroup: root
+                      rgroup: root
+                      fgroup: root
+                      start_time: 1093372
+                      tgid: 1
+                      stime: 1
+                      ppid: 0
+                      share: 726
+                      priority: 20
+                      cmd: bash
+                      agent_id: '000'
+                    - scan:
+                        id: 28643647
+                        time: '2020-04-15T11:02:07Z'
+                      name: ossec-control
+                      suser: root
+                      nlwp: 1
+                      pgrp: 1
+                      state: S
+                      session: 1
+                      utime: 0
+                      egroup: root
+                      ruser: root
+                      argvs: "/var/ossec/bin/ossec-control,restart"
+                      size: 1156
+                      euser: root
+                      processor: 6
+                      resident: 457
+                      tty: 0
+                      nice: 0
+                      pid: '15'
+                      vm_size: 4624
+                      sgroup: root
+                      rgroup: root
+                      fgroup: root
+                      start_time: 1093547
+                      tgid: 15
+                      stime: 3
+                      ppid: 1
+                      share: 417
+                      priority: 20
+                      cmd: "/bin/sh"
+                      agent_id: '000'
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: []
+                  message: All specified syscollector information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -11040,7 +11163,14 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseUsers'
                 example:
                   data:
-                    message: 'User updated correctly'
+                    affected_items:
+                      - username: wazuh-wui
+                        roles:
+                          - 2
+                    total_affected_items: 1
+                    total_failed_items: 0
+                    failed_items: []
+                  message: User modified correctly
 
   /overview/agents:
     get:
