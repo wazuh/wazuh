@@ -10,8 +10,11 @@ list(APPEND shared_tests_names "test_rbtree_op")
 list(APPEND shared_tests_flags " ")
 
 list(APPEND shared_tests_names "test_string_op")
-list(APPEND shared_tests_flags "-Wl,--wrap,calloc")
-
+if(NOT ${TARGET} STREQUAL "winagent")
+    list(APPEND shared_tests_flags "-Wl,--wrap,calloc")
+else()
+    list(APPEND shared_tests_flags " ")
+endif()
 list(APPEND shared_tests_names "test_version_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose")
 

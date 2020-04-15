@@ -20,7 +20,8 @@
 static int unit_testing;
 const void * CALL_REAL_FUNCTION = (void *)0xffffffff;
 
-// mock
+#ifndef TEST_WINAGENT
+/* redefinitons/wrapping */
 void *__real_calloc(size_t num, size_t size);
 void *__wrap_calloc(size_t num, size_t size) {
     void * ret_val = mock_ptr_type(void *);
@@ -31,6 +32,7 @@ void *__wrap_calloc(size_t num, size_t size) {
 
     return ret_val;
 }
+#endif
 /* setup/teardowns */
 static int setup_group(void **state) {
     unit_testing = 1;
@@ -45,7 +47,7 @@ static int teardown_group(void **state) {
 /* tests */
 void test_substr_src_nullptr(void **state)
 {
-    char dst[] = {""};
+    char dst[] = { 0 };
     const char * src = NULL;
     int ret_val = os_substr(dst,src, 0, 1);
 
@@ -55,7 +57,7 @@ void test_substr_src_nullptr(void **state)
 
 void test_substr_lenght_zero(void **state)
 {
-    char dst[] = {""};
+    char dst[] = { 0 };
     int ret_val = os_substr(dst, 0, 0, 0);
 
     assert_int_equal(ret_val, -3);
@@ -64,7 +66,7 @@ void test_substr_lenght_zero(void **state)
 
 void test_substr_position_overrun(void **state)
 {
-    char dst[] = {""};
+    char dst[] = { 0 };
     const char src[] = {"helloworld\0"};
     int ret_val = os_substr(dst,src, 999, 1);
 
@@ -73,11 +75,12 @@ void test_substr_position_overrun(void **state)
 }
 void test_substr_success_case(void **state)
 {
-    char dst[] = {""};
+    char dst[5] = { 0 };
     const char src[] = {"helloworld"};
     int ret_val = os_substr(dst,src, 5, 5);
 
     assert_int_equal(ret_val, 0);
+    assert_int_equal(strlen(dst), 5);
     assert_string_equal(dst, "world");
 }
 
@@ -89,7 +92,7 @@ void test_trimcrlf_nullptr()
 }
 void test_trimcrlf_nosize()
 {
-    char str[] = {};
+    char str[] = { 0 };
     os_trimcrlf(str);
     assert_string_equal(str,"");
 }
@@ -125,7 +128,7 @@ void test_shell_escape_nullptr()
     const char* const escaped_str = os_shell_escape(str);
     assert_null(escaped_str);
 }
-
+#ifndef TEST_WINAGENT
 void test_shell_escape_success_case()
 {
     const char str[] = { "hello**world" };
@@ -143,7 +146,7 @@ void test_shell_calloc_fail()
     const char* const escaped_str = os_shell_escape(str);
     assert_null(escaped_str);
 }
-
+#endif
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -158,8 +161,10 @@ int main(void) {
         cmocka_unit_test(test_trimcrlf_nocr_nolf),
         cmocka_unit_test(test_trimcrlf_only_crlf),
         cmocka_unit_test(test_shell_escape_nullptr),
+#ifndef TEST_WINAGENT
         cmocka_unit_test(test_shell_escape_success_case),
         cmocka_unit_test(test_shell_calloc_fail)
+#endif
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
