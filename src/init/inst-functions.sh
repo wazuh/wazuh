@@ -975,7 +975,7 @@ InstallLocal()
     ${INSTALL} -m 0440 -o root -g ${OSSEC_GROUP} wazuh_modules/vulnerability_detector/msu.json.gz ${PREFIX}/queue/vulnerabilities/dictionaries
 
     ### Install Python
-    ${MAKEBIN} wpython PREFIX=${PREFIX} TARGET=${INSTYPE}
+    ${MAKEBIN} wpython PREFIX=${PREFIX} TARGET=${INSTYPE} || exit 1
 }
 
 TransferShared()
