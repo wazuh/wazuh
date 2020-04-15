@@ -545,15 +545,25 @@ def revoke_tokens():
     return WazuhResult({'msg': 'Tokens revoked succesfully'})
 
 
-def get_rbac_resources():
+def get_rbac_resources(resource: str = None):
     """Get the RBAC resources from the catalog
+
+    Parameters
+    ----------
+    resource : str
+        Show the information of the specified resource. Ex: agent:id
 
     Returns
     -------
     dict
         RBAC resources
     """
-    return WazuhResult(load_spec()['x-rbac-catalog']['resources'])
+    if not resource:
+        return WazuhResult(load_spec()['x-rbac-catalog']['resources'])
+    else:
+        if resource not in load_spec()['x-rbac-catalog']['resources'].keys():
+            raise WazuhError(4019)
+        return WazuhResult({resource: load_spec()['x-rbac-catalog']['resources'][resource]})
 
 
 def get_rbac_actions(endpoint: str = None):
@@ -581,6 +591,8 @@ def get_rbac_actions(endpoint: str = None):
                         continue
                     if action not in data.keys():
                         data[action] = deepcopy(info_data['x-rbac-catalog']['actions'][action])
+                    for index, resource in enumerate(info_data['x-rbac-catalog']['actions'][action]['resources']):
+                        data[action]['resources'][index] = list(resource.values())[0].split('/')[-1]
                     if 'related_endpoints' not in data[action].keys():
                         data[action]['related_endpoints'] = list()
                     data[action]['related_endpoints'].append(f'{method.upper()} {path}')

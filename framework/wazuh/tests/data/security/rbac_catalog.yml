@@ -7,7 +7,7 @@ get_rbac_actions:
         description: Access to one or more agents basic information (id, name, group, last
           keep alive, etc)
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/agent:id"
+          - "agent:id"
         example:
           actions:
             - agent:read
@@ -22,7 +22,7 @@ get_rbac_actions:
       agent:modify_group:
         description: Change the group of specified agent
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/agent:id"
+          - "agent:id"
         example:
           actions:
             - agent:modify_group
@@ -34,7 +34,7 @@ get_rbac_actions:
       group:modify_assignments:
         description: Allow to change the agents assigned to the group
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/group:id"
+          - "group:id"
         example:
           actions:
             - group:modify_assignments
@@ -52,7 +52,7 @@ get_rbac_actions:
       active-response:command:
         description: Allow to execute active response commands in the agents
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/agent:id"
+          - agent:id
         example:
           actions:
             - active-response:command
@@ -64,7 +64,7 @@ get_rbac_actions:
       agent:delete:
         description: Delete system's agents
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/agent:id"
+          - agent:id
         example:
           actions:
             - agent:delete
@@ -77,7 +77,7 @@ get_rbac_actions:
         description: Access to one or more agents basic information (id, name, group, last
           keep alive, etc)
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/agent:id"
+          - agent:id
         example:
           actions:
             - agent:read
@@ -99,7 +99,7 @@ get_rbac_actions:
       agent:create:
         description: Create new agents
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/*:*"
+          - "*:*"
         example:
           actions:
             - agent:create
@@ -113,7 +113,7 @@ get_rbac_actions:
       agent:modify_group:
         description: Change the group of specified agent
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/agent:id"
+          - agent:id
         example:
           actions:
             - agent:modify_group
@@ -129,7 +129,7 @@ get_rbac_actions:
       group:modify_assignments:
         description: Allow to change the agents assigned to the group
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/group:id"
+          - group:id
         example:
           actions:
             - group:modify_assignments
@@ -145,7 +145,7 @@ get_rbac_actions:
       agent:restart:
         description: Restart Wazuh for allowed agents
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/agent:id"
+          - agent:id
         example:
           actions:
             - agent:restart
@@ -159,7 +159,7 @@ get_rbac_actions:
       agent:upgrade:
         description: Upgrade the version of an agent
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/agent:id"
+          - agent:id
         example:
           actions:
             - agent:upgrade
@@ -173,7 +173,7 @@ get_rbac_actions:
       group:delete:
         description: Delete system's groups
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/group:id"
+          - group:id
         example:
           actions:
             - group:delete
@@ -188,7 +188,7 @@ get_rbac_actions:
       group:read:
         description: Access to one or more groups basic information (id, name, agents, etc)
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/*:*"
+          - "*:*"
         example:
           actions:
             - group:create
@@ -203,7 +203,7 @@ get_rbac_actions:
       group:create:
         description: Create new groups
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/*:*"
+          - "*:*"
         example:
           actions:
             - group:create
@@ -215,7 +215,7 @@ get_rbac_actions:
       group:update_config:
         description: Change group's configuration
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/group:id"
+          - group:id
         example:
           actions:
             - group:update_config
@@ -227,7 +227,7 @@ get_rbac_actions:
       cluster:read_config:
         description: Read Wazuh's cluster configuration
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/node:id"
+          - node:id
         example:
           actions:
             - cluster:read_config
@@ -254,7 +254,7 @@ get_rbac_actions:
       cluster:status:
         description: Check Wazuh's cluster status
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/*:*"
+          - "*:*"
         example:
           actions:
             - cluster:status
@@ -267,8 +267,8 @@ get_rbac_actions:
       cluster:read_file:
         description: Read Wazuh's cluster files
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/node:id"
-          - "$ref": "#/x-rbac-catalog/resources/file:path"
+          - node:id
+          - file:path
         example:
           actions:
             - cluster:read_file
@@ -281,7 +281,7 @@ get_rbac_actions:
       cluster:upload_file:
         description: Upload new file to Wazuh's cluster node
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/node:id"
+          - node:id
         example:
           actions:
             - cluster:upload_file
@@ -293,8 +293,8 @@ get_rbac_actions:
       cluster:delete_file:
         description: Delete Wazuh's cluster files
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/node:id"
-          - "$ref": "#/x-rbac-catalog/resources/file:path"
+          - node:id
+          - file:path
         example:
           actions:
             - cluster:delete_file
@@ -307,7 +307,7 @@ get_rbac_actions:
       cluster:restart:
         description: Restart Wazuh's cluster nodes
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/node:id"
+          - node:id
         example:
           actions:
             - cluster:restart
@@ -319,7 +319,7 @@ get_rbac_actions:
       lists:read:
         description: Read lists files
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/lists:path"
+          - lists:path
         example:
           actions:
             - lists:read
@@ -332,7 +332,7 @@ get_rbac_actions:
       manager:status:
         description: Check Wazuh manager status
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/*:*"
+          - "*:*"
         example:
           actions:
             - manager:status
@@ -344,7 +344,7 @@ get_rbac_actions:
       manager:read_config:
         description: Read Wazuh manager configuration
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/*:*"
+          - "*:*"
         example:
           actions:
             - manager:read_config
@@ -366,7 +366,7 @@ get_rbac_actions:
       manager:read_file:
         description: Read Wazuh manager files
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/file:path"
+          - file:path
         example:
           actions:
             - manager:read_file
@@ -378,7 +378,7 @@ get_rbac_actions:
       manager:upload_file:
         description: Upload new file to Wazuh manager node
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/*:*"
+          - "*:*"
         example:
           actions:
             - manager:upload_file
@@ -390,7 +390,7 @@ get_rbac_actions:
       manager:delete_file:
         description: Delete Wazuh manager files
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/file:path"
+          - file:path
         example:
           actions:
             - manager:delete_file
@@ -402,7 +402,7 @@ get_rbac_actions:
       manager:restart:
         description: Restart Wazuh manager nodes
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/*:*"
+          - "*:*"
         example:
           actions:
             - manager:restart
@@ -414,7 +414,7 @@ get_rbac_actions:
       rules:read:
         description: Read rules files
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/rules:file"
+          - rules:file
         example:
           actions:
             - rules:read
@@ -431,7 +431,7 @@ get_rbac_actions:
         description: Get a list of policies analyzed in the configuration assessment for
           a given agent
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/agent:id"
+          - agent:id
         example:
           actions:
             - sca:read
@@ -444,7 +444,7 @@ get_rbac_actions:
       syscheck:run:
         description: Runs rootcheck and syscheck
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/agent:id"
+          - agent:id
         example:
           actions:
             - syscheck:run
@@ -456,7 +456,7 @@ get_rbac_actions:
       syscheck:read:
         description: Read information from syscheck's database
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/agent:id"
+          - agent:id
         example:
           actions:
             - syscheck:read
@@ -469,7 +469,7 @@ get_rbac_actions:
       syscheck:clear:
         description: Clear the syscheck database for specified agents
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/agent:id"
+          - agent:id
         example:
           actions:
             - syscheck:clear
@@ -482,7 +482,7 @@ get_rbac_actions:
       decoder:read:
         description: Read decoders files
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/decoder:file"
+          - decoder:file
         example:
           actions:
             - decoder:read
@@ -497,7 +497,7 @@ get_rbac_actions:
       ciscat:read:
         description: Get CIS-CAT results for a list of agents
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/agent:id"
+          - agent:id
         example:
           actions:
             - ciscat:read
@@ -510,7 +510,7 @@ get_rbac_actions:
       syscollector:read:
         description: Get syscollector information about a specified agents
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/agent:id"
+          - agent:id
         example:
           actions:
             - syscollector:read
@@ -539,9 +539,9 @@ get_rbac_actions:
       security:read:
         description: Allow read information about system's security resources
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/policy:id"
-          - "$ref": "#/x-rbac-catalog/resources/role:id"
-          - "$ref": "#/x-rbac-catalog/resources/user:id"
+          - policy:id
+          - role:id
+          - user:id
         example:
           actions:
             - security:read
@@ -555,9 +555,9 @@ get_rbac_actions:
           - GET /security/policies
           - GET /security/users
       security:create:
-        description: Create new system's security resources
+        description: Create new system security resources
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/*:*"
+          - "*:*"
         example:
           actions:
             - security:create
@@ -569,13 +569,12 @@ get_rbac_actions:
           - POST /security/policies
           - POST /security/roles/{role_id}/policies
           - POST /security/users/{username}/roles
-          - POST /security/users
       security:delete:
         description: Delete system's security resources
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/policy:id"
-          - "$ref": "#/x-rbac-catalog/resources/role:id"
-          - "$ref": "#/x-rbac-catalog/resources/user:id"
+          - policy:id
+          - role:id
+          - user:id
         example:
           actions:
             - security:update
@@ -593,9 +592,9 @@ get_rbac_actions:
       security:update:
         description: Allow update the information of system's security resources
         resources:
-          - "$ref": "#/x-rbac-catalog/resources/policy:id"
-          - "$ref": "#/x-rbac-catalog/resources/role:id"
-          - "$ref": "#/x-rbac-catalog/resources/user:id"
+          - policy:id
+          - role:id
+          - user:id
         example:
           actions:
             - security:update
@@ -608,13 +607,26 @@ get_rbac_actions:
           - PUT /security/roles/{role_id}
           - PUT /security/policies/{policy_id}
           - PUT /security/users/{username}
+      security:create_user:
+        description: Create new system user
+        resources:
+          - "*:*"
+        example:
+          actions:
+            - security:create_user
+          resources:
+            - "*:*:*"
+          effect: allow
+        related_endpoints:
+          - POST /security/users
+
 get_rbac_resources:
   - params:
-      dummy: None
+      resource: None
     result:
       "*:*":
         description: 'Resource applied in functions acting on resources that do not yet
-          exist in the system We call these functions, resourceless functions. Example:
+          exist in the system. We call these functions, resourceless functions. Example:
           agent:create'
       agent:id:
         description: Reference agents via agent ID (i.e. agent:id:001)
@@ -636,4 +648,15 @@ get_rbac_resources:
         description: Reference security role via its id (i.e. role:id:1)
       user:id:
         description: Reference security user via its username (i.e. user:id:wazuh)
-
+  - params:
+      resource: 'agent:id'
+    result:
+      agent:id:
+        description: Reference agents via agent ID (i.e. agent:id:001)
+  - params:
+      resource: '*:*'
+    result:
+      "*:*":
+        description: 'Resource applied in functions acting on resources that do not yet
+          exist in the system. We call these functions, resourceless functions. Example:
+          agent:create'

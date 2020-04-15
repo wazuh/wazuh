@@ -30,7 +30,8 @@ servers:
 x-rbac-catalog:
   resources:
     '*:*':
-      description: "Resource applied in functions acting on resources that do not yet exist in the system We call these functions, resourceless functions. Example: agent:create"
+      description: "Resource applied in functions acting on resources that do not yet exist in the system.
+      We call these functions, resourceless functions. Example: agent:create"
     'agent:id':
       description: "Reference agents via agent ID (i.e. agent:id:001)"
     'group:id':
@@ -87,7 +88,7 @@ x-rbac-catalog:
     'agent:modify_group':
       description: "Change the group of specified agent"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/agent:id'
+       - $ref: '#/x-rbac-catalog/resources/agent:id'
       example:
         actions: ['agent:modify_group']
         resources: ['agent:id:*']
@@ -95,7 +96,7 @@ x-rbac-catalog:
     'group:modify_assignments':
       description: "Allow to change the agents assigned to the group"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/group:id'
+       - $ref: '#/x-rbac-catalog/resources/group:id'
       example:
         actions: ['group:modify_assignments']
         resources: ['group:id:*']
@@ -103,7 +104,7 @@ x-rbac-catalog:
     'agent:upgrade':
       description: "Upgrade the version of an agent"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/agent:id'
+       - $ref: '#/x-rbac-catalog/resources/agent:id'
       example:
         actions: ['agent:upgrade']
         resources: ['agent:id:*']
@@ -111,7 +112,7 @@ x-rbac-catalog:
     'agent:restart':
       description: "Restart Wazuh for allowed agents"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/agent:id'
+       - $ref: '#/x-rbac-catalog/resources/agent:id'
       example:
         actions: ['agent:restart']
         resources: ['agent:id:050', 'agent:id:049']
@@ -4495,6 +4496,24 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/Username'
+    resource_list:
+      in: query
+      name: resource
+      description: List of current RBAC's resources.
+      schema:
+        type: string
+        enum:
+          - '*:*'
+          - 'agent:id'
+          - 'group:id'
+          - 'node:id'
+          - 'file:path'
+          - 'decoder:file'
+          - 'lists:path'
+          - 'rules:file'
+          - 'policy:id'
+          - 'role:id'
+          - 'user:id'
     endpoints_list:
       in: query
       name: endpoint
@@ -10976,7 +10995,7 @@ paths:
                 active-response:command:
                   description: Allow to execute active response commands in the agents
                   resources:
-                    - "$ref": "#/x-rbac-catalog/resources/agent:id"
+                  - "agent:id"
                   example:
                     actions:
                       - active-response:command
@@ -10988,7 +11007,7 @@ paths:
                 agent:create:
                   description: Create new agents
                   resources:
-                    - "$ref": "#/x-rbac-catalog/resources/*:*"
+                  - "*:*"
                   example:
                     actions:
                       - agent:create
@@ -11011,6 +11030,7 @@ paths:
       operationId: api.controllers.security_controller.get_rbac_resources
       parameters:
         - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/resource_list'
       responses:
         '200':
           description: "Return all RBAC resources"
@@ -11022,7 +11042,9 @@ paths:
                   - type: object
               example:
                 "*:*":
-                  description: 'Resource applied in functions acting on resources that do not yet exist in the system We call these functions, resourceless functions. Example: agent:create'
+                  description: 'Resource applied in functions acting on resources that do not yet
+                    exist in the system. We call these functions, resourceless functions. Example:
+                    agent:create'
                 agent:id:
                   description: 'Reference agents via agent ID (i.e. agent:id:001)'
                 group:id:
