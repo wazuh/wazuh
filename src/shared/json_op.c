@@ -12,44 +12,14 @@
 #include <shared.h>
 
 cJSON * json_fread(const char * path, char retry) {
-    FILE * fp = NULL;
     cJSON * item = NULL;
     char * buffer = NULL;
-    long size;
-    size_t read;
+    const char *jsonErrPtr;
 
-    // Load file
-
-    if (fp = fopen(path, "r"), !fp) {
-        mdebug1(FOPEN_ERROR, path, errno, strerror(errno));
+    if (buffer = w_get_file_content(path, JSON_MAX_FSIZE), !buffer) {
+        mdebug1("Cannot get the content of the file: %s", path);
         return NULL;
     }
-
-    // Get file size
-
-    if (size = get_fp_size(fp), size < 0) {
-        mdebug1(FSEEK_ERROR, path, errno, strerror(errno));
-        goto end;
-    }
-
-    // Check file size limit
-
-    if (size > JSON_MAX_FSIZE) {
-        mdebug1("Cannot load JSON file '%s': it exceeds %s", path, JSON_MAX_FSIZE_TEXT);
-        goto end;
-    }
-
-    // Allocate memory
-    os_malloc(size + 1, buffer);
-
-    // Get file and parse into JSON
-    if (read = fread(buffer, 1, size, fp), read != (size_t)size && !feof(fp)) {
-        mdebug1(FREAD_ERROR, path, errno, strerror(errno));
-        goto end;
-    }
-
-    buffer[size] = '\0';
-    const char *jsonErrPtr;
 
     if (item = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), !item) {
         if (retry) {
@@ -62,9 +32,6 @@ cJSON * json_fread(const char * path, char retry) {
         }
     }
 
-end:
-
-    fclose(fp);
     free(buffer);
     return item;
 }

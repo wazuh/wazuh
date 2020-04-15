@@ -8,7 +8,6 @@
 
 """This module contains tools for processing events from a Google Cloud subscription."""  # noqa: E501
 
-import json
 import logging
 import socket
 
@@ -24,11 +23,11 @@ class WazuhGCloudSubscriber:
     """Class for sending events from Google Cloud to Wazuh."""
 
     header = '1:Wazuh-GCloud:'
+    key_name = 'gcp'
 
     def __init__(self, credentials_file: str, project: str,
                  subscription_id: str):
         """Instantiate a WazuhGCloudSubscriber object.
-
         :params credentials_file: Path to credentials file
         :params project: Project name
         :params subscription_id: Subscription ID
@@ -43,7 +42,6 @@ class WazuhGCloudSubscriber:
     def get_subscriber_client(self, credentials_file: str) \
             -> pubsub.subscriber.Client:
         """Get a subscriber client.
-
         :param credentials_file: Path to credentials file
         :return: Instance of subscriber client object created with the
             provided key
@@ -53,19 +51,17 @@ class WazuhGCloudSubscriber:
     def get_subscription_path(self, project: str, subscription_id: str) \
             -> str:
         """Get the subscription path.
-
         :param project: Project name
         :param subscription_id: Subscription ID
         :return: String with the subscription path
         """
         return self.subscriber.subscription_path(project, subscription_id)
 
-    def send_msg(self, msg: bytes):
+    def send_msg(self, msg: str):
         """Send an event to the Wazuh queue.
-
         :param msg: Event to be sent
         """
-        event_json = f'{self.header}{self.format_msg(msg)}'.encode(errors='replace')  # noqa: E501
+        event_json = f'{self.header}{msg}'.encode(errors='replace')  # noqa: E501
         try:
             s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             s.connect(self.wazuh_queue)
@@ -79,20 +75,20 @@ class WazuhGCloudSubscriber:
                 logger.critical('Error sending event to Wazuh')
                 raise e
 
-    def format_msg(self, msg: bytes) -> str:
+    def format_msg(self, msg: str) -> str:
         """Format a message.
-
         :param msg: Message to be formatted
         """
-        return msg.decode(errors='replace')
+        # Insert msg as value of self.key_name key.
+        return f'{{"{self.key_name}": {msg}}}'
 
     def process_message(self, ack_id: str, data: bytes):
         """Send a message to Wazuh queue.
-
         :param ack_id: ACK_ID from event
         :param data: Data to be sent to Wazuh
         """
-        self.send_msg(data)
+        formatted_msg = self.format_msg(data.decode(errors='replace'))
+        self.send_msg(formatted_msg)
         self.subscriber.acknowledge(self.subscription_path, [ack_id])
 
     def check_permissions(self):
@@ -108,7 +104,6 @@ class WazuhGCloudSubscriber:
     def pull_request(self, max_messages: int = 100) \
             -> pubsub.types.PullResponse:
         """Make request for pulling messages from the subscription.
-
         :param max_messages: Maximum number of messages to retrieve
         :return: Response of pull request. If the deadline is exceeded,
             the method will return an empty PullResponse object
@@ -136,7 +131,7 @@ class WazuhGCloudSubscriber:
             for message in response.received_messages:
                 message_data: bytes = message.message.data
                 if logger.getEffectiveLevel() == logging.DEBUG:
-                    logger.debug(f'Processing event:\n{self.format_msg(message_data)}')
+                    logger.debug(f'Processing event:\n{self.format_msg(message_data.decode(errors="replace"))}')
                 self.process_message(message.ack_id, message_data)
                 processed_messages += 1  # increment processed_messages counter
             # get more messages

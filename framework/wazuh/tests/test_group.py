@@ -27,11 +27,10 @@ class AgentMock:
     ('dmz,default', '005', 'default', 'dmz')
 ])
 @patch('wazuh.agent.Agent.get_agents_group_file')
-@patch('wazuh.agent.Agent.create_multi_group')
 @patch('wazuh.agent.Agent.unset_all_groups_agent')
 @patch('wazuh.agent.Agent')
-def test_sucessfully_remove_single_group_agent(agent_patch, unset_groups_patch, create_multigroup_patch,
-                                               get_groups_patch, agent_groups, agent_id, group_id, expected_new_group):
+def test_sucessfully_remove_single_group_agent(agent_patch, unset_groups_patch, get_groups_patch, agent_groups,
+                                               agent_id, group_id, expected_new_group):
     """
     Tests sucessfully unsseting a group from an agent. Test cases:
         * The agent only belongs to one group. It must be assigned to the default one.
@@ -47,10 +46,7 @@ def test_sucessfully_remove_single_group_agent(agent_patch, unset_groups_patch, 
     assert ret_msg == (f"Agent {agent_id} set to group default." if expected_new_group == 'default' else
                        f"Group '{group_id}' unset for agent '{agent_id}'.")
 
-    if ',' in expected_new_group:
-        create_multigroup_patch.assert_called_with(expected_new_group)
-
-    unset_groups_patch.assert_called_with(agent_id, True, expected_new_group)
+    unset_groups_patch.assert_called_with(agent_id=agent_id, force=True, group_id=expected_new_group)
 
 
 @pytest.mark.parametrize('agent_groups, agent_id, group_id, expected_exception', [

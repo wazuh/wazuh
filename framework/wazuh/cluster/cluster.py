@@ -28,6 +28,7 @@ import glob
 import gzip
 from functools import reduce
 import zipfile
+from contextvars import ContextVar
 
 logger = logging.getLogger('wazuh')
 
@@ -461,6 +462,11 @@ class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
         return '{}/cluster-{}.log.gz'.format(log_path, day)
 
 
+# Context vars
+context_tag: ContextVar[str] = ContextVar('tag', default='')
+context_subtag: ContextVar[str] = ContextVar('subtag', default='')
+
+
 class ClusterFilter(logging.Filter):
     """
     Adds cluster related information into cluster logs.
@@ -479,8 +485,8 @@ class ClusterFilter(logging.Filter):
         self.subtag = subtag
 
     def filter(self, record):
-        record.tag = self.tag
-        record.subtag = self.subtag
+        record.tag = context_tag.get() if context_tag.get() != '' else self.tag
+        record.subtag = context_subtag.get() if context_subtag.get() != '' else self.subtag
         return True
 
     def update_tag(self, new_tag: str):

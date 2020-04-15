@@ -46,6 +46,10 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
 
     gcp = module->data;
 
+    if (!nodes) {
+        return OS_INVALID;
+    }
+
     for (i = 0; nodes[i]; i++) {
         if (!nodes[i]->element) {
             merror(XML_ELEMNULL);

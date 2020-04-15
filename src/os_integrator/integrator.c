@@ -384,7 +384,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             {
                 int dbg_lvl = isDebug();
                 snprintf(exec_full_cmd, 4095, "%s %s %s %s %s", integrator_config[s]->path, exec_tmp_file, integrator_config[s]->apikey == NULL?"":integrator_config[s]->apikey, integrator_config[s]->hookurl==NULL?"":integrator_config[s]->hookurl, dbg_lvl <= 0 ? "" : "debug");
-                if (dbg_lvl <= 0) strncat(exec_full_cmd, " > /dev/null 2>&1", 17);
+                if (dbg_lvl <= 0) strcat(exec_full_cmd, " > /dev/null 2>&1");
 
                 mdebug1("Running: %s", exec_full_cmd);
 
