@@ -473,9 +473,9 @@ void test_count_watches_hash_node_null(void **state) {
 
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Begin, NULL);
-    
+
     expect_function_call(__wrap_pthread_mutex_unlock);
-    
+
     count_watches();
 }
 
@@ -854,6 +854,8 @@ void test_realtime_process_move_self(void **state) {
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Begin, node);
 
+    char *data = strdup("delete this");
+    // will_return_always(__wrap_OSHash_Delete_ex, data);
     expect_string(__wrap__mdebug2, formatted_msg, "(6342): Inotify watch deleted for 'test/sub'");
 
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
@@ -866,7 +868,7 @@ void test_realtime_process_move_self(void **state) {
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    char *data = strdup("delete this");
+    data = strdup("delete this");
     will_return_always(__wrap_OSHash_Delete_ex, data);
     expect_string(__wrap__mdebug2, formatted_msg, "(6342): Inotify watch deleted for 'test'");
 
@@ -912,7 +914,7 @@ void test_delete_subdirectories_watches_hash_node_null(void **state) {
 
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Begin, NULL);
-    
+
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     delete_subdirectories_watches(dir);
@@ -952,11 +954,11 @@ void test_delete_subdirectories_watches_deletes(void **state) {
 
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Begin, node);
-    
-    char *data;
+
+    char *data = strdup("delete this");
     will_return_always(__wrap_OSHash_Delete_ex, data);
     expect_string(__wrap__mdebug2, formatted_msg, "(6342): Inotify watch deleted for '/test/sub'");
-    
+
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Begin, NULL);
 
@@ -1364,7 +1366,7 @@ int main(void) {
         // free_win32rtfim_data
         cmocka_unit_test(test_free_win32rtfim_data_null_input),
         cmocka_unit_test(test_free_win32rtfim_data_full_data),
-        
+
         // RTCallBack
         cmocka_unit_test(test_RTCallBack_error_on_callback),
         cmocka_unit_test(test_RTCallBack_empty_hash_table),
