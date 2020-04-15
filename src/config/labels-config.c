@@ -93,6 +93,7 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
 
 error:
     labels_free(*labels);
+    *labels = NULL;
     return OS_INVALID;
 }
 

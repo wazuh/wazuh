@@ -56,6 +56,13 @@
     <description>Group of Windows rules for the System channel</description>
   </rule>
 
+  <rule id="60016" level="0">
+    <if_sid>60000</if_sid>
+    <field name="win.system.channel">^Microsoft-Windows-Windows Firewall With Advanced Security/Firewall$</field>
+    <options>no_full_log</options>
+    <description>Group of Microsoft Windows Firewall With Advanced Security rules</description>
+  </rule>
+
   <rule id="60006" level="0">
     <if_sid>60003</if_sid>
     <field name="win.system.providerName">^McLogEvent$</field>

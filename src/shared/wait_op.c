@@ -146,3 +146,14 @@ void os_wait()
 }
 
 #endif /* !WIN32 */
+
+// Check whether the agent wait mark is on (manager is disconnected)
+
+bool os_iswait() {
+#ifndef WIN32
+    return IsFile(isChroot() ? WAIT_FILE : WAIT_FILE_PATH) == 0;
+#else
+    return __wait_lock;
+#endif
+
+}

@@ -87,7 +87,7 @@ def generate_msg(alert):
     msg = {}
     msg['color'] = color
     msg['pretext'] = "WAZUH Alert"
-    msg['title'] = alert['rule']['description']
+    msg['title'] = alert['rule']['description'] if 'description' in alert['rule'] else "N/A"
     msg['text'] = alert.get('full_log')
 
     msg['fields'] = []

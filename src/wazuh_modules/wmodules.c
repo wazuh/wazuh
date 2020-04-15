@@ -38,17 +38,10 @@ int wm_config() {
         return -1;
     }
 
-
-
 #ifdef CLIENT
     // Read configuration: agent.conf
     agent_cfg = 1;
     ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
-#if defined (__linux__) || (__MACH__)
-    wmodule *module;
-    module = wm_control_read();
-    wm_add(module);
-#endif
 #else
     wmodule *module;
     // The database module won't be available on agents
@@ -61,6 +54,12 @@ int wm_config() {
     if ((module = wm_download_read()))
         wm_add(module);
 
+#endif
+
+#if defined (__linux__) || (__MACH__) || defined (sun)
+    wmodule * control_module;
+    control_module = wm_control_read();
+    wm_add(control_module);
 #endif
 
     return 0;
