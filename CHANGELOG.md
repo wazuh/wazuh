@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.11.5] - 2020-04-15
 
+## Changed
+
+- Updated MSU catalog on 31/03/2020. ([#4819](https://github.com/wazuh/wazuh/pull/4819))
+
 ### Fixed
 
 - Fixed compatibility with the Vulnerability Detector feeds for Ubuntu from Canonical, that are available in a compressed format. ([#4834](https://github.com/wazuh/wazuh/pull/4834))
