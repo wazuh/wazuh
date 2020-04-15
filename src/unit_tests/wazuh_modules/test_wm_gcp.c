@@ -769,9 +769,6 @@ static void test_wm_gcp_run_logging_info_message_warning(void **state) {
     expect_string(__wrap__mtdebug2, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug2, formatted_msg, "OUTPUT: Test output - WARNING - This is a warning message");
 
-    expect_string(__wrap__mtwarn, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtwarn, formatted_msg, "Test output - WARNING - This is a warning message");
-
     wm_gcp_run(gcp_config);
 }
 
@@ -877,9 +874,6 @@ static void test_wm_gcp_run_logging_warning_message_error(void **state) {
     expect_string(__wrap__mtdebug2, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug2, formatted_msg, "OUTPUT: Test output - ERROR - This is an error message");
 
-    expect_string(__wrap__mterror, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mterror, formatted_msg, "- ERROR - This is an error message");
-
     wm_gcp_run(gcp_config);
 }
 
@@ -984,9 +978,6 @@ static void test_wm_gcp_run_logging_error_message_critical(void **state) {
 
     expect_string(__wrap__mtdebug2, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug2, formatted_msg, "OUTPUT: Test output - CRITICAL - This is a critical message");
-
-    expect_string(__wrap__mterror, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mterror, formatted_msg, "- CRITICAL - This is a critical message");
 
     wm_gcp_run(gcp_config);
 }
