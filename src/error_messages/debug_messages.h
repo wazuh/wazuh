@@ -88,6 +88,8 @@
 #define VU_NO_HOTFIX_AVAIL    "(5577): It is not possible to perform a hotfix scan on agent %s."
 #define VU_NO_HOTFIX_FEED     "(5578): We have not found a hotfix that solves %s for agent %s in the Microsoft feed, so it is not possible to know it is vulnerable."
 #define VU_COMPARISSION_ERROR "(5579): The '%s' and '%s' versions of '%s' package could not be compared. Possible false positive."
+#define VU_PACKAGE_INSERT     "(5580): Agent (%s): Vulnerable package '%s' inserted into CVE '%s'."
+#define VU_DUPLICATED_PACKAGE "(5581): Agent (%s): Trying to insert duplicated vulnerable package '%s' into CVE '%s'."
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
