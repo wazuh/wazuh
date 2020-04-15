@@ -958,49 +958,49 @@ int Rules_OP_ReadRules(const char *rulefile)
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcmp(rule_opt[k]->element,
-                                          xml_same_url) == 0) {
+                                      xml_same_url) == 0) {
                         config_ruleinfo->same_field |= FIELD_URL;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcmp(rule_opt[k]->element,
-                                          xml_same_data) == 0) {
+                                      xml_same_data) == 0) {
                         config_ruleinfo->same_field |= FIELD_DATA;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcmp(rule_opt[k]->element,
-                                          xml_same_extra_data) == 0) {
+                                      xml_same_extra_data) == 0) {
                         config_ruleinfo->same_field |= FIELD_EXTRADATA;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcmp(rule_opt[k]->element,
-                                          xml_same_status) == 0) {
+                                      xml_same_status) == 0) {
                         config_ruleinfo->same_field |= FIELD_STATUS;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
                     } else if (strcmp(rule_opt[k]->element,
-                                          xml_same_system_name) == 0) {
+                                      xml_same_system_name) == 0) {
                         config_ruleinfo->same_field |= FIELD_SYSTEMNAME;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
-                    } else if(strcmp(rule_opt[k]->element,
-                                   xml_same_srcgeoip) == 0) {
+                    } else if (strcmp(rule_opt[k]->element,
+                                      xml_same_srcgeoip) == 0) {
                         config_ruleinfo->same_field |= FIELD_SRCGEOIP;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
-                    } else if(strcmp(rule_opt[k]->element,
-                                   xml_same_dstgeoip) == 0) {
+                    } else if (strcmp(rule_opt[k]->element,
+                                      xml_same_dstgeoip) == 0) {
                         config_ruleinfo->same_field |= FIELD_DSTGEOIP;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
@@ -1038,9 +1038,9 @@ int Rules_OP_ReadRules(const char *rulefile)
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                         }
                     } else if (strcmp(rule_opt[k]->element,
-                                   xml_different_srcip) == 0 ||
-                               strcmp(rule_opt[k]->element, 
-                                   xml_notsame_source_ip) == 0) {
+                                      xml_different_srcip) == 0 ||
+                               strcmp(rule_opt[k]->element,
+                                      xml_notsame_source_ip) == 0) {
                         config_ruleinfo->different_field |= FIELD_SRCIP;
 
                         if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
@@ -1123,8 +1123,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
-                    } else if(strcmp(rule_opt[k]->element,
-                                   xml_different_srcgeoip) == 0) {
+                    } else if (strcmp(rule_opt[k]->element,
+                                      xml_different_srcgeoip) == 0) {
                         config_ruleinfo->different_field |= FIELD_SRCGEOIP;
 
                         if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {

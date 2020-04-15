@@ -219,7 +219,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
                 continue;
             }
         }
-        
+
         /* We avoid multiple triggers for the same rule
          * or rules with a lower level.
          */
