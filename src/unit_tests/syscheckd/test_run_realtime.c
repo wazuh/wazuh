@@ -1322,11 +1322,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_realtime_start_success, setup_realtime_start, teardown_realtime_start),
         cmocka_unit_test_setup_teardown(test_realtime_start_failure_hash, setup_realtime_start, teardown_realtime_start),
 
-        /* count_watches */
-        cmocka_unit_test_setup_teardown(test_count_watches_realtime_fd_null, setup_hash_node, teardown_hash_node),
-        cmocka_unit_test_setup_teardown(test_count_watches_hash_node_null, setup_hash_node, teardown_hash_node),
-        cmocka_unit_test_setup(test_count_watches_counting, setup_hash_node),
-
         #if defined(TEST_SERVER) || defined(TEST_AGENT)
         cmocka_unit_test_setup_teardown(test_realtime_start_failure_inotify, setup_realtime_start, teardown_realtime_start),
 
@@ -1377,6 +1372,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_RTCallBack_acquired_changes_null_dir, setup_RTCallBack, teardown_RTCallBack),
         cmocka_unit_test_setup_teardown(test_RTCallBack_acquired_changes, setup_RTCallBack, teardown_RTCallBack),
         #endif
+
+        /* count_watches */
+        cmocka_unit_test_setup_teardown(test_count_watches_realtime_fd_null, setup_hash_node, teardown_hash_node),
+        cmocka_unit_test_setup_teardown(test_count_watches_hash_node_null, setup_hash_node, teardown_hash_node),
+        cmocka_unit_test_setup(test_count_watches_counting, setup_hash_node),
     };
     #else
     const struct CMUnitTest tests[] = {
