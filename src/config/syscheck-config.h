@@ -53,6 +53,7 @@ typedef enum fdb_stmt {
 #define MAX_DIR_SIZE    64
 #define MAX_DIR_ENTRY   128
 #define SYSCHECK_WAIT   1
+#define MAX_FILE_LIMIT  2147483647
 
 /* Checking options */
 #define CHECK_SIZE          00000001

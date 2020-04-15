@@ -954,6 +954,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_database = "database";
     const char *xml_scantime = "scan_time";
     const char *xml_file_limit = "file_limit";
+    const char *xml_file_limit_enabled = "enabled";
+    const char *xml_file_limit_entries = "entries";
     const char *xml_ignore = "ignore";
     const char *xml_registry_ignore = "registry_ignore";
     const char *xml_auto_ignore = "auto_ignore"; // TODO: Deprecated since 3.11.0
@@ -1161,12 +1163,43 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
         /* Get file limit */
         else if (strcmp(node[i]->element, xml_file_limit) == 0) {
-            if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
+            if (!(children = OS_GetElementsbyNode(xml, node[i]))) {
+                continue;
             }
 
-            syscheck->file_limit = atoi(node[i]->content);
+            int file_limit_enabled = true;
+
+            for(j = 0; children[j]; j++) {
+                if (strcmp(children[j]->element, xml_file_limit_enabled) == 0) {
+                    if (strcmp(children[j]->content, "yes") == 0) {
+                        file_limit_enabled = true;
+                    }
+                    else if (strcmp(children[j]->content, "no") == 0) {
+                        file_limit_enabled = false;
+                    }
+                    else {
+                        merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                        return (OS_INVALID);
+                    }
+                }
+                else if (strcmp(children[j]->element, xml_file_limit_entries) == 0) {
+                    if (!OS_StrIsNum(children[j]->content)) {
+                        merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                        return (OS_INVALID);
+                    }
+                    
+                    syscheck->file_limit = atoi(children[j]->content);
+
+                    if (syscheck->file_limit > MAX_FILE_LIMIT) {
+                        mdebug2("Maximum value allowed for file_limit is '%d'", MAX_FILE_LIMIT);
+                        syscheck->file_limit = MAX_FILE_LIMIT;
+                    }
+                }
+            }
+
+            if (!file_limit_enabled) {
+                syscheck->file_limit = 0;
+            }
         }
 
         /* Get if xml_scan_on_start */
