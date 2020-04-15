@@ -37,7 +37,7 @@ static int ssl_error(const SSL *ssl, int ret);
 
 /* Thread for dispatching connection pool */
 static void* run_dispatcher(void *arg);
-w_err_t w_auth_parse_data(char* buf,char *response, char *ip, char **agentname, char *groups, int *use_client_ip);
+w_err_t w_auth_parse_data(char* buf,char *response, char *ip, char **agentname, char *groups);
 w_err_t w_auth_validate_data (char *response, char *ip, char *agentname, char *groups);
 
 /* Thread for writing keystore onto disk */
@@ -605,10 +605,9 @@ int main(int argc, char **argv)
 /* Thread for dispatching connection pool */
 void* run_dispatcher(__attribute__((unused)) void *arg) {
     struct client client;
-    char srcip[IPSIZE + 1];
+    char ip[IPSIZE + 1];
     char *agentname = NULL;
     char centralized_group[OS_SIZE_65536] = {0};
-    int use_client_ip = 0;        
     int ret;
     char* buf = NULL;  
     char *tmpstr = NULL;      
@@ -619,7 +618,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     authd_sigblock();
 
     /* Initialize some variables */
-    memset(srcip, '\0', IPSIZE + 1);
+    memset(ip, '\0', IPSIZE + 1);
 
     //JJP: INIT [0] 
     //JJP: Avoid on worker (maybe)
@@ -640,7 +639,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         if (!running)
             break;
 
-        strncpy(srcip, inet_ntoa(client.addr), IPSIZE - 1);
+        strncpy(ip, inet_ntoa(client.addr), IPSIZE - 1);
         ssl = SSL_new(ctx);
         SSL_set_fd(ssl, client.socket);
         ret = SSL_accept(ssl);
@@ -652,12 +651,12 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             continue;
         }
 
-        minfo("New connection from %s", srcip);
+        minfo("New connection from %s", ip);
 
         /* Additional verification of the agent's certificate. */
 
         if (config.flags.verify_host && config.agent_ca) {
-            if (check_x509_cert(ssl, srcip) != VERIFY_TRUE) {
+            if (check_x509_cert(ssl, ip) != VERIFY_TRUE) {
                 merror("Unable to verify client certificate.");
                 SSL_free(ssl);
                 close(client.socket);
@@ -674,7 +673,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         if (ret <= 0) {
             switch (ssl_error(ssl, ret)) {
             case 0:
-                minfo("Client timeout from %s", srcip);
+                minfo("Client timeout from %s", ip);
                 break;
             default:
                 merror("SSL Error (%d)", ret);
@@ -707,7 +706,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             }
 
             if (parseok == 0) {
-                merror("Invalid password provided by %s. Closing connection.", srcip);
+                merror("Invalid password provided by %s. Closing connection.", ip);
                 SSL_free(ssl);
                 close(client.socket);
                 free(buf);
@@ -718,7 +717,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         mdebug2("Request received: <%s>", buf);
 
         //JJP: Avoid duplicated code here.
-        if(OS_SUCCESS != w_auth_parse_data(tmpstr, response, srcip, &agentname, centralized_group, &use_client_ip)){
+        if(OS_SUCCESS != w_auth_parse_data(tmpstr, response, ip, &agentname, centralized_group)){
             SSL_write(ssl, response, strlen(response));
             snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
             SSL_write(ssl, response, strlen(response));          
@@ -730,7 +729,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
         w_mutex_lock(&mutex_keys);
 
-        if(OS_SUCCESS != w_auth_validate_data(response, srcip, agentname, centralized_group)){
+        if(OS_SUCCESS != w_auth_validate_data(response, ip, agentname, centralized_group)){
             SSL_write(ssl, response, strlen(response));
             snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
             SSL_write(ssl, response, strlen(response));
@@ -744,7 +743,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         /* Add the new agent */
         int index;
 
-        if (index = OS_AddNewAgent(&keys, NULL, agentname, (config.flags.use_source_ip || use_client_ip)? srcip : NULL, NULL), index < 0) {
+        if (index = OS_AddNewAgent(&keys, NULL, agentname, ip, NULL), index < 0) {
             w_mutex_unlock(&mutex_keys);
             merror("Unable to add agent: %s (internal error)", agentname);
             snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);
@@ -777,8 +776,8 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             }
         }
         //JJP: Response
-        snprintf(response, 2048, "OSSEC K:'%s %s %s %s'\n\n", keys.keyentries[index]->id, agentname, (config.flags.use_source_ip || use_client_ip) ? srcip : "any", keys.keyentries[index]->key);
-        minfo("Agent key generated for '%s' (requested by %s)", agentname, srcip);
+        snprintf(response, 2048, "OSSEC K:'%s %s %s %s'\n\n", keys.keyentries[index]->id, agentname,  ip, keys.keyentries[index]->key);
+        minfo("Agent key generated for '%s' (requested by %s)", agentname, ip);
         ret = SSL_write(ssl, response, strlen(response));
 
         if (ret < 0) {
@@ -806,7 +805,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     return NULL;
 }
 
-w_err_t w_auth_parse_data(char* buf, char *response, char *ip, char **agentname, char *groups, int *use_client_ip){
+w_err_t w_auth_parse_data(char* buf, char *response, char *ip, char **agentname, char *groups){
     
     bool parseok = FALSE; 
     //JJP: I prefer allocating space for agentname instead of recyclying the one in buffer. This will avoid handling buffer until end.
@@ -902,7 +901,7 @@ w_err_t w_auth_parse_data(char* buf, char *response, char *ip, char **agentname,
     
     char client_source_ip[IPSIZE + 1] = {0};
     char client_source_ip_token[3] = "IP:";
-
+    
     if(strncmp(++buf,client_source_ip_token,3)==0) {
         char format[15];
         sprintf(format, " IP:\'%%%d[^\']\"", IPSIZE);
@@ -916,12 +915,11 @@ w_err_t w_auth_parse_data(char* buf, char *response, char *ip, char **agentname,
                 snprintf(response, 2048, "ERROR: Invalid IP: %s\n\n", client_source_ip);                    
                 return OS_INVALID;
             }
-
             snprintf(ip, IPSIZE, "%s", client_source_ip);
         }
-
-        (*use_client_ip) = 1;
-    } else if(!config.flags.use_source_ip) {
+        
+    } 
+    else if(!config.flags.use_source_ip) {
         // use_source-ip = 0 and no -I argument in agent
         snprintf(ip, IPSIZE, "any");
     }
