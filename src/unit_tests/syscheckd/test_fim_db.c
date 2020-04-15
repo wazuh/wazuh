@@ -908,7 +908,9 @@ void test_fim_db_insert_data_no_rowid_error(void **state) {
     //Inside fim_db_bind_insert_data
     {
         will_return_always(__wrap_sqlite3_bind_int, 0);
+        #ifndef TEST_WINAGENT
         will_return_always(__wrap_sqlite3_bind_int64, 0);
+        #endif
         will_return_always(__wrap_sqlite3_bind_text, 0);
     }
 
@@ -936,7 +938,9 @@ void test_fim_db_insert_data_no_rowid_success(void **state) {
     //Inside fim_db_bind_insert_data
     {
         will_return_always(__wrap_sqlite3_bind_int, 0);
+        #ifndef TEST_WINAGENT
         will_return_always(__wrap_sqlite3_bind_int64, 0);
+        #endif
         will_return_always(__wrap_sqlite3_bind_text, 0);
     }
 
