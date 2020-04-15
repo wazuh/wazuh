@@ -69,6 +69,18 @@ typedef struct _enrollment_ctx {
 } w_enrollment_ctx;
 
 /**
+ * Default initialization of w_enrollment_target
+ * structure
+ * */
+w_enrollment_target *w_enrollment_target_init();
+
+/**
+ * Default initialization of w_enrollment_cert
+ * structure
+ * */
+w_enrollment_cert *w_enrollment_cert_init();
+
+/**
  * Initializes parameters of an w_enrollment_ctx structure based
  * on a target and certificate configurations
  * */
