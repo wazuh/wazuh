@@ -57,10 +57,10 @@ stages:
       # Save some data for future use in the test
       save:
         json:
-          returned_file: data.affected_items.0.file
-          returned_md5: data.affected_items.0.md5
-          returned_sha1: data.affected_items.0.sha1
-          returned_sha256: data.affected_items.0.sha256
+          returned_file: data.affected_items[0].file
+          returned_md5: data.affected_items[0].md5
+          returned_sha1: data.affected_items[0].sha1
+          returned_sha256: data.affected_items[0].sha256
           returned_total: data.total_affected_items
 
     # GET /syscheck/000?limit=1&summary=True
@@ -103,7 +103,7 @@ stages:
       # Save second item to check offset in next stage
       save:
         json:
-          offset_item: data.affected_items.1
+          offset_item: data.affected_items[1]
 
     # GET /syscheck/000?limit=1&offset=1
   - name: Try to get syscheck scan results for agent 000 using limit and offset parameter
@@ -327,7 +327,7 @@ stages:
           extra_kwargs:
             total: "{returned_total}"
         json:
-          sort_item: data.affected_items.0
+          sort_item: data.affected_items[0]
 
     # GET /syscheck/000?limit=1&sort=-file,date&offset={sort_offset}
   - name: Try to get syscheck scan results for agent 000 using limit and sort descending filtering
@@ -612,10 +612,10 @@ stages:
       # Save some data for future use in the test
       save:
         json:
-          returned_file: data.affected_items.0.file
-          returned_md5: data.affected_items.0.md5
-          returned_sha1: data.affected_items.0.sha1
-          returned_sha256: data.affected_items.0.sha256
+          returned_file: data.affected_items[0].file
+          returned_md5: data.affected_items[0].md5
+          returned_sha1: data.affected_items[0].sha1
+          returned_sha256: data.affected_items[0].sha256
           returned_total: data.total_affected_items
 
     # GET /syscheck/002?limit=1&summary=True
@@ -658,7 +658,7 @@ stages:
       # Save second item to check offset in next stage
       save:
         json:
-          offset_item: data.affected_items.1
+          offset_item: data.affected_items[1]
 
     # GET /syscheck/002?limit=1&offset=1
   - name: Try to get syscheck scan results for agent 002 using limit and offset parameter
@@ -883,7 +883,7 @@ stages:
           extra_kwargs:
             total: "{returned_total}"
         json:
-          sort_item: data.affected_items.0
+          sort_item: data.affected_items[0]
 
     # GET /syscheck/002?limit=1&sort=-file,date&offset={sort_offset}
   - name: Try to get syscheck scan results for agent 002 using limit and sort descending filtering
