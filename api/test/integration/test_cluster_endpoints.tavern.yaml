@@ -5,14 +5,7 @@ marks:
   - usefixtures:
     - cluster_tests
 
-includes:
-  - !include common.yaml
-
 stages:
-
-    # Authentication stage
-  - type: ref
-    id: login_get_token
 
   - name: Get cluster config
     request:
@@ -22,7 +15,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - name: !anystr
@@ -54,7 +47,7 @@ stages:
         list_nodes: 'worker1,worker2'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - info:
@@ -84,7 +77,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - info:
@@ -125,7 +118,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - cluster: wazuh
@@ -151,7 +144,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: &cluster_nodes_response
             - name: !anystr
@@ -170,7 +163,7 @@ stages:
         limit: 500
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -188,7 +181,7 @@ stages:
         limit: 0
     response: &connexion_error
       status_code: 400
-      body:
+      json:
         detail: !anystr
         status: 400
         title: !anystr
@@ -201,7 +194,7 @@ stages:
         sort: name
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -225,7 +218,7 @@ stages:
         sort: -name
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -249,7 +242,7 @@ stages:
         search: master
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -267,7 +260,7 @@ stages:
         search: worker1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -284,7 +277,7 @@ stages:
         type: master
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -302,7 +295,7 @@ stages:
         type: worker
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -328,7 +321,7 @@ stages:
         select: name,version
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - name: !anystr
@@ -349,7 +342,7 @@ stages:
         select: type
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - type: !anystr
@@ -391,7 +384,7 @@ stages:
         list_nodes: "{node_id:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - ip: !anystr
@@ -428,12 +421,11 @@ stages:
         select: "{field}"
     response:
       status_code: 200
-      body:
-        $ext:
-          # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items
-          extra_kwargs:
-            select_key: "{field:s}"
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: "{field:s}"
 
 ---
 test_name: GET /cluster/status
@@ -448,7 +440,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           enabled: "yes"
           running: "yes"
@@ -466,7 +458,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - agentless: !anything
@@ -502,7 +494,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - auth: !anything
@@ -534,7 +526,7 @@ stages:
         section: alerts
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - alerts:
@@ -556,7 +548,7 @@ stages:
         section: syscheck
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - syscheck:
@@ -584,7 +576,7 @@ stages:
         section: syscollector
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - syscollector:
@@ -612,7 +604,7 @@ stages:
         section: alerts
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - alerts:
@@ -633,7 +625,7 @@ stages:
         section: syscheck
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - syscheck:
@@ -661,7 +653,7 @@ stages:
         section: syscollector
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - syscollector:
@@ -692,7 +684,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - name: master-node
@@ -728,7 +720,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - name: worker1
@@ -768,7 +760,7 @@ stages:
         list_nodes: 'worker1,worker2'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - name: worker1
@@ -790,7 +782,7 @@ stages:
         list_nodes: 'master-node'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - name: master-node
@@ -813,7 +805,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - global:
@@ -845,7 +837,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - active-response: !anything
@@ -862,7 +854,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - alerts: !anything
@@ -880,7 +872,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - command: !anything
@@ -897,7 +889,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - auth:
@@ -926,7 +918,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - internal:
@@ -946,7 +938,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - syslog_output:
@@ -968,7 +960,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - integration: !anything
@@ -985,7 +977,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - internal:
@@ -1016,7 +1008,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - localfile: !anything
@@ -1033,7 +1025,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items: []
@@ -1049,7 +1041,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - internal:
@@ -1082,7 +1074,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - global:
@@ -1103,7 +1095,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - email_alerts:
@@ -1123,7 +1115,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - internal:
@@ -1143,7 +1135,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - monitord:
@@ -1169,7 +1161,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - remote:
@@ -1191,7 +1183,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - internal:
@@ -1231,7 +1223,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - syscheck:
@@ -1249,7 +1241,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - rootcheck:
@@ -1281,7 +1273,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - internal:
@@ -1309,7 +1301,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - wmodules: !anything
@@ -1341,7 +1333,7 @@ stages:
         path: etc/ossec.conf
     response:
       status_code: 200
-      body:
+      json:
         contents: !anything
 
   - name: Get local rules {node_id}
@@ -1351,7 +1343,7 @@ stages:
         path: etc/rules/local_rules.xml
     response:
       status_code: 200
-      body:
+      json:
         contents: !anything
 
   - name: Get rules {node_id}
@@ -1361,7 +1353,7 @@ stages:
         path: ruleset/rules/0350-amazon_rules.xml
     response:
       status_code: 200
-      body:
+      json:
         contents: !anything
 
   - name: Get local decoder {node_id}
@@ -1371,7 +1363,7 @@ stages:
         path: etc/decoders/local_decoder.xml
     response:
       status_code: 200
-      body:
+      json:
         contents: !anything
 
   - name: Get decoder {node_id}
@@ -1381,7 +1373,7 @@ stages:
         path: ruleset/decoders/0005-wazuh_decoders.xml
     response:
       status_code: 200
-      body:
+      json:
         contents: !anything
 
   - name: Get CDB list {node_id}
@@ -1391,7 +1383,7 @@ stages:
         path: etc/lists/audit-keys
     response:
       status_code: 200
-      body:
+      json:
         contents: !anything
 
   - name: Get file with wrong path (master)
@@ -1433,7 +1425,7 @@ stages:
         path: etc/rules/local_rules.xml
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'etc/rules/local_rules.xml'
@@ -1449,7 +1441,7 @@ stages:
         path: etc/rules/local-rules.xml
     response: &non_existing_file
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -1469,7 +1461,7 @@ stages:
         path: etc/decoders/local_decoder.xml
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'etc/decoders/local_decoder.xml'
@@ -1493,7 +1485,7 @@ stages:
         path: etc/lists/audit-keys
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'etc/lists/audit-keys'
@@ -1534,10 +1526,10 @@ stages:
         path: etc/ossec.conf
     response:
       save:
-        body:
+        json:
           ossec_conf: contents
       status_code: 200
-      body:
+      json:
         contents: !anystr
 
   - name: Upload ossec.conf {node_id}
@@ -1553,7 +1545,7 @@ stages:
         path: etc/ossec.conf
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'etc/ossec.conf'
@@ -1570,7 +1562,7 @@ stages:
         path: etc/rules/new-rules.xml
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'etc/rules/new-rules.xml'
@@ -1588,7 +1580,7 @@ stages:
         overwrite: False
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -1611,7 +1603,7 @@ stages:
         overwrite: True
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'etc/rules/new-rules.xml'
@@ -1629,7 +1621,7 @@ stages:
         overwrite: True
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -1651,7 +1643,7 @@ stages:
         path: etc/decoders/new-decoder.xml
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'etc/decoders/new-decoder.xml'
@@ -1669,7 +1661,7 @@ stages:
         overwrite: False
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -1692,7 +1684,7 @@ stages:
         overwrite: True
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'etc/decoders/new-decoder.xml'
@@ -1710,7 +1702,7 @@ stages:
         overwrite: True
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -1732,7 +1724,7 @@ stages:
         path: etc/lists/new-list
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'etc/lists/new-list'
@@ -1750,7 +1742,7 @@ stages:
         overwrite: False
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -1773,7 +1765,7 @@ stages:
         overwrite: True
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'etc/lists/new-list'
@@ -1791,7 +1783,7 @@ stages:
         overwrite: True
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -1823,7 +1815,7 @@ stages:
         overwrite: True
     response:
       status_code: 500 # should be 400?
-      body:
+      json:
         code: 3022
         dapi_errors: {}
         detail: !anystr
@@ -1845,7 +1837,7 @@ stages:
         overwrite: True
     response:
       status_code: 500 # should be 400
-      body:
+      json:
         code: 3022
         dapi_errors: {}
         detail: !anystr
@@ -1867,7 +1859,7 @@ stages:
         overwrite: False
     response:
       status_code: 500  # should be 400?
-      body:
+      json:
         code: 3022
         dapi_errors: {}
         detail: !anystr
@@ -1897,7 +1889,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - path: !anystr
@@ -1935,7 +1927,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -1950,7 +1942,7 @@ stages:
         limit: 3
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - &cluster_log
@@ -1972,7 +1964,7 @@ stages:
         limit: 4
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_log
@@ -1992,7 +1984,7 @@ stages:
         sort: tag
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_log
@@ -2010,7 +2002,7 @@ stages:
         sort: -level
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_log
@@ -2027,7 +2019,7 @@ stages:
         offset: 2
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_log
@@ -2046,7 +2038,7 @@ stages:
         offset: 5
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_log
@@ -2064,7 +2056,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_log
@@ -2081,7 +2073,7 @@ stages:
         limit: 2
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_log
@@ -2111,7 +2103,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - ossec-agentlessd: !anything
@@ -2161,7 +2153,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1308
         dapi_errors: !anything
         detail: !anystr
@@ -2177,7 +2169,7 @@ stages:
         date: "2019-08-27"
     response:
       status_code: 200
-      body:
+      json:
         data: !anything
 
   - name: Cluster stats {node_id} day without stats
@@ -2187,7 +2179,7 @@ stages:
         date: "1970-01-01"
     response:
       status_code: 400
-      body:
+      json:
         code: 1308
         dapi_errors: !anything
         detail: !anystr
@@ -2209,7 +2201,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 500 #Should be 400?
-      body:
+      json:
         code: 3022
         dapi_errors: !anything
         detail: !anystr
@@ -2239,7 +2231,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_events_decoded: !anyfloat
           syscheck_events_decoded: !anyfloat
@@ -2309,7 +2301,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           averages: !anything
           interactions: !anyint
@@ -2335,7 +2327,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           queue_size: !anyfloat
           total_queue_size: !anyfloat
@@ -2367,7 +2359,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           Mon:
             hours: !anything
@@ -2412,7 +2404,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - ossec-agentlessd: !anystr
@@ -2452,7 +2444,7 @@ stages:
         list_nodes: 'worker1,worker2'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'worker1'
@@ -2471,7 +2463,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'master-node'

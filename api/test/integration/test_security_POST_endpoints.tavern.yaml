@@ -1,18 +1,11 @@
 ---
 test_name: POST /security/roles
 
-includes:
-  - !include common.yaml
-
 marks:
   - usefixtures:
     - security_tests
 
 stages:
-
-  # Authentication stage
-  - type: ref
-    id: login_get_token
 
   # POST /security/roles
   - name: Add a role to the system
@@ -28,7 +21,7 @@ stages:
             definition: "normal_rule"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: !anyint
@@ -53,7 +46,7 @@ stages:
             definition: "normal_rule1"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: !anyint
@@ -78,7 +71,7 @@ stages:
             definition: "normal_rule2"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: !anyint
@@ -102,7 +95,7 @@ stages:
           definition1: "normal_rule1"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -129,7 +122,7 @@ stages:
           definition: "normal_rule"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -166,7 +159,7 @@ stages:
           effect: "allow"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: !anyint
@@ -203,7 +196,7 @@ stages:
           effect: "allow"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: !anyint
@@ -238,7 +231,7 @@ stages:
           effect: "deny"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: !anyint
@@ -273,7 +266,7 @@ stages:
           effect: "allow"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -306,7 +299,7 @@ stages:
           effect: "allow"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -339,7 +332,7 @@ stages:
           effect: "allow"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -370,7 +363,7 @@ stages:
           effect: "allow"
     response:
       status_code: 400
-      body:
+      json:
         detail: !anystr
         status: 400
         title: "Bad Request"
@@ -391,7 +384,7 @@ stages:
         policy_ids: 12
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           total_affected_items: 1
@@ -407,7 +400,7 @@ stages:
         policy_ids: 13
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           total_affected_items: 1
@@ -423,7 +416,7 @@ stages:
         policy_ids: 12,13
     response:
       status_code: 200
-      body: &error
+      json: &error
         data:
           affected_items: []
           failed_items:
@@ -447,7 +440,7 @@ stages:
         policy_ids: 999,56
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -472,7 +465,7 @@ stages:
         policy_ids: 999,12
     response:
       status_code: 200
-      body:
+      json:
         <<: *error
 
 ---
@@ -487,7 +480,7 @@ stages:
       method: POST
     response:
       status_code: 400
-      body: &error_spec
+      json: &error_spec
         detail: !anystr
         status: !anyint
         title: !anystr
@@ -501,7 +494,7 @@ stages:
         password: "new_user"
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Create a new user (secure password)
@@ -524,7 +517,7 @@ stages:
         password: "new_user1B!"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -546,7 +539,7 @@ stages:
         pass: "new_user11A"
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Create a new user (extra parameter)
@@ -558,7 +551,7 @@ stages:
         pass: "extra"
     response:
       status_code: 400
-      body:
+      json:
         code: 5005
 
   - name: Create a new user (extra parameters)
@@ -577,7 +570,7 @@ stages:
         pass7: "extra"
     response:
       status_code: 400
-      body:
+      json:
         code: 5005
 
   - name: Create a new user (missing password parameter)
@@ -587,7 +580,7 @@ stages:
         username: "new_user1"
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Create a new user (missing username parameter)
@@ -597,7 +590,7 @@ stages:
         password: "new_user11A"
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Create a new user (invalid username parameter)
@@ -608,7 +601,7 @@ stages:
         username: 1
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Create a new user (invalid password parameter)
@@ -619,7 +612,7 @@ stages:
         username: "new_user1"
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Create a new user (secure password)
@@ -645,7 +638,7 @@ stages:
         role_ids: 3
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           total_affected_items: 1
@@ -661,7 +654,7 @@ stages:
         role_ids: 3,4,5
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           total_affected_items: 3
@@ -677,7 +670,7 @@ stages:
         role_ids: 99,98
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -702,7 +695,7 @@ stages:
         role_ids: 4,5,3,99,98
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - roles:

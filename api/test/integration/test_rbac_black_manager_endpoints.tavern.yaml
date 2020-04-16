@@ -5,14 +5,7 @@ marks:
   - usefixtures:
     - manager_black_rbac_tests
 
-includes:
-  - !include common.yaml
-
 stages:
-
-  # Authentication stage
-  - type: ref
-    id: login_get_token
 
   - name: Request manager configuration (Denied)
     request:
@@ -22,7 +15,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
 
 ---
@@ -38,7 +31,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
 
 ---
@@ -54,7 +47,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
 
 ---
@@ -83,7 +76,7 @@ stages:
         path: 'etc/rules/local_rules.xml'
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
 
 ---
@@ -101,7 +94,7 @@ stages:
         path: 'etc/rules/local_rules.xml'
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
 
 ---
@@ -133,7 +126,7 @@ stages:
         overwrite: True
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           total_affected_items: 0
@@ -160,7 +153,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
 
 ---
@@ -176,7 +169,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
 
 ---
@@ -192,7 +185,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
 
 ---
@@ -208,7 +201,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
 
 ---
@@ -224,7 +217,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
 
 ---
@@ -240,7 +233,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
 
 ---
@@ -256,7 +249,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
 
 ---
@@ -272,7 +265,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
 
 ---
@@ -288,7 +281,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
 
 ---
@@ -304,5 +297,5 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 4000

@@ -1,17 +1,11 @@
 ---
 test_name: GET OS SYSCOLLECTOR RBAC
 
-includes:
- - !include common.yaml
-
 marks:
   - usefixtures:
     - syscollector_black_rbac_tests
 
 stages:
-
-  - type: ref
-    id: login_get_token
 
   - name: Get os from an agent (Allow)
     request:
@@ -21,7 +15,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - architecture: !anystr
@@ -52,7 +46,7 @@ stages:
       method: GET
     response:
       status_code: 400
-      body: &permission_denied
+      json: &permission_denied
         code: 4000
         dapi_errors: !anything
         detail: !anystr
@@ -74,7 +68,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - board_serial: !anything
@@ -102,7 +96,7 @@ stages:
       method: GET
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -118,7 +112,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - address: !anystr
@@ -138,7 +132,7 @@ stages:
       method: GET
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -154,7 +148,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - mac: !anystr
@@ -185,7 +179,7 @@ stages:
       method: GET
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -201,7 +195,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - dhcp: !anystr
@@ -220,7 +214,7 @@ stages:
       method: GET
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -238,7 +232,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - architecture: !anystr
@@ -266,7 +260,7 @@ stages:
       method: GET
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -282,7 +276,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - inode: !anyint
@@ -312,7 +306,7 @@ stages:
       method: GET
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -330,7 +324,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - cmd: !anystr
@@ -376,7 +370,7 @@ stages:
       method: GET
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -392,7 +386,7 @@ stages:
       method: GET
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Filter hotfix (Deny)
@@ -400,5 +394,5 @@ stages:
       <<: *hotfix_request_deny
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
