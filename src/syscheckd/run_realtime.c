@@ -360,38 +360,39 @@ int realtime_adddir(const char *dir, int whodata, __attribute__((unused)) int fo
     if (whodata) {
 #ifdef WIN_WHODATA
 
-    int type;
+        int type;
 
-    if (!syscheck.wdata.fd && whodata_audit_start()) {
-        merror_exit(FIM_CRITICAL_DATA_CREATE, "whodata file descriptors");
-    }
+        if (!syscheck.wdata.fd && whodata_audit_start()) {
+            merror_exit(FIM_CRITICAL_DATA_CREATE, "whodata file descriptors");
+        }
 
-    // This parameter is used to indicate if the file is going to be monitored in Whodata mode,
-    // regardless of it was checked in the initial configuration (WHODATA_ACTIVE in opts)
-    syscheck.wdata.dirs_status[whodata - 1].status |= WD_CHECK_WHODATA;
-    syscheck.wdata.dirs_status[whodata - 1].status &= ~WD_CHECK_REALTIME;
+        // This parameter is used to indicate if the file is going to be monitored in Whodata mode,
+        // regardless of it was checked in the initial configuration (WHODATA_ACTIVE in opts)
+        syscheck.wdata.dirs_status[whodata - 1].status |= WD_CHECK_WHODATA;
+        syscheck.wdata.dirs_status[whodata - 1].status &= ~WD_CHECK_REALTIME;
 
-    // Check if the file or directory exists
-    if (type = check_path_type(dir), type == 2) {
-        syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_DIR_TYPE;
-        syscheck.wdata.dirs_status[whodata - 1].status |= WD_STATUS_EXISTS;
-    } else if (type == 1) {
-        syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_FILE_TYPE;
-        syscheck.wdata.dirs_status[whodata - 1].status |= WD_STATUS_EXISTS;
-    } else {
-        mdebug1(FIM_WARN_REALTIME_OPENFAIL, dir);
+        // Check if the file or directory exists
+        if (type = check_path_type(dir), type == 2) {
+            syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_DIR_TYPE;
+            syscheck.wdata.dirs_status[whodata - 1].status |= WD_STATUS_EXISTS;
+        } else if (type == 1) {
+            syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_FILE_TYPE;
+            syscheck.wdata.dirs_status[whodata - 1].status |= WD_STATUS_EXISTS;
+        } else {
+            mdebug1(FIM_WARN_REALTIME_OPENFAIL, dir);
 
-        syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_UNK_TYPE;
-        syscheck.wdata.dirs_status[whodata - 1].status &= ~WD_STATUS_EXISTS;
-        return 0;
-    }
+            syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_UNK_TYPE;
+            syscheck.wdata.dirs_status[whodata - 1].status &= ~WD_STATUS_EXISTS;
+            return 0;
+        }
 
-    GetSystemTime(&syscheck.wdata.dirs_status[whodata - 1].last_check);
-    if (set_winsacl(dir, whodata - 1)) {
-        merror(FIM_ERROR_WHODATA_ADD_DIRECTORY, dir);
-        return 0;
-    }
-    return 1;
+        GetSystemTime(&syscheck.wdata.dirs_status[whodata - 1].last_check);
+        if (set_winsacl(dir, whodata - 1)) {
+            merror(FIM_ERROR_WHODATA_ADD_DIRECTORY, dir);
+            return 0;
+        }
+
+        return 1;
 #endif
     }
 
