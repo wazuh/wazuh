@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -15,7 +15,7 @@
 int rotate_log;
 
 /* Start the agent daemon */
-void AgentdStart(const char *dir, int uid, int gid, const char *user, const char *group)
+void AgentdStart(int uid, int gid, const char *user, const char *group)
 {
     int rc = 0;
     int maxfd = 0;
@@ -173,10 +173,6 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     memset(&act, 0, sizeof(act));
     act.sa_handler = SIG_IGN;
     sigaction(SIGPIPE, &act, NULL);
-
-    /* Send integrity message for agent configs */
-    intcheck_file(DEFAULTCPATH, dir);
-    intcheck_file(OSSEC_DEFINES_PATH, dir);
 
     // Start request module
     req_init();

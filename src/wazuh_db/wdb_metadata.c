@@ -1,6 +1,6 @@
 /*
  * Wazuh SQLite integration
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * June 06, 2016.
  *
  * This program is free software; you can redistribute it
@@ -23,17 +23,6 @@ static const char *SQL_METADATA_STMT[] = {
     "UPDATE metadata SET value = ? WHERE key = ?;",
     "SELECT value FROM metadata WHERE key = ?;"
 };
-
-int wdb_metadata_initialize (wdb_t *wdb) {
-    int result = 0;
-
-    if (wdb_metadata_insert_entry(wdb, "db_version", "3") < 0) {
-        merror("Couldn't fill metadata into database '%s'", wdb->id);
-        result = -1;
-    }
-
-    return result;
-}
 
 int wdb_fim_fill_metadata(wdb_t *wdb, char *data) {
     char *key, *value;

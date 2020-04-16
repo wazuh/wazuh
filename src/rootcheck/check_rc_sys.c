@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -146,7 +146,7 @@ static int read_sys_dir(const char *dir_name, int do_read)
     unsigned int entry_count = 0;
     int did_changed = 0;
     DIR *dp;
-    struct dirent *entry;
+    struct dirent *entry = NULL;
     struct stat statbuf;
     short is_nfs;
     short skip_fs;

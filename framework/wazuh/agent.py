@@ -1,11 +1,11 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import errno
+import fcntl
 import hashlib
 import operator
-
+import os
 import socket
 from base64 import b64encode
 from datetime import date, datetime, timedelta, timezone
@@ -18,7 +18,6 @@ from shutil import copyfile, rmtree
 from time import time, sleep
 from typing import Dict
 
-import fcntl
 import requests
 
 from wazuh import common, configuration
@@ -28,10 +27,9 @@ from wazuh.database import Connection
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
-from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
-                        get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
-                        md5, SQLiteBackend, WazuhDBBackend, filter_array_by_query, safe_move
-from wazuh.wdb import WazuhDBConnection
+from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, \
+    plain_dict_to_nested_dict, get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, \
+    mkdir_with_mode, md5, SQLiteBackend, WazuhDBBackend, filter_array_by_query, safe_move
 
 
 def create_exception_dic(id, e):
@@ -54,12 +52,12 @@ def create_exception_dic(id, e):
 class WazuhDBQueryAgents(WazuhDBQuery):
 
     def __init__(self, offset, limit, sort, search, select, count, get_data, query, filters={}, default_sort_field='id',
-                 min_select_fields={'lastKeepAlive', 'version', 'id'}, remove_extra_fields=True):
+                 min_select_fields={'lastKeepAlive', 'version', 'id'}, remove_extra_fields=True, distinct=False):
         backend = SQLiteBackend(common.database_path_global)
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select, filters=filters,
                               fields=Agent.fields, default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
                               min_select_fields=min_select_fields, count=count, get_data=get_data, backend=backend,
-                              date_fields={'lastKeepAlive','dateAdd'}, extra_fields={'internal_key'})
+                              date_fields={'lastKeepAlive','dateAdd'}, extra_fields={'internal_key'}, distinct=distinct)
         self.remove_extra_fields = remove_extra_fields
 
     def _filter_status(self, status_filter):
@@ -177,7 +175,7 @@ class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
         return 'COUNT(DISTINCT a.id)'
 
     def _get_total_items(self):
-        WazuhDBQueryAgents._get_total_items(self)
+        self.total_items = self.backend.execute(self.query.format(self._default_count_query()), self.request, True)
         self.query += ' GROUP BY a.id '
 
 
@@ -311,9 +309,14 @@ class Agent:
             if self.status.lower() != 'active':
                 raise WazuhException(1707, '{0} - {1}'.format(self.id, self.status))
 
-            oq = OssecQueue(common.ARQUEUE)
-            ret_msg = oq.send_msg_to_agent(OssecQueue.RESTART_AGENTS, self.id)
-            oq.close()
+            # Check if agent has active-response disabled
+            agent_conf = self.get_config(self.id, 'com', 'active-response')
+            if agent_conf['active-response']['disabled'] == 'yes':
+                raise WazuhException(1750)
+            else:
+                oq = OssecQueue(common.ARQUEUE)
+                ret_msg = oq.send_msg_to_agent(OssecQueue.RESTART_AGENTS, self.id)
+                oq.close()
 
         return ret_msg
 
@@ -811,9 +814,9 @@ class Agent:
         :param q: Query to filter results.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        db_query = WazuhDBQueryDistinctAgents(offset=offset, limit=limit, sort=sort, search=search,
-                                              select={'fields':['os.platform']}, count=True, get_data=True,
-                                              default_sort_field='os_platform', query=q, min_select_fields=set())
+        db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search,
+                                      select={'fields':['os.platform']}, count=True, get_data=True,
+                                      default_sort_field='os_platform', query=q, min_select_fields=set(), distinct=True)
         return db_query.run()
 
 
@@ -1962,6 +1965,8 @@ class Agent:
             with open(wpk_file_path, 'wb') as fd:
                 for chunk in result.iter_content(chunk_size=128):
                     fd.write(chunk)
+                os.chown(wpk_file_path, common.ossec_gid(), common.ossec_gid())
+                os.chmod(wpk_file_path, 0o660)
         else:
             raise WazuhException(1714,
                                  WazuhException.ERRORS[1714] + ". Can't access to the WPK file in {}".format(wpk_url),

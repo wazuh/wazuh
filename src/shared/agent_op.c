@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -12,43 +12,39 @@
 #include "os_crypto/sha256/sha256_op.h"
 #include "../os_net/os_net.h"
 #include "../addagent/manage_agents.h"
+#include "syscheckd/syscheck.h"
 
+/// Pending restart bit field
+static struct {
+    unsigned syscheck:1;
+    unsigned rootcheck:1;
+} os_restart;
 
 /* Check if syscheck is to be executed/restarted
  * Returns 1 on success or 0 on failure (shouldn't be executed now)
  */
 int os_check_restart_syscheck()
 {
-    /* If the restart is not present, return 0 */
-    if (isChroot()) {
-        if (unlink(SYSCHECK_RESTART) == -1) {
-            return (0);
-        }
-    } else {
-        if (unlink(SYSCHECK_RESTART_PATH) == -1) {
-            return (0);
-        }
-    }
-    return (1);
+    int current = os_restart.syscheck;
+    os_restart.syscheck = 0;
+    return current;
 }
 
-/* Set syscheck to be restarted
- * Returns 1 on success or 0 on failure
+/* Check if rootcheck is to be executed/restarted
+ * Returns 1 on success or 0 on failure (shouldn't be executed now)
  */
-int os_set_restart_syscheck()
+int os_check_restart_rootcheck()
 {
-    FILE *fp;
+    int current = os_restart.rootcheck;
+    os_restart.rootcheck = 0;
+    return current;
+}
 
-    fp = fopen(isChroot() ? SYSCHECK_RESTART : SYSCHECK_RESTART_PATH, "w");
-    if (!fp) {
-        merror(FOPEN_ERROR, isChroot() ? SYSCHECK_RESTART : SYSCHECK_RESTART_PATH, errno, strerror(errno));
-        return (0);
-    }
-
-    fprintf(fp, "%s\n", isChroot() ? SYSCHECK_RESTART : SYSCHECK_RESTART_PATH);
-    fclose(fp);
-
-    return (1);
+/* Set syscheck and rootcheck to be restarted */
+void os_set_restart_syscheck()
+{
+    os_restart.syscheck = 1;
+    os_restart.rootcheck = 1;
 }
 
 /* Read the agent name for the current agent
@@ -468,6 +464,7 @@ int w_validate_group_name(const char *group){
     int valid_chars_length = strlen(valid_chars);
     char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
     char *multi_group_cpy = NULL;
+    char *save_ptr = NULL;
 
     os_calloc(OS_SIZE_65536,sizeof(char),multi_group_cpy);
     snprintf(multi_group_cpy,OS_SIZE_65536,"%s",group);
@@ -500,7 +497,7 @@ int w_validate_group_name(const char *group){
     if(multigroup){
 
         const char delim[2] = ",";
-        char *individual_group = strtok(multi_group_cpy, delim);
+        char *individual_group = strtok_r(multi_group_cpy, delim, &save_ptr);
 
         while( individual_group != NULL ) {
 
@@ -511,7 +508,7 @@ int w_validate_group_name(const char *group){
                 return -4;
             }
 
-            individual_group = strtok(NULL, delim);
+            individual_group = strtok_r(NULL, delim, &save_ptr);
         }
 
         /* Look for consecutive ',' */

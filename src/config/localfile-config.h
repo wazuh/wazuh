@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -14,6 +14,7 @@
 #define EVENTLOG     "eventlog"
 #define EVENTCHANNEL "eventchannel"
 #define DATE_MODIFIED   1
+#define DEFAULT_EVENTCHANNEL_REC_TIME 5
 
 #include <pthread.h>
 
@@ -68,6 +69,7 @@ typedef struct _logreader {
     char *djb_program_name;
     char *command;
     char *alias;
+    int reconnect_time;
     char future;
     char *query;
     int filter_binary;

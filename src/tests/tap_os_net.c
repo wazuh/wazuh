@@ -34,7 +34,7 @@ int test_tcpv4_local() {
 
     w_assert_int_eq(OS_SendTCP(client_socket, SENDSTRING), 0);
 
-    w_assert_int_eq(OS_RecvTCPBuffer(server_client_socket, buffer, BUFFERSIZE), 0);
+    w_assert_int_eq(OS_RecvTCPBuffer(server_client_socket, buffer, BUFFERSIZE), 13);
 
     w_assert_str_eq(buffer, SENDSTRING);
 
@@ -69,7 +69,7 @@ int test_tcpv4_inet() {
 
     w_assert_int_eq(OS_SendTCP(client_socket, SENDSTRING), 0);
 
-    w_assert_int_eq(OS_RecvTCPBuffer(server_client_socket, buffer, BUFFERSIZE), 0);
+    w_assert_int_eq(OS_RecvTCPBuffer(server_client_socket, buffer, BUFFERSIZE), 13);
 
     w_assert_str_eq(buffer, SENDSTRING);
 
@@ -104,7 +104,7 @@ int test_tcpv6() {
 
     w_assert_int_eq(OS_SendTCP(client_socket, SENDSTRING), 0);
 
-    w_assert_int_eq(OS_RecvTCPBuffer(server_client_socket, buffer, BUFFERSIZE), 0);
+    w_assert_int_eq(OS_RecvTCPBuffer(server_client_socket, buffer, BUFFERSIZE), 13);
 
     w_assert_str_eq(buffer, SENDSTRING);
 
@@ -233,13 +233,13 @@ int test_unix() {
 
     w_assert_int_eq(OS_SendUnix(client_socket, SENDSTRING, 5), 0);
 
-    w_assert_int_eq(OS_RecvUnix(server_socket, BUFFERSIZE, buffer), 5);
+    w_assert_int_eq(OS_RecvUnix(server_socket, BUFFERSIZE - 1, buffer), 5);
 
     w_assert_str_eq(buffer, "Hello");
 
     w_assert_int_eq(OS_SendUnix(client_socket, SENDSTRING, 0), 0);
 
-    w_assert_int_eq(OS_RecvUnix(server_socket, BUFFERSIZE, buffer), strlen(SENDSTRING) + 1);
+    w_assert_int_eq(OS_RecvUnix(server_socket, BUFFERSIZE - 1, buffer), strlen(SENDSTRING) + 1);
 
     w_assert_str_eq(buffer, SENDSTRING);
 
@@ -256,7 +256,7 @@ int test_unix_invalid_sockets() {
 
     w_assert_int_eq(OS_SendUnix(-1, SENDSTRING, strlen(SENDSTRING)), OS_SOCKTERR);
 
-    w_assert_int_eq(OS_RecvUnix(-1, BUFFERSIZE, buffer), 0);
+    w_assert_int_eq(OS_RecvUnix(-1, BUFFERSIZE - 1, buffer), 0);
 
     return 1;
 }
@@ -332,7 +332,7 @@ int main(void) {
     TAP_TEST_MSG(test_get_ip(), "Get primary IP address collection.");
 
     TAP_PLAN;
-    TAP_SUMMARY;
+    int r = tap_summary();
     printf("\n    ENDING TEST  - OS_NET   \n\n");
-    return 0;
+    return r;
 }

@@ -1,110 +1,103 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
+cmake_minimum_required(VERSION 3.10)
 
-CMAKE_MINIMUM_REQUIRED(VERSION 3.13)
+PROJECT(UnitTests C)
 
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../headers)
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../)
+# message("${TARGET}")
+get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
 
-FIND_LIBRARY(WAZUHLIB NAMES libwazuh.a HINTS "${CMAKE_SOURCE_DIR}/../")
-FIND_LIBRARY(WAZUHEXT NAMES libwazuhext.so HINTS "${CMAKE_SOURCE_DIR}/../")
+message(Source folder: ${SRC_FOLDER})
+include_directories(${SRC_FOLDER}/headers)
+include_directories(${SRC_FOLDER}/external/openssl/include)
+include_directories(${SRC_FOLDER}/external/audit-userspace/lib)
+include_directories(${SRC_FOLDER}/external/bzip2)
+include_directories(${SRC_FOLDER})
 
-ADD_COMPILE_OPTIONS(-ggdb)
-ENABLE_TESTING()
+# Wazuh libraries
+find_library(WAZUHLIB NAMES libwazuh.a HINTS "${SRC_FOLDER}")
+if(NOT WAZUHLIB)
+  message(FATAL_ERROR "libwazuh.a not found in ${SRC_FOLDER} Aborting...")
+endif()
 
+# Enable testing
+enable_testing()
 
-# Tests list and flags
-LIST(APPEND tests_names "test_mitre")
-LIST(APPEND tests_flags "-Wl,--wrap,wdb_send_query")
+# Add target specific file
+if(NOT TARGET)
+  message(FATAL_ERROR "No TARGET specified. Aborting...")
+elseif(${TARGET} STREQUAL "server")
+  include("./server.cmake")
+elseif(${TARGET} STREQUAL "agent")
+  include("./agent.cmake")
+elseif(${TARGET} STREQUAL "winagent")
+  include("./winagent.cmake")
+else()
+  message(FATAL_ERROR "Invalid TARGET '${TARGET}'. Aborting...")
+endif()
 
-# Generate syscheck library
-FILE(GLOB sysfiles ../syscheckd/*.o)
-LIST(REMOVE_ITEM sysfiles ../syscheckd/main.o)
-FILE(GLOB rootfiles ../rootcheck/*.o)
-
-ADD_LIBRARY(SYSCHECK_O STATIC ${sysfiles})
-ADD_LIBRARY(ROOTCHECK_O STATIC ${rootfiles})
-
-SET_SOURCE_FILES_PROPERTIES(
-  ${sysfiles}
-  ${rootfiles}
-  PROPERTIES
-  EXTERNAL_OBJECT true
-  GENERATED true
-  )
-
-SET_TARGET_PROPERTIES(
-  SYSCHECK_O
-  ROOTCHECK_O
-  PROPERTIES
-  LINKER_LANGUAGE C
-  )
-
-TARGET_LINK_LIBRARIES(SYSCHECK_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+if(NOT WAZUHEXT)
+  message(FATAL_ERROR "libwazuhext not found! Aborting...")
+endif()
 
 
-# Generate analysisd library
+add_subdirectory(syscheckd)
+add_subdirectory(shared)
 
-FILE(GLOB analysisd_files ../analysisd/*.o)
+# Config files
+if(${TARGET} STREQUAL "winagent")
+  configure_file("test_syscheck_win.conf" "syscheckd/test_syscheck.conf" NEWLINE_STYLE WIN32)
+  configure_file("test_syscheck_win2.conf" "syscheckd/test_syscheck2.conf" NEWLINE_STYLE WIN32)
+  configure_file("test_syscheck_win.conf" "syscheckd/ossec.conf" NEWLINE_STYLE WIN32)
+  configure_file("test_empty_config.conf" "syscheckd/test_empty_config.conf" NEWLINE_STYLE WIN32)
+  configure_file("test_internal_options.conf" "syscheckd/internal_options.conf" NEWLINE_STYLE WIN32)
+else()
+  configure_file("test_syscheck.conf" "syscheckd/test_syscheck.conf" COPYONLY)
+  configure_file("test_syscheck2.conf" "syscheckd/test_syscheck2.conf" COPYONLY)
+  configure_file("test_empty_config.conf" "syscheckd/test_empty_config.conf" COPYONLY)
+  configure_file("test_internal_options.conf" "syscheckd/internal_options.conf" COPYONLY)
+endif()
 
-LIST(REMOVE_ITEM analysisd_files ../analysisd/main.o)
+# Coverage
+find_program(LCOV_PATH lcov)
+if(NOT LCOV_PATH)
+  message(FATAL_ERROR "lcov not found! Aborting...")
+endif()
 
-ADD_LIBRARY(ANALYSISD_O STATIC ${analysisd_files})
+find_program(GCOV_PATH gcov)
+if(NOT GCOV_PATH)
+  message(FATAL_ERROR "gcov not found! Aborting...")
+endif()
 
-SET_SOURCE_FILES_PROPERTIES(
+find_program(GENHTML_PATH genhtml)
+if(NOT GENHTML_PATH)
+  message(FATAL_ERROR "genhtml not found! Aborting...")
+endif()
 
-  ${analysisd_files}
+add_custom_target(coverage
+    # Cleanup lcov
+    COMMAND ${LCOV_PATH} --gcov-tool ${GCOV_PATH} -directory ${SRC_FOLDER} --rc lcov_branch_coverage=1 --zerocounters
 
-  PROPERTIES
+    # Create baseline to make sure untouched files show up in the report
+    COMMAND ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} -c -i -d ${SRC_FOLDER} --rc lcov_branch_coverage=1 -o coverage.base
 
-  EXTERNAL_OBJECT true
+    # Run tests
+    COMMAND ctest
 
-  GENERATED true
+    # Capturing lcov counters and generating report
+    COMMAND ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} --directory ${SRC_FOLDER} --capture --rc lcov_branch_coverage=1 --output-file coverage.info
 
-  )
+    # Add baseline counters
+    COMMAND ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} -a coverage.base -a coverage.info --rc lcov_branch_coverage=1 --output-file coverage.total
+    COMMAND ${LCOV_PATH} --gcov-tool ${GCOV_PATH} --remove coverage.total "*external/*" --rc lcov_branch_coverage=1 --output-file coverage.info.cleaned
 
-SET_TARGET_PROPERTIES(
+    # Generate HTML report
+    COMMAND ${GENHTML_PATH} -q --output-directory coverage-report --title "WAZUH unit-tests coverage" --rc lcov_branch_coverage=1 --legend coverage.info.cleaned
 
-  ANALYSISD_O
-
-  PROPERTIES
-
-  LINKER_LANGUAGE C
-
-  )
-
-TARGET_LINK_LIBRARIES(ANALYSISD_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
-
-
-# Declare all tests targets
-LIST(LENGTH tests_names count)
-MATH(EXPR count "${count} - 1")
-FOREACH(i RANGE ${count})
-    LIST(GET tests_names ${i} test_name)
-    LIST(GET tests_flags ${i} test_flags)
-
-    ADD_EXECUTABLE(${test_name} ${test_name}.c)
-
-    TARGET_LINK_LIBRARIES(
-        ${test_name}
-        ${WAZUHLIB}
-        ${WAZUHEXT}
-        SYSCHECK_O
-        ANALYSISD_O
-        -lcmocka
-        -fprofile-arcs
-        -ftest-coverage
-    )
-    IF(test_flags STREQUAL " ")
-    ELSE()
-        TARGET_LINK_LIBRARIES(
-            ${test_name}
-            ${test_flags}
-        )
-    ENDIF()
-    ADD_TEST(${test_name} ${test_name})
-ENDFOREACH()
+    # Clean counters
+    COMMAND ${CMAKE_COMMAND} -E remove coverage.base coverage.total coverage.info.cleaned
+)

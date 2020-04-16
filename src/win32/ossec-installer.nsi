@@ -20,8 +20,8 @@
 ; general
 !define MUI_ICON install.ico
 !define MUI_UNICON uninstall.ico
-!define VERSION "3.11.5"
-!define REVISION "31122"
+!define VERSION "3.13.0"
+!define REVISION "31300"
 !define NAME "Wazuh"
 !define SERVICE "OssecSvc"
 
@@ -33,13 +33,13 @@
 Var is_upgrade
 
 Name "${NAME} Windows Agent v${VERSION}"
-BrandingText "Copyright (C) 2015-2019, Wazuh Inc."
+BrandingText "Copyright (C) 2015-2020, Wazuh Inc."
 OutFile "${OutFile}"
 
 VIProductVersion "3.10.0.0"
 VIAddVersionKey ProductName "${NAME}"
 VIAddVersionKey CompanyName "Wazuh Inc."
-VIAddVersionKey LegalCopyright "2019 - Wazuh Inc."
+VIAddVersionKey LegalCopyright "2020 - Wazuh Inc."
 VIAddVersionKey FileDescription "Wazuh Agent installer"
 VIAddVersionKey FileVersion "${VERSION}"
 VIAddVersionKey ProductVersion "${VERSION}"
@@ -171,8 +171,10 @@ Section "Wazuh Agent (required)" MainSec
     CreateDirectory "$INSTDIR\active-response"
     CreateDirectory "$INSTDIR\active-response\bin"
     CreateDirectory "$INSTDIR\tmp"
-	CreateDirectory "$INSTDIR\queue"
-	CreateDirectory "$INSTDIR\queue\diff"
+    CreateDirectory "$INSTDIR\queue"
+    CreateDirectory "$INSTDIR\queue\diff"
+    CreateDirectory "$INSTDIR\queue\fim"
+    CreateDirectory "$INSTDIR\queue\fim\db"
     CreateDirectory "$INSTDIR\incoming"
     CreateDirectory "$INSTDIR\upgrade"
     CreateDirectory "$INSTDIR\wodles"
