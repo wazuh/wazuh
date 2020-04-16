@@ -121,7 +121,6 @@ int set_policies();
 void set_subscription_query(wchar_t *query);
 extern int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path);
 int restore_audit_policies();
-void audit_restore();
 int check_object_sacl(char *obj, int is_file);
 int whodata_hash_add(OSHash *table, char *id, void *data, char *tag);
 void notify_SACL_change(char *dir);
@@ -366,15 +365,13 @@ int run_whodata_scan() {
 
     // Set the signal handler to restore the policies
     atexit(audit_restore);
+
     // Set the system audit policies
     if (result = set_policies(), result) {
-        if (result == 2) {
-            mwarn(FIM_WARN_WHODATA_AUTOCONF);
-        } else {
-            mwarn(FIM_WARN_WHODATA_LOCALPOLICIES);
-            return 0;
-        }
+        merror(FIM_WARN_WHODATA_LOCALPOLICIES);
+        return 1;
     }
+
     // Select the interesting fields
     if (context = EvtCreateRenderContext(fields_number, event_fields, EvtRenderContextValues), !context) {
         merror(FIM_ERROR_WHODATA_CONTEXT, GetLastError());
@@ -922,7 +919,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
 
             }
 
-            if (exists && restore_policies) {
+            if (exists) {
                 if (!(d_status->status & WD_STATUS_EXISTS)) {
                     minfo(FIM_WHODATA_READDED, syscheck.dir[i]);
                     if (set_winsacl(syscheck.dir[i], i)) {
@@ -948,12 +945,6 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
                         continue;
                     }
                 }
-            } else if (exists && !restore_policies) {
-                // If the restore_policies flag is not set, it means that something happened during
-                // the configuration and so, the monitoring will be performed in real-time
-                d_status->status |= WD_STATUS_EXISTS;
-                d_status->status |= WD_CHECK_REALTIME;
-                d_status->status &= ~WD_CHECK_WHODATA;
             } else {
                 mdebug1(FIM_WHODATA_DELETE, syscheck.dir[i]);
                 d_status->status &= ~WD_STATUS_EXISTS;
@@ -1064,6 +1055,7 @@ int set_policies() {
     int wm_exec_ret_code = wm_exec(command, NULL, &result_code, 5, NULL);
     if (wm_exec_ret_code || result_code) {
         retval = 2;
+        merror(FIM_WARN_WHODATA_AUTOCONF);
         goto end;
     }
 
@@ -1093,6 +1085,7 @@ int set_policies() {
     wm_exec_ret_code = wm_exec(command, NULL, &result_code, 5, NULL);
     if (wm_exec_ret_code || result_code) {
         retval = 2;
+        merror(FIM_WARN_WHODATA_AUTOCONF);
         goto end;
     }
 

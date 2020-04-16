@@ -517,6 +517,7 @@ extern pthread_mutex_t audit_mutex;
 extern pthread_cond_t audit_thread_started;
 extern pthread_cond_t audit_hc_started;
 extern pthread_cond_t audit_db_consistency;
+
 #elif WIN32
 /**
  * @brief Initializes the whodata scan mode
@@ -540,6 +541,11 @@ int whodata_audit_start();
  * @return 0 on success, 1 on error
  */
 int set_winsacl(const char *dir, int position);
+
+/**
+ * @brief In case SACLs and policies have been set, restore them
+ */
+void audit_restore();
 
 /**
  * @brief Thread that checks the status of the whodata configured folders

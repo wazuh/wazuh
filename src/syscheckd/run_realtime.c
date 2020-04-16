@@ -360,9 +360,6 @@ int realtime_adddir(const char *dir, int whodata, __attribute__((unused)) int fo
     if (whodata) {
 #ifdef WIN_WHODATA
 
-    if (!syscheck.wdata.whodata_setup) {
-        syscheck.wdata.whodata_setup = 1;
-    }
     int type;
 
     if (!syscheck.wdata.fd && whodata_audit_start()) {

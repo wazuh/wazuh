@@ -413,6 +413,8 @@ void set_priority_windows_thread() {
 
 
 int fim_whodata_initialize() {
+    int retval = 0;
+
 #if defined INOTIFY_ENABLED || defined WIN32
 
 #ifdef WIN32
@@ -428,21 +430,41 @@ int fim_whodata_initialize() {
 #ifdef WIN_WHODATA
     HANDLE t_hdle;
     long unsigned int t_id;
-    if (syscheck.wdata.whodata_setup && !run_whodata_scan()) {
+
+    /* If the initialization of the Whodata engine fails,
+    Wazuh must monitor files/directories in Realtime mode. */
+    if (!run_whodata_scan()) {
         if (t_hdle = CreateThread(NULL, 0, state_checker, NULL, 0, &t_id), !t_hdle) {
             merror(FIM_ERROR_CHECK_THREAD);
-            return -1;
+            retval = -1;
         }
+    } else {
+        merror(FIM_ERROR_WHODATA_INIT);
+
+        // In case SACLs and policies have been set, restore them.
+        audit_restore();
+
+        // Add proper flags for the realtime thread monitors the directories/files.
+        for (int i = 0; syscheck.dir[i]; i++) {
+            syscheck.realtime_change = 1;
+            syscheck.wdata.dirs_status[i].status |= WD_CHECK_REALTIME;
+            syscheck.wdata.dirs_status[i].status &= ~WD_CHECK_WHODATA;
+            syscheck.opts[i] &= ~WHODATA_ACTIVE;
+        }
+
+        retval = -1;
     }
+
 #elif ENABLE_AUDIT
     audit_set_db_consistency();
+
 #endif
 
 #else
     mwarn(FIM_WARN_WHODATA_UNSUPPORTED);
 #endif
 
-    return 0;
+    return retval;
 }
 
 
