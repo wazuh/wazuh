@@ -1152,7 +1152,7 @@ stages:
           affected_items: []
           failed_items:
             - error:
-                code: 1802
+                code: 1800
               id:
                 - 'etc/lists/new-list'
           total_affected_items: 0
