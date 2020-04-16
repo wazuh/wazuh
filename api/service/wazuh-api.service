@@ -1,0 +1,23 @@
+# WAZUH API Service (Systemd unit)
+#
+# Copyright (C) 2015-2020 Wazuh, Inc. All rights reserved.
+# Wazuh.com
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation.
+
+[Unit]
+Description=Wazuh API daemon
+Documentation=https://documentation.wazuh.com/current/user-manual/api/index.html
+After=network-online.target
+
+[Service]
+Type=simple
+Environment=
+ExecStart=/usr/bin/env ${APP_PATH} start
+ExecStop=/usr/bin/env ${APP_PATH} stop
+KillMode=none
+
+[Install]
+WantedBy=multi-user.target
