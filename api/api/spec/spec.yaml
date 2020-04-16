@@ -5142,12 +5142,17 @@ paths:
                               $ref: '#/components/schemas/GroupConfiguration'
               example:
                 data:
-                  - filters:
-                      os: Linux
-                  - config:
-                      localfile:
-                      - location: /var/log/linux.log
-                      - log_format: syslog
+                  affected_items:
+                    - filters:
+                        os: Linux
+                      config:
+                        localfile:
+                          - location: /var/log/linux.log
+                            log_format: syslog
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: Configuration info shown for selected group.
         default:
           $ref: '#/components/responses/ResponseError'
 

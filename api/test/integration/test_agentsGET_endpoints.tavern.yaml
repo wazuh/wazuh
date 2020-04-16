@@ -2419,10 +2419,14 @@ stages:
      status_code: 200
      json: &groups_id_config_response
        data:
-         items:
-           - config: !anything
-             filters: !anything
-         totalItems: !anyint
+         affected_items:
+           - filters: !anything
+             config: !anything
+         total_affected_items: !anyint
+         total_failed_items: !anyint
+         failed_items: !anything
+       message: !anystr
+
 
  - name: Try get the configuration of a bad group
    request:

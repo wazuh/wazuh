@@ -709,9 +709,8 @@ async def get_group_config(request, group_id, pretty=False, wait_for_complete=Fa
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 async def put_group_config(request, body, group_id, pretty=False, wait_for_complete=False):
