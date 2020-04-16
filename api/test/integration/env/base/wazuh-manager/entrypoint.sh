@@ -24,5 +24,6 @@ fi
 sleep 1
 
 /var/ossec/bin/ossec-control restart
+/var/ossec/bin/wazuh-apid restart
 
 /usr/bin/supervisord
