@@ -128,7 +128,7 @@ def upload_list(list_file, path):
 
     # validate CDB list
     if not validate_cdb_list(tmp_file_path):
-        raise WazuhError(1802)
+        raise WazuhError(1800)
 
     # move temporary file to group folder
     try:

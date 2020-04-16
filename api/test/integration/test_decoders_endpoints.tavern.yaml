@@ -5,14 +5,7 @@ marks:
   - usefixtures:
       - base_tests
 
-includes:
-  - !include common.yaml
-
 stages:
-
-    # Authentication stage
-  - type: ref
-    id: login_get_token
 
     # GET /decoders
   - name: Try to get all decoders
@@ -23,7 +16,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           total_affected_items: !anyint
@@ -36,7 +29,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: &full_items_array
             - details: !anything
@@ -50,11 +43,11 @@ stages:
           total_failed_items: !anyint
       # Save some data for future use in the test
       save:
-        body:
-          returned_filename: data.affected_items.0.filename
-          returned_relative_path: data.affected_items.0.relative_dirname
-          returned_status: data.affected_items.0.status
-          returned_name: data.affected_items.0.name
+        json:
+          returned_filename: data.affected_items[0].filename
+          returned_relative_path: data.affected_items[0].relative_dirname
+          returned_status: data.affected_items[0].status
+          returned_name: data.affected_items[0].name
 
     # We implement a dual stage to check offset parameter behaviour
     # GET /decoders?limit=2&offset=0
@@ -66,7 +59,7 @@ stages:
         offset: 0
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *full_items_array
@@ -76,8 +69,8 @@ stages:
           total_failed_items: !anyint
       # Save second item to check offset in next stage
       save:
-        body:
-          offset_item: data.affected_items.1
+        json:
+          offset_item: data.affected_items[1]
 
     # GET /decoders?limit=1&offset=1
   - name: Try to get decoders using limit and offset parameter
@@ -88,7 +81,7 @@ stages:
         offset: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
               # Check offset matches with previous request
@@ -111,7 +104,7 @@ stages:
         search: a
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *full_items_array
@@ -128,7 +121,7 @@ stages:
         filename: "{returned_filename:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - filename: "{tavern.request_vars.params.filename}"
@@ -145,7 +138,7 @@ stages:
         relative_dirname: "{returned_relative_path:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - relative_dirname: "{tavern.request_vars.params.relative_dirname}"
@@ -162,7 +155,7 @@ stages:
         status: "{returned_status:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - status: "{tavern.request_vars.params.status}"
@@ -190,7 +183,7 @@ stages:
         sort: "wrong"
     response:
       status_code: 400
-      body:
+      json:
         code: 1403
 
     # GET /decoders?q=name=agent-upgrade;position=2
@@ -201,7 +194,7 @@ stages:
         q: 'name=agent-upgrade;position=2'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *full_items_array
@@ -235,7 +228,7 @@ stages:
         sort: "{field}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: *full_items_array
           failed_items: []
@@ -251,7 +244,7 @@ stages:
         sort: "-{field}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: *full_items_array
           failed_items: []
@@ -276,7 +269,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         # We get totalItems number of arrays in items, using !anything to check items key is in the response
         data: &decoder_name_response
           affected_items:
@@ -300,7 +293,7 @@ stages:
         offset: 0
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *full_items_array
@@ -310,8 +303,8 @@ stages:
           total_failed_items: !anyint
       # Save second item to check offset in next stage
       save:
-        body:
-          offset_item: data.affected_items.1
+        json:
+          offset_item: data.affected_items[1]
 
     # GET /decoders/auditd-selinux_macstatus?limit=1&offset=1
   - name: Try to get all decoders with specified decoder_name using limit and offset parameter
@@ -322,7 +315,7 @@ stages:
         offset: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
               # Check offset matches with previous request
@@ -345,7 +338,7 @@ stages:
         search: a
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *full_items_array
@@ -373,7 +366,7 @@ stages:
         sort: "wrong"
     response:
       status_code: 400
-      body:
+      json:
         code: 1403
 
 ---
@@ -398,14 +391,14 @@ stages:
         sort: "{field}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: !anyint
       save:
-        body:
+        json:
           total_items: data.total_affected_items
 
     # GET /decoders/auditd-selinux_macstatus?sort=-{field}
@@ -416,7 +409,7 @@ stages:
         sort: "-{field}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -437,7 +430,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         # We get totalItems number of arrays in items, using !anything to check items key is in the response
         data:
           affected_items: !anything
@@ -453,7 +446,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: &full_items_array_files
             - filename: !anystr
@@ -464,10 +457,10 @@ stages:
           total_failed_items: !anyint
       # Save some data for future use in the test
       save:
-        body:
-          returned_files_filename: data.affected_items.0.filename
-          returned_files_relative_path: data.affected_items.0.relative_dirname
-          returned_files_status: data.affected_items.0.status
+        json:
+          returned_files_filename: data.affected_items[0].filename
+          returned_files_relative_path: data.affected_items[0].relative_dirname
+          returned_files_status: data.affected_items[0].status
 
 # We implement a dual stage to check offset parameter behaviour
     # GET /decoders/files?limit=2&offset=0
@@ -479,7 +472,7 @@ stages:
         offset: 0
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *full_items_array_files
@@ -489,8 +482,8 @@ stages:
           total_failed_items: !anyint
       # Save second item to check offset in next stage
       save:
-        body:
-          offset_item: data.affected_items.1
+        json:
+          offset_item: data.affected_items[1]
 
     # GET /decoders/files?limit=1&offset=1
   - name: Try to get information about all decoders files using limit and offset parameter
@@ -501,7 +494,7 @@ stages:
         offset: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
               # Check offset matches with previous request
@@ -521,7 +514,7 @@ stages:
         search: a
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *full_items_array_files
@@ -538,7 +531,7 @@ stages:
         filename: "{returned_files_filename:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - filename: "{tavern.request_vars.params.filename}"
@@ -555,7 +548,7 @@ stages:
         relative_dirname: "{returned_files_relative_path:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - relative_dirname: "{tavern.request_vars.params.relative_dirname}"
@@ -572,7 +565,7 @@ stages:
         status: "{returned_files_status:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - status: "{returned_files_status:s}"
@@ -600,7 +593,7 @@ stages:
         sort: "wrong"
     response:
       status_code: 400
-      body:
+      json:
         code: 1403
 
 ---
@@ -624,7 +617,7 @@ stages:
         sort: "{field}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: *full_items_array_files
           failed_items: []
@@ -640,7 +633,7 @@ stages:
         sort: "-{field}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: *full_items_array_files
           failed_items: []
@@ -661,7 +654,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         # We get totalItems number of arrays in items, using !anything to check items key is in the response
         data:
           affected_items: !anything
@@ -677,7 +670,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: &full_items_array_parents
             - details: !anything
@@ -698,7 +691,7 @@ stages:
         offset: 0
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *full_items_array_parents
@@ -706,8 +699,8 @@ stages:
           total_affected_items: !anyint
       # Save second item to check offset in next stage
       save:
-        body:
-          offset_item: data.affected_items.1
+        json:
+          offset_item: data.affected_items[1]
 
     # GET /decoders/parents?limit=1&offset=1
   - name: Try to get information about all decoders parents using limit and offset parameter
@@ -718,7 +711,7 @@ stages:
         offset: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
               # Check offset matches with previous request
@@ -739,7 +732,7 @@ stages:
         search: a
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *full_items_array_parents
@@ -765,7 +758,7 @@ stages:
         sort: "wrong"
     response:
       status_code: 400
-      body:
+      json:
         code: 1403
 
 ---
@@ -791,7 +784,7 @@ stages:
         sort: "{field}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: *full_items_array_parents
           total_affected_items: !anyint
@@ -805,7 +798,7 @@ stages:
         sort: "-{field}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: *full_items_array_parents
           total_affected_items: !anyint
@@ -819,7 +812,7 @@ stages:
   - name: Download a decoders file
     request:
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files/{returned_filename:s}/download"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files/0005-wazuh_decoders.xml/download"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -836,5 +829,5 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1503

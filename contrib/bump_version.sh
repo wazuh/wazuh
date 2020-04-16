@@ -64,6 +64,7 @@ MSI_FILE="../src/win32/wazuh-installer.wxs"
 FW_SETUP="../framework/setup.py"
 FW_INIT="../framework/wazuh/__init__.py"
 CLUSTER_INIT="../framework/wazuh/core/cluster/__init__.py"
+API_SETUP="../api/setup.py"
 
 if [ -n "$version" ]
 then
@@ -116,6 +117,9 @@ then
     # Cluster
 
     sed -E -i'' -e "s/__version__ = '.+'/__version__ = '${version:1}'/g" $CLUSTER_INIT
+
+    # API
+    sed -E -i'' -e "s/VERSION = '.+'/VERSION = '${version:1}'/g" $API_SETUP
 fi
 
 if [ -n "$revision" ]

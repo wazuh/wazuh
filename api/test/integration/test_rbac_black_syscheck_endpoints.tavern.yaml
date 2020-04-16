@@ -1,18 +1,11 @@
 ---
 test_name: GET /syscheck
 
-includes:
- - !include common.yaml
-
 marks:
   - usefixtures:
     - syscheck_black_rbac_tests
 
 stages:
-
-    # Authentication stage
-  - type: ref
-    id: login_get_token
 
   - name: Try to get syscheck scan results for agent 000 (Deny)
     request:
@@ -22,7 +15,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body: &permission_denied
+      json: &permission_denied
         code: 4000
         dapi_errors: !anything
         detail: !anystr
@@ -39,7 +32,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -59,7 +52,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Try to get when the last scan for agent 002 started and ended
@@ -70,7 +63,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - end: !anything
@@ -92,7 +85,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items:
@@ -112,7 +105,7 @@ stages:
                 - '010'
           total_affected_items: 5
           total_failed_items: 4
-        message: Syscheck/Rootcheck has not been restarted on some agents
+        message: !anystr
 
   - name: Try to run a syscheck scan on a list of agents
     request:
@@ -124,7 +117,7 @@ stages:
         list_agents: '000,003,001,004,008'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items:
@@ -150,7 +143,7 @@ stages:
         list_agents: '001'
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -166,7 +159,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -181,5 +174,5 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
