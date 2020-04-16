@@ -4,7 +4,6 @@ test_name: GET /agents
 marks:
   - usefixtures:
     - agents_tests
-  - xfail # STAGE (Filter by agent status 2) XFAILS DUE TO https://github.com/wazuh/wazuh/issues/4825
 
 includes:
  - !include common.yaml
@@ -2038,9 +2037,6 @@ stages:
 
 ---
 test_name: GET /groups/{group_id}/agents
-
-marks:
-  - xfail # STAGE (Status multiple) XFAILS DUE TO https://github.com/wazuh/wazuh/issues/4825
 
 stages:
 
