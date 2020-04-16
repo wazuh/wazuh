@@ -1,18 +1,11 @@
 ---
 test_name: GET /sca/{agent_id}
 
-includes:
-  - !include common.yaml
-
 marks:
   - usefixtures:
     - sca_white_rbac_tests
 
 stages:
-
-    # Authentication stage
-  - type: ref
-    id: login_get_token
 
   - name: Request sca for agent 000 (Allowed)
     request:
@@ -22,7 +15,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data: !anything
 
   - name: Request sca for agent 001 (Denied)
@@ -33,7 +26,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
         detail: !anystr
 
@@ -45,7 +38,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data: !anything
 
   - name: Request sca for agent 003 (Denied)
@@ -56,7 +49,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
         detail: !anystr
 
@@ -68,7 +61,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
         detail: !anystr
 
@@ -80,7 +73,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data: !anything
 
 ---
@@ -96,7 +89,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data: !anything
 
   - name: Request policy checks for 001 (Denied)
@@ -107,6 +100,6 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
         detail: !anystr

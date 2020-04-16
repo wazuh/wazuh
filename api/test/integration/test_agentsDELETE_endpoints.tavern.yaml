@@ -5,14 +5,7 @@ marks:
   - usefixtures:
     - agents_tests
 
-includes:
-  - !include common.yaml
-
 stages:
-
-    # Authentication stage
-  - type: ref
-    id: login_get_token
 
     # DELETE /agents/000/group/group1
   - name: Try to remove agent 000 (manager) from group1
@@ -23,7 +16,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1703
 
     # DELETE /agents/999/group/group1
@@ -35,7 +28,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1701
 
     # DELETE /agents/wrong_id/group/group1
@@ -47,7 +40,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body: &error_spec
+      json: &error_spec
         detail: !anystr
         status: !anyint
         title: !anystr
@@ -62,7 +55,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1710
 
     # DELETE /agents/001/group/group2
@@ -74,7 +67,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1734
 
     # DELETE /agents/004/group/default
@@ -86,7 +79,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1745
 
     # DELETE /agents/001/group/group1
@@ -98,7 +91,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         message: "Agent '001' removed from 'group1'."
 
     # DELETE /agents/002/group/default
@@ -110,7 +103,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         message: "Agent '002' removed from 'default'."
 
     # DELETE /agents/002/group/group2
@@ -122,7 +115,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         message: "Agent '002' removed from 'group2'. Agent reassigned to group default."
 
 ---
@@ -139,7 +132,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1703
 
     # DELETE /agents/999/group
@@ -151,7 +144,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1701
 
     # DELETE /agents/wrong_id/group
@@ -163,7 +156,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
     # DELETE /agents/005/group
@@ -175,7 +168,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - "group1"
@@ -194,7 +187,7 @@ stages:
         list_groups: group1,group3
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - "group1"
@@ -219,7 +212,7 @@ stages:
         group_id: wrong_group
     response:
       status_code: 400
-      body:
+      json:
         code: 1710
 
     # DELETE /agents/group?group_id=group1&list_agents=000,002
@@ -234,7 +227,7 @@ stages:
         group_id: group1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -263,7 +256,7 @@ stages:
     response:
       strict: False
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -288,7 +281,7 @@ stages:
         group_id: group2
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '006'
@@ -307,7 +300,7 @@ stages:
         group_id: group2
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '008'
@@ -330,7 +323,7 @@ stages:
         list_groups: wrong_group
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_agents: []
           affected_items: []
@@ -354,7 +347,7 @@ stages:
         list_groups: default
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_agents: []
           affected_items: []
@@ -379,7 +372,7 @@ stages:
         list_groups: group3
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_agents:
             - '003'
@@ -406,7 +399,7 @@ stages:
         list_groups: 'wrong1,wrong2'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_agents: []
           affected_items: []
@@ -431,7 +424,7 @@ stages:
         list_groups: 'group1,default'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_agents:
             - '007'
@@ -457,7 +450,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_agents: []
           affected_items:
@@ -481,7 +474,7 @@ stages:
         list_agents: '000'
     response: &error_delete_agent
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -502,7 +495,7 @@ stages:
         list_agents: '999'
     response:
       <<: *error_delete_agent
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -525,7 +518,7 @@ stages:
         list_agents: wrong
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
     # DELETE /agents?list_agents=006
@@ -540,7 +533,7 @@ stages:
         older_than: '0s'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '006'
@@ -560,7 +553,7 @@ stages:
         older_than: '0s'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '010'
@@ -583,7 +576,7 @@ stages:
         list_agents: 'wrong'
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
     # DELETE /agents?list_agents=998,999
@@ -594,7 +587,7 @@ stages:
         list_agents: '998,999'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -616,7 +609,7 @@ stages:
         list_agents: '000'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -639,7 +632,7 @@ stages:
         status: 'wrong'
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
     # DELETE /agents?list_agents=004&status=disconnected
@@ -651,7 +644,7 @@ stages:
         status: 'disconnected'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -673,7 +666,7 @@ stages:
         older_than: '1s'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '004'
@@ -690,7 +683,7 @@ stages:
         older_than: 'wrong'
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
     # DELETE /agents?list_agents=007&older_than=1h
@@ -702,7 +695,7 @@ stages:
         older_than: '1h'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -724,7 +717,7 @@ stages:
         older_than: '1s'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '007'
@@ -741,7 +734,7 @@ stages:
         older_than: '1s'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - "008"
@@ -760,7 +753,7 @@ stages:
         purge: True
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '011'
@@ -780,7 +773,7 @@ stages:
         older_than: '0s'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - "001"

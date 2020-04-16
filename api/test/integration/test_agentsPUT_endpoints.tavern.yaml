@@ -5,14 +5,7 @@ marks:
   - usefixtures:
     - agents_tests
 
-includes:
- - !include common.yaml
-
 stages:
-
-    # Authentication stage
-  - type: ref
-    id: login_get_token
 
     # PUT /agents/group?group_id=wrong_group
   - name: Try to assign all agents to a non existing group
@@ -25,7 +18,7 @@ stages:
         group_id: wrong_group
     response:
       status_code: 400
-      body:
+      json:
         code: 1710
 
     # PUT /agents/group?group_id=wrong_group&list_agents=wrong_agent
@@ -37,7 +30,7 @@ stages:
         group_id: "wrong_group"
     response:
       status_code: 400
-      body: &error_spec
+      json: &error_spec
         detail: !anystr
         status: !anyint
         title: !anystr
@@ -54,7 +47,7 @@ stages:
         group_id: 'wrong_%_group'
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
     # PUT /agents/group?group_id=default&list_agents=998,999
@@ -69,7 +62,7 @@ stages:
         group_id: default
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -94,7 +87,7 @@ stages:
         group_id: default
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -122,7 +115,7 @@ stages:
         group_id: default
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -147,7 +140,7 @@ stages:
         group_id: group1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - "003"
@@ -172,7 +165,7 @@ stages:
         group_id: group2
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - "001"
@@ -195,7 +188,7 @@ stages:
         group_id: group2
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - "001"
@@ -228,7 +221,7 @@ stages:
         "{file_xml:s}"
     response:
       status_code: 200
-      body:
+      json:
         message: !anystr
 
     # PUT /group/wrong_group/configuration
@@ -243,7 +236,7 @@ stages:
         "{file_xml:s}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1710
 
     # PUT /group/group1/configuration
@@ -256,7 +249,7 @@ stages:
         content-type: "application/xml"
     response:
       status_code: 400
-      body:
+      json:
         code: 2007
 
     # PUT /group/group1/configuration
@@ -271,7 +264,7 @@ stages:
         "{invalid_file_xml:s}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1113
 
     # PUT /group/group1/configuration
@@ -286,7 +279,7 @@ stages:
         "{wrong_file_xml:s}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1114
 
 ---
@@ -305,7 +298,7 @@ stages:
         list_agents: "wrong_id"
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
     # PUT /agents/restart?list_agents=998,999
@@ -316,7 +309,7 @@ stages:
         list_agents: "998,999"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -336,7 +329,7 @@ stages:
         list_agents: "000,999"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -360,7 +353,7 @@ stages:
         list_agents: "001,002,999"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - "001"
@@ -384,7 +377,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - "001"
@@ -414,7 +407,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - "001"
@@ -430,7 +423,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
     # PUT /agents/999/group/group3
@@ -442,7 +435,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -465,7 +458,7 @@ stages:
         force_single_group: true
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - "001"
@@ -486,7 +479,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -507,7 +500,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -528,7 +521,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
     # PUT /agents/002/restart
@@ -540,7 +533,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - "002"
@@ -561,7 +554,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1701
 
     # PUT /agents/000/upgrade
@@ -573,7 +566,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1703
 
     # PUT /agents/wrong_id/upgrade
@@ -585,7 +578,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
     # PUT /agents/001/upgrade
@@ -600,7 +593,7 @@ stages:
         wait_for_complete: 'true'
     response:
       status_code: 200
-      body:
+      json:
         message: !anystr
     delay_after: 30
 
@@ -613,7 +606,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1749
 
     # PUT /agents/003/upgrade
@@ -629,7 +622,7 @@ stages:
         wait_for_complete: 'true'
     response:
       status_code: 200
-      body:
+      json:
         message: !anystr
     delay_after: 30
 
@@ -646,7 +639,7 @@ stages:
         wait_for_complete: 'true'
     response:
       status_code: 200
-      body:
+      json:
         message: !anystr
     delay_after: 30
 
@@ -663,7 +656,7 @@ stages:
         wait_for_complete: 'true'
     response:
       status_code: 200
-      body:
+      json:
         message: !anystr
 
 ---
@@ -683,7 +676,7 @@ stages:
         file_path: "{custom_wpk_path:s}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1701
 
     # PUT /agents/000/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
@@ -698,7 +691,7 @@ stages:
         file_path: "{custom_wpk_path:s}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1703
 
     # PUT /agents/wrong_id/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
@@ -713,7 +706,7 @@ stages:
         file_path: "{custom_wpk_path:s}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
     # PUT /agents/006/upgrade_custom
@@ -725,7 +718,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
     # PUT /agents/003/upgrade_custom?installer=invalid.sh&file_path=custom_wpk_path
@@ -740,7 +733,7 @@ stages:
         file_path: "{custom_wpk_path:s}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1716
 
     # PUT /agents/007/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
@@ -756,7 +749,7 @@ stages:
         wait_for_complete: 'true'
     response:
       status_code: 200
-      body:
+      json:
         message: "Installation started"
 
     # PUT /agents/008/upgrade_custom?file_path=custom_wpk_path
@@ -771,7 +764,7 @@ stages:
         wait_for_complete: 'true'
     response:
       status_code: 200
-      body:
+      json:
         message: "Installation started"
     delay_after: 60
 
@@ -783,7 +776,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         message: Agent upgraded successfully
 
   - name: Get agent 008 upgrade result
@@ -794,5 +787,5 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         message: Agent upgraded successfully

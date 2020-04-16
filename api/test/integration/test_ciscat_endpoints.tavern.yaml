@@ -1,18 +1,11 @@
 ---
 test_name: GET /ciscat/001/results
 
-includes:
-- !include common.yaml
-
 marks:
   - usefixtures:
     - ciscat_tests
 
 stages:
-
-    # Authentication stage
-  - type: ref
-    id: login_get_token
 
     # GET /ciscat/001/results
   - name: Try to get ciscat results for agent 001
@@ -23,7 +16,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         # We get totalItems number of arrays in items, using !anything to check items is in the response
         data:
           affected_items: !anything
@@ -33,15 +26,15 @@ stages:
         message: !anystr
       # Save some data for future use in the test
       save:
-        body:
-          returned_benchmark: data.affected_items.0.benchmark
-          returned_profile: data.affected_items.0.profile
-          returned_pass: data.affected_items.0.pass
-          returned_fail: data.affected_items.0.fail
-          returned_error : data.affected_items.0.error
-          returned_notchecked: data.affected_items.0.notchecked
-          returned_unknown: data.affected_items.0.unknown
-          returned_score: data.affected_items.0.score
+        json:
+          returned_benchmark: data.affected_items[0].benchmark
+          returned_profile: data.affected_items[0].profile
+          returned_pass: data.affected_items[0].pass
+          returned_fail: data.affected_items[0].fail
+          returned_error : data.affected_items[0].error
+          returned_notchecked: data.affected_items[0].notchecked
+          returned_unknown: data.affected_items[0].unknown
+          returned_score: data.affected_items[0].score
 
     # GET /ciscat/001/results?limit=1
   - name: Try to get ciscat results for agent 001 with a set limit of 1 answer
@@ -51,7 +44,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: &full_items_array_001
             - profile: !anystr
@@ -79,7 +72,7 @@ stages:
         search: a
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: *full_items_array_001
           total_affected_items: !anyint
@@ -96,7 +89,7 @@ stages:
         profile: "{returned_profile:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - profile: "{tavern.request_vars.params.profile}"
@@ -114,7 +107,7 @@ stages:
         score: "{returned_score:d}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - score: !int "{tavern.request_vars.params.score}"
@@ -132,7 +125,7 @@ stages:
         error: "{returned_error:d}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - error: !int "{tavern.request_vars.params.error}"
@@ -150,7 +143,7 @@ stages:
         fail: "{returned_fail:d}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - fail: !int "{tavern.request_vars.params.fail}"
@@ -168,7 +161,7 @@ stages:
         pass: "{returned_pass:d}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - pass: !int "{tavern.request_vars.params.pass}"
@@ -186,7 +179,7 @@ stages:
         benchmark: "{returned_benchmark:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - benchmark: "{tavern.request_vars.params.benchmark}"
@@ -204,7 +197,7 @@ stages:
         notchecked: "{returned_notchecked:d}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - notchecked: !int "{tavern.request_vars.params.notchecked}"
@@ -222,7 +215,7 @@ stages:
         unknown: "{returned_unknown:d}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - unknown: !int "{tavern.request_vars.params.unknown}"
@@ -245,7 +238,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         # We get totalItems number of arrays in items, using !anything to check items is in the response
         data:
           affected_items: !anything
@@ -255,15 +248,15 @@ stages:
         message: All CISCAT results loaded
       # Save some data for future use in the test
       save:
-        body:
-          returned_benchmark: data.affected_items.0.benchmark
-          returned_profile: data.affected_items.0.profile
-          returned_pass: data.affected_items.0.pass
-          returned_fail: data.affected_items.0.fail
-          returned_error : data.affected_items.0.error
-          returned_notchecked: data.affected_items.0.notchecked
-          returned_unknown: data.affected_items.0.unknown
-          returned_score: data.affected_items.0.score
+        json:
+          returned_benchmark: data.affected_items[0].benchmark
+          returned_profile: data.affected_items[0].profile
+          returned_pass: data.affected_items[0].pass
+          returned_fail: data.affected_items[0].fail
+          returned_error : data.affected_items[0].error
+          returned_notchecked: data.affected_items[0].notchecked
+          returned_unknown: data.affected_items[0].unknown
+          returned_score: data.affected_items[0].score
 
     # GET /ciscat/002/results?limit=1
   - name: Try to get ciscat results for agent 002 with a set limit of 1 answer
@@ -273,7 +266,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: &full_items_array_002
             - profile: !anystr
@@ -301,7 +294,7 @@ stages:
         search: a
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: *full_items_array_002
           total_affected_items: !anyint
@@ -318,7 +311,7 @@ stages:
         profile: "{returned_profile:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - profile: "{tavern.request_vars.params.profile}"
@@ -336,7 +329,7 @@ stages:
         score: "{returned_score:d}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - score: !int "{tavern.request_vars.params.score}"
@@ -354,7 +347,7 @@ stages:
         error: "{returned_error:d}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - error: !int "{tavern.request_vars.params.error}"
@@ -372,7 +365,7 @@ stages:
         fail: "{returned_fail:d}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - fail: !int "{tavern.request_vars.params.fail}"
@@ -390,7 +383,7 @@ stages:
         pass: "{returned_pass:d}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - pass: !int "{tavern.request_vars.params.pass}"
@@ -408,7 +401,7 @@ stages:
         benchmark: "{returned_benchmark:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - benchmark: "{tavern.request_vars.params.benchmark}"
@@ -426,7 +419,7 @@ stages:
         notchecked: "{returned_notchecked:d}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - notchecked: !int "{tavern.request_vars.params.notchecked}"
@@ -444,7 +437,7 @@ stages:
         unknown: "{returned_unknown:d}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - unknown: !int "{tavern.request_vars.params.unknown}"
@@ -467,7 +460,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         # We get totalItems number of arrays in items, using !anything to check items is in the response
         data:
           affected_items: !anything
@@ -477,15 +470,15 @@ stages:
         message: All CISCAT results loaded
       # Save some data for future use in the test
       save:
-        body:
-          returned_benchmark: data.affected_items.0.benchmark
-          returned_profile: data.affected_items.0.profile
-          returned_pass: data.affected_items.0.pass
-          returned_fail: data.affected_items.0.fail
-          returned_error : data.affected_items.0.error
-          returned_notchecked: data.affected_items.0.notchecked
-          returned_unknown: data.affected_items.0.unknown
-          returned_score: data.affected_items.0.score
+        json:
+          returned_benchmark: data.affected_items[0].benchmark
+          returned_profile: data.affected_items[0].profile
+          returned_pass: data.affected_items[0].pass
+          returned_fail: data.affected_items[0].fail
+          returned_error : data.affected_items[0].error
+          returned_notchecked: data.affected_items[0].notchecked
+          returned_unknown: data.affected_items[0].unknown
+          returned_score: data.affected_items[0].score
 
     # GET /ciscat/003/results?limit=1
   - name: Try to get ciscat results for agent 003 with a set limit of 1 answer
@@ -495,7 +488,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: &full_items_array_003
             - profile: !anystr
@@ -523,7 +516,7 @@ stages:
         search: a
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: *full_items_array_003
           total_affected_items: !anyint
@@ -540,7 +533,7 @@ stages:
         profile: "{returned_profile:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - profile: "{tavern.request_vars.params.profile}"
@@ -558,7 +551,7 @@ stages:
         score: "{returned_score:d}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - score: !int "{tavern.request_vars.params.score}"
@@ -576,7 +569,7 @@ stages:
         error: "{returned_error:d}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - error: !int "{tavern.request_vars.params.error}"
@@ -594,7 +587,7 @@ stages:
         fail: "{returned_fail:d}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - fail: !int "{tavern.request_vars.params.fail}"
@@ -612,7 +605,7 @@ stages:
         pass: "{returned_pass:d}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - pass: !int "{tavern.request_vars.params.pass}"
@@ -630,7 +623,7 @@ stages:
         benchmark: "{returned_benchmark:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - benchmark: "{tavern.request_vars.params.benchmark}"
@@ -648,7 +641,7 @@ stages:
         notchecked: "{returned_notchecked:d}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - notchecked: !int "{tavern.request_vars.params.notchecked}"
@@ -666,7 +659,7 @@ stages:
         unknown: "{returned_unknown:d}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - unknown: !int "{tavern.request_vars.params.unknown}"
@@ -705,7 +698,7 @@ stages:
         sort: "{field}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: *full_items_array_001
           total_affected_items: !anyint
@@ -722,12 +715,12 @@ stages:
         select: "{field}"
     response:
       status_code: 200
-      body:
-        $ext:
-          # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items_with_agent_id
-          extra_kwargs:
-            select_key: "{field:s}"
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        extra_kwargs:
+          select_key: "{field:s}"
+      json:
         data:
           total_affected_items: !anyint
           failed_items: !anything
@@ -744,7 +737,7 @@ stages:
         sort: "{field}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: *full_items_array_002
           total_affected_items: !anyint
@@ -761,12 +754,12 @@ stages:
         select: "{field}"
     response:
       status_code: 200
-      body:
-        $ext:
-          # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items_with_agent_id
-          extra_kwargs:
-            select_key: "{field:s}"
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        extra_kwargs:
+          select_key: "{field:s}"
+      json:
         data:
           total_affected_items: !anyint
 
@@ -781,7 +774,7 @@ stages:
         sort: "{field}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: *full_items_array_003
           total_affected_items: !anyint
@@ -798,11 +791,11 @@ stages:
         select: "{field}"
     response:
       status_code: 200
-      body:
-        $ext:
-          # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items_with_agent_id
-          extra_kwargs:
-            select_key: "{field:s}"
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        extra_kwargs:
+          select_key: "{field:s}"
+      json:
         data:
           total_affected_items: !anyint

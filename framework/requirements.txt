@@ -31,6 +31,7 @@ jsonschema==2.6.0
 MarkupSafe==1.1.1
 openapi-spec-validator==0.2.6
 pathlib==1.0.1
+psutil==5.7.0
 pyasn1==0.4.5
 pycparser==2.19
 python-dateutil==2.8.0

@@ -1,18 +1,11 @@
 ---
 test_name: DELETE /security/roles/{role_id}
 
-includes:
-  - !include common.yaml
-
 marks:
   - usefixtures:
       - security_tests
 
 stages:
-
-  # Authentication stage
-  - type: ref
-    id: login_get_token
 
   # DELETE /security/roles/{role_id}
   - name: Try to delete a existent role
@@ -25,7 +18,7 @@ stages:
         role_ids: 10
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: 10
@@ -45,7 +38,7 @@ stages:
         role_ids: 1
     response:
       status_code: 200
-      body: &error
+      json: &error
         data:
           affected_items: []
           failed_items:
@@ -68,7 +61,7 @@ stages:
         role_ids: 999
     response:
       status_code: 200
-      body:
+      json:
         <<: *error
 
 ---
@@ -87,7 +80,7 @@ stages:
         policy_ids: 12,15
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items:
@@ -111,7 +104,7 @@ stages:
         policy_ids: 999
     response:
       status_code: 200
-      body:
+      json:
         <<: *error
 
   # DELETE /security/roles/{non-existent role_id}/policies/{policy_id}
@@ -125,7 +118,7 @@ stages:
         policy_ids: 3
     response:
       status_code: 200
-      body:
+      json:
         <<: *error
 
   # DELETE /security/roles/{role_id}/policies/{policy_id}
@@ -139,7 +132,7 @@ stages:
         policy_ids: 999
     response:
       status_code: 200
-      body:
+      json:
         <<: *error
 
 ---
@@ -158,7 +151,7 @@ stages:
         role_ids: 12,11
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -176,7 +169,7 @@ stages:
         role_ids: 12
     response:
       status_code: 200
-      body:
+      json:
         <<: *error
 
   # DELETE /security/user/{user_id}/roles/{role_id}
@@ -190,14 +183,11 @@ stages:
         role_ids: 99
     response:
       status_code: 200
-      body:
+      json:
         <<: *error
 
 ---
 test_name: DELETE /security/policies/{policy_id}
-
-includes:
-  - !include common.yaml
 
 stages:
 
@@ -212,7 +202,7 @@ stages:
         policy_ids: 12
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: 12
@@ -232,7 +222,7 @@ stages:
         policy_ids: 1
     response:
       status_code: 200
-      body:
+      json:
         <<: *error
 
   # DELETE /security/roles/{non-existent role}
@@ -246,7 +236,7 @@ stages:
         policy_ids: 999
     response:
       status_code: 200
-      body:
+      json:
         <<: *error
 ---
 test_name: DELETE /security/roles
@@ -264,7 +254,7 @@ stages:
         role_ids: 10,11
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: 11
@@ -287,7 +277,7 @@ stages:
       <<: *delete_roles_request
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           total_affected_items: 0
@@ -300,7 +290,7 @@ stages:
         role_ids: 1
     response:
       status_code: 200
-      body:
+      json:
         <<: *error
 ---
 test_name: DELETE /security/policies
@@ -318,7 +308,7 @@ stages:
         policy_ids: 13,14
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: 13
@@ -337,7 +327,7 @@ stages:
       <<: *delete_all_policies_request
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           total_affected_items: 0
@@ -349,7 +339,7 @@ stages:
         policy_ids: 1
     response:
       status_code: 200
-      body:
+      json:
         <<: *error
 
 ---
@@ -379,9 +369,6 @@ stages:
 ---
 test_name: DELETE /security/users
 
-includes:
-  - !include common.yaml
-
 stages:
 
   - name: Delete a non-existent user
@@ -394,7 +381,7 @@ stages:
         usernames: nonexistent
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -418,7 +405,7 @@ stages:
         usernames: wazuh
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -442,7 +429,7 @@ stages:
         usernames: wazuh-wui
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -466,7 +453,7 @@ stages:
         usernames: normal
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: normal
@@ -483,7 +470,7 @@ stages:
         usernames: rbac
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: rbac
@@ -498,7 +485,7 @@ stages:
       method: DELETE
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - username: administrator

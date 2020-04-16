@@ -112,11 +112,11 @@ def rename_old_fields(config: Dict) -> Dict:
                                'ca': ''}
 
         if 'https_key' in new_config:
-            new_config['https']['key'] = os.path.join('api', new_config['https_key'])
+            new_config['https']['key'] = os.path.join('../api', new_config['https_key'])
             del new_config['https_key']
 
         if 'https_cert' in new_config:
-            new_config['https']['cert'] = os.path.join('api', new_config['https_cert'])
+            new_config['https']['cert'] = os.path.join('../api', new_config['https_cert'])
             del new_config['https_cert']
 
         if 'https_use_ca' in new_config:
