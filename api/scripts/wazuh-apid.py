@@ -69,19 +69,18 @@ if __name__ == '__main__':
         pyDaemonModule.pyDaemon()
 
     cluster_config = read_config()
-    configuration = configuration.read_api_config(config_file=args.config_file)
-    cache_conf = configuration['cache']
-    cors = configuration['cors']
-    log_path = configuration['logs']['path']
-    experimental = configuration['experimental_features']
+    configuration.api_conf = configuration.read_api_config(config_file=args.config_file)
+    cache_conf = configuration.api_conf['cache']
+    cors = configuration.api_conf['cors']
+    log_path = configuration.api_conf['logs']['path']
 
     # Drop privileges to ossec
     if not args.root:
-        if configuration['drop_privileges']:
+        if configuration.api_conf['drop_privileges']:
             os.setgid(common.ossec_gid())
             os.setuid(common.ossec_uid())
 
-    set_logging(log_path=log_path, debug_mode=configuration['logs']['level'], foreground_mode=args.foreground)
+    set_logging(log_path=log_path, debug_mode=configuration.api_conf['logs']['level'], foreground_mode=args.foreground)
 
     # set correct permissions on api.log file
     if os.path.exists(os.path.join(common.ossec_path, log_path)):
@@ -89,21 +88,21 @@ if __name__ == '__main__':
         os.chmod(os.path.join(common.ossec_path, log_path), 0o660)
 
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-    app = connexion.AioHttpApp(__name__, host=configuration['host'],
-                               port=configuration['port'],
+    app = connexion.AioHttpApp(__name__, host=configuration.api_conf['host'],
+                               port=configuration.api_conf['port'],
                                specification_dir=os.path.join(api_path[0], 'spec'),
                                options={"swagger_ui": False}
                                )
     app.add_api('spec.yaml',
                 arguments={'title': 'Wazuh API',
-                           'protocol': 'https' if configuration['https']['enabled'] else 'http',
-                           'host': configuration['host'],
-                           'port': configuration['port']
+                           'protocol': 'https' if configuration.api_conf['https']['enabled'] else 'http',
+                           'host': configuration.api_conf['host'],
+                           'port': configuration.api_conf['port']
                            },
                 strict_validation=True,
                 validate_responses=True,
                 pass_context_arg_name='request',
-                options={"middlewares": [set_user_name, check_experimental(experimental)]})
+                options={"middlewares": [set_user_name, check_experimental]})
 
     # Enable CORS
     if cors['enabled']:
@@ -129,14 +128,14 @@ if __name__ == '__main__':
                   swagger_from_file=os.path.join(app.specification_dir, 'spec.yaml'))
 
     # Configure https
-    if configuration['https']['enabled']:
+    if configuration.api_conf['https']['enabled']:
         try:
             ssl_context = ssl.SSLContext()
-            if configuration['https']['use_ca']:
+            if configuration.api_conf['https']['use_ca']:
                 ssl_context.verify_mode = ssl.CERT_REQUIRED
-                ssl_context.load_verify_locations(configuration['https']['ca'])
-            ssl_context.load_cert_chain(certfile=configuration['https']['cert'],
-                                        keyfile=configuration['https']['key'])
+                ssl_context.load_verify_locations(configuration.api_conf['https']['ca'])
+            ssl_context.load_cert_chain(certfile=configuration.api_conf['https']['cert'],
+                                        keyfile=configuration.api_conf['https']['key'])
         except ssl.SSLError as e:
             raise APIException(2003, details='Private key does not match with the certificate')
         except IOError as e:
@@ -149,8 +148,8 @@ if __name__ == '__main__':
 
     pyDaemonModule.create_pid('wazuh-apid', os.getpid())
 
-    app.run(port=configuration['port'],
-            host=configuration['host'],
+    app.run(port=configuration.api_conf['port'],
+            host=configuration.api_conf['host'],
             ssl_context=ssl_context,
             access_log_class=alogging.AccessLogger,
             use_default_access_log=True

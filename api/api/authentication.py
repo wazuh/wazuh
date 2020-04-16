@@ -35,7 +35,7 @@ def check_user(user, password, required_scopes=None):
 
 # Set JWT settings
 JWT_ISSUER = 'wazuh'
-JWT_LIFETIME_SECONDS = configuration.read_api_config()['rbac']['auth_token_exp_timeout']
+JWT_LIFETIME_SECONDS = configuration.api_conf['rbac']['auth_token_exp_timeout']
 JWT_ALGORITHM = 'HS256'
 
 # Generate secret file to keep safe or load existing secret

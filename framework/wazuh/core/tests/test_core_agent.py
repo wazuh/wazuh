@@ -11,7 +11,6 @@ from unittest.mock import ANY, patch, MagicMock, mock_open, call, Mock
 
 import pytest
 from freezegun import freeze_time
-sys.modules['api'] = MagicMock()
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
@@ -606,10 +605,9 @@ def test_agent_restart_ko():
 @pytest.mark.parametrize('status', [
     'stopped', 'running'
 ])
-@patch('api.configuration.read_api_config', return_value={'use_only_authd': False})
 @patch('wazuh.core.core_agent.Agent._remove_authd', return_value='Agent deleted successfully.')
 @patch('wazuh.core.core_agent.Agent._remove_manual', return_value='Agent deleted successfully.')
-def test_agent_remove(mock_remove_manual, mock_remove_authd, mock_api_conf, status):
+def test_agent_remove(mock_remove_manual, mock_remove_authd, status):
     """Tests if method remove() works as expected
 
     Parameters
@@ -620,7 +618,7 @@ def test_agent_remove(mock_remove_manual, mock_remove_authd, mock_api_conf, stat
 
     with patch('wazuh.core.core_agent.get_manager_status', return_value={'ossec-authd': status}):
         agent = Agent(0)
-        result = agent.remove()
+        result = agent.remove(use_only_authd=False)
         assert result == 'Agent deleted successfully.', 'Not expected message'
 
         if status == 'stopped':
@@ -631,14 +629,13 @@ def test_agent_remove(mock_remove_manual, mock_remove_authd, mock_api_conf, stat
             mock_remove_authd.assert_called_once_with(False), 'Not expected params'
 
 
-@patch('api.configuration.read_api_config', return_value={'use_only_authd': True})
 @patch('wazuh.core.core_agent.Agent._remove_authd', return_value='Agent deleted successfully.')
 @patch('wazuh.core.core_agent.Agent._remove_manual', return_value='Agent deleted successfully.')
-def test_agent_remove_ko(mock_remove_manual, mock_remove_authd, mock_use_only_authd):
+def test_agent_remove_ko(mock_remove_manual, mock_remove_authd):
     """Tests if method remove() raises expected exception"""
     with pytest.raises(WazuhInternalError, match='.* 1726 .*'):
         agent = Agent(0)
-        agent.remove()
+        agent.remove(use_only_authd=True)
 
 
 @patch('wazuh.core.core_agent.OssecSocketJSON')
@@ -785,10 +782,9 @@ def test_agent_remove_manual_ko(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock,
     ('any', '002', 'WMPlw93l2PnwQMN', -1),
     ('any', '003', 'WMPlw93l2PnwQMN', 1),
 ])
-@patch('api.configuration.read_api_config', return_value={'use_only_authd': False})
 @patch('wazuh.core.core_agent.Agent._add_manual')
 @patch('wazuh.core.core_agent.Agent._add_authd')
-def test_agent_add(mock_add_authd, mock_add_manual, mock_api_conf, authd_status, ip, id, key, force):
+def test_agent_add(mock_add_authd, mock_add_manual, authd_status, ip, id, key, force):
     """Test method _add() call other functions with correct params.
 
     Parameters
@@ -804,7 +800,7 @@ def test_agent_add(mock_add_authd, mock_add_manual, mock_api_conf, authd_status,
     force : int
         Remove old agents with same IP if disconnected since <force> seconds.
     """
-    agent = Agent(1)
+    agent = Agent(1, use_only_authd=False)
 
     with patch('wazuh.core.core_agent.get_manager_status', return_value={'ossec-authd': authd_status}):
         agent._add('test_name', ip, id=id, key=key, force=force)
@@ -816,19 +812,18 @@ def test_agent_add(mock_add_authd, mock_add_manual, mock_api_conf, authd_status,
 
 
 @patch('wazuh.core.core_agent.get_manager_status', return_value={'ossec-authd': 'stopped'})
-@patch('api.configuration.read_api_config', return_value={'use_only_authd': True})
-def test_agent_add_ko(mock_use_only_authd, mock_maganer_status):
+def test_agent_add_ko(mock_maganer_status):
     """Test if _add() method raises expected exception."""
     agent = Agent(1)
 
     with pytest.raises(WazuhError, match='.* 1706 .*'):
-        agent._add('test_name', 'http://jaosdf')
+        agent._add('test_name', 'http://jaosdf', use_only_authd=True)
 
     with pytest.raises(WazuhError, match='.* 1706 .*'):
-        agent._add('test_name', '1111')
+        agent._add('test_name', '1111', use_only_authd=True)
 
     with pytest.raises(WazuhInternalError, match='.* 1726 .*'):
-        agent._add('test_name', '192.168.0.0')
+        agent._add('test_name', '192.168.0.0', use_only_authd=True)
 
 
 @pytest.mark.parametrize("name, ip, id, key", [

@@ -110,3 +110,7 @@ def read_api_config(config_file=common.api_config_path) -> Dict:
     append_ossec_path(configuration, [('logs', 'path'), ('https', 'key'), ('https', 'cert'), ('https', 'ca')])
 
     return configuration
+
+
+# Configuration - global object
+api_conf = read_api_config()

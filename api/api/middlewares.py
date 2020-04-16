@@ -1,7 +1,10 @@
 from aiohttp import web
 from aiohttp.web_response import Response
-from api.api_exception import APIException
 from werkzeug.exceptions import Forbidden
+
+from api.api_exception import APIException
+from api import configuration
+
 
 @web.middleware
 async def set_user_name(request, handler):
@@ -11,16 +14,14 @@ async def set_user_name(request, handler):
     return response
 
 
-def check_experimental(experimental_features):
-    @web.middleware
-    async def middleware_experimental(request, handler):
-        if 'experimental' in request.path:
-            if not experimental_features:
-                raise Forbidden(description=str(APIException(2008)))
+@web.middleware
+async def check_experimental(request, handler):
+    if 'experimental' in request.path:
+        if not configuration.api_conf['experimental_features']:
+            raise Forbidden(description=str(APIException(2008)))
 
-        response = await handler(request)
-        return response
-    return middleware_experimental
+    response = await handler(request)
+    return response
 
 
 @web.middleware
