@@ -116,6 +116,7 @@ void w_enrollment_destroy(w_enrollment_ctx *cfg) {
 int w_enrollment_request_key(w_enrollment_ctx *cfg, const char * server_address) {
     assert(cfg != NULL);
     int ret = -1;
+    minfo("Starting enrollment process to server: %s", server_address ? server_address : cfg->target_cfg->manager_name);
     int socket = w_enrollment_connect(cfg, server_address ? server_address : cfg->target_cfg->manager_name);
     if ( socket >= 0) {
         if (w_enrollment_send_message(cfg) == 0) {

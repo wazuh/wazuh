@@ -107,6 +107,7 @@ void w_enrollment_destroy(w_enrollment_ctx *cfg);
  * 
  * @param cfg configuration @see w_enrollment_ctx
  * @param server_adress (optional) If null server_adress will be obtained from cfg
+ * @return 0 if successfull, -1 on error
  * */
 int w_enrollment_request_key(w_enrollment_ctx *cfg, const char * server_address);
 
