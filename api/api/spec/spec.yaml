@@ -49,19 +49,28 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ApiError'
+          example:
+            type: "about:blank"
+            title: "Wazuh Error"
+            detail: "Permission denied: Resource type: *:*"
+            status: 400
+            remediation: "Please, make sure you have permissions to execute the current request. For more information on how to set up permissions, please visit XXXX"
+            code: 4000
+            dapi_errors:
+              master-node:
+                error: "Permission denied: Resource type: *:*"
 
     UnauthorizedResponse:
-      description: Response to report a unauthorized error
+      description: Response to report a unauthorized request
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/UnauthorizedError'
+            $ref: '#/components/schemas/RequestError'
           example:
             type: "about:blank"
             title: "Unauthorized"
             detail: "No authorization token provided"
             status: 401
-
 
   schemas:
     ## Common models
@@ -140,7 +149,7 @@ components:
                 type: string
                 format: path
 
-    UnauthorizedError:
+    RequestError:
       type: object
       required:
         - type
@@ -4325,6 +4334,8 @@ paths:
                   older_than: 1s
                   total_affected_items: 3
                 message: All shown agents were deleted
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
         default:
           $ref: '#/components/responses/ResponseError'
     get:
@@ -4499,8 +4510,12 @@ paths:
                 data:
                   id: "007"
                   key: MDA3IE5ld0hvc3QgMTAuMC4wLjkgZTk5MDE2ZTkzMjMyZDBjZDYyMGIyZTZmMTM2ZjMzMDQxMjY3M2E0NGRmOTNmODk1NzFjMGQyYzczY2VlYzRhZQ==
-        default:
+        '400':
+          description: 'Request error'
           $ref: '#/components/responses/ResponseError'
+        '401':
+          description: 'Access unauthorized'
+          $ref: '#/components/responses/UnauthorizedResponse'
 
   /agents/{agent_id}/config/{component}/{configuration}:
     get:
@@ -4602,8 +4617,6 @@ paths:
                     - group1
                   total_affected_items: 1
                 message: Agent removed from shown groups
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
         default:
           $ref: '#/components/responses/ResponseError'
 
