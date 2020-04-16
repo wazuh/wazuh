@@ -5,14 +5,7 @@ marks:
   - usefixtures:
     - ciscat_white_rbac_tests
 
-includes:
- - !include common.yaml
-
 stages:
-
-  # Authentication stage
-  - type: ref
-    id: login_get_token
 
   - name: Get ciscat result for agent 001 (allowed)
     request:
@@ -22,7 +15,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: !anything
@@ -38,7 +31,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: !anything
@@ -54,7 +47,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
         detail: !anystr
 
