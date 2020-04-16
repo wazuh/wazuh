@@ -122,15 +122,15 @@ def start(foreground, root, config_file):
             logger = logging.getLogger('wazuh')
             logger.info('HTTPS is enabled but cannot find the private key and/or certificate. '
                         'Attempting to generate them.')
-            logger.info(f'Generated PEM phrase in WAZUH_PATH/{to_relative_path(SECURITY_PATH)}.')
             pem_phrase = generate_pem_phrase()
+            logger.info(f'Generated PEM phrase in WAZUH_PATH/{to_relative_path(SECURITY_PATH)}.')
             private_key = generate_private_key(pem_phrase, api_config['https']['key'])
             logger.info(f"Generated private key file in WAZUH_PATH/{to_relative_path(api_config['https']['key'])}.")
             generate_self_signed_certificate(private_key, api_config['https']['cert'])
             logger.info(f"Generated certificate file in WAZUH_PATH/{to_relative_path(api_config['https']['cert'])}.")
 
         try:
-            ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+            ssl_context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS)
             if api_config['https']['use_ca']:
                 ssl_context.verify_mode = ssl.CERT_REQUIRED
                 ssl_context.load_verify_locations(api_config['https']['ca'])
