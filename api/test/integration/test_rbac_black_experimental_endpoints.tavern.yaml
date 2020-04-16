@@ -1,18 +1,11 @@
 ---
 test_name: DELETE /experimental/syscheck
 
-includes:
-  - !include common.yaml
-
 marks:
   - usefixtures:
     - experimental_black_rbac_tests
 
 stages:
-
-    # Authentication stage
-  - type: ref
-    id: login_get_token
 
   - name: Request all agents (Partially allowed, user agnostic)
     request:
@@ -22,8 +15,8 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
-        data: &even_affected_agents
+      json:
+        data:
           affected_items:
             - '000'
             - '002'
@@ -45,7 +38,7 @@ stages:
         list_agents: '001,002,005,006'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '002'
@@ -73,7 +66,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - agent_id: '002'
@@ -95,7 +88,7 @@ stages:
         list_agents: '002,003,007,008'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - agent_id: '002'
@@ -123,7 +116,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data: &even_affected_agent_list
           affected_items:
             - agent_id: '000'
@@ -145,7 +138,7 @@ stages:
         list_agents: '001,002,006,007'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - agent_id: '002'
@@ -173,7 +166,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           <<: *even_affected_agent_list
 
@@ -187,7 +180,7 @@ stages:
         list_agents: '005,006,007,008'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - agent_id: '006'
@@ -215,7 +208,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           <<: *even_affected_agent_list
 
@@ -229,7 +222,7 @@ stages:
         list_agents: '001,005,007,008'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - agent_id: '008'
@@ -257,7 +250,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           <<: *even_affected_agent_list
 
@@ -271,7 +264,7 @@ stages:
         list_agents: '002,004,005,008'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - agent_id: '002'
@@ -299,7 +292,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           <<: *even_affected_agent_list
 
@@ -313,7 +306,7 @@ stages:
         list_agents: '001,002,003,004'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - agent_id: '002'
@@ -341,7 +334,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -359,7 +352,7 @@ stages:
         list_agents: '001,003,005,007'
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
 
 ---
@@ -375,7 +368,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             # agent 000 has 4 different ports as it is the master node
@@ -401,7 +394,7 @@ stages:
         list_agents: '002,004,006,008'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - agent_id: '002'
@@ -425,7 +418,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -443,7 +436,7 @@ stages:
         list_agents: '001,004,005,008'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items:
@@ -469,7 +462,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -487,7 +480,7 @@ stages:
         list_agents: '000,004,005,006'  # Only the agent 000 will have results. Agent 005 has no permission
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - scan_id: !anyint

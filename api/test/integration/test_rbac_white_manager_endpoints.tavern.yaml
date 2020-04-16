@@ -5,14 +5,7 @@ marks:
   - usefixtures:
     - manager_white_rbac_tests
 
-includes:
-  - !include common.yaml
-
 stages:
-
-  # Authentication stage
-  - type: ref
-    id: login_get_token
 
   - name: Request manager configuration (Allowed)
     request:
@@ -66,7 +59,7 @@ stages:
         path: 'etc/decoders/local_decoder.xml'
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
 
   - name: Delete a file (Allowed)
@@ -106,7 +99,7 @@ stages:
         path: 'etc/rules/local_rules.xml'
     response:
       status_code: 400
-      body:
+      json:
         code: 1906
 
 ---
@@ -125,7 +118,7 @@ stages:
         path: 'etc/decoders/test_decoders.xml'
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
 
 ---
@@ -165,20 +158,6 @@ stages:
     request:
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/logs/summary"
       method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-
----
-test_name: PUT /manager/restart
-
-stages:
-
-  - name: Restart manager (Allowed)
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/restart"
-      method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -265,6 +244,20 @@ stages:
     request:
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/status"
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+---
+test_name: PUT /manager/restart
+
+stages:
+
+  - name: Restart manager (Allowed)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/restart"
+      method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
     response:

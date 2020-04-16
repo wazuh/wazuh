@@ -1,7 +1,12 @@
-import pytest
-import time
+import json
 import os
 import subprocess
+import time
+from base64 import b64encode
+
+import pytest
+import requests
+import yaml
 
 
 def build_and_up(env: str):
@@ -589,3 +594,23 @@ def environment_experimental_black_ciscat_rbac():
         else:
             values['retries'] += 1
     down_env()
+
+
+with open('common.yaml', 'r') as stream:
+    common = yaml.safe_load(stream)['variables']
+login_url = f"{common['protocol']}://{common['host']}:{common['port']}/{common['version']}{common['login_endpoint']}"
+basic_auth = f"{common['user']}:{common['pass']}".encode()
+login_headers = {'Content-Type': 'application/json',
+                 'Authorization': f'Basic {b64encode(basic_auth).decode()}'}
+
+
+def get_token_login_api():
+    response = requests.get(login_url, headers=login_headers)
+    if response.status_code == 200:
+        return json.loads(response.content.decode())['token']
+    else:
+        raise Exception(f"Error obtaining login token: {response.json()}")
+
+
+def pytest_tavern_beta_before_every_test_run(test_dict, variables):
+    variables["test_login_token"] = get_token_login_api()

@@ -5,14 +5,7 @@ marks:
   - usefixtures:
     - active-response_white_rbac_tests
 
-includes:
-  - !include common.yaml
-
 stages:
-
-    # Authentication stage
-  - type: ref
-    id: login_get_token
 
   - name: Runs an Active Response command on a specified agent (Allow)
     request:
@@ -28,7 +21,7 @@ stages:
         list_agents: '001'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '001'
@@ -51,7 +44,7 @@ stages:
         list_agents: '002'
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
         detail: !anystr
 
@@ -69,20 +62,18 @@ stages:
         list_agents: 002,004,005,007,010,011
     response:
       status_code: 200
-      body:
+      json:
         data:
-          affected_items: !anything
+          affected_items:
+            - '004'
+            - '007'
           failed_items:
             - error:
                 code: 1651
-                message: !anystr
-                remediation: !anystr
               id:
                 - '011'
             - error:
                 code: 4000
-                message: !anystr
-                remediation: !anystr
               id:
                 - '002'
                 - '005'
@@ -105,14 +96,12 @@ stages:
         list_agents: '009'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
             - error:
                 code: 1651
-                message: !anystr
-                remediation: !anystr
               id:
                 - '009'
           total_affected_items: 0
@@ -133,7 +122,7 @@ stages:
         list_agents: 251,252
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
         detail: !anystr
 
@@ -155,21 +144,17 @@ stages:
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items:
             - error:
                 code: 1651
-                message: !anystr
-                remediation: !anystr
               id:
                 - '009'
                 - '011'
             - error:
                 code: 1750
-                message: !anystr
-                remediation: !anystr
               id:
                 - '003'
           total_affected_items: 3

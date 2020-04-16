@@ -5,14 +5,7 @@ marks:
   - usefixtures:
     - cluster_white_rbac_tests
 
-includes:
-  - !include common.yaml
-
 stages:
-
-    # Authentication stage
-  - type: ref
-    id: login_get_token
 
   - name: Get cluster config
     request:
@@ -22,7 +15,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - name: !anystr
@@ -54,7 +47,7 @@ stages:
         list_nodes: 'worker1,worker2'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - info:
@@ -83,7 +76,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - info:
@@ -117,7 +110,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - cluster: wazuh
@@ -143,7 +136,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: &cluster_nodes_response
             - name: !anystr
@@ -162,7 +155,7 @@ stages:
         limit: 500
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -179,7 +172,7 @@ stages:
         type: master
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -197,7 +190,7 @@ stages:
         type: worker
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -222,7 +215,7 @@ stages:
         list_nodes: 'worker1'
     response:
       status_code: 400
-      body: &permission_denied
+      json: &permission_denied
         code: 4000
         detail: !anystr
 
@@ -236,7 +229,7 @@ stages:
         list_nodes: 'worker2'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -256,7 +249,7 @@ stages:
         list_nodes: 'master-node,worker1,worker2'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -287,7 +280,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           enabled: "yes"
           running: "yes"
@@ -305,7 +298,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - agentless: !anything
@@ -341,7 +334,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Filters -> section=alerts (worker2) (Allow)
@@ -354,7 +347,7 @@ stages:
         section: alerts
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - alerts:
@@ -378,7 +371,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - name: master-node
@@ -400,7 +393,7 @@ stages:
         list_nodes: 'worker1,worker2'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - name: worker2
@@ -429,7 +422,7 @@ stages:
       method: GET
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Try to show the config of analisys/global through a worker
@@ -454,7 +447,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Request {node_id}
@@ -488,7 +481,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -513,7 +506,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -529,7 +522,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Cluster stats {worker2} today (Allow)
@@ -565,7 +558,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -583,7 +576,7 @@ stages:
         list_nodes: 'worker1,worker2'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - worker1
@@ -607,7 +600,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'worker1'
@@ -632,7 +625,7 @@ stages:
         path: etc/ossec.conf
     response:
       status_code: 200
-      body:
+      json:
         contents: !anystr
 
   - name: Get ossec.conf {worker2} (Allow) (Deny)
@@ -645,7 +638,7 @@ stages:
         path: ruleset/decoders/0005-wazuh_decoders.xml
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Get ossec.conf {worker1} (Deny) (Allow)
@@ -658,7 +651,7 @@ stages:
         path: etc/ossec.conf
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Get ossec.conf {worker1} (Deny) (Deny)
@@ -671,7 +664,7 @@ stages:
         path: ruleset/decoders/0005-wazuh_decoders.xml
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -689,10 +682,10 @@ stages:
         path: etc/ossec.conf
     response:
       save:
-        body:
+        json:
           ossec_conf: contents
       status_code: 200
-      body:
+      json:
         contents: !anystr
 
   - name: Upload ossec.conf {worker2} (Allow) (Allow)
@@ -722,7 +715,7 @@ stages:
         path: etc/decoders/local_decoder.xml
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -740,7 +733,7 @@ stages:
         path: etc/rules/local_rules.xml
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Delete rules file (Allow) (Allow)
@@ -764,7 +757,7 @@ stages:
         path: etc/ossec.conf
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Delete rules file (Allow) (Allow)

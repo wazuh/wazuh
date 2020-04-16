@@ -5,14 +5,7 @@ marks:
   - usefixtures:
     - base_tests
 
-includes:
-  - !include common.yaml
-
 stages:
-
-    # Authentication stage
-  - type: ref
-    id: login_get_token
 
   - name: Runs an Active Response command on a specified agent
     request:
@@ -28,7 +21,7 @@ stages:
         list_agents: '001'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '001'
@@ -51,7 +44,7 @@ stages:
         list_agents: '002'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '002'
@@ -74,7 +67,7 @@ stages:
         list_agents: 002,004,005,007,010
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items:
@@ -102,7 +95,7 @@ stages:
         list_agents: '009'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -130,7 +123,7 @@ stages:
         list_agents: '251'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -185,7 +178,7 @@ stages:
         list_agents: '003'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -218,7 +211,7 @@ stages:
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items:

@@ -1,18 +1,11 @@
 ---
 test_name: GET /syscheck
 
-includes:
- - !include common.yaml
-
 marks:
   - usefixtures:
     - syscheck_white_rbac_tests
 
 stages:
-
-    # Authentication stage
-  - type: ref
-    id: login_get_token
 
   - name: Try to get syscheck scan results for agent 000 (Allow)
     request:
@@ -22,7 +15,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -37,7 +30,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body: &permission_denied
+      json: &permission_denied
         code: 4000
         dapi_errors: !anything
         detail: !anystr
@@ -59,7 +52,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - end: !anything
@@ -76,7 +69,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -92,7 +85,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -110,7 +103,7 @@ stages:
         list_agents: '000,003,001,004,008'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items:
@@ -135,7 +128,7 @@ stages:
         list_agents: '004'
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -151,7 +144,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -166,5 +159,5 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
