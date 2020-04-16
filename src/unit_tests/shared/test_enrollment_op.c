@@ -222,6 +222,7 @@ int test_setup_context(void **state) {
 int test_teardown_context(void **state) {
     w_enrollment_ctx *cfg = *state;
     os_free(local_target->manager_name);
+    os_free(local_target->agent_name);
     os_free(local_target);
     os_free(local_cert->agent_cert);
     os_free(local_cert->agent_key);
@@ -235,7 +236,7 @@ int test_teardown_context(void **state) {
 int test_setup_context_2(void **state) {
     os_malloc(sizeof(w_enrollment_target), local_target);
     local_target->manager_name = strdup("valid_hostname");
-    local_target->agent_name = "test_agent";
+    local_target->agent_name = strdup("test_agent");
     local_target->sender_ip = "192.168.1.1";
     local_target->port = 1234; 
     local_target->centralized_group = "test_group";
@@ -243,6 +244,26 @@ int test_setup_context_2(void **state) {
     local_cert->ciphers = DEFAULT_CIPHERS;
     local_cert->auto_method = 0;
     local_cert->authpass = "test_password";
+    local_cert->agent_cert = strdup("CERT");
+    local_cert->agent_key = strdup("KEY");
+    local_cert->ca_cert = strdup("CA_CERT");
+    w_enrollment_ctx *cfg = w_enrollment_init(local_target, local_cert);
+    *state = cfg;
+    return 0;
+}
+
+//Setup 
+int test_setup_context_3(void **state) {
+    os_malloc(sizeof(w_enrollment_target), local_target);
+    local_target->manager_name = strdup("valid_hostname");
+    local_target->agent_name = strdup("Invalid\'!@Hostname\'");
+    local_target->sender_ip = NULL;
+    local_target->port = 1234; 
+    local_target->centralized_group = NULL;
+    os_malloc(sizeof(w_enrollment_cert), local_cert);
+    local_cert->ciphers = DEFAULT_CIPHERS;
+    local_cert->auto_method = 0;
+    local_cert->authpass = NULL;
     local_cert->agent_cert = strdup("CERT");
     local_cert->agent_key = strdup("KEY");
     local_cert->ca_cert = strdup("CA_CERT");
@@ -553,6 +574,33 @@ void test_w_enrollment_send_message_wrong_hostname(void **state) {
     assert_int_equal(ret, -1);
 }
 
+void test_w_enrollment_send_message_invalid_hostname(void **state) {
+    w_enrollment_ctx *cfg = *state; 
+    expect_string(__wrap__merror, formatted_msg, "Invalid agent name \"Invalid\'!@Hostname\'\". Please pick a valid name.");
+    int ret = w_enrollment_send_message(cfg);
+    assert_int_equal(ret, -1);
+}
+
+void test_w_enrollment_send_message_fix_invalid_hostname(void **state) {
+    w_enrollment_ctx *cfg = *state; 
+    #ifdef WIN32
+        will_return(wrap_enrollment_op_gethostname, "Invalid\'!@Hostname\'");
+        will_return(wrap_enrollment_op_gethostname, 0);
+    #else 
+        will_return(__wrap_gethostname, "Invalid\'!@Hostname\'");
+        will_return(__wrap_gethostname, 0);
+    #endif
+    // If gethostname returns an invalid string should be fixed by OS_ConvertToValidAgentName
+    expect_string(__wrap__minfo, formatted_msg, "Using agent name as: InvalidHostname");
+    expect_value(__wrap_SSL_write, ssl, cfg->ssl);
+    expect_string(__wrap_SSL_write, buf, "OSSEC A:'InvalidHostname' IP:'src'\n");
+    will_return(__wrap_SSL_write, -1);
+    expect_string(__wrap__merror, formatted_msg, "SSL write error (unable to send message.)");
+    expect_string(__wrap__merror, formatted_msg, "If Agent verification is enabled, agent key and certifiates are required!");
+    int ret = w_enrollment_send_message(cfg);
+    assert_int_equal(ret, -1);
+}
+
 void test_w_enrollment_send_message_ssl_error(void **state) {
     w_enrollment_ctx *cfg = *state; 
     #ifdef WIN32
@@ -852,6 +900,8 @@ int main()
         // w_enrollment_send_message
         cmocka_unit_test(test_w_enrollment_send_message_empty_config),
         cmocka_unit_test_setup_teardown(test_w_enrollment_send_message_wrong_hostname, test_setup_context, test_teardown_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_send_message_invalid_hostname, test_setup_context_3, test_teardown_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_send_message_fix_invalid_hostname, test_setup_context, test_teardown_context),
         cmocka_unit_test_setup_teardown(test_w_enrollment_send_message_ssl_error, test_setup_context, test_teardown_context),
         cmocka_unit_test_setup_teardown(test_w_enrollment_send_message_success, test_setup_context_2, test_teardown_context),
         // w_enrollment_store_key_entry

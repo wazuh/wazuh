@@ -169,8 +169,16 @@ static int w_enrollment_send_message(w_enrollment_ctx *cfg) {
             os_free(lhostname);
             return -1;
         }
+        OS_ConvertToValidAgentName(lhostname);
     } else {
         lhostname = cfg->target_cfg->agent_name;
+    }
+
+    if (!OS_IsValidName(lhostname)) {
+        merror("Invalid agent name \"%s\". Please pick a valid name.", lhostname);
+        if(lhostname != cfg->target_cfg->agent_name)
+            os_free(lhostname);
+        return -1;
     }
     minfo("Using agent name as: %s", lhostname);
 

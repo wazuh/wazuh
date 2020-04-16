@@ -30,6 +30,14 @@ int k_extract(const char *cmdextract, int json_output);
 int k_import(const char *cmdimport);
 int k_bulkload(const char *cmdbulk);
 
+/**
+ * @brief Converts invalid hostnames to valid by eliminating
+ * invalid characters
+ * 
+ * @param u_name name to be converted 
+ * */
+void OS_ConvertToValidAgentName(char *u_name);
+
 /* Validation functions */
 int OS_IsValidName(const char *u_name);
 int OS_IsValidID(const char *id);
