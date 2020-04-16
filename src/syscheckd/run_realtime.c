@@ -229,23 +229,24 @@ void delete_subdirectories_watches(char *dir) {
     char *data;
     unsigned int inode_it = 0;
     char *dir_slash = NULL;
+    int dir_len = strlen(dir) + 1;
 
     /*
         If the directory already ends with an slash, there is no need for adding
         an extra one
      */
-    if (dir[strlen(dir) - 1] != '/') {
-        os_calloc(strlen(dir) + 2, sizeof(char), dir_slash);  // Length of dir plus an extra slash
+    if (dir[dir_len - 1] != '/') {
+        os_calloc(dir_len + 2, sizeof(char), dir_slash);  // Length of dir plus an extra slash
 
         /*
             Copy the content of dir into dir_slash and add an extra slash
         */
-        strncpy(dir_slash, dir, strlen(dir));
+        strncpy(dir_slash, dir, dir_len);
         strncat(dir_slash, "/", strlen(dir_slash) + 1);
     }
     else {
-        os_calloc(strlen(dir), sizeof(char), dir_slash);
-        strncpy(dir_slash, dir, strlen(dir));
+        os_calloc(dir_len, sizeof(char), dir_slash);
+        strncpy(dir_slash, dir, dir_len);
     }
 
     if(syscheck.realtime->fd) {

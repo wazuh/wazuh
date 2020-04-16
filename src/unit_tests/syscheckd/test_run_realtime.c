@@ -375,13 +375,19 @@ static int teardown_realtime_start(void **state) {
 }
 
 static int setup_hash_node(void **state) {
-    OSHashNode *node = (OSHashNode *)calloc(1, sizeof(OSHashNode *));
+    OSHashNode *node = (OSHashNode *)calloc(1, sizeof(OSHashNode));
 
     if (!node) {
         return -1;
     }
 
+    node->next = NULL;
+    node->prev = NULL;
     node->key = "dummy_key";
+
+    if (node->key == NULL) {
+        return -1;
+    }
 
     *state = node;
 
@@ -864,6 +870,8 @@ void test_realtime_process_move_self(void **state) {
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
+    free(data);
+
     // Back to realtime_process
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -876,6 +884,8 @@ void test_realtime_process_move_self(void **state) {
     paths = os_AddStrArray("/test", paths);
     will_return(__wrap_rbtree_keys, paths);
     expect_string(__wrap_fim_realtime_event, file, "/test");
+
+    free(data);
 
     realtime_process();
 }
@@ -963,6 +973,8 @@ void test_delete_subdirectories_watches_deletes(void **state) {
     will_return(__wrap_OSHash_Begin, NULL);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
+
+    free(data);
 
     delete_subdirectories_watches(dir);
 }
@@ -1349,14 +1361,14 @@ int main(void) {
         cmocka_unit_test(test_realtime_process_len_path_separator),
         cmocka_unit_test(test_realtime_process_overflow),
         cmocka_unit_test(test_realtime_process_delete),
-        cmocka_unit_test_setup(test_realtime_process_move_self, setup_hash_node),
+        cmocka_unit_test_setup_teardown(test_realtime_process_move_self, setup_hash_node, teardown_hash_node),
         cmocka_unit_test(test_realtime_process_failure),
 
         /* delete_subdirectories_watches */
         cmocka_unit_test_setup_teardown(test_delete_subdirectories_watches_realtime_fd_null, setup_hash_node, teardown_hash_node),
         cmocka_unit_test_setup_teardown(test_delete_subdirectories_watches_hash_node_null, setup_hash_node, teardown_hash_node),
-        cmocka_unit_test_setup(test_delete_subdirectories_watches_not_same_name, setup_hash_node),
-        cmocka_unit_test_setup(test_delete_subdirectories_watches_deletes, setup_hash_node),
+        cmocka_unit_test_setup_teardown(test_delete_subdirectories_watches_not_same_name, setup_hash_node, teardown_hash_node),
+        cmocka_unit_test_setup_teardown(test_delete_subdirectories_watches_deletes, setup_hash_node, teardown_hash_node),
 
         #else
         // realtime_win32read
@@ -1378,7 +1390,7 @@ int main(void) {
         /* count_watches */
         cmocka_unit_test_setup_teardown(test_count_watches_realtime_fd_null, setup_hash_node, teardown_hash_node),
         cmocka_unit_test_setup_teardown(test_count_watches_hash_node_null, setup_hash_node, teardown_hash_node),
-        cmocka_unit_test_setup(test_count_watches_counting, setup_hash_node),
+        cmocka_unit_test_setup_teardown(test_count_watches_counting, setup_hash_node, teardown_hash_node),
     };
     #else
     const struct CMUnitTest tests[] = {
