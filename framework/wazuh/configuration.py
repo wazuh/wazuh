@@ -176,10 +176,16 @@ def _read_option(section_name, opt):
         for a in opt.attrib:
             json_attribs[a] = opt.attrib[a]
 
-        for path in opt.text.split(','):
-            json_path = json_attribs.copy()
-            json_path['path'] = path.strip()
-            opt_value.append(json_path)
+        if opt.text:
+            for path in opt.text.split(','):
+                json_path = json_attribs.copy()
+                json_path['path'] = path.strip()
+                opt_value.append(json_path)
+    elif section_name == 'syscheck' and opt_name in ('synchronization', 'whodata'):
+        opt_value = {}
+        for child in opt:
+            child_section, child_config = _read_option(child.tag.lower(), child)
+            opt_value[child_section] = child_config.split(',') if child_config.find(',') > 0 else child_config
     elif (section_name == 'cluster' and opt_name == 'nodes') or \
             (section_name == 'sca' and opt_name == 'policies'):
         opt_value = [child.text for child in opt]

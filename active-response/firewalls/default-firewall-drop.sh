@@ -4,7 +4,7 @@
 # Adds an IP to the ipsec drop list (if aix)
 # Requirements: Linux with iptables, Solaris/FreeBSD/NetBSD with ipfilter or AIX with IPSec
 # Expect: srcip
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Author: Ahmet Ozturk (ipfilter and IPSec)
 # Author: Daniel B. Cid (iptables)
 # Author: cgzones

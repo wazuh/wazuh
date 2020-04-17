@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for custom command execution
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * October 26, 2017.
  *
  * This program is free software; you can redistribute it
@@ -205,7 +205,7 @@ void * wm_command_main(wm_command_t * command) {
 
         if (!command->ignore_output && output != NULL) {
             char *line;
-            char *save_ptr;
+            char *save_ptr = NULL;
             for (line = strtok_r(output, "\n", &save_ptr); line; line = strtok_r(NULL, "\n", &save_ptr)){
             #ifdef WIN32
                 wm_sendmsg(usec, 0, line, extag, LOCALFILE_MQ);

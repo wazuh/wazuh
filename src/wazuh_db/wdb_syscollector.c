@@ -1,6 +1,6 @@
 /*
  * Wazuh SQLite integration
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * August 30, 2017.
  *
  * This program is free software; you can redistribute it
@@ -327,6 +327,31 @@ int wdb_hotfix_delete(wdb_t * wdb, const char * scan_id) {
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
         merror("Deleting old information from 'sys_hotfixes' table: %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+
+    return 0;
+}
+
+int wdb_set_hotfix_metadata(wdb_t * wdb, const char * scan_id) {
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("at wdb_set_hotfix_metadata(): cannot begin transaction");
+        return -1;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_SET_HOTFIX_MET) < 0) {
+        mdebug1("at wdb_set_hotfix_metadata(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_SET_HOTFIX_MET];
+
+    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        merror("Could not set the hotfix metadata: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 

@@ -1,25 +1,26 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
+import fcntl
+import functools
 import json
+import operator
+import os
 import random
 import re
 import shutil
 from calendar import timegm
 from datetime import datetime
-import functools
-import operator
-import os
 from typing import Tuple, Dict, Callable
-import fcntl
 
 import wazuh.core.cluster.cluster
-from wazuh.core.core_agent import Agent
-from wazuh.core.cluster import server, common as c_common
+from wazuh import common, utils, exception
 from wazuh.core import cluster as metadata
-from wazuh import common, utils, exception, cluster
+from wazuh.core.cluster import server, common as c_common
 from wazuh.core.cluster.dapi import dapi
+from wazuh.core.cluster.utils import context_tag
+from wazuh.core.core_agent import Agent
 
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):
@@ -148,6 +149,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.node_type = ""
         # dictionary to save loggers for each sync task
         self.task_loggers = {}
+        context_tag.set(self.tag)
 
     def to_dict(self):
         """
