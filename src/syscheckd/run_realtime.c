@@ -560,7 +560,7 @@ unsigned int count_watches() {
     unsigned int inode_it = 0;
     unsigned int num_watches = 0;
 
-    if(syscheck.realtime && syscheck.realtime->fd) {
+    if(syscheck.realtime != NULL) {
         w_mutex_lock(&syscheck.fim_entry_mutex);
         hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
 

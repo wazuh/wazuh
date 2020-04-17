@@ -88,6 +88,11 @@ void fim_scan() {
     if (_base_line == 0) {
         _base_line = 1;
     }
+    else {
+        // In the first scan, the fim inicialization is different between Linux and Windows.
+        // Realtime watches are set after the first scan in Windows.
+        mdebug2(FIM_NUM_WATCHES, count_watches());
+    }
 
     check_deleted_files();
 
@@ -97,8 +102,6 @@ void fim_scan() {
     if (isDebug()) {
         fim_print_info(start, end, cputime_start); // LCOV_EXCL_LINE
     }
-
-    mdebug2(FIM_NUM_WATCHES, count_watches());
 }
 
 void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) {
