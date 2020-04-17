@@ -939,10 +939,11 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
                         // sending partial whodata alerts
                         d_status->status &= ~WD_CHECK_WHODATA;
                         // Removes CHECK_WHODATA from directory properties to prevent from
-                        // being found in the whodata callback for Windows (find_dir_pos)
+                        // being found in the whodata callback for Windows
                         syscheck.opts[i] &= ~WHODATA_ACTIVE;
                         // Mark it to prevent the restoration of its SACL
                         d_status->status &= ~WD_IGNORE_REST;
+                        // Mark it to be monitored by Realtime
                         d_status->status |= WD_CHECK_REALTIME;
                         syscheck.realtime_change = 1;
                         notify_SACL_change(syscheck.dir[i]);
