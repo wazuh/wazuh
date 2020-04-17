@@ -5,14 +5,7 @@ marks:
   - usefixtures:
     - base_tests
 
-includes:
-  - !include common.yaml
-
 stages:
-
-    # Authentication stage
-  - type: ref
-    id: login_get_token
 
     # GET /lists
   - name: Try to get all lists
@@ -23,7 +16,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -47,7 +40,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - items: !anything
@@ -58,9 +51,9 @@ stages:
           total_failed_items: 0
       # Save some data for future use in the test
       save:
-        body:
-          returned_relative_dirname: data.affected_items.0.relative_dirname
-          returned_filename: data.affected_items.0.filename
+        json:
+          returned_relative_dirname: data.affected_items[0].relative_dirname
+          returned_filename: data.affected_items[0].filename
 
     # We implement a dual stage to check offset parameter behaviour
     # GET /lists?limit=2&offset=0
@@ -72,7 +65,7 @@ stages:
         offset: 0
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - items: !anything
@@ -86,9 +79,9 @@ stages:
           total_failed_items: 0
       # Save second item to check offset in next stage
       save:
-        body:
-          offset_item_relative_dirname: data.affected_items.1.relative_dirname
-          offset_item_filename: data.affected_items.1.filename
+        json:
+          offset_item_relative_dirname: data.affected_items[1].relative_dirname
+          offset_item_filename: data.affected_items[1].filename
 
     # GET /lists?limit=1&offset=1
   - name: Try to get lists using limit and offset parameter
@@ -99,7 +92,7 @@ stages:
         offset: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - items: !anything
@@ -118,7 +111,7 @@ stages:
         search: "{returned_relative_dirname:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - items: !anything
@@ -135,7 +128,7 @@ stages:
         search: "-{returned_filename:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - items: !anything
@@ -152,7 +145,7 @@ stages:
         search: "empty_search"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items: []
@@ -168,7 +161,7 @@ stages:
         relative_dirname: "{returned_relative_dirname:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - items: !anything
@@ -210,7 +203,7 @@ stages:
         filename: "wrong_dirname"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items: []
@@ -231,7 +224,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
            # We get totalItems number of arrays in items, using !anything to check items key is in the response
           affected_items: !anything
@@ -256,7 +249,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: &full_items_array_files
             - relative_dirname: !anystr
@@ -266,9 +259,9 @@ stages:
           total_failed_items: 0
       # Save some data for future use in the test
       save:
-        body:
-          returned_relative_dirname: data.affected_items.0.relative_dirname
-          returned_filename: data.affected_items.0.filename
+        json:
+          returned_relative_dirname: data.affected_items[0].relative_dirname
+          returned_filename: data.affected_items[0].filename
 
     # We implement a dual stage to check offset parameter behaviour
     # GET /lists/files?limit=2&offset=0
@@ -280,7 +273,7 @@ stages:
         offset: 0
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *full_items_array_files
@@ -290,9 +283,9 @@ stages:
           total_failed_items: 0
       # Save second item to check offset in next stage
       save:
-        body:
-          offset_item_relative_dirname: data.affected_items.1.relative_dirname
-          offset_item_filename: data.affected_items.1.filename
+        json:
+          offset_item_relative_dirname: data.affected_items[1].relative_dirname
+          offset_item_filename: data.affected_items[1].filename
 
     # GET /lists/files?limit=1&offset=1
   - name: Try to get paths from all CDB lists using limit and offset parameter
@@ -303,7 +296,7 @@ stages:
         offset: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
               # Check offset matches with previous request
@@ -322,7 +315,7 @@ stages:
         search: "{returned_relative_dirname:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *full_items_array_files
@@ -339,7 +332,7 @@ stages:
         search: "-{returned_relative_dirname:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items: []
@@ -355,7 +348,7 @@ stages:
         search: "empty_search"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []

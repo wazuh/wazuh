@@ -1,16 +1,11 @@
 ---
 test_name: GET /syscollector/{agent_id}/os
 
-includes:
-  - !include common.yaml
-
 marks:
   - usefixtures:
     - syscollector_tests
 
 stages:
-  - type: ref
-    id: login_get_token
 
   - name: Get the OS of an agent
     request: &os_request_000
@@ -20,7 +15,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - architecture: !anystr
@@ -43,10 +38,10 @@ stages:
           total_failed_items: 0
         message: !anystr
       save:
-        body:
-          os.version: data.affected_items.0.os.version
-          release: data.affected_items.0.release
-          sysname: data.affected_items.0.sysname
+        json:
+          os.version: data.affected_items[0].os.version
+          release: data.affected_items[0].release
+          sysname: data.affected_items[0].sysname
 
   - name: Invalid selector
     request:
@@ -55,7 +50,7 @@ stages:
         select: wrongParam
     response: &error_response_1724
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -97,12 +92,11 @@ stages:
         select: "{field}"
     response:
       status_code: 200
-      body:
-        $ext:
-          # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items_with_agent_id
-          extra_kwargs:
-            select_key: "{field:s}"
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        extra_kwargs:
+          select_key: "{field:s}"
 
 ---
 test_name: GET /syscollector/{agent_id}/hardware
@@ -117,7 +111,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - board_serial: !anything
@@ -137,10 +131,10 @@ stages:
           total_failed_items: 0
         message: !anystr
       save:
-        body:
-          board_serial: data.affected_items.0.board_serial
-          cpu_name: data.affected_items.0.cpu.name
-          ram_total: data.affected_items.0.ram.total
+        json:
+          board_serial: data.affected_items[0].board_serial
+          cpu_name: data.affected_items[0].cpu.name
+          ram_total: data.affected_items[0].ram.total
 
   - name: Not allowed selector
     request:
@@ -176,12 +170,11 @@ stages:
         select: "{field}"
     response:
       status_code: 200
-      body:
-        $ext:
-          # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items_with_agent_id
-          extra_kwargs:
-            select_key: "{field:s}"
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        extra_kwargs:
+          select_key: "{field:s}"
 
 ---
 test_name: GET /syscollector/{agent_id}/packages
@@ -198,7 +191,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: &packages_response
             - architecture: !anystr
@@ -218,11 +211,11 @@ stages:
           total_failed_items: 0
         message: !anystr
       save:
-        body:
-          expected_scan_id: data.affected_items.0.scan.id
-          expected_description: data.affected_items.0.description
-          expected_architecture: data.affected_items.0.architecture
-          expected_version: data.affected_items.0.version
+        json:
+          expected_scan_id: data.affected_items[0].scan.id
+          expected_description: data.affected_items[0].description
+          expected_architecture: data.affected_items[0].architecture
+          expected_version: data.affected_items[0].version
 
   - name: Multiple selectors with limit
     request:
@@ -232,7 +225,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - architecture: "{expected_architecture}"
@@ -260,24 +253,24 @@ stages:
         limit: 2
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *packages_response
             - <<: *packages_response
       save:
-        body:
-          offset_test_architecture: data.affected_items.1.architecture
-          offset_test_description: data.affected_items.1.description
-          offset_test_format: data.affected_items.1.format
-          offset_test_name: data.affected_items.1.name
-          offset_test_priority: data.affected_items.1.priority
-          offset_test_scan_id: data.affected_items.1.scan.id
-          offset_test_scan_time: data.affected_items.1.scan.time
-          offset_test_section: data.affected_items.1.section
-          offset_test_size: data.affected_items.1.size
-          offset_test_vendor: data.affected_items.1.vendor
-          offset_test_version: data.affected_items.1.version
+        json:
+          offset_test_architecture: data.affected_items[1].architecture
+          offset_test_description: data.affected_items[1].description
+          offset_test_format: data.affected_items[1].format
+          offset_test_name: data.affected_items[1].name
+          offset_test_priority: data.affected_items[1].priority
+          offset_test_scan_id: data.affected_items[1].scan.id
+          offset_test_scan_time: data.affected_items[1].scan.time
+          offset_test_section: data.affected_items[1].section
+          offset_test_size: data.affected_items[1].size
+          offset_test_vendor: data.affected_items[1].vendor
+          offset_test_version: data.affected_items[1].version
 
   - name: Limit and offset test
     request:
@@ -287,7 +280,7 @@ stages:
         limit: 2
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - architecture: "{offset_test_architecture}"
@@ -304,9 +297,9 @@ stages:
               version: "{offset_test_version}"
             - <<: *packages_response
       save:
-        body:
-          expected_name: data.affected_items.0.name
-          expected_vendor: data.affected_items.0.vendor
+        json:
+          expected_name: data.affected_items[0].name
+          expected_vendor: data.affected_items[0].vendor
 
   - name: Wrong limit
     request:
@@ -316,7 +309,7 @@ stages:
         limit: 1a
     response:
       status_code: 400
-      body: &bad_request
+      json: &bad_request
         detail: !anystr
         status: 400
         title: "Bad Request"
@@ -330,7 +323,7 @@ stages:
         limit: 0
     response:
       status_code: 400
-      body:
+      json:
         <<: *bad_request
 
   - name: Filter sort
@@ -341,7 +334,7 @@ stages:
         limit: 2
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *packages_response
@@ -355,7 +348,7 @@ stages:
         limit: 2
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *packages_response
@@ -368,7 +361,7 @@ stages:
         sort: wronParam
     response: &error_response_1403
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -387,7 +380,7 @@ stages:
         search: "{expected_name}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *packages_response
@@ -400,7 +393,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *packages_response
@@ -413,7 +406,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *packages_response
@@ -426,13 +419,13 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *packages_response
       save:
-        body:
-          name: data.affected_items.0.name
+        json:
+          name: data.affected_items[0].name
 
   - name: Filter by name
     request:
@@ -442,13 +435,13 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *packages_response
       save:
-        body:
-          architecture: data.affected_items.0.architecture
+        json:
+          architecture: data.affected_items[0].architecture
 
   - name: Filter by architecture
     request:
@@ -458,14 +451,14 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *packages_response
       save:
-        body:
-          expected_format: data.affected_items.0.format
-          expected_vendor: data.affected_items.0.vendor
+        json:
+          expected_format: data.affected_items[0].format
+          expected_vendor: data.affected_items[0].vendor
 
   - name: Filter by format
     request:
@@ -475,7 +468,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *packages_response
@@ -488,7 +481,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *packages_response
@@ -501,7 +494,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *packages_response
@@ -534,12 +527,11 @@ stages:
         select: "{field:s}"
     response:
       status_code: 200
-      body:
-        $ext:
-          # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items_with_agent_id
-          extra_kwargs:
-            select_key: "{field:s}"
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        extra_kwargs:
+          select_key: "{field:s}"
 
 ---
 test_name: GET /syscollector/{agent_id}/processes
@@ -556,7 +548,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: &processes_response_000
             - cmd: !anystr
@@ -594,25 +586,25 @@ stages:
           total_failed_items: 0
         message: !anystr
       save:
-        body:
-          expected_tty: data.affected_items.0.tty
-          expected_sgroup: data.affected_items.0.sgroup
-          expected_share: data.affected_items.0.share
-          expected_session: data.affected_items.0.session
-          expected_scan_id: data.affected_items.0.scan.id
-          expected_pid: data.affected_items.0.pid
-          expected_ppid: data.affected_items.0.ppid
-          expected_state: data.affected_items.0.state
-          expected_egroup: data.affected_items.0.egroup
-          expected_euser: data.affected_items.0.euser
-          expected_ruser: data.affected_items.0.ruser
-          expected_suser: data.affected_items.0.suser
-          expected_fgroup: data.affected_items.0.fgroup
-          expected_rgroup: data.affected_items.0.rgroup
-          expected_name: data.affected_items.0.name
-          expected_nlwp: data.affected_items.0.nlwp
-          expected_pgrp: data.affected_items.0.pgrp
-          expected_priority: data.affected_items.0.priority
+        json:
+          expected_tty: data.affected_items[0].tty
+          expected_sgroup: data.affected_items[0].sgroup
+          expected_share: data.affected_items[0].share
+          expected_session: data.affected_items[0].session
+          expected_scan_id: data.affected_items[0].scan.id
+          expected_pid: data.affected_items[0].pid
+          expected_ppid: data.affected_items[0].ppid
+          expected_state: data.affected_items[0].state
+          expected_egroup: data.affected_items[0].egroup
+          expected_euser: data.affected_items[0].euser
+          expected_ruser: data.affected_items[0].ruser
+          expected_suser: data.affected_items[0].suser
+          expected_fgroup: data.affected_items[0].fgroup
+          expected_rgroup: data.affected_items[0].rgroup
+          expected_name: data.affected_items[0].name
+          expected_nlwp: data.affected_items[0].nlwp
+          expected_pgrp: data.affected_items[0].pgrp
+          expected_priority: data.affected_items[0].priority
 
   - name: Filter by pid
     request:
@@ -622,7 +614,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - pid: "{expected_pid}"
@@ -635,7 +627,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - ppid: !int "{expected_ppid}"
@@ -648,7 +640,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - state: "{expected_state}"
@@ -661,7 +653,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - egroup: "{expected_egroup}"
@@ -674,7 +666,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - fgroup: "{expected_fgroup}"
@@ -687,7 +679,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - sgroup: "{expected_sgroup}"
@@ -700,7 +692,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - rgroup: "{expected_rgroup}"
@@ -713,7 +705,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - euser: "{expected_euser}"
@@ -726,7 +718,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - ruser: "{expected_ruser}"
@@ -739,7 +731,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - suser: "{expected_suser}"
@@ -752,7 +744,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - nlwp: !int "{expected_nlwp}"
@@ -765,7 +757,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - pgrp: !int "{expected_pgrp}"
@@ -778,7 +770,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - priority: !int "{expected_priority}"
@@ -791,7 +783,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - name: "{expected_name}"
@@ -804,7 +796,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - scan:
@@ -830,42 +822,42 @@ stages:
         limit: 2
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *processes_response_000
             - <<: *processes_response_000
       save:
-        body:
-          offset_test_cmd: data.affected_items.1.cmd
-          offset_test_egroup: data.affected_items.1.egroup
-          offset_test_euser: data.affected_items.1.euser
-          offset_test_fgroup: data.affected_items.1.fgroup
-          offset_test_name: data.affected_items.1.name
-          offset_test_nice: data.affected_items.1.nice
-          offset_test_nlwp: data.affected_items.1.nlwp
-          offset_test_pgrp: data.affected_items.1.pgrp
-          offset_test_pid: data.affected_items.1.pid
-          offset_test_ppid: data.affected_items.1.ppid
-          offset_test_priority: data.affected_items.1.priority
-          offset_test_processor: data.affected_items.1.processor
-          offset_test_resident: data.affected_items.1.resident
-          offset_test_rgroup: data.affected_items.1.rgroup
-          offset_test_ruser: data.affected_items.1.ruser
-          offset_test_scan_id: data.affected_items.1.scan.id
-          offset_test_scan_time: data.affected_items.1.scan.time
-          offset_test_session: data.affected_items.1.session
-          offset_test_sgroup: data.affected_items.1.sgroup
-          offset_test_share: data.affected_items.1.share
-          offset_test_size: data.affected_items.1.size
-          offset_test_start_time: data.affected_items.1.start_time
-          offset_test_state: data.affected_items.1.state
-          offset_test_stime: data.affected_items.1.stime
-          offset_test_suser: data.affected_items.1.suser
-          offset_test_tgid: data.affected_items.1.tgid
-          offset_test_tty: data.affected_items.1.tty
-          offset_test_utime: data.affected_items.1.utime
-          offset_test_vm_size: data.affected_items.1.vm_size
+        json:
+          offset_test_cmd: data.affected_items[1].cmd
+          offset_test_egroup: data.affected_items[1].egroup
+          offset_test_euser: data.affected_items[1].euser
+          offset_test_fgroup: data.affected_items[1].fgroup
+          offset_test_name: data.affected_items[1].name
+          offset_test_nice: data.affected_items[1].nice
+          offset_test_nlwp: data.affected_items[1].nlwp
+          offset_test_pgrp: data.affected_items[1].pgrp
+          offset_test_pid: data.affected_items[1].pid
+          offset_test_ppid: data.affected_items[1].ppid
+          offset_test_priority: data.affected_items[1].priority
+          offset_test_processor: data.affected_items[1].processor
+          offset_test_resident: data.affected_items[1].resident
+          offset_test_rgroup: data.affected_items[1].rgroup
+          offset_test_ruser: data.affected_items[1].ruser
+          offset_test_scan_id: data.affected_items[1].scan.id
+          offset_test_scan_time: data.affected_items[1].scan.time
+          offset_test_session: data.affected_items[1].session
+          offset_test_sgroup: data.affected_items[1].sgroup
+          offset_test_share: data.affected_items[1].share
+          offset_test_size: data.affected_items[1].size
+          offset_test_start_time: data.affected_items[1].start_time
+          offset_test_state: data.affected_items[1].state
+          offset_test_stime: data.affected_items[1].stime
+          offset_test_suser: data.affected_items[1].suser
+          offset_test_tgid: data.affected_items[1].tgid
+          offset_test_tty: data.affected_items[1].tty
+          offset_test_utime: data.affected_items[1].utime
+          offset_test_vm_size: data.affected_items[1].vm_size
 
   - name: offset and limit check
     request:
@@ -876,7 +868,7 @@ stages:
     response:
       status_code: 200
       strict: false
-      body:
+      json:
         data:
           affected_items:
             - cmd: "{offset_test_cmd}"
@@ -917,7 +909,7 @@ stages:
         limit: 0
     response:
       status_code: 400
-      body: &error_spec
+      json: &error_spec
         detail: !anystr
         status: !anyint
         title: !anything
@@ -969,7 +961,7 @@ stages:
         sort: "{field}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
 
@@ -981,12 +973,11 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
-        $ext:
-          # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items_with_agent_id
-          extra_kwargs:
-            select_key: "{field:s}"
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        extra_kwargs:
+          select_key: "{field:s}"
 
 ---
 test_name: GET /syscollector/{agent_id}/ports
@@ -1001,7 +992,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
 
@@ -1012,7 +1003,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: &port_response
             - inode: !anyint
@@ -1030,13 +1021,13 @@ stages:
               state: !anystr
               tx_queue: !anyint
       save:
-        body:
-          expected_protocol: data.affected_items.0.protocol
-          expected_local_ip: data.affected_items.0.local.ip
-          expected_local_port: data.affected_items.0.local.port
-          expected_remote_ip: data.affected_items.0.remote.ip
-          expected_tx_queue: data.affected_items.0.tx_queue
-          expected_state: data.affected_items.0.state
+        json:
+          expected_protocol: data.affected_items[0].protocol
+          expected_local_ip: data.affected_items[0].local.ip
+          expected_local_port: data.affected_items[0].local.port
+          expected_remote_ip: data.affected_items[0].remote.ip
+          expected_tx_queue: data.affected_items[0].tx_queue
+          expected_state: data.affected_items[0].state
 
   - name: Filter protocol
     request:
@@ -1046,7 +1037,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *port_response
@@ -1059,7 +1050,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *port_response
@@ -1072,7 +1063,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *port_response
@@ -1085,7 +1076,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *port_response
@@ -1098,7 +1089,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *port_response
@@ -1111,7 +1102,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *port_response
@@ -1140,7 +1131,7 @@ stages:
         limit: 0
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Wrong filter
@@ -1188,12 +1179,12 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
-        $ext:
-          # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items_with_agent_id
-          extra_kwargs:
-            select_key: "{field:s}"
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        extra_kwargs:
+          select_key: "{field:s}"
+      json:
         data:
           total_affected_items: !anyint
 
@@ -1205,7 +1196,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
 
@@ -1224,7 +1215,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: &netaddr_response
             - address: !anystr
@@ -1236,12 +1227,12 @@ stages:
                 id: !anyint
           total_affected_items: !anyint
       save:
-        body:
-          expected_broadcast: data.affected_items.0.broadcast
-          expected_proto: data.affected_items.0.proto
-          expected_address: data.affected_items.0.address
-          expected_netmask: data.affected_items.0.netmask
-          expected_iface: data.affected_items.0.iface
+        json:
+          expected_broadcast: data.affected_items[0].broadcast
+          expected_proto: data.affected_items[0].proto
+          expected_address: data.affected_items[0].address
+          expected_netmask: data.affected_items[0].netmask
+          expected_iface: data.affected_items[0].iface
 
   - name: Filter by iface
     request:
@@ -1250,7 +1241,7 @@ stages:
         iface: "{expected_iface}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netaddr_response
@@ -1262,7 +1253,7 @@ stages:
         iface: "invalid"
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: 0
 
@@ -1273,7 +1264,7 @@ stages:
         netmask: "{expected_netmask}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netaddr_response
@@ -1285,7 +1276,7 @@ stages:
         netmask: "invalid"
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: 0
 
@@ -1296,7 +1287,7 @@ stages:
         address: "{expected_address}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netaddr_response
@@ -1308,7 +1299,7 @@ stages:
         address: "invalid"
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: 0
 
@@ -1319,7 +1310,7 @@ stages:
         proto: "{expected_proto}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netaddr_response
@@ -1331,7 +1322,7 @@ stages:
         proto: "invalid"
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: 0
 
@@ -1342,7 +1333,7 @@ stages:
         broadcast: "{expected_broadcast}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netaddr_response
@@ -1354,7 +1345,7 @@ stages:
         broadcast: "invalid"
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: 0
 
@@ -1366,7 +1357,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - broadcast: "{expected_broadcast}"
@@ -1379,7 +1370,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - proto: "{expected_proto}"
@@ -1392,7 +1383,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - address: "{expected_address}"
@@ -1405,7 +1396,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - netmask: "{expected_netmask}"
@@ -1418,7 +1409,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - iface: "{expected_iface}"
@@ -1430,7 +1421,7 @@ stages:
         select: proto,broadcast,netmask
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - proto: !anystr
@@ -1453,7 +1444,7 @@ stages:
         offset: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           total_affected_items: 1
@@ -1465,7 +1456,7 @@ stages:
         limit: 0
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Wrong param
@@ -1484,7 +1475,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netaddr_response
@@ -1522,12 +1513,12 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
-        $ext:
-          # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items_with_agent_id
-          extra_kwargs:
-            select_key: "{field:s}"
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        extra_kwargs:
+          select_key: "{field:s}"
+      json:
         data:
           total_affected_items: !anyint
 
@@ -1539,7 +1530,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
 
@@ -1558,7 +1549,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: &netproto_response_000
             - dhcp: !anystr
@@ -1569,12 +1560,12 @@ stages:
                 id: !anyint
           total_affected_items: !anyint
       save:
-        body:
-          expected_dhcp: data.affected_items.0.dhcp
-          expected_gateway: data.affected_items.0.gateway
-          expected_type: data.affected_items.0.type
-          expected_scan_id: data.affected_items.0.scan.id
-          expected_iface: data.affected_items.0.iface
+        json:
+          expected_dhcp: data.affected_items[0].dhcp
+          expected_gateway: data.affected_items[0].gateway
+          expected_type: data.affected_items[0].type
+          expected_scan_id: data.affected_items[0].scan.id
+          expected_iface: data.affected_items[0].iface
 
   - name: Filter by iface
     request:
@@ -1583,7 +1574,7 @@ stages:
         iface: "{expected_iface}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netproto_response_000
@@ -1595,7 +1586,7 @@ stages:
         iface: "invalid"
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: 0
 
@@ -1606,7 +1597,7 @@ stages:
         type: "{expected_type}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netproto_response_000
@@ -1618,7 +1609,7 @@ stages:
         type: "invalid"
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: 0
 
@@ -1629,7 +1620,7 @@ stages:
         gateway: "{expected_gateway}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netproto_response_000
@@ -1641,7 +1632,7 @@ stages:
         gateway: "invalid"
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: 0
 
@@ -1652,7 +1643,7 @@ stages:
         dhcp: "{expected_dhcp}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netproto_response_000
@@ -1672,7 +1663,7 @@ stages:
         select: iface,gateway,dhcp
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - iface: !anystr
@@ -1687,7 +1678,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - dhcp: "{expected_dhcp}"
@@ -1700,7 +1691,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - gateway: "{expected_gateway}"
@@ -1713,7 +1704,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - type: "{expected_type}"
@@ -1726,7 +1717,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - scan:
@@ -1740,7 +1731,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - iface: "{expected_iface}"
@@ -1760,7 +1751,7 @@ stages:
         limit: 0
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Wrong param
@@ -1779,7 +1770,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netproto_response_000
@@ -1815,12 +1806,12 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
-        $ext:
-          # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items_with_agent_id
-          extra_kwargs:
-            select_key: "{field:s}"
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        extra_kwargs:
+          select_key: "{field:s}"
+      json:
         data:
           total_affected_items: !anyint
 
@@ -1833,7 +1824,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
 
@@ -1852,7 +1843,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: &netiface_response_000
             - mac: !anystr
@@ -1875,20 +1866,20 @@ stages:
               type: !anystr
           total_affected_items: !anyint
       save:
-        body:
-          expected_mac: data.affected_items.0.mac
-          expected_rx_bytes: data.affected_items.0.rx.bytes
-          expected_tx_bytes: data.affected_items.0.tx.bytes
-          expected_tx_errors: data.affected_items.0.tx.errors
-          expected_rx_errors: data.affected_items.0.rx.errors
-          expected_rx_packets: data.affected_items.0.rx.packets
-          expected_tx_dropped: data.affected_items.0.tx.dropped
-          expected_rx_dropped: data.affected_items.0.rx.dropped
-          expected_tx_packets: data.affected_items.0.tx.packets
-          expected_type: data.affected_items.0.type
-          expected_mtu: data.affected_items.0.mtu
-          expected_name: data.affected_items.0.name
-          expected_state: data.affected_items.0.state
+        json:
+          expected_mac: data.affected_items[0].mac
+          expected_rx_bytes: data.affected_items[0].rx.bytes
+          expected_tx_bytes: data.affected_items[0].tx.bytes
+          expected_tx_errors: data.affected_items[0].tx.errors
+          expected_rx_errors: data.affected_items[0].rx.errors
+          expected_rx_packets: data.affected_items[0].rx.packets
+          expected_tx_dropped: data.affected_items[0].tx.dropped
+          expected_rx_dropped: data.affected_items[0].rx.dropped
+          expected_tx_packets: data.affected_items[0].tx.packets
+          expected_type: data.affected_items[0].type
+          expected_mtu: data.affected_items[0].mtu
+          expected_name: data.affected_items[0].name
+          expected_state: data.affected_items[0].state
 
   - name: Select type, rx.bytes, tx.errors, tx.dropped, mac
     request:
@@ -1897,7 +1888,7 @@ stages:
         select: type,rx.bytes,tx.errors,tx.dropped,mac
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - type: !anystr
@@ -1916,7 +1907,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - mac: "{expected_mac}"
@@ -1929,7 +1920,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - rx:
@@ -1944,7 +1935,7 @@ stages:
 
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - tx:
@@ -1958,7 +1949,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - tx:
@@ -1979,7 +1970,7 @@ stages:
         limit: 0
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Wrong param
@@ -1998,7 +1989,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2019,7 +2010,7 @@ stages:
         offset: 0
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2033,7 +2024,7 @@ stages:
         offset: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           total_affected_items: !anyint
@@ -2045,7 +2036,7 @@ stages:
         mtu: "{expected_mtu}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2067,7 +2058,7 @@ stages:
         name: "{expected_name}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2080,7 +2071,7 @@ stages:
         type: "{expected_type}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2093,7 +2084,7 @@ stages:
         state: "{expected_state}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2106,7 +2097,7 @@ stages:
         tx.packets: "{expected_tx_packets}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2119,7 +2110,7 @@ stages:
         rx.packets: "{expected_rx_packets}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2132,7 +2123,7 @@ stages:
         tx.dropped: "{expected_tx_dropped}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2145,7 +2136,7 @@ stages:
         rx.dropped: "{expected_rx_dropped}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2158,7 +2149,7 @@ stages:
         tx.bytes: "{expected_tx_bytes}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2171,7 +2162,7 @@ stages:
         rx.bytes: "{expected_rx_bytes}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2184,7 +2175,7 @@ stages:
         tx.errors: "{expected_tx_errors}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2197,7 +2188,7 @@ stages:
         rx.errors: "{expected_rx_errors}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response_000
@@ -2210,7 +2201,7 @@ stages:
         tx.packets: -1
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Filter invalid tx.packets
@@ -2220,7 +2211,7 @@ stages:
         tx.packets: 999999
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           total_affected_items: 0
@@ -2232,7 +2223,7 @@ stages:
         rx.packets: -1
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Filter invalid rx.packets
@@ -2242,7 +2233,7 @@ stages:
         rx.packets: 999999
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           total_affected_items: 0
@@ -2254,7 +2245,7 @@ stages:
         tx.dropped: -1
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Filter invalid tx.dropped
@@ -2264,7 +2255,7 @@ stages:
         tx.dropped: 999999
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           total_affected_items: 0
@@ -2276,7 +2267,7 @@ stages:
         rx.dropped: -1
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Filter invalid rx.dropped
@@ -2286,7 +2277,7 @@ stages:
         rx.dropped: 999999
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           total_affected_items: 0
@@ -2298,7 +2289,7 @@ stages:
         tx.bytes: -1
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Filter invalid tx.bytes
@@ -2308,7 +2299,7 @@ stages:
         tx.bytes: 999999
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           total_affected_items: 0
@@ -2320,7 +2311,7 @@ stages:
         rx.bytes: -1
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Filter invalid rx.bytes
@@ -2330,7 +2321,7 @@ stages:
         rx.bytes: 999999
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           total_affected_items: 0
@@ -2342,7 +2333,7 @@ stages:
         tx.errors: -1
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Filter invalid tx.errors
@@ -2352,7 +2343,7 @@ stages:
         tx.errors: 999999
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           total_affected_items: 0
@@ -2364,7 +2355,7 @@ stages:
         rx.errors: -1
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Filter invalid rx.errors
@@ -2374,7 +2365,7 @@ stages:
         rx.errors: 999999
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           total_affected_items: 0
@@ -2412,12 +2403,12 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
-        $ext:
-          # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items_with_agent_id
-          extra_kwargs:
-            select_key: "{field:s}"
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        extra_kwargs:
+          select_key: "{field:s}"
+      json:
         data:
           total_affected_items: !anyint
 
@@ -2429,7 +2420,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
 
@@ -2446,7 +2437,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - architecture: !anystr
@@ -2465,10 +2456,10 @@ stages:
               sysname: !anystr
               version: !anystr
       save:
-        body:
-          os_version: data.affected_items.0.os.version
-          release: data.affected_items.0.release
-          sysname: data.affected_items.0.sysname
+        json:
+          os_version: data.affected_items[0].os.version
+          release: data.affected_items[0].release
+          sysname: data.affected_items[0].sysname
 
   - name: Invalid selector
     request:
@@ -2477,7 +2468,7 @@ stages:
         select: wrongParam
     response: &error_response_1724_002
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -2521,12 +2512,11 @@ stages:
 
     response:
       status_code: 200
-      body:
-        $ext:
-          # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items_with_agent_id
-          extra_kwargs:
-            select_key: "{field:s}"
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        extra_kwargs:
+          select_key: "{field:s}"
 
 ---
 test_name: GET /syscollector/{agent_id}/hardware
@@ -2541,7 +2531,7 @@ stages:
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - board_serial: !anything
@@ -2557,10 +2547,10 @@ stages:
                 id: !anything
                 time: !anything
       save:
-        body:
-          board_serial: data.affected_items.0.board_serial
-          cpu_name: data.affected_items.0.cpu.name
-          ram_total: data.affected_items.0.ram.total
+        json:
+          board_serial: data.affected_items[0].board_serial
+          cpu_name: data.affected_items[0].cpu.name
+          ram_total: data.affected_items[0].ram.total
 
   - name: Not allowed selector
     request:
@@ -2596,12 +2586,11 @@ stages:
         select: "{field}"
     response:
       status_code: 200
-      body:
-        $ext:
-          # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items_with_agent_id
-          extra_kwargs:
-            select_key: "{field:s}"
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        extra_kwargs:
+          select_key: "{field:s}"
 
 ---
 test_name: GET /syscollector/{agent_id}/netaddr
@@ -2618,18 +2607,18 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netaddr_response
           total_affected_items: !anyint
       save:
-        body:
-          expected_broadcast: data.affected_items.0.broadcast
-          expected_proto: data.affected_items.0.proto
-          expected_address: data.affected_items.0.address
-          expected_netmask: data.affected_items.0.netmask
-          expected_iface: data.affected_items.0.iface
+        json:
+          expected_broadcast: data.affected_items[0].broadcast
+          expected_proto: data.affected_items[0].proto
+          expected_address: data.affected_items[0].address
+          expected_netmask: data.affected_items[0].netmask
+          expected_iface: data.affected_items[0].iface
 
   - name: Filter by iface
     request:
@@ -2638,7 +2627,7 @@ stages:
         iface: "{expected_iface}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netaddr_response
@@ -2650,7 +2639,7 @@ stages:
         iface: "invalid"
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: 0
 
@@ -2661,7 +2650,7 @@ stages:
         netmask: "{expected_netmask}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netaddr_response
@@ -2673,7 +2662,7 @@ stages:
         netmask: "invalid"
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: 0
 
@@ -2684,7 +2673,7 @@ stages:
         address: "{expected_address}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netaddr_response
@@ -2696,7 +2685,7 @@ stages:
         address: "invalid"
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: 0
 
@@ -2707,7 +2696,7 @@ stages:
         proto: "{expected_proto}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netaddr_response
@@ -2719,7 +2708,7 @@ stages:
         proto: "invalid"
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: 0
 
@@ -2730,7 +2719,7 @@ stages:
         broadcast: "{expected_broadcast}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netaddr_response
@@ -2742,7 +2731,7 @@ stages:
         broadcast: "invalid"
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: 0
 
@@ -2754,7 +2743,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - broadcast: "{expected_broadcast}"
@@ -2767,7 +2756,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - proto: "{expected_proto}"
@@ -2780,7 +2769,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - address: "{expected_address}"
@@ -2793,7 +2782,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - netmask: "{expected_netmask}"
@@ -2806,7 +2795,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - iface: "{expected_iface}"
@@ -2818,7 +2807,7 @@ stages:
         select: proto,broadcast,netmask
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - proto: !anystr
@@ -2841,7 +2830,7 @@ stages:
         offset: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           total_affected_items: 1
@@ -2853,7 +2842,7 @@ stages:
         limit: 0
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Wrong param
@@ -2872,7 +2861,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netaddr_response
@@ -2884,7 +2873,7 @@ stages:
         sort: -wrong
     response: &error_response_1403_002
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -2920,12 +2909,12 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
-        $ext:
-          # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items_with_agent_id
-          extra_kwargs:
-            select_key: "{field:s}"
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        extra_kwargs:
+          select_key: "{field:s}"
+      json:
         data:
           total_affected_items: !anyint
 
@@ -2937,7 +2926,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
 
@@ -2956,7 +2945,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: &netproto_response
             - dhcp: !anystr
@@ -2967,12 +2956,12 @@ stages:
               type: !anystr
           total_affected_items: !anyint
       save:
-        body:
-          expected_dhcp: data.affected_items.0.dhcp
-          expected_gateway: data.affected_items.0.gateway
-          expected_type: data.affected_items.0.type
-          expected_scan_id: data.affected_items.0.scan.id
-          expected_iface: data.affected_items.0.iface
+        json:
+          expected_dhcp: data.affected_items[0].dhcp
+          expected_gateway: data.affected_items[0].gateway
+          expected_type: data.affected_items[0].type
+          expected_scan_id: data.affected_items[0].scan.id
+          expected_iface: data.affected_items[0].iface
 
   - name: Filter by iface
     request:
@@ -2981,7 +2970,7 @@ stages:
         iface: "{expected_iface}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netproto_response
@@ -2993,7 +2982,7 @@ stages:
         iface: "invalid"
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: 0
 
@@ -3004,7 +2993,7 @@ stages:
         type: "{expected_type}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netproto_response
@@ -3016,7 +3005,7 @@ stages:
         type: "invalid"
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: 0
 
@@ -3027,7 +3016,7 @@ stages:
         gateway: "{expected_gateway}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netproto_response
@@ -3039,7 +3028,7 @@ stages:
         gateway: "invalid"
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: 0
 
@@ -3050,7 +3039,7 @@ stages:
         dhcp: "{expected_dhcp}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netproto_response
@@ -3070,7 +3059,7 @@ stages:
         select: iface,gateway,dhcp
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - iface: !anystr
@@ -3085,7 +3074,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - dhcp: "{expected_dhcp}"
@@ -3098,7 +3087,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - gateway: "{expected_gateway}"
@@ -3111,7 +3100,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - type: "{expected_type}"
@@ -3124,7 +3113,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - scan:
@@ -3138,7 +3127,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - iface: "{expected_iface}"
@@ -3158,7 +3147,7 @@ stages:
         limit: 0
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Wrong param
@@ -3177,7 +3166,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netproto_response
@@ -3213,12 +3202,12 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
-        $ext:
-          # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items_with_agent_id
-          extra_kwargs:
-            select_key: "{field:s}"
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        extra_kwargs:
+          select_key: "{field:s}"
+      json:
         data:
           total_affected_items: !anyint
 
@@ -3230,7 +3219,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
 
@@ -3249,7 +3238,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: &netiface_response
             - mac: !anystr
@@ -3272,20 +3261,20 @@ stages:
               type: !anystr
           total_affected_items: !anyint
       save:
-        body:
-          expected_mac: data.affected_items.0.mac
-          expected_rx_bytes: data.affected_items.0.rx.bytes
-          expected_tx_bytes: data.affected_items.0.tx.bytes
-          expected_tx_errors: data.affected_items.0.tx.errors
-          expected_rx_errors: data.affected_items.0.rx.errors
-          expected_rx_packets: data.affected_items.0.rx.packets
-          expected_tx_dropped: data.affected_items.0.tx.dropped
-          expected_rx_dropped: data.affected_items.0.rx.dropped
-          expected_tx_packets: data.affected_items.0.tx.packets
-          expected_type: data.affected_items.0.type
-          expected_mtu: data.affected_items.0.mtu
-          expected_name: data.affected_items.0.name
-          expected_state: data.affected_items.0.state
+        json:
+          expected_mac: data.affected_items[0].mac
+          expected_rx_bytes: data.affected_items[0].rx.bytes
+          expected_tx_bytes: data.affected_items[0].tx.bytes
+          expected_tx_errors: data.affected_items[0].tx.errors
+          expected_rx_errors: data.affected_items[0].rx.errors
+          expected_rx_packets: data.affected_items[0].rx.packets
+          expected_tx_dropped: data.affected_items[0].tx.dropped
+          expected_rx_dropped: data.affected_items[0].rx.dropped
+          expected_tx_packets: data.affected_items[0].tx.packets
+          expected_type: data.affected_items[0].type
+          expected_mtu: data.affected_items[0].mtu
+          expected_name: data.affected_items[0].name
+          expected_state: data.affected_items[0].state
 
   - name: Select type, rx.bytes, tx.errors, tx.dropped, mac
     request:
@@ -3294,7 +3283,7 @@ stages:
         select: type,rx.bytes,tx.errors,tx.dropped,mac
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - type: !anystr
@@ -3313,7 +3302,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - mac: "{expected_mac}"
@@ -3326,7 +3315,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - rx:
@@ -3340,7 +3329,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - tx:
@@ -3354,7 +3343,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - tx:
@@ -3375,7 +3364,7 @@ stages:
         limit: 0
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Wrong param
@@ -3394,7 +3383,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response
@@ -3415,7 +3404,7 @@ stages:
         offset: 0
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response
@@ -3429,7 +3418,7 @@ stages:
         offset: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           total_affected_items: !anyint
@@ -3441,7 +3430,7 @@ stages:
         mtu: "{expected_mtu}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response
@@ -3463,7 +3452,7 @@ stages:
         name: "{expected_name}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response
@@ -3476,7 +3465,7 @@ stages:
         type: "{expected_type}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response
@@ -3489,7 +3478,7 @@ stages:
         state: "{expected_state}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response
@@ -3502,7 +3491,7 @@ stages:
         tx.packets: "{expected_tx_packets}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response
@@ -3515,7 +3504,7 @@ stages:
         rx.packets: "{expected_rx_packets}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response
@@ -3528,7 +3517,7 @@ stages:
         tx.dropped: "{expected_tx_dropped}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response
@@ -3541,7 +3530,7 @@ stages:
         rx.dropped: "{expected_rx_dropped}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response
@@ -3554,7 +3543,7 @@ stages:
         tx.bytes: "{expected_tx_bytes}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response
@@ -3567,7 +3556,7 @@ stages:
         rx.bytes: "{expected_rx_bytes}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response
@@ -3580,7 +3569,7 @@ stages:
         tx.errors: "{expected_tx_errors}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response
@@ -3593,7 +3582,7 @@ stages:
         rx.errors: "{expected_rx_errors}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response
@@ -3606,7 +3595,7 @@ stages:
         tx.packets: -1
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Filter invalid tx.packets
@@ -3616,7 +3605,7 @@ stages:
         tx.packets: 999999
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           total_affected_items: 0
@@ -3628,7 +3617,7 @@ stages:
         rx.packets: -1
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Filter invalid rx.packets
@@ -3638,7 +3627,7 @@ stages:
         rx.packets: 999999
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           total_affected_items: 0
@@ -3650,7 +3639,7 @@ stages:
         tx.dropped: -1
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Filter invalid tx.dropped
@@ -3660,7 +3649,7 @@ stages:
         tx.dropped: 999999
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           total_affected_items: 0
@@ -3672,7 +3661,7 @@ stages:
         rx.dropped: -1
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Filter invalid rx.dropped
@@ -3682,7 +3671,7 @@ stages:
         rx.dropped: 999999
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           total_affected_items: 0
@@ -3694,7 +3683,7 @@ stages:
         tx.bytes: -1
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Filter invalid tx.bytes
@@ -3704,7 +3693,7 @@ stages:
         tx.bytes: 999999
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           total_affected_items: 0
@@ -3716,7 +3705,7 @@ stages:
         rx.bytes: -1
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Filter invalid rx.bytes
@@ -3726,7 +3715,7 @@ stages:
         rx.bytes: 999999
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           total_affected_items: 0
@@ -3738,7 +3727,7 @@ stages:
         tx.errors: -1
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
   - name: Filter invalid tx.errors
@@ -3748,7 +3737,7 @@ stages:
         tx.errors: 999999
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           total_affected_items: 0
@@ -3760,7 +3749,7 @@ stages:
 #        rx.errors: -1
 #    response:
 #      status_code: 400
-#      body:
+#      json:
 #        <<: *error_spec
 #
 #  - name: Filter invalid rx.errors
@@ -3770,7 +3759,7 @@ stages:
 #        rx.errors: 999999
 #    response:
 #      status_code: 200
-#      body:
+#      json:
 #        data:
 #          affected_affected_items: []
 #          total_affected_items: 0
@@ -3808,12 +3797,12 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
-        $ext:
-          # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items_with_agent_id
-          extra_kwargs:
-            select_key: "{field:s}"
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        extra_kwargs:
+          select_key: "{field:s}"
+      json:
         data:
           total_affected_items: !anyint
 
@@ -3825,7 +3814,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
 ---
@@ -3841,7 +3830,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - hotfix: !anystr
@@ -3851,8 +3840,8 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
       save:
-        body:
-          hotfix_filter: data.affected_items.0.hotfix
+        json:
+          hotfix_filter: data.affected_items[0].hotfix
 
   - name: Filter hotfix
     request:
@@ -3861,7 +3850,7 @@ stages:
         hotfix: "{hotfix_filter}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - hotfix: "{hotfix_filter}"

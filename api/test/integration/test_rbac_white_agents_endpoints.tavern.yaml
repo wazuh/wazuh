@@ -5,14 +5,7 @@ marks:
   - usefixtures:
     - agents_white_rbac_tests
 
-includes:
- - !include common.yaml
-
 stages:
-
-  # Authentication stage
-  - type: ref
-    id: login_get_token
 
   - name: Get all agents (Partially allowed, user agnostic)
     request:
@@ -22,7 +15,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: '000'
@@ -46,7 +39,7 @@ stages:
         list_agents: '001,003'
     response:
       status_code: 400
-      body: &permission_denied
+      json: &permission_denied
         code: 4000
         detail: !anystr
 
@@ -60,7 +53,7 @@ stages:
         list_agents: '001,003,004,005,006'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: '004'
@@ -86,7 +79,7 @@ stages:
         list_agents: '002,006,010,012'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: '002'
@@ -112,7 +105,7 @@ stages:
         list_agents: '009'
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Get agent 010 (Allowed)
@@ -125,7 +118,7 @@ stages:
         list_agents: '010'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: '010'
@@ -146,7 +139,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Get Request-Agent-Client for agent 002 (Allowed)
@@ -157,7 +150,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           client:
             auto_restart: !anystr
@@ -181,7 +174,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Get agent sync (Allowed)
@@ -192,7 +185,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - id: '008'
@@ -214,7 +207,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        <<: *permission_denied
 
  - name: Get agent key for 006 (Allowed)
@@ -225,7 +218,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '006'
@@ -246,7 +239,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - name: 'default'
@@ -266,7 +259,7 @@ stages:
        list_groups: 'group3'
    response:
      status_code: 400
-     body:
+     json:
        <<: *permission_denied
 
  - name: Get a list of groups (Partially allowed, user aware)
@@ -279,7 +272,7 @@ stages:
        list_groups: 'default,group2,group3'
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - name: 'default'
@@ -302,7 +295,7 @@ stages:
        list_groups: 'group1,group2'
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - name: 'group1'
@@ -324,7 +317,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '002'
@@ -348,7 +341,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        <<: *permission_denied
 
  - name: Try get the configuration of a group (Allowed)
@@ -359,7 +352,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          items:
            - config: !anything
@@ -379,7 +372,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        <<: *permission_denied
 
  - name: Try get the files of a group (Denied)
@@ -393,7 +386,7 @@ stages:
        offset: 0
    response:
      status_code: 200
-     body:
+     json:
        data:
          items:
            - filename: agent.conf
@@ -415,7 +408,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        <<: *permission_denied
 
  - name: Try get one file of a group (Allowed)
@@ -426,7 +419,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data: !anything
 
 ---
@@ -442,7 +435,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        <<: *permission_denied
 
  - name: Try get one file of a group (Allowed)
@@ -471,7 +464,7 @@ stages:
        name: 'wazuh-agent1'
    response:
      status_code: 200
-     body:
+     json:
        data:
          total_affected_items: 0
 
@@ -485,7 +478,7 @@ stages:
        name: 'wazuh-agent2'
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '002'
@@ -507,7 +500,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '012'
@@ -531,7 +524,7 @@ stages:
        sort: -id
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '010'
@@ -555,7 +548,7 @@ stages:
        fields: os.platform
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - count: 6
@@ -579,7 +572,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          active: 5
          disconnected: 1
@@ -600,7 +593,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          items:
            - 'ubuntu'
@@ -619,7 +612,7 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        <<: *permission_denied
 
 ---
@@ -635,7 +628,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Try to remove agent 004 from group3 (Denied agent)
@@ -646,7 +639,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Try to remove agent 999 from default (Allowed)
@@ -657,7 +650,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1701
         detail: "Agent does not exist"
 
@@ -669,7 +662,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Try to remove agent 002 from group3 (Allowed)
@@ -680,7 +673,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1734
 
   - name: Remove agent 002 from group2 (Allowed)
@@ -691,7 +684,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         message: "Agent '002' removed from 'group2'."
     delay_after: 1
 
@@ -708,7 +701,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Try to remove agent 001 from group1 (Denied group)
@@ -721,7 +714,7 @@ stages:
         list_groups: 'group1'
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Remove agent 006 from all groups (Allowed)
@@ -732,7 +725,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'group2'
@@ -751,7 +744,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'default'
@@ -771,7 +764,7 @@ stages:
         list_groups: 'group1,group3,group2'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'group3'
@@ -804,7 +797,7 @@ stages:
         group_id: 'wrong_group'
     response:
       status_code: 400
-      body:
+      json:
         code: 1710
 
   - name: Try to remove all agents from group1 (Denied)
@@ -817,7 +810,7 @@ stages:
         group_id: 'group1'
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Remove all agents from group2 (Partially allowed, user agnostic)
@@ -830,7 +823,7 @@ stages:
         group_id: 'group2'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '008'
@@ -851,7 +844,7 @@ stages:
         group_id: 'group3'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '008'
@@ -885,7 +878,7 @@ stages:
         group_id: 'default'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '001'
@@ -911,7 +904,7 @@ stages:
         list_groups: 'group2'
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Try to delete group1 (Group modification denied, indirectly denied)
@@ -924,7 +917,7 @@ stages:
         list_groups: 'group1'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_agents: []
           affected_items: []
@@ -947,7 +940,7 @@ stages:
         list_groups: 'group3'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_agents:
             - '003'
@@ -973,7 +966,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_agents: []
           affected_items: []
@@ -997,7 +990,7 @@ stages:
         list_groups: 'default,group1,group2,pepito,antonio'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_agents: []
           affected_items: []
@@ -1038,7 +1031,7 @@ stages:
         list_agents: '002'
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Delete agent 001 (Allowed)
@@ -1052,7 +1045,7 @@ stages:
         older_than: '0s'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '001'
@@ -1077,7 +1070,7 @@ stages:
         list_agents: '004,010'
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Try to delete a list of agents (Allowed)
@@ -1091,7 +1084,7 @@ stages:
         older_than: '0s'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '003'
@@ -1114,7 +1107,7 @@ stages:
         older_than: '0s'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '007'
@@ -1140,7 +1133,7 @@ stages:
         older_than: '0s'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '009'
@@ -1167,7 +1160,7 @@ stages:
         ip: "any"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -1188,7 +1181,7 @@ stages:
         key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -1206,7 +1199,7 @@ stages:
         agent_name: 'test_agent'
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -1224,7 +1217,7 @@ stages:
         group_id: 'group4'
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -1242,7 +1235,7 @@ stages:
         group_id: 'wrong_group'
     response:
       status_code: 400
-      body:
+      json:
         code: 1710
 
   - name: Try to assign all agents to group1 (Group denied)
@@ -1255,7 +1248,7 @@ stages:
         group_id: 'group1'
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Try to assign a list of agents to group2 (Agents denied)
@@ -1269,7 +1262,7 @@ stages:
         group_id: 'group2'
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Try to assign a list of agents to group2 (Partially allowed, user aware)
@@ -1283,7 +1276,7 @@ stages:
         group_id: 'group2'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '002'
@@ -1307,7 +1300,7 @@ stages:
         group_id: 'group2'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '006'
@@ -1333,7 +1326,7 @@ stages:
         "{file_xml:s}"
     response:
       status_code: 200
-      body:
+      json:
         message: !anystr
 
   - name: Try to update group1 configuration (Denied)
@@ -1347,7 +1340,7 @@ stages:
         "{file_xml:s}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -1365,7 +1358,7 @@ stages:
         list_agents: "997"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -1387,7 +1380,7 @@ stages:
         list_agents: "010"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Try to restart a list of agents (Partially allowed, user aware)
@@ -1402,7 +1395,7 @@ stages:
         wait_for_complete: true  # Prevent error code 500
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '004'
@@ -1432,7 +1425,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '004'
@@ -1460,7 +1453,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Try to assign agent 008 to group1 (Group denied)
@@ -1471,7 +1464,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Try to assign agent 008 to group3 (Allowed)
@@ -1482,7 +1475,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1710
 
   - name: Try to assign agent 001 to group2 (Allowed)
@@ -1493,7 +1486,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -1513,7 +1506,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '008'
@@ -1535,7 +1528,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -1555,7 +1548,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Restart agent 004 (Allowed)
@@ -1566,7 +1559,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '004'
@@ -1589,7 +1582,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -1605,5 +1598,5 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
