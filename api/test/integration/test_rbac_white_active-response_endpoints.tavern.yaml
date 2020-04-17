@@ -9,6 +9,7 @@ stages:
 
   - name: Runs an Active Response command on a specified agent (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
@@ -32,6 +33,7 @@ stages:
 
   - name: Send a message to an agent (Status=Active) (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
@@ -50,6 +52,7 @@ stages:
 
   - name: Send a message to a list of agents
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
@@ -84,6 +87,7 @@ stages:
 
   - name: Try to send a message to an agent (status=disconnected/never_connected) (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
@@ -110,6 +114,7 @@ stages:
 
   - name: Try to send a message to an unexisting agent (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
@@ -134,6 +139,7 @@ stages:
     # PUT /active-response
   - name: Runs an Active Response command on all agents
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:

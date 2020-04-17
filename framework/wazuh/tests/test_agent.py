@@ -302,7 +302,6 @@ def test_agent_delete_agents_different_status():
     ('a' * 129, '002', 'f304f582f2417a3fddad69d9ae2b4f3b6e6fda788229668af9a6934d454ef44d')
 ])
 @patch('wazuh.common.database_path_global', new=test_global_bd_path)
-@patch('wazuh.core.core_agent.api_configuration.read_api_config', return_value={'use_only_authd': False})
 @patch('wazuh.core.core_agent.fcntl.lockf')
 @patch('wazuh.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.core_agent.chown')
@@ -313,7 +312,7 @@ def test_agent_delete_agents_different_status():
 @patch('wazuh.core.core_agent.safe_move')
 @patch('builtins.open')
 def test_agent_add_agent(open_mock, safe_move_mock, common_gid_mock, common_uid_mock, copyfile_mock, chmod_mock,
-                         chown_mock, fcntl_mock, read_api_mock, name, agent_id, key):
+                         chown_mock, fcntl_mock, name, agent_id, key):
     """Test `add_agent` from agent module.
 
     Parameters
@@ -326,7 +325,7 @@ def test_agent_add_agent(open_mock, safe_move_mock, common_gid_mock, common_uid_
         The agent key.
     """
     try:
-        add_result = add_agent(name=name, agent_id=agent_id, key=key)
+        add_result = add_agent(name=name, agent_id=agent_id, key=key, use_only_authd=False)
         assert add_result.dikt['id'] == agent_id
         assert add_result.dikt['key']
     except WazuhError as e:

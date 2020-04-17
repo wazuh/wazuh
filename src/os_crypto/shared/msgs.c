@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -84,11 +84,11 @@ void OS_StartCounter(keystore *keys)
         /* On i == keysize, we deal with the sender counter */
         if (i == keys->keysize) {
             snprintf(rids_file, OS_FLSIZE, "%s/%s",
-                     RIDS_DIR,
+                     isChroot() ? RIDS_DIR : RIDS_DIR_PATH,
                      SENDER_COUNTER);
         } else {
             snprintf(rids_file, OS_FLSIZE, "%s/%s",
-                     RIDS_DIR,
+                     isChroot() ? RIDS_DIR : RIDS_DIR_PATH,
                      keys->keyentries[i]->id);
         }
 
@@ -195,7 +195,7 @@ static void ReloadCounter(const keystore *keys, unsigned int id, const char * ci
     ino_t new_inode;
     char rids_file[OS_FLSIZE + 1];
 
-    snprintf(rids_file, OS_FLSIZE, "%s/%s", RIDS_DIR, cid);
+    snprintf(rids_file, OS_FLSIZE, "%s/%s", isChroot() ? RIDS_DIR : RIDS_DIR_PATH, cid);
     new_inode = File_Inode(rids_file);
 
     w_mutex_lock(&keys->keyentries[id]->mutex);

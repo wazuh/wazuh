@@ -9,6 +9,7 @@ stages:
 
   - name: Try to show the rules of the system
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -45,6 +46,7 @@ stages:
 
   - name: Try to show the rules of the system (try q parameter to bypass a denied resource)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -63,6 +65,7 @@ stages:
 
   - name: Try to show the rules of the system (list)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -96,6 +99,7 @@ stages:
 
   - name: Try to show the rules files of the system
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/files"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -126,6 +130,7 @@ stages:
 
   - name: Try to show the rules files of the system (list)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/files"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -149,6 +154,7 @@ stages:
 
   - name: Try to show the rules files of the system (list)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/files"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -175,6 +181,7 @@ stages:
 
   - name: Try to show the rules files of the system (no permissions)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/files"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -201,6 +208,7 @@ stages:
 
   - name: Try get one rule file
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/files/local_rules.xml/download"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -212,6 +220,7 @@ stages:
 
   - name: Try get one rule file (no permissions)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/files/0015-ossec_rules.xml/download"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -228,6 +237,7 @@ stages:
 
   - name: Try to show the groups of rules in the system
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/groups"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -249,6 +259,7 @@ stages:
 
   - name: Try to show the groups of rules in the system
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/requirement/pci_dss"
       headers:
         Authorization: "Bearer {test_login_token}"

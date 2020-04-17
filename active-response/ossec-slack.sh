@@ -6,7 +6,7 @@
 # SITE is the URL provided by the Slack's WebHook, something like:
 # https://hooks.slack.com/services/TOKEN"
 #
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ cd $LOCAL
 cd ../
 PWD=`pwd`
 echo "`date` $0 $1 $2 $3 $4 $5 $6 $7 $8" >> ${PWD}/../logs/active-responses.log
-ALERTFULL=`grep -A 10 "$ALERTTIME" ${PWD}/../logs/alerts/alerts.log | grep -v "\.$ALERTLAST: " -A 10 | grep -v "Src IP: " | grep -v "User: " |grep "Rule: " -A 4 | cut -c -139 | sed 's/\"//g'`
+ALERTFULL=`grep -A 10 "$ALERTTIME" ${PWD}/../logs/alerts/alerts.log | grep -v "\.$ALERTLAST: " -A 10 | grep -v "Src IP: " | grep -v "User: " |grep "Rule: " -A 4 | sed '/^$/Q' | cut -c -139 | sed 's/\"//g'`
 
 PAYLOAD='{"channel": "'"$CHANNEL"'", "username": "'"$SLACKUSER"'", "text": "'"${ALERTFULL}"'"}'
 

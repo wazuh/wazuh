@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -224,7 +224,7 @@ def get_agents_keys(agent_list=None):
 
 @expose_resources(actions=["agent:delete"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703]})
-def delete_agents(agent_list=None, backup=False, purge=False, status="all", older_than="7d"):
+def delete_agents(agent_list=None, backup=False, purge=False, status="all", older_than="7d", use_only_authd=False):
     """Deletes a list of agents.
 
     :param agent_list: List of agents ID's.
@@ -234,6 +234,7 @@ def delete_agents(agent_list=None, backup=False, purge=False, status="all", olde
     "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s". For never_connected agents, uses the register date.
     :param status: Filters by agent status: active, disconnected or never_connected. Multiples statuses separated
     by commas.
+    :param use_only_authd: Force the use of authd when adding and removing agents.
     :return: AffectedItemsWazuhResult.
     """
     result = AffectedItemsWazuhResult(all_msg='All selected agents were deleted',
@@ -261,7 +262,7 @@ def delete_agents(agent_list=None, backup=False, purge=False, status="all", olde
                             extra_message="The agent has a status different to '{0}' or the specified time "
                                           "frame 'older_than {1}' does not apply".format(status, older_than)
                         )
-                    my_agent.remove(backup, purge)
+                    my_agent.remove(backup=backup, purge=purge, use_only_authd=use_only_authd)
                     result.affected_items.append(agent_id)
             except WazuhException as e:
                 result.add_failed_item(id_=agent_id, error=e)
@@ -273,7 +274,7 @@ def delete_agents(agent_list=None, backup=False, purge=False, status="all", olde
 
 
 @expose_resources(actions=["agent:create"], resources=["*:*:*"], post_proc_func=None)
-def add_agent(name=None, agent_id=None, key=None, ip='any', force_time=-1):
+def add_agent(name=None, agent_id=None, key=None, ip='any', force_time=-1, use_only_authd=False):
     """Adds a new Wazuh agent.
 
     :param name: name of the new agent.
@@ -281,13 +282,14 @@ def add_agent(name=None, agent_id=None, key=None, ip='any', force_time=-1):
     :param ip: IP of the new agent. It can be an IP, IP/NET or ANY.
     :param key: key of the new agent.
     :param force_time: Remove old agent with same IP if disconnected since <force_time> seconds.
+    :param use_only_authd: Force the use of authd when adding and removing agents.
     :return: Agent ID and Agent key.
     """
     # Check length of agent name
     if len(name) > 128:
         raise WazuhError(1738)
 
-    new_agent = Agent(name=name, ip=ip, id=agent_id, key=key, force=force_time)
+    new_agent = Agent(name=name, ip=ip, id=agent_id, key=key, force=force_time, use_only_authd=use_only_authd)
 
     return WazuhResult({'id': new_agent.id, 'key': new_agent.key})
 

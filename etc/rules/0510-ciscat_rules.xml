@@ -1,7 +1,7 @@
 <!--
   -  CIS-CAT scanner rules
   -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2019, Wazuh Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -16,7 +16,7 @@
     Wazuh v3.2 CIS-CAT events. Field: 'cis' -->
 
 <!-- CIS-CAT rules -->
-<group name="ciscat,">
+<group name="ciscat,pci_dss_2.2,nist_800_53_CM.1,">
 
   <rule id="87401" level="0">
     <category>ossec</category>

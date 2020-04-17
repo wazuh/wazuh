@@ -9,6 +9,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscheck"
       method: DELETE
       headers:
@@ -38,6 +39,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscheck"
       method: DELETE
       headers:
@@ -65,6 +67,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/ciscat/results"
       method: GET
       headers:
@@ -101,6 +104,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/ciscat/results"
       method: GET
       headers:
@@ -128,6 +132,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/hardware"
       method: GET
       headers:
@@ -166,6 +171,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/hardware"
       method: GET
       headers:
@@ -197,6 +203,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netaddr"
       method: GET
       headers:
@@ -229,6 +236,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netaddr"
       method: GET
       headers:
@@ -260,6 +268,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netiface"
       method: GET
       headers:
@@ -303,6 +312,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netiface"
       method: GET
       headers:
@@ -334,6 +344,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netproto"
       method: GET
       headers:
@@ -365,6 +376,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netproto"
       method: GET
       headers:
@@ -396,6 +408,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/os"
       method: GET
       headers:
@@ -436,6 +449,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/os"
       method: GET
       headers:
@@ -467,6 +481,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/packages"
       method: GET
       headers:
@@ -483,6 +498,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/packages"
       method: GET
       headers:
@@ -506,6 +522,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/ports"
       method: GET
       headers:
@@ -549,6 +566,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/ports"
       method: GET
       headers:
@@ -580,6 +598,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/processes"
       method: GET
       headers:
@@ -596,6 +615,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/processes"
       method: GET
       headers:
@@ -619,6 +639,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/hotfixes"
       method: GET
       headers:
@@ -635,6 +656,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/hotfixes"
       method: GET
       headers:
