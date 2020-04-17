@@ -72,7 +72,7 @@ list(APPEND tests_flags "-Wl,--wrap=time,--wrap=wm_delay,--wrap=_mwarn,--wrap=_m
 list(APPEND use_shared_libs 1)
 
 list(APPEND tests_names "test_schedule_scan")
-list(APPEND tests_flags "-Wl,--wrap=OS_StrIsNum,--wrap=_merror,--wrap=check_day_to_scan,--wrap=get_time_to_hour,--wrap=get_time_to_day,--wrap=wm_delay,--wrap=time,--wrap=_mwarn")
+list(APPEND tests_flags "-Wl,--wrap=OS_StrIsNum,--wrap=_merror,--wrap=check_day_to_scan,--wrap=get_time_to_hour,--wrap=get_time_to_day,--wrap=wm_delay,--wrap=time,--wrap=_mwarn,--wrap=get_time_to_month_day")
 list(APPEND use_shared_libs 0)
 
 list(APPEND shared_libs "global_helpers.c")
@@ -138,44 +138,3 @@ foreach(counter RANGE ${count})
     endif()
     add_test(${test_name} ${test_name})
 endforeach()
-
-
-# Coverage
-find_program(LCOV_PATH lcov)
-if(NOT LCOV_PATH)
-  message(FATAL_ERROR "lcov not found! Aborting...")
-endif()
-
-find_program(GCOV_PATH gcov)
-if(NOT GCOV_PATH)
-  message(FATAL_ERROR "gcov not found! Aborting...")
-endif()
-
-find_program(GENHTML_PATH genhtml)
-if(NOT GENHTML_PATH)
-  message(FATAL_ERROR "genhtml not found! Aborting...")
-endif()
-
-add_custom_target(coverage
-    # Cleanup lcov
-    COMMAND ${LCOV_PATH} --gcov-tool ${GCOV_PATH} -directory ${SRC_FOLDER} --rc lcov_branch_coverage=1 --zerocounters
-
-    # Create baseline to make sure untouched files show up in the report
-    COMMAND ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} -c -i -d ${SRC_FOLDER} --rc lcov_branch_coverage=1 -o coverage.base
-
-    # Run tests
-    COMMAND ctest
-
-    # Capturing lcov counters and generating report
-    COMMAND ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} --directory ${SRC_FOLDER} --capture --rc lcov_branch_coverage=1 --output-file coverage.info
-
-    # Add baseline counters
-    COMMAND ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} -a coverage.base -a coverage.info --rc lcov_branch_coverage=1 --output-file coverage.total
-    COMMAND ${LCOV_PATH} --gcov-tool ${GCOV_PATH} --remove coverage.total "*external/*" --rc lcov_branch_coverage=1 --output-file coverage.info.cleaned
-
-    # Generate HTML report
-    COMMAND ${GENHTML_PATH} -q --output-directory coverage-report --title "WAZUH unit-tests coverage" --rc lcov_branch_coverage=1 --legend coverage.info.cleaned
-
-    # Clean counters
-    COMMAND ${CMAKE_COMMAND} -E remove coverage.base coverage.total coverage.info.cleaned
-)

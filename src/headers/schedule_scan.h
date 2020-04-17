@@ -27,7 +27,33 @@ typedef struct _sched_scan_config {
 
 void sched_scan_init(sched_scan_config *scan_config);
 void sched_scan_free(sched_scan_config *scan_config);
+
+/**
+ * @brief Reads an array of xml nodes and overrides scheduling configuration
+ * 
+ * Expected xml nodes:
+ * ´´´
+ * <day></day>
+ * <wday></wday>
+ * <time></time>
+ * <interval></interval>
+ * ´´´
+ * */
 int sched_scan_read(sched_scan_config *scan_config, xml_node **nodes, const char *MODULE_NAME);
+
+/**
+ * @brief Calculates the next scheduling time according to module scheduling configuration
+ * 
+ * Available options are:
+ * 1. Specific day of a month 
+ * 2. Specific day of a week
+ * 3. Every day at a certain time
+ * 4. Set up a scan between intervals
+ * @param config Scheduling configuration
+ * @param MODULE_TAG String to identify module
+ * @param run_on_start forces first time run
+ * @return remaining time until next scan in seconds
+ * */
 time_t sched_scan_get_next_time(sched_scan_config *config, const char *MODULE_TAG, const int run_on_start);
 void sched_scan_dump(const sched_scan_config* scan_config, cJSON *cjson_object);
 int is_sched_tag(const char* tag);

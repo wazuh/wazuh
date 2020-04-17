@@ -379,7 +379,7 @@ int get_time_to_hour(const char * hour) {
     target_time = mktime(&t_target);
     diff = difftime(target_time, curr_time);
 
-    if (diff < 0) {
+    if (diff <= 0) {
         diff += (24*60*60);
     }
 
@@ -421,7 +421,7 @@ int get_time_to_day(int wday, const char * hour) {
 
     if (wday == tm_result.tm_wday) {    // We are in the desired day
 
-        if (diff < 0) {
+        if (diff <= 0) {
             diff += (7*24*60*60);   // Seconds of a week
         }
 
@@ -446,6 +446,49 @@ int get_time_to_day(int wday, const char * hour) {
 
     return (int)diff;
 
+}
+
+int get_time_to_month_day(int month_day, const char* hour, int num_of_months) {
+    assert(num_of_months > 0);
+
+    time_t curr_time;
+    time_t target_time;
+    double diff;
+    struct tm tm_result = { .tm_sec = 0 };
+
+    // Get current time
+    curr_time = time(NULL);
+    localtime_r(&curr_time, &tm_result);
+
+    struct tm t_target = tm_result;
+    // Get exact hour and minute to go to
+    char ** parts = OS_StrBreak(':', hour, 2);
+    // Look for the target day an hour
+    t_target.tm_mday = month_day;
+    t_target.tm_hour = atoi(parts[0]);
+    t_target.tm_min = atoi(parts[1]);
+    t_target.tm_sec = 0;
+
+    target_time = mktime(&t_target);
+    diff = difftime(target_time, curr_time);
+    if (diff > 0) {
+        num_of_months--;
+    }
+
+    if(t_target.tm_mon + num_of_months > 11) {
+        // We should increment a year
+        t_target.tm_mon = (t_target.tm_mon + num_of_months) % 2;
+        t_target.tm_year++;
+    } else {
+        t_target.tm_mon+= num_of_months;
+    }
+    target_time = mktime(&t_target);
+    diff = difftime(target_time, curr_time);
+    free(parts[0]);
+    free(parts[1]);
+    free(parts);
+
+    return (int) diff;
 }
 
 // Function to look for the correct day of the month to run a wodle

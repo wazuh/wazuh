@@ -43,16 +43,6 @@ void sched_scan_free(sched_scan_config *scan_config){
     os_free(scan_config->scan_time);
 }
 
-/**
- * Reads an array of xml nodes and overrides scheduling configuration
- * Expected xml nodes:
- * ´´´
- * <day></day>
- * <wday></wday>
- * <time></time>
- * <interval></interval>
- * ´´´
- * */
 int sched_scan_read(sched_scan_config *scan_config, xml_node **nodes, const char *MODULE_NAME) {
     unsigned i;
     for (i = 0; nodes[i]; i++) {
@@ -118,20 +108,8 @@ int sched_scan_read(sched_scan_config *scan_config, xml_node **nodes, const char
     return _sched_scan_validate_parameters(scan_config);
 }
 
-/**
- * Calculates the next scheduling time according to module scheduling configuration
- * Available options are:
- * 1. Specific day of a month 
- * 2. Specific day of a week
- * 3. Every day at a certain time
- * 4. Set up a scan between intervals
- * @param config Scheduling configuration
- * @param MODULE_TAG String to identify module
- * @param run_on_start forces first time run
- * @return remaining time until next scan
- * */
 time_t sched_scan_get_next_time(sched_scan_config *config, const char *MODULE_TAG,  const int run_on_start) {
-    const time_t next_time = _get_next_time(config, MODULE_TAG, run_on_start);
+    const time_t next_time = _get_next_time(config, MODULE_TAG, run_on_start); 
     config->last_scan_time = time(NULL) + next_time;
     return next_time;
 }
@@ -144,43 +122,12 @@ static time_t _get_next_time(const sched_scan_config *config, const char *MODULE
 
     if (config->scan_day) {
         // Option 1: Day of the month
-        int status = -1;
-        int avoid_repeated_scan = 0;
-        int month_counter = config->interval; // To check correct month
-        while (status < 0 || !avoid_repeated_scan || (month_counter > 0)) {
-            status = check_day_to_scan(config->scan_day, config->scan_time);
-            //At least a day from the last scan
-            avoid_repeated_scan = (time(NULL) - config->last_scan_time) > 86400;
-            if ( (status == 0) && (month_counter <= 1) && avoid_repeated_scan) {
-                // Correct day, sleep until scan_time and then run
-                return (time_t) get_time_to_hour(config->scan_time);
-            } else {
-                if (status == 0 && avoid_repeated_scan) {
-                    // Correct day, but incorrect month
-                    month_counter--;
-                }
-                // Sleep until next day and re-evaluate
-                wm_delay(1000); // Sleep one second to avoid an infinite loop
-                const time_t sleep_until_tomorrow = get_time_to_hour("00:00"); 
-
-                mtdebug2(MODULE_TAG, "Sleeping for %d seconds.", (int)sleep_until_tomorrow);
-                wm_delay(1000 * sleep_until_tomorrow);
-            }
-        }
+        return (time_t) get_time_to_month_day(config->scan_day,  config->scan_time, config->interval);
     } else if (config->scan_wday >= 0) {
         // Option 2: Day of the week
-        if(time(NULL) - config->last_scan_time < 3600){
-            // Sleep an hour
-            wm_delay(3600000);
-        }
         return (time_t) get_time_to_day(config->scan_wday, config->scan_time);
-
     } else if (config->scan_time) {
         // Option 3: Time of the day [hh:mm]
-        if(time(NULL) - config->last_scan_time < 3600){
-            // Sleep an hour
-            wm_delay(3600000);
-        }
         return (time_t) get_time_to_hour(config->scan_time);
     } else if (config->interval) {
         // Option 4: Interval of time

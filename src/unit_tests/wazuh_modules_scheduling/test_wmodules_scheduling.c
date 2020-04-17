@@ -51,11 +51,11 @@ static void test_interval_mode(void **state){
     sched_scan_read(&test->scan_config, test->nodes, "");
     time_t next_time = sched_scan_get_next_time(&test->scan_config, "TEST_INTERVAL_MODE", 0);
     // First time
-    assert_int_equal((int) next_time, 0);
+    assert_int_equal((int) next_time, TEST_INTERVAL);
     // Sleep 5 secs
-    wm_delay(1000 * TEST_DELAY);
+    wm_delay(1000 * TEST_INTERVAL);
     next_time = sched_scan_get_next_time(&test->scan_config, "TEST_INTERVAL_MODE", 0);
-    assert_int_equal((int) next_time, TEST_INTERVAL - TEST_DELAY);
+    assert_int_equal((int) next_time, TEST_INTERVAL);
 }
 
 
