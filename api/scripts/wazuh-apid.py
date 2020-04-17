@@ -6,6 +6,7 @@
 
 import argparse
 import asyncio
+import logging
 import os
 import ssl
 import sys
@@ -22,7 +23,8 @@ from api import alogging, configuration, __path__ as api_path
 from api import validator
 from api.aiohttp_cache import setup_cache
 from api.api_exception import APIException
-from api.constants import CONFIG_FILE_PATH, API_LOG_FILE_PATH
+from api.configuration import generate_self_signed_certificate, generate_private_key, generate_pem_phrase
+from api.constants import CONFIG_FILE_PATH, SECURITY_PATH, API_LOG_FILE_PATH
 from api.middlewares import set_user_name, check_experimental
 from api.util import to_relative_path
 from wazuh import pyDaemonModule, common
@@ -68,18 +70,19 @@ def start(foreground, root, config_file):
         print(f"Starting API in background")
         pyDaemonModule.pyDaemon()
 
+    configuration.api_conf.update(configuration.read_api_config(config_file=args.config_file))
+    api_conf = configuration.api_conf
+    cors = api_conf['cors']
+    cache_conf = api_conf['cache']
+    log_path = api_conf['logs']['path']
+
     # Drop privileges to ossec
     if not root:
-        if configuration.api_conf['drop_privileges']:
+        if api_conf['drop_privileges']:
             os.setgid(common.ossec_gid())
             os.setuid(common.ossec_uid())
 
-    configuration.api_conf.update(configuration.read_api_config(config_file=args.config_file))
-    cors = configuration.api_conf['cors']
-    cache_conf = configuration.api_conf['cache']
-    log_path = configuration.api_conf['logs']['path']
-
-    set_logging(log_path=log_path, debug_mode=configuration.api_conf['logs']['level'], foreground_mode=args.foreground)
+    set_logging(log_path=log_path, debug_mode=api_conf['logs']['level'], foreground_mode=args.foreground)
 
     # set correct permissions on api.log file
     if os.path.exists(os.path.join(common.ossec_path, log_path)):
@@ -87,16 +90,16 @@ def start(foreground, root, config_file):
         os.chmod(os.path.join(common.ossec_path, log_path), 0o660)
 
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-    app = connexion.AioHttpApp(__name__, host=configuration.api_conf['host'],
-                               port=configuration.api_conf['port'],
+    app = connexion.AioHttpApp(__name__, host=api_conf['host'],
+                               port=api_conf['port'],
                                specification_dir=os.path.join(api_path[0], 'spec'),
                                options={"swagger_ui": False}
                                )
     app.add_api('spec.yaml',
                 arguments={'title': 'Wazuh API',
-                           'protocol': 'https' if configuration.api_conf['https']['enabled'] else 'http',
-                           'host': configuration.api_conf['host'],
-                           'port': configuration.api_conf['port']
+                           'protocol': 'https' if api_conf['https']['enabled'] else 'http',
+                           'host': api_conf['host'],
+                           'port': api_conf['port']
                            },
                 strict_validation=True,
                 validate_responses=True,
@@ -127,26 +130,45 @@ def start(foreground, root, config_file):
                   swagger_from_file=os.path.join(app.specification_dir, 'spec.yaml'))
 
     # Configure https
-    if configuration.api_conf['https']['enabled']:
+    if api_conf['https']['enabled']:
+
+        # Generate SSC if it does not exist and HTTPS is enabled
+        if not os.path.exists(api_conf['https']['key']) or \
+                not os.path.exists(api_conf['https']['cert']):
+            logger = logging.getLogger('wazuh')
+            logger.info('HTTPS is enabled but cannot find the private key and/or certificate. '
+                        'Attempting to generate them.')
+            pem_phrase = generate_pem_phrase()
+            logger.info(f'Generated PEM phrase in WAZUH_PATH/{to_relative_path(SECURITY_PATH)}.')
+            private_key = generate_private_key(pem_phrase, api_conf['https']['key'])
+            logger.info(f"Generated private key file in WAZUH_PATH/{to_relative_path(api_conf['https']['key'])}.")
+            generate_self_signed_certificate(private_key, api_conf['https']['cert'])
+            logger.info(f"Generated certificate file in WAZUH_PATH/{to_relative_path(api_conf['https']['cert'])}.")
+
         try:
-            ssl_context = ssl.SSLContext()
-            if configuration.api_conf['https']['use_ca']:
+            ssl_context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS)
+            if api_conf['https']['use_ca']:
                 ssl_context.verify_mode = ssl.CERT_REQUIRED
-                ssl_context.load_verify_locations(configuration.api_conf['https']['ca'])
-            ssl_context.load_cert_chain(certfile=configuration.api_conf['https']['cert'],
-                                        keyfile=configuration.api_conf['https']['key'])
+                ssl_context.load_verify_locations(api_conf['https']['ca'])
+            try:
+                with open(os.path.join(SECURITY_PATH, 'ssl_secret'), 'r') as f:
+                    pem_phrase = f.read()
+            except FileNotFoundError:
+                raise APIException(2003, details='Could not find the secret file with the PEM phrase. Please check '
+                                                 f'{SECURITY_PATH}/ssl_secret')
+            ssl_context.load_cert_chain(certfile=api_conf['https']['cert'],
+                                        keyfile=api_conf['https']['key'],
+                                        password=pem_phrase)
         except ssl.SSLError as e:
             raise APIException(2003, details='Private key does not match with the certificate')
         except IOError as e:
-            raise APIException(2003, details=f'{e} - Please, ensure '
-                                             'if path to certificates is correct in '
-                                             'the configuration file '
-                                             f'(WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)})')
+            raise APIException(2003, details='Please, ensure if path to certificates is correct in the configuration '
+                                             f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}')
     else:
         ssl_context = None
 
-    app.run(port=configuration.api_conf['port'],
-            host=configuration.api_conf['host'],
+    app.run(port=api_conf['port'],
+            host=api_conf['host'],
             ssl_context=ssl_context,
             access_log_class=alogging.AccessLogger,
             use_default_access_log=True
