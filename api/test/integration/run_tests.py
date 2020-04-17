@@ -6,7 +6,7 @@ import subprocess
 
 
 RESULTS_PATH = PUT_YOUR_RESULTS_PATH_HERE
-PYTEST_COMMAND = 'pytest -vv --tavern-beta-new-traceback'
+PYTEST_COMMAND = 'pytest -vv '
 TESTS_PATH = os.path.dirname(os.path.abspath(__file__))
 
 
