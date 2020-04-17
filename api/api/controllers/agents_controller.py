@@ -710,7 +710,7 @@ async def get_group_config(request, group_id, pretty=False, wait_for_complete=Fa
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=Data(data), status=200, dumps=dumps)
 
 
 async def put_group_config(request, body, group_id, pretty=False, wait_for_complete=False):

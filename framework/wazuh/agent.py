@@ -829,13 +829,8 @@ def get_agent_conf(group_list=None, filename='agent.conf', offset=0, limit=commo
     # We access unique group_id from list, this may change if and when we decide to add option to get agent conf for
     # a list of groups
     group_id = group_list[0]
-    result = AffectedItemsWazuhResult(none_msg='No configuration info shown.',
-                                      all_msg='Configuration info shown for selected group.')
-    data = configuration.get_agent_conf(group_id=group_id, filename=filename, offset=offset, limit=limit)
-    result.affected_items = data['items']
-    result.total_affected_items = data['totalItems']
 
-    return result
+    return WazuhResult(configuration.get_agent_conf(group_id=group_id, filename=filename, offset=offset, limit=limit))
 
 
 @expose_resources(actions=["group:update_config"], resources=["group:id:{group_list}"], post_proc_func=None)

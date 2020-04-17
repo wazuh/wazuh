@@ -5132,27 +5132,34 @@ paths:
                 type: object
                 properties:
                   data:
-                    allOf:
-                      - $ref: '#/components/schemas/ListMetadata'
-                      - type: object
-                        properties:
-                          items:
-                            type: array
-                            items:
-                              $ref: '#/components/schemas/GroupConfiguration'
+                    type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/GroupConfiguration'
               example:
                 data:
-                  affected_items:
+                  totalItems: 3
+                  items:
+                    - filters:
+                        name: agent_name
+                      config:
+                        localfile:
+                          - location: "/var/log/my.log"
+                            log_format: syslog
                     - filters:
                         os: Linux
                       config:
                         localfile:
-                          - location: /var/log/linux.log
+                          - location: "/var/log/linux.log"
                             log_format: syslog
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: Configuration info shown for selected group.
+                    - filters:
+                        profile: database
+                      config:
+                        localfile:
+                          - location: "/var/log/database.log"
+                            log_format: syslog
         default:
           $ref: '#/components/responses/ResponseError'
 
