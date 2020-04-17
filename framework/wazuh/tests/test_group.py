@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -47,10 +47,7 @@ def test_sucessfully_remove_single_group_agent(agent_patch, unset_groups_patch, 
     assert ret_msg == (f"Agent {agent_id} set to group default." if expected_new_group == 'default' else
                        f"Group '{group_id}' unset for agent '{agent_id}'.")
 
-    if ',' in expected_new_group:
-        create_multigroup_patch.assert_called_with(expected_new_group)
-
-    unset_groups_patch.assert_called_with(agent_id, True, expected_new_group)
+    unset_groups_patch.assert_called_with(agent_id=agent_id, force=True, group_id=expected_new_group)
 
 
 @pytest.mark.parametrize('agent_groups, agent_id, group_id, expected_exception', [

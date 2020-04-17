@@ -52,11 +52,14 @@ def get_ossec_log_fields(log):
 
 def upload_xml(xml_file, path):
     """
-    Updates XML files (rules and decoders)
+    Upload XML files (rules and decoders)
     :param xml_file: content of the XML file
     :param path: Destination of the new XML file
     :return: Confirmation message
     """
+    # -- characters are not allowed in XML comments
+    xml_file = replace_in_comments(xml_file, '--', '%wildcard%')
+
     # path of temporary files for parsing xml input
     tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.xml'.format(common.ossec_path, time.time(), random.randint(0, 1000))
 
@@ -74,6 +77,7 @@ def upload_xml(xml_file, path):
                 .replace("&gt;", ">").replace('&apos;', "'")
             # delete two first spaces of each line
             final_xml = re.sub(fr'^{indent}', '', pretty_xml, flags=re.MULTILINE)
+            final_xml = replace_in_comments(final_xml, '%wildcard%', '--')
             tmp_file.write(final_xml)
         chmod(tmp_file_path, 0o660)
     except IOError:
@@ -201,3 +205,11 @@ def parse_execd_output(output: str) -> Dict:
         response = {'status': 'OK'}
 
     return response
+
+
+def replace_in_comments(original_content, to_be_replaced, replacement):
+    xml_comment = re.compile(r"(<!--(.*?)-->)", flags=re.MULTILINE | re.DOTALL)
+    for comment in xml_comment.finditer(original_content):
+        good_comment = comment.group(2).replace(to_be_replaced, replacement)
+        original_content = original_content.replace(comment.group(2), good_comment)
+    return original_content

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Bump source version
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # May 2, 2017
 
 # Syntax:
@@ -65,6 +65,7 @@ FW_SETUP="../framework/setup.py"
 FW_INIT="../framework/wazuh/__init__.py"
 CLUSTER_INIT="../framework/wazuh/core/cluster/__init__.py"
 API_SETUP="../api/setup.py"
+VERSION_DOCU="../src/Doxyfile"
 
 if [ -n "$version" ]
 then
@@ -118,12 +119,19 @@ then
 
     sed -E -i'' -e "s/__version__ = '.+'/__version__ = '${version:1}'/g" $CLUSTER_INIT
 
+<<<<<<< HEAD
     # API
     sed -E -i'' -e "s/VERSION = '.+'/VERSION = '${version:1}'/g" $API_SETUP
+=======
+    # Documentation config file
+
+    sed -E -i'' -e "s/PROJECT_NUMBER         = \".+\"/PROJECT_NUMBER         = \"$version\"/g" $VERSION_DOCU
+>>>>>>> 3.12
 fi
 
 if [ -n "$revision" ]
 then
+    CURRENT_VERSION=$(cat $VERSION_FILE)
 
     # File REVISION
 
@@ -144,6 +152,10 @@ then
     # Cluster
 
     sed -E -i'' -e "s/__revision__ = '.+'/__revision__ = '$revision'/g" $CLUSTER_INIT
+
+    # Documentation config file
+
+    sed -E -i'' -e "s/PROJECT_NUMBER         = \".+\"/PROJECT_NUMBER         = \"$CURRENT_VERSION-$revision\"/g" $VERSION_DOCU
 fi
 
 if [ -n "$product" ]
