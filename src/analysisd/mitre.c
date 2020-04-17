@@ -19,7 +19,6 @@ int mitre_load(char * mode){
     int size_ids;
     int size_tactics;
     int sock = -1;
-    char path_db[PATH_MAX + 1];
     char *wazuhdb_query = NULL;
     char *response = NULL;
     char *ext_id = NULL;
@@ -30,8 +29,6 @@ int mitre_load(char * mode){
     cJSON *tactics_json = NULL;
     cJSON *tactics = NULL;
     cJSON *tactic = NULL;
-
-    snprintf(path_db, sizeof(path_db), "%s/%s.db", WDB_DIR, WDB_MITRE_NAME);
 
     /* Create hash table */
     mitre_table = OSHash_Create();
@@ -58,9 +55,6 @@ int mitre_load(char * mode){
         result = -1;
         goto end;
     }
-
-    /* Response parameter has to be freed before continuing */
-    os_free(response);
 
     /* Getting array size */
     if (size_ids = cJSON_GetArraySize(root), size_ids == 0) {
@@ -98,7 +92,7 @@ int mitre_load(char * mode){
             result = -1;
             goto end;
         }
-        os_free(response);
+
         if (size_tactics = cJSON_GetArraySize(tactics_json), size_tactics == 0) {
             merror("Response from the Mitre database has 0 elements.");
             result = -1;
@@ -129,7 +123,7 @@ int mitre_load(char * mode){
 
 end:
     os_free(wazuhdb_query);
-    os_free(response);  
+    os_free(response);
     if (mode != NULL && !strcmp(mode,"test")) {
         OSHash_Free(mitre_table);
     }  
