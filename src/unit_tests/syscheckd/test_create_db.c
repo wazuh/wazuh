@@ -1934,7 +1934,7 @@ static void test_fim_scan_no_realtime(void **state) {
     expect_function_call(__wrap_count_watches);
     will_return(__wrap_count_watches, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6343): Folders monitored with real-time engine: 0");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6345): Folders monitored with real-time engine: 0");
 
     fim_scan();
 }
@@ -1989,7 +1989,7 @@ static void test_fim_scan_realtime_enabled(void **state) {
     expect_function_call(__wrap_count_watches);
     will_return(__wrap_count_watches, 6);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6343): Folders monitored with real-time engine: 6");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6345): Folders monitored with real-time engine: 6");
 
     fim_scan();
 }
@@ -2376,7 +2376,7 @@ static void test_fim_scan(void **state) {
     expect_function_call(__wrap_count_watches);
     will_return(__wrap_count_watches, 2);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6343): Folders monitored with real-time engine: 2");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6345): Folders monitored with real-time engine: 2");
 
     fim_scan();
 }
