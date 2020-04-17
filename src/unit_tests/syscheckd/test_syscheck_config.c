@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -318,6 +318,9 @@ void test_getSyscheckConfig(void **state)
     assert_int_equal(sys_max_eps->valueint, 200);
     cJSON *sys_process_priority = cJSON_GetObjectItem(sys_items, "process_priority");
     assert_int_equal(sys_process_priority->valueint, 10);
+
+    cJSON *database = cJSON_GetObjectItem(sys_items, "database");
+    assert_string_equal(cJSON_GetStringValue(database), "disk");
 }
 
 void test_getSyscheckConfig_no_audit(void **state)
@@ -405,6 +408,9 @@ void test_getSyscheckConfig_no_audit(void **state)
     assert_int_equal(synchronization_response_timeout->valueint, 30);
     cJSON *synchronization_queue_size = cJSON_GetObjectItem(sys_synchronization, "queue_size");
     assert_int_equal(synchronization_queue_size->valueint, 64);
+
+    cJSON *database = cJSON_GetObjectItem(sys_items, "database");
+    assert_string_equal(cJSON_GetStringValue(database), "memory");
 }
 
 #ifndef TEST_WINAGENT

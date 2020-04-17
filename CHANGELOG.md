@@ -1,7 +1,34 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.12.0]
+## [v3.12.2]
+
+### Fixed
+
+- Fixed a bug in Vulnerability Detector that made wazuh-modulesd crash when parsing the version of a package from a RHEL feed. ([#4885](https://github.com/wazuh/wazuh/pull/4885))
+
+
+## [v3.12.1] - 2020-04-08
+
+### Changed
+
+- Updated MSU catalog on 31/03/2020. ([#4819](https://github.com/wazuh/wazuh/pull/4819))
+
+### Fixed
+
+- Fixed compatibility with the Vulnerability Detector feeds for Ubuntu from Canonical, that are available in a compressed format. ([#4834](https://github.com/wazuh/wazuh/pull/4834))
+- Added missing field ‘database’ to the FIM on-demand configuration report. ([#4785](https://github.com/wazuh/wazuh/pull/4785))
+- Fixed a bug in Logcollector that made it forward a log to an external socket infinite times. ([#4802](https://github.com/wazuh/wazuh/pull/4802))
+- Fixed a buffer overflow when receiving large messages from Syslog over TCP connections. ([#4778](https://github.com/wazuh/wazuh/pull/4778))
+- Fixed a malfunction in the Integrator module when analyzing events without a certain field. ([#4851](https://github.com/wazuh/wazuh/pull/4851))
+- Fix XML validation with paths ending in `\`. ([#4783](https://github.com/wazuh/wazuh/pull/4783))
+
+### Removed
+
+- Removed support for Ubuntu 12.04 (Precise) in Vulneratiliby Detector as its feed is no longer available.
+
+
+## [v3.12.0] - 2020-03-24
 
 ### Added
 
@@ -15,12 +42,13 @@ All notable changes to this project will be documented in this file.
 - Add multi-target support for unit testing. ([#4564](https://github.com/wazuh/wazuh/pull/4564))
 - Add FIM module unit testing for Windows source code. ([#4633](https://github.com/wazuh/wazuh/pull/4633))
 
-## Changed
+### Changed
 
 - Move the FIM logic engine to the agent. ([#3319](https://github.com/wazuh/wazuh/issues/3319))
 - Make Logcollector continuously attempt to reconnect with the agent daemon. ([#4435](https://github.com/wazuh/wazuh/pull/4435))
 - Make Windows agents to send the keep-alive independently. ([#4077](https://github.com/wazuh/wazuh/pull/4077))
 - Do not enforce source IP checking by default in the registration process. ([#4083](https://github.com/wazuh/wazuh/pull/4083))
+- Updated API manager/configuration endpoint to also return the new synchronization and whodata syscheck fields ([#4818](https://github.com/wazuh/wazuh/pull/4818))
 
 ### Fixed
 
@@ -33,9 +61,10 @@ All notable changes to this project will be documented in this file.
 - Fix Windows upgrades in custom directories. ([#2534](https://github.com/wazuh/wazuh/pull/2534))
 - Fix the format of the alert payload passed to the Slack integration. ([#3978](https://github.com/wazuh/wazuh/pull/3978))
 
+
 ## [v3.11.4] - 2020-02-25
 
-## Changed
+### Changed
 
 - Remove chroot in Agentd to allow it resolve DNS at any time. ([#4652](https://github.com/wazuh/wazuh/issues/4652))
 

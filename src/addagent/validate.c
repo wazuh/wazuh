@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -894,7 +894,7 @@ int OS_LoadUid() {
     gid = Privsep_GetGroup(GROUPGLOBAL);
 
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror(USER_ERROR, USER, GROUPGLOBAL);
+        merror(USER_ERROR, USER, GROUPGLOBAL, strerror(errno), errno);
         return -1;
     } else {
         return 0;

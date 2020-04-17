@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Database support for Wazuh HIDS.
-# Copyright (C) 2015-2019, Wazuh Inc. <info@wazuh.com>
+# Copyright (C) 2015-2020, Wazuh Inc. <info@wazuh.com>
 # June 30, 2016.
 # This program is a free software, you can redistribute it
 # and/or modify it under the terms of GPLv2.
@@ -294,7 +294,7 @@ def _print_help():
         -s <path>   Changes the default path of the source SQL files.
         -v          Verbose mode.
 
-    Copyright 2016 Wazuh, Inc. <info@wazuh.com>
+    Copyright 2016-2020 Wazuh, Inc. <info@wazuh.com>
     '''
 
 if __name__ == '__main__':

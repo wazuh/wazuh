@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019
+ * Copyright (C) 2015-2020
  * January 17
  *
  * This program is free software; you can redistribute it

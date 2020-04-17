@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2010-2012 Trend Micro Inc.
  * All rights reserved.
  *
@@ -382,7 +382,7 @@ int main_analysisd(int argc, char **argv)
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, user, group);
+        merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }
 
     /* Found user */
