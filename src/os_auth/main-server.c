@@ -39,7 +39,7 @@ static int ssl_error(const SSL *ssl, int ret);
 static void* run_dispatcher(void *arg);
 w_err_t w_auth_parse_data(char* buf, char *response, char *authpass, char *ip, char **agentname, char *groups);
 w_err_t w_auth_validate_data (char *response, char *ip, char *agentname, char *groups);
-w_err_t w_auth_add_agent(char *response, char *ip, char *agentname, char *groups, char *id, unsigned *key);
+w_err_t w_auth_add_agent(char *response, char *ip, char *agentname, char *groups, char **id, char **key);
 
 /* Thread for writing keystore onto disk */
 static void* run_writer(void *arg);
@@ -74,6 +74,9 @@ pthread_mutex_t mutex_pool = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_keys = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_new_client = PTHREAD_COND_INITIALIZER;
 pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
+
+/*authd working as worker on cluester*/
+bool worker_node;
 
 /* Print help statement */
 static void help_authd()
@@ -372,6 +375,19 @@ int main(int argc, char **argv)
         }
     }
 
+    switch(w_is_worker()){
+    case -1:
+        merror("Invalid option at cluster configuration");
+        exit(0);
+    case 1:
+        worker_node = TRUE;
+        //master = get_master_node();
+        break;
+    case 0:
+        worker_node = FALSE;
+        break;
+    }
+
     /* Start daemon -- NB: need to double fork and setsid */
     mdebug1(STARTED_MSG);
 
@@ -504,7 +520,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    if (!w_is_worker()) {
+    if (!worker_node) {
         status = pthread_create(&thread_writer, NULL, run_writer, NULL);
 
         if (status != 0) {
@@ -592,7 +608,7 @@ int main(int argc, char **argv)
 
     
     pthread_join(thread_dispatcher, NULL);
-    if (!w_is_worker()) {
+    if (!worker_node) {
         pthread_join(thread_writer, NULL);
         pthread_join(thread_local_server, NULL);
     }
@@ -604,9 +620,7 @@ int main(int argc, char **argv)
 /* Thread for dispatching connection pool */
 void* run_dispatcher(__attribute__((unused)) void *arg) {
     struct client client;
-    char ip[IPSIZE + 1];
-    char *agentname = NULL;
-    char centralized_group[OS_SIZE_65536] = {0};
+    char ip[IPSIZE + 1];    
     int ret;
     char* buf = NULL;
     SSL *ssl;
@@ -618,7 +632,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     /* Initialize some variables */
     memset(ip, '\0', IPSIZE + 1);
     
-    if (!w_is_worker()) {
+    if (!worker_node) {
         OS_PassEmptyKeyfile();
         OS_ReadKeys(&keys, 0, !config.flags.clear_removed, 1);
     }
@@ -682,10 +696,12 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
              
         mdebug2("Request received: <%s>", buf);
         bool enrollment_ok = FALSE;
+        char *agentname = NULL;
+        char centralized_group[OS_SIZE_65536] = {0};
         char* new_id = NULL;
-        unsigned new_key = 0;
+        char* new_key = NULL;
         if(OS_SUCCESS == w_auth_parse_data(buf, response, authpass, ip, &agentname, centralized_group)){
-            if (w_is_worker()) {
+            if (worker_node) {
                 //JJP: Send request to master
                 //JJP: Dont forget enrollment_ok = TRUE;
             }
@@ -707,7 +723,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             minfo("Agent key generated for '%s' (requested by %s)", agentname, ip);
             ret = SSL_write(ssl, response, strlen(response));
 
-            if (w_is_worker()) {
+            if (worker_node) {
                 if (ret < 0) {
                     merror("SSL write error (%d)", ret);
                     merror("Agent key not saved for %s", agentname);
@@ -1020,7 +1036,7 @@ w_err_t w_auth_validate_groups(char *groups, char *response) {
     return OS_SUCCESS;
 }
 
-w_err_t w_auth_add_agent(char *response, char *ip, char *agentname, char *groups, char *id, unsigned *key){
+w_err_t w_auth_add_agent(char *response, char *ip, char *agentname, char *groups, char **id, char **key){
 
     /* Add the new agent */
     int index;
