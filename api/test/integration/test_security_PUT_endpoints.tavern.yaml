@@ -10,6 +10,7 @@ stages:
   # PUT /security/roles/{role_id}
   - name: Modify a role in the system
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/10"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -35,6 +36,7 @@ stages:
   # PUT /security/roles/{role_id}
   - name: Modify a role in the system (without change rule)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/11"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -65,6 +67,7 @@ stages:
   # PUT /security/roles/{role_id}
   - name: Modify a role in the system (without change name)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/10"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -89,6 +92,7 @@ stages:
   # PUT /security/roles/{non-existent role_id}
   - name: Modify a non-existent role in the system
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/999"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -120,6 +124,7 @@ stages:
   # PUT /security/policies/{policy_id}
   - name: Modify a policy in the system
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/12"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -155,6 +160,7 @@ stages:
   # PUT /security/policies/{policy_id}
   - name: Modify a policy in the system (without change policy definition)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/12"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -182,6 +188,7 @@ stages:
   # PUT /security/policies/{policy_id}
   - name: Modify a policy in the system (without change name)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/12"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -216,6 +223,7 @@ stages:
   # PUT /security/policies/{non-existent policy_id}
   - name: Modify a non-existent policy in the system
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/999"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -249,6 +257,7 @@ stages:
   # PUT /security/policies/{non-existent policy_id}
   - name: Modify a policy in the system, bad policy definition
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/12"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -272,6 +281,7 @@ stages:
 
   - name: Revoke all tokens
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/revoke"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -281,6 +291,7 @@ stages:
 
   - name: Revoke all tokens (Invalid token after previous call)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/revoke"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -295,6 +306,7 @@ stages:
 
   - name: Update an existent user (empty body)
     request: &put_users_request
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/python"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -309,6 +321,7 @@ stages:
 
   - name: Update an existent user (insecure password)
     request:
+      verify: False
       <<: *put_users_request
       json:
         password: "new_user"
@@ -319,6 +332,7 @@ stages:
 
   - name: Update an existent user (secure password)
     request:
+      verify: False
       <<: *put_users_request
       json:
         password: "new_user2A!"
@@ -332,6 +346,7 @@ stages:
 
   - name: Update an non-existent user
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/non-existent"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -356,6 +371,7 @@ stages:
 
   - name: Update an existent user (invalid body)
     request:
+      verify: False
       <<: *put_users_request
       json:
         pass: "ossec"
@@ -366,6 +382,7 @@ stages:
 
   - name: Update an existent user (valid body)
     request:
+      verify: False
       <<: *put_users_request
       json:
         password: "new_user1A!!!?"

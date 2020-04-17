@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -13,8 +13,8 @@ from os.path import exists, join
 from wazuh import Wazuh
 from wazuh import common
 from wazuh import configuration
-from wazuh.core.cluster.cluster import get_node
 from wazuh.configuration import get_ossec_conf
+from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart, read_cluster_config
 from wazuh.core.manager import status, get_ossec_log_fields, upload_xml, upload_list, validate_xml, validate_cdb_list, \
     parse_execd_output

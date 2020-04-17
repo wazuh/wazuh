@@ -139,6 +139,9 @@
               "type": "keyword",
               "doc_values": "true"
             },
+            "hard_links": {
+              "type": "keyword"
+            },
             "sha1_before": {
               "type": "keyword",
               "doc_values": "true"

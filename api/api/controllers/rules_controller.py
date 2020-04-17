@@ -8,17 +8,16 @@ from aiohttp import web
 from aiohttp_cache import cache
 from connexion.lifecycle import ConnexionResponse
 
-from api.configuration import read_api_config
+from api import configuration
 from api.encoder import dumps
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh import rule as rule_framework
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
 logger = logging.getLogger('wazuh')
-configuration = read_api_config()
 
 
-@cache(expires=configuration['cache']['time'], unless=not configuration['cache']['enabled'])
+@cache(expires=configuration.api_conf['cache']['time'], unless=not configuration.api_conf['cache']['enabled'])
 async def get_rules(request, rule_ids=None, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
                     search=None, q=None, status=None, group=None, level=None, filename=None, relative_dirname=None,
                     pci_dss=None, gdpr=None, gpg13=None, hipaa=None):
@@ -75,7 +74,7 @@ async def get_rules(request, rule_ids=None, pretty=False, wait_for_complete=Fals
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@cache(expires=configuration['cache']['time'], unless=not configuration['cache']['enabled'])
+@cache(expires=configuration.api_conf['cache']['time'], unless=not configuration.api_conf['cache']['enabled'])
 async def get_rules_groups(request, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
                            search=None):
     """Get all rule groups names.
@@ -111,7 +110,7 @@ async def get_rules_groups(request, pretty=False, wait_for_complete=False, offse
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@cache(expires=configuration['cache']['time'], unless=not configuration['cache']['enabled'])
+@cache(expires=configuration.api_conf['cache']['time'], unless=not configuration.api_conf['cache']['enabled'])
 async def get_rules_requirement(request, requirement=None, pretty=False, wait_for_complete=False, offset=0, limit=None,
                                 sort=None, search=None):
     """Get all specified requirements
@@ -146,7 +145,7 @@ async def get_rules_requirement(request, requirement=None, pretty=False, wait_fo
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@cache(expires=configuration['cache']['time'], unless=not configuration['cache']['enabled'])
+@cache(expires=configuration.api_conf['cache']['time'], unless=not configuration.api_conf['cache']['enabled'])
 async def get_rules_files(request, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None,
                           status=None, filename=None, relative_dirname=None):
     """Get all files which defines rules
@@ -187,7 +186,7 @@ async def get_rules_files(request, pretty=False, wait_for_complete=False, offset
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-@cache(expires=configuration['cache']['time'], unless=not configuration['cache']['enabled'])
+@cache(expires=configuration.api_conf['cache']['time'], unless=not configuration.api_conf['cache']['enabled'])
 async def get_download_file(request, pretty: bool = False, wait_for_complete: bool = False, filename: str = None):
     """Download an specified decoder file.
 

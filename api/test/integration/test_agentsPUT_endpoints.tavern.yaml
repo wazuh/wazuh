@@ -10,6 +10,7 @@ stages:
     # PUT /agents/group?group_id=wrong_group
   - name: Try to assign all agents to a non existing group
     request: &put_agents_group
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
@@ -24,6 +25,7 @@ stages:
     # PUT /agents/group?group_id=wrong_group&list_agents=wrong_agent
   - name: Try to assign an invalid agent_id to a non existing group
     request:
+      verify: False
       <<: *put_agents_group
       params:
         list_agents: "wrong_agent"
@@ -39,6 +41,7 @@ stages:
     # PUT /agents/group?group_id=wrong_%_group
   - name: Try to assign all agents to an invalid group id
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
@@ -53,6 +56,7 @@ stages:
     # PUT /agents/group?group_id=default&list_agents=998,999
   - name: Try to assign non existing agents to group default
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
@@ -78,6 +82,7 @@ stages:
     # PUT /agents/group?group_id=default&list_agents=000,999
   - name: Try to assign 000 and a non existing agent to group default
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
@@ -106,6 +111,7 @@ stages:
     # PUT /agents/group?group_id=default&list_agents=001,002
   - name: Try to assign agents 001 and 002 to group default where they already belong
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
@@ -131,6 +137,7 @@ stages:
     # PUT /agents/group?group_id=group1&list_agents=003,004,005
   - name: Assign agents 003, 004 and 005 to group1
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
@@ -157,6 +164,7 @@ stages:
     # PUT /agents/group?group_id=group2
   - name: Assign all agents to group2
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
@@ -179,6 +187,7 @@ stages:
     # PUT /agents/group?group_id=group2&force_single_group=true
   - name: Assign all agents to group2 with force_single_group
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
@@ -212,6 +221,7 @@ stages:
     # PUT /group/group2/configuration
   - name: Update group2 configuration
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group2/configuration"
       method: PUT
       headers:
@@ -227,6 +237,7 @@ stages:
     # PUT /group/wrong_group/configuration
   - name: Try to update configuration of a non existing group
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_group/configuration"
       method: PUT
       headers:
@@ -242,6 +253,7 @@ stages:
     # PUT /group/group1/configuration
   - name: Try to update configuration using an empty file
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group1/configuration"
       method: PUT
       headers:
@@ -255,6 +267,7 @@ stages:
     # PUT /group/group1/configuration
   - name: Try to update configuration using an invalid configuration file
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group1/configuration"
       method: PUT
       headers:
@@ -270,6 +283,7 @@ stages:
     # PUT /group/group1/configuration
   - name: Try to update configuration using a wrong configuration file
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group1/configuration"
       method: PUT
       headers:
@@ -290,6 +304,7 @@ stages:
     # PUT /agents/restart?list_agents=wrong_id
   - name: Try to restart agent with wrong_id
     request: &agent_restart_request
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/restart"
       method: PUT
       headers:
@@ -304,6 +319,7 @@ stages:
     # PUT /agents/restart?list_agents=998,999
   - name: Try to restart non existing agents
     request:
+      verify: False
       <<: *agent_restart_request
       params:
         list_agents: "998,999"
@@ -324,6 +340,7 @@ stages:
     # PUT /agents/restart?list_agents=000,999
   - name: Try to restart agent 000 and a non existing agent
     request:
+      verify: False
       <<: *agent_restart_request
       params:
         list_agents: "000,999"
@@ -348,6 +365,7 @@ stages:
     # PUT /agents/restart?list_agents=001,002,999
   - name: Try to restart agents 001,002 and 999
     request:
+      verify: False
       <<: *agent_restart_request
       params:
         list_agents: "001,002,999"
@@ -371,6 +389,7 @@ stages:
     # PUT /agents/restart
   - name: Try to restart all agents
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/restart"
       method: PUT
       headers:
@@ -401,6 +420,7 @@ stages:
     # PUT /agents/001/group/group2
   - name: Assign agent 001 to group1
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/group/group1"
       method: PUT
       headers:
@@ -417,6 +437,7 @@ stages:
     # PUT /agents/wrong_id/group/group1
   - name: Try to assign an agent with an invalid id
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/wrong_id/group/group1"
       method: PUT
       headers:
@@ -429,6 +450,7 @@ stages:
     # PUT /agents/999/group/group3
   - name: Try to assign a non existing agent to group3
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/999/group/group3"
       method: PUT
       headers:
@@ -450,6 +472,7 @@ stages:
     # PUT /agents/001/group/group3?force_single_group=true
   - name: Assign agent 001 to group3 with force_single_group
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/group/group3?force_single_group=true"
       method: PUT
       headers:
@@ -473,6 +496,7 @@ stages:
     # PUT /agents/000/restart
   - name: Try to restart agent 000 (manager)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/restart"
       method: PUT
       headers:
@@ -494,6 +518,7 @@ stages:
     # PUT /agents/999/restart
   - name: Try to restart a not existing agent
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/999/restart"
       method: PUT
       headers:
@@ -515,6 +540,7 @@ stages:
     # PUT /agents/wrong_id/restart
   - name: Try to restart an agent with an invalid id
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/wrong_id/restart"
       method: PUT
       headers:
@@ -527,6 +553,7 @@ stages:
     # PUT /agents/002/restart
   - name: Restart an agent
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/002/restart"
       method: PUT
       headers:
@@ -548,6 +575,7 @@ stages:
     # PUT /agents/002/upgrade
   - name: Try to upgrade a not existing agent
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/999/upgrade"
       method: PUT
       headers:
@@ -560,6 +588,7 @@ stages:
     # PUT /agents/000/upgrade
   - name: Try to upgrade agent 000 (manager)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/upgrade"
       method: PUT
       headers:
@@ -572,6 +601,7 @@ stages:
     # PUT /agents/wrong_id/upgrade
   - name: Try to upgrade an agent using an invalid id
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/wrong_id/upgrade"
       method: PUT
       headers:
@@ -584,6 +614,7 @@ stages:
     # PUT /agents/001/upgrade
   - name: Upgrade an agent
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/upgrade"
       method: PUT
       headers:
@@ -600,6 +631,7 @@ stages:
     # PUT /agents/001/upgrade
   - name: Try to upgrade an agent that is updated to the latest version
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/upgrade"
       method: PUT
       headers:
@@ -612,6 +644,7 @@ stages:
     # PUT /agents/003/upgrade
   - name: Downgrade agent to an specific version using force
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/003/upgrade"
       method: PUT
       headers:
@@ -629,6 +662,7 @@ stages:
     # PUT /agents/004/upgrade
   - name: Upgrade an agent using http
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/004/upgrade"
       method: PUT
       headers:
@@ -646,6 +680,7 @@ stages:
     # PUT /agents/005/upgrade
   - name: Upgrade an agent using wkp repo
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/005/upgrade"
       method: PUT
       headers:
@@ -667,6 +702,7 @@ stages:
     # PUT /agents/002/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
   - name: Try to customly upgrade a non existing agent
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/999/upgrade_custom"
       method: PUT
       headers:
@@ -682,6 +718,7 @@ stages:
     # PUT /agents/000/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
   - name: Try to customly upgrade agent 000 (manager)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/upgrade_custom"
       method: PUT
       headers:
@@ -697,6 +734,7 @@ stages:
     # PUT /agents/wrong_id/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
   - name: Try to customly upgrade an agent using an invalid id
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/wrong_id/upgrade_custom"
       method: PUT
       headers:
@@ -712,6 +750,7 @@ stages:
     # PUT /agents/006/upgrade_custom
   - name: Try to customly upgrade an agent without parameters
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/003/upgrade_custom"
       method: PUT
       headers:
@@ -724,6 +763,7 @@ stages:
     # PUT /agents/003/upgrade_custom?installer=invalid.sh&file_path=custom_wpk_path
   - name: Try to customly upgrade an agent with an invalid installer
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/003/upgrade_custom"
       method: PUT
       headers:
@@ -739,6 +779,7 @@ stages:
     # PUT /agents/007/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
   - name: Customly upgrade agent 007 selecting installer
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/007/upgrade_custom"
       method: PUT
       headers:
@@ -755,6 +796,7 @@ stages:
     # PUT /agents/008/upgrade_custom?file_path=custom_wpk_path
   - name: Customly upgrade agent 008 using default installer
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/008/upgrade_custom"
       method: PUT
       headers:
@@ -770,6 +812,7 @@ stages:
 
   - name: Get agent 007 upgrade result
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/007/upgrade_result"
       method: GET
       headers:
@@ -781,6 +824,7 @@ stages:
 
   - name: Get agent 008 upgrade result
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/008/upgrade_result"
       method: GET
       headers:

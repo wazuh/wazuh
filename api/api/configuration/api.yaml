@@ -1,5 +1,8 @@
 # USE THIS FILE AS A TEMPLATE. UNCOMMENT LINES TO APPLY CUSTOM CONFIGURATION
 
+# host: 0.0.0.0
+# port: 55000
+
 # Set this option to "yes" in case the API is running behind a proxy server. Values: yes, no
 # behind_proxy_server: no
 
@@ -8,22 +11,33 @@
 # RBAC configuration
 # rbac:
   # mode: white
+  # auth_token_exp_timeout: 36000
+
+# https:
+#  enabled: yes
+#  key: "api/configuration/ssl/server.key"
+#  cert: "api/configuration/ssl/server.crt"
+#  use_ca: False
+#  ca: "api/configuration/ssl/ca.crt"
 
 # Logging configuration
+# Values for API log level: disabled, info, warning, error, debug, debug2 (each level includes the previous level).
 # logs:
-  # Values for API log level: disabled, info, warning, error, debug, debug2 (each level includes the previous level).
   # level: "info"
-  # log path
   # path: "logs/api.log"
 
-# Cross-origin resource sharing. Values: yes, no.
-# cors: yes
+# Cross-origin resource sharing: https://github.com/aio-libs/aiohttp-cors#usage
+# cors:
+#  enabled: no
+#  source_route: "*"
+#  expose_headers: "*"
+#  allow_headers: "*"
+#  allow_credentials: no
 
-# Cache (time in milliseconds)
+# Cache (time in seconds)
 # cache:
-  # enabled: yes
-  # debug: no
-  # time: 750
+#   enabled: yes
+#   time: 0.750
 
 # Force the use of authd when adding and removing agents. Values: yes, no
 # use_only_authd: no

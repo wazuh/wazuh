@@ -163,10 +163,10 @@ def read_api_config(config_file=common.api_config_path) -> Dict:
     default_configuration = {
         "host": "0.0.0.0",
         "port": 55000,
-        "basic_auth": True,
         "behind_proxy_server": False,
         "rbac": {
-            "mode": "black"
+            "mode": "black",
+            "auth_token_exp_timeout": 36000
         },
         "https": {
             "enabled": True,
@@ -179,10 +179,15 @@ def read_api_config(config_file=common.api_config_path) -> Dict:
             "level": "info",
             "path": "logs/api.log"
         },
-        "cors": True,
-        "cache": {
+        "cors": {
             "enabled": False,
-            "debug": False,
+            "source_route": "*",
+            "expose_headers": "*",
+            "allow_headers": "*",
+            "allow_credentials": False,
+        },
+        "cache": {
+            "enabled": True,
             "time": 0.750
         },
         "use_only_authd": False,
@@ -210,3 +215,7 @@ def read_api_config(config_file=common.api_config_path) -> Dict:
     append_ossec_path(configuration, [('logs', 'path'), ('https', 'key'), ('https', 'cert'), ('https', 'ca')])
 
     return configuration
+
+
+# Configuration - global object
+api_conf = read_api_config()

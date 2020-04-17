@@ -6,7 +6,7 @@ import subprocess
 
 
 RESULTS_PATH = PUT_YOUR_RESULTS_PATH_HERE
-PYTEST_COMMAND = 'pytest -vv --tavern-beta-new-traceback'
+PYTEST_COMMAND = 'pytest -vv '
 TESTS_PATH = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -20,12 +20,13 @@ def run_tests(keyword=None, rbac='both', iterations=1):
     os.chdir(TESTS_PATH)
 
     def filter_tests(kw, rb):
+        kw = kw if kw is not None else ''
         test_list = []
         for file in glob.glob('test_*'):
             if rb == 'yes':
                 if kw in file and 'rbac' in file:
                     test_list.append(file)
-            elif kw in file and  rb == 'no' :
+            elif kw in file and rb == 'no':
                 if 'rbac' not in file:
                     test_list.append(file)
             else:

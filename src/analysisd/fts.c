@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -109,7 +109,7 @@ int FTS_Init(int threads)
 
     /* Add content from the files to memory */
     fseek(fp_list, 0, SEEK_SET);
-    while (fgets(_line, OS_FLSIZE , fp_list) != NULL) {
+    while (fgets(_line, sizeof(_line), fp_list) != NULL) {
         char *tmp_s;
 
         /* Remove newlines */
