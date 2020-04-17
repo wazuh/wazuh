@@ -422,13 +422,20 @@ int fim_whodata_initialize() {
 #endif
 
     for (int i = 0; syscheck.dir[i]; i++) {
+
         if (syscheck.opts[i] & WHODATA_ACTIVE) {
+
+#ifdef WIN_WHODATA // Whodata on Windows
             if(realtime_adddir(syscheck.dir[i], i + 1, (syscheck.opts[i] & CHECK_FOLLOW) ? 1 : 0) == -2) {
                 syscheck.wdata.dirs_status[i].status &= ~WD_CHECK_WHODATA;
                 syscheck.opts[i] &= ~WHODATA_ACTIVE;
                 syscheck.wdata.dirs_status[i].status |= WD_CHECK_REALTIME;
                 syscheck.realtime_change = 1;
             }
+#else // Whodata on Linux
+            realtime_adddir(syscheck.dir[i], i + 1, (syscheck.opts[i] & CHECK_FOLLOW) ? 1 : 0);
+#endif
+
         }
     }
 
