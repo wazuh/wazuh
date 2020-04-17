@@ -34,6 +34,10 @@ const wm_context WM_GCP_CONTEXT = {
     (cJSON * (*)(const void *))wm_gcp_dump
 };
 
+#ifdef UNIT_TESTING
+// Replace pthread_exit for testing purposes
+#define pthread_exit(a) return a
+#endif
 // Module main function. It won't return
 void* wm_gcp_main(wm_gcp *data) {
     // If module is disabled, exit
@@ -46,7 +50,7 @@ void* wm_gcp_main(wm_gcp *data) {
 
     do {
         const time_t time_sleep = sched_scan_get_next_time(&(data->scan_config), WM_GCP_LOGTAG, data->pull_on_start);
-        
+
         if (time_sleep) {
             mtdebug1(WM_GCP_LOGTAG, "Sleeping for %li seconds", time_sleep);
             wm_delay(1000 * time_sleep);
@@ -62,6 +66,10 @@ void* wm_gcp_main(wm_gcp *data) {
 }
 
 #ifdef UNIT_TESTING
+/* Replace pthread_exit for testing purposes */
+#undef pthread_exit
+#define pthread_exit(a) return
+
 __attribute__((weak))
 #endif
 void wm_gcp_run(const wm_gcp *data) {
@@ -213,7 +221,7 @@ cJSON *wm_gcp_dump(const wm_gcp *data) {
     if (data->project_id) cJSON_AddStringToObject(wm_wd, "project_id", data->project_id);
     if (data->subscription_name) cJSON_AddStringToObject(wm_wd, "subscription_name", data->subscription_name);
     if (data->credentials_file) cJSON_AddStringToObject(wm_wd, "credentials_file", data->credentials_file);
-    
+
     switch (data->logging) {
         case 0:
             cJSON_AddStringToObject(wm_wd, "logging", "disabled");
