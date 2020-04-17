@@ -9,6 +9,7 @@ stages:
 
   - name: Get os from an agent (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/001/os"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -40,6 +41,7 @@ stages:
 
   - name: Get os from an agent (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/002/os"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -62,6 +64,7 @@ stages:
 
   - name: Get hardware from an agent (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/001/hardware"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -90,6 +93,7 @@ stages:
 
   - name: Get hardware from an agent (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/002/hardware"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -106,6 +110,7 @@ stages:
 
   - name: Get netaddr from an agent (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/001/netaddr"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -126,6 +131,7 @@ stages:
 
   - name: Get netaddr from an agent (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/002/netaddr"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -142,6 +148,7 @@ stages:
 
   - name: Get netiface from an agent (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/001/netiface"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -173,6 +180,7 @@ stages:
 
   - name: Get netiface from an agent (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/002/netiface"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -189,6 +197,7 @@ stages:
 
   - name: Get netiface from an agent (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/005/netproto"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -208,6 +217,7 @@ stages:
 
   - name: Get netiface from an agent (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/004/netproto"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -224,6 +234,7 @@ stages:
 
   - name: Get netiface from an agent (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/005/packages"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -254,6 +265,7 @@ stages:
 
   - name: Get netiface from an agent (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/004/packages"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -270,6 +282,7 @@ stages:
 
   - name: Get netiface from an agent (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/006/ports"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -300,6 +313,7 @@ stages:
 
   - name: Get netiface from an agent (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/002/ports"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -316,6 +330,7 @@ stages:
 
   - name: Get netiface from an agent (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/006/processes"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -364,6 +379,7 @@ stages:
 
   - name: Get netiface from an agent (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/002/processes"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -380,6 +396,7 @@ stages:
 
   - name: Get all hotfixes from an agent (Allow)
     request: &hotfix_request_allow
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/000/hotfixes"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -402,6 +419,7 @@ stages:
 
   - name: Filter hotfix (Allow)
     request:
+      verify: False
       <<: *hotfix_request_allow
       params:
         hotfix: "{hotfix_filter}"
@@ -419,6 +437,7 @@ stages:
 
   - name: Get all hotfixes from an agent (Deny)
     request: &hotfix_request_deny
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/002/hotfixes"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -430,6 +449,7 @@ stages:
 
   - name: Filter hotfix (Deny)
     request:
+      verify: False
       <<: *hotfix_request_deny
     response:
       status_code: 400

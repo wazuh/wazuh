@@ -9,6 +9,7 @@ stages:
 
   - name: Get ciscat result for agent 001 (allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/ciscat/001/results"
       method: GET
       headers:
@@ -25,6 +26,7 @@ stages:
 
   - name: Get ciscat result for agent 002 (allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/ciscat/002/results"
       method: GET
       headers:
@@ -41,6 +43,7 @@ stages:
 
   - name: Get ciscat result for agent 003 (denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/ciscat/003/results"
       method: GET
       headers:

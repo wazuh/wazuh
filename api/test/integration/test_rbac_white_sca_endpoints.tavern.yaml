@@ -9,6 +9,7 @@ stages:
 
   - name: Request sca for agent 000 (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/000"
       method: GET
       headers:
@@ -20,6 +21,7 @@ stages:
 
   - name: Request sca for agent 001 (Denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001"
       method: GET
       headers:
@@ -32,6 +34,7 @@ stages:
 
   - name: Request sca for agent 002 (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002"
       method: GET
       headers:
@@ -43,6 +46,7 @@ stages:
 
   - name: Request sca for agent 003 (Denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
       method: GET
       headers:
@@ -55,6 +59,7 @@ stages:
 
   - name: Request sca for agent 003 (Denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
       method: GET
       headers:
@@ -67,6 +72,7 @@ stages:
 
   - name: Request sca for agent 005 (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/005"
       method: GET
       headers:
@@ -83,6 +89,7 @@ stages:
 
   - name: Request policy checks for 000 (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/000/checks/cis_debian9_L1"
       method: GET
       headers:
@@ -94,6 +101,7 @@ stages:
 
   - name: Request policy checks for 001 (Denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:

@@ -9,6 +9,7 @@ stages:
 
   - name: Try to show the rules of the system
     request: &general_rules_request
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -40,6 +41,7 @@ stages:
 
   - name: Try to show the rules of the system, offset = 0
     request:
+      verify: False
       <<: *general_rules_request
       params:
         limit: 2
@@ -64,6 +66,7 @@ stages:
 
   - name: Try to show the rules of the system, offset = 1
     request:
+      verify: False
       <<: *general_rules_request
       params:
         limit: 2
@@ -83,6 +86,7 @@ stages:
 
   - name: Try to show the rules of the system, without limit
     request:
+      verify: False
       <<: *general_rules_request
     response:
       status_code: 200
@@ -92,6 +96,7 @@ stages:
 
   - name: Try to show the rules of the system with a existent state
     request:
+      verify: False
       <<: *general_rules_request
       params:
         status: disabled
@@ -109,6 +114,7 @@ stages:
 
   - name: Try to get all rules with limit = 0
     request:
+      verify: False
       <<: *general_rules_request
       params:
         limit: 0
@@ -122,6 +128,7 @@ stages:
 
   - name: Sort without limit
     request:
+      verify: False
       <<: *general_rules_request
       params:
         sort: -filename
@@ -136,6 +143,7 @@ stages:
 
   - name: Search in rules
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules"
       method: GET
       headers:
@@ -159,6 +167,7 @@ stages:
 
   - name: Test search
     request:
+      verify: False
       <<: *general_rules_request
       params:
         search: web
@@ -176,6 +185,7 @@ stages:
 
   - name: Invalid parameter
     request:
+      verify: False
       <<: *general_rules_request
       params:
         noexist: nothing
@@ -189,6 +199,7 @@ stages:
 
   - name: Invalid status
     request:
+      verify: False
       <<: *general_rules_request
       params:
         status: aCtIvE
@@ -199,6 +210,7 @@ stages:
 
   - name: Invalid parameters - Extra fields
     request:
+      verify: False
       <<: *general_rules_request
       params:
         status: enabled
@@ -210,6 +222,7 @@ stages:
 
   - name: Filters status
     request:
+      verify: False
       <<: *general_rules_request
       params:
         status: enabled
@@ -227,6 +240,7 @@ stages:
 
   - name: Filter status without limit
     request:
+      verify: False
       <<: *general_rules_request
       params:
         status: enabled
@@ -238,6 +252,7 @@ stages:
 
   - name: Try to show the rules of the system with a non-existent state
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules"
       method: GET
       headers:
@@ -251,6 +266,7 @@ stages:
 
   - name: Test q
     request:
+      verify: False
       <<: *general_rules_request
       params:
         q: 'id=200'
@@ -272,6 +288,7 @@ stages:
 
   - name: Filter group
     request:
+      verify: False
       <<: *general_rules_request
       params:
         group: web
@@ -287,6 +304,7 @@ stages:
 
   - name: Filter group without limit
     request:
+      verify: False
       <<: *general_rules_request
       params:
         group: web
@@ -298,6 +316,7 @@ stages:
 
   - name: Try to show the rules by levels
     request:
+      verify: False
       <<: *general_rules_request
       params:
         level: 2
@@ -315,6 +334,7 @@ stages:
 
   - name: Filter levels without limit
     request:
+      verify: False
       <<: *general_rules_request
       params:
         level: 2
@@ -326,6 +346,7 @@ stages:
 
   - name: Filter levels without limit
     request:
+      verify: False
       <<: *general_rules_request
       params:
         level: 2-3
@@ -337,6 +358,7 @@ stages:
 
   - name: Try to show the rules by levels (invalid interval)
     request:
+      verify: False
       <<: *general_rules_request
       params:
         level: 2-4-5
@@ -347,6 +369,7 @@ stages:
 
   - name: Filter relative_dirname
     request:
+      verify: False
       <<: *general_rules_request
       params:
         relative_dirname: ruleset/rules
@@ -364,6 +387,7 @@ stages:
 
   - name: Filter relative_dirname without limit
     request:
+      verify: False
       <<: *general_rules_request
       params:
         relative_dirname: ruleset/rules
@@ -375,6 +399,7 @@ stages:
 
   - name: Filter filename
     request:
+      verify: False
       <<: *general_rules_request
       params:
         filename: 0015-ossec_rules.xml
@@ -399,6 +424,7 @@ stages:
 
   - name: Filter filename without limit
     request:
+      verify: False
       <<: *general_rules_request
       params:
         filename: 0015-ossec_rules.xml
@@ -417,6 +443,7 @@ stages:
 
   - name: Filter pci_dss
     request:
+      verify: False
       <<: *general_rules_request
       params:
         pci_dss: "{pci_dss_value}"
@@ -434,6 +461,7 @@ stages:
 
   - name: Filter pci_dss without limit
     request:
+      verify: False
       <<: *general_rules_request
       params:
         pci_dss: "{pci_dss_value}"
@@ -445,6 +473,7 @@ stages:
 
   - name: Filter gdpr
     request:
+      verify: False
       <<: *general_rules_request
       params:
         gdpr: "{gdpr_value}"
@@ -462,6 +491,7 @@ stages:
 
   - name: Filter gdpr without limit
     request:
+      verify: False
       <<: *general_rules_request
       params:
         gdpr: "{gdpr_value}"
@@ -473,6 +503,7 @@ stages:
 
   - name: Filter gpg13
     request:
+      verify: False
       <<: *general_rules_request
       params:
         gpg13: "{gpg13_value}"
@@ -490,6 +521,7 @@ stages:
 
   - name: Filter gpg13 without limit
     request:
+      verify: False
       <<: *general_rules_request
       params:
         gpg13: "{gpg13_value}"
@@ -501,6 +533,7 @@ stages:
 
   - name: Filter hipaa
     request:
+      verify: False
       <<: *general_rules_request
       params:
         hipaa: "{hipaa_value}"
@@ -518,6 +551,7 @@ stages:
 
   - name: Filter hipaa without limit
     request:
+      verify: False
       <<: *general_rules_request
       params:
         hipaa: "{hipaa_value}"
@@ -529,6 +563,7 @@ stages:
 
   - name: Filter nist-800-53
     request:
+      verify: False
       <<: *general_rules_request
       params:
         nist-800-53: "{nist-800-53_value}"
@@ -546,6 +581,7 @@ stages:
 
   - name: Filter nist-800-53 without limit
     request:
+      verify: False
       <<: *general_rules_request
       params:
         nist-800-53: "{nist-800-53_value}"
@@ -562,6 +598,7 @@ stages:
 
   - name: Try to show the rules by requirement pci_dss
     request: &pci_dss_rules_request
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/requirement/pci_dss"
       method: GET
       headers:
@@ -582,6 +619,7 @@ stages:
 
   - name: Try to show the rules by requirement pci_dss, limit and offset
     request:
+      verify: False
       <<: *pci_dss_rules_request
       params:
         limit: 1
@@ -599,6 +637,7 @@ stages:
 
   - name: Try to show the rules by requirement pci_dss, limit = 0
     request:
+      verify: False
       <<: *pci_dss_rules_request
       params:
         limit: 0
@@ -609,6 +648,7 @@ stages:
 
   - name: Filter sort
     request:
+      verify: False
       <<: *pci_dss_rules_request
       params:
         limit: 1000
@@ -627,6 +667,7 @@ stages:
 
   - name: Filter sort
     request:
+      verify: False
       <<: *pci_dss_rules_request
       params:
         sort: "-"
@@ -638,6 +679,7 @@ stages:
 
   - name: Filter search
     request:
+      verify: False
       <<: *pci_dss_rules_request
       params:
         search: 10
@@ -652,6 +694,7 @@ stages:
 
   - name: Invalid filter
     request:
+      verify: False
       <<: *pci_dss_rules_request
       params:
         noexist: True
@@ -667,6 +710,7 @@ stages:
 
   - name: Try to show the rules by requirement gdpr
     request: &gdpr_rules_request
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/requirement/gdpr"
       method: GET
       headers:
@@ -687,6 +731,7 @@ stages:
 
   - name: Try to show the rules by requirement gdpr, limit and offset
     request:
+      verify: False
       <<: *gdpr_rules_request
       params:
         limit: 1
@@ -704,6 +749,7 @@ stages:
 
   - name: Try to show the rules by requirement gdpr, limit = 0
     request:
+      verify: False
       <<: *gdpr_rules_request
       params:
         limit: 0
@@ -714,6 +760,7 @@ stages:
 
   - name: Filter sort
     request:
+      verify: False
       <<: *gdpr_rules_request
       params:
         limit: 1000
@@ -732,6 +779,7 @@ stages:
 
   - name: Filter reverse sort
     request:
+      verify: False
       <<: *gdpr_rules_request
       params:
         limit: 1000
@@ -744,6 +792,7 @@ stages:
 
   - name: Filter search
     request:
+      verify: False
       <<: *gdpr_rules_request
       params:
         search: 10
@@ -758,6 +807,7 @@ stages:
 
   - name: Invalid filter
     request:
+      verify: False
       <<: *gdpr_rules_request
       params:
         noexist: True
@@ -773,6 +823,7 @@ stages:
 
   - name: Try to show the rules by requirement gpg13
     request: &gpg13_rules_request
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/requirement/gpg13"
       method: GET
       headers:
@@ -785,6 +836,7 @@ stages:
 
   - name: Try to show the rules by requirement gpg13, limit and offset
     request:
+      verify: False
       <<: *gpg13_rules_request
       params:
         limit: 2
@@ -803,6 +855,7 @@ stages:
 
   - name: Try to show the rules by requirement gpg13, limit = 0
     request:
+      verify: False
       <<: *gpg13_rules_request
       params:
         limit: 0
@@ -813,6 +866,7 @@ stages:
 
   - name: Filter sort
     request:
+      verify: False
       <<: *gpg13_rules_request
     response:
       status_code: 200
@@ -829,6 +883,7 @@ stages:
 
   - name: Filter sort
     request:
+      verify: False
       <<: *gpg13_rules_request
       params:
         limit: 1000
@@ -847,6 +902,7 @@ stages:
 
   - name: Filter reverse sort
     request:
+      verify: False
       <<: *gpg13_rules_request
       params:
         sort: "-"
@@ -858,6 +914,7 @@ stages:
 
   - name: Filter search
     request:
+      verify: False
       <<: *gpg13_rules_request
       params:
         search: 10
@@ -872,6 +929,7 @@ stages:
 
   - name: Invalid filter
     request:
+      verify: False
       <<: *gpg13_rules_request
       params:
         noexist: True
@@ -887,6 +945,7 @@ stages:
 
   - name: Try to show the rules by requirement hipaa
     request: &hipaa_rules_request
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/requirement/hipaa"
       method: GET
       headers:
@@ -902,6 +961,7 @@ stages:
 
   - name: Try to show the rules by requirement hipaa, limit and offset
     request:
+      verify: False
       <<: *hipaa_rules_request
       params:
         limit: 1
@@ -917,6 +977,7 @@ stages:
 
   - name: Try to show the rules by requirement hipaa, limit = 0
     request:
+      verify: False
       <<: *hipaa_rules_request
       params:
         limit: 0
@@ -927,6 +988,7 @@ stages:
 
   - name: Filter sort
     request:
+      verify: False
       <<: *hipaa_rules_request
       params:
         sort: "-"
@@ -941,6 +1003,7 @@ stages:
 
   - name: Filter search
     request:
+      verify: False
       <<: *hipaa_rules_request
       params:
         search: 1
@@ -955,6 +1018,7 @@ stages:
 
   - name: Invalid filter
     request:
+      verify: False
       <<: *hipaa_rules_request
       params:
         noexist: True
@@ -970,6 +1034,7 @@ stages:
 
   - name: Try to show the rules by requirement nist-800-53
     request: &nist-800-53_rules_request
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/requirement/nist-800-53"
       method: GET
       headers:
@@ -985,6 +1050,7 @@ stages:
 
   - name: Try to show the rules by requirement nist-800-53, limit and offset
     request:
+      verify: False
       <<: *nist-800-53_rules_request
       params:
         limit: 1
@@ -1000,6 +1066,7 @@ stages:
 
   - name: Try to show the rules by requirement nist-800-53, limit = 0
     request:
+      verify: False
       <<: *nist-800-53_rules_request
       params:
         limit: 0
@@ -1010,6 +1077,7 @@ stages:
 
   - name: Filter sort
     request:
+      verify: False
       <<: *nist-800-53_rules_request
       params:
         sort: "-"
@@ -1024,6 +1092,7 @@ stages:
 
   - name: Filter search
     request:
+      verify: False
       <<: *nist-800-53_rules_request
       params:
         search: 10
@@ -1038,6 +1107,7 @@ stages:
 
   - name: Invalid filter
     request:
+      verify: False
       <<: *nist-800-53_rules_request
       params:
         noexist: True
@@ -1053,6 +1123,7 @@ stages:
 
   - name: Try to show the rules groups
     request: &groups_rules_request
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/groups"
       method: GET
       headers:
@@ -1068,6 +1139,7 @@ stages:
 
   - name: Try to show the groups of rules, limit and offset
     request:
+      verify: False
       <<: *groups_rules_request
       params:
         offset: 0
@@ -1083,6 +1155,7 @@ stages:
 
   - name: Try to show the groups of rules, limit = 0
     request:
+      verify: False
       <<: *groups_rules_request
       params:
         limit: 0
@@ -1093,6 +1166,7 @@ stages:
 
   - name: Filter sort
     request:
+      verify: False
       <<: *groups_rules_request
       params:
         sort: "-"
@@ -1107,6 +1181,7 @@ stages:
 
   - name: Filter search
     request:
+      verify: False
       <<: *groups_rules_request
       params:
         search: web
@@ -1121,6 +1196,7 @@ stages:
 
   - name: Invalid filter
     request:
+      verify: False
       <<: *groups_rules_request
       params:
         noexist: nothing
@@ -1136,6 +1212,7 @@ stages:
 
   - name: Get the rules files
     request: &files_rules_request
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/files"
       method: GET
       headers:
@@ -1151,6 +1228,7 @@ stages:
 
   - name: Get the rules files, limit = 1, offset = 0
     request:
+      verify: False
       <<: *files_rules_request
       params:
         limit: 1
@@ -1169,6 +1247,7 @@ stages:
 
   - name: Get the rules files, limit = 0
     request:
+      verify: False
       <<: *files_rules_request
       params:
         limit: 0
@@ -1179,6 +1258,7 @@ stages:
 
   - name: Filter sort
     request:
+      verify: False
       <<: *files_rules_request
       params:
         sort: "-filename"
@@ -1191,6 +1271,7 @@ stages:
 
   - name: Invalid filter
     request:
+      verify: False
       <<: *files_rules_request
       params:
         noexist: True
@@ -1201,6 +1282,7 @@ stages:
 
   - name: Invalid filter - Extra field
     request:
+      verify: False
       <<: *files_rules_request
       params:
         status: enabled
@@ -1212,6 +1294,7 @@ stages:
 
   - name: Filter status
     request:
+      verify: False
       <<: *files_rules_request
       params:
         status: enabled
@@ -1231,6 +1314,7 @@ stages:
 
   - name: Download rule
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/files/0350-amazon_rules.xml/download"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1246,6 +1330,7 @@ stages:
 
   - name: Try to show a rule with a existent id
     request: &id_rules_request
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules"
       method: GET
       headers:
@@ -1264,6 +1349,7 @@ stages:
 
   - name: Try to show a rule with two existent ids
     request:
+      verify: False
       <<: *id_rules_request
       params:
         rule_ids: 200,201
@@ -1280,6 +1366,7 @@ stages:
 
   - name: Try to show a rule with a existent id and no existent one
     request:
+      verify: False
       <<: *id_rules_request
       params:
         rule_ids: 200,9
@@ -1302,6 +1389,7 @@ stages:
 
   - name: Try to show a rule with a existent id but with a wrong file in file filter
     request:
+      verify: False
       <<: *id_rules_request
       params:
         rule_ids: 200
@@ -1318,6 +1406,7 @@ stages:
 
   - name: Try to show a rule with a existent id, limit = 0
     request:
+      verify: False
       <<: *id_rules_request
       params:
         limit: 0
@@ -1329,6 +1418,7 @@ stages:
 
   - name: Filter sort
     request:
+      verify: False
       <<: *id_rules_request
       params:
         sort: -filename
@@ -1345,6 +1435,7 @@ stages:
 
   - name: Filter search error
     request:
+      verify: False
       <<: *id_rules_request
       params:
         search: error
@@ -1360,6 +1451,7 @@ stages:
 
   - name: Invalid filter
     request:
+      verify: False
       <<: *id_rules_request
       params:
         noexist: True
@@ -1371,6 +1463,7 @@ stages:
 
   - name: No rule
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules"
       method: GET
       headers:
