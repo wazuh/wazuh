@@ -16,7 +16,6 @@ from time import time, sleep
 
 import requests
 
-from api import configuration as api_configuration
 from wazuh import common, configuration
 from wazuh.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
@@ -180,7 +179,7 @@ class Agent:
               'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive', 'internal_key': 'internal_key',
               'registerIP': 'register_ip'}
 
-    def __init__(self, id=None, name=None, ip=None, key=None, force=-1):
+    def __init__(self, id=None, name=None, ip=None, key=None, force=-1, use_only_authd=False):
         """Initialize an agent.
 
         :param: id: When the agent exists
@@ -211,7 +210,7 @@ class Agent:
         # if the method has only been called with an ID parameter, no new agent should be added.
         # Otherwise, a new agent must be added
         if name is not None and ip is not None:
-            self._add(name=name, ip=ip, id=id, key=key, force=force)
+            self._add(name=name, ip=ip, id=id, key=key, force=force, use_only_authd=use_only_authd)
 
     def __str__(self):
         return str(self.to_dict())
@@ -279,19 +278,19 @@ class Agent:
 
         return send_restart_command(self.id)
 
-
-    def remove(self, backup=False, purge=False):
+    def remove(self, backup=False, purge=False, use_only_authd=False):
         """Deletes the agent.
 
         :param backup: Create backup before removing the agent.
         :param purge: Delete definitely from key store.
+        :param use_only_authd: Force the use of authd when adding and removing agents.
         :return: Message.
         """
 
         manager_status = get_manager_status()
         is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
 
-        if api_configuration.read_api_config()['use_only_authd']:
+        if use_only_authd:
             if not is_authd_running:
                 raise WazuhInternalError(1726)
 
@@ -429,7 +428,7 @@ class Agent:
 
         return 'Agent deleted successfully.'
 
-    def _add(self, name, ip, id=None, key=None, force=-1):
+    def _add(self, name, ip, id=None, key=None, force=-1, use_only_authd=False):
         """Adds an agent to OSSEC.
         2 uses:
             - name and ip [force]: Add an agent like manage_agents (generate id and key).
@@ -440,6 +439,7 @@ class Agent:
         :param id: ID of the new agent.
         :param key: Key of the new agent.
         :param force: Remove old agents with same IP if disconnected since <force> seconds
+        :param use_only_authd: Force the use of authd when adding and removing agents.
         :return: Agent ID.
         """
         ip = ip.lower()
@@ -458,7 +458,7 @@ class Agent:
         manager_status = get_manager_status()
         is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
 
-        if api_configuration.read_api_config()['use_only_authd']:
+        if use_only_authd:
             if not is_authd_running:
                 raise WazuhInternalError(1726)
 

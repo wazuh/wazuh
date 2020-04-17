@@ -44,6 +44,7 @@ COPY configurations/syscollector/wazuh-master/send_to_wdb.py /send_to_wdb.py
 ADD configurations/syscollector/wazuh-master/entrypoint.sh /scripts/entrypoint.sh
 
 FROM wazuh-env-syscollector AS wazuh-env-experimental
+COPY configurations/experimental/api.yaml /var/ossec/api/configuration/api.yaml
 
 FROM base AS wazuh-env-security
 COPY configurations/security/wazuh-master/schema_security_test.sql /var/ossec/api/configuration/security/schema_security_test.sql
@@ -180,11 +181,11 @@ FROM wazuh-env-cluster AS wazuh-env-cluster_black_rbac
 ADD configurations/rbac/cluster/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
-FROM wazuh-env-syscollector AS wazuh-env-experimental_black_rbac
+FROM wazuh-env-experimental AS wazuh-env-experimental_black_rbac
 ADD configurations/rbac/experimental/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
-FROM wazuh-env-syscollector AS wazuh-env-experimental_white_rbac
+FROM wazuh-env-experimental AS wazuh-env-experimental_white_rbac
 ADD configurations/rbac/experimental/white_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
