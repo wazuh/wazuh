@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -41,6 +41,14 @@ def status() -> Dict:
     """
 
     return get_manager_status()
+
+
+def replace_in_comments(original_content, to_be_replaced, replacement):
+    xml_comment = re.compile(r"(<!--(.*?)-->)", flags=re.MULTILINE | re.DOTALL)
+    for comment in xml_comment.finditer(original_content):
+        good_comment = comment.group(2).replace(to_be_replaced, replacement)
+        original_content = original_content.replace(comment.group(2), good_comment)
+    return original_content
 
 
 def __get_ossec_log_fields(log):
@@ -219,11 +227,14 @@ def upload_file(tmp_file, path, content_type, overwrite=False):
 
 def upload_xml(xml_file, path):
     """
-    Updates XML files (rules and decoders)
+    Upload XML files (rules and decoders)
     :param xml_file: content of the XML file
     :param path: Destination of the new XML file
     :return: Confirmation message
     """
+    # -- characters are not allowed in XML comments
+    xml_file = replace_in_comments(xml_file, '--', '%wildcard%')
+
     # path of temporary files for parsing xml input
     tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.xml'.format(common.ossec_path, time.time(), random.randint(0, 1000))
 
@@ -241,6 +252,7 @@ def upload_xml(xml_file, path):
                 .replace("&gt;", ">").replace('&apos;', "'")
             # delete two first spaces of each line
             final_xml = re.sub(fr'^{indent}', '', pretty_xml, flags=re.MULTILINE)
+            final_xml = replace_in_comments(final_xml, '%wildcard%', '--')
             tmp_file.write(final_xml)
         chmod(tmp_file_path, 0o660)
     except IOError:
@@ -336,6 +348,7 @@ def get_file(path, validation=False):
 
     return output
 
+
 def validate_xml(path):
     """
     Validates a XML file
@@ -352,6 +365,7 @@ def validate_xml(path):
         return False
 
     return True
+
 
 def validate_cdb_list(path):
     """
