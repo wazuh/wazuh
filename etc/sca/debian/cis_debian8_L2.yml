@@ -1,6 +1,6 @@
 # Security Configuration Assessment
 # Level 2 CIS Checks for Debian Linux 8
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -263,7 +263,7 @@ checks:
       - 'f:/etc/audit/audit.rules -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale'
       - 'f:/etc/audit/audit.rules -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale'
       - 'f:/etc/audit/audit.rules -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale'
-      - 'f:/etc/audit/audit.rules -> r:^-w && r:/etc/sysconfig/network && r:-p wa && r:-k system-locale'
+      - 'f:/etc/audit/audit.rules -> r:^-w && r:/etc/network && r:-p wa && r:-k system-locale'
 
   - id: 2516
     title: "Ensure events that modify the system's Mandatory Access Controls are collected (SELinux)"

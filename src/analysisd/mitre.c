@@ -18,7 +18,7 @@ int mitre_load(char * mode){
     int j;
     int size_ids;
     int size_tactics;
-    char path_db[PATH_MAX + 1];
+    int sock = -1;
     char *wazuhdb_query = NULL;
     char *response = NULL;
     char *ext_id = NULL;
@@ -30,15 +30,15 @@ int mitre_load(char * mode){
     cJSON *tactics = NULL;
     cJSON *tactic = NULL;
 
-    snprintf(path_db, sizeof(path_db), "%s/%s.db", WDB_DIR, WDB_MITRE_NAME);
-
     /* Create hash table */
     mitre_table = OSHash_Create();
     
     /* Get Mitre IDs from Mitre's database */
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
+    os_calloc(OS_SIZE_6144, sizeof(char), response);
+
     snprintf(wazuhdb_query, OS_SIZE_6144, "mitre sql SELECT id from attack;");
-    if (result = wdb_send_query(wazuhdb_query, &response), result == -2) {
+    if (result = wdbc_query_ex(&sock, wazuhdb_query, response, OS_SIZE_6144), result == -2) {
         merror("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
         goto end;
     }
@@ -55,9 +55,6 @@ int mitre_load(char * mode){
         result = -1;
         goto end;
     }
-
-    /* Response parameter has to be freed before continuing */
-    os_free(response);
 
     /* Getting array size */
     if (size_ids = cJSON_GetArraySize(root), size_ids == 0) {
@@ -78,7 +75,7 @@ int mitre_load(char * mode){
 
         /* Consulting Mitre's database to get Tactics */
         snprintf(wazuhdb_query, OS_SIZE_6144, "mitre sql SELECT phase_name FROM has_phase WHERE attack_id = '%s';", ext_id);
-        if (result = wdb_send_query(wazuhdb_query, &response), result == -2) {
+        if (result = wdbc_query_ex(&sock, wazuhdb_query, response, OS_SIZE_6144), result == -2) {
             merror("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
             goto end;
         }
@@ -95,7 +92,7 @@ int mitre_load(char * mode){
             result = -1;
             goto end;
         }
-        os_free(response);
+
         if (size_tactics = cJSON_GetArraySize(tactics_json), size_tactics == 0) {
             merror("Response from the Mitre database has 0 elements.");
             result = -1;
@@ -126,7 +123,7 @@ int mitre_load(char * mode){
 
 end:
     os_free(wazuhdb_query);
-    os_free(response);  
+    os_free(response);
     if (mode != NULL && !strcmp(mode,"test")) {
         OSHash_Free(mitre_table);
     }  

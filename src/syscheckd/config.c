@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -26,7 +26,11 @@ int Read_Syscheck_Config(const char *cfgfile)
 
     syscheck.rootcheck      = 0;
     syscheck.disabled       = SK_CONF_UNPARSED;
-    syscheck.skip_nfs       = 1;
+    syscheck.database_store = FIM_DB_DISK;
+    syscheck.skip_fs.nfs    = 1;
+    syscheck.skip_fs.dev    = 1;
+    syscheck.skip_fs.sys    = 1;
+    syscheck.skip_fs.proc   = 1;
     syscheck.scan_on_start  = 1;
     syscheck.time           = 43200;
     syscheck.ignore         = NULL;
@@ -37,20 +41,28 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.scan_time      = NULL;
     syscheck.dir            = NULL;
     syscheck.opts           = NULL;
+    syscheck.enable_synchronization = 1;
     syscheck.restart_audit  = 1;
     syscheck.enable_whodata = 0;
     syscheck.realtime       = NULL;
     syscheck.audit_healthcheck = 1;
+    syscheck.process_priority = 10;
 #ifdef WIN_WHODATA
     syscheck.wdata.interval_scan = 0;
     syscheck.wdata.fd      = NULL;
 #endif
 #ifdef WIN32
+    syscheck.realtime_change = 0;
     syscheck.registry       = NULL;
-    syscheck.reg_fp         = NULL;
     syscheck.max_fd_win_rt  = 0;
 #endif
     syscheck.prefilter_cmd  = NULL;
+    syscheck.sync_interval  = 300;
+    syscheck.max_sync_interval = 3600;
+    syscheck.sync_response_timeout = 30;
+    syscheck.sync_queue_size = 16384;
+    syscheck.sync_max_eps = 10;
+    syscheck.max_eps        = 100;
     syscheck.allow_remote_prefilter_cmd  = false;
 
     mdebug1(FIM_CONFIGURATION_FILE, cfgfile);
@@ -102,23 +114,6 @@ int Read_Syscheck_Config(const char *cfgfile)
     return (0);
 }
 
-
-void init_whodata_event(whodata_evt *w_evt) {
-    w_evt->user_id = NULL;
-    w_evt->user_name = NULL;
-    w_evt->group_id = NULL;
-    w_evt->group_name = NULL;
-    w_evt->process_name = NULL;
-    w_evt->path = NULL;
-    w_evt->audit_uid = NULL;
-    w_evt->audit_name = NULL;
-    w_evt->effective_uid = NULL;
-    w_evt->effective_name = NULL;
-    w_evt->ppid = -1;
-    w_evt->process_id = 0;
-}
-
-
 void free_whodata_event(whodata_evt *w_evt) {
     if (w_evt->user_name) free(w_evt->user_name);
     if (w_evt->user_id) {
@@ -132,14 +127,13 @@ void free_whodata_event(whodata_evt *w_evt) {
     if (w_evt->audit_uid) free(w_evt->audit_uid);
     if (w_evt->effective_name) free(w_evt->effective_name);
     if (w_evt->effective_uid) free(w_evt->effective_uid);
-    if (w_evt->group_name) free(w_evt->group_name);
     if (w_evt->group_id) free(w_evt->group_id);
     if (w_evt->path) free(w_evt->path);
     if (w_evt->process_name) free(w_evt->process_name);
     if (w_evt->inode) free(w_evt->inode);
+    if (w_evt->dev) free(w_evt->dev);
     free(w_evt);
 }
-
 
 cJSON *getSyscheckConfig(void) {
 
@@ -153,7 +147,10 @@ cJSON *getSyscheckConfig(void) {
 
     if (syscheck.disabled) cJSON_AddStringToObject(syscfg,"disabled","yes"); else cJSON_AddStringToObject(syscfg,"disabled","no");
     cJSON_AddNumberToObject(syscfg,"frequency",syscheck.time);
-    if (syscheck.skip_nfs) cJSON_AddStringToObject(syscfg,"skip_nfs","yes"); else cJSON_AddStringToObject(syscfg,"skip_nfs","no");
+    cJSON_AddStringToObject(syscfg, "skip_nfs", syscheck.skip_fs.nfs ? "yes" : "no");
+    cJSON_AddStringToObject(syscfg, "skip_dev", syscheck.skip_fs.dev ? "yes" : "no");
+    cJSON_AddStringToObject(syscfg, "skip_sys", syscheck.skip_fs.sys ? "yes" : "no");
+    cJSON_AddStringToObject(syscfg, "skip_proc", syscheck.skip_fs.proc ? "yes" : "no");
     if (syscheck.scan_on_start) cJSON_AddStringToObject(syscfg,"scan_on_start","yes"); else cJSON_AddStringToObject(syscfg,"scan_on_start","no");
     if (syscheck.scan_day) cJSON_AddStringToObject(syscfg,"scan_day",syscheck.scan_day);
     if (syscheck.scan_time) cJSON_AddStringToObject(syscfg,"scan_time",syscheck.scan_time);
@@ -170,16 +167,17 @@ cJSON *getSyscheckConfig(void) {
             if (syscheck.opts[i] & CHECK_GROUP) cJSON_AddItemToArray(opts, cJSON_CreateString("check_group"));
             if (syscheck.opts[i] & CHECK_MTIME) cJSON_AddItemToArray(opts, cJSON_CreateString("check_mtime"));
             if (syscheck.opts[i] & CHECK_INODE) cJSON_AddItemToArray(opts, cJSON_CreateString("check_inode"));
-            if (syscheck.opts[i] & CHECK_REALTIME) cJSON_AddItemToArray(opts, cJSON_CreateString("realtime"));
+            if (syscheck.opts[i] & REALTIME_ACTIVE) cJSON_AddItemToArray(opts, cJSON_CreateString("realtime"));
             if (syscheck.opts[i] & CHECK_SEECHANGES) cJSON_AddItemToArray(opts, cJSON_CreateString("report_changes"));
             if (syscheck.opts[i] & CHECK_SHA256SUM) cJSON_AddItemToArray(opts, cJSON_CreateString("check_sha256sum"));
-            if (syscheck.opts[i] & CHECK_WHODATA) cJSON_AddItemToArray(opts, cJSON_CreateString("check_whodata"));
+            if (syscheck.opts[i] & WHODATA_ACTIVE) cJSON_AddItemToArray(opts, cJSON_CreateString("check_whodata"));
 #ifdef WIN32
             if (syscheck.opts[i] & CHECK_ATTRS) cJSON_AddItemToArray(opts, cJSON_CreateString("check_attrs"));
 #endif
             if (syscheck.opts[i] & CHECK_FOLLOW) cJSON_AddItemToArray(opts, cJSON_CreateString("follow_symbolic_link"));
             cJSON_AddItemToObject(pair,"opts",opts);
             cJSON_AddStringToObject(pair,"dir",syscheck.dir[i]);
+            if (syscheck.symbolic_links[i]) cJSON_AddStringToObject(pair,"symbolic_link",syscheck.symbolic_links[i]);
             cJSON_AddNumberToObject(pair,"recursion_level",syscheck.recursion_level[i]);
             if (syscheck.filerestrict && syscheck.filerestrict[i]) {
                 cJSON_AddStringToObject(pair,"restrict",syscheck.filerestrict[i]->raw);
@@ -309,11 +307,26 @@ cJSON *getSyscheckConfig(void) {
         cJSON_AddStringToObject(syscfg,"prefilter_cmd",syscheck.prefilter_cmd);
     }
 
+    cJSON * synchronization = cJSON_CreateObject();
+    cJSON_AddStringToObject(synchronization, "enabled", syscheck.enable_synchronization ? "yes" : "no");
+    cJSON_AddNumberToObject(synchronization, "max_interval", syscheck.max_sync_interval);
+    cJSON_AddNumberToObject(synchronization, "interval", syscheck.sync_interval);
+    cJSON_AddNumberToObject(synchronization, "response_timeout", syscheck.sync_response_timeout);
+    cJSON_AddNumberToObject(synchronization, "queue_size", syscheck.sync_queue_size);
+    cJSON_AddNumberToObject(synchronization, "max_eps", syscheck.sync_max_eps);
+    cJSON_AddItemToObject(syscfg, "synchronization", synchronization);
+
+    cJSON_AddNumberToObject(syscfg, "max_eps", syscheck.max_eps);
+    cJSON_AddNumberToObject(syscfg, "process_priority", syscheck.process_priority);
+
+    // Add sql database information
+    cJSON_AddStringToObject(syscfg, "database", syscheck.database_store ? "memory" : "disk");
+
+
     cJSON_AddItemToObject(root,"syscheck",syscfg);
 
     return root;
 }
-
 
 cJSON *getSyscheckInternalOptions(void) {
 
@@ -322,8 +335,6 @@ cJSON *getSyscheckInternalOptions(void) {
 
     cJSON *syscheckd = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(syscheckd,"sleep",syscheck.tsleep);
-    cJSON_AddNumberToObject(syscheckd,"sleep_after",syscheck.sleep_after);
     cJSON_AddNumberToObject(syscheckd,"rt_delay",syscheck.rt_delay);
     cJSON_AddNumberToObject(syscheckd,"default_max_depth",syscheck.max_depth);
     cJSON_AddNumberToObject(syscheckd,"symlink_scan_interval",syscheck.sym_checker_interval);

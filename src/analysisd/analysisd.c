@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2010-2012 Trend Micro Inc.
  * All rights reserved.
  *
@@ -59,12 +59,15 @@ static void LoopRule(RuleNode *curr_node, FILE *flog);
 /* For decoders */
 void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match);
 int DecodeSyscheck(Eventinfo *lf, _sdb *sdb);
+// Decode events in json format
+int decode_fim_event(_sdb *sdb, Eventinfo *lf);
 int DecodeRootcheck(Eventinfo *lf);
 int DecodeHostinfo(Eventinfo *lf);
 int DecodeSyscollector(Eventinfo *lf,int *socket);
 int DecodeCiscat(Eventinfo *lf, int *socket);
 int DecodeWinevt(Eventinfo *lf);
 int DecodeSCA(Eventinfo *lf,int *socket);
+void DispatchDBSync(dbsync_context_t * ctx, Eventinfo * lf);
 
 // Init sdb and decoder struct
 void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder);
@@ -152,6 +155,9 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args);
 /* Decode winevt threads */
 void * w_decode_winevt_thread(__attribute__((unused)) void * args);
 
+/* Database synchronization thread */
+static void * w_dispatch_dbsync_thread(void * args);
+
 typedef struct _clean_msg {
     Eventinfo *lf;
     char *msg;
@@ -206,6 +212,9 @@ static w_queue_t * decode_queue_event_output;
 /* Decode windows event input queue */
 static w_queue_t * decode_queue_winevt_input;
 
+/* Database synchronization input queue */
+static w_queue_t * dispatch_dbsync_input;
+
 /* Hourly alerts mutex */
 static pthread_mutex_t hourly_alert_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -224,6 +233,7 @@ static int reported_sca = 0;
 static int reported_event = 0;
 static int reported_writer = 0;
 static int reported_winevt = 0;
+static int reported_dbsync;
 
 /* Mutexes */
 pthread_mutex_t decode_syscheck_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -265,6 +275,9 @@ static void help_analysisd(void)
 }
 
 #ifndef TESTRULE
+#ifdef UNIT_TESTING
+__attribute((weak))
+#endif
 int main(int argc, char **argv)
 #else
 __attribute__((noreturn))
@@ -370,7 +383,7 @@ int main_analysisd(int argc, char **argv)
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, user, group);
+        merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }
 
     /* Found user */
@@ -615,18 +628,6 @@ int main_analysisd(int argc, char **argv)
         AddHash_Rule(tmp_node);
     }
 
-    /* Ignored files on syscheck */
-    {
-        char **files;
-        files = Config.syscheck_ignore;
-        while (files && *files) {
-            if (!test_config) {
-                minfo("Ignoring file: '%s'", *files);
-            }
-            files++;
-        }
-    }
-
     /* Check if log_fw is enabled */
     Config.logfw = (u_int8_t) getDefine_Int("analysisd",
                                  "log_fw",
@@ -858,6 +859,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     int num_decode_sca_threads = getDefine_Int("analysisd", "sca_threads", 0, 32);
     int num_decode_hostinfo_threads = getDefine_Int("analysisd", "hostinfo_threads", 0, 32);
     int num_decode_winevt_threads = getDefine_Int("analysisd", "winevt_threads", 0, 32);
+    int num_dispatch_dbsync_threads = getDefine_Int("analysisd", "dbsync_threads", 0, 32);
 
     if(num_decode_event_threads == 0){
         num_decode_event_threads = cpu_cores;
@@ -886,6 +888,8 @@ void OS_ReadMSG_analysisd(int m_queue)
     if(num_decode_winevt_threads == 0){
         num_decode_winevt_threads = cpu_cores;
     }
+
+    num_dispatch_dbsync_threads = (num_dispatch_dbsync_threads > 0) ? num_dispatch_dbsync_threads : cpu_cores;
 
     /* Initiate the FTS list */
     if (!FTS_Init(num_rule_matching_threads)) {
@@ -951,6 +955,11 @@ void OS_ReadMSG_analysisd(int m_queue)
     /* Create decode winevt threads */
     for(i = 0; i < num_decode_winevt_threads;i++){
         w_create_thread(w_decode_winevt_thread,NULL);
+    }
+
+    /* Create database synchronization dispatcher threads */
+    for (i = 0; i < num_dispatch_dbsync_threads; i++){
+        w_create_thread(w_dispatch_dbsync_thread, NULL);
     }
 
     /* Create State thread */
@@ -1803,8 +1812,28 @@ void * ad_input_main(void * args) {
                 }
                 /* Increment number of events received */
                 hourly_events++;
-            }
-            else{
+            } else if (msg[0] == DBSYNC_MQ) {
+                result = -1;
+
+                if (!queue_full(dispatch_dbsync_input)) {
+                    os_strdup(buffer, copy);
+
+                    result = queue_push_ex(dispatch_dbsync_input, copy);
+
+                    if (result == -1) {
+                        free(copy);
+                    }
+                }
+
+                if (result == -1) {
+                    w_inc_dropped_events();
+
+                    if (!reported_dbsync) {
+                        mwarn("Database synchronization messge queue is full.");
+                        reported_dbsync = TRUE;
+                    }
+                }
+            } else {
 
                 os_strdup(buffer, copy);
 
@@ -1953,6 +1982,7 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
 
         /* Receive message from queue */
         if (msg = queue_pop_ex(decode_queue_syscheck_input), msg) {
+            int res = 0;
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
 
@@ -1974,15 +2004,18 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
             w_inc_syscheck_decoded_events();
             lf->decoder_info = fim_decoder;
 
-            if (DecodeSyscheck(lf, &sdb) != 1) {
+            // If the event comes in JSON format agent version is >= 3.11. Therefore we decode, alert and update DB entry.
+            if (*lf->log == '{') {
+                res = decode_fim_event(&sdb, lf);
+            } else {
+                res = DecodeSyscheck(lf, &sdb);
+            }
+
+            if (res == 1 && queue_push_ex_block(decode_queue_event_output,lf) == 0) {
+                continue;
+            } else {
                 /* We don't process syscheck events further */
                 w_free_event_info(lf);
-                continue;
-            }
-            else{
-                if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
-                    w_free_event_info(lf);
-                }
             }
         }
     }
@@ -2245,6 +2278,35 @@ void * w_decode_winevt_thread(__attribute__((unused)) void * args){
             w_inc_winevt_decoded_events();
         }
     }
+}
+
+void * w_dispatch_dbsync_thread(__attribute__((unused)) void * args) {
+    char * msg;
+    Eventinfo * lf;
+    dbsync_context_t ctx = { .db_sock = -1, .ar_sock = -1 };
+
+    for (;;) {
+        msg = queue_pop_ex(dispatch_dbsync_input);
+        assert(msg != NULL);
+
+        os_calloc(1, sizeof(Eventinfo), lf);
+        os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+        Zero_Eventinfo(lf);
+
+        if (OS_CleanMSG(msg, lf) < 0) {
+            merror(IMSG_ERROR, msg);
+            Free_Eventinfo(lf);
+            free(msg);
+            continue;
+        }
+
+        DispatchDBSync(&ctx, lf);
+        w_inc_dbsync_dispatched_messages();
+        Free_Eventinfo(lf);
+        free(msg);
+    }
+
+    return NULL;
 }
 
 void * w_process_event_thread(__attribute__((unused)) void * id){
@@ -2548,19 +2610,19 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args){
 
     int day = 0;
     int year = 0;
-    struct tm *p;
+    struct tm tm_result = { .tm_sec = 0 };
     char mon[4] = {0};
 
     while(1){
         time(&current_time);
-        p = localtime(&c_time);
-        day = p->tm_mday;
-        year = p->tm_year + 1900;
-        strncpy(mon, month[p->tm_mon], 3);
+        localtime_r(&c_time, &tm_result);
+        day = tm_result.tm_mday;
+        year = tm_result.tm_year + 1900;
+        strncpy(mon, month[tm_result.tm_mon], 3);
 
         /* Set the global hour/weekday */
-        __crt_hour = p->tm_hour;
-        __crt_wday = p->tm_wday;
+        __crt_hour = tm_result.tm_hour;
+        __crt_wday = tm_result.tm_wday;
 
         w_mutex_lock(&writer_threads_mutex);
 
@@ -2701,6 +2763,7 @@ void w_get_queues_size(){
     s_winevt_queue = ((decode_queue_winevt_input->elements / (float)decode_queue_winevt_input->size));
     s_event_queue = ((decode_queue_event_input->elements / (float)decode_queue_event_input->size));
     s_process_event_queue = ((decode_queue_event_output->elements / (float)decode_queue_event_output->size));
+    s_dbsync_message_queue = ((dispatch_dbsync_input->elements / (float)dispatch_dbsync_input->size));
 
     s_writer_archives_queue = ((writer_queue->elements / (float)writer_queue->size));
     s_writer_alerts_queue = ((writer_queue_log->elements / (float)writer_queue_log->size));
@@ -2717,6 +2780,7 @@ void w_get_initial_queues_size(){
     s_winevt_queue_size = decode_queue_winevt_input->size;
     s_event_queue_size = decode_queue_event_input->size;
     s_process_event_queue_size = decode_queue_event_output->size;
+    s_dbsync_message_queue_size = dispatch_dbsync_input->size;
 
     s_writer_alerts_queue_size = writer_queue_log->size;
     s_writer_archives_queue_size = writer_queue->size;
@@ -2763,4 +2827,7 @@ void w_init_queues(){
 
     /* Init the decode event queue output */
     decode_queue_event_output = queue_init(getDefine_Int("analysisd", "decode_output_queue_size", 0, 2000000));
+
+    /* Initialize database synchronization message queue */
+    dispatch_dbsync_input = queue_init(getDefine_Int("analysisd", "dbsync_queue_size", 0, 2000000));
 }

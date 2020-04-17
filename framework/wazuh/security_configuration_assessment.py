@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -39,7 +39,8 @@ fields_translation_sca_check = {'policy_id': 'policy_id',
                                 'references': '`references`',
                                 'result': 'result',
                                 'status': '`status`',
-                                'reason': 'reason'}
+                                'reason': 'reason',
+                                'condition': 'condition'}
 fields_translation_sca_check_compliance = {'compliance.key': 'key',
                                            'compliance.value': 'value'}
 fields_translation_sca_check_rule = {'rules.type': 'type', 'rules.rule': 'rule'}
@@ -65,7 +66,7 @@ class WazuhDBQuerySCA(WazuhDBQuery):
         return self.default_query
 
     def _default_count_query(self):
-        return f"COUNT(DISTINCT {self.count_field})"
+        return f"SELECT COUNT(DISTINCT {self.count_field})" + " FROM ({0})"
 
 
 def get_sca_list(agent_id=None, q="", offset=0, limit=common.database_limit,
