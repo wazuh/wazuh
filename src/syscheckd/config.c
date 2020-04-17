@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -318,6 +318,10 @@ cJSON *getSyscheckConfig(void) {
 
     cJSON_AddNumberToObject(syscfg, "max_eps", syscheck.max_eps);
     cJSON_AddNumberToObject(syscfg, "process_priority", syscheck.process_priority);
+
+    // Add sql database information
+    cJSON_AddStringToObject(syscfg, "database", syscheck.database_store ? "memory" : "disk");
+
 
     cJSON_AddItemToObject(root,"syscheck",syscfg);
 

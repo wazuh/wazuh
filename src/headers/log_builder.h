@@ -5,7 +5,7 @@
  * @version 0.1
  * @date 2019-12-06
  *
- * @copyright Copyright (c) 2019 Wazuh, Inc.
+ * @copyright Copyright (c) 2019-2020 Wazuh, Inc.
  */
 
 /*

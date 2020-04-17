@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * June 19, 2018.
  *
  * This program is free software; you can redistribute it
@@ -61,10 +61,10 @@ void W_Vector_free(W_Vector *v) {
 
     if (v) {
         for (i=0; i < v->used; i++) {
-            free(v->vector[i]);
+            os_free(v->vector[i]);
         }
-        free (v->vector);
-        free (v);
+        os_free (v->vector);
+        os_free (v);
     }
 }
 

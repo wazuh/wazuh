@@ -74,7 +74,7 @@ There are several ways to run the tests:
 In order to run all unit tests and get a global result for all of them you can run the `ctest` command inside the `build` directory. CTest will run all available tests by using wine and display their results on the console. If more details on the tests are required, you can inspect the `LastTest.log` located inside `build/Testing/Temporary` after running this command.
 
 ### Coverage run
-This option has not been tested yet on Windows agents and there is no guarantee it will work.
+You can get a coverage report from the unit tests run by running `make coverage` inside the `build` directory. Tests will be run and if they all pass a `coverage-report` directory will be created with an html report.
 
 ### Running a specific test
 In case you need to run a specific test, navigate into the subdirectory where the test resides and run it by using wine. As an example, if you want to run tests on `create_db.c`
