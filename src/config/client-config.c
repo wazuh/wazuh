@@ -416,6 +416,7 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
     // Initialize enrollment_cfg
     logr->enrollment_cfg = w_enrollment_init(target_cfg, cert_cfg);
     logr->enrollment_cfg->enabled = enabled;
+    logr->enrollment_cfg->allow_localhost = 0; // Localhost not allwoed in auto-enrollment
     return 0;
 }
 

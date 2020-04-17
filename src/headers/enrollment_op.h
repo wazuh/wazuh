@@ -64,8 +64,9 @@ typedef struct _enrollment_cert_cfg {
 typedef struct _enrollment_ctx {
     const w_enrollment_target *target_cfg;  /**> for details @see _enrollment_target_cfg */
     const w_enrollment_cert *cert_cfg;      /**> for details @see _enrollment_cert_cfg */
-    SSL *ssl;                                   /**> will hold the connection instance with the manager */
-    unsigned int enabled:1;
+    SSL *ssl;                               /**> will hold the connection instance with the manager */
+    unsigned int enabled:1;                 /**> enabled / disables auto_enrollment */
+    unsigned int allow_localhost:1;         /**> 1 by default if this flag is in 0 using agent_name "localhost" will not be allowed */
 } w_enrollment_ctx;
 
 /**

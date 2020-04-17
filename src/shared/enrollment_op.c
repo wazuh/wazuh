@@ -99,6 +99,7 @@ w_enrollment_ctx * w_enrollment_init(const w_enrollment_target *target, const w_
     memcpy(cfg, &init, sizeof(w_enrollment_ctx));
     cfg->enabled = 1;
     cfg->ssl = NULL;
+    cfg->allow_localhost = 1;
     return cfg;
 }
 
@@ -125,6 +126,45 @@ int w_enrollment_request_key(w_enrollment_ctx *cfg, const char * server_address)
         close(socket);
     }
     return ret;
+}
+
+/**
+ * @brief Retrieves agent name. If no agent_name has been extracted it will 
+ * be obtained by obtaining hostname
+ * 
+ * @param cfg configuration structure
+ * @param allow_localhost 1 will allow localhost as name, 0 will throw an merror_exit
+ * @return agent_name on succes
+ *         NULL on errors
+ * */
+static char *w_enrollment_extract_agent_name(const w_enrollment_ctx *cfg) {
+    char *lhostname = NULL;
+    /* agent_name extraction */
+    if (cfg->target_cfg->agent_name == NULL) {
+        os_malloc(513, lhostname);
+        lhostname[512] = '\0';
+        if (gethostname(lhostname, 512 - 1) != 0) {
+            merror("Unable to extract hostname. Custom agent name not set.");
+            os_free(lhostname);
+            return NULL;
+        }
+        OS_ConvertToValidAgentName(lhostname);
+    } else {
+        lhostname = cfg->target_cfg->agent_name;
+    }
+
+    if(!cfg->allow_localhost && strcmp(lhostname, "localhost") == 0) {
+        merror_exit(AG_INV_HOST, lhostname);
+        return NULL;
+    }
+
+    if (!OS_IsValidName(lhostname)) {
+        merror("Invalid agent name \"%s\". Please pick a valid name.", lhostname);
+        if(lhostname != cfg->target_cfg->agent_name)
+            os_free(lhostname);
+        return NULL;
+    }
+    return lhostname;
 }
 
 /**
@@ -200,27 +240,11 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
  */
 static int w_enrollment_send_message(w_enrollment_ctx *cfg) {
     assert(cfg != NULL);
-    char *lhostname = NULL;
-    /* agent_name extraction */
-    if (cfg->target_cfg->agent_name == NULL) {
-        os_malloc(513, lhostname);
-        lhostname[512] = '\0';
-        if (gethostname(lhostname, 512 - 1) != 0) {
-            merror("Unable to extract hostname. Custom agent name not set.");
-            os_free(lhostname);
-            return -1;
-        }
-        OS_ConvertToValidAgentName(lhostname);
-    } else {
-        lhostname = cfg->target_cfg->agent_name;
-    }
-
-    if (!OS_IsValidName(lhostname)) {
-        merror("Invalid agent name \"%s\". Please pick a valid name.", lhostname);
-        if(lhostname != cfg->target_cfg->agent_name)
-            os_free(lhostname);
+    char *lhostname = w_enrollment_extract_agent_name(cfg);
+    if (!lhostname) {
         return -1;
     }
+    
     minfo("Using agent name as: %s", lhostname);
 
     /* Message formation */

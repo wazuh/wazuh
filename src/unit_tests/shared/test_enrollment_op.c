@@ -23,6 +23,7 @@ extern int w_enrollment_send_message(w_enrollment_ctx *cfg);
 extern int w_enrollment_store_key_entry(const char* keys);
 extern int w_enrollment_process_agent_key(char *buffer);
 extern int w_enrollment_process_response(SSL *ssl);
+extern char *w_enrollment_extract_agent_name(const w_enrollment_ctx *cfg);
 
 static w_enrollment_target* local_target;
 static w_enrollment_cert* local_cert;
@@ -50,6 +51,18 @@ void __wrap__mwarn(const char * file, int line, const char * func, const char *m
 }
 
 void __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...) {
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
+}
+
+void __wrap__merror_exit(const char * file, int line, const char * func, const char *msg, ...)
+{
     char formatted_msg[OS_MAXSTR];
     va_list args;
 
@@ -792,6 +805,8 @@ void test_w_enrollment_request_key(void **state) {
     w_enrollment_ctx *cfg = *state; 
     SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS, 0);
     
+    expect_string(__wrap__minfo, formatted_msg, "Starting enrollment process to server: valid_hostname");
+
     // w_enrollment_connect
     {
         // GetHost
@@ -871,6 +886,38 @@ void test_w_enrollment_request_key(void **state) {
     assert_int_equal(ret, 0);
 }
 /**********************************************/
+/******* w_enrollment_extract_agent_name ********/
+
+void test_w_enrollment_extract_agent_name_localhost_allowed(void **state) {
+    w_enrollment_ctx *cfg = *state; 
+    cfg->allow_localhost = 1; // Allow localhost
+    #ifdef WIN32
+        will_return(wrap_enrollment_op_gethostname, "localhost");
+        will_return(wrap_enrollment_op_gethostname, 0);
+    #else 
+        will_return(__wrap_gethostname, "localhost");
+        will_return(__wrap_gethostname, 0);
+    #endif
+
+    assert_string_equal( w_enrollment_extract_agent_name(cfg), "localhost");
+}
+
+void test_w_enrollment_extract_agent_name_localhost_not_allowed(void **state) {
+    w_enrollment_ctx *cfg = *state; 
+    cfg->allow_localhost = 0; // Do not allow localhost
+    #ifdef WIN32
+        will_return(wrap_enrollment_op_gethostname, "localhost");
+        will_return(wrap_enrollment_op_gethostname, 0);
+    #else 
+        will_return(__wrap_gethostname, "localhost");
+        will_return(__wrap_gethostname, 0);
+    #endif
+    expect_string(__wrap__merror_exit, formatted_msg, "(4104): Invalid hostname: 'localhost'.");
+
+    w_enrollment_extract_agent_name(cfg);
+}
+
+/**********************************************/
 int main()
 {
     const struct CMUnitTest tests[] = 
@@ -921,7 +968,10 @@ int main()
         cmocka_unit_test_setup_teardown(test_w_enrollment_process_response_success, test_setup_ssl_context, test_teardow_ssl_context),
         // w_enrollment_request_key (wrapper)
         cmocka_unit_test(test_w_enrollment_request_key_null_cfg),
-        cmocka_unit_test_setup_teardown(test_w_enrollment_request_key, test_setup_w_enrolment_request_key, test_teardown_w_enrolment_request_key)  
+        cmocka_unit_test_setup_teardown(test_w_enrollment_request_key, test_setup_w_enrolment_request_key, test_teardown_w_enrolment_request_key),  
+        // w_enrollment_extract_agent_name
+        cmocka_unit_test_setup_teardown(test_w_enrollment_extract_agent_name_localhost_allowed, test_setup_context, test_teardown_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_extract_agent_name_localhost_not_allowed, test_setup_context, test_teardown_context),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
