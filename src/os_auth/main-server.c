@@ -37,8 +37,9 @@ static int ssl_error(const SSL *ssl, int ret);
 
 /* Thread for dispatching connection pool */
 static void* run_dispatcher(void *arg);
-w_err_t w_auth_parse_data(char* buf,char *response, char *ip, char **agentname, char *groups);
+w_err_t w_auth_parse_data(char* buf, char *response, char *authpass, char *ip, char **agentname, char *groups);
 w_err_t w_auth_validate_data (char *response, char *ip, char *agentname, char *groups);
+w_err_t w_auth_add_agent(char *response, char *ip, char *agentname, char *groups, char *id, unsigned *key);
 
 /* Thread for writing keystore onto disk */
 static void* run_writer(void *arg);
@@ -439,7 +440,6 @@ int main(int argc, char **argv)
     } else
         minfo("Accepting connections on port %hu. No password required.", config.port);
 
-    //JJP: Avoid on worker
     /* Getting SSL cert. */
 
     fp = fopen(KEYSFILE_PATH, "a");
@@ -448,8 +448,7 @@ int main(int argc, char **argv)
         exit(1);
     }
     fclose(fp);
-
-    //JJP: avoid on worker
+    
     /* Start SSL */
     ctx = os_ssl_keys(1, dir, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate);
     if (!ctx) {
@@ -609,8 +608,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     char *agentname = NULL;
     char centralized_group[OS_SIZE_65536] = {0};
     int ret;
-    char* buf = NULL;  
-    char *tmpstr = NULL;      
+    char* buf = NULL;
     SSL *ssl;
     char response[2048];
     response[2047] = '\0';
@@ -619,11 +617,11 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
     /* Initialize some variables */
     memset(ip, '\0', IPSIZE + 1);
-
-    //JJP: INIT [0] 
-    //JJP: Avoid on worker (maybe)
-    OS_PassEmptyKeyfile();
-    OS_ReadKeys(&keys, 0, !config.flags.clear_removed, 1);
+    
+    if (!w_is_worker()) {
+        OS_PassEmptyKeyfile();
+        OS_ReadKeys(&keys, 0, !config.flags.clear_removed, 1);
+    }
     mdebug1("Dispatch thread ready");
 
     while (running) {
@@ -665,10 +663,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         }
 
         os_calloc(OS_SIZE_65536 + OS_SIZE_4096 + 1, sizeof(char), buf);
-
-        buf[0] = '\0';
-        
-         
+        buf[0] = '\0'; 
         ret = SSL_read(ssl, buf, OS_SIZE_65536 + OS_SIZE_4096);
         if (ret <= 0) {
             switch (ssl_error(ssl, ret)) {
@@ -678,123 +673,68 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             default:
                 merror("SSL Error (%d)", ret);
             }
-
             SSL_free(ssl);
             close(client.socket);
             free(buf);
             continue;
-        }
-      
-        int parseok = 0;
-        buf[ret] = '\0';        
-        tmpstr = buf;
-
-        /* Checking for shared password authentication. */
-        if(authpass) {
-            /* Format is pretty simple: OSSEC PASS: PASS WHATEVERACTION */
-            if (strncmp(tmpstr, "OSSEC PASS: ", 12) == 0) {
-                tmpstr = tmpstr + 12;
-
-                if (strlen(buf) > strlen(authpass) && strncmp(tmpstr, authpass, strlen(authpass)) == 0) {
-                    tmpstr += strlen(authpass);
-
-                    if (*tmpstr == ' ') {
-                        tmpstr++;
-                        parseok = 1;
+        }      
+        buf[ret] = '\0';  
+             
+        mdebug2("Request received: <%s>", buf);
+        bool enrollment_ok = FALSE;
+        char* new_id = NULL;
+        unsigned new_key = 0;
+        if(OS_SUCCESS == w_auth_parse_data(buf, response, authpass, ip, &agentname, centralized_group)){
+            if (w_is_worker()) {
+                //JJP: Send request to master
+                //JJP: Dont forget enrollment_ok = TRUE;
+            }
+            else {
+                //JJP: These mutex can be more atomic
+                w_mutex_lock(&mutex_keys);                
+                if(OS_SUCCESS == w_auth_validate_data(response, ip, agentname, centralized_group)){
+                    if(OS_SUCCESS == w_auth_add_agent(response, ip, agentname, centralized_group, &new_id, &new_key)){
+                        enrollment_ok = TRUE;
                     }
                 }
-            }
-
-            if (parseok == 0) {
-                merror("Invalid password provided by %s. Closing connection.", ip);
-                SSL_free(ssl);
-                close(client.socket);
-                free(buf);
-                continue;
+                w_mutex_unlock(&mutex_keys); 
             }
         }
-       
-        mdebug2("Request received: <%s>", buf);
 
-        //JJP: Avoid duplicated code here.
-        if(OS_SUCCESS != w_auth_parse_data(tmpstr, response, ip, &agentname, centralized_group)){
-            SSL_write(ssl, response, strlen(response));
-            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-            SSL_write(ssl, response, strlen(response));          
-            SSL_free(ssl);
-            close(client.socket);
-            free(buf);
-            continue;
-        }     
+        if(enrollment_ok)
+        {
+            snprintf(response, 2048, "OSSEC K:'%s %s %s %s'\n\n", new_id, agentname,  ip, new_key);
+            minfo("Agent key generated for '%s' (requested by %s)", agentname, ip);
+            ret = SSL_write(ssl, response, strlen(response));
 
-        w_mutex_lock(&mutex_keys);
-
-        if(OS_SUCCESS != w_auth_validate_data(response, ip, agentname, centralized_group)){
-            SSL_write(ssl, response, strlen(response));
-            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-            SSL_write(ssl, response, strlen(response));
-            SSL_free(ssl);
-            close(client.socket);            
-            free(buf);
-            continue;
-        }       
-        
-        //JJP: Add agent
-        /* Add the new agent */
-        int index;
-
-        if (index = OS_AddNewAgent(&keys, NULL, agentname, ip, NULL), index < 0) {
-            w_mutex_unlock(&mutex_keys);
-            merror("Unable to add agent: %s (internal error)", agentname);
-            snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);
-            SSL_write(ssl, response, strlen(response));
-            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-            SSL_write(ssl, response, strlen(response));
-            SSL_free(ssl);
-            close(client.socket);            
-            free(buf);
-            continue;
-        }
-
-        /* Add the agent to the centralized configuration group */
-        if(*centralized_group) {
-            char path[PATH_MAX];
-
-            if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
-                w_mutex_unlock(&mutex_keys);
-                merror("At set_agent_group(): file path too large for agent '%s'.", keys.keyentries[index]->id);
-                OS_RemoveAgent(keys.keyentries[index]->id);
-                merror("Unable to set agent centralized group: %s (internal error)", centralized_group);
-                snprintf(response, 2048, "ERROR: Internal manager error setting agent centralized group: %s\n\n", centralized_group);
-                SSL_write(ssl, response, strlen(response));
-                snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                SSL_write(ssl, response, strlen(response));
-                SSL_free(ssl);
-                close(client.socket);                
-                free(buf);
-                continue;
+            if (w_is_worker()) {
+                if (ret < 0) {
+                    merror("SSL write error (%d)", ret);
+                    merror("Agent key not saved for %s", agentname);
+                    ERR_print_errors_fp(stderr);
+                    //JJP: Send request to master to delete the keys
+                }
             }
+            else{     
+                if (ret < 0) {
+                    merror("SSL write error (%d)", ret);
+                    merror("Agent key not saved for %s", agentname);
+                    ERR_print_errors_fp(stderr);
+                    OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id, 1);
+                } else {
+                    /* Add pending key to write */
+                    add_insert(keys.keyentries[keys.keysize - 1], *centralized_group ? centralized_group : NULL);
+                    write_pending = 1;
+                    w_cond_signal(&cond_pending);
+                }
+            }  
         }
-        //JJP: Response
-        snprintf(response, 2048, "OSSEC K:'%s %s %s %s'\n\n", keys.keyentries[index]->id, agentname,  ip, keys.keyentries[index]->key);
-        minfo("Agent key generated for '%s' (requested by %s)", agentname, ip);
-        ret = SSL_write(ssl, response, strlen(response));
-
-        if (ret < 0) {
-            merror("SSL write error (%d)", ret);
-            merror("Agent key not saved for %s", agentname);
-            ERR_print_errors_fp(stderr);
-            OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id, 1);
-        } else {
-            /* Add pending key to write */
-            add_insert(keys.keyentries[keys.keysize - 1], *centralized_group ? centralized_group : NULL);
-            write_pending = 1;
-            w_cond_signal(&cond_pending);
+        else {
+            SSL_write(ssl, response, strlen(response));
+            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+            SSL_write(ssl, response, strlen(response));  
         }
-
-        w_mutex_unlock(&mutex_keys);       
-        
-
+            
         SSL_free(ssl);
         close(client.socket);        
         free(buf);
@@ -805,15 +745,42 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     return NULL;
 }
 
-w_err_t w_auth_parse_data(char* buf, char *response, char *ip, char **agentname, char *groups){
+w_err_t w_auth_parse_data(char* buf, char *response, char *authpass, char *ip, char **agentname, char *groups){
     
     bool parseok = FALSE; 
     //JJP: I prefer allocating space for agentname instead of recyclying the one in buffer. This will avoid handling buffer until end.
     // Also, I can create a struct with all info required. 
-    //JJP: Bring Different return values   
+    //JJP: Bring Different return values  
+    //JJP: parseok can be avoided 
     
+    /* Checking for shared password authentication. */
+    if(authpass) {
+        /* Format is pretty simple: OSSEC PASS: PASS WHATEVERACTION */
+        parseok = FALSE; 
+        if (strncmp(buf, "OSSEC PASS: ", 12) == 0) {
+            buf += 12;
+
+            if (strlen(buf) > strlen(authpass) && strncmp(buf, authpass, strlen(authpass)) == 0) {
+                buf += strlen(authpass);
+
+                if (*buf == ' ') {
+                    buf++;
+                    parseok = 1;
+                }
+            }
+        }
+
+        if (parseok == 0) {
+            merror("Invalid password provided by %s. Closing connection.", ip);
+            //JJP: Is it ok to add a new message here?
+            snprintf(response, 2048, "ERROR: Invalid password");  
+            return OS_INVALID;
+        }
+    }
+    
+
     /* Checking for action A (add agent) */    
-    
+    parseok = FALSE;
     if (strncmp(buf, "OSSEC A:'", 9) == 0) {
         *agentname = buf + 9;
         buf += 9;
@@ -955,7 +922,6 @@ w_err_t w_auth_validate_data (char *response, char *ip, char *agentname, char *g
                 add_backup(keys.keyentries[index]);
                 OS_DeleteKey(&keys, id_exist, 0);
             } else {
-                w_mutex_unlock(&mutex_keys);
                 merror("Duplicated IP %s", ip);
                 snprintf(response, 2048, "ERROR: Duplicated IP: %s\n\n", ip);
                 return OS_INVALID;
@@ -966,7 +932,6 @@ w_err_t w_auth_validate_data (char *response, char *ip, char *agentname, char *g
     /* Check whether the agent name is the same as the manager */
 
     if (!strcmp(agentname, shost)) {
-        w_mutex_unlock(&mutex_keys);
         merror("Invalid agent name %s (same as manager)", agentname);
         snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
         return OS_INVALID;
@@ -992,7 +957,6 @@ w_err_t w_auth_validate_data (char *response, char *ip, char *agentname, char *g
             }
 
             if (acount > MAX_TAG_COUNTER) {
-                w_mutex_unlock(&mutex_keys);
                 merror("Invalid agent name %s (duplicated)", agentname);
                 snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);                
                 return OS_INVALID;
@@ -1005,7 +969,6 @@ w_err_t w_auth_validate_data (char *response, char *ip, char *agentname, char *g
     /* Check for agents limit */
 
     if (config.flags.register_limit && keys.keysize >= (MAX_AGENTS - 2) ) {
-        w_mutex_unlock(&mutex_keys);
         merror(AG_MAX_ERROR, MAX_AGENTS - 2);
         snprintf(response, 2048, "ERROR: The maximum number of agents has been reached\n\n");
         return OS_INVALID;
@@ -1054,6 +1017,35 @@ w_err_t w_auth_validate_groups(char *groups, char *response) {
         closedir(dp);
     }       
    
+    return OS_SUCCESS;
+}
+
+w_err_t w_auth_add_agent(char *response, char *ip, char *agentname, char *groups, char *id, unsigned *key){
+
+    /* Add the new agent */
+    int index;
+
+    if (index = OS_AddNewAgent(&keys, NULL, agentname, ip, NULL), index < 0) {
+        merror("Unable to add agent: %s (internal error)", agentname);
+        snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);        
+        return OS_INVALID;
+    }
+
+    /* Add the agent to the centralized configuration group */
+    if(*groups) {
+        char path[PATH_MAX];
+        if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
+            merror("At set_agent_group(): file path too large for agent '%s'.", keys.keyentries[index]->id);
+            OS_RemoveAgent(keys.keyentries[index]->id);
+            merror("Unable to set agent centralized group: %s (internal error)", groups);
+            snprintf(response, 2048, "ERROR: Internal manager error setting agent centralized group: %s\n\n", groups);
+            return OS_INVALID;
+        }
+    }
+
+    *id = keys.keyentries[index]->id;
+    *key = keys.keyentries[index]->key;
+
     return OS_SUCCESS;
 }
 
