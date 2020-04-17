@@ -924,23 +924,27 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
                     minfo(FIM_WHODATA_READDED, syscheck.dir[i]);
                     if (set_winsacl(syscheck.dir[i], i)) {
                         merror(FIM_ERROR_WHODATA_ADD_DIRECTORY, syscheck.dir[i]);
+                        d_status->status &= ~WD_CHECK_WHODATA;
+                        syscheck.opts[i] &= ~WHODATA_ACTIVE;
+                        d_status->status |= WD_CHECK_REALTIME;
+                        syscheck.realtime_change = 1;
                         continue;
                     }
                     d_status->status |= WD_STATUS_EXISTS;
                 } else {
                     // Check if the SACL is invalid
                     if (check_object_sacl(syscheck.dir[i], (d_status->object_type == WD_STATUS_FILE_TYPE) ? 1 : 0)) {
-                        syscheck.realtime_change = 1;
                         minfo(FIM_WHODATA_SACL_CHANGED, syscheck.dir[i]);
                         // Mark the directory to prevent its children from
                         // sending partial whodata alerts
-                        d_status->status |= WD_CHECK_REALTIME;
                         d_status->status &= ~WD_CHECK_WHODATA;
                         // Removes CHECK_WHODATA from directory properties to prevent from
                         // being found in the whodata callback for Windows (find_dir_pos)
                         syscheck.opts[i] &= ~WHODATA_ACTIVE;
                         // Mark it to prevent the restoration of its SACL
                         d_status->status &= ~WD_IGNORE_REST;
+                        d_status->status |= WD_CHECK_REALTIME;
+                        syscheck.realtime_change = 1;
                         notify_SACL_change(syscheck.dir[i]);
                         continue;
                     }

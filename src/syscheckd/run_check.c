@@ -423,7 +423,12 @@ int fim_whodata_initialize() {
 
     for (int i = 0; syscheck.dir[i]; i++) {
         if (syscheck.opts[i] & WHODATA_ACTIVE) {
-            realtime_adddir(syscheck.dir[i], i + 1, (syscheck.opts[i] & CHECK_FOLLOW) ? 1 : 0);
+            if(realtime_adddir(syscheck.dir[i], i + 1, (syscheck.opts[i] & CHECK_FOLLOW) ? 1 : 0) == -2) {
+                syscheck.wdata.dirs_status[i].status &= ~WD_CHECK_WHODATA;
+                syscheck.opts[i] &= ~WHODATA_ACTIVE;
+                syscheck.wdata.dirs_status[i].status |= WD_CHECK_REALTIME;
+                syscheck.realtime_change = 1;
+            }
         }
     }
 
@@ -446,10 +451,10 @@ int fim_whodata_initialize() {
 
         // Add proper flags for the realtime thread monitors the directories/files.
         for (int i = 0; syscheck.dir[i]; i++) {
-            syscheck.realtime_change = 1;
-            syscheck.wdata.dirs_status[i].status |= WD_CHECK_REALTIME;
             syscheck.wdata.dirs_status[i].status &= ~WD_CHECK_WHODATA;
             syscheck.opts[i] &= ~WHODATA_ACTIVE;
+            syscheck.wdata.dirs_status[i].status |= WD_CHECK_REALTIME;
+            syscheck.realtime_change = 1;
         }
 
         retval = -1;
