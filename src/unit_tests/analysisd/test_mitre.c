@@ -17,15 +17,15 @@
 
 /* redefinitons/wrapping */
 
-int __wrap_wdb_send_query(char * wazuhdb_query, char** response)
+int __wrap_wdbc_query_ex(int *sock, const char *query, char *response, const int len)
 {   
     int option;
 
     option = mock_type(int);
     if (option == 0) {
-        *response = strdup(mock_type(char *));
+        snprintf(response, len, "%s", mock_ptr_type(char*));
     } else {
-        *response = NULL;
+        response = NULL;
     }
 
     return mock();
@@ -38,8 +38,8 @@ void test_queryid_error_socket(void **state)
     (void) state;
     int ret;
 
-    will_return(__wrap_wdb_send_query, -2);
-    will_return(__wrap_wdb_send_query, -2);
+    will_return(__wrap_wdbc_query_ex, -2);
+    will_return(__wrap_wdbc_query_ex, -2);
 
     ret = mitre_load("test");
     assert_int_equal(-2, ret);
@@ -50,8 +50,8 @@ void test_queryid_no_response(void **state)
     (void) state;
     int ret;
 
-    will_return(__wrap_wdb_send_query, -1);
-    will_return(__wrap_wdb_send_query, -1);
+    will_return(__wrap_wdbc_query_ex, -1);
+    will_return(__wrap_wdbc_query_ex, -1);
 
     ret = mitre_load("test");
     assert_int_equal(-1, ret);
@@ -63,9 +63,9 @@ void test_queryid_bad_response(void **state)
     int ret;
 
     char *response_ids = "Bad response";
-    will_return(__wrap_wdb_send_query, 0);
-    will_return(__wrap_wdb_send_query, response_ids);
-    will_return(__wrap_wdb_send_query, -1);
+    will_return(__wrap_wdbc_query_ex, 0);
+    will_return(__wrap_wdbc_query_ex, response_ids);
+    will_return(__wrap_wdbc_query_ex, -1);
 
     ret = mitre_load("test");
     assert_int_equal(-1, ret);
@@ -77,9 +77,9 @@ void test_queryid_error_parse(void **state)
     int ret;
 
     char *response_ids = " ";
-    will_return(__wrap_wdb_send_query, 0);    
-    will_return(__wrap_wdb_send_query, response_ids);
-    will_return(__wrap_wdb_send_query, 0);
+    will_return(__wrap_wdbc_query_ex, 0);    
+    will_return(__wrap_wdbc_query_ex, response_ids);
+    will_return(__wrap_wdbc_query_ex, 0);
 
     ret = mitre_load("test");
     assert_int_equal(-1, ret);
@@ -91,9 +91,9 @@ void test_queryid_empty_array(void **state)
     int ret;
 
     char *response_ids = "ok []";
-    will_return(__wrap_wdb_send_query, 0);    
-    will_return(__wrap_wdb_send_query, response_ids);
-    will_return(__wrap_wdb_send_query, 0);
+    will_return(__wrap_wdbc_query_ex, 0);    
+    will_return(__wrap_wdbc_query_ex, response_ids);
+    will_return(__wrap_wdbc_query_ex, 0);
 
     ret = mitre_load("test");
     assert_int_equal(-1, ret);
@@ -105,9 +105,9 @@ void test_queryid_error_parse_ids(void **state)
     int ret;
 
     char *response_ids = "ok [{\"ids\":\"T1001\"},{\"ids\":\"T1002\"}]";
-    will_return(__wrap_wdb_send_query, 0);    
-    will_return(__wrap_wdb_send_query, response_ids);
-    will_return(__wrap_wdb_send_query, 0);
+    will_return(__wrap_wdbc_query_ex, 0);    
+    will_return(__wrap_wdbc_query_ex, response_ids);
+    will_return(__wrap_wdbc_query_ex, 0);
 
     ret = mitre_load("test");
     assert_int_equal(-1, ret);
@@ -119,14 +119,15 @@ void test_querytactics_error_socket(void **state)
     int ret;
 
     char *response_ids = "ok [{\"id\":\"T1001\"},{\"id\":\"T1002\"}]";
+
     /* Mitre's techniques IDs query */
-    will_return(__wrap_wdb_send_query, 0);    
-    will_return(__wrap_wdb_send_query, response_ids);
-    will_return(__wrap_wdb_send_query, 0);
+    will_return(__wrap_wdbc_query_ex, 0);    
+    will_return(__wrap_wdbc_query_ex, response_ids);
+    will_return(__wrap_wdbc_query_ex, 0);
 
     /* Mitre's tactics query */
-    will_return(__wrap_wdb_send_query, -2);
-    will_return(__wrap_wdb_send_query, -2);
+    will_return(__wrap_wdbc_query_ex, -2);
+    will_return(__wrap_wdbc_query_ex, -2);
 
     ret = mitre_load("test");
     assert_int_equal(-2, ret);
@@ -139,13 +140,13 @@ void test_querytactics_no_response(void **state)
 
     char *response_ids = "ok [{\"id\":\"T1001\"},{\"id\":\"T1002\"}]";
     /* Mitre's techniques IDs query */
-    will_return(__wrap_wdb_send_query, 0);    
-    will_return(__wrap_wdb_send_query, response_ids);
-    will_return(__wrap_wdb_send_query, 0);
+    will_return(__wrap_wdbc_query_ex, 0);    
+    will_return(__wrap_wdbc_query_ex, response_ids);
+    will_return(__wrap_wdbc_query_ex, 0);
 
     /* Mitre's tactics query */
-    will_return(__wrap_wdb_send_query, -1);
-    will_return(__wrap_wdb_send_query, -1);
+    will_return(__wrap_wdbc_query_ex, -1);
+    will_return(__wrap_wdbc_query_ex, -1);
 
     ret = mitre_load("test");
     assert_int_equal(-1, ret);
@@ -159,14 +160,14 @@ void test_querytactics_bad_response(void **state)
     char *response_ids = "ok [{\"id\":\"T1001\"},{\"id\":\"T1002\"}]";
     char *response_tactics = "Bad response";
     /* Mitre's techniques IDs query */
-    will_return(__wrap_wdb_send_query, 0);    
-    will_return(__wrap_wdb_send_query, response_ids);
-    will_return(__wrap_wdb_send_query, 0);
+    will_return(__wrap_wdbc_query_ex, 0);    
+    will_return(__wrap_wdbc_query_ex, response_ids);
+    will_return(__wrap_wdbc_query_ex, 0);
 
     /* Mitre's tactics query */
-    will_return(__wrap_wdb_send_query, 0);
-    will_return(__wrap_wdb_send_query, response_tactics);
-    will_return(__wrap_wdb_send_query, -1);
+    will_return(__wrap_wdbc_query_ex, 0);
+    will_return(__wrap_wdbc_query_ex, response_tactics);
+    will_return(__wrap_wdbc_query_ex, -1);
 
     ret = mitre_load("test");
     assert_int_equal(-1, ret);
@@ -180,14 +181,14 @@ void test_querytactics_error_parse(void **state)
     char *response_ids = "ok [{\"id\":\"T1001\"},{\"id\":\"T1002\"}]";
     char *response_tactics = " ";
     /* Mitre's techniques IDs query */
-    will_return(__wrap_wdb_send_query, 0);    
-    will_return(__wrap_wdb_send_query, response_ids);
-    will_return(__wrap_wdb_send_query, 0);
+    will_return(__wrap_wdbc_query_ex, 0);    
+    will_return(__wrap_wdbc_query_ex, response_ids);
+    will_return(__wrap_wdbc_query_ex, 0);
 
     /* Mitre's tactics query */
-    will_return(__wrap_wdb_send_query, 0);
-    will_return(__wrap_wdb_send_query, response_tactics);
-    will_return(__wrap_wdb_send_query, 0);
+    will_return(__wrap_wdbc_query_ex, 0);
+    will_return(__wrap_wdbc_query_ex, response_tactics);
+    will_return(__wrap_wdbc_query_ex, 0);
 
     ret = mitre_load("test");
     assert_int_equal(-1, ret);
@@ -201,14 +202,14 @@ void test_querytactics_empty_array(void **state)
     char *response_ids = "ok [{\"id\":\"T1001\"},{\"id\":\"T1002\"}]";
     char *response_tactics = "ok [ ]";
     /* Mitre's techniques IDs query */
-    will_return(__wrap_wdb_send_query, 0);    
-    will_return(__wrap_wdb_send_query, response_ids);
-    will_return(__wrap_wdb_send_query, 0);
+    will_return(__wrap_wdbc_query_ex, 0);    
+    will_return(__wrap_wdbc_query_ex, response_ids);
+    will_return(__wrap_wdbc_query_ex, 0);
     
     /* Mitre's tactics query */
-    will_return(__wrap_wdb_send_query, 0);
-    will_return(__wrap_wdb_send_query, response_tactics);
-    will_return(__wrap_wdb_send_query, 0);
+    will_return(__wrap_wdbc_query_ex, 0);
+    will_return(__wrap_wdbc_query_ex, response_tactics);
+    will_return(__wrap_wdbc_query_ex, 0);
 
     ret = mitre_load("test");
     assert_int_equal(-1, ret);
@@ -222,14 +223,14 @@ void test_querytactics_error_parse_tactics(void **state)
     char *response_ids = "ok [{\"id\":\"T1001\"},{\"id\":\"T1002\"}]";
     char *response_tactics = "ok [{\"phase\":\"Discovery\"}]";
     /* Mitre's techniques IDs query */
-    will_return(__wrap_wdb_send_query, 0);    
-    will_return(__wrap_wdb_send_query, response_ids);
-    will_return(__wrap_wdb_send_query, 0);
+    will_return(__wrap_wdbc_query_ex, 0);    
+    will_return(__wrap_wdbc_query_ex, response_ids);
+    will_return(__wrap_wdbc_query_ex, 0);
 
     /* Mitre's tactics query */
-    will_return(__wrap_wdb_send_query, 0);
-    will_return(__wrap_wdb_send_query, response_tactics);
-    will_return(__wrap_wdb_send_query, 0);
+    will_return(__wrap_wdbc_query_ex, 0);
+    will_return(__wrap_wdbc_query_ex, response_tactics);
+    will_return(__wrap_wdbc_query_ex, 0);
 
     ret = mitre_load("test");
     assert_int_equal(-1, ret);
@@ -242,18 +243,18 @@ void test_querytactics_repeated_id(void **state)
 
     char *response_ids = "ok [{\"id\":\"T1001\"},{\"id\":\"T1001\"}]";
     /* Mitre's techniques IDs query */
-    will_return(__wrap_wdb_send_query, 0);    
-    will_return(__wrap_wdb_send_query, response_ids);
-    will_return(__wrap_wdb_send_query, 0);
+    will_return(__wrap_wdbc_query_ex, 0);    
+    will_return(__wrap_wdbc_query_ex, response_ids);
+    will_return(__wrap_wdbc_query_ex, 0);
 
     /* Mitre's tactics query */
-    will_return(__wrap_wdb_send_query, 0);
-    will_return(__wrap_wdb_send_query, "ok [{\"phase_name\":\"Discovery\"}]");
-    will_return(__wrap_wdb_send_query, 0);
+    will_return(__wrap_wdbc_query_ex, 0);
+    will_return(__wrap_wdbc_query_ex, "ok [{\"phase_name\":\"Discovery\"}]");
+    will_return(__wrap_wdbc_query_ex, 0);
 
-    will_return(__wrap_wdb_send_query, 0);
-    will_return(__wrap_wdb_send_query, "ok [{\"phase_name\":\"Lateral Movement\"}]");
-    will_return(__wrap_wdb_send_query, 0);
+    will_return(__wrap_wdbc_query_ex, 0);
+    will_return(__wrap_wdbc_query_ex, "ok [{\"phase_name\":\"Lateral Movement\"}]");
+    will_return(__wrap_wdbc_query_ex, 0);
 
     ret = mitre_load("test");
     assert_int_equal(0, ret);
@@ -266,18 +267,18 @@ void test_querytactics_success(void **state)
     
     char *response_ids = "ok [{\"id\":\"T1001\"},{\"id\":\"T1002\"}]";
     /* Mitre's techniques IDs query */
-    will_return(__wrap_wdb_send_query, 0);    
-    will_return(__wrap_wdb_send_query, response_ids);
-    will_return(__wrap_wdb_send_query, 0);
+    will_return(__wrap_wdbc_query_ex, 0);    
+    will_return(__wrap_wdbc_query_ex, response_ids);
+    will_return(__wrap_wdbc_query_ex, 0);
 
     /* Mitre's tactics query */
-    will_return(__wrap_wdb_send_query, 0);
-    will_return(__wrap_wdb_send_query, "ok [{\"phase_name\":\"Discovery\"}]");
-    will_return(__wrap_wdb_send_query, 0);
+    will_return(__wrap_wdbc_query_ex, 0);
+    will_return(__wrap_wdbc_query_ex, "ok [{\"phase_name\":\"Discovery\"}]");
+    will_return(__wrap_wdbc_query_ex, 0);
 
-    will_return(__wrap_wdb_send_query, 0);
-    will_return(__wrap_wdb_send_query, "ok [{\"phase_name\":\"Lateral Movement\"}]");
-    will_return(__wrap_wdb_send_query, 0);
+    will_return(__wrap_wdbc_query_ex, 0);
+    will_return(__wrap_wdbc_query_ex, "ok [{\"phase_name\":\"Lateral Movement\"}]");
+    will_return(__wrap_wdbc_query_ex, 0);
 
     ret = mitre_load("test");
     assert_int_equal(0, ret);
