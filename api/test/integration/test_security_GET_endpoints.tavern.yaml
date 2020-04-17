@@ -10,6 +10,7 @@ stages:
   # GET /security/roles
   - name: Try to show the roles of the system
     request: &all_roles_request
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -230,10 +231,7 @@ stages:
   # GET /security/roles
   - name: Try to show the roles of the system with a non-existent search
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *all_roles_request
       params:
         search: notexist
     response:
@@ -249,6 +247,7 @@ stages:
   # GET /security/policies
   - name: Try to show the policies of the system
     request: &all_policies_request
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -355,10 +354,7 @@ stages:
   # GET /security/policies
   - name: Search in policies
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *all_policies_request
       params:
         search: wazuh
         limit: 2
@@ -424,10 +420,7 @@ stages:
   # GET /security/policies
   - name: Try to show the policies of the system with a non-existent search
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *all_policies_request
       params:
         search: notexist
     response:
@@ -443,10 +436,7 @@ stages:
   # GET /security/roles/{role_id}
   - name: Try to show a specified role in the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *all_roles_request
       params:
         role_ids: 2,3,4
     response:
@@ -461,10 +451,7 @@ stages:
   # GET /security/roles/{non-existent role_id}
   - name: Try to show a non-existent role in the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *all_roles_request
       params:
         role_ids: 999
     response:
@@ -489,10 +476,7 @@ stages:
   # GET /security/policies/{policy_id}
   - name: Try to show a specified policy in the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *all_policies_request
       params:
         policy_ids: 2,3,4
     response:
@@ -507,10 +491,7 @@ stages:
   # GET /security/policies/{non-existent policy_id}
   - name: Try to show a non-existent policy in the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *all_policies_request
       params:
         policy_ids: 999
     response:
@@ -524,7 +505,8 @@ test_name: GET /security/users
 stages:
 
   - name: Get all users in the system
-    request:
+    request: &all_users_request
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -575,10 +557,7 @@ stages:
 
   - name: Get a specified user by its username
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *all_users_request
       params:
         usernames: wazuh
     response:
@@ -591,10 +570,7 @@ stages:
 
   - name: Get a specified user by its username
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *all_users_request
       params:
         usernames: wazuh,wazuh-wui
     response:
@@ -608,10 +584,7 @@ stages:
 
   - name: Get an user by its username (invalid username)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *all_users_request
       params:
         usernames: "!!!"
     response:
@@ -624,10 +597,7 @@ stages:
 
   - name: Get an user by its username (invalid username)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *all_users_request
       params:
         usernames: "####@@@|#|"
     response:
@@ -640,10 +610,7 @@ stages:
 
   - name: Get an non-existent user by its username
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *all_users_request
       params:
         usernames: NotFound
     response:
@@ -664,10 +631,7 @@ stages:
 
   - name: Get two non-existent users by their usernames
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *all_users_request
       params:
         usernames: NotFound,NotFound1
     response:
@@ -689,10 +653,7 @@ stages:
 
   - name: Get two non-existent users and an existing one by their usernames
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *all_users_request
       params:
         usernames: NotFound,NotFound1,wazuh
     response:
@@ -715,10 +676,7 @@ stages:
 
   - name: Get two non-existent users and two existent by their usernames
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *all_users_request
       params:
         usernames: NotFound,NotFound1,wazuh-wui,wazuh
     response:
@@ -752,10 +710,7 @@ marks:
 stages:
   - name: Testing search
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *all_users_request
       params:
         search: "{field}"
     response:
@@ -771,10 +726,7 @@ stages:
 
   - name: Testing complementary search
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *all_users_request
       params:
         search: "-wazuh"
     response:
@@ -814,10 +766,7 @@ test_name: GET /security/users/?sort
 stages:
   - name: Testing inverse sort
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *all_users_request
       params:
         sort: "-username"
     response:
@@ -861,10 +810,7 @@ stages:
 
   - name: Testing sort
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *all_users_request
       params:
         sort: "username"
     response:
@@ -912,10 +858,7 @@ test_name: GET /security/users/?limit,offset
 stages:
   - name: Testing offset
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *all_users_request
       params:
         offset: 3
     response:
@@ -948,10 +891,7 @@ stages:
 
   - name: Testing limit
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *all_users_request
       params:
         limit: 1
     response:
@@ -972,18 +912,21 @@ test_name: GET /security/actions
 
 stages:
   - name: Testing RBAC's actions catalog
-    request:
+    request: &rbac_actions_request
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/actions"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
+      params:
+        endpoint: "PUT /active-response"
     response:
       status_code: 200
-      body:
+      json:
         active-response:command:
           description: Allow to execute active response commands in the agents
           resources:
-            - "$ref": "#/x-rbac-catalog/resources/agent:id"
+            - agent:id
           example:
             actions:
               - active-response:command
@@ -992,17 +935,74 @@ stages:
             effect: allow
           related_endpoints:
             - PUT /active-response
-        agent:create:
-          description: Create new agents
+
+  - name: Testing RBAC's actions catalog
+    request:
+      <<: *rbac_actions_request
+      params:
+        endpoint: "GET ​/rules​/files"
+    response:
+      status_code: 200
+      json:
+        rules:read:
+          description: Read rules files
           resources:
-            - "$ref": "#/x-rbac-catalog/resources/*:*"
+            - rules:file
           example:
             actions:
-              - agent:create
+              - rules:read
             resources:
-              - "*:*:*"
+              - rules:file:0610-win-ms_logs_rules.xml
             effect: allow
           related_endpoints:
-            - POST /agents
-            - POST /agents/insert
-            - POST /agents/insert/quick
+            - GET /rules/files
+
+---
+test_name: GET /security/resources
+
+stages:
+  - name: Testing RBAC's actions catalog
+    request: &rbac_resources_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/resources"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      json:
+        "*:*":
+          description: 'Resource applied in functions acting on resources that do not yet
+            exist in the system. We call these functions, resourceless functions. Example:
+            agent:create'
+        agent:id:
+          description: Reference agents via agent ID (i.e. agent:id:001)
+        group:id:
+          description: Reference agent groups via group ID (i.e. group:id:default)
+        node:id:
+          description: Reference cluster node via node ID (i.e. node:id:worker1)
+        file:path:
+          description: Reference file via its path (i.e. file:path:etc/rules/new_rule.xml)
+        decoder:file:
+          description: Reference decoder file via its path (i.e. decoder:file:0005-wazuh_decoders.xml)
+        lists:path:
+          description: Reference list file via its path (i.e. lists:path:etc/lists/audit-keys)
+        rules:file:
+          description: Reference rule file via its path (i.e. rules:file:0610-win-ms_logs_rules.xml)
+        policy:id:
+          description: Reference security policy via its id (i.e. policy:id:1)
+        role:id:
+          description: Reference security role via its id (i.e. role:id:1)
+        user:id:
+          description: Reference security user via its username (i.e. user:id:wazuh)
+
+  - name: Testing RBAC's actions catalog
+    request:
+      <<: *rbac_resources_request
+      params:
+        resource: "agent:id"
+    response:
+      status_code: 200
+      json:
+        agent:id:
+          description: Reference agents via agent ID (i.e. agent:id:001)

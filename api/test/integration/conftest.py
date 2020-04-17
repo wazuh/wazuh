@@ -605,7 +605,7 @@ login_headers = {'Content-Type': 'application/json',
 
 
 def get_token_login_api():
-    response = requests.get(login_url, headers=login_headers)
+    response = requests.get(login_url, headers=login_headers, verify=False)
     if response.status_code == 200:
         return json.loads(response.content.decode())['token']
     else:
