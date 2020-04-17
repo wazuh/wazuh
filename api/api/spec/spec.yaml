@@ -10963,8 +10963,7 @@ paths:
       tags:
         - security
       summary: "Modify a specified role"
-      description: "Modify a role, cannot modify associated policies in this endpoint,"
-                        at least one property must be indicated'
+      description: "Modify a role, cannot modify associated policies in this endpoint, at least one property must be indicated"
       operationId: api.controllers.security_controller.update_role
       parameters:
         - $ref: '#/components/parameters/pretty'
