@@ -889,7 +889,7 @@ else
 ifneq (,$(filter ${cpu_arch},aarch64 arm64))
 CPYTHON := cpython_aarch64
 else
-ifneq (,$(filter ${cpu_arch},arm8vl arm7vl arm32 armhf))
+ifneq (,$(filter ${cpu_arch},armv8l armv7l arm32 armhf))
 CPYTHON := cpython_arm32
 else
 CPYTHON := src_cpython
