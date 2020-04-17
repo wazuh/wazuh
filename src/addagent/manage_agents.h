@@ -87,6 +87,7 @@ extern char shost[];
 #define USER_SIZE       514
 #define FILE_SIZE       257
 #define STR_SIZE        66
+#define VALID_AGENT_NAME_CHARS "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_.-"
 
 /* Internal strings */
 #define QUIT                "\\q"
