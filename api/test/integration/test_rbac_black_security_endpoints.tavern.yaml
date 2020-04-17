@@ -9,6 +9,7 @@ stages:
 
   - name: Get all users in the system
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -29,6 +30,7 @@ stages:
 
   - name: Get a specified user by its username (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -48,6 +50,7 @@ stages:
 
   - name: Get a specified user by its username (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -67,6 +70,7 @@ stages:
 
   - name: Get a list of users by its username (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -88,6 +92,7 @@ stages:
 
   - name: Get a list of users by its username (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -101,6 +106,7 @@ stages:
 
   - name: Get a list of users by its username (Both)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -136,6 +142,7 @@ stages:
 
   - name: Get all roles in the system
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -152,6 +159,7 @@ stages:
 
   - name: Get a specified role by its id (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -170,6 +178,7 @@ stages:
 
   - name: Get all policies in the system (All denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -187,6 +196,7 @@ stages:
 
   - name: Get a specified policy by its id (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -205,6 +215,7 @@ stages:
 
   - name: Get a specified policy by its id (It doesn't exist but we have all the permissions on the resource policies)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -229,6 +240,7 @@ stages:
 
   - name: Get a list of policies by its id (Existent and no existent)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -258,6 +270,7 @@ stages:
 
   - name: Update one specified user in the system (All allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/guest"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -277,6 +290,7 @@ stages:
 
   - name: Update one specified user in the system (All allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/python"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -301,6 +315,7 @@ stages:
 
   - name: Update one specified role in the system (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/12"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -335,6 +350,7 @@ stages:
 
   - name: Update one specified role in the system (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/11"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -351,6 +367,7 @@ stages:
 
   - name: Update one admin role in the system (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/1"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -383,6 +400,7 @@ stages:
 
   - name: Update one specified policy in the system (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/14"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -430,6 +448,7 @@ stages:
 
   - name: Update one specified policy in the system (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/15"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -456,6 +475,7 @@ stages:
 
   - name: Create one specified link between one user and a list of roles (Allow and Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/python/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -491,6 +511,7 @@ stages:
 
   - name: Create one specified link between one user and a list of roles (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/ossec/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -524,6 +545,7 @@ stages:
 
   - name: Delete one specified link between one user and a list of roles (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/rbac/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -556,6 +578,7 @@ stages:
 
   - name: Create one specified link between one role and a list of policies (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/12/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -600,6 +623,7 @@ stages:
 
   - name: Delete one specified link between one role and a list of policies (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/12/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -641,6 +665,7 @@ stages:
 
   - name: Delete one specified user in the system (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -660,6 +685,7 @@ stages:
 
   - name: Delete all allowed user in the system (All)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -679,6 +705,7 @@ stages:
 
   - name: Delete all allowed user in the system (All)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -695,6 +722,7 @@ stages:
 
   - name: Delete a list of users in the system (Allow and deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -735,6 +763,7 @@ stages:
 
   - name: Delete one specified role in the system (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -763,6 +792,7 @@ stages:
 
   - name: Delete all roles in the system (Allow and deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -784,6 +814,7 @@ stages:
 
   - name: Delete one specified policy in the system (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -813,6 +844,7 @@ stages:
 
   - name: Delete all policies in the system (Allow and deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -834,6 +866,7 @@ stages:
 
   - name: Create one specified user (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -859,6 +892,7 @@ stages:
 
   - name: Create one specified role (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -875,6 +909,7 @@ stages:
 
   - name: Create one specified policy (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -900,6 +935,7 @@ stages:
 
   - name: Revoke all tokens (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/revoke"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -909,6 +945,7 @@ stages:
 
   - name: Revoke all tokens (Invalid token after previous call)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/user/revoke"
       headers:
         Authorization: "Bearer {test_login_token}"

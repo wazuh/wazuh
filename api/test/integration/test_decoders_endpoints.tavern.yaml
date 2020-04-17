@@ -10,6 +10,7 @@ stages:
     # GET /decoders
   - name: Try to get all decoders
     request: &get_decoders
+      verify: False
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders"
       headers:
@@ -24,6 +25,7 @@ stages:
     # GET /decoders?limit=1
   - name: Try to get decoders using limit parameter
     request:
+      verify: False
       <<: *get_decoders
       params:
         limit: 1
@@ -53,6 +55,7 @@ stages:
     # GET /decoders?limit=2&offset=0
   - name: Try to get decoders using limit and offset parameter
     request:
+      verify: False
       <<: *get_decoders
       params:
         limit: 2
@@ -75,6 +78,7 @@ stages:
     # GET /decoders?limit=1&offset=1
   - name: Try to get decoders using limit and offset parameter
     request:
+      verify: False
       <<: *get_decoders
       params:
         limit: 1
@@ -98,6 +102,7 @@ stages:
     # GET /decoders?limit=1&search=a
   - name: Try to get decoders using limit and search parameter
     request:
+      verify: False
       <<: *get_decoders
       params:
         limit: 1
@@ -115,6 +120,7 @@ stages:
     # GET /decoders?limit=1&filename={returned_file}
   - name: Try to get decoders using limit and filename parameter
     request:
+      verify: False
       <<: *get_decoders
       params:
         limit: 1
@@ -132,6 +138,7 @@ stages:
     # GET /decoders?limit=1&relative_dirname={returned_relative_path}
   - name: Try to get decoders using limit and path parameter
     request:
+      verify: False
       <<: *get_decoders
       params:
         limit: 1
@@ -149,6 +156,7 @@ stages:
     # GET /decoders?limit=1&status={returned_status}
   - name: Try to get decoders using limit and status parameter
     request:
+      verify: False
       <<: *get_decoders
       params:
         limit: 1
@@ -167,6 +175,7 @@ stages:
     # GET /decoders?limit=1&wrongparam=wrong
   - name: Try to get decoders using limit and a wrong parameter
     request:
+      verify: False
       <<: *get_decoders
       params:
         limit: 1
@@ -177,6 +186,7 @@ stages:
     # GET /decoders?limit=1&sort=wrong
   - name: Try to get decoders using limit and a wrong parameter's value
     request:
+      verify: False
       <<: *get_decoders
       params:
         limit: 1
@@ -189,6 +199,7 @@ stages:
     # GET /decoders?q=name=agent-upgrade;position=2
   - name: Get decoders using query parameter
     request:
+      verify: False
       <<: *get_decoders
       params:
         q: 'name=agent-upgrade;position=2'
@@ -222,6 +233,7 @@ stages:
     # GET /decoders?limit=1&sort={field}
   - name: Try to get decoders using an ascendent sorted field answer
     request:
+      verify: False
       <<: *get_decoders
       params:
         limit: 1
@@ -238,6 +250,7 @@ stages:
     # GET /decoders?limit=1&sort=-{field}
   - name: Try to get decoders using an descendent sorted field answer
     request:
+      verify: False
       <<: *get_decoders
       params:
         limit: 1
@@ -260,6 +273,7 @@ stages:
     # GET /decoders/{returned_name}
   - name: Try to get all decoders with specified decoder_name
     request: &get_decoders_with_name
+      verify: False
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders"
       headers:
@@ -287,6 +301,7 @@ stages:
     # GET /decoders/auditd-selinux_macstatus?limit=2&offset=0
   - name: Try to get all decoders with specified decoder_name using limit and offset parameter
     request:
+      verify: False
       <<: *get_decoders_with_name
       params:
         limit: 2
@@ -309,6 +324,7 @@ stages:
     # GET /decoders/auditd-selinux_macstatus?limit=1&offset=1
   - name: Try to get all decoders with specified decoder_name using limit and offset parameter
     request:
+      verify: False
       <<: *get_decoders_with_name
       params:
         limit: 1
@@ -332,6 +348,7 @@ stages:
     # GET /decoders/auditd-selinux_macstatus?limit=1&search=a
   - name: Try to get all decoders with specified decoder_name using limit and search parameter
     request:
+      verify: False
       <<: *get_decoders_with_name
       params:
         limit: 1
@@ -350,6 +367,7 @@ stages:
     # GET /decoders/auditd-selinux_macstatus?limit=1&wrongparam=wrong
   - name: Try to get all decoders with specified decoder_name using limit and a wrong parameter
     request:
+      verify: False
       <<: *get_decoders_with_name
       params:
         limit: 1
@@ -360,6 +378,7 @@ stages:
     # GET /decoders/auditd-selinux_macstatus?limit=1&sort=wrong
   - name: Try to get all decoders with specified decoder_name using limit and a wrong parameter's value
     request:
+      verify: False
       <<: *get_decoders_with_name
       params:
         limit: 1
@@ -386,6 +405,7 @@ stages:
     # GET /decoders/auditd-selinux_macstatus?sort={field}
   - name: Try to get all decoders with specified decoder_name using an ascendent sorted field answer
     request:
+      verify: False
       <<: *get_decoders_with_name
       params:
         sort: "{field}"
@@ -404,6 +424,7 @@ stages:
     # GET /decoders/auditd-selinux_macstatus?sort=-{field}
   - name: Try to get all decoders with specified decoder_name using an descendent sorted field answer
     request:
+      verify: False
       <<: *get_decoders_with_name
       params:
         sort: "-{field}"
@@ -424,6 +445,7 @@ stages:
     # GET /decoders/files
   - name: Try to get information about all decoders files
     request: &get_decoders_files
+      verify: False
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files"
       headers:
@@ -441,6 +463,7 @@ stages:
     # GET /decoders/files?limit=1
   - name: Try to get information about all decoders files using limit parameter
     request:
+      verify: False
       <<: *get_decoders_files
       params:
         limit: 1
@@ -466,6 +489,7 @@ stages:
     # GET /decoders/files?limit=2&offset=0
   - name: Try to get information about all decoders files using limit and offset parameter
     request:
+      verify: False
       <<: *get_decoders_files
       params:
         limit: 2
@@ -488,6 +512,7 @@ stages:
     # GET /decoders/files?limit=1&offset=1
   - name: Try to get information about all decoders files using limit and offset parameter
     request:
+      verify: False
       <<: *get_decoders_files
       params:
         limit: 1
@@ -508,6 +533,7 @@ stages:
     # GET /decoders/files?limit=1&search=a
   - name: Try to get information about all decoders files using limit and search parameter
     request:
+      verify: False
       <<: *get_decoders_files
       params:
         limit: 1
@@ -525,6 +551,7 @@ stages:
     # GET /decoders/files?limit=1&filename={returned_files_filename}
   - name: Try to get information about all decoders files using limit and file parameter
     request:
+      verify: False
       <<: *get_decoders_files
       params:
         limit: 1
@@ -542,6 +569,7 @@ stages:
     # GET /decoders/files?limit=1&relative_dirname={returned_files_relative_path}
   - name: Try to get information about all decoders files using limit and relative_dirname parameter
     request:
+      verify: False
       <<: *get_decoders_files
       params:
         limit: 1
@@ -559,6 +587,7 @@ stages:
   # GET /decoders/files?limit=1&status={returned_files_status}
   - name: Try to get information about all decoders files using limit and status parameter
     request:
+      verify: False
       <<: *get_decoders_files
       params:
         limit: 1
@@ -577,6 +606,7 @@ stages:
   # GET /decoders/files?limit=1&wrongparam=wrong
   - name: Try to get information about all decoders using limit and a wrong parameter
     request:
+      verify: False
       <<: *get_decoders_files
       params:
         limit: 1
@@ -587,6 +617,7 @@ stages:
   # GET /decoders/files?limit=1&sort=wrong
   - name: Try to get information about all decoders using limit and a wrong parameter's value
     request:
+      verify: False
       <<: *get_decoders_files
       params:
         limit: 1
@@ -611,6 +642,7 @@ stages:
     # GET /decoders/files?limit=1&sort={field}
   - name: Try to get information about all decoders files using an ascendent sorted field answer
     request:
+      verify: False
       <<: *get_decoders_files
       params:
         limit: 1
@@ -627,6 +659,7 @@ stages:
     # GET /decoders/files?limit=1&sort=-{field}
   - name: Try to get information about all decoders files using a descendent sorted field answer
     request:
+      verify: False
       <<: *get_decoders_files
       params:
         limit: 1
@@ -648,6 +681,7 @@ stages:
     # GET /decoders/parents
   - name: Try to get information about all decoders parents
     request: &get_decoders_parents
+      verify: False
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/parents"
       headers:
@@ -665,6 +699,7 @@ stages:
   # GET /decoders/parents?limit=1
   - name: Try to get information about all decoders parents using limit parameter
     request:
+      verify: False
       <<: *get_decoders_parents
       params:
         limit: 1
@@ -685,6 +720,7 @@ stages:
     # GET /decoders/parents?limit=2&offset=0
   - name: Try to get information about all decoders parents using limit and offset parameter
     request:
+      verify: False
       <<: *get_decoders_parents
       params:
         limit: 2
@@ -705,6 +741,7 @@ stages:
     # GET /decoders/parents?limit=1&offset=1
   - name: Try to get information about all decoders parents using limit and offset parameter
     request:
+      verify: False
       <<: *get_decoders_parents
       params:
         limit: 1
@@ -726,6 +763,7 @@ stages:
   # GET /decoders/parents?limit=1&search=a
   - name: Try to get information about all decoders parents using limit and search parameter
     request:
+      verify: False
       <<: *get_decoders_parents
       params:
         limit: 1
@@ -742,6 +780,7 @@ stages:
     # GET /decoders/parents?limit=1&wrongparam=wrong
   - name: Try to get information about all decoders parents using limit and a wrong parameter
     request:
+      verify: False
       <<: *get_decoders_parents
       params:
         limit: 1
@@ -752,6 +791,7 @@ stages:
     # GET /decoders/parents?limit=1&sort=wrong
   - name: Try to get information about all decoders parents using limit and a wrong parameter's value
     request:
+      verify: False
       <<: *get_decoders_parents
       params:
         limit: 1
@@ -778,6 +818,7 @@ stages:
   # GET /decoders/parents?limit=1&sort={field}
   - name: Try to get information about all decoders parents using an ascendent sorted field answer
     request:
+      verify: False
       <<: *get_decoders_parents
       params:
         limit: 1
@@ -792,6 +833,7 @@ stages:
   # GET /decoders/parents?limit=1&sort=-{field}
   - name: Try to get information about all decoders parents using a descendent sorted field answer
     request:
+      verify: False
       <<: *get_decoders_parents
       params:
         limit: 1
@@ -811,6 +853,7 @@ stages:
     # GET /decoders/files/{file}/download
   - name: Download a decoders file
     request:
+      verify: False
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files/0005-wazuh_decoders.xml/download"
       headers:
@@ -823,6 +866,7 @@ stages:
     # GET /decoders/files/{wrong_file}/download
   - name: Try to download a decoders file using a wrong filename
     request:
+      verify: False
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/decoders/files/wrongfile/download"
       headers:

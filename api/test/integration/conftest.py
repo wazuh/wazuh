@@ -6,6 +6,7 @@ from base64 import b64encode
 
 import pytest
 import requests
+import urllib3
 import yaml
 
 
@@ -605,7 +606,7 @@ login_headers = {'Content-Type': 'application/json',
 
 
 def get_token_login_api():
-    response = requests.get(login_url, headers=login_headers)
+    response = requests.get(login_url, headers=login_headers, verify=False)
     if response.status_code == 200:
         return json.loads(response.content.decode())['token']
     else:
@@ -613,4 +614,6 @@ def get_token_login_api():
 
 
 def pytest_tavern_beta_before_every_test_run(test_dict, variables):
+    # Disable HTTPS verification warnings
+    urllib3.disable_warnings()
     variables["test_login_token"] = get_token_login_api()

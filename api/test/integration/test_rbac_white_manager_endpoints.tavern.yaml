@@ -9,6 +9,7 @@ stages:
 
   - name: Request manager configuration (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration"
       method: GET
       headers:
@@ -23,6 +24,7 @@ stages:
 
   - name: Request manager configuration validation (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/validation"
       method: GET
       headers:
@@ -37,6 +39,7 @@ stages:
 
   - name: Request manager component configuration (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/configuration/agentless/agentless"
       method: GET
       headers:
@@ -51,6 +54,7 @@ stages:
 
   - name: Delete a file (Denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: DELETE
       headers:
@@ -64,6 +68,7 @@ stages:
 
   - name: Delete a file (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: DELETE
       headers:
@@ -80,6 +85,7 @@ stages:
 
   - name: Read a file (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: GET
       headers:
@@ -91,6 +97,7 @@ stages:
 
   - name: Read a file (Allowed, Does not exist)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: GET
       headers:
@@ -109,6 +116,7 @@ stages:
 
   - name: Upload a file (Denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: PUT
       headers:
@@ -128,6 +136,7 @@ stages:
 
   - name: Request manager info (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/info"
       method: GET
       headers:
@@ -142,6 +151,7 @@ stages:
 
   - name: Request manager logs (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/logs"
       method: GET
       headers:
@@ -156,6 +166,7 @@ stages:
 
   - name: Request manager logs summary (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/logs/summary"
       method: GET
       headers:
@@ -170,6 +181,7 @@ stages:
 
   - name: Request manager stats (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats"
       method: GET
       headers:
@@ -186,6 +198,7 @@ stages:
 
   - name: Request manager analysisd stats (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats/analysisd"
       method: GET
       headers:
@@ -200,6 +213,7 @@ stages:
 
   - name: Request manager hourly stats (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats/hourly"
       method: GET
       headers:
@@ -214,6 +228,7 @@ stages:
 
   - name: Request manager remoted stats (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats/remoted"
       method: GET
       headers:
@@ -228,6 +243,7 @@ stages:
 
   - name: Request manager weekly stats (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/stats/weekly"
       method: GET
       headers:
@@ -242,6 +258,7 @@ stages:
 
   - name: Request manager status (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/status"
       method: GET
       headers:
@@ -256,6 +273,7 @@ stages:
 
   - name: Restart manager (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/restart"
       method: PUT
       headers:

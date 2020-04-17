@@ -9,6 +9,7 @@ stages:
 
  - name: Get all agents
    request: &get_agents
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
      method: GET
      headers:
@@ -37,6 +38,7 @@ stages:
 
  - name: Get all agents inverse order
    request:
+     verify: False
      <<: *get_agents
      params:
        sort: -id
@@ -64,6 +66,7 @@ stages:
 
  - name: Pagination with offset 0 and limit 2
    request:
+     verify: False
      <<: *get_agents
      params:
        offset: 0
@@ -93,6 +96,7 @@ stages:
 
  - name: Try to show agents using offset -1
    request:
+     verify: False
      <<: *get_agents
      params:
        offset: -1
@@ -106,6 +110,7 @@ stages:
 
  - name: Try to show agents with offset not integer value
    request:
+     verify: False
      <<: *get_agents
      params:
        offset: wrong_offset
@@ -116,6 +121,7 @@ stages:
 
  - name: Try to show agents with offset too large 9999999999999999999
    request:
+     verify: False
      <<: *get_agents
      params:
        offset: 9999999999999999999
@@ -126,6 +132,7 @@ stages:
 
  - name: Try to show agents with limit 0
    request:
+     verify: False
      <<: *get_agents
      params:
        limit: 0
@@ -136,6 +143,7 @@ stages:
 
  - name: Try to show agents with an invalid limit value
    request:
+     verify: False
      <<: *get_agents
      params:
        limit: wrong_limit
@@ -146,6 +154,7 @@ stages:
 
  - name: Try to show agents with limit 9999
    request:
+     verify: False
      <<: *get_agents
      params:
        limit: 9999
@@ -156,6 +165,7 @@ stages:
 
  - name: Sort
    request:
+     verify: False
      <<: *get_agents
      params:
        sort: -id
@@ -173,6 +183,7 @@ stages:
 
  - name: Try to show agents using wrong sort
    request:
+     verify: False
      <<: *get_agents
      params:
        sort: -wrong_sort
@@ -183,6 +194,7 @@ stages:
 
  - name: Search
    request:
+     verify: False
      <<: *get_agents
      params:
        search: '000'
@@ -198,6 +210,7 @@ stages:
 
  - name: Try to show agents using a search with no return
    request:
+     verify: False
      <<: *get_agents
      params:
        search: wrong_search
@@ -212,6 +225,7 @@ stages:
 
  - name: Filter select one field
    request:
+     verify: False
      <<: *get_agents
      params:
        select: 'os.platform'
@@ -233,6 +247,7 @@ stages:
 
  - name: Filter select multiple fields
    request:
+     verify: False
      <<: *get_agents
      params:
        select: 'dateAdd,mergedSum'
@@ -255,6 +270,7 @@ stages:
 
  - name: Try to show agents using a not allowed selector
    request:
+     verify: False
      <<: *get_agents
      params:
        select: param_test
@@ -265,6 +281,7 @@ stages:
 
  - name: Try to show agents using not allowed selector (invalid character)
    request:
+     verify: False
      <<: *get_agents
      params:
        select: param_%_test
@@ -275,6 +292,7 @@ stages:
 
  - name: Filter by agent version
    request:
+     verify: False
      <<: *get_agents
      params:
        version: 'Wazuh v3.9.2'
@@ -291,6 +309,7 @@ stages:
 
  - name: Try to show agents using a non existing version
    request:
+     verify: False
      <<: *get_agents
      params:
        version: 'TestVersion'
@@ -302,6 +321,7 @@ stages:
 
  - name: Try to show agents using an invalid version
    request:
+     verify: False
      <<: *get_agents
      params:
        version: 'Test%Version'
@@ -312,6 +332,7 @@ stages:
 
  - name: Filter by agent OS Platform
    request:
+     verify: False
      <<: *get_agents
      params:
        os.platform: "{expected_os_platform:s}"
@@ -330,6 +351,7 @@ stages:
 
  - name: Try to show agents using a non existing OS Platform
    request:
+     verify: False
      <<: *get_agents
      params:
        os.platform: test_platform
@@ -341,6 +363,7 @@ stages:
 
  - name: Try show agents with not existed OS Platform (invalid character)
    request:
+     verify: False
      <<: *get_agents
      params:
        os.platform: test_%_platform
@@ -351,6 +374,7 @@ stages:
 
  - name: Filter by agent OS Version
    request:
+     verify: False
      <<: *get_agents
      params:
        os.version: "{expected_os_version:s}"
@@ -369,6 +393,7 @@ stages:
 
  - name: Try to show agents using a non existing OS Version
    request:
+     verify: False
      <<: *get_agents
      params:
        os.version: test_version
@@ -380,6 +405,7 @@ stages:
 
  - name: Try to show agents using an invalid OS Version
    request:
+     verify: False
      <<: *get_agents
      params:
        os.version: test_version_%
@@ -390,6 +416,7 @@ stages:
 
  - name: Filter by agent OS Name
    request:
+     verify: False
      <<: *get_agents
      params:
        os.name: "{expected_os_name:s}"
@@ -408,6 +435,7 @@ stages:
 
  - name: Try to show agents using a non existing OS Name
    request:
+     verify: False
      <<: *get_agents
      params:
        os.name: test_name
@@ -419,6 +447,7 @@ stages:
 
  - name: Try to show agents using an invalid OS Name
    request:
+     verify: False
      <<: *get_agents
      params:
        os.name: test_name_%
@@ -429,6 +458,7 @@ stages:
 
  - name: Filter by agent Node Name
    request:
+     verify: False
      <<: *get_agents
      params:
        node_name: "{expected_node_name:s}"
@@ -445,6 +475,7 @@ stages:
 
  - name: Try to show agents using a non existing Node Name
    request:
+     verify: False
      <<: *get_agents
      params:
        node_name: test_node_name
@@ -456,6 +487,7 @@ stages:
 
  - name: Try show agents using an invalid Node Name
    request:
+     verify: False
      <<: *get_agents
      params:
        node_name: test_node_name_%
@@ -466,6 +498,7 @@ stages:
 
  - name: Filter by agent name
    request:
+     verify: False
      <<: *get_agents
      params:
        name: "{expected_name:s}"
@@ -482,6 +515,7 @@ stages:
 
  - name: Try to show agents using a non existing agent name
    request:
+     verify: False
      <<: *get_agents
      params:
        name: test_name
@@ -493,6 +527,7 @@ stages:
 
  - name: Try to show agents using an invalid agent name
    request:
+     verify: False
      <<: *get_agents
      params:
        name: test_name_%
@@ -503,6 +538,7 @@ stages:
 
  - name: Filter by agent IP
    request:
+     verify: False
      <<: *get_agents
      params:
        ip: "{expected_ip:s}"
@@ -519,6 +555,7 @@ stages:
 
  - name: Try to show agents using a non existing IP
    request:
+     verify: False
      <<: *get_agents
      params:
        ip: test_ip
@@ -530,6 +567,7 @@ stages:
 
  - name: Try to show agents using an invalid IP
    request:
+     verify: False
      <<: *get_agents
      params:
        ip: test_ip_%
@@ -540,6 +578,7 @@ stages:
 
  - name: Filter by agent ManagerHost
    request:
+     verify: False
      <<: *get_agents
      params:
        manager: "{expected_manager_host:s}"
@@ -555,6 +594,7 @@ stages:
 
  - name: Try to show agents using a non existing ManagerHost
    request:
+     verify: False
      <<: *get_agents
      params:
        manager: test_manager
@@ -566,6 +606,7 @@ stages:
 
  - name: Try to show agents using an invalid ManagerHost
    request:
+     verify: False
      <<: *get_agents
      params:
        manager: test_manager_%
@@ -576,6 +617,7 @@ stages:
 
  - name: Filter by agent status
    request:
+     verify: False
      <<: *get_agents
      params:
        status: disconnected
@@ -592,6 +634,7 @@ stages:
 
  - name: Filter by agent status 2
    request:
+     verify: False
      <<: *get_agents
      params:
        status: disconnected,never_connected
@@ -610,6 +653,7 @@ stages:
 
  - name: Try to show agents with a non existing status
    request:
+     verify: False
      <<: *get_agents
      params:
        status: test_status
@@ -620,6 +664,7 @@ stages:
 
  - name: Filter agents by group
    request:
+     verify: False
      <<: *get_agents
      params:
        group: group1
@@ -639,6 +684,7 @@ stages:
 
  - name: Try to show agents using a non existing group
    request:
+     verify: False
      <<: *get_agents
      params:
        group: test_group
@@ -650,6 +696,7 @@ stages:
 
  - name: Try show agents using an invalid group
    request:
+     verify: False
      <<: *get_agents
      params:
        group: test_group_%
@@ -660,6 +707,7 @@ stages:
 
  - name: Filter agents by query
    request:
+     verify: False
      <<: *get_agents
      params:
        q: group=group2;lastKeepAlive<1d
@@ -678,6 +726,7 @@ stages:
 
  - name: Try to show agents using an wrong query
    request:
+     verify: False
      <<: *get_agents
      params:
        q: group=default;lastKeepAe<1d
@@ -688,6 +737,7 @@ stages:
 
  - name: Try to show agents using an invalid query
    request:
+     verify: False
      <<: *get_agents
      params:
        q: group=default;lastKeep%<1d
@@ -698,6 +748,7 @@ stages:
 
  - name: Filter agents using older_than param
    request:
+     verify: False
      <<: *get_agents
      params:
        older_than: 30s
@@ -716,6 +767,7 @@ stages:
 
  - name: Try show agents using an invalid older_than
    request:
+     verify: False
      <<: *get_agents
      params:
        older_than: bad_time
@@ -726,6 +778,7 @@ stages:
 
  - name: Try to show a list of agents
    request:
+     verify: False
      <<: *get_agents
      params:
        list_agents: "001,002,003"
@@ -752,6 +805,7 @@ stages:
   # GET /agents?list_agents=000
  - name: Basic response agent
    request: &get_agent
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
      method: GET
      headers:
@@ -789,6 +843,7 @@ stages:
   # GET /agents?list_agents=999
  - name: Try to show not existing agent
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
      method: GET
      headers:
@@ -811,6 +866,7 @@ stages:
   # GET /agents?list_agents=wrong_name
  - name: Try show not existing agent by name
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
      method: GET
      headers:
@@ -825,6 +881,7 @@ stages:
   # GET /agents?list_agents=000&select=os.platform
  - name: Filter select one field
    request:
+     verify: False
      <<: *get_agent
      params:
        select: 'os.platform'
@@ -844,6 +901,7 @@ stages:
   # GET /agents?list_agents=000&select=dateAdd,status
  - name: Filter select multiple fields
    request:
+     verify: False
      <<: *get_agent
      params:
        select: 'dateAdd,status'
@@ -863,6 +921,7 @@ stages:
   # GET /agents?list_agents=000&select=param_test
  - name: Try show agents with not allowed selector
    request:
+     verify: False
      <<: *get_agent
      params:
        select: param_test
@@ -875,6 +934,7 @@ stages:
   # GET /agents?list_agents=000&select=param_%_test
  - name: Try show agents with not allowed selector (invalid character)
    request:
+     verify: False
      <<: *get_agent
      params:
        select: param_%_test
@@ -892,6 +952,7 @@ stages:
   # GET /agents/001/config/agent/client
  - name: Request-Agent-Client
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/agent/client"
      method: GET
      headers:
@@ -911,6 +972,7 @@ stages:
 
  - name: Request-Agent-Buffer
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/agent/buffer"
      method: GET
      headers:
@@ -926,6 +988,7 @@ stages:
 
  - name: Request-Agent-Labels
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/agent/labels"
      method: GET
      headers:
@@ -938,6 +1001,7 @@ stages:
 
  - name: Request-Agent-Internal
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/agent/internal"
      method: GET
      headers:
@@ -974,6 +1038,7 @@ stages:
 
  - name: Request-Agentless-Agentless
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/agentless/agentless"
      method: GET
      headers:
@@ -992,6 +1057,7 @@ stages:
 
  - name: Request-Analysis-Global
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/analysis/global"
      method: GET
      headers:
@@ -1019,6 +1085,7 @@ stages:
 
  - name: Request-Analysis-Active-response
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/analysis/active_response"
      method: GET
      headers:
@@ -1031,6 +1098,7 @@ stages:
 
  - name: Request-Analysis-Alerts
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/analysis/alerts"
      method: GET
      headers:
@@ -1045,6 +1113,7 @@ stages:
 
  - name: Request-Analysis-Command
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/analysis/command"
      method: GET
      headers:
@@ -1057,6 +1126,7 @@ stages:
 
  - name: Request-Analysis-Internal
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/analysis/internal"
      method: GET
      headers:
@@ -1083,6 +1153,7 @@ stages:
 
  - name: Request-Auth-Auth
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/auth/auth"
      method: GET
      headers:
@@ -1108,6 +1179,7 @@ stages:
 
  - name: Request-Com-Active-response (Manager)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/com/active-response"
      method: GET
      headers:
@@ -1122,6 +1194,7 @@ stages:
 
  - name: Request-Com-Active-response (Agent)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/com/active-response"
      method: GET
      headers:
@@ -1137,6 +1210,7 @@ stages:
 
  - name: Request-Com-Internal (Manager)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/com/internal"
      method: GET
      headers:
@@ -1152,6 +1226,7 @@ stages:
 
  - name: Request-Com-Internal (Agent)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/com/internal"
      method: GET
      headers:
@@ -1167,6 +1242,7 @@ stages:
 
  - name: Request-Com-Cluster (Manager)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/com/cluster"
      method: GET
      headers:
@@ -1187,6 +1263,7 @@ stages:
 
  - name: Request-Csyslog-Csyslog
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/csyslog/csyslog"
      method: GET
      headers:
@@ -1204,6 +1281,7 @@ stages:
 
  - name: Request-Integrator-Integration
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/integrator/integration"
      method: GET
      headers:
@@ -1222,6 +1300,7 @@ stages:
 
  - name: Request-Logcollector-Localfile (Manager)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/logcollector/localfile"
      method: GET
      headers:
@@ -1234,6 +1313,7 @@ stages:
 
  - name: Request-Logcollector-Localfile (Agent)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/logcollector/localfile"
      method: GET
      headers:
@@ -1246,6 +1326,7 @@ stages:
 
  - name: Request-Logcollector-Socker (Manager)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/logcollector/socket"
      method: GET
      headers:
@@ -1255,6 +1336,7 @@ stages:
 
  - name: Request-Logcollector-Socker (Agent)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/logcollector/socket"
      method: GET
      headers:
@@ -1264,6 +1346,7 @@ stages:
 
  - name: Request-Logcollector-Internal (Manager)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/logcollector/internal"
      method: GET
      headers:
@@ -1292,6 +1375,7 @@ stages:
 
  - name: Request-Logcollector-Internal (Agent)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/logcollector/internal"
      method: GET
      headers:
@@ -1320,6 +1404,7 @@ stages:
 
  - name: Request-Mail-Global
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/mail/global"
      method: GET
      headers:
@@ -1337,6 +1422,7 @@ stages:
 
  - name: Request-Mail-Alerts
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/mail/alerts"
      method: GET
      headers:
@@ -1349,6 +1435,7 @@ stages:
 
  - name: Request-Mail-Internal
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/mail/internal"
      method: GET
      headers:
@@ -1364,6 +1451,7 @@ stages:
 
  - name: Request-Monitor-Internal
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/monitor/internal"
      method: GET
      headers:
@@ -1385,6 +1473,7 @@ stages:
 
  - name: Request-Request-Remote
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/request/remote"
      method: GET
      headers:
@@ -1402,6 +1491,7 @@ stages:
 
  - name: Request-Request-Internal
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/request/internal"
      method: GET
      headers:
@@ -1434,6 +1524,7 @@ stages:
 
  - name: Request-Syscheck-Syscheck (Manager)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/syscheck/syscheck"
      method: GET
      headers:
@@ -1454,6 +1545,7 @@ stages:
 
  - name: Request-Syscheck-Syscheck (Agent)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/syscheck/syscheck"
      method: GET
      headers:
@@ -1474,6 +1566,7 @@ stages:
 
  - name: Request-Syscheck-Rootcheck (Manager)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/syscheck/rootcheck"
      method: GET
      headers:
@@ -1500,6 +1593,7 @@ stages:
 
  - name: Request-Syscheck-Rootcheck (Agent)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/syscheck/rootcheck"
      method: GET
      headers:
@@ -1526,6 +1620,7 @@ stages:
 
  - name: Request-Syscheck-Internal (Manager)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/syscheck/internal"
      method: GET
      headers:
@@ -1547,6 +1642,7 @@ stages:
 
  - name: Request-Syscheck-Internal (Agent)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/syscheck/internal"
      method: GET
      headers:
@@ -1569,6 +1665,7 @@ stages:
 
  - name: Request-Wmodules-Wmodules (Manager)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/wmodules/wmodules"
      method: GET
      headers:
@@ -1581,6 +1678,7 @@ stages:
 
  - name: Request-Wmodules-Wmodules (Agent)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/wmodules/wmodules"
      method: GET
      headers:
@@ -1593,6 +1691,7 @@ stages:
 
  - name: Try to show config of a non existing agent
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/999/config/mail/global"
      method: GET
      headers:
@@ -1604,6 +1703,7 @@ stages:
 
  - name: Try to show config of an invalid agent
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/wrong_name/config/mail/global"
      method: GET
      headers:
@@ -1615,6 +1715,7 @@ stages:
 
  - name: Request Error
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/mail/global"
      method: GET
      headers:
@@ -1626,6 +1727,7 @@ stages:
 
  - name: Request Error Component Parameter
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/wrong_component/global"
      method: GET
      headers:
@@ -1637,6 +1739,7 @@ stages:
 
  - name: Request Error Configuration Parameter
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/mail/wrong_configuration"
      method: GET
      headers:
@@ -1648,6 +1751,7 @@ stages:
 
  - name: Request Error Component and Configuration Parameters
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/wrong_component/wrong_configuration"
      method: GET
      headers:
@@ -1664,6 +1768,7 @@ stages:
 
  - name: Try to get sync of agent 000 (manager)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/group/is_sync"
      method: GET
      headers:
@@ -1683,6 +1788,7 @@ stages:
 
  - name: Try to get sync of a non existing agent
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/999/group/is_sync"
      method: GET
      headers:
@@ -1702,6 +1808,7 @@ stages:
 
  - name: Try get sync agent by name
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/bad_id/group/is_sync"
      method: GET
      headers:
@@ -1713,6 +1820,7 @@ stages:
 
  - name: Get agent sync
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/group/is_sync"
      method: GET
      headers:
@@ -1735,6 +1843,7 @@ stages:
 
  - name: Try get key agent 000 (manager)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/key"
      method: GET
      headers:
@@ -1754,6 +1863,7 @@ stages:
 
  - name: Try get key not existing agent
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/999/key"
      method: GET
      headers:
@@ -1773,6 +1883,7 @@ stages:
 
  - name: Try get key agent by name
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/bad_id/key"
      method: GET
      headers:
@@ -1784,6 +1895,7 @@ stages:
 
  - name: Get agent key
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/key"
      method: GET
      headers:
@@ -1805,6 +1917,7 @@ stages:
 
  - name: Basic response agents groups
    request: &get_agents_groups
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
      method: GET
      headers:
@@ -1831,6 +1944,7 @@ stages:
 
  - name: Pagination
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        offset: 2
@@ -1848,6 +1962,7 @@ stages:
 
  - name: Try show groups with offset -1
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        offset: -1
@@ -1858,6 +1973,7 @@ stages:
 
  - name: Try show groups with offset not integer value
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        offset: wrong_offset
@@ -1868,6 +1984,7 @@ stages:
 
  - name: Try show groups with offset too large 9999999999999999999
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        offset: 9999999999999999999
@@ -1882,6 +1999,7 @@ stages:
 
  - name: Try show groups with limit 0
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        limit: 0
@@ -1892,6 +2010,7 @@ stages:
 
  - name: Try show groups with limit not integer value
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        limit: wrong_limit
@@ -1902,6 +2021,7 @@ stages:
 
  - name: Try show groups with limit 9999
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        limit: 9999
@@ -1912,6 +2032,7 @@ stages:
 
  - name: Sort
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        sort: -name
@@ -1934,6 +2055,7 @@ stages:
 
  - name: Try to show groups with wrong sort
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        sort: -wrong_sort
@@ -1944,6 +2066,7 @@ stages:
 
  - name: Search
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        search: default
@@ -1960,6 +2083,7 @@ stages:
 
  - name: Try show groups with wrong search
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        search: wrong_search
@@ -1971,6 +2095,7 @@ stages:
 
  - name: Try show agents with wrong hash
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        hash: wrong_hash
@@ -1981,6 +2106,7 @@ stages:
 
  - name: Try to get a list of groups information
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        list_groups: 'group1,group3'
@@ -2019,6 +2145,7 @@ stages:
 
  - name: Filter hash
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        hash: "{hash:s}"
@@ -2035,6 +2162,7 @@ stages:
 
  - name: Try get all agents in one group
    request: &groups_id_request
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group3/agents"
      method: GET
      headers:
@@ -2054,6 +2182,7 @@ stages:
 
  - name: Pagination
    request:
+     verify: False
      <<: *groups_id_request
      params:
        offset: 1
@@ -2071,6 +2200,7 @@ stages:
 
  - name: Try show agents with offset -1
    request:
+     verify: False
      <<: *groups_id_request
      params:
        offset: -1
@@ -2081,6 +2211,7 @@ stages:
 
  - name: Try show agents with offset not integer value
    request:
+     verify: False
      <<: *groups_id_request
      params:
        offset: wrong_offset
@@ -2091,6 +2222,7 @@ stages:
 
  - name: Try show agents with offset too large 9999999999999999999
    request:
+     verify: False
      <<: *groups_id_request
      params:
        offset: 9999999999999999999
@@ -2101,6 +2233,7 @@ stages:
 
  - name: Try show agents with limit 0
    request:
+     verify: False
      <<: *groups_id_request
      params:
        limit: 0
@@ -2111,6 +2244,7 @@ stages:
 
  - name: Try show agents with limit not integer value
    request:
+     verify: False
      <<: *groups_id_request
      params:
        limit: wrong_limit
@@ -2121,6 +2255,7 @@ stages:
 
  - name: Try show agents with limit 9999
    request:
+     verify: False
      <<: *groups_id_request
      params:
        limit: 9999
@@ -2131,6 +2266,7 @@ stages:
 
  - name: Params, bad group name
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_group/agents"
      method: GET
      headers:
@@ -2142,6 +2278,7 @@ stages:
 
  - name: Params, invalid group name (not alphanumeric)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_%_group/agents"
      method: GET
      headers:
@@ -2153,6 +2290,7 @@ stages:
 
  - name: Sort
    request:
+     verify: False
      <<: *groups_id_request
      params:
        sort: -id
@@ -2171,6 +2309,7 @@ stages:
 
  - name: Try show agents with wrong sort
    request:
+     verify: False
      <<: *groups_id_request
      params:
        sort: -wrong_sort
@@ -2181,6 +2320,7 @@ stages:
 
  - name: Search
    request:
+     verify: False
      <<: *groups_id_request
      params:
        search: '008'
@@ -2196,6 +2336,7 @@ stages:
 
  - name: Try show agents with wrong search
    request:
+     verify: False
      <<: *groups_id_request
      params:
        search: wrong_search
@@ -2207,6 +2348,7 @@ stages:
 
  - name: Filter select one field
    request:
+     verify: False
      <<: *groups_id_request
      params:
        select: 'os.platform'
@@ -2233,6 +2375,7 @@ stages:
 
  - name: Filter select multiple fields
    request:
+     verify: False
      <<: *groups_id_request
      params:
        select: 'dateAdd,mergedSum'
@@ -2252,6 +2395,7 @@ stages:
 
  - name: Try show agents with not allowed selector
    request:
+     verify: False
      <<: *groups_id_request
      params:
        select: param_test
@@ -2262,6 +2406,7 @@ stages:
 
  - name: Try show agents with not allowed selector (invalid character)
    request:
+     verify: False
      <<: *groups_id_request
      params:
        select: param_%_test
@@ -2272,6 +2417,7 @@ stages:
 
  - name: Status multiple
    request:
+     verify: False
      <<: *groups_id_request
      params:
        status: active,disconnected
@@ -2290,6 +2436,7 @@ stages:
 
  - name: Try show agents with not allowed status
    request:
+     verify: False
      <<: *groups_id_request
      params:
        status: wrong_status
@@ -2300,6 +2447,7 @@ stages:
 
  - name: Filter agents by query
    request:
+     verify: False
      <<: *groups_id_request
      params:
        q: group=group1;lastKeepAlive<1d
@@ -2316,6 +2464,7 @@ stages:
 
  - name: Try show agents with bad query
    request:
+     verify: False
      <<: *groups_id_request
      params:
        q: group=default;lastKeepAe<1d
@@ -2326,6 +2475,7 @@ stages:
 
  - name: Try show agents with bad query (invalid character)
    request:
+     verify: False
      <<: *groups_id_request
      params:
        q: group=default;lastKeep%<1d
@@ -2368,6 +2518,7 @@ stages:
 
  - name: Filter groups, select
    request:
+     verify: False
      <<: *groups_id_request
      params:
        select: "{field}"
@@ -2386,6 +2537,7 @@ stages:
 
  - name: Filter groups, sort
    request:
+     verify: False
      <<: *groups_id_request
      params:
        sort: "{field}"
@@ -2409,6 +2561,7 @@ stages:
 
  - name: Try get the configuration of a group
    request: &groups_id_config_request
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/default/configuration"
      method: GET
      headers:
@@ -2426,6 +2579,7 @@ stages:
 
  - name: Try get the configuration of a bad group
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_group/configuration"
      method: GET
      headers:
@@ -2439,6 +2593,7 @@ stages:
 
  - name: Try get the configuration of a bad group (not alphanumeric)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_%group/configuration"
      method: GET
      headers:
@@ -2452,6 +2607,7 @@ stages:
 
  - name: Pagination
    request:
+     verify: False
      <<: *groups_id_config_request
      params:
        offset: 0
@@ -2463,6 +2619,7 @@ stages:
 
  - name: Try show agents with offset -1
    request:
+     verify: False
      <<: *groups_id_config_request
      params:
        offset: -1
@@ -2473,6 +2630,7 @@ stages:
 
  - name: Try show agents with offset not integer value
    request:
+     verify: False
      <<: *groups_id_config_request
      params:
        offset: wrong_offset
@@ -2483,6 +2641,7 @@ stages:
 
  - name: Try show agents with offset too large 9999999999999999999
    request:
+     verify: False
      <<: *groups_id_config_request
      params:
        offset: 9999999999999999999
@@ -2495,6 +2654,7 @@ stages:
 
  - name: Try show agents with limit 0
    request:
+     verify: False
      <<: *groups_id_config_request
      params:
        limit: 0
@@ -2505,6 +2665,7 @@ stages:
 
  - name: Try show agents with limit not integer value
    request:
+     verify: False
      <<: *groups_id_config_request
      params:
        limit: wrong_limit
@@ -2515,6 +2676,7 @@ stages:
 
  - name: Try show agents with limit 9999
    request:
+     verify: False
      <<: *groups_id_config_request
      params:
        limit: 9999
@@ -2530,6 +2692,7 @@ stages:
 
  - name: Try get the files of a group
    request: &groups_id_files_request
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/default/files"
      method: GET
      headers:
@@ -2554,6 +2717,7 @@ stages:
 
  - name: Pagination
    request:
+     verify: False
      <<: *groups_id_files_request
      params:
        limit: 1
@@ -2569,6 +2733,7 @@ stages:
 
  - name: Try get the files of a group with offset -1
    request:
+     verify: False
      <<: *groups_id_files_request
      params:
        offset: -1
@@ -2579,6 +2744,7 @@ stages:
 
  - name: Try get the files of a group with offset not integer value
    request:
+     verify: False
      <<: *groups_id_files_request
      params:
        offset: wrong_offset
@@ -2589,6 +2755,7 @@ stages:
 
  - name: Try get the files of a group with offset too large 9999999999999999999
    request:
+     verify: False
      <<: *groups_id_files_request
      params:
        offset: 9999999999999999999
@@ -2601,6 +2768,7 @@ stages:
 
  - name: Try get the files of a group with limit 0
    request:
+     verify: False
      <<: *groups_id_files_request
      params:
        limit: 0
@@ -2611,6 +2779,7 @@ stages:
 
  - name: Try get the files of a group with limit not integer value
    request:
+     verify: False
      <<: *groups_id_files_request
      params:
        limit: wrong_limit
@@ -2621,6 +2790,7 @@ stages:
 
  - name: Try get the files of a group with limit 9999
    request:
+     verify: False
      <<: *groups_id_files_request
      params:
        limit: 9999
@@ -2631,6 +2801,7 @@ stages:
 
  - name: Try get the files of a bad group name
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_group/files"
      method: GET
      headers:
@@ -2644,6 +2815,7 @@ stages:
 
  - name: Try get the files of a bad group name (no alphanumeric)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_%_group/files"
      method: GET
      headers:
@@ -2657,6 +2829,7 @@ stages:
 
  - name: Sort
    request:
+     verify: False
      <<: *groups_id_files_request
      params:
        sort: -hash
@@ -2669,6 +2842,7 @@ stages:
 
  - name: Try get the files of a group with wrong sort
    request:
+     verify: False
      <<: *groups_id_files_request
      params:
        sort: -wrong_sort
@@ -2679,6 +2853,7 @@ stages:
 
  - name: Search
    request:
+     verify: False
      <<: *groups_id_files_request
      params:
        search: agent.conf
@@ -2692,6 +2867,7 @@ stages:
 
  - name: Try get the files of a group with wrong search
    request:
+     verify: False
      <<: *groups_id_files_request
      params:
        search: wrong_search
@@ -2704,6 +2880,7 @@ stages:
 
  - name: Try get the files of a group, filter bad hash
    request:
+     verify: False
      <<: *groups_id_files_request
      params:
        hash: wrong_hash
@@ -2736,6 +2913,7 @@ stages:
 
  - name: Filter hash
    request:
+     verify: False
      <<: *groups_id_files_request
      params:
        hash: "{hash:s}"
@@ -2753,6 +2931,7 @@ stages:
 
  - name: Try get one file of a group
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/default/files/agent.conf/json"
      method: GET
      headers:
@@ -2764,6 +2943,7 @@ stages:
 
  - name: Try get one file of a group, bad group
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_group/files/agent.conf/json"
      method: GET
      headers:
@@ -2775,6 +2955,7 @@ stages:
 
  - name: Try get one file of a group, bad group (not aplhanumeric)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_%_group/files/agent.conf/json"
      method: GET
      headers:
@@ -2791,6 +2972,7 @@ stages:
 
  - name: Try get one file of a group
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/default/files/agent.conf/xml"
      method: GET
      headers:
@@ -2803,6 +2985,7 @@ stages:
 
  - name: Try get one file of a group, bad group
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_group/files/agent.conf/xml"
      method: GET
      headers:
@@ -2814,6 +2997,7 @@ stages:
 
  - name: Try get one file of a group, bad group (not aplhanumeric)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_%_group/files/agent.conf/xml"
      method: GET
      headers:
@@ -2830,6 +3014,7 @@ stages:
 
  - name: Basic response agents name
    request: &get_agents_by_name
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
      method: GET
      headers:
@@ -2849,6 +3034,7 @@ stages:
 
  - name: Error agent name
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents?name=wrong_agent"
      method: GET
      headers:
@@ -2863,6 +3049,7 @@ stages:
 
  - name: Select one field
    request:
+     verify: False
      <<: *get_agents_by_name
      params:
        select: name
@@ -2875,6 +3062,7 @@ stages:
 
  - name: Select three fields
    request:
+     verify: False
      <<: *get_agents_by_name
      params:
        select: name,id,status
@@ -2893,6 +3081,7 @@ stages:
 
  - name: Try show agents with wrong select
    request:
+     verify: False
      <<: *get_agents_by_name
      params:
        select: wrong_select
@@ -2909,6 +3098,7 @@ stages:
 
  - name: Get the agents without group
    request: &no_group_request
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/no_group"
      method: GET
      headers:
@@ -2926,6 +3116,7 @@ stages:
 
  - name: Pagination
    request:
+     verify: False
      <<: *no_group_request
      params:
        offset: 0
@@ -2942,6 +3133,7 @@ stages:
 
  - name: Try show agents with offset -1
    request:
+     verify: False
      <<: *no_group_request
      params:
        offset: -1
@@ -2952,6 +3144,7 @@ stages:
 
  - name: Try show agents with offset not integer value
    request:
+     verify: False
      <<: *no_group_request
      params:
        offset: wrong_offset
@@ -2962,6 +3155,7 @@ stages:
 
  - name: Try show agents with offset too large 9999999999999999999
    request:
+     verify: False
      <<: *no_group_request
      params:
        offset: 9999999999999999999
@@ -2972,6 +3166,7 @@ stages:
 
  - name: Try show agents with limit 0
    request:
+     verify: False
      <<: *no_group_request
      params:
        limit: 0
@@ -2982,6 +3177,7 @@ stages:
 
  - name: Try show agents with limit not integer value
    request:
+     verify: False
      <<: *no_group_request
      params:
        limit: wrong_limit
@@ -2992,6 +3188,7 @@ stages:
 
  - name: Try show agents with limit 9999
    request:
+     verify: False
      <<: *no_group_request
      params:
        limit: 9999
@@ -3002,6 +3199,7 @@ stages:
 
  - name: Sort
    request:
+     verify: False
      <<: *no_group_request
      params:
        sort: -id
@@ -3018,6 +3216,7 @@ stages:
 
  - name: Try show agents with wrong sort
    request:
+     verify: False
      <<: *no_group_request
      params:
        sort: -wrong_sort
@@ -3028,6 +3227,7 @@ stages:
 
  - name: Search
    request:
+     verify: False
      <<: *no_group_request
      params:
        search: wazuh-agent11
@@ -3043,6 +3243,7 @@ stages:
 
  - name: Try show agents with empty search
    request:
+     verify: False
      <<: *no_group_request
      params:
        search: wrong_search
@@ -3054,6 +3255,7 @@ stages:
 
  - name: Filter agents by query
    request:
+     verify: False
      <<: *no_group_request
      params:
        q: registerIP=any
@@ -3064,6 +3266,7 @@ stages:
 
  - name: Try show agents with bad query
    request:
+     verify: False
      <<: *no_group_request
      params:
        q: group=default;lastKeepAe<1d
@@ -3074,6 +3277,7 @@ stages:
 
  - name: Try show agents with bad query (invalid character)
    request:
+     verify: False
      <<: *no_group_request
      params:
        q: group=default;lastKeep%<1d
@@ -3101,6 +3305,7 @@ stages:
 
  - name: Get the agents without group, sort
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/no_group"
      method: GET
      headers:
@@ -3114,6 +3319,7 @@ stages:
 
  - name: Select
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/no_group"
      method: GET
      headers:
@@ -3132,6 +3338,7 @@ stages:
 
  - name: Get the outdated agents
    request: &agents_outdated_request
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/outdated"
      method: GET
      headers:
@@ -3152,6 +3359,7 @@ stages:
 
  - name: Pagination
    request:
+     verify: False
      <<: *agents_outdated_request
      params:
        offset: 1
@@ -3169,6 +3377,7 @@ stages:
 
  - name: Try show agents with offset -1
    request:
+     verify: False
      <<: *agents_outdated_request
      params:
        offset: -1
@@ -3179,6 +3388,7 @@ stages:
 
  - name: Try show agents with offset not integer value
    request:
+     verify: False
      <<: *agents_outdated_request
      params:
        offset: wrong_offset
@@ -3189,6 +3399,7 @@ stages:
 
  - name: Try show agents with offset too large 9999999999999999999
    request:
+     verify: False
      <<: *agents_outdated_request
      params:
        offset: 9999999999999999999
@@ -3199,6 +3410,7 @@ stages:
 
  - name: Try show agents with limit 0
    request:
+     verify: False
      <<: *agents_outdated_request
      params:
        limit: 0
@@ -3209,6 +3421,7 @@ stages:
 
  - name: Try show agents with limit not integer value
    request:
+     verify: False
      <<: *agents_outdated_request
      params:
        limit: wrong_limit
@@ -3219,6 +3432,7 @@ stages:
 
  - name: Try show agents with limit 9999
    request:
+     verify: False
      <<: *agents_outdated_request
      params:
        limit: 9999
@@ -3229,6 +3443,7 @@ stages:
 
  - name: Try show agents with wrong sort
    request:
+     verify: False
      <<: *agents_outdated_request
      params:
        sort: -wrong_sort
@@ -3239,6 +3454,7 @@ stages:
 
  - name: Filter agents by query
    request:
+     verify: False
      <<: *agents_outdated_request
      params:
        q: group=default;lastKeepAlive>1d
@@ -3251,6 +3467,7 @@ stages:
 
  - name: Try show agents with bad query
    request:
+     verify: False
      <<: *agents_outdated_request
      params:
        q: group=default;lastKeepAe<1d
@@ -3261,6 +3478,7 @@ stages:
 
  - name: Try show agents with bad query (invalid character)
    request:
+     verify: False
      <<: *agents_outdated_request
      params:
        q: group=default;lastKeep%<1d
@@ -3276,6 +3494,7 @@ stages:
 
  - name: Returns all the different combinations that agents have for the selected fields. It also indicates the total number of agents that have each combination.
    request: &distinct_request
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/stats/distinct"
      method: GET
      headers:
@@ -3287,6 +3506,7 @@ stages:
 
  - name: Get the different combinations for os.platform
    request:
+     verify: False
      <<: *distinct_request
      params:
        limit: 2
@@ -3306,6 +3526,7 @@ stages:
 
  - name: Fields error
    request:
+     verify: False
      <<: *distinct_request
      params:
        limit: 2
@@ -3317,6 +3538,7 @@ stages:
 
  - name: Get the different combinations for os.platform, search
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/stats/distinct"
      method: GET
      headers:
@@ -3338,6 +3560,7 @@ stages:
 
  - name: Invalid select
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/stats/distinct"
      method: GET
      headers:
@@ -3353,6 +3576,7 @@ stages:
 
  - name: Pagination
    request:
+     verify: False
      <<: *distinct_request
      params:
        offset: 0
@@ -3369,6 +3593,7 @@ stages:
 
  - name: Try show agents with offset -1
    request:
+     verify: False
      <<: *distinct_request
      params:
        offset: -1
@@ -3379,6 +3604,7 @@ stages:
 
  - name: Try show agents with offset not integer value
    request:
+     verify: False
      <<: *distinct_request
      params:
        offset: wrong_offset
@@ -3389,6 +3615,7 @@ stages:
 
  - name: Try show agents with offset too large 9999999999999999999
    request:
+     verify: False
      <<: *distinct_request
      params:
        offset: 9999999999999999999
@@ -3399,6 +3626,7 @@ stages:
 
  - name: Try show agents with limit 0
    request:
+     verify: False
      <<: *distinct_request
      params:
        limit: 0
@@ -3409,6 +3637,7 @@ stages:
 
  - name: Try show agents with limit not integer value
    request:
+     verify: False
      <<: *distinct_request
      params:
        limit: wrong_limit
@@ -3419,6 +3648,7 @@ stages:
 
  - name: Try show agents with limit 9999
    request:
+     verify: False
      <<: *distinct_request
      params:
        limit: 9999
@@ -3429,6 +3659,7 @@ stages:
 
  - name: Sort
    request:
+     verify: False
      <<: *distinct_request
      params:
        sort: -id
@@ -3439,6 +3670,7 @@ stages:
 
  - name: Try show agents with wrong sort
    request:
+     verify: False
      <<: *distinct_request
      params:
        sort: -wrong_sort
@@ -3449,6 +3681,7 @@ stages:
 
  - name: Search
    request:
+     verify: False
      <<: *distinct_request
      params:
        search: unknown
@@ -3466,6 +3699,7 @@ stages:
 
  - name: Try show agents with wrong search
    request:
+     verify: False
      <<: *distinct_request
      params:
        search: wrong_search
@@ -3477,6 +3711,7 @@ stages:
 
  - name: Try show agents with bad query
    request:
+     verify: False
      <<: *distinct_request
      params:
        q: group=default;lastKeepAe<1d
@@ -3487,6 +3722,7 @@ stages:
 
  - name: Try show agents with bad query (invalid character)
    request:
+     verify: False
      <<: *distinct_request
      params:
        q: group=default;lastKeep%<1d
@@ -3526,6 +3762,7 @@ stages:
 
  - name: Get the different combinations for all fields
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/stats/distinct"
      method: GET
      headers:
@@ -3548,6 +3785,7 @@ stages:
 
  - name: Get the agents status summary
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/summary/status"
      method: GET
      headers:
@@ -3569,6 +3807,7 @@ stages:
 
  - name: Get the summary/os of all agents
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/summary/os"
      method: GET
      headers:
@@ -3588,6 +3827,7 @@ stages:
 
  - name: Try get upgrade result agent 000 (manager)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/upgrade_result?wait_for_complete=true"
      method: GET
      headers:
@@ -3599,6 +3839,7 @@ stages:
 
  - name: Try get upgrade result not existing agent
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/999/upgrade_result?wait_for_complete=true"
      method: GET
      headers:
@@ -3610,6 +3851,7 @@ stages:
 
  - name: Try get upgrade result agent by name
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/bad_id/upgrade_result?wait_for_complete=true"
      method: GET
      headers:
@@ -3621,6 +3863,7 @@ stages:
 
  - name: Get agent upgrade result not upgrade
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/upgrade_result?wait_for_complete=true"
      method: GET
      headers:
@@ -3637,6 +3880,7 @@ stages:
 
  - name: Upgrade an agent
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/upgrade?wait_for_complete=true"
      method: PUT
      headers:
@@ -3651,6 +3895,7 @@ stages:
 
  - name: Get agent upgrade result
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/upgrade_result?wait_for_complete=true"
      method: GET
      headers:
