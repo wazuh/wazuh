@@ -1,8 +1,6 @@
 from aiohttp import web
 from aiohttp.web_response import Response
-from werkzeug.exceptions import Forbidden
 
-from api.api_exception import APIException
 from api import configuration
 
 
@@ -18,7 +16,7 @@ async def set_user_name(request, handler):
 async def check_experimental(request, handler):
     if 'experimental' in request.path:
         if not configuration.api_conf['experimental_features']:
-            raise Forbidden(description=str(APIException(2008)))
+            raise web.HTTPBadRequest()
 
     response = await handler(request)
     return response

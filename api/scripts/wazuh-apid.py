@@ -27,7 +27,6 @@ from api.middlewares import set_user_name, check_experimental
 from api.util import to_relative_path
 from wazuh import pyDaemonModule, common
 from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licence__
-from wazuh.core.cluster.utils import read_config
 
 
 def set_logging(log_path='logs/api.log', foreground_mode=False, debug_mode='info'):
@@ -69,20 +68,16 @@ def start(foreground, root, config_file):
         print(f"Starting API in background")
         pyDaemonModule.pyDaemon()
 
-    cluster_config = read_config()
-    configuration.api_conf = configuration.read_api_config(config_file=args.config_file)
-    cache_conf = configuration.api_conf['cache']
-    cors = configuration.api_conf['cors']
-    log_path = configuration.api_conf['logs']['path']
-
     # Drop privileges to ossec
     if not root:
         if configuration.api_conf['drop_privileges']:
             os.setgid(common.ossec_gid())
             os.setuid(common.ossec_uid())
 
-    api_config = configuration.read_api_config(config_file=config_file)
-    cors = api_config['cors']
+    configuration.api_conf.update(configuration.read_api_config(config_file=args.config_file))
+    cors = configuration.api_conf['cors']
+    cache_conf = configuration.api_conf['cache']
+    log_path = configuration.api_conf['logs']['path']
 
     set_logging(log_path=log_path, debug_mode=configuration.api_conf['logs']['level'], foreground_mode=args.foreground)
 
@@ -149,8 +144,6 @@ def start(foreground, root, config_file):
                                              f'(WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)})')
     else:
         ssl_context = None
-
-    pyDaemonModule.create_pid('wazuh-apid', os.getpid())
 
     app.run(port=configuration.api_conf['port'],
             host=configuration.api_conf['host'],

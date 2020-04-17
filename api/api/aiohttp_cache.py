@@ -1,3 +1,9 @@
+# Copyright (c) Daniel Garcia (cr0hn)
+#
+# Project home: https://github.com/cr0hn/aiohttp-cache
+# Project contact: cr0hn[at]cr0hn.com
+# Check the full license here: https://github.com/cr0hn/aiohttp-cache/blob/master/LICENSE
+
 import logging
 from typing import Tuple
 
