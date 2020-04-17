@@ -1183,7 +1183,7 @@ class Agent:
         self.load_info_from_db()
 
         # Check if agent is active.
-        if self.status != 'Active':
+        if self.status.lower() != 'active':
             raise WazuhError(1720)
 
         # Check if remote upgrade is available for the selected agent version
@@ -1294,8 +1294,8 @@ class Agent:
             chunk_size = common.wpk_chunk_size
 
         # Check WPK file
-        if not path.isfile(file_path):
-            raise WazuhError(1006)
+        if not file_path or not path.isfile(file_path):
+            raise WazuhError(1006, extra_message=f"File path attempted: {file_path}")
 
         wpk_file = path.basename(file_path)
         wpk_file_size = stat(file_path).st_size
@@ -1411,7 +1411,7 @@ class Agent:
         self.load_info_from_db()
 
         # Check if agent is active.
-        if self.status != 'Active':
+        if self.status.lower() != 'active':
             raise WazuhException(1720)
 
         # Send file to agent
