@@ -238,11 +238,11 @@ def test_upload_list_ko(mock_chmod, mock_random, mock_time, test_manager):
 
     m = mock_open(read_data=ossec_log_file)
     with patch('builtins.open', m):
-        with pytest.raises(WazuhException, match=f'.* 1802 .*'):
+        with pytest.raises(WazuhException, match=f'.* 1800 .*'):
             upload_list(ossec_log_file, output_file)
 
         with patch('wazuh.core.manager.validate_cdb_list', return_value=False):
-            with pytest.raises(WazuhException, match=f'.* 1802 .*'):
+            with pytest.raises(WazuhException, match=f'.* 1800 .*'):
                 upload_list(ossec_log_file, output_file)
 
         with patch('wazuh.core.manager.validate_cdb_list', return_value=True):

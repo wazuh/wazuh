@@ -3,6 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import os
+import pathlib
 import sys
 from functools import wraps
 from datetime import datetime
@@ -239,30 +240,28 @@ def test_get_file(test_manager, input_file):
     assert result.render()["contents"] == xml_file
 
 
+@patch('wazuh.manager.common.ossec_path', new=os.path.join(test_data_path, 'manager'))
 def test_get_file_ko():
     """Tests get_file function works"""
 
     # Bad format CDB list
-    with patch('wazuh.manager.validate_cdb_list', return_value=False):
-        with patch('wazuh.manager.re.match', return_value=True):
-            with pytest.raises(WazuhError, match=f'.* 1800 .*'):
-                get_file('input_rules_file', True)
+    with pytest.raises(WazuhError, match=f'.* 1800 .*'):
+        get_file(['etc/lists/bad_format_file'], True)
 
     # Xml syntax error
     with patch('wazuh.manager.validate_cdb_list', return_value=True):
-        with patch('wazuh.manager.validate_xml', return_value=False):
-            with pytest.raises(WazuhError, match=f'.* 1113 .*'):
-                get_file('input_rules_file', True)
+        with pytest.raises(WazuhError, match=f'.* 1113 .*'):
+            get_file(['etc/lists/bad_format_file'], True)
 
     # Path does not exist error
-    with pytest.raises(WazuhError, match=f'.* 1006 .*'):
-        get_file('input_rules_file')
+    with pytest.raises(WazuhError, match=f'.* 1906 .*'):
+        get_file(['does_not_exist'])
 
     # Open function raise IOError
     with patch('wazuh.manager.exists', return_value=True):
         with patch('wazuh.manager.open', side_effect=IOError):
             with pytest.raises(WazuhInternalError, match=f'.* 1005 .*'):
-                get_file('input_rules_file')
+                get_file(['etc/lists/bad_format_file'])
 
 
 def test_delete_file():
