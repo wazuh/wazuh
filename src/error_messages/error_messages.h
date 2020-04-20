@@ -373,7 +373,7 @@
 #define VU_AGENT_NOT_INITIALIZED    "(5580): The agent structure is not initialized."
 #define VU_DB_NOT_INITIALIZED       "(5581): The DB is not initialized."
 #define VU_OSINFOLNX_ERROR          "(5582): Couldn't get the OS information of the agent %s."
-#define VU_INSERT_PACKAGE_ERROR     "(5590): Agent (%s): Couldn't insert vulnerable package '%s' into CVE '%s'."
+#define VU_INSERT_PACKAGE_ERROR     "(5590): Agent (%s): Couldn't insert vulnerable package '%s' into CVE '%s'"
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"
