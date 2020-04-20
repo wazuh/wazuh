@@ -75,10 +75,20 @@ typedef struct _enrollment_ctx {
 w_enrollment_target *w_enrollment_target_init();
 
 /**
+ * Frees enrollment_target structure
+ * */
+void w_enrollment_target_destroy(w_enrollment_target *target);
+
+/**
  * Default initialization of w_enrollment_cert
  * structure
  * */
 w_enrollment_cert *w_enrollment_cert_init();
+
+/**
+ * Frees enrollment_cert structure
+ * */
+void w_enrollment_cert_destroy(w_enrollment_cert *cert);
 
 /**
  * Initializes parameters of an w_enrollment_ctx structure based

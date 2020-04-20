@@ -316,9 +316,13 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
     for (j = 0; node[j]; j++) {
         if (!node[j]->element) {
             merror(XML_ELEMNULL);
+            w_enrollment_target_destroy(target_cfg);
+            w_enrollment_cert_destroy(cert_cfg);
             return (OS_INVALID);
         } else if (!node[j]->content) {
             merror(XML_VALUENULL, node[j]->element);
+            w_enrollment_target_destroy(target_cfg);
+            w_enrollment_cert_destroy(cert_cfg);
             return (OS_INVALID);
         } else if (!strcmp(node[j]->element, xml_enabled)) {
             if (!strcmp(node[j]->content, "yes"))
@@ -327,6 +331,8 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
                 enabled = 0;
             } else {
                 merror("Invalid content for tag '%s'.", node[j]->element);
+                w_enrollment_target_destroy(target_cfg);
+                w_enrollment_cert_destroy(cert_cfg);
                 return OS_INVALID;
             }
         }
@@ -338,6 +344,8 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
                 remote_ip = f_ip;
             } else {
                 merror(AG_INV_HOST, node[j]->content);
+                w_enrollment_target_destroy(target_cfg);
+                w_enrollment_cert_destroy(cert_cfg);
                 return (OS_INVALID);
             }
             os_free(target_cfg->manager_name);
@@ -345,10 +353,14 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
         } else if (strcmp(node[j]->element, xml_port) == 0) {
             if (!OS_StrIsNum(node[j]->content)) {
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
+                w_enrollment_target_destroy(target_cfg);
+                w_enrollment_cert_destroy(cert_cfg);
                 return (OS_INVALID);
             }
             if (port = atoi(node[j]->content), port <= 0 || port > 65535) {
                 merror(PORT_ERROR, port);
+                w_enrollment_target_destroy(target_cfg);
+                w_enrollment_cert_destroy(cert_cfg);
                 return (OS_INVALID);
             }
             target_cfg->port = port;
@@ -364,6 +376,8 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
                 os_strdup(node[j]->content, target_cfg->sender_ip);
             } else {
                 merror(AG_INV_HOST, node[j]->content);
+                w_enrollment_target_destroy(target_cfg);
+                w_enrollment_cert_destroy(cert_cfg);
                 return (OS_INVALID);
             }
         } else if (strcmp(node[j]->element, xml_ssl_cipher) == 0) {
@@ -388,10 +402,14 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
                 cert_cfg->auto_method = 0;
             } else {
                 merror("Invalid content for tag '%s'.", node[j]->element);
+                w_enrollment_target_destroy(target_cfg);
+                w_enrollment_cert_destroy(cert_cfg);
                 return OS_INVALID;
             }
         } else {
             merror(XML_INVELEM, node[j]->element);
+            w_enrollment_target_destroy(target_cfg);
+            w_enrollment_cert_destroy(cert_cfg);
             return (OS_INVALID);
         }
     }

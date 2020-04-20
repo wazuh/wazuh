@@ -59,6 +59,14 @@ w_enrollment_target *w_enrollment_target_init() {
     return target_cfg;
 }
 
+void w_enrollment_target_destroy(w_enrollment_target *target_cfg) {
+    os_free(target_cfg->manager_name);
+    os_free(target_cfg->agent_name);
+    os_free(target_cfg->centralized_group);
+    os_free(target_cfg->sender_ip);
+    os_free(target_cfg);
+}
+
 w_enrollment_cert *w_enrollment_cert_init(){
     w_enrollment_cert *cert_cfg;
     os_malloc(sizeof(w_enrollment_cert), cert_cfg);
@@ -69,6 +77,15 @@ w_enrollment_cert *w_enrollment_cert_init(){
     cert_cfg->ca_cert = NULL;
     cert_cfg->auto_method = 0;
     return cert_cfg;
+}
+
+void w_enrollment_cert_destroy(w_enrollment_cert *cert_cfg) {
+    os_free(cert_cfg->ciphers);
+    os_free(cert_cfg->authpass);
+    os_free(cert_cfg->agent_cert);
+    os_free(cert_cfg->agent_key);
+    os_free(cert_cfg->ca_cert);
+    os_free(cert_cfg);
 }
 
 w_enrollment_ctx * w_enrollment_init(const w_enrollment_target *target, const w_enrollment_cert *cert) {
@@ -243,7 +260,7 @@ static int w_enrollment_send_message(w_enrollment_ctx *cfg) {
 
     os_free(buf);
     if(lhostname != cfg->target_cfg->agent_name)
-            os_free(lhostname);
+        os_free(lhostname);
     return 0;
 }
 
