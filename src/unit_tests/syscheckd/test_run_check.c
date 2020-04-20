@@ -199,6 +199,10 @@ int __wrap_realtime_start(void) {
 }
 #endif
 
+int __wrap_os_random() {
+    return 12345;
+}
+
 /* Setup */
 
 static int setup_group(void ** state) {
