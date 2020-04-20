@@ -86,17 +86,17 @@ int auth_connect();
 int auth_close(int sock);
 
 //JJP: Can migrate to w_err_t
-// Wrapper function to send a local agent add request.
+// Send a local agent add request.
 int w_request_agent_add_local(int sock, char *id, const char *name, const char *ip, const char * groups, const char *key, int force, int json_format, const char *agent_id, int exit_on_error);
 
-//Wrapper function to send a clustered agent add request.
-int w_request_agent_add_cluster(char *id, const char *name, const char *ip, const char * groups, const char *key, int force, int json_format, const char *agent_id, int exit_on_error);
+// Send a clustered agent add request.
+int w_request_agent_add_clustered(char *id, const char *name, const char *ip, const char * groups, const char *key, int force, int json_format, const char *agent_id);
 
-// Wrapper function to send a local agent remove request.
-int w_request_agent_remove_local(int sock, const char *agent_id, int json_format, int exit_on_error);
+// JJP: TODO
+//int w_request_agent_remove_local(int sock, const char *agent_id, int json_format, int exit_on_error);
 
-//Wrapper function to send a clustered agent remove request.
-int w_request_agent_remove_cluster(const char *agent_id, int json_format, int exit_on_error);
+// Send a clustered agent remove request.
+int w_request_agent_remove_clustered(int* error, const char* agent_id, int purge, int json_format);
 
 // Get the agent id
 char * get_agent_id_from_name(const char *agent_name);

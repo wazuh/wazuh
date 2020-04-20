@@ -20,15 +20,23 @@ static struct {
     unsigned rootcheck:1;
 } os_restart;
 
-// Sends a request to add new agent. 
-// The request can be local or thru the cluster.
-// Returns 0 on success or -1 on error.
-int w_request_agent_add(bool clustered, int sock, char *id, const char *name, const char *ip, const char * groups, const char *key, int force, int json_format,const char *agent_id,int exit_on_error);
+//Sends message thru the cluster
+int w_send_clustered_message(char* command, char* payload, char* response);
 
-// Sends a request to remove an agent. 
-// The request can be local or thru the cluster.
-// Returns 0 on success or -1 on error.
-int w_request_agent_remove(bool clustered, int sock, const char *agent_id, int json_format, int exit_on_error);
+//Alloc and create send_sync command payload
+cJSON* w_create_send_sync_payload(const char *daemon_name, cJSON *message);
+
+//Alloc and create an agent addition command payload
+cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char * groups, const char *key, int force, const char *id);
+
+//Alloc and create an agent removal command payload
+cJSON* w_create_agent_remove_payload(const char *id, int purge);
+
+//Parse an agent addition response
+int w_parse_agent_add_response(const char* buffer, char* id, int json_format, int exit_on_error);
+
+//Parse an agent removal response
+int w_parse_agent_remove_response(const char* buffer, int* rsp_error, int json_format, int exit_on_error);
 
 /* Check if syscheck is to be executed/restarted
  * Returns 1 on success or 0 on failure (shouldn't be executed now)
@@ -590,33 +598,72 @@ int auth_close(int sock) {
     return (sock >= 0) ? close(sock) : 0;
 }
 
-// Wrapper function to send a local agent add request.
-int w_request_agent_add_local(int sock, char *id, const char *name, const char *ip, const char * groups, const char *key, int force, int json_format,const char *agent_id,int exit_on_error){
-    return w_request_agent_add(FALSE, sock, id, name, ip, groups, key, force, json_format, agent_id, exit_on_error);
-}
-
-//JJP: Can avoid json_format??
-//Wrapper function to send a clustered agent add request.
-int w_request_agent_add_cluster(char *id, const char *name, const char *ip, const char * groups, const char *key, int force, int json_format,const char *agent_id,int exit_on_error) {
-    return w_request_agent_add(TRUE, 0, id, name, ip, groups, key, force, json_format, agent_id, exit_on_error);
-}
-
-//JJP: Can avoid agent_id
-// Add agent. Returns 0 on success or -1 on error.
-int w_request_agent_add(bool clustered, int sock, char *id, const char *name, const char *ip,  const char * groups, const char *key, int force, int json_format,const char *agent_id,int exit_on_error) {
-    char buffer[OS_MAXSTR + 1];
-    char * output;
+//JJP: Improve: alloc response inside here. To avoid possible size errors. 
+//JJP: Otherwise: doxygen clear comments
+int w_send_clustered_message(char* command, char* payload, char* response) {
+    char sockname[PATH_MAX + 1] = {0};
+    int sock = -1;
     int result = 0;
-    ssize_t length;
-    cJSON * response;
-    cJSON * error;
-    cJSON * message;
-    cJSON * data;
-    cJSON * data_id;
+    int response_length = 0;    
+    
+    if (isChroot()) {
+        strcpy(sockname, CLUSTER_SOCK);
+    } else {
+        strcpy(sockname, DEFAULTDIR CLUSTER_SOCK);
+    }
+   
+    //JJP sock == 0 is valid???
+    if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock >= 0) {        
+        if (OS_SendSecureTCPCluster(sock, command, payload, strlen(payload)) >= 0) {
+            if(response_length = OS_RecvSecureClusterTCP(sock, response, OS_MAXSTR), response_length <= 0) {
+                switch (response_length) {
+                case -1:
+                    merror("At wcom_main(): OS_RecvSecureClusterTCP(): %s", strerror(errno));  
+                    break;                 
+
+                case 0:
+                    mdebug1("Empty message from local client.");
+                    break;
+                    
+
+                case OS_MAXLEN:
+                    merror("Received message > %i", OS_MAXSTR);   
+                    break;                 
+                }
+                result = -1;
+            }            
+        }
+        else{                     
+            merror("OS_SendSecureTCPCluster(): %s", strerror(errno));            
+            result = -2;  
+        }
+        close(sock);
+    }
+    else { 
+        merror("At w_send_clustered_message(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
+        result = -2;            
+    }    
+
+    return result;
+}
+
+cJSON* w_create_send_sync_payload(const char *daemon_name, cJSON *message) {
     cJSON * request = cJSON_CreateObject();
     cJSON * arguments = cJSON_CreateObject();
+    
+    cJSON_AddItemToObject(request, "arguments", arguments);
+    cJSON_AddStringToObject(request, "function", "send_sync");
 
-    //Create payload
+    cJSON_AddStringToObject(arguments, "daemon_name", daemon_name);
+    cJSON_AddItemToObject(arguments, "message", message);
+    
+    return request;
+}
+
+cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char * groups, const char *key, int force, const char *id) {    
+    cJSON* request = cJSON_CreateObject();
+    cJSON* arguments = cJSON_CreateObject();
+    
     cJSON_AddItemToObject(request, "arguments", arguments);
     cJSON_AddStringToObject(request, "function", "add");
     cJSON_AddStringToObject(arguments, "name", name);
@@ -630,85 +677,39 @@ int w_request_agent_add(bool clustered, int sock, char *id, const char *name, co
         cJSON_AddStringToObject(arguments, "key", key);
     }
 
-    if(agent_id) {
-        cJSON_AddStringToObject(arguments, "id", agent_id);
+    if(id) {
+        cJSON_AddStringToObject(arguments, "id", id);
     }
 
     if (force >= 0) {
         cJSON_AddNumberToObject(arguments, "force", force);
     }
 
-    output = cJSON_PrintUnformatted(request);
+    return request;
+}
 
-    //Communicate    
-    if(clustered) {
-        char sockname[PATH_MAX + 1];
-        if (isChroot()) {
-            strcpy(sockname, CLUSTER_SOCK);
-        } else {
-            strcpy(sockname, DEFAULTDIR CLUSTER_SOCK);
-        }
-        //JJP sock == 0 is valid???
-        if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock >= 0) {
-            //JJP Change with the defined message
-            if (OS_SendSecureTCPCluster(sock, "message", output, strlen(output)) >= 0) {                             
-                //JJP: Fill with Receive
-                //length = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR), length < 0); 
-                //buffer and length must be set here 
-                //if (error) result -1  
-            }
-            else{
-                if(exit_on_error){
-                    merror_exit("OS_SendSecureTCPCluster(): %s", strerror(errno));
-                }
-                close(sock);  
-                result = -2;  
-            }
-        }
-        else{ 
-            if(exit_on_error){
-                switch (errno) {
-                case ECONNREFUSED:
-                    merror_exit("At getClusterConfig(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
-                    break;
+cJSON* w_create_agent_remove_payload(const char *id, int purge) {    
+    cJSON* request = cJSON_CreateObject();
+    cJSON* arguments = cJSON_CreateObject();
+    
+    cJSON_AddItemToObject(request, "arguments", arguments);
+    cJSON_AddStringToObject(request, "function", "remove");    
+    cJSON_AddStringToObject(arguments, "id", id);
+    if (purge >= 0) {
+        cJSON_AddNumberToObject(arguments, "purge", purge);
+    }
+   
+    return request;
+}
 
-                default:
-                    merror_exit("At getClusterConfig(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
-                }                   
-            }
-            result = -2;            
-        }
-    }
-    else {
-        if (OS_SendSecureTCP(sock, strlen(output), output) >= 0) {
-            if (length = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR), length < 0) {
-                if(exit_on_error){
-                    merror_exit("OS_RecvSecureTCP(): %s", strerror(errno));
-                }
-                result = -1;
-            } else if (length == 0) {
-                if(exit_on_error){
-                    merror_exit("Empty message from local server.");
-                }
-                result = -1;
-            }            
-        }
-        else {
-            if(exit_on_error){
-                merror_exit("OS_SendSecureTCP(): %s", strerror(errno));
-            }            
-            result = -2;
-        }
-    }
-    cJSON_Delete(request);
-    free(output);
-    buffer[length] = '\0';
-    
-    if (result < 0){
-        return result;
-    }     
-    
-    // Decode response
+int w_parse_agent_add_response(const char* buffer, char* id, int json_format, int exit_on_error) { 
+    cJSON* response;
+    int result;
+    cJSON * error;
+    cJSON * message;
+    cJSON * data;
+    cJSON * data_id;
+
     const char *jsonErrPtr;
     if (response = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), !response) {
         if(exit_on_error){
@@ -719,6 +720,7 @@ int w_request_agent_add(bool clustered, int sock, char *id, const char *name, co
     }
 
     // Detect error condition
+
     if (error = cJSON_GetObjectItem(response, "error"), !error) {
         if(exit_on_error){
             merror_exit("No such status from response.");
@@ -759,113 +761,17 @@ int w_request_agent_add(bool clustered, int sock, char *id, const char *name, co
     }
 
     cJSON_Delete(response);
-    
+
     return result;
 }
 
-// Wrapper function to send a local agent remove request.
-int w_request_agent_remove_local(int sock, const char *agent_id, int json_format, int exit_on_error){
-    return w_request_agent_remove(FALSE, sock, agent_id, json_format, exit_on_error);
-}
-
-//Wrapper function to send a clustered agent remove request.
-int w_request_agent_remove_cluster(const char *agent_id, int json_format, int exit_on_error){
-    return w_request_agent_remove(TRUE, 0, agent_id, json_format, exit_on_error);
-}
-
-//JJP: IMPORTANT: Split add and remove on CreateAddPayload/CreateRemovePayload -> Send request -> ParseResponse 
-int w_request_agent_remove(bool clustered, int sock, const char *agent_id, int json_format, int exit_on_error){
-    char buffer[OS_MAXSTR + 1];
-    char * output;
-    int result = 0;
-    ssize_t length;
-    cJSON * response;
+int w_parse_agent_remove_response(const char* buffer, int* rsp_error, int json_format, int exit_on_error) { 
+    cJSON* response;
+    int result;
     cJSON * error;
     cJSON * message;
     cJSON * data;
-    cJSON * data_id;
-    cJSON * request = cJSON_CreateObject();
-    cJSON * arguments = cJSON_CreateObject();
 
-    //Create payload
-    cJSON_AddItemToObject(request, "arguments", arguments);
-    cJSON_AddStringToObject(request, "function", "remove");    
-
-    if(agent_id) {
-        cJSON_AddStringToObject(arguments, "id", agent_id);
-    }
-
-    output = cJSON_PrintUnformatted(request);
-
-    //Communicate    
-    if(clustered) {
-        char sockname[PATH_MAX + 1];
-        if (isChroot()) {
-            strcpy(sockname, CLUSTER_SOCK);
-        } else {
-            strcpy(sockname, DEFAULTDIR CLUSTER_SOCK);
-        }
-        //JJP sock == 0 is valid???
-        if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock >= 0) {
-            //JJP Change with the defined message
-            if (OS_SendSecureTCPCluster(sock, "message", output, strlen(output)) >= 0) {                             
-                //JJP: Fill with Receive
-                //length = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR), length < 0); 
-                //buffer and length must be set here 
-                //if (error) result -1  
-            }
-            else{
-                if(exit_on_error){
-                    merror_exit("OS_SendSecureTCPCluster(): %s", strerror(errno));
-                }
-                close(sock);  
-                result = -2;  
-            }
-        }
-        else{ 
-            if(exit_on_error){
-                switch (errno) {
-                case ECONNREFUSED:
-                    merror_exit("At getClusterConfig(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
-                    break;
-
-                default:
-                    merror_exit("At getClusterConfig(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
-                }                   
-            }
-            result = -2;            
-        }
-    }
-    else {
-        if (OS_SendSecureTCP(sock, strlen(output), output) >= 0) {
-            if (length = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR), length < 0) {
-                if(exit_on_error){
-                    merror_exit("OS_RecvSecureTCP(): %s", strerror(errno));
-                }
-                result = -1;
-            } else if (length == 0) {
-                if(exit_on_error){
-                    merror_exit("Empty message from local server.");
-                }
-                result = -1;
-            }            
-        }
-        else {
-            if(exit_on_error){
-                merror_exit("OS_SendSecureTCP(): %s", strerror(errno));
-            }            
-            result = -2;
-        }
-    }
-    cJSON_Delete(request);
-    free(output);
-    buffer[length] = '\0';
-    
-    if (result < 0){
-        return result;
-    }     
-    
-    // Decode response
     const char *jsonErrPtr;
     if (response = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), !response) {
         if(exit_on_error){
@@ -901,22 +807,90 @@ int w_request_agent_remove(bool clustered, int sock, const char *agent_id, int j
             return result;
         }
 
-        if (data_id = cJSON_GetObjectItem(data, "id"), !data_id) {
-            if(exit_on_error){
-                merror_exit("No id received.");
-            }
-            cJSON_Delete(response);
-            result = -1;
-            return result;
-        }
-
-        //strncpy(id, data_id->valuestring, FILE_SIZE);
-        //id[FILE_SIZE] = '\0';
+        *rsp_error = error->valueint;
         result = 0;
     }
 
     cJSON_Delete(response);
+
+    return result;
+}
+
+//Send a local agent add request.
+int w_request_agent_add_local(int sock, char *id, const char *name, const char *ip, const char *groups, const char *key, int force, int json_format, const char *agent_id, int exit_on_error){
+    int result; 
+
+    cJSON* payload = w_create_agent_add_payload(name, ip, groups, key, force, agent_id);  
+    char* output = cJSON_PrintUnformatted(payload);
+    cJSON_Delete(payload); 
+
+    if (OS_SendSecureTCP(sock, strlen(output), output) < 0) {
+        if(exit_on_error){
+            merror_exit("OS_SendSecureTCP(): %s", strerror(errno));
+        }        
+        free(output);
+        result = -2;
+        return result;
+    }    
+    free(output);
+
+    char response[OS_MAXSTR + 1];
+    ssize_t length;
+    if (length = OS_RecvSecureTCP(sock, response, OS_MAXSTR), length < 0) {
+        if(exit_on_error){
+            merror_exit("OS_RecvSecureTCP(): %s", strerror(errno));
+        }
+        result = -1;
+        return result;
+    } else if (length == 0) {
+        if(exit_on_error){
+            merror_exit("Empty message from local server.");
+        }
+        result = -1;
+        return result;
+    } else {
+        response[length] = '\0';
+        result = w_parse_agent_add_response(response, id, json_format, exit_on_error);
+    }
+
+    return result; 
+}
+
+//Send a clustered agent add request.
+int w_request_agent_add_clustered(char *id, const char *name, const char *ip, const char * groups, const char *key, int force, int json_format,const char *agent_id) {
+    int result; 
+    char response[OS_MAXSTR + 1];
+
+    cJSON* message = w_create_agent_add_payload(name, ip, groups, key, force, agent_id);  
+    cJSON* payload = w_create_send_sync_payload("authd", message); 
+    char* output = cJSON_PrintUnformatted(payload);
+    cJSON_Delete(payload); 
     
+    if(result = w_send_clustered_message("send_sync", output, response), result == 0) {
+        result = w_parse_agent_add_response(response, id, json_format, FALSE);
+    }
+    
+    free(output);
+
+    return result; 
+}
+
+//Send a clustered agent remove request.
+int w_request_agent_remove_clustered(int* error, const char* agent_id, int purge, int json_format){
+    int result; 
+    char response[OS_MAXSTR + 1];
+
+    cJSON* message = w_create_agent_remove_payload(agent_id, purge);  
+    cJSON* payload = w_create_send_sync_payload("authd", message); 
+    char* output = cJSON_PrintUnformatted(payload);
+    cJSON_Delete(payload); 
+
+    if(result = w_send_clustered_message("send_sync", output, response), result == 0) {
+        result = w_parse_agent_remove_response(response, error, json_format, FALSE);
+    }
+
+    free(output);
+
     return result;
 }
 

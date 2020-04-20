@@ -380,8 +380,7 @@ int main(int argc, char **argv)
         merror("Invalid option at cluster configuration");
         exit(0);
     case 1:
-        worker_node = TRUE;
-        //master = get_master_node();
+        worker_node = TRUE;        
         break;
     case 0:
         worker_node = FALSE;
@@ -702,8 +701,10 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         char* new_key = NULL;
         if(OS_SUCCESS == w_auth_parse_data(buf, response, authpass, ip, &agentname, centralized_group)){
             if (worker_node) {
-                //JJP: Send request to master
-                //JJP: Dont forget enrollment_ok = TRUE;
+                //JJP: Using worker config (force). Is this correct?
+                if( 0 == w_request_agent_add_clustered(new_id, agentname, ip, centralized_group, new_key, config.flags.force_insert?config.force_time:0, TRUE, NULL) ) {
+                    enrollment_ok = TRUE;
+                }                
             }
             else {
                 //JJP: These mutex can be more atomic
@@ -726,9 +727,16 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             if (worker_node) {
                 if (ret < 0) {
                     merror("SSL write error (%d)", ret);
-                    merror("Agent key not saved for %s", agentname);
-                    ERR_print_errors_fp(stderr);
-                    //JJP: Send request to master to delete the keys
+                    
+                    ERR_print_errors_fp(stderr); 
+                    int master_err = 0;                   
+                    if (0 != w_request_agent_remove_clustered(&master_err, new_id, 1, TRUE) || master_err != 0) {
+                        //JJP: Is it needed to unchain a problem handler here?
+                        merror("Agent key unable to share with %s and unable to delete from master node", agentname);
+                    }
+                    else {
+                        merror("Agent key not saved for %s", agentname);
+                    }
                 }
             }
             else{     
