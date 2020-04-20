@@ -1,23 +1,29 @@
 import json
+import sys
+from unittest.mock import patch, MagicMock
+
 import pytest
-from unittest.mock import patch
+
 with patch('wazuh.common.getgrnam'):
     with patch('wazuh.common.getpwnam'):
+        with patch('wazuh.common.ossec_uid'):
+            with patch('wazuh.common.ossec_gid'):
+                with patch('wazuh.common.ossec_uid'):
+                    with patch('wazuh.common.ossec_gid'):
+                        sys.modules['wazuh.rbac.orm'] = MagicMock()
 
-        from wazuh import Wazuh
-        from wazuh.agent import get_agents_summary_status
-        from wazuh.exception import WazuhError, WazuhInternalError
-        from wazuh.core.manager import status
-        from wazuh.results import WazuhResult, AffectedItemsWazuhResult
-        from wazuh.core.cluster import WazuhJSONEncoder, as_wazuh_object
-
+                        from wazuh import Wazuh
+                        from wazuh.agent import get_agents_summary_status
+                        from wazuh.exception import WazuhError, WazuhInternalError
+                        from wazuh.core.manager import status
+                        from wazuh.results import WazuhResult, AffectedItemsWazuhResult
+                        from wazuh.core.cluster import WazuhJSONEncoder, as_wazuh_object
 
 affected = AffectedItemsWazuhResult(dikt={'data': ['test']}, affected_items=['001', '002'])
 affected.add_failed_item(id_='099', error=WazuhError(code=1750, extra_message='wiiiiiii'))
 affected.add_failed_item(id_='111', error=WazuhError(code=1750, extra_message='weeeeee'))
 affected.add_failed_item(id_='555', error=WazuhError(code=1750, extra_message='wiiiiiii'))
 affected.add_failed_item(id_='333', error=WazuhError(code=1707, extra_message='wiiiiiii'))
-
 
 objects_to_encode = [
     {'foo': 'bar',
@@ -50,10 +56,9 @@ objects_to_encode = [
 
 @pytest.mark.parametrize('obj', objects_to_encode)
 def test_encoder_decoder(obj):
-
     # Encoding first object
     encoded = json.dumps(obj, cls=WazuhJSONEncoder)
 
     # Decoding first object
     obj_again = json.loads(encoded, object_hook=as_wazuh_object)
-    assert(obj_again == obj)
+    assert (obj_again == obj)
