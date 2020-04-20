@@ -1593,13 +1593,17 @@ def test_agent_get_versions_ko():
     ('002', 'v3.3.9', 'debian', True, True),
     ('002', 'v3.3.9', 'ubuntu', True, True),
 ])
+@patch('wazuh.core.core_agent.chmod')
+@patch('wazuh.core.core_agent.chown')
+@patch('wazuh.common.ossec_uid')
+@patch('wazuh.common.ossec_gid')
 @patch('wazuh.core.core_agent.hashlib.sha1')
 @patch('wazuh.core.core_agent.open')
 @patch('wazuh.core.core_agent.requests.get')
 @patch('wazuh.core.core_agent.Agent._get_versions')
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path,  'global.db'))
-def test_agent_get_wpk_file(versions_mock, get_req_mock, open_mock, sha1_mock,
-                      agent_id, version, platform, force, already_downloaded):
+def test_agent_get_wpk_file(versions_mock, get_req_mock, open_mock, sha1_mock, mock_ossec_gid, mock_ossec_uid,
+                            mock_chown, mock_chmod, agent_id, version, platform, force, already_downloaded):
     """Test _get_wpk_file() method returns the correct wpk file and hash.
 
     Parameters
@@ -1651,11 +1655,16 @@ def test_agent_get_wpk_file(versions_mock, get_req_mock, open_mock, sha1_mock,
             assert get_package_version(result[0]) == manager_version
 
 
+@patch('wazuh.core.core_agent.chmod')
+@patch('wazuh.core.core_agent.chown')
+@patch('wazuh.common.ossec_uid')
+@patch('wazuh.common.ossec_gid')
 @patch('wazuh.core.core_agent.hashlib.sha1')
 @patch('wazuh.core.core_agent.open')
 @patch('wazuh.core.core_agent.Agent._get_versions')
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path,  'global.db'))
-def test_agent_get_wpk_file_ko(versions_mock, open_mock, sha1_mock):
+def test_agent_get_wpk_file_ko(versions_mock, open_mock, sha1_mock, mock_ossec_gid, mock_ossec_uid,
+                               mock_chown, mock_chmod):
     """Test _get_wpk_file() method raises the expected exceptions"""
     with patch('sqlite3.connect') as mock_db:
         mock_db.return_value = test_data.global_db
