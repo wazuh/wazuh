@@ -1,15 +1,15 @@
-network.host: <host-ip>
-node.name: <node-name>
-cluster.initial_master_nodes: <node-name>
+network.host: 127.0.0.1
+node.name: node-1
+cluster.initial_master_nodes: node-1
 
-opendistro_security.ssl.transport.pemcert_filepath: /etc/elasticsearch/certs/elasticsearch.pem
-opendistro_security.ssl.transport.pemkey_filepath: /etc/elasticsearch/certs/elasticsearch-key.pem
-opendistro_security.ssl.transport.pemtrustedcas_filepath: /etc/elasticsearch/certs/root-ca.pem
+opendistro_security.ssl.transport.pemcert_filepath: esnode.pem
+opendistro_security.ssl.transport.pemkey_filepath: esnode-key.pem
+opendistro_security.ssl.transport.pemtrustedcas_filepath: root-ca.pem
 opendistro_security.ssl.transport.enforce_hostname_verification: false
 opendistro_security.ssl.http.enabled: true
-opendistro_security.ssl.http.pemcert_filepath: /etc/elasticsearch/certs/elasticsearch.pem.pem
-opendistro_security.ssl.http.pemkey_filepath: /etc/elasticsearch/certs/elasticsearch.pem-key.pem
-opendistro_security.ssl.http.pemtrustedcas_filepath: /etc/elasticsearch/certs/root-ca.pem
+opendistro_security.ssl.http.pemcert_filepath: esnode.pem
+opendistro_security.ssl.http.pemkey_filepath: esnode-key.pem
+opendistro_security.ssl.http.pemtrustedcas_filepath: root-ca.pem
 opendistro_security.allow_unsafe_democertificates: true
 opendistro_security.allow_default_init_securityindex: true
 opendistro_security.authcz.admin_dn:

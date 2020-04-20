@@ -1,6 +1,6 @@
 # Wazuh - Filebeat configuration file
 output.elasticsearch:
-  hosts: ["127.0.0.1:9200"]
+  hosts: ["<elasticsearch-ip>:9200"]
   protocol: https
   username: "admin"
   password: "admin"
