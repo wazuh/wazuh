@@ -228,7 +228,7 @@ void test_getSyscheckConfig(void **state)
 
     cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
     #if defined(TEST_SERVER) || defined(TEST_AGENT)
-    assert_int_equal(cJSON_GetArraySize(sys_items), 18);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 19);
     #elif defined(TEST_WINAGENT)
     assert_int_equal(cJSON_GetArraySize(sys_items), 21);
     #endif
@@ -338,7 +338,7 @@ void test_getSyscheckConfig_no_audit(void **state)
 
     cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
     #ifndef TEST_WINAGENT
-    assert_int_equal(cJSON_GetArraySize(sys_items), 14);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 15);
     #else
     assert_int_equal(cJSON_GetArraySize(sys_items), 17);
     #endif
