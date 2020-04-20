@@ -2455,6 +2455,73 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     fim_scan();
 }
 
+static void test_fim_scan_db_full_double_scan_winreg_check(void **state) {
+    char expanded_dirs[10][OS_SIZE_1024];
+    char directories[10][OS_SIZE_256] = {
+        "%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
+        "%WINDIR%",
+        "%WINDIR%\\SysNative",
+        "%WINDIR%\\SysNative\\drivers\\etc",
+        "%WINDIR%\\SysNative\\wbem",
+        "%WINDIR%\\SysNative\\WindowsPowerShell\\v1.0",
+        "%WINDIR%\\System32",
+        "%WINDIR%\\System32\\drivers\\etc",
+        "%WINDIR%\\System32\\wbem",
+        "%WINDIR%\\System32\\WindowsPowerShell\\v1.0",
+    };
+    int i;
+
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+
+    // In fim_checker
+    will_return_count(__wrap_stat, 0, 10);
+
+    for(i = 0; i < 10; i++) {
+        if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024))
+            fail();
+
+        str_lowercase(expanded_dirs[i]);
+        expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
+    }
+
+    will_return_count(__wrap_HasFilesystem, 0, 10);
+
+    will_return(__wrap_fim_db_get_count_entry_path, 50000);
+
+    expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_not_scanned, NULL);
+    will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
+
+    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_set_all_unscanned, 0);
+
+    will_return(__wrap_fim_db_get_count_entry_path, 45000);
+
+    will_return_count(__wrap_stat, 0, 10);
+    for(i = 0; i < 10; i++) {
+        expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
+    }
+    will_return_count(__wrap_HasFilesystem, 0, 10);
+
+    will_return_count(__wrap_fim_db_get_count_entry_path, 45000, 11);
+
+    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_set_all_unscanned, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
+    will_return(__wrap_fim_db_get_count_entry_path, 45000);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":45000,\"alert_type\":\"80_percentage\"}");
+
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
+
+    fim_scan();
+
+    _db_state = FIM_STATE_DB_FULL; // Set '_db_state' to the value expected by other tests
+}
+
 static void test_fim_scan_db_full_not_double_scan(void **state) {
     char expanded_dirs[10][OS_SIZE_1024];
     char directories[10][OS_SIZE_256] = {
@@ -3571,6 +3638,9 @@ int main(void) {
 
         /* fim_scan */
         cmocka_unit_test(test_fim_scan_db_full_double_scan),
+        #ifdef TEST_WINAGENT
+        cmocka_unit_test(test_fim_scan_db_full_double_scan_winreg_check),
+        #endif
         cmocka_unit_test(test_fim_scan_db_full_not_double_scan),
         cmocka_unit_test(test_fim_scan_db_free),
         cmocka_unit_test_setup_teardown(test_fim_scan_no_limit, setup_file_limit, teardown_file_limit),
