@@ -1052,11 +1052,11 @@ class WazuhDBQuery(object):
         if self.distinct:
             self.query += ' WHERE ' if not self.q and 'WHERE' not in self.query else ' AND '
             self.query += ' AND '.join(
-                ["{0} IS NOT null AND {0} != ''".format(self.fields[field]) for field in self.select['fields']])
+                ["{0} IS NOT null AND {0} != ''".format(self.fields[field]) for field in self.select])
 
     def _get_total_items(self):
         query_with_select_fields = self.query.format(','.join(map(lambda x: f"{self.fields[x]} as '{x}'",
-                                                                  self.select['fields'] | self.min_select_fields)))
+                                                                  self.select | self.min_select_fields)))
         self.total_items = self.backend.execute(self._default_count_query().format(query_with_select_fields),
                                                 self.request, True)
 

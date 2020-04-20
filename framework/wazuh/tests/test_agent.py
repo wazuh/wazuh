@@ -996,6 +996,8 @@ def test_agent_upgrade_agents_custom_exceptions(sqlite_mock, file_path, installe
         pytest.fail()
     except WazuhInternalError as error:
         assert error == WazuhInternalError(1307)
+    except WazuhError as error:
+        assert error.code == 1006
 
 
 @pytest.mark.parametrize('agent_list, component, configuration', [

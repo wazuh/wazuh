@@ -82,10 +82,13 @@ def get_agents_summary_os(agent_list=None):
                                       all_msg='Showing the operative system of all specified agents',
                                       some_msg='Could not get the operative system of some agents')
     if len(agent_list) != 0:
-        db_query = WazuhDBQueryDistinctAgents(select=['os.platform'], filters={'id': agent_list},
-                                              default_sort_field='os_platform', min_select_fields=set())
-        data = db_query.run()
-        result.affected_items = data['items']
+
+        db_query = WazuhDBQueryAgents(select=['os.platform'], filters={'id': agent_list},
+                                      default_sort_field='os_platform', min_select_fields=set(),
+                                      distinct=True)
+        query_data = db_query.run()
+        query_data['items'] = [row['os']['platform'] for row in query_data['items']]
+        result.affected_items = query_data['items']
         result.total_affected_items = len(result.affected_items)
 
     return result
