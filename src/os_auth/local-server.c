@@ -14,19 +14,23 @@
 #include <sys/wait.h>
 #include "auth.h"
 
-#define EINTERNAL   0
-#define EJSON       1
-#define ENOFUNCTION 2
-#define ENOARGUMENT 3
-#define ENONAME     4
-#define ENOIP       5
-#define EDUPIP      6
-#define EDUPNAME    7
-#define EKEY        8
-#define ENOID       9
-#define ENOAGENT    10
-#define EDUPID      11
-#define EAGLIM      12
+typedef enum auth_local_err {
+    EINTERNAL = 0,
+    EJSON,
+    ENOFUNCTION,
+    ENOARGUMENT,
+    ENONAME,
+    ENOIP,
+    EDUPIP,
+    EDUPNAME,
+    EKEY,
+    ENOID,
+    ENOAGENT,
+    EDUPID,
+    EAGLIM,
+    EINVGROUP
+} auth_local_err;
+
 
 static const struct {
     int code;
@@ -44,14 +48,15 @@ static const struct {
     { 9010, "No such agent ID" },
     { 9011, "Agent ID not found" },
     { 9012, "Duplicated ID" },
-    { 9013, "Maximum number of agents reached" }
+    { 9013, "Maximum number of agents reached" },
+    { 9014, "Invalid Group(s) Name(s)"}
 };
 
 // Dispatch local request
 static char* local_dispatch(const char *input);
 
 // Add a new agent
-static cJSON* local_add(const char *id, const char *name, const char *ip, const char *key, int force);
+static cJSON* local_add(const char *id, const char *name, const char *ip, char *groups, const char *key, int force);
 
 // Remove an agent
 static cJSON* local_remove(const char *id, int purge);
@@ -181,6 +186,7 @@ char* local_dispatch(const char *input) {
             char *id;
             char *name;
             char *ip;
+            char *groups = NULL;
             char *key = NULL;
             int force = 0;
 
@@ -204,9 +210,19 @@ char* local_dispatch(const char *input) {
             }
 
             ip = item->valuestring;
+            
+            if(item = cJSON_GetObjectItem(arguments, "groups"), item) {
+                groups = wstr_delete_repeated_groups(item->valuestring);
+                if (!groups){
+                    ierror = EINVGROUP;
+                    goto fail;
+                }
+            }
+
             key = (item = cJSON_GetObjectItem(arguments, "key"), item) ? item->valuestring : NULL;
             force = (item = cJSON_GetObjectItem(arguments, "force"), item) ? item->valueint : -1;
-            response = local_add(id, name, ip, key, force);
+            response = local_add(id, name, ip, groups, key, force);
+            os_free(groups);
         } else if (!strcmp(function->valuestring, "remove")) {
             cJSON *item;
             int purge;
@@ -270,7 +286,7 @@ fail:
     return output;
 }
 
-cJSON* local_add(const char *id, const char *name, const char *ip, const char *key, int force) {
+cJSON* local_add(const char *id, const char *name, const char *ip, char *groups, const char *key, int force) {
     int index;
     char *id_exist;
     cJSON *response;
@@ -280,6 +296,14 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
 
     mdebug2("add(%s)", name);
     w_mutex_lock(&mutex_keys);
+
+    /* Validate the group(s) name(s) */ 
+    if (groups){ 
+        if (OS_SUCCESS != w_auth_validate_groups(groups, NULL)){
+            ierror = EINVGROUP;
+            goto fail;
+        }        
+    }
 
     // Check for duplicated ID
 
@@ -344,8 +368,17 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
         goto fail;
     }
 
+
+    if(groups) {
+        char path[PATH_MAX];
+        if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
+            ierror = EINVGROUP;
+            goto fail;
+        }
+    }
+
     /* Add pending key to write */
-    add_insert(keys.keyentries[index],NULL);
+    add_insert(keys.keyentries[index],groups);
     write_pending = 1;
     w_cond_signal(&cond_pending);
 
