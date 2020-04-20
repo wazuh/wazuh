@@ -5134,14 +5134,17 @@ paths:
                   data:
                     type: object
                     properties:
-                      items:
+                      affected_items:
                         type: array
                         items:
                           $ref: '#/components/schemas/GroupConfiguration'
+                      total_affected_items:
+                        type: integer
+                        format: int32
               example:
                 data:
-                  totalItems: 3
-                  items:
+                  total_affected_items: 3
+                  affected_items:
                     - filters:
                         name: agent_name
                       config:

@@ -2572,10 +2572,10 @@ stages:
      status_code: 200
      json: &groups_id_config_response
        data:
-         items:
+         affected_items:
            - config: !anything
              filters: !anything
-         totalItems: !anyint
+         total_affected_items: !anyint
 
  - name: Try get the configuration of a bad group
    request:
@@ -2649,10 +2649,10 @@ stages:
      status_code: 200
      json:
        data:
-         items:
+         affected_items:
            - config: !anything
              filters: !anything
-         totalItems: !anyint
+         total_affected_items: !anyint
 
  - name: Try show agents with limit 0
    request:
