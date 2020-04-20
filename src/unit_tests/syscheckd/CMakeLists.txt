@@ -115,14 +115,12 @@ set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watc
                              -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Get -Wl,--wrap,rbtree_insert -Wl,--wrap,_merror \
                              -Wl,--wrap,W_Vector_insert_unique -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 \
                              -Wl,--wrap,_mdebug2 -Wl,--wrap,_merror_exit -Wl,--wrap,send_log_msg -Wl,--wrap,rbtree_keys \
-                             -Wl,--wrap,fim_realtime_event -Wl,--wrap,OSHash_Delete_ex")
+                             -Wl,--wrap,fim_realtime_event -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap=OSHash_Begin \
+                             -Wl,--wrap=OSHash_Next -Wl,--wrap=pthread_mutex_lock  -Wl,--wrap=pthread_mutex_unlock")
 
 list(APPEND syscheckd_tests_names "test_run_realtime")
 if(${TARGET} STREQUAL "agent")
-  list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot \
-                                                                -Wl,--wrap=OSHash_Begin -Wl,--wrap=OSHash_Next \
-                                                                -Wl,--wrap=pthread_mutex_lock \
-                                                                -Wl,--wrap=pthread_mutex_unlock")
+  list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot")
 elseif(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=fim_configuration_directory")
 
@@ -131,9 +129,7 @@ elseif(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_event_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=whodata_audit_start \
                                            -Wl,--wrap=check_path_type,--wrap=set_winsacl,--wrap=w_directory_exists")
 else()
-  list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=OSHash_Begin -Wl,--wrap=OSHash_Next \
-                                                                -Wl,--wrap=pthread_mutex_lock \
-                                                                -Wl,--wrap=pthread_mutex_unlock")
+  list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS}")
 endif()
 
 set(SYSCHECK_CONFIG_BASE_FLAGS "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1")

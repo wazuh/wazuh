@@ -462,10 +462,10 @@ void test_realtime_start_failure_hash(void **state) {
 }
 
 
-void test_count_watches_realtime_fd_null(void **state) {
+void test_count_watches_realtime_null(void **state) {
     (void) state;
 
-    syscheck.realtime->fd = 0;
+    syscheck.realtime = NULL;
 
     count_watches();
 }
@@ -473,7 +473,11 @@ void test_count_watches_realtime_fd_null(void **state) {
 void test_count_watches_hash_node_null(void **state) {
     (void) state;
 
-    syscheck.realtime->fd = 1;
+    syscheck.realtime = (rtfim *) calloc(1, sizeof(rtfim));
+
+    if (syscheck.realtime == NULL) {
+        fail();
+    }
 
     expect_function_call(__wrap_pthread_mutex_lock);
 
@@ -1388,7 +1392,7 @@ int main(void) {
         #endif
 
         /* count_watches */
-        cmocka_unit_test_setup_teardown(test_count_watches_realtime_fd_null, setup_hash_node, teardown_hash_node),
+        cmocka_unit_test_setup_teardown(test_count_watches_realtime_null, setup_hash_node, teardown_hash_node),
         cmocka_unit_test_setup_teardown(test_count_watches_hash_node_null, setup_hash_node, teardown_hash_node),
         cmocka_unit_test_setup_teardown(test_count_watches_counting, setup_hash_node, teardown_hash_node),
     };
