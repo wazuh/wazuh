@@ -638,9 +638,9 @@ def upload_group_configuration(group_id, file_content):
     try:
         with open(tmp_file_path, 'w') as tmp_file:
             # beauty xml file
-            xml = parseString(f'<root>{file_content}</root>')
+            xml = parseString(f'<root>\n{file_content}\n</root>')
             # remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
-            pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[1:-1])) + '\n'
+            pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[2:-2])) + '\n'
             # revert xml.dom replacements
             # github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305
             pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"", ) \

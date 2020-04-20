@@ -256,25 +256,28 @@ def test_upload_group_configuration():
 
     with patch('wazuh.common.shared_path', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         with pytest.raises(WazuhInternalError, match=".* 1743 .*"):
-            configuration.upload_group_configuration('default', "{'a': 'b'}")
+            configuration.upload_group_configuration('default', "<agent_config>new_config</agent_config>")
         with patch('wazuh.configuration.open', return_value=Exception):
             with pytest.raises(WazuhError, match=".* 1113 .*"):
-                configuration.upload_group_configuration('default', "{'a': 'b'}")
+                configuration.upload_group_configuration('default', "<agent_config>new_config</agent_config>")
         with patch('wazuh.configuration.subprocess.check_output', return_value=True):
             with patch('wazuh.utils.chown', side_effect=None):
                 with patch('wazuh.utils.chmod', side_effect=None):
-                    assert isinstance(configuration.upload_group_configuration('default', "{'a': 'b'}"), str)
+                    assert isinstance(
+                        configuration.upload_group_configuration('default', "<agent_config>new_config</agent_config>"),
+                        str)
                     with patch('wazuh.configuration.safe_move', side_effect=Exception):
                         with pytest.raises(WazuhInternalError, match=".* 1016 .*"):
-                            configuration.upload_group_configuration('default', "{'a': 'b'}")
+                            configuration.upload_group_configuration('default',
+                                                                     "<agent_config>new_config</agent_config>")
         with patch('wazuh.configuration.subprocess.check_output',
                    side_effect=subprocess.CalledProcessError(cmd='ls', returncode=1, output=b'ERROR')):
             with patch('wazuh.configuration.re.findall', return_value=None):
                 with pytest.raises(WazuhError, match=".* 1115 .*"):
-                    configuration.upload_group_configuration('default', "{'a': 'b'}")
+                    configuration.upload_group_configuration('default', "<agent_config>new_config</agent_config>")
             with patch('wazuh.configuration.re.findall', return_value='1114'):
                 with pytest.raises(WazuhError, match=".* 1114 .*"):
-                    configuration.upload_group_configuration('default', "{'a': 'b'}")
+                    configuration.upload_group_configuration('default', "<agent_config>new_config</agent_config>")
 
 
 def test_upload_group_file():
@@ -289,7 +292,8 @@ def test_upload_group_file():
         with patch('wazuh.configuration.subprocess.check_output', return_value=True):
             with patch('wazuh.utils.chown', side_effect=None):
                 with patch('wazuh.utils.chmod', side_effect=None):
-                    assert configuration.upload_group_file('default', "{'a': 'b'}", 'agent.conf') == \
+                    assert configuration.upload_group_file('default', "<agent_config>new_config</agent_config>",
+                                                           'agent.conf') == \
                            'Agent configuration was updated successfully'
 
     with patch('wazuh.common.shared_path', new=os.path.join(parent_directory, tmp_path, 'configuration')):
