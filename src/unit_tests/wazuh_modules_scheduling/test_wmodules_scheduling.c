@@ -96,14 +96,13 @@ static void test_day_of_the_month_consecutive(void **state){
     test->scan_config.interval = 2;
 
     time_t time_sleep = sched_scan_get_next_time(&test->scan_config, "TEST_DAY_MONTH_MODE", 0); 
-    time_t first_time = time(NULL) + time_sleep;
+    // Sleep past execution moment by 1 hour
+    wm_delay(time_sleep * 1000);
 
+    time_t first_time = time(NULL) ;
     struct tm first_date = *(localtime(&first_time));
     // Assert execution time is the expected month day
     assert_int_equal(first_date.tm_mday,  test->scan_config.scan_day);
-
-    // Sleep past execution moment by 1 hour
-    wm_delay((time_sleep + 3600) * 1000);
 
     time_sleep = sched_scan_get_next_time(&test->scan_config, "TEST_DAY_MONTH_MODE", 0); 
     time_t second_time = time(NULL) + time_sleep;
@@ -184,6 +183,60 @@ static void test_parse_xml_and_dump(void **state){
 }
 
 
+/**
+ * Test month day calculation when close to end of year
+ * */
+static void test_day_of_month_wrap_year(void **state) {
+    state_structure *test = *state;
+    test->scan_config.month_interval = true;
+    test->scan_config.interval = 2;
+    test->scan_config.scan_day = 5;
+    test->scan_config.scan_time = strdup("00:00");
+
+    time_t current_time = time(NULL);
+    struct tm tm = *(localtime(&current_time));
+    tm.tm_mon = 11;
+    tm.tm_mday = 5; // 5th of December
+    // Set simulation time
+    set_current_time(mktime(&tm));
+
+    time_t time_sleep = sched_scan_get_next_time(&test->scan_config, "TEST_DAY_MONTH_MODE", 0); 
+    wm_delay(time_sleep * 1000);
+
+    time_t first_time = time(NULL) ;
+    struct tm first_date = *(localtime(&first_time));
+    // Assert execution time is the expected month day
+    assert_int_equal(first_date.tm_mday,  test->scan_config.scan_day);
+    assert_int_equal(first_date.tm_mon, 1);
+    assert_int_equal(first_date.tm_year, tm.tm_year + 1);
+}
+
+static void test_day_of_month_very_long_time(void **state) {
+    state_structure *test = *state;
+    test->scan_config.month_interval = true;
+    test->scan_config.interval = 25; // 25 months interval
+    test->scan_config.scan_day = 1;
+    test->scan_config.scan_time = strdup("00:00");
+
+    time_t current_time = time(NULL);
+    struct tm tm = *(localtime(&current_time));
+    tm.tm_mon = 10;
+    tm.tm_mday = 1; // 1st of November
+    // Set simulation time
+    set_current_time(mktime(&tm));
+
+    time_t time_sleep = sched_scan_get_next_time(&test->scan_config, "TEST_DAY_MONTH_MODE", 0); 
+    wm_delay(time_sleep * 1000);
+
+    time_t first_time = time(NULL) ;
+    struct tm first_date = *(localtime(&first_time));
+    // Assert execution time is the expected month day
+    assert_int_equal(first_date.tm_mday,  test->scan_config.scan_day);
+    assert_int_equal(first_date.tm_mon, 11);
+    assert_int_equal(first_date.tm_year, tm.tm_year + 2);
+}
+
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_interval_mode, test_setup, test_teardown),
@@ -191,7 +244,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_day_of_the_month_consecutive, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_day_of_the_week, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_time_of_day, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_parse_xml_and_dump, test_setup, test_teardown)
+        cmocka_unit_test_setup_teardown(test_parse_xml_and_dump, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_day_of_month_wrap_year, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_day_of_month_very_long_time, test_setup, test_teardown)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

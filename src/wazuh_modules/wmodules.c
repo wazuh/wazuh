@@ -354,7 +354,7 @@ int wm_relative_path(const char * path) {
 
 
 // Get time in seconds to the specified hour in hh:mm
-int get_time_to_hour(const char * hour) {
+unsigned long int get_time_to_hour(const char * hour) {
 
     time_t curr_time;
     time_t target_time;
@@ -388,12 +388,12 @@ int get_time_to_hour(const char * hour) {
 
     free(parts);
 
-    return (int)diff;
+    return (unsigned long int)diff;
 }
 
 
 // Get time to reach a particular day of the week and hour
-int get_time_to_day(int wday, const char * hour) {
+unsigned long int get_time_to_day(int wday, const char * hour) {
 
     time_t curr_time;
     time_t target_time;
@@ -444,11 +444,11 @@ int get_time_to_day(int wday, const char * hour) {
     free(parts[1]);
     free(parts);
 
-    return (int)diff;
+    return (unsigned long int)diff;
 
 }
 
-int get_time_to_month_day(int month_day, const char* hour, int num_of_months) {
+unsigned long int get_time_to_month_day(int month_day, const char* hour, int num_of_months) {
     assert(num_of_months > 0);
 
     time_t curr_time;
@@ -471,13 +471,18 @@ int get_time_to_month_day(int month_day, const char* hour, int num_of_months) {
 
     target_time = mktime(&t_target);
     diff = difftime(target_time, curr_time);
-    if (diff > 0) {
+    if (tm_result.tm_mday < month_day) {
         num_of_months--;
+    }
+
+    if (num_of_months >= 12) {
+        t_target.tm_year += (num_of_months / 12);
+        num_of_months = (num_of_months % 12);
     }
 
     if(t_target.tm_mon + num_of_months > 11) {
         // We should increment a year
-        t_target.tm_mon = (t_target.tm_mon + num_of_months) % 2;
+        t_target.tm_mon = (t_target.tm_mon + num_of_months) % 12;
         t_target.tm_year++;
     } else {
         t_target.tm_mon+= num_of_months;
@@ -488,7 +493,7 @@ int get_time_to_month_day(int month_day, const char* hour, int num_of_months) {
     free(parts[1]);
     free(parts);
 
-    return (int) diff;
+    return (unsigned long int) diff;
 }
 
 // Function to look for the correct day of the month to run a wodle
@@ -646,7 +651,7 @@ int wm_validate_command(const char *command, const char *digest, crypto_type cty
     return match;
 }
 
-void wm_delay(unsigned int ms) {
+void wm_delay(unsigned long int ms) {
 #ifdef WIN32
     Sleep(ms);
 #else

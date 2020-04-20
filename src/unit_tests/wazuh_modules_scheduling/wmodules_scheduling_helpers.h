@@ -20,6 +20,9 @@ sched_scan_config init_config_from_string(const char* string);
 void disable_forever_loop();
 void enable_forever_loop();
 
+/* Sets current simulation time */
+void set_current_time(time_t _time);
+
 /**
  *  Since module run is in a loop we pass a function ptr 
  * to use when cut condition is met in wrapped funcion

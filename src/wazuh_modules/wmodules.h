@@ -181,7 +181,7 @@ int wm_relative_path(const char * path);
  * @param hourtime of the day hh:mm format
  * @return amount of time in seconds
 */
-int get_time_to_hour(const char * hour);
+unsigned long int get_time_to_hour(const char * hour);
 
 /**
  * @brief Get time to reach a particular day of the week and hour
@@ -190,7 +190,7 @@ int get_time_to_hour(const char * hour);
  * @param hour time of the day hh:mm format
  * @return amount of time in seconds
  * */
-int get_time_to_day(int wday, const char * hour);
+unsigned long int get_time_to_day(int wday, const char * hour);
 
 /**
  * @brief Get time to reach a particular day of the month and hour
@@ -200,7 +200,7 @@ int get_time_to_day(int wday, const char * hour);
  * @param num_of_months in case we want to check every certain number of months
  * @return amount of time in seconds
  * */
-int get_time_to_month_day(int month_day, const char* hour, int num_of_months);
+unsigned long int get_time_to_month_day(int month_day, const char* hour, int num_of_months);
 
 /**
  * @brief Function to look for the correct day of the month to run a wodle
@@ -231,7 +231,7 @@ size_t wmcom_dispatch(char * command, char ** output);
 size_t wmcom_getconfig(const char * section, char ** output);
 
 // Sleep function for Windows and Unix (milliseconds)
-void wm_delay(unsigned int ms);
+void wm_delay(unsigned long int ms);
 
 #ifdef __MACH__
 void freegate(gateway *gate);

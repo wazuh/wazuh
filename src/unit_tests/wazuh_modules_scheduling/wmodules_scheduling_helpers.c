@@ -27,7 +27,12 @@ time_t __wrap_time(time_t *_time){
     return current_time;
 }
 
-void __wrap_wm_delay(unsigned int msec){
+/* Sets current simulation time */
+void set_current_time(time_t _time) {
+    current_time = _time;
+}
+
+void __wrap_wm_delay(unsigned long int msec){
     current_time += (msec/1000);
 }
 
