@@ -55,7 +55,6 @@ SQLAlchemy==1.3.11
 swagger-ui-bundle==0.0.3
 urllib3==1.24.3
 uvloop==0.11.3
-wheeL==0.33.1
 websocket-client==0.56.0
 Werkzeug==0.15.2
 
