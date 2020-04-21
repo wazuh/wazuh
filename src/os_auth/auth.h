@@ -91,7 +91,7 @@ size_t authcom_getconfig(const char * section, char ** output);
 void authd_sigblock();
 
 //Validate Groups
-w_err_t w_auth_validate_groups(char *groups, char *response);
+w_err_t w_auth_validate_groups(const char *groups, char *response);
 
 extern char shost[];
 extern keystore keys;

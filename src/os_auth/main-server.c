@@ -38,9 +38,10 @@ static int ssl_error(const SSL *ssl, int ret);
 
 /* Thread for dispatching connection pool */
 static void* run_dispatcher(void *arg);
-w_err_t w_auth_parse_data(char* buf, char *response, char *authpass, char *ip, char **agentname, char *groups);
-w_err_t w_auth_validate_data (char *response, char *ip, char *agentname, char *groups);
-w_err_t w_auth_add_agent(char *response, char *ip, char *agentname, char *groups, char **id, char **key);
+
+static w_err_t w_auth_parse_data(char* buf, char *response, const char *authpass, char *ip, char **agentname, char *groups);
+static w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentname, const char *groups);
+static w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, const char *groups, char **id, char **key);
 
 /* Thread for writing keystore onto disk */
 static void* run_writer(void *arg);
@@ -581,7 +582,7 @@ int main(int argc, char **argv)
             new_client->socket = client_sock;
             new_client->addr = _nc.sin_addr;
 
-            if( queue_push_ex(client_queue, new_client) == -1) {
+            if (queue_push_ex(client_queue, new_client) == -1) {
                 merror("Too many connections. Rejecting.");
                 close(client_sock);
             }
@@ -689,14 +690,15 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         char* new_id = NULL;
         char* new_key = NULL;
         if(OS_SUCCESS == w_auth_parse_data(buf, response, authpass, ip, &agentname, centralized_group)){
-            if (worker_node) {
-                //JJP: Using worker config (force). Is this correct?
-                if( 0 == w_request_agent_add_clustered(new_id, agentname, ip, centralized_group, new_key, config.flags.force_insert?config.force_time:0, TRUE, NULL) ) {
+            if (worker_node) {                
+                if( 0 == w_request_agent_add_clustered(new_id, agentname, ip, centralized_group, new_key, config.flags.force_insert?config.force_time:-1, TRUE, NULL) ) {
                     enrollment_ok = TRUE;
-                }                
+                }     
+                else {
+                   snprintf(response, 2048, "ERROR: Unsuccessful request to master");  
+                }           
             }
             else {
-                //JJP: These mutex can be more atomic
                 w_mutex_lock(&mutex_keys);                
                 if(OS_SUCCESS == w_auth_validate_data(response, ip, agentname, centralized_group)){
                     if(OS_SUCCESS == w_auth_add_agent(response, ip, agentname, centralized_group, &new_id, &new_key)){
@@ -709,7 +711,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
         if(enrollment_ok)
         {
-            snprintf(response, 2048, "OSSEC K:'%s %s %s %s'\n\n", new_id, agentname,  ip, new_key);
+            snprintf(response, 2048, "OSSEC K:'%s %s %s %s'\n\n", new_id, agentname, ip, new_key);
             minfo("Agent key generated for '%s' (requested by %s)", agentname, ip);
             ret = SSL_write(ssl, response, strlen(response));
 
@@ -719,9 +721,8 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     
                     ERR_print_errors_fp(stderr); 
                     int master_err = 0;                   
-                    if (0 != w_request_agent_remove_clustered(&master_err, new_id, 1, TRUE) || master_err != 0) {
-                        //JJP: Is it needed to unchain a problem handler here?
-                        merror("Agent key unable to share with %s and unable to delete from master node", agentname);
+                    if (0 != w_request_agent_remove_clustered(&master_err, new_id, TRUE, TRUE) || master_err != 0) {
+                        merror("Agent key unable to be shared with %s and unable to delete from master node", agentname);
                     }
                     else {
                         merror("Agent key not saved for %s", agentname);
@@ -759,12 +760,11 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     return NULL;
 }
 
-w_err_t w_auth_parse_data(char* buf, char *response, char *authpass, char *ip, char **agentname, char *groups){
+static w_err_t w_auth_parse_data(char* buf, char *response,const char *authpass, char *ip, char **agentname, char *groups){
     
     bool parseok = FALSE; 
     //JJP: I prefer allocating space for agentname instead of recyclying the one in buffer. This will avoid handling buffer until end.
     // Also, I can create a struct with all info required. 
-    //JJP: Bring Different return values  
     //JJP: parseok can be avoided 
     
     /* Checking for shared password authentication. */
@@ -786,7 +786,6 @@ w_err_t w_auth_parse_data(char* buf, char *response, char *authpass, char *ip, c
 
         if (parseok == 0) {
             merror("Invalid password provided by %s. Closing connection.", ip);
-            //JJP: Is it ok to add a new message here?
             snprintf(response, 2048, "ERROR: Invalid password");  
             return OS_INVALID;
         }
@@ -812,7 +811,6 @@ w_err_t w_auth_parse_data(char* buf, char *response, char *authpass, char *ip, c
     
     if (!parseok) {
         merror("Invalid request for new agent from: %s", ip);
-        //JJP: Is it ok to add a new message here?
         snprintf(response, 2048, "ERROR: Invalid request for new agent");  
         return OS_INVALID;
     }    
@@ -909,7 +907,7 @@ w_err_t w_auth_parse_data(char* buf, char *response, char *authpass, char *ip, c
     return OS_SUCCESS;
 }
 
-w_err_t w_auth_validate_data (char *response, char *ip, char *agentname, char *groups){
+static w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentname, const char *groups){
     //JJP: Split into validate_groups, validate_name, validate_ip
     /* Validate the group(s) name(s) */     
     int index = 0;
@@ -991,7 +989,36 @@ w_err_t w_auth_validate_data (char *response, char *ip, char *agentname, char *g
     return OS_SUCCESS;
 }
 
-w_err_t w_auth_validate_groups(char *groups, char *response) {
+static w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, const char *groups, char **id, char **key){
+
+    /* Add the new agent */
+    int index;
+
+    if (index = OS_AddNewAgent(&keys, NULL, agentname, ip, NULL), index < 0) {
+        merror("Unable to add agent: %s (internal error)", agentname);
+        snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);        
+        return OS_INVALID;
+    }
+
+    /* Add the agent to the centralized configuration group */
+    if(*groups) {
+        char path[PATH_MAX];
+        if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
+            merror("At set_agent_group(): file path too large for agent '%s'.", keys.keyentries[index]->id);
+            OS_RemoveAgent(keys.keyentries[index]->id);
+            merror("Unable to set agent centralized group: %s (internal error)", groups);
+            snprintf(response, 2048, "ERROR: Internal manager error setting agent centralized group: %s\n\n", groups);
+            return OS_INVALID;
+        }
+    }
+
+    *id = keys.keyentries[index]->id;
+    *key = keys.keyentries[index]->key;
+
+    return OS_SUCCESS;
+}
+
+w_err_t w_auth_validate_groups(const char *groups, char *response) {
     int max_multigroups = 0;    
     char *save_ptr = NULL;
     const char delim[] = {MULTIGROUP_SEPARATOR,'\0'};    
@@ -1031,35 +1058,6 @@ w_err_t w_auth_validate_groups(char *groups, char *response) {
         closedir(dp);
     }       
    
-    return OS_SUCCESS;
-}
-
-w_err_t w_auth_add_agent(char *response, char *ip, char *agentname, char *groups, char **id, char **key){
-
-    /* Add the new agent */
-    int index;
-
-    if (index = OS_AddNewAgent(&keys, NULL, agentname, ip, NULL), index < 0) {
-        merror("Unable to add agent: %s (internal error)", agentname);
-        snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);        
-        return OS_INVALID;
-    }
-
-    /* Add the agent to the centralized configuration group */
-    if(*groups) {
-        char path[PATH_MAX];
-        if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
-            merror("At set_agent_group(): file path too large for agent '%s'.", keys.keyentries[index]->id);
-            OS_RemoveAgent(keys.keyentries[index]->id);
-            merror("Unable to set agent centralized group: %s (internal error)", groups);
-            snprintf(response, 2048, "ERROR: Internal manager error setting agent centralized group: %s\n\n", groups);
-            return OS_INVALID;
-        }
-    }
-
-    *id = keys.keyentries[index]->id;
-    *key = keys.keyentries[index]->key;
-
     return OS_SUCCESS;
 }
 

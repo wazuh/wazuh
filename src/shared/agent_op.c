@@ -21,22 +21,22 @@ static struct {
 } os_restart;
 
 //Sends message thru the cluster
-int w_send_clustered_message(char* command, char* payload, char* response);
+static int w_send_clustered_message(const char* command, const char* payload, char* response);
 
 //Alloc and create send_sync command payload
-cJSON* w_create_send_sync_payload(const char *daemon_name, cJSON *message);
+static cJSON* w_create_send_sync_payload(const char *daemon_name, cJSON *message);
 
 //Alloc and create an agent addition command payload
-cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char * groups, const char *key, int force, const char *id);
+static cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char * groups, const char *key, const int force, const char *id);
 
 //Alloc and create an agent removal command payload
-cJSON* w_create_agent_remove_payload(const char *id, int purge);
+static cJSON* w_create_agent_remove_payload(const char *id, const int purge);
 
 //Parse an agent addition response
-int w_parse_agent_add_response(const char* buffer, char* id, int json_format, int exit_on_error);
+static int w_parse_agent_add_response(const char* buffer, char* id, const int json_format, const int exit_on_error);
 
 //Parse an agent removal response
-int w_parse_agent_remove_response(const char* buffer, int* rsp_error, int json_format, int exit_on_error);
+static int w_parse_agent_remove_response(const char* buffer, int* rsp_error, const int json_format, const int exit_on_error);
 
 /* Check if syscheck is to be executed/restarted
  * Returns 1 on success or 0 on failure (shouldn't be executed now)
@@ -600,7 +600,7 @@ int auth_close(int sock) {
 
 //JJP: Improve: alloc response inside here. To avoid possible size errors. 
 //JJP: Otherwise: doxygen clear comments
-int w_send_clustered_message(char* command, char* payload, char* response) {
+static int w_send_clustered_message(const char* command, const char* payload, char* response) {
     char sockname[PATH_MAX + 1] = {0};
     int sock = -1;
     int result = 0;
@@ -611,8 +611,7 @@ int w_send_clustered_message(char* command, char* payload, char* response) {
     } else {
         strcpy(sockname, DEFAULTDIR CLUSTER_SOCK);
     }
-   
-    //JJP sock == 0 is valid???
+       
     if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock >= 0) {        
         if (OS_SendSecureTCPCluster(sock, command, payload, strlen(payload)) >= 0) {
             if(response_length = OS_RecvSecureClusterTCP(sock, response, OS_MAXSTR), response_length <= 0) {
@@ -647,7 +646,7 @@ int w_send_clustered_message(char* command, char* payload, char* response) {
     return result;
 }
 
-cJSON* w_create_send_sync_payload(const char *daemon_name, cJSON *message) {
+static cJSON* w_create_send_sync_payload(const char *daemon_name, cJSON *message) {
     cJSON * request = cJSON_CreateObject();
     cJSON * arguments = cJSON_CreateObject();
     
@@ -660,7 +659,7 @@ cJSON* w_create_send_sync_payload(const char *daemon_name, cJSON *message) {
     return request;
 }
 
-cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char * groups, const char *key, int force, const char *id) {    
+static cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char * groups, const char *key, const int force, const char *id) {    
     cJSON* request = cJSON_CreateObject();
     cJSON* arguments = cJSON_CreateObject();
     
@@ -688,7 +687,7 @@ cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char *
     return request;
 }
 
-cJSON* w_create_agent_remove_payload(const char *id, int purge) {    
+static cJSON* w_create_agent_remove_payload(const char *id, const int purge) {    
     cJSON* request = cJSON_CreateObject();
     cJSON* arguments = cJSON_CreateObject();
     
@@ -702,7 +701,7 @@ cJSON* w_create_agent_remove_payload(const char *id, int purge) {
     return request;
 }
 
-int w_parse_agent_add_response(const char* buffer, char* id, int json_format, int exit_on_error) { 
+static int w_parse_agent_add_response(const char* buffer, char* id, const int json_format, const int exit_on_error) { 
     cJSON* response;
     int result;
     cJSON * error;
@@ -765,7 +764,7 @@ int w_parse_agent_add_response(const char* buffer, char* id, int json_format, in
     return result;
 }
 
-int w_parse_agent_remove_response(const char* buffer, int* rsp_error, int json_format, int exit_on_error) { 
+static int w_parse_agent_remove_response(const char* buffer, int* rsp_error, const int json_format, const int exit_on_error) { 
     cJSON* response;
     int result;
     cJSON * error;
@@ -817,7 +816,7 @@ int w_parse_agent_remove_response(const char* buffer, int* rsp_error, int json_f
 }
 
 //Send a local agent add request.
-int w_request_agent_add_local(int sock, char *id, const char *name, const char *ip, const char *groups, const char *key, int force, int json_format, const char *agent_id, int exit_on_error){
+int w_request_agent_add_local(int sock, char *id, const char *name, const char *ip, const char *groups, const char *key, const int force, const int json_format, const char *agent_id, int exit_on_error){
     int result; 
 
     cJSON* payload = w_create_agent_add_payload(name, ip, groups, key, force, agent_id);  
@@ -857,7 +856,7 @@ int w_request_agent_add_local(int sock, char *id, const char *name, const char *
 }
 
 //Send a clustered agent add request.
-int w_request_agent_add_clustered(char *id, const char *name, const char *ip, const char * groups, const char *key, int force, int json_format,const char *agent_id) {
+int w_request_agent_add_clustered(char *id, const char *name, const char *ip, const char * groups, const char *key, const int force, const int json_format,const char *agent_id) {
     int result; 
     char response[OS_MAXSTR + 1];
 

@@ -85,15 +85,11 @@ int auth_connect();
 // Close socket if valid.
 int auth_close(int sock);
 
-//JJP: Can migrate to w_err_t
 // Send a local agent add request.
-int w_request_agent_add_local(int sock, char *id, const char *name, const char *ip, const char * groups, const char *key, int force, int json_format, const char *agent_id, int exit_on_error);
+int w_request_agent_add_local(int sock, char *id, const char *name, const char *ip, const char * groups, const char *key, const int force, const int json_format, const char *agent_id, int exit_on_error);
 
 // Send a clustered agent add request.
-int w_request_agent_add_clustered(char *id, const char *name, const char *ip, const char * groups, const char *key, int force, int json_format, const char *agent_id);
-
-// JJP: TODO
-//int w_request_agent_remove_local(int sock, const char *agent_id, int json_format, int exit_on_error);
+int w_request_agent_add_clustered(char *id, const char *name, const char *ip, const char * groups, const char *key, const int force, const int json_format, const char *agent_id);
 
 // Send a clustered agent remove request.
 int w_request_agent_remove_clustered(int* error, const char* agent_id, int purge, int json_format);
