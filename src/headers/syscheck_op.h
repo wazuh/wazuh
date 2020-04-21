@@ -82,6 +82,7 @@
 typedef enum fim_fields {
     FIM_FILE,
     FIM_HARD_LINKS,
+    FIM_MODE_FIELD,
     FIM_SIZE,
     FIM_PERM,
     FIM_UID,

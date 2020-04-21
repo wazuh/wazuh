@@ -37,20 +37,28 @@ static int fim_db_search (char *f_name, char *c_sum, char *w_sum, Eventinfo *lf,
 
 // Build FIM alert
 static int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, _sdb *localsdb);
+
 // Build fileds whodata alert
 static void InsertWhodata (const sk_sum_t * sum, _sdb *localsdb);
+
 // Compare the first common fields between sum strings
 static int SumCompare (const char *s1, const char *s2);
+
 // Check for exceed num of changes
 static int fim_check_changes (int saved_frequency, long saved_time, Eventinfo *lf);
+
 // Send control message to wazuhdb
 static int fim_control_msg (char *key, time_t value, Eventinfo *lf, _sdb *sdb);
+
 //Update field date at last event generated
 int fim_update_date (char *file, Eventinfo *lf, _sdb *sdb);
+
 // Clean for old entries
 int fim_database_clean (Eventinfo *lf, _sdb *sdb);
+
 // Clean sdb memory
 void sdb_clean(_sdb *localsdb);
+
 // Get timestamp for last scan from wazuhdb
 int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb, const char *param);
 
@@ -119,6 +127,7 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
     fim_decoder->fields[FIM_FILE] = "file";
     fim_decoder->fields[FIM_SIZE] = "size";
     fim_decoder->fields[FIM_HARD_LINKS] = "hard_links";
+    fim_decoder->fields[FIM_MODE_FIELD] = "mode";
     fim_decoder->fields[FIM_PERM] = "perm";
     fim_decoder->fields[FIM_UID] = "uid";
     fim_decoder->fields[FIM_GID] = "gid";
@@ -1057,7 +1066,7 @@ int decode_fim_event(_sdb *sdb, Eventinfo *lf) {
      *   data: {
      *     path:                string
      *     hard_links:          array
-     *     mode:                "scheduled"|"real-time"|"whodata"
+     *     mode:                "scheduled"|"realtime"|"whodata"
      *     type:                "added"|"deleted"|"modified"
      *     timestamp:           number
      *     changed_attributes: [
@@ -1194,6 +1203,8 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
                 os_strdup(object->valuestring, lf->fields[FIM_FILE].value);
             } else if (strcmp(object->string, "mode") == 0) {
                 mode = object->valuestring;
+                os_strdup(mode, lf->mode);
+                os_strdup(mode, lf->fields[FIM_MODE_FIELD].value);
             } else if (strcmp(object->string, "type") == 0) {
                 event_type = object->valuestring;
             } else if (strcmp(object->string, "tags") == 0) {

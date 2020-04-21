@@ -758,6 +758,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->decoder_info = NULL_Decoder;
 
     lf->filename = NULL;
+    lf->mode = NULL;
     lf->perm_before = NULL;
     lf->md5_before = NULL;
     lf->sha1_before = NULL;
