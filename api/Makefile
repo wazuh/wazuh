@@ -45,8 +45,6 @@ install:
     # Restore old API config
 	. ../api/service/inst-api-functions.sh; restore_old_api
 
-	$(PREFIX)/bin/wazuh-apid
-
     # Install daemon
 service:
 	WAZUH_PATH=$(PREFIX) $(PREFIX)/api/service/install_daemon.sh
