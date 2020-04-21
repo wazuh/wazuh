@@ -10,3 +10,10 @@ output.elasticsearch:
   ssl.key: "/etc/filebeat/certs/esnode-key.pem"
 setup.ilm.overwrite: true
 setup.ilm.enabled: false
+
+filebeat.modules:
+  - module: wazuh
+    alerts:
+      enabled: true
+    archives:
+      enabled: false
