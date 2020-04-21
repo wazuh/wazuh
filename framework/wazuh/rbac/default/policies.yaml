@@ -97,12 +97,16 @@ default_policies:
     policy:
       actions:
         - cluster:read_config
+        - cluster:read_api_config
+        - cluster:update_api_config
         - cluster:restart
         - cluster:status
         - cluster:read_file
         - cluster:upload_file
         - cluster:delete_file
         - manager:read_config
+        - manager:read_api_config
+        - manager:update_api_config
         - manager:delete_file
         - manager:read_file
         - manager:upload_file
@@ -111,6 +115,7 @@ default_policies:
         - file:path:*
         - node:id:*
         - node:id:*&file:path:*
+        - '*:*:*'
       effect: allow
 
   cluster_read:
@@ -118,12 +123,15 @@ default_policies:
     policy:
       actions:
         - cluster:read_config
+        - cluster:read_api_config
         - cluster:status
         - cluster:read_file
         - manager:read_config
+        - manager:read_api_config
         - manager:read_file
       resources:
         - file:path:*
         - node:id:*
         - node:id:*&file:path:*
+        - '*:*:*'
       effect: allow

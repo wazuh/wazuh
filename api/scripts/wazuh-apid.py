@@ -120,8 +120,7 @@ def start(foreground, root, config_file):
             cors.add(route)
 
     # Enable cache plugin
-    if cache_conf['enabled']:
-        setup_cache(app.app)
+    setup_cache(app.app)
 
     # Enable swagger UI plugin
     setup_swagger(app.app,

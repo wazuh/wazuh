@@ -10,6 +10,9 @@ from datetime import timezone
 from os import remove
 from os.path import exists, join
 
+import yaml
+
+from api import configuration as api_conf
 from wazuh import Wazuh
 from wazuh import common
 from wazuh import configuration
@@ -268,6 +271,68 @@ def delete_file(path):
     except WazuhError as e:
         result.add_failed_item(id_=path[0], error=e)
     result.total_affected_items = len(result.affected_items)
+
+    return result
+
+
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_api_config"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+def get_api_config():
+    """Returns current API configuration."""
+    return api_conf.api_conf
+
+
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:update_api_config"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+def update_api_config(updated_config=None, reset=False):
+    """Update or restore current API configuration.
+
+    Update the shared configuration object "api_conf"  wih
+    "new_config" and then overwrite the content of api.yaml.
+
+    Parameters
+    ----------
+    updated_config : dict
+        Dictionary with the new configuration.
+    reset : bool
+        Restore default settings.
+
+    Returns
+    -------
+    result : WazuhResult
+        Confirmation/Error message.
+    """
+    def update(original, new_config):
+        # Update dict and subdicts without overriding unspecified keys.
+        for key in new_config:
+            if key in original:
+                if isinstance(original[key], dict) and isinstance(new_config[key], dict):
+                    original[key].update(new_config[key])
+                else:
+                    original[key] = new_config[key]
+
+    if reset:
+        # Reset only the fields which are allowed in the endpoint.
+        allowed_fields = {'behind_proxy_server', 'rbac', 'logs', 'cache', 'cors',
+                          'use_only_authd', 'experimental_features'}
+        default_config = {key: api_conf.default_configuration[key] for key in allowed_fields}
+
+        # Reset the actual config
+        api_conf.api_conf.update(default_config)
+        result = WazuhResult({'message': "API configuration restored to factory settings."})
+    elif updated_config:
+        update(api_conf.api_conf, updated_config)
+        result = WazuhResult({'message': "API configuration updated successfully."})
+    else:
+        return WazuhResult({'message': "API configuration could not be updated."})
+
+    # Update api.yaml with current api_conf dict
+    if get_node().get('type') == 'master':
+        try:
+            with open(common.api_config_path, 'w+') as f:
+                yaml.dump(api_conf.api_conf, f)
+        except IOError:
+            raise WazuhInternalError(1005)
 
     return result
 

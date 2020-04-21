@@ -1811,6 +1811,84 @@ components:
           enum:
           - OK
 
+    APIconfiguration:
+      type: object
+      additionalProperties: false
+      properties:
+        behind_proxy_server:
+          description: Set this option to "yes" in case the API is running behind a proxy server.
+          type: boolean
+          default: false
+        rbac:
+          type: object
+          additionalProperties: false
+          properties:
+            mode:
+              description: RBAC mode (white/black).
+              type: string
+              enum: [white, black]
+            auth_token_exp_timeout:
+              description: Time in seconds until the token expires.
+              type: integer
+              format: int32
+              minimum: 30
+              example: 30
+        logs:
+          type: object
+          additionalProperties: false
+          properties:
+            level:
+              description: Verbosity level of API logs.
+              default: info
+              type: string
+              enum: [disabled, info, warning, error, debug, debug2]
+        cache:
+          type: object
+          additionalProperties: false
+          properties:
+            enabled:
+              description: Enable cache.
+              type: boolean
+              default: true
+            time:
+              description: Cache expiration time in seconds.
+              type: number
+              format: double
+              minimum: 0
+              example: 0.75
+        cors:
+          type: object
+          additionalProperties: false
+          properties:
+            enabled:
+              description: Enable CORS
+              type: boolean
+              default: false
+            source_route:
+              description: Sources for which the resources will be available. For example 'http://client.example.org'
+              type: string
+              example: '*'
+            expose_headers:
+              description: Which headers can be exposed as part of the response.
+              type: string
+              example: '*'
+            allow_headers:
+              description: Which HTTP headers can be used during the actual request.
+              type: string
+              example: '*'
+            allow_credentials:
+              description: Browsers will only expose the response to frontend JavaScript code if this is enabled.
+              type: boolean
+              default: false
+        use_only_authd:
+          description: Force the use of authd when adding and removing agents.
+          type: boolean
+          default: false
+        experimental_features:
+          description: Enable features under development.
+          type: boolean
+          default: false
+
     # Rootcheck models
     RootcheckDatabase:
       type: object
@@ -6032,6 +6110,87 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
+  /cluster/api/config:
+    get:
+      tags:
+        - cluster
+      summary: Get API configuration.
+      description: Returns the API configuration in JSON format.
+      operationId: api.controllers.cluster_controller.get_api_config
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: Current API configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                host: 0.0.0.0
+                port: 55000
+                behind_proxy_server: false
+                rbac:
+                  mode: white
+                  auth_token_exp_timeout: 3600
+                logs:
+                  path: /var/ossec/logs/api.log
+                  level: info
+                experimental_features: false
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    put:
+      tags:
+        - cluster
+      summary: Update API configuration.
+      description: Updates API configuration with the data contained in the API request.
+      operationId: api.controllers.cluster_controller.put_api_config
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/APIconfiguration'
+
+      responses:
+        '200':
+          description: 'Confirmation message'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                message: API configuration updated successfully.
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    delete:
+      tags:
+        - cluster
+      summary: Restore default API configuration.
+      description: Replaces API configuration with the original one.
+      operationId: api.controllers.cluster_controller.delete_api_config
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Confirmation message'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+              example:
+                message: API configuration restored to default settings.
+        default:
+          $ref: '#/components/responses/ResponseError'
+
   /cluster/{node_id}/status:
     get:
       tags:
@@ -7789,6 +7948,87 @@ paths:
                   - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 message: File was deleted
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /manager/api/config:
+    get:
+      tags:
+        - manager
+      summary: Get API configuration.
+      description: Returns the API configuration in JSON format.
+      operationId: api.controllers.manager_controller.get_api_config
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: Current API configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                host: 0.0.0.0
+                port: 55000
+                behind_proxy_server: false
+                rbac:
+                  mode: white
+                  auth_token_exp_timeout: 3600
+                logs:
+                  path: /var/ossec/logs/api.log
+                  level: info
+                experimental_features: false
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    put:
+      tags:
+        - manager
+      summary: Update API configuration.
+      description: Updates API configuration with the data contained in the API request.
+      operationId: api.controllers.manager_controller.put_api_config
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/APIconfiguration'
+
+      responses:
+        '200':
+          description: 'Confirmation message'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                message: API configuration updated successfully.
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    delete:
+      tags:
+        - manager
+      summary: Restore default API configuration.
+      description: Replaces API configuration with the original one.
+      operationId: api.controllers.manager_controller.delete_api_config
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Confirmation message'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+              example:
+                message: API configuration restored to default settings.
         default:
           $ref: '#/components/responses/ResponseError'
 
