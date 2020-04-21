@@ -49,6 +49,8 @@ static const int ENTRY_IP = 2;
 static const int ENTRY_KEY = 3; 
 
 w_enrollment_ctx * w_enrollment_init(const w_enrollment_target *target, const w_enrollment_cert *cert) {
+    assert(target != NULL);
+    assert(cert != NULL);
     w_enrollment_ctx *cfg;
     os_malloc(sizeof(w_enrollment_ctx), cfg);
     // Copy constructor for const parameters
@@ -63,6 +65,7 @@ w_enrollment_ctx * w_enrollment_init(const w_enrollment_target *target, const w_
 }
 
 void w_enrollment_destroy(w_enrollment_ctx *cfg) {
+    assert(cfg != NULL);
     if (cfg->ssl) {
         BIO *bio = SSL_get_rbio(cfg->ssl);
         if (bio) {
