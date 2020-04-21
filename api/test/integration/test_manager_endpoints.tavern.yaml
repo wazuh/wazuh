@@ -1863,3 +1863,47 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
         message: !anystr
+
+---
+test_name: GET /manager/api/config
+
+stages:
+
+  # GET /manager/api/config
+  - name: Request validation
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/api/config"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        host: !anystr
+        port: !anyint
+        behind_proxy_server: !anybool
+        rbac:
+          - mode: !anystr
+          - auth_token_exp_timeout: !anyint
+        https:
+          - enabled: !anybool
+          - key: !anystr
+          - cert: !anystr
+          - use_ca: !anybool
+          - ca: !anystr
+        logs:
+          - level: !anystr
+          - path: !anystr
+        cors:
+          - enabled: !anybool
+          - source_route: !anystr
+          - expose_headers: !anystr
+          - allow_headers: !anybool
+          - allow_credentials: !anything
+        cache:
+          - enabled: !anybool
+          - time: !anything
+        use_only_authd: !anybool
+        drop_privileges: !anybool
+        experimental_features: !anybool
