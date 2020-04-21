@@ -537,7 +537,7 @@ static void test_fim_json_event(void **state) {
     cJSON *path = cJSON_GetObjectItem(data, "path");
     assert_string_equal(cJSON_GetStringValue(path), "test.file");
     cJSON *mode = cJSON_GetObjectItem(data, "mode");
-    assert_string_equal(cJSON_GetStringValue(mode), "real-time");
+    assert_string_equal(cJSON_GetStringValue(mode), "realtime");
     cJSON *data_type = cJSON_GetObjectItem(data, "type");
     assert_string_equal(cJSON_GetStringValue(data_type), "modified");
     cJSON *timestamp = cJSON_GetObjectItem(data, "timestamp");
@@ -675,7 +675,7 @@ static void test_fim_json_event_hardlink_one_path(void **state) {
     cJSON *path = cJSON_GetObjectItem(data, "path");
     assert_string_equal(cJSON_GetStringValue(path), "test.file");
     cJSON *mode = cJSON_GetObjectItem(data, "mode");
-    assert_string_equal(cJSON_GetStringValue(mode), "real-time");
+    assert_string_equal(cJSON_GetStringValue(mode), "realtime");
     cJSON *data_type = cJSON_GetObjectItem(data, "type");
     assert_string_equal(cJSON_GetStringValue(data_type), "modified");
     cJSON *timestamp = cJSON_GetObjectItem(data, "timestamp");
@@ -737,7 +737,7 @@ static void test_fim_json_event_hardlink_two_paths(void **state) {
     cJSON *path = cJSON_GetObjectItem(data, "path");
     assert_string_equal(cJSON_GetStringValue(path), "test.file");
     cJSON *mode = cJSON_GetObjectItem(data, "mode");
-    assert_string_equal(cJSON_GetStringValue(mode), "real-time");
+    assert_string_equal(cJSON_GetStringValue(mode), "realtime");
     cJSON *data_type = cJSON_GetObjectItem(data, "type");
     assert_string_equal(cJSON_GetStringValue(data_type), "modified");
     cJSON *timestamp = cJSON_GetObjectItem(data, "timestamp");
