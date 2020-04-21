@@ -80,9 +80,12 @@ def get_agents_summary_os(agent_list=None):
     """
     result = WazuhResult({})
     if len(agent_list) != 0:
-        db_query = WazuhDBQueryDistinctAgents(select=['os.platform'], filters={'id': agent_list},
-                                              default_sort_field='os_platform', min_select_fields=set())
-        result.dikt = db_query.run()
+        db_query = WazuhDBQueryAgents(select=['os.platform'], filters={'id': agent_list},
+                                      default_sort_field='os_platform', min_select_fields=set(),
+                                      distinct=True)
+        query_data = db_query.run()
+        query_data['items'] = [row['os']['platform'] for row in query_data['items']]
+        result.dikt = query_data
     return result
 
 

@@ -10,8 +10,8 @@ import os
 import sys
 
 import wazuh.core.cluster.cluster
-import wazuh.core.cluster.utils
-from wazuh import common, configuration, pyDaemonModule, cluster
+import wazuh.core.cluster.utils as cluster_utils
+from wazuh import common, configuration, pyDaemonModule
 from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licence__, master, local_server, worker
 
 
@@ -20,9 +20,9 @@ from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licenc
 #
 
 def set_logging(foreground_mode=False, debug_mode=0):
-    cluster_logger = wazuh.core.cluster.utils.ClusterLogger(foreground_mode=foreground_mode, log_path='logs/cluster.log',
-                                                            debug_level=debug_mode,
-                                                            tag='{asctime} {levelname}: [{tag}] [{subtag}] {message}')
+    cluster_logger = cluster_utils.ClusterLogger(foreground_mode=foreground_mode, log_path='logs/cluster.log',
+                                                 debug_level=debug_mode,
+                                                 tag='{asctime} {levelname}: [{tag}] [{subtag}] {message}')
     cluster_logger.setup_logger()
     return cluster_logger
 
@@ -35,8 +35,8 @@ def print_version():
 # Master main
 #
 async def master_main(args, cluster_config, cluster_items, logger):
-    cluster.context_tag.set('Master')
-    cluster.context_subtag.set("Main")
+    cluster_utils.context_tag.set('Master')
+    cluster_utils.context_subtag.set("Main")
     my_server = master.Master(performance_test=args.performance_test, concurrency_test=args.concurrency_test,
                               configuration=cluster_config, enable_ssl=args.ssl, logger=logger,
                               cluster_items=cluster_items)
@@ -51,8 +51,8 @@ async def master_main(args, cluster_config, cluster_items, logger):
 # Worker main
 #
 async def worker_main(args, cluster_config, cluster_items, logger):
-    cluster.context_tag.set('Worker')
-    cluster.context_subtag.set("Main")
+    cluster_utils.context_tag.set('Worker')
+    cluster_utils.context_subtag.set("Main")
     while True:
         my_client = worker.Worker(configuration=cluster_config, enable_ssl=args.ssl,
                                   performance_test=args.performance_test, concurrency_test=args.concurrency_test,
@@ -119,10 +119,10 @@ if __name__ == '__main__':
 
     main_logger = set_logging(foreground_mode=args.foreground, debug_mode=debug_mode)
 
-    cluster_configuration = wazuh.core.cluster.utils.read_config(config_file=args.config_file)
+    cluster_configuration = cluster_utils.read_config(config_file=args.config_file)
     if cluster_configuration['disabled']:
         sys.exit(0)
-    cluster_items = wazuh.core.cluster.utils.get_cluster_items()
+    cluster_items = cluster_utils.get_cluster_items()
     try:
         wazuh.core.cluster.cluster.check_cluster_config(cluster_configuration)
     except Exception as e:

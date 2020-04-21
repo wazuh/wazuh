@@ -1183,7 +1183,7 @@ class Agent:
         self.load_info_from_db()
 
         # Check if agent is active.
-        if self.status != 'Active':
+        if self.status.lower() != 'active':
             raise WazuhError(1720)
 
         # Check if remote upgrade is available for the selected agent version
@@ -1294,8 +1294,8 @@ class Agent:
             chunk_size = common.wpk_chunk_size
 
         # Check WPK file
-        if not path.isfile(file_path):
-            raise WazuhError(1006)
+        if not file_path or not path.isfile(file_path):
+            raise WazuhError(1006, extra_message=f"File path attempted: {file_path}")
 
         wpk_file = path.basename(file_path)
         wpk_file_size = stat(file_path).st_size
@@ -1314,7 +1314,7 @@ class Agent:
         if debug:
             print("RESPONSE: {0}".format(data))
         if not data.startswith('ok'):
-            raise WazuhInternalError(1715, extra_message=data.replace("err ",""))
+            raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
 
         # Open file on agent
         s = OssecSocket(common.REQUEST_SOCKET)
@@ -1345,30 +1345,32 @@ class Agent:
         # Sending file to agent
         if debug:
             print("Chunk size: {0} bytes".format(chunk_size))
+        file = open(file_path, "rb")
+        if not file:
+            raise WazuhInternalError(1715, extra_message=f"Could not read the file {file_path}")
         try:
-            with open(file_path, "rb") as file:
+            bytes_read = file.read(chunk_size)
+            file_sha1 = hashlib.sha1(bytes_read)
+            bytes_read_acum = 0
+            while bytes_read:
+                s = OssecSocket(common.REQUEST_SOCKET)
+                msg = "{0} com write {1} {2} ".format(str(self.id).zfill(3), str(len(bytes_read)), wpk_file)
+                s.send(msg.encode() + bytes_read)
+                data = s.receive().decode()
+                s.close()
+                if not data.startswith('ok'):
+                    raise WazuhException(1715, data.replace("err ", ""))
                 bytes_read = file.read(chunk_size)
-                file_sha1 = hashlib.sha1(bytes_read)
-                bytes_read_acum = 0
-                while bytes_read:
-                    s = OssecSocket(common.REQUEST_SOCKET)
-                    msg = "{0} com write {1} {2} ".format(str(self.id).zfill(3), str(len(bytes_read)), wpk_file)
-                    s.send(msg.encode() + bytes_read)
-                    data = s.receive().decode()
-                    s.close()
-                    if not data.startswith('ok'):
-                        raise WazuhException(1715, data.replace("err ", ""))
-                    bytes_read = file.read(chunk_size)
-                    file_sha1.update(bytes_read)
-                    if show_progress:
-                        bytes_read_acum = bytes_read_acum + len(bytes_read)
-                        show_progress(int(bytes_read_acum * 100 / wpk_file_size) +
-                                      (bytes_read_acum * 100 % wpk_file_size > 0))
-                calc_sha1 = file_sha1.hexdigest()
-                if debug:
-                    print("FILE SHA1: {0}".format(calc_sha1))
-        except OSError as e:
-            raise WazuhInternalError(1715, extra_message=f"Could not read the file {file_path}: {e}")
+                file_sha1.update(bytes_read)
+                if show_progress:
+                    bytes_read_acum = bytes_read_acum + len(bytes_read)
+                    show_progress(int(bytes_read_acum * 100 / wpk_file_size) +
+                                  (bytes_read_acum * 100 % wpk_file_size > 0))
+            calc_sha1 = file_sha1.hexdigest()
+            if debug:
+                print("FILE SHA1: {0}".format(calc_sha1))
+        finally:
+            file.close()
 
         # Close file on agent
         s = OssecSocket(common.REQUEST_SOCKET)
@@ -1411,7 +1413,7 @@ class Agent:
         self.load_info_from_db()
 
         # Check if agent is active.
-        if self.status != 'Active':
+        if self.status.lower() != 'active':
             raise WazuhException(1720)
 
         # Send file to agent
