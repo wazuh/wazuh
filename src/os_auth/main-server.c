@@ -23,6 +23,7 @@
  *
  */
 
+#include "shared.h"
 #include "auth.h"
 #include <pthread.h>
 #include <sys/wait.h>
@@ -58,9 +59,10 @@ static int remote_sock = -1;
 char shost[512];
 authd_config_t config;
 keystore keys;
-static struct client pool[AUTH_POOL];
-static volatile int pool_i = 0;
-static volatile int pool_j = 0;
+
+/* client queue */
+static w_queue_t *client_queue = NULL;
+
 volatile int write_pending = 0;
 volatile int running = 1;
 static struct keynode *queue_insert = NULL;
@@ -70,9 +72,7 @@ static struct keynode * volatile *insert_tail;
 static struct keynode * volatile *backup_tail;
 static struct keynode * volatile *remove_tail;
 
-pthread_mutex_t mutex_pool = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_keys = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t cond_new_client = PTHREAD_COND_INITIALIZER;
 pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
 
 /*authd working as worker on cluester*/
@@ -505,7 +505,7 @@ int main(int argc, char **argv)
     }
 
     /* Initialize queues */
-
+    client_queue = queue_init(AUTH_POOL);
     insert_tail = &queue_insert;
     backup_tail = &queue_backup;
     remove_tail = &queue_remove;
@@ -576,20 +576,15 @@ int main(int argc, char **argv)
                     }
                 }
             }
+            struct client *new_client;
+            os_malloc(sizeof(struct client), new_client);
+            new_client->socket = client_sock;
+            new_client->addr = _nc.sin_addr;
 
-            w_mutex_lock(&mutex_pool);
-
-            if (full(pool_i, pool_j)) {
+            if( queue_push_ex(client_queue, new_client) == -1) {
                 merror("Too many connections. Rejecting.");
                 close(client_sock);
-            } else {
-                pool[pool_i].socket = client_sock;
-                pool[pool_i].addr = _nc.sin_addr;
-                forward(pool_i);
-                w_cond_signal(&cond_new_client);
             }
-
-            w_mutex_unlock(&mutex_pool);
         } else if ((errno == EBADF && running) || (errno != EBADF && errno != EINTR))
             merror("at main(): accept(): %s", strerror(errno));
     }
@@ -598,9 +593,9 @@ int main(int argc, char **argv)
 
     /* Join threads */
 
-    w_mutex_lock(&mutex_pool);
-    w_cond_signal(&cond_new_client);
-    w_mutex_unlock(&mutex_pool);
+    //Unblock other thread in case queue is empty
+    queue_pop_ex(client_queue);
+
     w_mutex_lock(&mutex_keys);
     w_cond_signal(&cond_pending);
     w_mutex_unlock(&mutex_keys);
@@ -612,13 +607,14 @@ int main(int argc, char **argv)
         pthread_join(thread_local_server, NULL);
     }
 
+    queue_free(client_queue);
     minfo("Exiting...");
     return (0);
 }
 
 /* Thread for dispatching connection pool */
 void* run_dispatcher(__attribute__((unused)) void *arg) {
-    struct client client;
+    struct client *client;
     char ip[IPSIZE + 1];    
     int ret;
     char* buf = NULL;
@@ -638,27 +634,20 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     mdebug1("Dispatch thread ready");
 
     while (running) {
-        w_mutex_lock(&mutex_pool);
-
-        while (empty(pool_i, pool_j) && running)
-            w_cond_wait(&cond_new_client, &mutex_pool);
-
-        client = pool[pool_j];
-        forward(pool_j);
-        w_mutex_unlock(&mutex_pool);
+        client = queue_pop_ex(client_queue);
 
         if (!running)
             break;
 
-        strncpy(ip, inet_ntoa(client.addr), IPSIZE - 1);
+        strncpy(ip, inet_ntoa(client->addr), IPSIZE - 1);
         ssl = SSL_new(ctx);
-        SSL_set_fd(ssl, client.socket);
+        SSL_set_fd(ssl, client->socket);
         ret = SSL_accept(ssl);
 
         if (ssl_error(ssl, ret)) {
             mdebug1("SSL Error (%d)", ret);
             SSL_free(ssl);
-            close(client.socket);
+            close(client->socket);
             continue;
         }
 
@@ -670,7 +659,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             if (check_x509_cert(ssl, ip) != VERIFY_TRUE) {
                 merror("Unable to verify client certificate.");
                 SSL_free(ssl);
-                close(client.socket);
+                close(client->socket);
                 continue;
             }
         }
@@ -687,7 +676,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 merror("SSL Error (%d)", ret);
             }
             SSL_free(ssl);
-            close(client.socket);
+            close(client->socket);
             free(buf);
             continue;
         }      
@@ -760,7 +749,8 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         }
             
         SSL_free(ssl);
-        close(client.socket);        
+        close(client->socket);   
+        os_free(client);
         free(buf);
     }
 
