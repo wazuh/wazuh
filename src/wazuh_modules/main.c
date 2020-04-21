@@ -72,7 +72,7 @@ int main(int argc, char **argv)
     /* Check if the group given is valid */
     gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, "", group);
+        merror_exit(USER_ERROR, "", group, strerror(errno), errno);
     }
 
     /* Privilege separation */
@@ -149,7 +149,7 @@ void wm_setup()
     // Set group
 
     if (gid = Privsep_GetGroup(GROUPGLOBAL), gid == (gid_t) -1) {
-        merror_exit(USER_ERROR, "", GROUPGLOBAL);
+        merror_exit(USER_ERROR, "", GROUPGLOBAL, strerror(errno), errno);
     }
 
     if (Privsep_SetGroup(gid) < 0) {
