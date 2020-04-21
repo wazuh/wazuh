@@ -845,11 +845,11 @@ void test_realtime_adddir_whodata_error_adding_whodata_dir(void **state) {
     will_return(__wrap_set_winsacl, 1);
 
     expect_string(__wrap__merror, formatted_msg,
-        "(6619): Unable to add directory to whodata real time monitoring: 'C:\\a\\path'.");
+        "(6619): Unable to add directory to whodata real time monitoring: 'C:\\a\\path'. It will be monitored in Realtime");
 
     ret = realtime_adddir("C:\\a\\path", 1, 0);
 
-    assert_int_equal(ret, 0);
+    assert_int_equal(ret, -2);
     assert_non_null(syscheck.wdata.dirs_status[0].status & WD_CHECK_WHODATA);
     assert_null(syscheck.wdata.dirs_status[0].status & WD_CHECK_REALTIME);
     assert_int_equal(syscheck.wdata.dirs_status[0].object_type, WD_STATUS_DIR_TYPE);
