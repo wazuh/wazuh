@@ -49,7 +49,7 @@ if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
     rm $SERVICE_PATH/wazuh-api.service.tmp
     systemctl daemon-reload
     systemctl enable wazuh-api
-    systemctl restart wazuh-api
+#    systemctl restart wazuh-api
 
 
 # Install for SysVinit / Upstart
@@ -75,9 +75,9 @@ elif command -v service > /dev/null 2>&1; then
         enabled=false
     fi
 
-    if [ "$enabled" = true ]; then
-        service wazuh-api restart
-    fi
+#    if [ "$enabled" = true ]; then
+#        service wazuh-api restart
+#    fi
 else
     echo "Warning: Unknown init system. Please run the API with:"
     echo "$APP_PATH"

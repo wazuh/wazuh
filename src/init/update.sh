@@ -85,10 +85,19 @@ UpdateStartOSSEC()
 
    if [ `stat /proc/1/exe 2> /dev/null | grep "systemd" | wc -l` -ne 0 ]; then
        systemctl start wazuh-$TYPE
+       if [ "X$TYPE" = "Xmanager" ]; then
+         systemctl start wazuh-api
+       fi
    elif [ `stat /proc/1/exe 2> /dev/null | grep "init.d" | wc -l` -ne 0 ]; then
        service wazuh-$TYPE start
+       if [ "X$TYPE" = "Xmanager" ]; then
+         service wazuh-api start
+       fi
    else
        $DIRECTORY/bin/ossec-control start
+       if [ "X$TYPE" = "Xmanager" ]; then
+         $DIRECTORY/bin/wazuh-apid start
+       fi
    fi
 }
 
@@ -98,14 +107,25 @@ UpdateStopOSSEC()
     then
         . ${OSSEC_INIT}
 
+        MAJOR_VERSION=`echo ${VERSION} | cut -f1 -d'.' | cut -f2 -d'v'`
+
         if [ "X$TYPE" != "Xagent" ]; then
             TYPE="manager"
+            if [ $MAJOR_VERSION -ge 4 ]; then
+              EMBEDDED_API_INSTALLED=1
+            fi
         fi
 
         if [ `stat /proc/1/exe 2> /dev/null | grep "systemd" | wc -l` -ne 0 ]; then
             systemctl stop wazuh-$TYPE
+            if [ "X${EMBEDDED_API_INSTALLED}" != "X" ]; then
+              systemctl stop wazuh-api
+            fi
         elif [ `stat /proc/1/exe 2> /dev/null | grep "init.d" | wc -l` -ne 0 ]; then
             service wazuh-$TYPE stop
+            if [ "X${EMBEDDED_API_INSTALLED}" != "X" ]; then
+              service wazuh-api stop
+            fi
         fi
     else
         echo "      WARN: No such file ${OSSEC_INIT}. Trying to stop Wazuh..."
@@ -114,6 +134,9 @@ UpdateStopOSSEC()
 
     # Make sure Wazuh is stopped
     $DIRECTORY/bin/ossec-control stop > /dev/null 2>&1
+    if [ "X${EMBEDDED_API_INSTALLED}" != "X" ]; then
+      $DIRECTORY/bin/wazuh-apid stop > /dev/null 2>&1
+    fi
     sleep 2
 
    # We also need to remove all syscheck queue file (format changed)
