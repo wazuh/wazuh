@@ -59,17 +59,6 @@ components:
           type: string
           description: Human readable description to explain the result of the request
 
-    ListMetadata:
-      type: object
-      required:
-        - total_affected_items
-      properties:
-        total_affected_items:
-          type: integer
-          format: int32
-          minimum: 0
-          description: Total elements available. It can be used to implement pagination over results.
-
     SimpleApiError:
       type: object
       required:
@@ -302,6 +291,19 @@ components:
               description: Items that successfully applied the API call action.
               items:
                 $ref: '#/components/schemas/AgentIdKey'
+
+    AllItemsResponseRootcheck:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/RootcheckDatabase'
 
     AllItemsResponseRules:
       allOf:
@@ -7973,18 +7975,11 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/RootcheckDatabase'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseRootcheck'
               example:
                 data:
                   affected_items:
@@ -8075,14 +8070,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                type: string
+                      $ref: '#/components/schemas/AllItemsResponse'
               example:
                 data:
                   affected_items:
@@ -8120,14 +8108,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                type: string
+                      $ref: '#/components/schemas/AllItemsResponse'
               example:
                 data:
                   affected_items:
