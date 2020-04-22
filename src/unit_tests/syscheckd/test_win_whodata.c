@@ -3802,7 +3802,7 @@ void test_restore_audit_policies_command3_failed(void **state) {
     will_return(__wrap_wm_exec, -1);
     will_return(__wrap_wm_exec, 0);
 
-    expect_string(__wrap__mterror, formatted_msg, "(6635): Auditpol backup error: 'command returned failure'. Output: OUTPUT COMMAND'.");
+    expect_string(__wrap__merror, formatted_msg, "(6635): Auditpol backup error: 'command returned failure'. Output: 'OUTPUT COMMAND'.");
 
     int ret = restore_audit_policies();
     assert_int_equal(ret, 1);
@@ -7627,7 +7627,7 @@ void test_whodata_list_add_on_full_list(void **state) {
 
         expect_value(__wrap_free_whodata_event, w_evt, (whodata_evt *)3456);
 
-        expect_string(__wrap__mdebug1, formatted_msg, "(6236): '102' events have been deleted from the whodata list.");
+        expect_string(__wrap__mdebug1, formatted_msg, "(6236): '3' events have been deleted from the whodata list.");
     }
 
     node = whodata_list_add(strdup("A node"));
