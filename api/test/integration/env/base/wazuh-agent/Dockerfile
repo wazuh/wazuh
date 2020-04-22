@@ -14,6 +14,10 @@ COPY configurations/base/wazuh-agent/config/ossec.conf /var/ossec/etc/ossec.conf
 COPY configurations/base/wazuh-agent/healthcheck/healthcheck.py /tmp/healthcheck.py
 
 FROM base_agent AS wazuh-env-agent-base
+
+FROM base_agent AS wazuh-env-agent-active-response
+ADD configurations/active-reponse/wazuh-agent/entrypoint.sh /scripts/entrypoint.sh
+
 FROM base_agent AS wazuh-env-agent-agents
 FROM base_agent AS wazuh-env-agent-syscollector
 FROM base_agent AS wazuh-env-agent-security
@@ -47,8 +51,8 @@ FROM base_agent AS wazuh-env-agent-decoders_white_rbac
 FROM base_agent AS wazuh-env-agent-decoders_black_rbac
 FROM base_agent AS wazuh-env-agent-syscollector_white_rbac
 FROM base_agent AS wazuh-env-agent-syscollector_black_rbac
-FROM base_agent AS wazuh-env-agent-active-response_white_rbac
-FROM base_agent AS wazuh-env-agent-active-response_black_rbac
+FROM wazuh-env-agent-active-response AS wazuh-env-agent-active-response_white_rbac
+FROM wazuh-env-agent-active-response AS wazuh-env-agent-active-response_black_rbac
 FROM base_agent AS wazuh-env-agent-overview_white_rbac
 FROM base_agent AS wazuh-env-agent-overview_black_rbac
 FROM base_agent AS wazuh-env-agent-lists_white_rbac
