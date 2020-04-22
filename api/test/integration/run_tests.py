@@ -6,15 +6,14 @@ import subprocess
 
 
 RESULTS_PATH = PUT_YOUR_RESULTS_PATH_HERE
-PYTEST_COMMAND = 'pytest -vv '
+PYTEST_COMMAND = 'pytest -vv'
 TESTS_PATH = os.path.dirname(os.path.abspath(__file__))
 
 
 def calculate_result(file_name):
     with open(file_name, 'r') as f:
         file = f.read()
-    print(f'\t{re.search(r"=+(.*) in .* seconds =+", file).group(1)}\n')
-
+    print(f'\t{re.search(r"=+(.*) in (.*)s .* =+", file).group(1)}\n')
 
 def run_tests(keyword=None, rbac='both', iterations=1):
     os.chdir(TESTS_PATH)
