@@ -16,10 +16,13 @@ COPY configurations/base/wazuh-agent/healthcheck/healthcheck.py /tmp/healthcheck
 FROM base_agent AS wazuh-env-agent-base
 
 FROM base_agent AS wazuh-env-agent-active-response
-ADD configurations/active-reponse/wazuh-agent/entrypoint.sh /scripts/entrypoint.sh
+COPY configurations/active-response/wazuh-agent/entrypoint.sh /scripts/entrypoint.sh
 
 FROM base_agent AS wazuh-env-agent-agents
+
 FROM base_agent AS wazuh-env-agent-syscollector
+COPY configurations/syscollector/wazuh-agent/healthcheck/healthcheck.py /tmp/healthcheck.py
+
 FROM base_agent AS wazuh-env-agent-security
 FROM base_agent AS wazuh-env-agent-manager
 FROM base_agent AS wazuh-env-agent-cluster
@@ -49,8 +52,8 @@ FROM base_agent AS wazuh-env-agent-rules_white_rbac
 FROM base_agent AS wazuh-env-agent-rules_black_rbac
 FROM base_agent AS wazuh-env-agent-decoders_white_rbac
 FROM base_agent AS wazuh-env-agent-decoders_black_rbac
-FROM base_agent AS wazuh-env-agent-syscollector_white_rbac
-FROM base_agent AS wazuh-env-agent-syscollector_black_rbac
+FROM wazuh-env-agent-syscollector AS wazuh-env-agent-syscollector_white_rbac
+FROM wazuh-env-agent-syscollector AS wazuh-env-agent-syscollector_black_rbac
 FROM wazuh-env-agent-active-response AS wazuh-env-agent-active-response_white_rbac
 FROM wazuh-env-agent-active-response AS wazuh-env-agent-active-response_black_rbac
 FROM base_agent AS wazuh-env-agent-overview_white_rbac
