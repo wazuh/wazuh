@@ -49,13 +49,12 @@ void* wm_gcp_main(wm_gcp *data) {
     }
 
     do {
-        const time_t time_sleep = sched_scan_get_next_time(&(data->scan_config), WM_GCP_LOGTAG, data->pull_on_start);
+        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(data->scan_config), WM_GCP_LOGTAG, data->pull_on_start);
 
         if (time_sleep) {
-            mtdebug1(WM_GCP_LOGTAG, "Sleeping for %li seconds", time_sleep);
-            while(time(NULL) < data->scan_config.last_scan_time) {
-                wm_delay(1000);
-            }
+            const int next_scan_time = sched_get_next_scan_time(data->scan_config);
+            mtdebug2(WM_GCP_LOGTAG, "Sleeping until: %s", w_get_timestamp(next_scan_time));
+            w_sleep_until(next_scan_time);
         }
         mtdebug1(WM_GCP_LOGTAG, "Starting fetching of logs.");
 

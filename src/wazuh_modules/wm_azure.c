@@ -55,17 +55,16 @@ void* wm_azure_main(wm_azure_t *azure_config) {
     // Main loop
 
     do {
-        const time_t time_sleep = sched_scan_get_next_time(&(azure_config->scan_config), WM_AZURE_LOGTAG, azure_config->flags.run_on_start);
+        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(azure_config->scan_config), WM_AZURE_LOGTAG, azure_config->flags.run_on_start);
 
         if(azure_config->state.next_time == 0) {
             azure_config->state.next_time = azure_config->scan_config.time_start + time_sleep;
         }
-
+        
         if (time_sleep) {
-            mtdebug1(WM_AZURE_LOGTAG, "Sleeping for %li seconds", time_sleep);
-            while(time(NULL) < azure_config->scan_config.last_scan_time) {
-                wm_delay(1000);
-            }
+            const int next_scan_time = sched_get_next_scan_time(azure_config->scan_config);
+            mtdebug2(WM_AZURE_LOGTAG, "Sleeping until: %s", w_get_timestamp(next_scan_time));
+            w_sleep_until(next_scan_time);
         }
         mtinfo(WM_AZURE_LOGTAG, "Starting fetching of logs.");
 
@@ -343,7 +342,7 @@ void wm_azure_setup(wm_azure_t *_azure_config) {
     // Connect to socket
 
     for (i = 0; (queue_fd = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
-        wm_delay(1000 * WM_MAX_WAIT);
+        w_time_delay(1000 * WM_MAX_WAIT);
 
     if (i == WM_MAX_ATTEMPTS) {
         mterror(WM_AZURE_LOGTAG, "Can't connect to queue.");

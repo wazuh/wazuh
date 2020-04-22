@@ -118,7 +118,7 @@ static int teardown_test_read(void **state) {
 void test_interval_execution(void **state) {
     wm_azure_t* module_data = (wm_azure_t *)azure_module->data;
     *state = module_data;
-    module_data->scan_config.last_scan_time = 0;
+    module_data->scan_config.next_scheduled_scan_time = 0;
     module_data->scan_config.scan_day = 0;
     module_data->scan_config.scan_wday = -1;
     module_data->scan_config.interval = 1200; // 20min
@@ -130,7 +130,7 @@ void test_interval_execution(void **state) {
 void test_day_of_month(void **state) {
     wm_azure_t* module_data = (wm_azure_t *)azure_module->data;
     *state = module_data;
-    module_data->scan_config.last_scan_time = 0;
+    module_data->scan_config.next_scheduled_scan_time = 0;
     module_data->scan_config.scan_day = 20;
     module_data->scan_config.scan_wday = -1;
     module_data->scan_config.scan_time = strdup("00:00");
@@ -143,7 +143,7 @@ void test_day_of_month(void **state) {
 void test_day_of_week(void **state) {
     wm_azure_t* module_data = (wm_azure_t *)azure_module->data;
     *state = module_data;
-    module_data->scan_config.last_scan_time = 0;
+    module_data->scan_config.next_scheduled_scan_time = 0;
     module_data->scan_config.scan_day = 0;
     module_data->scan_config.scan_wday = 4;
     module_data->scan_config.scan_time = strdup("00:00");
@@ -156,7 +156,7 @@ void test_day_of_week(void **state) {
 void test_time_of_day(void **state) {
     wm_azure_t* module_data = (wm_azure_t *)azure_module->data;
     *state = module_data;
-    module_data->scan_config.last_scan_time = 0;
+    module_data->scan_config.next_scheduled_scan_time = 0;
     module_data->scan_config.scan_day = 0;
     module_data->scan_config.scan_wday = -1;
     module_data->scan_config.scan_time = strdup("00:00");

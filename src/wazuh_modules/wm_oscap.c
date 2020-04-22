@@ -49,7 +49,7 @@ void* wm_oscap_main(wm_oscap *oscap) {
     // Main loop
 
     do {
-        const time_t time_sleep = sched_scan_get_next_time(&(oscap->scan_config), WM_OSCAP_LOGTAG, oscap->flags.scan_on_start);
+        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(oscap->scan_config), WM_OSCAP_LOGTAG, oscap->flags.scan_on_start);
         
         if (oscap->state.next_time == 0) {
             oscap->state.next_time = oscap->scan_config.time_start + time_sleep;
@@ -59,10 +59,9 @@ void* wm_oscap_main(wm_oscap *oscap) {
             mterror(WM_OSCAP_LOGTAG, "Couldn't save running state.");
 
         if (time_sleep) {
-            mtdebug1(WM_OSCAP_LOGTAG, "Sleeping for %li seconds", time_sleep);
-            while(time(NULL) < oscap->scan_config.last_scan_time) {
-                wm_delay(1000);
-            }
+            const int next_scan_time = sched_get_next_scan_time(oscap->scan_config);
+            mtdebug2(WM_OSCAP_LOGTAG, "Sleeping until: %s", w_get_timestamp(next_scan_time));
+            w_sleep_until(next_scan_time);
         }
 
         mtinfo(WM_OSCAP_LOGTAG, "Starting evaluation.");
@@ -97,7 +96,7 @@ void wm_oscap_setup(wm_oscap *_oscap) {
     // Connect to socket
 
     for (i = 0; (queue_fd = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
-        wm_delay(1000 * WM_MAX_WAIT);
+        w_time_delay(1000 * WM_MAX_WAIT);
 
     if (i == WM_MAX_ATTEMPTS) {
         mterror(WM_OSCAP_LOGTAG, "Can't connect to queue.");

@@ -152,7 +152,7 @@ void * wm_command_main(wm_command_t * command) {
         int i;
 
         for (i = 0; command->queue_fd = StartMQ(DEFAULTQPATH, WRITE), command->queue_fd < 0 && i < WM_MAX_ATTEMPTS; i++) {
-            wm_delay(1000 * WM_MAX_WAIT);
+            w_time_delay(1000 * WM_MAX_WAIT);
         }
 
         if (i == WM_MAX_ATTEMPTS) {
@@ -163,18 +163,18 @@ void * wm_command_main(wm_command_t * command) {
 #endif
 
     do {
-        const time_t time_sleep = sched_scan_get_next_time(&(command->scan_config), WM_COMMAND_LOGTAG, command->run_on_start);
+        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(command->scan_config), WM_COMMAND_LOGTAG, command->run_on_start);
 
         if(command->state.next_time == 0) {
             command->state.next_time = command->scan_config.time_start + time_sleep;
         }
 
         if (time_sleep) {
-            mtdebug1(WM_GCP_LOGTAG, "Sleeping for %li seconds", time_sleep);
-            while(time(NULL) < command->scan_config.last_scan_time) {
-                wm_delay(1000);
-            }
+            const int next_scan_time = sched_get_next_scan_time(command->scan_config);
+            mtdebug2(WM_COMMAND_LOGTAG, "Sleeping until: %s", w_get_timestamp(next_scan_time));
+            w_sleep_until(next_scan_time);
         }
+
         mtinfo(WM_COMMAND_LOGTAG, "Starting command '%s'.", command->tag);
         
         int status = 0;

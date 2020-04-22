@@ -54,7 +54,7 @@ void* wm_aws_main(wm_aws *aws_config) {
 
     do {
 
-        const time_t time_sleep = sched_scan_get_next_time(&(aws_config->scan_config), WM_AWS_LOGTAG, aws_config->run_on_start);
+        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(aws_config->scan_config), WM_AWS_LOGTAG, aws_config->run_on_start);
 
         if (aws_config->state.next_time == 0) {
             aws_config->state.next_time = aws_config->scan_config.time_start + time_sleep;
@@ -64,10 +64,9 @@ void* wm_aws_main(wm_aws *aws_config) {
             mterror(WM_AWS_LOGTAG, "Couldn't save running state.");
 
         if (time_sleep) {
-            mtdebug1(WM_AWS_LOGTAG, "Sleeping for %li seconds", time_sleep);
-            while(time(NULL) < aws_config->scan_config.last_scan_time) {
-                wm_delay(1000);
-            }
+            const int next_scan_time = sched_get_next_scan_time(aws_config->scan_config);
+            mtdebug2(WM_AWS_LOGTAG, "Sleeping until: %s", w_get_timestamp(next_scan_time));
+            w_sleep_until(next_scan_time);
         }
         mtinfo(WM_AWS_LOGTAG, "Starting fetching of logs.");
 
@@ -251,7 +250,7 @@ void wm_aws_setup(wm_aws *_aws_config) {
     // Connect to socket
 
     for (i = 0; (queue_fd = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
-        wm_delay(1000 * WM_MAX_WAIT);
+        w_time_delay(1000 * WM_MAX_WAIT);
 
     if (i == WM_MAX_ATTEMPTS) {
         mterror(WM_AWS_LOGTAG, "Can't connect to queue.");

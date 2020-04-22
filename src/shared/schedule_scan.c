@@ -33,7 +33,7 @@ void sched_scan_init(sched_scan_config *scan_config){
     scan_config->interval = WM_DEF_INTERVAL;
     scan_config->month_interval = false;
     scan_config->time_start = 0;
-    scan_config->last_scan_time = 0;
+    scan_config->next_scheduled_scan_time = 0;
 }
 
 /**
@@ -108,14 +108,14 @@ int sched_scan_read(sched_scan_config *scan_config, xml_node **nodes, const char
     return _sched_scan_validate_parameters(scan_config);
 }
 
-time_t sched_scan_get_next_time(sched_scan_config *config, const char *MODULE_TAG,  const int run_on_start) {
+time_t sched_scan_get_time_until_next_scan(sched_scan_config *config, const char *MODULE_TAG,  const int run_on_start) {
     const time_t next_time = _get_next_time(config, MODULE_TAG, run_on_start); 
-    config->last_scan_time = time(NULL) + next_time;
+    config->next_scheduled_scan_time = time(NULL) + next_time;
     return next_time;
 }
 
 static time_t _get_next_time(const sched_scan_config *config, const char *MODULE_TAG,  const int run_on_start) {
-    if (run_on_start && !config->last_scan_time) {
+    if (run_on_start && !config->next_scheduled_scan_time) {
         // If scan on start then initial waiting time is 0
         return 0;
     }
@@ -131,11 +131,11 @@ static time_t _get_next_time(const sched_scan_config *config, const char *MODULE
         return (time_t) get_time_to_hour(config->scan_time);
     } else if (config->interval) {
         // Option 4: Interval of time
-        const time_t last_run_time = time(NULL) - config->last_scan_time;
+        const time_t last_run_time = time(NULL) - config->next_scheduled_scan_time;
 
         if ((time_t)config->interval >= last_run_time) {
             return  (time_t)config->interval - last_run_time;
-        } else if(!config->last_scan_time) { 
+        } else if(!config->next_scheduled_scan_time) { 
             // First time defined by run_on_start
             if(run_on_start) {
                 return 0;

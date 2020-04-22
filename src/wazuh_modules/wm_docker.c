@@ -43,13 +43,12 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
 
     // Main 
     do {
-        const time_t time_sleep = sched_scan_get_next_time(&(docker_conf->scan_config), WM_DOCKER_LOGTAG, docker_conf->flags.run_on_start);
+        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(docker_conf->scan_config), WM_DOCKER_LOGTAG, docker_conf->flags.run_on_start);
         
         if (time_sleep) {
-            mtdebug1(WM_DOCKER_LOGTAG, "Sleeping for %li seconds", time_sleep);
-            while(time(NULL) < docker_conf->scan_config.last_scan_time) {
-                wm_delay(1000);
-            }
+            const int next_scan_time = sched_get_next_scan_time(docker_conf->scan_config);
+            mtdebug2(WM_DOCKER_LOGTAG, "Sleeping until: %s", w_get_timestamp(next_scan_time));
+            w_sleep_until(next_scan_time);
         }
         mtinfo(WM_DOCKER_LOGTAG, "Starting to listening Docker events.");
 

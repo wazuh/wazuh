@@ -230,9 +230,6 @@ void * wmcom_main(void * arg);
 size_t wmcom_dispatch(char * command, char ** output);
 size_t wmcom_getconfig(const char * section, char ** output);
 
-// Sleep function for Windows and Unix (milliseconds)
-void wm_delay(unsigned long int ms);
-
 #ifdef __MACH__
 void freegate(gateway *gate);
 #endif

@@ -205,7 +205,7 @@ void * wm_sca_main(wm_sca_t * data) {
 #ifndef WIN32
 
     for (i = 0; (data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++){
-        wm_delay(1000 * WM_MAX_WAIT);
+        w_time_delay(1000 * WM_MAX_WAIT);
     }
 
     if (i == WM_MAX_ATTEMPTS) {
@@ -296,13 +296,12 @@ static void wm_sca_send_policies_scanned(wm_sca_t * data) {
 static int wm_sca_start(wm_sca_t * data) {
 
     do {
-        const time_t time_sleep = sched_scan_get_next_time(&(data->scan_config), WM_GCP_LOGTAG, data->scan_on_start);
+        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(data->scan_config), WM_GCP_LOGTAG, data->scan_on_start);
         
         if (time_sleep) {
-            mtdebug1(WM_SCA_LOGTAG, "Sleeping for %li seconds", time_sleep);
-            while(time(NULL) < data->scan_config.last_scan_time) {
-                wm_delay(1000);
-            }
+            const int next_scan_time = sched_get_next_scan_time(data->scan_config);
+            mtdebug2(WM_SCA_LOGTAG, "Sleeping until: %s", w_get_timestamp(next_scan_time));
+            w_sleep_until(next_scan_time);
         }
         mtinfo(WM_SCA_LOGTAG,"Starting Security Configuration Assessment scan.");
 
@@ -467,7 +466,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
                 /* Send summary */
                 if(integrity_hash && integrity_hash_file) {
-                    wm_delay(1000 * data->summary_delay);
+                    w_time_delay(1000 * data->summary_delay);
                     wm_sca_send_summary(data,id,summary_passed,summary_failed,summary_invalid,policy,time_start,time_end,integrity_hash,integrity_hash_file,first_scan,cis_db_index,checks_number);
                     snprintf(last_sha256[cis_db_index] ,sizeof(os_sha256),"%s",integrity_hash_file);
                 }
@@ -2794,12 +2793,12 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
             unsigned int time = random;
 
             if (request->first_scan) {
-                wm_delay(2000);
+                w_time_delay(2000);
                 mdebug1("Sending first scan results for policy '%s'", data->policies[request->policy_index]->policy_path);
             } else {
                 minfo("Integration checksum failed for policy '%s'. Resending scan results in %d seconds.",
                     data->policies[request->policy_index]->policy_path, random);
-                wm_delay(1000 * time);
+                w_time_delay(1000 * time);
             }
 
             mdebug1("Dumping results to SCA DB for policy '%s' (Policy index: %u)",
@@ -2829,14 +2828,14 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
                 }
             }
 
-            wm_delay(5000);
+            w_time_delay(5000);
 
             int elements_sent = i;
             mdebug1("Sending end of dump control event.");
 
             wm_sca_send_dump_end(data,elements_sent,data->policies[request->policy_index]->policy_id,scan_id);
 
-            wm_delay(2000);
+            w_time_delay(2000);
 
             /* Send summary only for first scan */
             if (request->first_scan) {

@@ -80,7 +80,7 @@ time_t __wrap_time(time_t *_time){
     return current_time;
 }
 
-void __wrap_wm_delay(unsigned int msec){
+void __wrap_w_time_delay(unsigned int msec){
     current_time += (msec/1000);
 }
 /*********************************/
@@ -152,7 +152,7 @@ void test_sched_scan_init(void **state){
     assert_int_equal(scan_config.interval, WM_DEF_INTERVAL);
     assert_int_equal(scan_config.month_interval,false);
     assert_int_equal(scan_config.time_start, 0);
-    assert_int_equal(scan_config.last_scan_time, 0);
+    assert_int_equal(scan_config.next_scheduled_scan_time, 0);
 }
 
 void test_sched_scan_read_correct_day(void **state) {
@@ -408,7 +408,7 @@ void test_get_next_time_interval_configuration(void **state) {
     scan_config->interval = 3600;
     time_t ret = _get_next_time(scan_config, "TEST_MODULE", 0);
     assert_int_equal((int) ret, 3600);
-    scan_config->last_scan_time = time(NULL); // Update last scan time
+    scan_config->next_scheduled_scan_time = time(NULL); // Update last scan time
     ret = _get_next_time(scan_config, "TEST_MODULE", 0);
     assert_int_equal((int) ret, 3600);
 }

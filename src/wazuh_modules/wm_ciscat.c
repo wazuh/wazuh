@@ -149,13 +149,12 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     // Main loop
 
     do {
-        const time_t time_sleep = sched_scan_get_next_time(&(ciscat->scan_config), WM_CISCAT_LOGTAG, ciscat->flags.scan_on_start);
+        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(ciscat->scan_config), WM_CISCAT_LOGTAG, ciscat->flags.scan_on_start);
         
         if (time_sleep) {
-            mtdebug1(WM_CISCAT_LOGTAG, "Sleeping for %li seconds", time_sleep);
-            while(time(NULL) < ciscat->scan_config.last_scan_time) {
-                wm_delay(1000);
-            }
+            const int next_scan_time = sched_get_next_scan_time(ciscat->scan_config);
+            mtdebug2(WM_CISCAT_LOGTAG, "Sleeping until: %s", w_get_timestamp(next_scan_time));
+            w_sleep_until(next_scan_time);
         }
 
         if (!ciscat->flags.error) {
@@ -233,7 +232,7 @@ void wm_ciscat_setup(wm_ciscat *_ciscat) {
     // Connect to socket
 
     for (i = 0; (queue_fd = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
-        wm_delay(1000 * WM_MAX_WAIT);
+        w_time_delay(1000 * WM_MAX_WAIT);
 
     if (i == WM_MAX_ATTEMPTS) {
         mterror(WM_CISCAT_LOGTAG, "Can't connect to queue.");

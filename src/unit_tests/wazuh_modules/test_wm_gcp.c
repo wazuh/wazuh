@@ -48,7 +48,7 @@ void __wrap_sched_scan_dump(const sched_scan_config* scan_config, cJSON *cjson_o
     check_expected_ptr(cjson_object);
 }
 
-time_t __wrap_sched_scan_get_next_time(sched_scan_config *config, const char *MODULE_TAG,  const int run_on_start) {
+time_t __wrap_sched_scan_get_time_until_next_scan(sched_scan_config *config, const char *MODULE_TAG,  const int run_on_start) {
     check_expected_ptr(config);
     check_expected(MODULE_TAG);
     check_expected(run_on_start);
@@ -1464,10 +1464,10 @@ static void test_wm_gcp_main_pull_on_start(void **state) {
     expect_string(__wrap__mtinfo, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "Module started.");
 
-    expect_value(__wrap_sched_scan_get_next_time, config, &gcp_config->scan_config);
-    expect_string(__wrap_sched_scan_get_next_time, MODULE_TAG, WM_GCP_LOGTAG);
-    expect_value(__wrap_sched_scan_get_next_time, run_on_start, 1);
-    will_return(__wrap_sched_scan_get_next_time, 0);
+    expect_value(__wrap_sched_scan_get_time_until_next_scan, config, &gcp_config->scan_config);
+    expect_string(__wrap_sched_scan_get_time_until_next_scan, MODULE_TAG, WM_GCP_LOGTAG);
+    expect_value(__wrap_sched_scan_get_time_until_next_scan, run_on_start, 1);
+    will_return(__wrap_sched_scan_get_time_until_next_scan, 0);
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Starting fetching of logs.");
@@ -1523,13 +1523,13 @@ static void test_wm_gcp_main_wait_before_pull(void **state) {
     expect_string(__wrap__mtinfo, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "Module started.");
 
-    expect_value(__wrap_sched_scan_get_next_time, config, &gcp_config->scan_config);
-    expect_string(__wrap_sched_scan_get_next_time, MODULE_TAG, WM_GCP_LOGTAG);
-    expect_value(__wrap_sched_scan_get_next_time, run_on_start, 0);
-    will_return(__wrap_sched_scan_get_next_time, 10);
+    expect_value(__wrap_sched_scan_get_time_until_next_scan, config, &gcp_config->scan_config);
+    expect_string(__wrap_sched_scan_get_time_until_next_scan, MODULE_TAG, WM_GCP_LOGTAG);
+    expect_value(__wrap_sched_scan_get_time_until_next_scan, run_on_start, 0);
+    will_return(__wrap_sched_scan_get_time_until_next_scan, 10);
 
-    expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "Sleeping for 10 seconds");
+    expect_string(__wrap__mtdebug2, tag, WM_GCP_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sleeping until: 1970/01/01 00:00:00"); // time is 0 since next_scheduled_scan_time is not being set
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Starting fetching of logs.");
