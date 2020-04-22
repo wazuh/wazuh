@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -60,7 +60,7 @@
 /* COMMON ERRORS */
 #define CONN_ERROR      "(1201): No remote connection configured."
 #define CONFIG_ERROR    "(1202): Configuration error at '%s'."
-#define USER_ERROR      "(1203): Invalid user '%s' or group '%s' given."
+#define USER_ERROR      "(1203): Invalid user '%s' or group '%s' given: %s (%d)"
 #define CONNTYPE_ERROR  "(1204): Invalid connection type: '%s'."
 #define PORT_ERROR      "(1205): Invalid port number: '%d'."
 #define BIND_ERROR      "(1206): Unable to Bind port '%d' due to [(%d)-(%s)]"
@@ -97,7 +97,7 @@
 #define INVALID_TIME    "(1240): Invalid time format: '%s'."
 #define INVALID_DAY     "(1241): Invalid day format: '%s'."
 #define ACCEPT_ERROR    "(1242): Couldn't accept TCP connections: %s (%d)"
-#define RECV_ERROR      "(1243): Couldn't receive message from peer."
+#define RECV_ERROR      "(1243): Couldn't receive message from peer: %s (%d)"
 #define DUP_SECURE      "(1244): Can't add more than one secure connection."
 #define SEND_DISCON     "(1245): Sending message to disconnected agent '%s'."
 #define SHARED_ERROR    "(1246): Unable to send file '%s' to agent ID '%s'."
