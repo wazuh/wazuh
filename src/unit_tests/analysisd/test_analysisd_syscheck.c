@@ -258,6 +258,8 @@ static int setup_fim_data(void **state) {
         return -1;
     if(data->lf->decoder_info->fields[FIM_HARD_LINKS] = strdup("hard_links"), data->lf->decoder_info->fields[FIM_HARD_LINKS] == NULL)
         return -1;
+    if(data->lf->decoder_info->fields[FIM_MODE_FIELD] = strdup("mode"), data->lf->decoder_info->fields[FIM_MODE_FIELD] == NULL)
+        return -1;
     if(data->lf->decoder_info->fields[FIM_SIZE] = strdup("size"), data->lf->decoder_info->fields[FIM_SIZE] == NULL)
         return -1;
     if(data->lf->decoder_info->fields[FIM_PERM] = strdup("perm"), data->lf->decoder_info->fields[FIM_PERM] == NULL)
@@ -3148,6 +3150,8 @@ static void test_decode_fim_event_type_event(void **state) {
 
     if(lf->agent_id = strdup("007"), lf->agent_id == NULL)
         fail();
+
+    lf->decoder_info->fields[FIM_MODE_FIELD] = strdup("mode");
 
     /* Inside fim_process_alert */
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "

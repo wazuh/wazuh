@@ -960,6 +960,9 @@ void Free_Eventinfo(Eventinfo *lf)
     if (lf->filename) {
         free(lf->filename);
     }
+    if (lf->mode) {
+        free(lf->mode);
+    }
     if (lf->sk_tag) {
         free(lf->sk_tag);
     }
