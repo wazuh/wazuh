@@ -13,10 +13,12 @@ COPY configurations/base/wazuh-agent/config/test.keys /var/ossec/etc/test.keys
 COPY configurations/base/wazuh-agent/config/ossec.conf /var/ossec/etc/ossec.conf
 COPY configurations/base/wazuh-agent/healthcheck/healthcheck.py /tmp/healthcheck.py
 
+ADD base/wazuh-agent/entrypoint.sh /scripts/entrypoint.sh
+
 FROM base_agent AS wazuh-env-agent-base
 
 FROM base_agent AS wazuh-env-agent-active-response
-COPY configurations/active-response/wazuh-agent/entrypoint.sh /scripts/entrypoint.sh
+ADD configurations/active-response/wazuh-agent/entrypoint.sh /scripts/entrypoint.sh
 
 FROM base_agent AS wazuh-env-agent-agents
 
@@ -73,5 +75,4 @@ FROM wazuh-env-agent-ciscat AS wazuh-env-agent-experimental_black_rbac
 
 FROM wazuh-env-agent-${ENVIRONMENT}
 
-ADD base/wazuh-agent/entrypoint.sh /scripts/entrypoint.sh
 HEALTHCHECK --retries=30 --interval=10s --timeout=30s --start-period=30s CMD /usr/bin/python3 /tmp/healthcheck.py || exit 1

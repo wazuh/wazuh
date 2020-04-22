@@ -499,11 +499,13 @@ def environment_black_sca_rbac():
 def environment_white_syscheck_rbac():
     values = build_and_up("syscheck_white_rbac")
     while values['retries'] < values['max_retries']:
-        health = check_health()
-        if health:
-            time.sleep(10)
-            yield
-            break
+        master_health = check_health()
+        if master_health:
+            agents_healthy = check_health(node_type='agent', agents=[1, 2, 3])
+            if agents_healthy:
+                time.sleep(30)
+                yield
+                break
         else:
             values['retries'] += 1
     down_env()
@@ -513,11 +515,13 @@ def environment_white_syscheck_rbac():
 def environment_black_syscheck_rbac():
     values = build_and_up("syscheck_black_rbac")
     while values['retries'] < values['max_retries']:
-        health = check_health()
-        if health:
-            time.sleep(10)
-            yield
-            break
+        master_health = check_health()
+        if master_health:
+            agents_healthy = check_health(node_type='agent', agents=[1, 2, 3])
+            if agents_healthy:
+                time.sleep(30)
+                yield
+                break
         else:
             values['retries'] += 1
     down_env()
