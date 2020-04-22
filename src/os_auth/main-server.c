@@ -39,7 +39,7 @@ static int ssl_error(const SSL *ssl, int ret);
 /* Thread for dispatching connection pool */
 static void* run_dispatcher(void *arg);
 
-static w_err_t w_auth_parse_data(char* buf, char *response, const char *authpass, char *ip, char **agentname, char *groups);
+static w_err_t w_auth_parse_data(const char* buf, char *response, const char *authpass, char *ip, char **agentname, char **groups);
 static w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentname, const char *groups);
 static w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, const char *groups, char **id, char **key);
 
@@ -686,10 +686,10 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         mdebug2("Request received: <%s>", buf);
         bool enrollment_ok = FALSE;
         char *agentname = NULL;
-        char centralized_group[OS_SIZE_65536] = {0};
+        char *centralized_group = NULL;
         char* new_id = NULL;
         char* new_key = NULL;
-        if(OS_SUCCESS == w_auth_parse_data(buf, response, authpass, ip, &agentname, centralized_group)){
+        if(OS_SUCCESS == w_auth_parse_data(buf, response, authpass, ip, &agentname, &centralized_group)){
             if (worker_node) {                
                 if( 0 == w_request_agent_add_clustered(new_id, agentname, ip, centralized_group, new_key, config.flags.force_insert?config.force_time:-1, TRUE, NULL) ) {
                     enrollment_ok = TRUE;
@@ -737,7 +737,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id, 1);
                 } else {
                     /* Add pending key to write */
-                    add_insert(keys.keyentries[keys.keysize - 1], *centralized_group ? centralized_group : NULL);
+                    add_insert(keys.keyentries[keys.keysize - 1], centralized_group);
                     write_pending = 1;
                     w_cond_signal(&cond_pending);
                 }
@@ -752,7 +752,11 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         SSL_free(ssl);
         close(client->socket);   
         os_free(client);
-        free(buf);
+        os_free(buf);
+        os_free(agentname);
+        os_free(centralized_group);
+        os_free(new_id);
+        os_free(new_key);
     }
 
     SSL_CTX_free(ctx);
@@ -760,13 +764,9 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     return NULL;
 }
 
-static w_err_t w_auth_parse_data(char* buf, char *response,const char *authpass, char *ip, char **agentname, char *groups){
+static w_err_t w_auth_parse_data(const char* buf, char *response,const char *authpass, char *ip, char **agentname, char **groups){
     
-    bool parseok = FALSE; 
-    //JJP: I prefer allocating space for agentname instead of recyclying the one in buffer. This will avoid handling buffer until end.
-    // Also, I can create a struct with all info required. 
-    //JJP: parseok can be avoided 
-    
+    bool parseok = FALSE;     
     /* Checking for shared password authentication. */
     if(authpass) {
         /* Format is pretty simple: OSSEC PASS: PASS WHATEVERACTION */
@@ -790,31 +790,33 @@ static w_err_t w_auth_parse_data(char* buf, char *response,const char *authpass,
             return OS_INVALID;
         }
     }
-    
 
     /* Checking for action A (add agent) */    
     parseok = FALSE;
-    if (strncmp(buf, "OSSEC A:'", 9) == 0) {
-        *agentname = buf + 9;
+    if (strncmp(buf, "OSSEC A:'", 9) == 0) {        
         buf += 9;
+                
+        unsigned len = 0;
         while (*buf != '\0') {
             if (*buf == '\'') {
-                *buf = '\0';
+                os_malloc(len+1, *agentname);
+                memcpy(*agentname, buf-len, len);
+                (*agentname)[len+1] = '\0';                
                 minfo("Received request for a new agent (%s) from: %s", *agentname, ip);
                 parseok = TRUE;
                 break;
             }
-            buf++;
+            len++; 
+            buf++;           
         }
     }
-    buf++;
+    buf++;    
     
     if (!parseok) {
         merror("Invalid request for new agent from: %s", ip);
         snprintf(response, 2048, "ERROR: Invalid request for new agent");  
         return OS_INVALID;
     }    
-
 
     if (!OS_IsValidName(*agentname)) {
         merror("Invalid agent name: %s from %s", *agentname, ip);
@@ -828,49 +830,47 @@ static w_err_t w_auth_parse_data(char* buf, char *response,const char *authpass,
 
     if(strncmp(++buf,centralized_group_token,2)==0)
     {
-        sscanf(buf," G:\'%65535[^\']\"",groups);
+        char tmp_groups[OS_SIZE_65536] = {0};
+        sscanf(buf," G:\'%65535[^\']\"",tmp_groups);
 
         /* Validate the group name */
         int valid = 0;
-        valid = w_validate_group_name(groups);
+        valid = w_validate_group_name(tmp_groups);
 
         if(valid < 0) {
 
-            merror("Invalid group name: %.255s... ,",groups);
+            merror("Invalid group name: %.255s... ,",tmp_groups);
 
             switch (valid) {
                 case -6:
-                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... cannot start or end with ','\n\n", groups);
+                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... cannot start or end with ','\n\n", tmp_groups);
                     break;
                 case -5:
-                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... consecutive ',' are not allowed \n\n, ", groups);
+                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... consecutive ',' are not allowed \n\n, ", tmp_groups);
                     break;
                 case -4:
-                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... white spaces are not allowed \n\n", groups);
+                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... white spaces are not allowed \n\n", tmp_groups);
                     break;
                 case -3:
-                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... multigroup is too large \n\n", groups);
+                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... multigroup is too large \n\n", tmp_groups);
                     break;
                 case -2:
-                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large\n\n", groups);
+                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large\n\n", tmp_groups);
                     break;
                 case -1:
-                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited\n\n", groups);
+                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited\n\n", tmp_groups);
                     break;
             }               
             return OS_INVALID;
         }
-        char *tmp_groups = wstr_delete_repeated_groups(groups);
-        if(!tmp_groups){
+        *groups = wstr_delete_repeated_groups(tmp_groups);
+        if(!*groups){
             return OS_MEMERR;
         }
-        mdebug1("Group(s) is: %s",tmp_groups);
+        mdebug1("Group(s) is: %s",*groups);
         
         /*Forward the string pointer G:'........' 2 for G:, 2 for ''*/
-        buf+= 2+strlen(groups)+2;
-
-        snprintf(groups,OS_SIZE_65536,"%s",tmp_groups);
-        os_free(tmp_groups);
+        buf+= 2+strlen(tmp_groups)+2;
         
     }else{
         buf--;
@@ -908,7 +908,6 @@ static w_err_t w_auth_parse_data(char* buf, char *response,const char *authpass,
 }
 
 static w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentname, const char *groups){
-    //JJP: Split into validate_groups, validate_name, validate_ip
     /* Validate the group(s) name(s) */     
     int index = 0;
     char *id_exist = NULL;
@@ -917,7 +916,7 @@ static w_err_t w_auth_validate_data (char *response, const char *ip, const char 
     char fname[2048];
     fname[2047] = '\0';
 
-    if (*groups){ 
+    if (groups){ 
         if (OS_SUCCESS != w_auth_validate_groups(groups, response)){
             return OS_INVALID;
         }        
@@ -1001,7 +1000,7 @@ static w_err_t w_auth_add_agent(char *response, const char *ip, const char *agen
     }
 
     /* Add the agent to the centralized configuration group */
-    if(*groups) {
+    if(groups) {
         char path[PATH_MAX];
         if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
             merror("At set_agent_group(): file path too large for agent '%s'.", keys.keyentries[index]->id);
@@ -1012,8 +1011,8 @@ static w_err_t w_auth_add_agent(char *response, const char *ip, const char *agen
         }
     }
 
-    *id = keys.keyentries[index]->id;
-    *key = keys.keyentries[index]->key;
+    os_strdup(keys.keyentries[index]->id, *id);
+    os_strdup(keys.keyentries[index]->key, *key);
 
     return OS_SUCCESS;
 }
@@ -1021,9 +1020,11 @@ static w_err_t w_auth_add_agent(char *response, const char *ip, const char *agen
 w_err_t w_auth_validate_groups(const char *groups, char *response) {
     int max_multigroups = 0;    
     char *save_ptr = NULL;
+    char *tmp_groups = NULL;
     const char delim[] = {MULTIGROUP_SEPARATOR,'\0'};    
   
-    char *group = strtok_r(groups, delim, &save_ptr);    
+    os_strdup(groups, tmp_groups);
+    char *group = strtok_r(tmp_groups, delim, &save_ptr);    
 
     while( group != NULL ) {
         DIR * dp;

@@ -598,8 +598,6 @@ int auth_close(int sock) {
     return (sock >= 0) ? close(sock) : 0;
 }
 
-//JJP: Improve: alloc response inside here. To avoid possible size errors. 
-//JJP: Otherwise: doxygen clear comments
 static int w_send_clustered_message(const char* command, const char* payload, char* response) {
     char sockname[PATH_MAX + 1] = {0};
     int sock = -1;
