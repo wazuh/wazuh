@@ -52,7 +52,9 @@ int sched_scan_read(sched_scan_config *scan_config, xml_node **nodes, const char
  * @param config Scheduling configuration
  * @param MODULE_TAG String to identify module
  * @param run_on_start forces first time run
- * @return remaining time until next scan in seconds
+ * @return time until next scan in seconds
+ *   stores in config->last_scan_time the absolute time where next event 
+ *   should occur
  * */
 time_t sched_scan_get_next_time(sched_scan_config *config, const char *MODULE_TAG, const int run_on_start);
 void sched_scan_dump(const sched_scan_config* scan_config, cJSON *cjson_object);

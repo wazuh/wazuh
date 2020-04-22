@@ -171,7 +171,9 @@ void * wm_command_main(wm_command_t * command) {
 
         if (time_sleep) {
             mtdebug1(WM_GCP_LOGTAG, "Sleeping for %li seconds", time_sleep);
-            wm_delay(1000 * time_sleep);
+            while(time(NULL) < command->scan_config.last_scan_time) {
+                wm_delay(1000);
+            }
         }
         mtinfo(WM_COMMAND_LOGTAG, "Starting command '%s'.", command->tag);
         

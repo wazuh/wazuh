@@ -300,7 +300,9 @@ static int wm_sca_start(wm_sca_t * data) {
         
         if (time_sleep) {
             mtdebug1(WM_SCA_LOGTAG, "Sleeping for %li seconds", time_sleep);
-            wm_delay(1000 * time_sleep);
+            while(time(NULL) < data->scan_config.last_scan_time) {
+                wm_delay(1000);
+            }
         }
         mtinfo(WM_SCA_LOGTAG,"Starting Security Configuration Assessment scan.");
 

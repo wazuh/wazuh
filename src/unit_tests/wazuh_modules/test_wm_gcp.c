@@ -43,10 +43,6 @@ int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const 
     return mock();
 }
 
-void __wrap_wm_delay(unsigned int ms) {
-    check_expected(ms);
-}
-
 void __wrap_sched_scan_dump(const sched_scan_config* scan_config, cJSON *cjson_object) {
     check_expected_ptr(scan_config);
     check_expected_ptr(cjson_object);
@@ -1530,12 +1526,10 @@ static void test_wm_gcp_main_wait_before_pull(void **state) {
     expect_value(__wrap_sched_scan_get_next_time, config, &gcp_config->scan_config);
     expect_string(__wrap_sched_scan_get_next_time, MODULE_TAG, WM_GCP_LOGTAG);
     expect_value(__wrap_sched_scan_get_next_time, run_on_start, 0);
-    will_return(__wrap_sched_scan_get_next_time, 100);
+    will_return(__wrap_sched_scan_get_next_time, 10);
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "Sleeping for 100 seconds");
-
-    expect_value(__wrap_wm_delay, ms, 100000);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Sleeping for 10 seconds");
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Starting fetching of logs.");

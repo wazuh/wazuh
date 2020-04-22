@@ -60,7 +60,9 @@ void* wm_oscap_main(wm_oscap *oscap) {
 
         if (time_sleep) {
             mtdebug1(WM_OSCAP_LOGTAG, "Sleeping for %li seconds", time_sleep);
-            wm_delay(1000 * time_sleep);
+            while(time(NULL) < oscap->scan_config.last_scan_time) {
+                wm_delay(1000);
+            }
         }
 
         mtinfo(WM_OSCAP_LOGTAG, "Starting evaluation.");

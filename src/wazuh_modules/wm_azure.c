@@ -63,7 +63,9 @@ void* wm_azure_main(wm_azure_t *azure_config) {
 
         if (time_sleep) {
             mtdebug1(WM_AZURE_LOGTAG, "Sleeping for %li seconds", time_sleep);
-            wm_delay(1000 * time_sleep);
+            while(time(NULL) < azure_config->scan_config.last_scan_time) {
+                wm_delay(1000);
+            }
         }
         mtinfo(WM_AZURE_LOGTAG, "Starting fetching of logs.");
 

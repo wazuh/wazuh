@@ -153,7 +153,9 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
         
         if (time_sleep) {
             mtdebug1(WM_CISCAT_LOGTAG, "Sleeping for %li seconds", time_sleep);
-            wm_delay(1000 * time_sleep);
+            while(time(NULL) < ciscat->scan_config.last_scan_time) {
+                wm_delay(1000);
+            }
         }
 
         if (!ciscat->flags.error) {

@@ -47,7 +47,9 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
         
         if (time_sleep) {
             mtdebug1(WM_DOCKER_LOGTAG, "Sleeping for %li seconds", time_sleep);
-            wm_delay(1000 * time_sleep);
+            while(time(NULL) < docker_conf->scan_config.last_scan_time) {
+                wm_delay(1000);
+            }
         }
         mtinfo(WM_DOCKER_LOGTAG, "Starting to listening Docker events.");
 
