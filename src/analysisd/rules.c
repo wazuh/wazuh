@@ -158,6 +158,7 @@ int Rules_OP_ReadRules(const char *rulefile)
     const char *xml_different_status = "different_status";
     const char *xml_different_systemname = "different_systemname";
     const char *xml_different_dstgeoip = "different_dstgeoip";
+    const char *xml_different_field = "different_field";
 
     const char *xml_notsame_source_ip = "not_same_source_ip";
     const char *xml_notsame_user = "not_same_user";
@@ -1206,7 +1207,9 @@ int Rules_OP_ReadRules(const char *rulefile)
                         }
 
                     } else if (strcasecmp(rule_opt[k]->element,
-                                          xml_notsame_field) == 0) {
+                                          xml_notsame_field) == 0 ||
+                               strcasecmp(rule_opt[k]->element,
+                                          xml_different_field) == 0) {
 
                         if (config_ruleinfo->different_field & FIELD_DYNAMICS) {
                             int size;
