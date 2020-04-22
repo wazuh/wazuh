@@ -7,6 +7,7 @@ import json
 import os
 import re
 import yaml
+import psutil
 
 from api.api_exception import APIException
 from api.constants import CONFIG_FILE_PATH
@@ -186,5 +187,12 @@ def write_into_yaml_file(config: Dict):
                            f'{e.strerror}')
 
 
+def stop_old_api():
+    for proc in psutil.process_iter(attrs=['cmdline']):
+        if proc.info['cmdline'] == ['node', os.path.join(common.ossec_path, 'api/app.js')]:
+            proc.terminate()
+
+
 if __name__ == '__main__':
+    stop_old_api()
     write_into_yaml_file(get_old_config())
