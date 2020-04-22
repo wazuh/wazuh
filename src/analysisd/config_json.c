@@ -178,12 +178,12 @@ void _getRulesListJSON(RuleNode *list, cJSON *array) {
     int i;
 
     const char * same_fields[] = {
-        "same_source_ip",
+        "same_srcip",
         "same_id",
-        "same_destination_ip",
-        "same_src_port",
-        "same_dst_port",
-        "same_src_user",
+        "same_dstip",
+        "same_srcport",
+        "same_dstport",
+        "same_srcuser",
         "same_user",
         "same_protocol",
         "same_action",
@@ -191,7 +191,7 @@ void _getRulesListJSON(RuleNode *list, cJSON *array) {
         "same_data",
         "same_extra_data",
         "same_status",
-        "same_system_name",
+        "same_systemname",
         "same_srcgeoip",
         "same_dstgeoip",
         "same_location"
@@ -200,10 +200,10 @@ void _getRulesListJSON(RuleNode *list, cJSON *array) {
     const char * different_fields[] = {
         "different_srcip",
         "different_id",
-        "different_destination_ip",
-        "different_src_port",
-        "different_dst_port",
-        "different_src_user",
+        "different_dstip",
+        "different_srcport",
+        "different_dstport",
+        "different_srcuser",
         "different_user",
         "different_protocol",
         "different_action",
@@ -211,7 +211,7 @@ void _getRulesListJSON(RuleNode *list, cJSON *array) {
         "different_data",
         "different_extra_data",
         "different_status",
-        "different_system_name",
+        "different_systemname",
         "different_srcgeoip",
         "different_dstgeoip",
         "different_location"

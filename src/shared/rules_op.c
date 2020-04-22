@@ -85,15 +85,18 @@ int OS_ReadXMLRules(const char *rulefile,
     const char *xml_if_matched_sid = "if_matched_sid";
 
     const char *xml_same_source_ip = "same_source_ip";
+    const char *xml_same_srcip = "same_srcip";
     const char *xml_same_src_port = "same_src_port";
+    const char *xml_same_srcport = "same_srcport";
     const char *xml_same_dst_port = "same_dst_port";
-    const char *xml_same_srcuser = "same_src_user";
+    const char *xml_same_dstport = "same_dstport";
+    const char *xml_same_srcuser = "same_srcuser";
     const char *xml_same_user = "same_user";
     const char *xml_same_location = "same_location";
     const char *xml_same_id = "same_id";
     const char *xml_dodiff = "check_diff";
     const char *xml_same_field = "same_field";
-    const char *xml_same_destination_ip = "same_destination_ip";
+    const char *xml_same_dstip = "same_dstip";
     const char *xml_same_agent = "same_agent";
     const char *xml_same_url = "same_url";
     const char *xml_same_srcgeoip = "same_srcgeoip";
@@ -102,25 +105,27 @@ int OS_ReadXMLRules(const char *rulefile,
     const char *xml_same_data = "same_data";
     const char *xml_same_extra_data = "same_extra_data";
     const char *xml_same_status = "same_status";
-    const char *xml_same_system_name = "same_system_name";
+    const char *xml_same_systemname = "same_systemname";
     const char *xml_same_dstgeoip = "same_dstgeoip";
 
     const char *xml_different_url = "different_url";
     const char *xml_different_srcip = "different_srcip";
     const char *xml_different_srcgeoip = "different_srcgeoip";
-    const char *xml_different_destination_ip = "different_destination_ip";
+    const char *xml_different_dstip = "different_dstip";
     const char *xml_different_src_port = "different_src_port";
+    const char *xml_different_srcport = "different_srcport";
     const char *xml_different_dst_port = "different_dst_port";
+    const char *xml_different_dstport = "different_dstport";
     const char *xml_different_location = "different_location";
     const char *xml_different_protocol = "different_protocol";
     const char *xml_different_action = "different_action";
-    const char *xml_different_srcuser = "different_src_user";
+    const char *xml_different_srcuser = "different_srcuser";
     const char *xml_different_user = "different_user";
     const char *xml_different_id = "different_id";
     const char *xml_different_data = "different_data";
     const char *xml_different_extra_data = "different_extra_data";
     const char *xml_different_status = "different_status";
-    const char *xml_different_system_name = "different_system_name";
+    const char *xml_different_systemname = "different_systemname";
     const char *xml_different_dstgeoip = "different_dstgeoip";
 
     const char *xml_notsame_source_ip = "not_same_source_ip";
@@ -522,24 +527,30 @@ int OS_ReadXMLRules(const char *rulefile,
                         atoi(rule_opt[k]->content);
 
                 } else if (strcasecmp(rule_opt[k]->element,
-                                      xml_same_source_ip) == 0) {
+                                      xml_same_source_ip) == 0 ||
+                           strcasecmp(rule_opt[k]->element,
+                                      xml_same_srcip) == 0) {
                         config_ruleinfo->same_field |= FIELD_SRCIP;
                 } else if (strcasecmp(rule_opt[k]->element,
-                                      xml_same_destination_ip) == 0) {
+                                      xml_same_dstip) == 0) {
                     config_ruleinfo->same_field |= FIELD_DSTIP;
 
                     if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                         config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     }
                 } else if (strcasecmp(rule_opt[k]->element,
-                                      xml_same_src_port) == 0) {
+                                      xml_same_src_port) == 0 ||
+                           strcasecmp(rule_opt[k]->element,
+                                      xml_same_srcport) == 0) {
                     config_ruleinfo->same_field |= FIELD_SRCPORT;
 
                     if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                         config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     }
                 } else if (strcasecmp(rule_opt[k]->element,
-                                      xml_same_dst_port) == 0) {
+                                      xml_same_dst_port) == 0 ||
+                           strcasecmp(rule_opt[k]->element,
+                                      xml_same_dstport) == 0) {
                     config_ruleinfo->same_field |= FIELD_DSTPORT;
 
                     if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
@@ -593,7 +604,7 @@ int OS_ReadXMLRules(const char *rulefile,
                         config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     }
                 } else if (strcmp(rule_opt[k]->element,
-                                  xml_same_system_name) == 0) {
+                                  xml_same_systemname) == 0) {
                     config_ruleinfo->same_field |= FIELD_SYSTEMNAME;
 
                     if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
@@ -639,7 +650,7 @@ int OS_ReadXMLRules(const char *rulefile,
                     }
                 } else if (strcasecmp(rule_opt[k]->element,
                                       xml_dodiff) == 0) {
-                    config_ruleinfo->context++;
+                    config_ruleinfo->context = 1;
                     config_ruleinfo->context_opts |= FIELD_DODIFF;
                     if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                         config_ruleinfo->alert_opts |= DO_EXTRAINFO;
@@ -654,21 +665,25 @@ int OS_ReadXMLRules(const char *rulefile,
                         config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     }
                 } else if (strcasecmp(rule_opt[k]->element,
-                                      xml_different_destination_ip) == 0) {
+                                      xml_different_dstip) == 0) {
                     config_ruleinfo->different_field |= FIELD_DSTIP;
 
                     if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                         config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     }
                 } else if (strcasecmp(rule_opt[k]->element,
-                                      xml_different_src_port) == 0) {
+                                      xml_different_src_port) == 0 ||
+                           strcasecmp(rule_opt[k]->element,
+                                      xml_different_srcport) == 0) {
                     config_ruleinfo->different_field |= FIELD_SRCPORT;
 
                     if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                         config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     }
                 } else if (strcasecmp(rule_opt[k]->element,
-                                      xml_different_dst_port) == 0) {
+                                      xml_different_dst_port) == 0 ||
+                           strcasecmp(rule_opt[k]->element,
+                                      xml_different_dstport) == 0) {
                     config_ruleinfo->different_field |= FIELD_DSTPORT;
 
                     if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
@@ -724,7 +739,7 @@ int OS_ReadXMLRules(const char *rulefile,
                         config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     }
                 } else if (strcmp(rule_opt[k]->element,
-                                  xml_different_system_name) == 0) {
+                                  xml_different_systemname) == 0) {
                     config_ruleinfo->different_field |= FIELD_SYSTEMNAME;
 
                     if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
