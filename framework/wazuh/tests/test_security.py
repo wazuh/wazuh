@@ -21,6 +21,7 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
 # Params
 
 security_cases = list()
+rbac_cases = list()
 os.chdir(test_data_path)
 
 for file in glob.glob('*.yml'):
@@ -29,7 +30,10 @@ for file in glob.glob('*.yml'):
 
     for function_, test_cases in tests_cases.items():
         for test_case in test_cases:
-            security_cases.append((function_, test_case['params'], test_case['result']))
+            if file != 'rbac_catalog.yml':
+                security_cases.append((function_, test_case['params'], test_case['result']))
+            else:
+                rbac_cases.append((function_, test_case['params'], test_case['result']))
 
 
 def create_memory_db(sql_file, session):
@@ -95,8 +99,6 @@ def test_security(db_setup, security_function, params, expected_result):
     expected_result : list of dict
         This is a list that contains the expected results .
     """
-    # with patch('wazuh.security.orm._engine', create_engine(f'sqlite://')):
-    #     with patch('wazuh.security.orm._Session', sessionmaker(bind=create_engine(f'sqlite://'))):
     try:
         security, _ = db_setup
         result = getattr(security, security_function)(**params).to_dict()
@@ -104,6 +106,30 @@ def test_security(db_setup, security_function, params, expected_result):
         assert failed_are_equal(result, expected_result)
     except WazuhError as e:
         assert str(e.code) == list(expected_result['failed_items'].keys())[0]
+
+
+@pytest.mark.parametrize('security_function, params, expected_result', rbac_cases)
+def test_rbac_catalog(db_setup, security_function, params, expected_result):
+    """Verify RBAC catalog functions.
+
+    Parameters
+    ----------
+    db_setup : callable
+        This function creates the rbac.db file.
+    security_function : list of str
+        This is the name of the tested function.
+    params : list of str
+        Arguments for the tested function.
+    expected_result : list of dict
+        This is a list that contains the expected results .
+    """
+    security, _ = db_setup
+    final_params = dict()
+    for param, value in params.items():
+        if value.lower() != 'none':
+            final_params[param] = value
+    result = getattr(security, security_function)(**final_params).to_dict()
+    assert result['result'] == expected_result
 
 
 def test_revoke_tokens(db_setup):
