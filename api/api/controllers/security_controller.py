@@ -531,7 +531,7 @@ async def get_rbac_resources(pretty=False, resource: str = None):
 
     dapi = DistributedAPI(f=security.get_rbac_resources,
                           f_kwargs=remove_nones_to_dict({'resource': resource}),
-                          request_type='local_master',
+                          request_type='local_any',
                           is_async=False,
                           wait_for_complete=True,
                           pretty=pretty,
@@ -559,7 +559,7 @@ async def get_rbac_actions(pretty=False, endpoint: str = None):
     """
     dapi = DistributedAPI(f=security.get_rbac_actions,
                           f_kwargs=remove_nones_to_dict({'endpoint': endpoint}),
-                          request_type='local_master',
+                          request_type='local_any',
                           is_async=False,
                           wait_for_complete=True,
                           pretty=pretty,

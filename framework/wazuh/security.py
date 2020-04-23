@@ -545,6 +545,23 @@ def revoke_tokens():
     return WazuhResult({'msg': 'Tokens revoked succesfully'})
 
 
+def get_api_endpoints():
+    """Get a list with all API endpoints
+
+    Returns
+    -------
+    list
+        API endpoints
+    """
+    info_data = load_spec()
+    endpoints_list = list()
+    for path, path_info in info_data['paths'].items():
+        for method in path_info.keys():
+            endpoints_list.append(f'{method.upper()} {path}')
+
+    return endpoints_list
+
+
 def get_rbac_resources(resource: str = None):
     """Get the RBAC resources from the catalog
 
@@ -579,6 +596,9 @@ def get_rbac_actions(endpoint: str = None):
     dict
         RBAC resources
     """
+    endpoints_list = get_api_endpoints()
+    if endpoint and endpoint not in endpoints_list:
+        raise WazuhError(4020, extra_remediation=endpoints_list)
     info_data = load_spec()
     data = dict()
     for path, path_info in info_data['paths'].items():

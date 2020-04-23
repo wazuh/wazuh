@@ -44,7 +44,7 @@ get_rbac_actions:
         related_endpoints:
           - DELETE /agents/{agent_id}/group
   - params:
-      endpoint: /
+      endpoint: GET /
     result: {}
   - params:
       endpoint: None
