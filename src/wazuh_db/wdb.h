@@ -121,7 +121,8 @@ typedef enum wdb_stmt {
     WDB_STMT_FIM_CLEAR,
     WDB_STMT_SYNC_UPDATE_ATTEMPT,
     WDB_STMT_SYNC_UPDATE_COMPLETION,
-    WDB_STMT_SIZE
+    WDB_STMT_SIZE,
+    WDB_STMT_PRAGMA_JOURNAL_WAL,
 } wdb_stmt;
 
 typedef struct wdb_t {
@@ -613,6 +614,15 @@ int wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, const char * com
  * @retval -1 On error.
  */
 int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payload);
+
+/**
+ * @brief Set the database journal mode to write-ahead logging
+ *
+ * @param db Pointer to an open database.
+ * @retval 0 On success.
+ * @retval -1 On error.
+ */
+int wdb_journal_wal(sqlite3 *db);
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
