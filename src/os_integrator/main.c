@@ -107,7 +107,7 @@ int main(int argc, char **argv)
     gid = Privsep_GetGroup(group);
     if((uid < 0)||(gid < 0))
     {
-        merror_exit(USER_ERROR, user, group);
+        merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }
 
     /* Reading configuration */

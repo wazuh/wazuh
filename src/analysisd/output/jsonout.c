@@ -14,7 +14,7 @@
 
 void jsonout_output_event(const Eventinfo *lf)
 {
-    char *json_alert = Eventinfo_to_jsonstr(lf);
+    char *json_alert = Eventinfo_to_jsonstr(lf, false);
 
     fprintf(_jflog,
             "%s\n",
@@ -28,7 +28,7 @@ void jsonout_output_archive(const Eventinfo *lf)
     char *json_alert;
 
     if (strcmp(lf->location, "ossec-keepalive") && !strstr(lf->location, "->ossec-keepalive")) {
-        json_alert = Eventinfo_to_jsonstr(lf);
+        json_alert = Eventinfo_to_jsonstr(lf, true);
         fprintf(_ejflog, "%s\n", json_alert);
         free(json_alert);
     }
@@ -41,4 +41,3 @@ void jsonout_output_archive_flush(){
 void jsonout_output_event_flush(){
     fflush(_jflog);
 }
-
