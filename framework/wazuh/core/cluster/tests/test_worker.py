@@ -2,14 +2,25 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from unittest.mock import patch, mock_open
+import logging
+import sys
+from unittest.mock import patch, mock_open, MagicMock
+
 import pytest
+
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
-        from wazuh.core.cluster import worker
-        from wazuh import common
-import logging
+        with patch('wazuh.common.ossec_uid'):
+            with patch('wazuh.common.ossec_gid'):
+                sys.modules['wazuh.rbac.orm'] = MagicMock()
+                import wazuh.rbac.decorators
 
+                del sys.modules['wazuh.rbac.orm']
+                from wazuh.tests.util import RBAC_bypasser
+
+                wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+                from wazuh.core.cluster import worker
+                from wazuh import common
 
 old_basic_ck = """001 test1 any 54cfda3bfcc817aadc8f317b3f05d676d174cdf893aa2f9ee2a302ef17ae6794
 002 test2 any 7a9c0990dadeca159c239a06031b04d462d6d28dd59628b41dc7e13cc4d3a344
@@ -83,16 +94,20 @@ def test_check_removed_agents(remove_agents_patch, old_ck, new_ck, agents_to_rem
 @patch('wazuh.core.core_agent.Agent.get_agents_overview')
 @patch('wazuh.cluster.worker.Connection')
 @patch('os.path.isdir')
-def test_remove_bulk_agents(isdir_mock, connection_mock, agents_mock, glob_mock, remove_mock, rmtree_mock, wdb_mock, agents_to_remove):
+def test_remove_bulk_agents(isdir_mock, connection_mock, agents_mock, glob_mock, remove_mock, rmtree_mock, wdb_mock,
+                            agents_to_remove):
     """
     Tests WorkerHandler.remove_bulk_agents function.
     """
     agents_mock.return_value = {'totalItems': len(agents_to_remove),
                                 'items': [{'id': a_id, 'ip': '0.0.0.0', 'name': 'test'} for a_id in agents_to_remove]}
-    files_to_remove = [common.ossec_path + '/queue/agent-info/{name}-{ip}', common.ossec_path + '/queue/rootcheck/({name}) {ip}->rootcheck',
+    files_to_remove = [common.ossec_path + '/queue/agent-info/{name}-{ip}',
+                       common.ossec_path + '/queue/rootcheck/({name}) {ip}->rootcheck',
                        common.ossec_path + '/queue/diff/{name}', common.ossec_path + '/queue/agent-groups/{id}',
-                       common.ossec_path + '/queue/rids/{id}', common.ossec_path + '/var/db/agents/{name}-{id}.db', 'global.db']
-    glob_mock.side_effect = [[f.format(id=a, ip='0.0.0.0', name='test') for a in agents_to_remove] for f in files_to_remove]
+                       common.ossec_path + '/queue/rids/{id}', common.ossec_path + '/var/db/agents/{name}-{id}.db',
+                       'global.db']
+    glob_mock.side_effect = [[f.format(id=a, ip='0.0.0.0', name='test') for a in agents_to_remove] for f in
+                             files_to_remove]
     root_logger = logging.getLogger()
     root_logger.debug2 = root_logger.debug
     isdir_mock.side_effect = lambda x: x == 'queue/diff/test'

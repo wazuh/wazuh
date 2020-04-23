@@ -7,3 +7,4 @@ awk -v var="${permissions}" '{sub(/testing_policies = \[\]/, "testing_policies =
 cat /var/ossec/framework/python/lib/python3.7/site-packages/wazuh-4.0.0-py3.7.egg/wazuh/rbac/auth_context1.py > /var/ossec/framework/python/lib/python3.7/site-packages/wazuh-4.0.0-py3.7.egg/wazuh/rbac/auth_context.py
 
 /var/ossec/bin/ossec-control restart
+/var/ossec/bin/wazuh-apid restart

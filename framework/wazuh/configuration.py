@@ -4,6 +4,7 @@
 
 import json
 import logging
+import os
 import random
 import re
 import subprocess
@@ -11,6 +12,7 @@ import time
 from configparser import RawConfigParser, NoOptionError
 from io import StringIO
 from os import remove, path as os_path
+
 from xml.dom.minidom import parseString
 
 from wazuh import common
@@ -636,7 +638,7 @@ def upload_group_configuration(group_id, file_content):
     try:
         with open(tmp_file_path, 'w') as tmp_file:
             # beauty xml file
-            xml = parseString('<root>' + file_content + '</root>')
+            xml = parseString(f'<root>\n{file_content}\n</root>')
             # remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
             pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[2:-2])) + '\n'
             # revert xml.dom replacements
@@ -682,7 +684,8 @@ def upload_group_configuration(group_id, file_content):
         return 'Agent configuration was updated successfully'
     except Exception as e:
         # remove created temporary file
-        remove(tmp_file_path)
+        if os.path.exists(tmp_file_path):
+            remove(tmp_file_path)
         raise e
 
 

@@ -1637,8 +1637,8 @@ stages:
              default_max_depth: !anyint
              max_audit_entries: !anyint
              rt_delay: !anyint
-             sleep: !anyint
-             sleep_after: !anyint
+             file_max_size: !anyint
+             symlink_scan_interval: !anyint
 
  - name: Request-Syscheck-Internal (Agent)
    request:
