@@ -490,42 +490,6 @@ stages:
           total_failed_items: 0
 
 ---
-test_name: PUT /syscheck
-
-stages:
-
-    # PUT /syscheck
-  - name: Try to run a syscheck scan in all agents
-    request:
-      verify: False
-      method: PUT
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items: !anything
-          failed_items:
-            - error:
-                code: 1601
-                message: !anystr
-                remediation: !anystr
-              id:
-                - '011'
-                - '012'
-            - error:
-                code: 1601
-                message: !anystr
-                remediation: !anystr
-              id:
-                - '009'
-                - '010'
-          total_affected_items: 9
-          total_failed_items: 4
-
----
 test_name: PUT /syscheck/000
 
 stages:
@@ -1090,3 +1054,39 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
+
+---
+test_name: PUT /syscheck
+
+stages:
+
+    # PUT /syscheck
+  - name: Try to run a syscheck scan in all agents
+    request:
+      verify: False
+      method: PUT
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: !anything
+          failed_items:
+            - error:
+                code: 1601
+                message: !anystr
+                remediation: !anystr
+              id:
+                - '011'
+                - '012'
+            - error:
+                code: 1601
+                message: !anystr
+                remediation: !anystr
+              id:
+                - '009'
+                - '010'
+          total_affected_items: 9
+          total_failed_items: 4

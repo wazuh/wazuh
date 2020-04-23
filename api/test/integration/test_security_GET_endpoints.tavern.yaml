@@ -10,6 +10,7 @@ stages:
   # GET /security/roles
   - name: Try to show the roles of the system
     request: &all_roles_request
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -146,6 +147,7 @@ stages:
   # GET /security/roles
   - name: Search in roles
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       method: GET
       headers:
@@ -230,6 +232,7 @@ stages:
   # GET /security/roles
   - name: Try to show the roles of the system with a non-existent search
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       method: GET
       headers:
@@ -249,6 +252,7 @@ stages:
   # GET /security/policies
   - name: Try to show the policies of the system
     request: &all_policies_request
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -355,6 +359,7 @@ stages:
   # GET /security/policies
   - name: Search in policies
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       method: GET
       headers:
@@ -424,6 +429,7 @@ stages:
   # GET /security/policies
   - name: Try to show the policies of the system with a non-existent search
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       method: GET
       headers:
@@ -443,6 +449,7 @@ stages:
   # GET /security/roles/{role_id}
   - name: Try to show a specified role in the system
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -461,6 +468,7 @@ stages:
   # GET /security/roles/{non-existent role_id}
   - name: Try to show a non-existent role in the system
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -489,6 +497,7 @@ stages:
   # GET /security/policies/{policy_id}
   - name: Try to show a specified policy in the system
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -507,6 +516,7 @@ stages:
   # GET /security/policies/{non-existent policy_id}
   - name: Try to show a non-existent policy in the system
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -525,6 +535,7 @@ stages:
 
   - name: Get all users in the system
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -575,6 +586,7 @@ stages:
 
   - name: Get a specified user by its username
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -591,6 +603,7 @@ stages:
 
   - name: Get a specified user by its username
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -608,6 +621,7 @@ stages:
 
   - name: Get an user by its username (invalid username)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -624,6 +638,7 @@ stages:
 
   - name: Get an user by its username (invalid username)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -640,6 +655,7 @@ stages:
 
   - name: Get an non-existent user by its username
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -664,6 +680,7 @@ stages:
 
   - name: Get two non-existent users by their usernames
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -689,6 +706,7 @@ stages:
 
   - name: Get two non-existent users and an existing one by their usernames
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -715,6 +733,7 @@ stages:
 
   - name: Get two non-existent users and two existent by their usernames
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -752,6 +771,7 @@ marks:
 stages:
   - name: Testing search
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -771,6 +791,7 @@ stages:
 
   - name: Testing complementary search
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -814,6 +835,7 @@ test_name: GET /security/users/?sort
 stages:
   - name: Testing inverse sort
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -861,6 +883,7 @@ stages:
 
   - name: Testing sort
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -912,6 +935,7 @@ test_name: GET /security/users/?limit,offset
 stages:
   - name: Testing offset
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -948,6 +972,7 @@ stages:
 
   - name: Testing limit
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -966,4 +991,3 @@ stages:
           total_failed_items: 0
           failed_items: []
         message: All specified users were shown
-

@@ -1681,6 +1681,7 @@ components:
             - wazuh-modulesd:aws-s3
             - wazuh-modulesd:azure-logs
             - wazuh-modulesd:ciscat
+            - wazuh-modulesd:control
             - wazuh-modulesd:command
             - wazuh-modulesd:database
             - wazuh-modulesd:docker-listener

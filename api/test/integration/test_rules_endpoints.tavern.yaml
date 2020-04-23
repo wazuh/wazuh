@@ -613,7 +613,7 @@ stages:
             - 1.1.1
             - 1.3.4
           failed_items: []
-          total_affected_items: 38
+          total_affected_items: 40
           total_failed_items: 0
         message: Selected rules were shown
 
@@ -631,7 +631,7 @@ stages:
           affected_items:
             - 1.1.1
           failed_items: []
-          total_affected_items: 38
+          total_affected_items: 40
           total_failed_items: 0
         message: Selected rules were shown
 
@@ -658,7 +658,7 @@ stages:
         data:
           affected_items: !anything
           failed_items: []
-          total_affected_items: 38
+          total_affected_items: 40
           total_failed_items: 0
         message: Selected rules were shown
       save:
