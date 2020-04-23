@@ -93,12 +93,19 @@ void authd_sigblock();
 //Validate Groups
 w_err_t w_auth_validate_groups(const char *groups, char *response);
 
-extern char shost[];
+//Parse complete data from key request
+w_err_t w_auth_parse_data(const char* buf, char *response, const char *authpass, char *ip, char **agentname, char **groups);
+w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentname, const char *groups);
+w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, const char *groups, char **id, char **key);
+
+
+extern char shost[512];
 extern keystore keys;
 extern volatile int write_pending;
 extern volatile int running;
 extern pthread_mutex_t mutex_keys;
 extern pthread_cond_t cond_pending;
 extern authd_config_t config;
+extern bool worker_node;
 
 #endif /* AUTHD_H */
