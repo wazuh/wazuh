@@ -471,7 +471,7 @@ unsigned long int get_time_to_month_day(int month_day, const char* hour, int num
 
     target_time = mktime(&t_target);
     diff = difftime(target_time, curr_time);
-    if (tm_result.tm_mday < month_day) {
+    if ( (tm_result.tm_mday < month_day) || ((tm_result.tm_mday == month_day) && diff > 0) ) {
         num_of_months--;
     }
 

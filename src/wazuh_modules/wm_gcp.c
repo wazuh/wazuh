@@ -55,7 +55,7 @@ void* wm_gcp_main(wm_gcp *data) {
             mtdebug1(WM_GCP_LOGTAG, "Sleeping for %li seconds", time_sleep);
             while(time(NULL) < data->scan_config.last_scan_time) {
                 wm_delay(1000);
-            }   
+            }
         }
         mtdebug1(WM_GCP_LOGTAG, "Starting fetching of logs.");
 

@@ -47,6 +47,7 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
     gcp = module->data;
 
     if (!nodes) {
+        mwarn("Empty configuration at module '%s'.", WM_GCP_CONTEXT.name);
         return OS_INVALID;
     }
 
