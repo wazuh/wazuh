@@ -44,8 +44,7 @@ def test_sucessfully_remove_single_group_agent(agent_patch, unset_groups_patch, 
     with patch('wazuh.core.core_agent.Agent.multi_group_exists', return_value=False):
         ret_msg = Agent.unset_single_group_agent(agent_id, group_id, force=False)
 
-    assert ret_msg == (f"Agent {agent_id} set to group default." if expected_new_group == 'default' else
-                       f"Group '{group_id}' unset for agent '{agent_id}'.")
+    assert ret_msg == f"Agent '{agent_id}' removed from '{group_id}'. Agent reassigned to group {expected_new_group}."
 
     unset_groups_patch.assert_called_with(agent_id=agent_id, force=True, group_id=expected_new_group)
 

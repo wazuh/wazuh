@@ -147,6 +147,7 @@ stages:
   # GET /security/roles
   - name: Search in roles
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
       method: GET
       headers:

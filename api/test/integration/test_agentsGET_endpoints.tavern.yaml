@@ -2572,10 +2572,10 @@ stages:
      status_code: 200
      json: &groups_id_config_response
        data:
-         items:
+         affected_items:
            - config: !anything
              filters: !anything
-         totalItems: !anyint
+         total_affected_items: !anyint
 
  - name: Try get the configuration of a bad group
    request:
@@ -2649,8 +2649,10 @@ stages:
      status_code: 200
      json:
        data:
-         items: []
-         totalItems: !anyint
+         affected_items:
+           - config: !anything
+             filters: !anything
+         total_affected_items: !anyint
 
  - name: Try show agents with limit 0
    request:
@@ -2704,16 +2706,19 @@ stages:
      status_code: 200
      json:
        data:
-         items:
-           - filename: agent.conf
+         affected_items:
+           - filename: !anystr
              hash: !anystr
-           - filename: ar.conf
+           - filename: !anystr
              hash: !anystr
-         totalItems: !anyint
+         total_affected_items: !anyint
+         total_failed_items: 0
+         failed_items: []
+       message: !anystr
      save:
        json:
-         filename_saved: data.items[1].filename
-         hash_saved: data.items[1].hash
+         filename_saved: data.affected_items[1].filename
+         hash_saved: data.affected_items[1].hash
 
  - name: Pagination
    request:
@@ -2726,10 +2731,13 @@ stages:
      status_code: 200
      json:
        data:
-         items:
+         affected_items:
            - filename: "{filename_saved}"
              hash: "{hash_saved}"
-         totalItems: !anyint
+         total_affected_items: !anyint
+         total_failed_items: 0
+         failed_items: []
+       message: !anystr
 
  - name: Try get the files of a group with offset -1
    request:
@@ -2763,8 +2771,11 @@ stages:
      status_code: 200
      json:
        data:
-         items: []
-         totalItems: !anyint
+         affected_items: []
+         total_affected_items: !anyint
+         total_failed_items: 0
+         failed_items: []
+       message: !anystr
 
  - name: Try get the files of a group with limit 0
    request:
@@ -2809,9 +2820,20 @@ stages:
      params:
        limit: 1
    response:
-     status_code: 400
+     status_code: 200
      json:
-       code: 1710
+       data:
+         affected_items: []
+         total_affected_items: 0
+         total_failed_items: 1
+         failed_items:
+           - error:
+               code: 1710
+               message: The group does not exist
+               remediation: Please, `GET /agents/groups` to find all available groups
+             id:
+               - wrong_group
+       message: No groups files are shown
 
  - name: Try get the files of a bad group name (no alphanumeric)
    request:
@@ -2837,8 +2859,11 @@ stages:
      status_code: 200
      json:
        data:
-         items: !anything
-         totalItems: !anyint
+         affected_items: !anything
+         total_affected_items: !anyint
+         total_failed_items: 0
+         failed_items: []
+       message: !anystr
 
  - name: Try get the files of a group with wrong sort
    request:
@@ -2861,9 +2886,13 @@ stages:
      status_code: 200
      json:
        data:
-         items: !anything
-           filename: agent.conf
-         totalItems: !anyint
+         affected_items:
+           - filename: !anystr
+             hash: !anystr
+         total_affected_items: 1
+         total_failed_items: 0
+         failed_items: []
+       message: !anystr
 
  - name: Try get the files of a group with wrong search
    request:
@@ -2875,8 +2904,11 @@ stages:
      status_code: 200
      json:
        data:
-         items: !anything
-         totalItems: 0
+         affected_items: []
+         total_affected_items: 0
+         total_failed_items: 0
+         failed_items: []
+       message: !anystr
 
  - name: Try get the files of a group, filter bad hash
    request:
@@ -2921,8 +2953,13 @@ stages:
      status_code: 200
      json:
        data:
-         items: !anything
-         totalItems: !anyint
+         affected_items:
+           - filename: !anystr
+             hash: !anystr
+         total_affected_items: !anyint
+         total_failed_items: 0
+         failed_items: []
+       message: !anystr
 
 ---
 test_name: GET /groups/{group_id}/files/{filename}/json
@@ -3816,9 +3853,12 @@ stages:
      status_code: 200
      json:
        data:
-         items:
-           - 'ubuntu'
-         totalItems: 1
+         affected_items:
+           - ubuntu
+         total_affected_items: 1
+         total_failed_items: 0
+         failed_items: []
+       message: !anystr
 
 ---
 test_name: GET /agents/{agent_id}/upgrade_result

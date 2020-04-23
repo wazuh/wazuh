@@ -373,10 +373,10 @@ stages:
      status_code: 200
      json:
        data:
-         items:
+         affected_items:
            - config: !anything
              filters: !anything
-         totalItems: !anyint
+         total_affected_items: !anyint
 
 ---
 test_name: GET /groups/{group_id}/files
@@ -395,7 +395,7 @@ stages:
      json:
        <<: *permission_denied
 
- - name: Try get the files of a group (Denied)
+ - name: Try get the files of a group (Allow)
    request:
      verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group2/files"
@@ -409,12 +409,15 @@ stages:
      status_code: 200
      json:
        data:
-         items:
+         affected_items:
            - filename: agent.conf
              hash: !anystr
            - filename: ar.conf
              hash: !anystr
-         totalItems: !anyint
+         total_affected_items: 3
+         total_failed_items: 0
+         failed_items: []
+       message: !anystr
 
 ---
 test_name: GET /groups/{group_id}/files/{filename}/json
@@ -627,9 +630,12 @@ stages:
      status_code: 200
      json:
        data:
-         items:
-           - 'ubuntu'
-         totalItems: 1
+         affected_items:
+           - ubuntu
+         total_affected_items: 1
+         total_failed_items: 0
+         failed_items: []
+       message: !anystr
 
 ---
 test_name: GET /agents/{agent_id}/upgrade_result
@@ -1009,7 +1015,6 @@ test_name: DELETE /groups
 
 stages:
 
-# THIS ONE FAILS AS THE GROUP3 REMAINS IN GLOBAL.DB AFTER DELETING IT IN THE PREVIOUS STAGE
   - name: Try to delete all groups (Partially allowed, indirectly denied to delete group1, user agnostic)
     request:
       verify: False

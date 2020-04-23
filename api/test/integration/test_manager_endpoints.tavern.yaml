@@ -659,13 +659,14 @@ stages:
             - wazuh-db: !anything
             - wazuh-modulesd: !anything
             - wazuh-modulesd:ciscat: !anything
+            - wazuh-modulesd:control: !anything
             - wazuh-modulesd:database: !anything
             - wazuh-modulesd:download: !anything
             - wazuh-modulesd:oscap: !anything
             - wazuh-modulesd:osquery: !anything
             - wazuh-modulesd:syscollector: !anything
           failed_items: []
-          total_affected_items: 22
+          total_affected_items: 23
           total_failed_items: 0
         message: !anystr
 
