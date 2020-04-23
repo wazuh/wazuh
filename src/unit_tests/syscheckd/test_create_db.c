@@ -2670,6 +2670,17 @@ static void test_fim_whodata_event_file_missing(void **state) {
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
     will_return(__wrap_fim_db_get_paths_from_inode, paths);
 
+    // Inside fim_process_missing_entry
+        {
+            expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+            expect_string(__wrap_fim_db_get_path, file_path, paths[i]);
+            will_return(__wrap_fim_db_get_path, NULL);
+
+            expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+            expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+            will_return(__wrap_fim_db_get_path_range, NULL);
+            will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
+        }
     for(int i = 0; paths[i]; i++) {
         // Inside fim_process_missing_entry
         {

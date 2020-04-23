@@ -360,6 +360,7 @@ void fim_whodata_event(whodata_evt * w_evt) {
             paths = fim_db_get_paths_from_inode(syscheck.database, inode, dev);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
 
+            fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt);
             for(int i = 0; paths[i]; i++) {
                 w_evt->path = paths[i];
                 fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt);
