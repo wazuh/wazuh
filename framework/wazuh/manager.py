@@ -284,7 +284,7 @@ def get_api_config():
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:update_api_config"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def update_api_config(updated_config=None, reset=False):
+def update_api_config(updated_config=None):
     """Update or restore current API configuration.
 
     Update the shared configuration object "api_conf"  wih
@@ -294,8 +294,6 @@ def update_api_config(updated_config=None, reset=False):
     ----------
     updated_config : dict
         Dictionary with the new configuration.
-    reset : bool
-        Restore default settings.
 
     Returns
     -------
@@ -311,16 +309,7 @@ def update_api_config(updated_config=None, reset=False):
                 else:
                     original[key] = new_config[key]
 
-    if reset:
-        # Reset only the fields which are allowed in the endpoint.
-        allowed_fields = {'behind_proxy_server', 'rbac', 'logs', 'cache', 'cors',
-                          'use_only_authd', 'experimental_features'}
-        default_config = {key: api_conf.default_configuration[key] for key in allowed_fields}
-
-        # Reset the actual config
-        api_conf.api_conf.update(default_config)
-        result = WazuhResult({'message': "API configuration restored to factory settings."})
-    elif updated_config:
+    if updated_config:
         update(api_conf.api_conf, updated_config)
         result = WazuhResult({'message': "API configuration updated successfully."})
     else:

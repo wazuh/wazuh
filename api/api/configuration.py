@@ -8,6 +8,8 @@ import uuid
 from typing import Dict, List, Tuple
 
 import yaml
+
+import copy
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend as crypto_default_backend
 from cryptography.hazmat.primitives import hashes
@@ -26,10 +28,10 @@ default_configuration = {
         "behind_proxy_server": False,
         "rbac": {
             "mode": "black",
-            "auth_token_exp_timeout": 36000
+            "auth_token_exp_timeout": 3600
         },
         "https": {
-            "enabled": False,
+            "enabled": True,
             "key": "api/configuration/ssl/server.key",
             "cert": "api/configuration/ssl/server.crt",
             "use_ca": False,
@@ -207,7 +209,7 @@ def read_api_config(config_file=common.api_config_path) -> Dict:
 
     # If any value is missing from user's cluster configuration, add the default one:
     if configuration is None:
-        configuration = default_configuration
+        configuration = copy.deepcopy(default_configuration)
     else:
         dict_to_lowercase(configuration)
         configuration = fill_dict(default_configuration, configuration)

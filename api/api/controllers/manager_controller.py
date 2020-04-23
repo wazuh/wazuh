@@ -6,9 +6,11 @@ import datetime
 import logging
 from json.decoder import JSONDecodeError
 
+from aiohttp import web
+
 import wazuh.manager as manager
 import wazuh.stats as stats
-from aiohttp import web
+from api import configuration
 from api.api_exception import APIError
 from api.encoder import dumps
 from api.models.base_model_ import Data
@@ -412,7 +414,10 @@ async def delete_api_config(request, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    f_kwargs = {"reset": True}
+    allowed_fields = {'behind_proxy_server', 'rbac', 'logs', 'cache', 'cors', 'use_only_authd', 'experimental_features'}
+    default_config = {key: configuration.default_configuration[key] for key in allowed_fields}
+
+    f_kwargs = {"updated_config": default_config}
 
     dapi = DistributedAPI(f=manager.update_api_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -426,6 +431,7 @@ async def delete_api_config(request, pretty=False, wait_for_complete=False):
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=dumps)
+
 
 async def put_restart(request, pretty=False, wait_for_complete=False):
     """Restart manager or local_node.

@@ -6126,7 +6126,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                type: object
+                additionalProperties: true
               example:
                 host: 0.0.0.0
                 port: 55000
@@ -6187,7 +6188,7 @@ paths:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
               example:
-                message: API configuration restored to default settings.
+                message: API configuration updated successfully.
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -8028,7 +8029,7 @@ paths:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
               example:
-                message: API configuration restored to default settings.
+                message: API configuration updated successfully.
         default:
           $ref: '#/components/responses/ResponseError'
 
