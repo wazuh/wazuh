@@ -4,6 +4,7 @@
 
 import re
 from copy import deepcopy
+from functools import lru_cache
 from time import time
 
 from api.authentication import validation
@@ -545,6 +546,7 @@ def revoke_tokens():
     return WazuhResult({'msg': 'Tokens revoked succesfully'})
 
 
+@lru_cache(maxsize=None)
 def get_api_endpoints():
     """Get a list with all API endpoints
 
@@ -562,6 +564,7 @@ def get_api_endpoints():
     return endpoints_list
 
 
+@lru_cache(maxsize=None)
 def get_rbac_resources(resource: str = None):
     """Get the RBAC resources from the catalog
 
@@ -583,6 +586,7 @@ def get_rbac_resources(resource: str = None):
         return WazuhResult({resource: load_spec()['x-rbac-catalog']['resources'][resource]})
 
 
+@lru_cache(maxsize=None)
 def get_rbac_actions(endpoint: str = None):
     """Get the RBAC actions from the catalog
 
