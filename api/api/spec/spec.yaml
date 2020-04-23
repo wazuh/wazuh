@@ -7993,8 +7993,8 @@ paths:
                       event: 'System Audit: SSH Hardening - 3: Root can log in. File: /etc/ssh/sshd_config.
                       Reference: 3 .'
                   failed_items: []
-                  total_affected_items: '2'
-                  total_failed_items: '0'
+                  total_affected_items: 2
+                  total_failed_items: 0
                 message: ToDo
         default:
           $ref: '#/components/responses/ResponseError'
@@ -8075,8 +8075,8 @@ paths:
                   affected_items:
                     - 2.2.4
                   failed_items: []
-                  total_affected_items: '1'
-                  total_failed_items: '0'
+                  total_affected_items: 1
+                  total_failed_items: 0
                 message: ToDo
         default:
           $ref: '#/components/responses/ResponseError'
@@ -8114,8 +8114,8 @@ paths:
                     - 2.3 Debian Linux
                     - 1.4 Debian Linux
                   failed_items: []
-                  total_affected_items: '2'
-                  total_failed_items: '0'
+                  total_affected_items: 2
+                  total_failed_items: 0
                 message: ToDo
         default:
           $ref: '#/components/responses/ResponseError'
