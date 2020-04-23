@@ -96,8 +96,6 @@ async def get_system_nodes():
         lc = local_client.LocalClient()
         try:
             result = await get_nodes(lc)
-        finally:
-            lc.transport.close()
 
         return [node['name'] for node in result['items']]
     except Exception:
