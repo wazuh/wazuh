@@ -2353,7 +2353,6 @@ components:
           description: Date when the alert was raised.
         perm:
           type: string
-          format: numbers_or_empty
           description: File permissions.
         type:
           type: string
