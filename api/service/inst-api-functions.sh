@@ -11,10 +11,20 @@
 
 
 
+
 backup_old_api() {
 
     API_PATH=${PREFIX}/api
     API_PATH_BACKUP=${PREFIX}/~api
+
+    # stop api process if its still running
+    OLD_API_PID=$(pgrep -f "${API_PATH}/app.js")
+
+    if [ -n "$OLD_API_PID" ]; then
+      echo "killing old api process: ${OLD_API_PID}"
+      kill -9 ${OLD_API_PID}
+    fi
+
 
     # do backup only if config.js file exists
     if [ -f ${API_PATH}/configuration/config.js ]; then
@@ -41,6 +51,7 @@ backup_old_api() {
     fi
 
 }
+
 
 restore_old_api() {
 
