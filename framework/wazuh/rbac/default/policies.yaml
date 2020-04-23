@@ -17,6 +17,7 @@ default_policies:
       resources:
         - agent:id:*
         - group:id:*
+        - '*:*:*'
       effect: allow
 
   agents_read:
@@ -45,24 +46,27 @@ default_policies:
       actions:
         - security:read
         - security:create
+        - security:create_user
         - security:update
         - security:delete
       resources:
         - role:id:*
         - policy:id:*
         - user:id:*
+        - '*:*:*'
       effect: allow
 
   users_all:
-    description: Provide full access to all security related functionalities.
+    description: Provide full access to all users related functionalities.
     policy:
       actions:
         - security:read
-        - security:create
+        - security:create_user
         - security:update
         - security:delete
       resources:
         - user:id:*
+        - '*:*:*'
       effect: allow
 
   ciscat_read:

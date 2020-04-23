@@ -1,5 +1,6 @@
 #tavern_utils.py
 import json
+from box import Box
 
 
 def calc_offset(response, total):
@@ -8,7 +9,7 @@ def calc_offset(response, total):
     :param total: Number
     :return: Number - 1
     """
-    return {"sort_offset": str(int(total)-1)}
+    return Box({"sort_offset": str(response.json()["data"]["total_affected_items"]-1)})
 
 
 def test_select_key(response, select_key):

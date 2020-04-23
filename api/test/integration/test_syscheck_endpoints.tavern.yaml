@@ -38,7 +38,7 @@ stages:
         data:
           # We define this items answer as a common one array full answer
           affected_items: &full_items_array
-            - attributes: !anyint
+            - changes: !anyint
               date: !anystr
               file: !anystr
               gid: !anystr
@@ -123,7 +123,7 @@ stages:
         data:
           affected_items:
               # Save second item to check offset in next stage
-            - attributes: !int "{offset_item.attributes}"
+            - changes: !int "{offset_item.changes}"
               date: "{offset_item.date}"
               file: "{offset_item.file}"
               gid: "{offset_item.gid}"
@@ -338,7 +338,7 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
       save:
-        verify_response_with:
+        $ext:
           function: tavern_utils:calc_offset
           extra_kwargs:
             total: "{returned_total}"
@@ -359,7 +359,7 @@ stages:
       json:
         data:
           affected_items:
-            - attributes: !int "{sort_item.attributes}"
+            - changes: !int "{sort_item.changes}"
               date: "{sort_item.date}"
               file: !anystr
               gid: "{sort_item.gid}"
@@ -490,42 +490,6 @@ stages:
           total_failed_items: 0
 
 ---
-test_name: PUT /syscheck
-
-stages:
-
-    # PUT /syscheck
-  - name: Try to run a syscheck scan in all agents
-    request:
-      verify: False
-      method: PUT
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items: !anything
-          failed_items:
-            - error:
-                code: 1601
-                message: !anystr
-                remediation: !anystr
-              id:
-                - '011'
-                - '012'
-            - error:
-                code: 1601
-                message: !anystr
-                remediation: !anystr
-              id:
-                - '009'
-                - '010'
-          total_affected_items: 9
-          total_failed_items: 4
-
----
 test_name: PUT /syscheck/000
 
 stages:
@@ -618,7 +582,7 @@ stages:
         data:
           # We define this items answer as a common one array full answer
           affected_items: &full_items_array_002
-            - attributes: !anyint
+            - changes: !anyint
               date: !anystr
               file: !anystr
               gid: !anystr
@@ -703,7 +667,7 @@ stages:
         data:
           affected_items:
               # Save second item to check offset in next stage
-            - attributes: !int "{offset_item.attributes}"
+            - changes: !int "{offset_item.changes}"
               date: "{offset_item.date}"
               file: "{offset_item.file}"
               gid: "{offset_item.gid}"
@@ -919,7 +883,7 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
       save:
-        verify_response_with:
+        $ext:
           function: tavern_utils:calc_offset
           extra_kwargs:
             total: "{returned_total}"
@@ -940,7 +904,7 @@ stages:
       json:
         data:
           affected_items:
-            - attributes: !int "{sort_item.attributes}"
+            - changes: !int "{sort_item.changes}"
               date: "{sort_item.date}"
               file: !anystr
               gid: "{sort_item.gid}"
@@ -1090,3 +1054,39 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
+
+---
+test_name: PUT /syscheck
+
+stages:
+
+    # PUT /syscheck
+  - name: Try to run a syscheck scan in all agents
+    request:
+      verify: False
+      method: PUT
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: !anything
+          failed_items:
+            - error:
+                code: 1601
+                message: !anystr
+                remediation: !anystr
+              id:
+                - '011'
+                - '012'
+            - error:
+                code: 1601
+                message: !anystr
+                remediation: !anystr
+              id:
+                - '009'
+                - '010'
+          total_affected_items: 9
+          total_failed_items: 4
