@@ -58,19 +58,14 @@ except IOError as e:
     raise APIException(2002)
 
 
-def generate_token(user_id=None, auth_context=None):
+def generate_token(user_id=None, rbac_policies=None):
     """Generates an encoded jwt token. This method should be called once a user is properly logged on.
 
     :param user_id: Unique username
     :param auth_context: Authorization context of the current user
+    :param rbac_policies: Permissions for the user
     :return: string jwt formatted string
     """
-    # Add dummy rbac_policies for developing here
-    if auth_context:
-        rbac_policies = preprocessor.optimize_resources(auth_context=auth_context)
-    else:
-        rbac_policies = preprocessor.optimize_resources(user_id=user_id)
-
     timestamp = int(time())
     payload = {
         "iss": JWT_ISSUER,
