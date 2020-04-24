@@ -265,9 +265,6 @@ static void test_wm_gcp_run_success_log_disabled(void **state) {
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
-    expect_string(__wrap__mtdebug2, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "OUTPUT: Test output");
-
     expect_string(__wrap__mtinfo, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "Logging disabled.");
 
@@ -582,9 +579,6 @@ static void test_wm_gcp_run_logging_debug_message_debug(void **state) {
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
-    expect_string(__wrap__mtdebug2, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "OUTPUT: Test output - DEBUG - This is a debug message");
-
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Test output - DEBUG - This is a debug message");
 
@@ -618,9 +612,6 @@ static void test_wm_gcp_run_logging_debug_message_not_debug(void **state) {
     will_return(__wrap_wm_exec, strdup("Test output - This is a message"));
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
-
-    expect_string(__wrap__mtdebug2, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "OUTPUT: Test output - This is a message");
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Test output - This is a message");
@@ -657,9 +648,6 @@ static void test_wm_gcp_run_logging_debug_message_not_debug_discarded(void **sta
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
-    expect_string(__wrap__mtdebug2, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "OUTPUT: Test output - INFO - This is a dicarded message");
-
     wm_gcp_run(gcp_config);
 }
 
@@ -690,9 +678,6 @@ static void test_wm_gcp_run_logging_info_message_info(void **state) {
     will_return(__wrap_wm_exec, strdup("Test output - INFO - This is an info message"));
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
-
-    expect_string(__wrap__mtdebug2, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "OUTPUT: Test output - INFO - This is an info message");
 
     expect_string(__wrap__mtinfo, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "- INFO - This is an info message");
@@ -728,9 +713,6 @@ static void test_wm_gcp_run_logging_info_message_debug(void **state) {
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
-    expect_string(__wrap__mtdebug2, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "OUTPUT: Test output - DEBUG - This is an info message");
-
     wm_gcp_run(gcp_config);
 }
 
@@ -762,9 +744,6 @@ static void test_wm_gcp_run_logging_info_message_warning(void **state) {
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
-    expect_string(__wrap__mtdebug2, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "OUTPUT: Test output - WARNING - This is a warning message");
-
     wm_gcp_run(gcp_config);
 }
 
@@ -795,9 +774,6 @@ static void test_wm_gcp_run_logging_warning_message_warning(void **state) {
     will_return(__wrap_wm_exec, strdup("Test output - WARNING - This is a warning message"));
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
-
-    expect_string(__wrap__mtdebug2, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "OUTPUT: Test output - WARNING - This is a warning message");
 
     expect_string(__wrap__mtwarn, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtwarn, formatted_msg, "- WARNING - This is a warning message");
@@ -833,9 +809,6 @@ static void test_wm_gcp_run_logging_warning_message_debug(void **state) {
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
-    expect_string(__wrap__mtdebug2, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "OUTPUT: Test output - DEBUG - This is a debug message");
-
     wm_gcp_run(gcp_config);
 }
 
@@ -867,9 +840,6 @@ static void test_wm_gcp_run_logging_warning_message_error(void **state) {
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
-    expect_string(__wrap__mtdebug2, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "OUTPUT: Test output - ERROR - This is an error message");
-
     wm_gcp_run(gcp_config);
 }
 
@@ -900,9 +870,6 @@ static void test_wm_gcp_run_logging_error_message_error(void **state) {
     will_return(__wrap_wm_exec, strdup("Test output - ERROR - This is an error message"));
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
-
-    expect_string(__wrap__mtdebug2, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "OUTPUT: Test output - ERROR - This is an error message");
 
     expect_string(__wrap__mterror, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, "- ERROR - This is an error message");
@@ -938,9 +905,6 @@ static void test_wm_gcp_run_logging_error_message_info(void **state) {
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
-    expect_string(__wrap__mtdebug2, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "OUTPUT: Test output - INFO - This is an info message");
-
     wm_gcp_run(gcp_config);
 }
 
@@ -972,9 +936,6 @@ static void test_wm_gcp_run_logging_error_message_critical(void **state) {
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
-    expect_string(__wrap__mtdebug2, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "OUTPUT: Test output - CRITICAL - This is a critical message");
-
     wm_gcp_run(gcp_config);
 }
 
@@ -1005,9 +966,6 @@ static void test_wm_gcp_run_logging_critical_message_critical(void **state) {
     will_return(__wrap_wm_exec, strdup("Test output - CRITICAL - This is a critical message"));
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
-
-    expect_string(__wrap__mtdebug2, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "OUTPUT: Test output - CRITICAL - This is a critical message");
 
     expect_string(__wrap__mterror, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, "- CRITICAL - This is a critical message");
@@ -1042,9 +1000,6 @@ static void test_wm_gcp_run_logging_critical_message_debug(void **state) {
     will_return(__wrap_wm_exec, strdup("Test output - DEBUG - This is a debug message"));
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
-
-    expect_string(__wrap__mtdebug2, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "OUTPUT: Test output - DEBUG - This is a debug message");
 
     wm_gcp_run(gcp_config);
 }
@@ -1490,9 +1445,6 @@ static void test_wm_gcp_main_pull_on_start(void **state) {
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
-    expect_string(__wrap__mtdebug2, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "OUTPUT: Test output");
-
     expect_string(__wrap__mtinfo, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "Logging disabled.");
 
@@ -1529,7 +1481,7 @@ static void test_wm_gcp_main_wait_before_pull(void **state) {
     will_return(__wrap_sched_scan_get_time_until_next_scan, 10);
 
     expect_string(__wrap__mtdebug2, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sleeping until: 1970/01/01 00:00:00"); // time is 0 since next_scheduled_scan_time is not being set
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sleeping until: 1970/01/01 01:00:00"); // time is 0 since next_scheduled_scan_time is not being set
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Starting fetching of logs.");
@@ -1551,9 +1503,6 @@ static void test_wm_gcp_main_wait_before_pull(void **state) {
     will_return(__wrap_wm_exec, strdup("Test output"));
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
-
-    expect_string(__wrap__mtdebug2, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "OUTPUT: Test output");
 
     expect_string(__wrap__mtinfo, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "Logging disabled.");

@@ -155,8 +155,6 @@ void wm_gcp_run(const wm_gcp *data) {
             }
         }
         mtdebug1(WM_GCP_LOGTAG, "OUTPUT: %s", output);
-    } else {
-        mtdebug2(WM_GCP_LOGTAG, "OUTPUT: %s", output);
     }
 
     char *line;
