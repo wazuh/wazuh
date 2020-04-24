@@ -17,7 +17,6 @@
 #define VU_END_SCAN           "(5453): Vulnerability scanning finished."
 #define VU_START_AG_AN        "(5454): Analyzing agent %s vulnerabilities."
 #define VU_DETECTED_VUL       "(5455): Vulnerability %s detected in agent %s affecting: %s."
-#define VU_NOT_VULN           "(5456): The '%s' package from agent %s is not vulnerable to %s. Condition: package version (%s) %s %s."
 #define VU_UPDATE_DATE        "(5457): %s OVAL is in its latest version. Update date: %s"
 #define VU_START_REFRESH_DB   "(5458): Refreshing %s databases."
 #define VU_STOP_REFRESH_DB    "(5459): Refresh of %s database finished."
@@ -87,7 +86,6 @@
 #define VU_NO_PACKAGE_SCAN    "(5576): The package inventory of the agent %s is not available, but a hotfix analysis will be launched."
 #define VU_NO_HOTFIX_AVAIL    "(5577): It is not possible to perform a hotfix scan on agent %s."
 #define VU_NO_HOTFIX_FEED     "(5578): We have not found a hotfix that solves %s for agent %s in the Microsoft feed, so it is not possible to know it is vulnerable."
-#define VU_COMPARISSION_ERROR "(5579): The '%s' and '%s' versions of '%s' package could not be compared. Possible false positive."
 #define VU_PACKAGE_INSERT     "(5580): Agent (%s): Vulnerable package '%s' inserted into CVE '%s'"
 #define VU_DUPLICATED_PACKAGE "(5581): Agent (%s): Trying to insert duplicated vulnerable package '%s' into CVE '%s'"
 
