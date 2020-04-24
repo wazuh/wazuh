@@ -838,10 +838,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                             int pos = fim_configuration_directory(w_evt->path, "file");
                             fim_checker(syscheck.dir[pos], item, w_evt, 1);
 
-                            if (w_update_sacl(w_evt->path)) {
-                                mdebug1(FIM_SCAL_NOREFRESH, w_evt->path);
-                            }
-
                         } else {
                             mdebug2(FIM_WHODATA_NO_NEW_FILES, w_evt->path, w_evt->mask);
                         }
