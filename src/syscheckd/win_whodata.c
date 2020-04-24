@@ -37,6 +37,9 @@
 // Remove static qualifier when unit testing
 #define STATIC
 
+// Control infinite loops during unit tests
+int FOREVER();
+
 #undef OpenProcessToken
 #define OpenProcessToken wrap_win_whodata_OpenProcessToken
 #undef GetLastError
@@ -65,8 +68,26 @@
 #define RegQueryValueEx wrap_win_whodata_RegQueryValueEx
 #define WideCharToMultiByte wrap_win_whodata_WideCharToMultiByte
 #define GetVolumePathNamesForVolumeNameW wrap_win_whodata_GetVolumePathNamesForVolumeNameW
+#define FindFirstVolumeW wrap_win_whodata_FindFirstVolumeW
+#define FindVolumeClose wrap_win_whodata_FindVolumeClose
+#define QueryDosDeviceW wrap_win_whodata_QueryDosDeviceW
+#define FindNextVolumeW wrap_win_whodata_FindNextVolumeW
+#define FindVolumeClose wrap_win_whodata_FindVolumeClose
+#define EqualSid wrap_win_whodata_EqualSid
+#define FileTimeToSystemTime wrap_win_whodata_FileTimeToSystemTime
+#define DeleteAce wrap_win_whodata_DeleteAce
+#define fprintf wrap_win_whodata_fprintf
+#define fgets wrap_win_whodata_fgets
+#define EvtRender wrap_win_whodata_EvtRender
+#define Sleep wrap_win_whodata_Sleep
+#define GetSystemTime wrap_win_whodata_GetSystemTime
+#define EvtCreateRenderContext wrap_win_whodata_EvtCreateRenderContext
+#define EvtSubscribe wrap_win_whodata_EvtSubscribe
+#undef  ConvertSidToStringSid
+#define ConvertSidToStringSid wrap_win_whodata_ConvertSidToStringSid
 #else
 #define STATIC static
+#define FOREVER() 1
 #endif
 
 // Variables whodata
@@ -74,8 +95,8 @@ STATIC char sys_64 = 1;
 STATIC PSID everyone_sid = NULL;
 STATIC size_t ev_sid_size = 0;
 static unsigned short inherit_flag = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE; //SUB_CONTAINERS_AND_OBJECTS_INHERIT
-static EVT_HANDLE context;
-static const wchar_t* event_fields[] = {
+STATIC EVT_HANDLE context;
+STATIC const wchar_t* event_fields[] = {
     L"Event/System/EventID",
     L"Event/EventData/Data[@Name='SubjectUserName']",
     L"Event/EventData/Data[@Name='ObjectName']",
@@ -89,7 +110,7 @@ static const wchar_t* event_fields[] = {
 static unsigned int fields_number = sizeof(event_fields) / sizeof(LPWSTR);
 static const unsigned __int64 AUDIT_SUCCESS = 0x20000000000000;
 static LPCTSTR priv = "SeSecurityPrivilege";
-static int restore_policies = 0;
+STATIC int restore_policies = 0;
 
 // Whodata function headers
 void restore_sacls();
@@ -686,7 +707,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 user_name = NULL;
                 user_id = NULL;
                 process_name = NULL;
-add_whodata_evt:
+            add_whodata_evt:
                 if (result = whodata_hash_add(syscheck.wdata.fd, hash_id, w_evt, "whodata"), result != 2) {
                     if (result == 1) {
                         mdebug1(FIM_WHODATA_HANDLE_UPDATE, hash_id);
@@ -873,7 +894,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
 
     mdebug1(FIM_WHODATA_CHECKTHREAD, interval);
 
-    while (1) {
+    while (FOREVER()) {
         for (i = 0; syscheck.dir[i]; i++) {
             exists = 0;
             d_status = &syscheck.wdata.dirs_status[i];

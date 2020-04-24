@@ -473,24 +473,6 @@ static int teardown_local_data(void **state) {
     return 0;
 }
 
-static int setup_inode_data(void **state) {
-    fim_data_t *fim_data = *state;
-
-
-    if(fim_data->inode_data = calloc(1, sizeof(fim_inode_data)), fim_data->inode_data == NULL)
-        return -1;
-
-    return 0;
-}
-
-static int teardown_inode_data(void **state) {
-    fim_data_t *fim_data = *state;
-
-    free_inode_data(&fim_data->inode_data);
-
-    return 0;
-}
-
 static int setup_struct_dirent(void **state) {
     fim_data_t *fim_data = *state;
 
@@ -1251,6 +1233,30 @@ static void test_fim_configuration_directory_not_found(void **state) {
     assert_int_equal(ret, -1);
 }
 
+#ifdef TEST_WINAGENT
+static void test_fim_configuration_directory_registry_not_found(void **state) {
+    int ret;
+
+    const char *path = "invalid";
+    const char *entry = "registry";
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (registry):'invalid'");
+
+    ret = fim_configuration_directory(path, entry);
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_fim_configuration_directory_registry_found(void **state) {
+    char *path = "[x32] HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce";
+    const char * entry = "registry";
+    int ret;
+
+    ret = fim_configuration_directory(path, entry);
+
+    assert_int_equal(ret, 20);
+}
+#endif
 
 static void test_init_fim_data_entry(void **state) {
     fim_data_t *fim_data = *state;
@@ -2508,6 +2514,40 @@ static void test_fim_get_data_hash_error(void **state) {
     assert_null(fim_data->local_data);
 }
 
+#ifdef TEST_WINAGENT
+static void test_fim_get_data_fail_to_get_file_premissions(void **state) {
+    fim_data_t *fim_data = *state;
+    struct stat buf;
+
+    buf.st_mode = S_IFREG | 00444 ;
+    buf.st_size = 1000;
+    buf.st_uid = 0;
+    buf.st_gid = 0;
+    buf.st_ino = 1234;
+    buf.st_dev = 2345;
+    buf.st_mtime = 3456;
+
+    fim_data->item->index = 1;
+    fim_data->item->statbuf = buf;
+    fim_data->item->configuration = CHECK_SIZE |
+                                    CHECK_PERM |
+                                    CHECK_MTIME |
+                                    CHECK_OWNER |
+                                    CHECK_GROUP |
+                                    CHECK_MD5SUM |
+                                    CHECK_SHA1SUM |
+                                    CHECK_SHA256SUM;
+
+    expect_string(__wrap_w_get_file_permissions, file_path, "test");
+    will_return(__wrap_w_get_file_permissions, "");
+    will_return(__wrap_w_get_file_permissions, ERROR_ACCESS_DENIED);
+
+
+    fim_data->local_data = fim_get_data("test", fim_data->item);
+
+    assert_null(fim_data->local_data);
+}
+#endif
 
 static void test_check_deleted_files(void **state) {
     fim_tmp_file *file = calloc(1, sizeof(fim_tmp_file));
@@ -2885,6 +2925,10 @@ int main(void) {
         cmocka_unit_test(test_fim_configuration_directory_no_path),
         cmocka_unit_test(test_fim_configuration_directory_file),
         cmocka_unit_test(test_fim_configuration_directory_not_found),
+        #ifdef TEST_WINAGENT
+        cmocka_unit_test(test_fim_configuration_directory_registry_not_found),
+        cmocka_unit_test(test_fim_configuration_directory_registry_found),
+        #endif
 
         /* init_fim_data_entry */
         cmocka_unit_test_setup_teardown(test_init_fim_data_entry, setup_fim_entry, teardown_fim_entry),
@@ -2924,6 +2968,9 @@ int main(void) {
         cmocka_unit_test_teardown(test_fim_get_data, teardown_local_data),
         cmocka_unit_test_teardown(test_fim_get_data_no_hashes, teardown_local_data),
         cmocka_unit_test(test_fim_get_data_hash_error),
+        #ifdef TEST_WINAGENT
+        cmocka_unit_test(test_fim_get_data_fail_to_get_file_premissions),
+        #endif
 
         /* check_deleted_files */
         cmocka_unit_test(test_check_deleted_files),

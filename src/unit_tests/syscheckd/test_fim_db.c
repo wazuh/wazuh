@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "../syscheckd/fim_db.h"
+#include "../config/syscheck-config.h"
 
 #ifdef TEST_WINAGENT
 #include "../wrappers/syscheckd/fim_db.h"
@@ -134,6 +135,13 @@ int __wrap_fprintf(FILE *fp, const char *fmt, ...)
     }
     return ret;
 }
+
+int __wrap_usleep(useconds_t usec) {
+    function_called();
+
+    return 0;
+}
+
 #endif
 
 int __wrap_sqlite3_open_v2(
@@ -439,6 +447,7 @@ static void wraps_fim_db_decode_full_row() {
     will_return(__wrap_sqlite3_column_int, 12345678); // mtime
 }
 
+#ifndef TEST_WINAGENT
 /**
  * Successfully wrappes a wraps_fim_db_insert_data() call
  * */
@@ -459,7 +468,7 @@ static void wraps_fim_db_insert_path_success() {
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 }
-
+#endif
 /*---------------SETUP/TEARDOWN------------------*/
 static int setup_group(void **state) {
     (void) state;
@@ -863,12 +872,24 @@ void test_fim_db_clean_no_db_file(void **state) {
 }
 
 void test_fim_db_clean_file_not_removed(void **state) {
+    int i;
     expect_string(__wrap_w_is_file, file, FIM_DB_DISK_PATH);
     will_return(__wrap_w_is_file, 1);
 
+    #ifndef TEST_WINAGENT
+    for(i = 1; i <= FIMDB_RM_MAX_LOOP; i++) {
+        expect_function_call(__wrap__mdebug2);
+        expect_function_call(__wrap_usleep);
+    }
+    #else
+    for(i = 1; i <= FIMDB_RM_MAX_LOOP; i++) {
+        expect_function_call(__wrap__mdebug2);
+        expect_function_call(wrap_fim_db_Sleep);
+    }
+    #endif
+
     expect_string_count(__wrap_remove, filename, FIM_DB_DISK_PATH, FIMDB_RM_MAX_LOOP);
     will_return_count(__wrap_remove, -1, FIMDB_RM_MAX_LOOP);
-    expect_function_calls(__wrap__mdebug2, FIMDB_RM_MAX_LOOP);
 
     // Inside while loop
     expect_string(__wrap_remove, filename, FIM_DB_DISK_PATH);
