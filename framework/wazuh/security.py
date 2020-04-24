@@ -3,10 +3,13 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import re
+from copy import deepcopy
+from functools import lru_cache
 from time import time
 
 from api.authentication import validation
 from wazuh import common
+from wazuh.core.security import load_spec
 from wazuh.exception import WazuhError
 from wazuh.rbac import orm
 from wazuh.rbac.decorators import expose_resources
@@ -541,3 +544,83 @@ def revoke_tokens():
     validation.key = int(time())
 
     return WazuhResult({'msg': 'Tokens revoked succesfully'})
+
+
+@lru_cache(maxsize=None)
+def get_api_endpoints():
+    """Get a list with all API endpoints
+
+    Returns
+    -------
+    list
+        API endpoints
+    """
+    info_data = load_spec()
+    endpoints_list = list()
+    for path, path_info in info_data['paths'].items():
+        for method in path_info.keys():
+            endpoints_list.append(f'{method.upper()} {path}')
+
+    return endpoints_list
+
+
+@lru_cache(maxsize=None)
+def get_rbac_resources(resource: str = None):
+    """Get the RBAC resources from the catalog
+
+    Parameters
+    ----------
+    resource : str
+        Show the information of the specified resource. Ex: agent:id
+
+    Returns
+    -------
+    dict
+        RBAC resources
+    """
+    if not resource:
+        return WazuhResult(load_spec()['x-rbac-catalog']['resources'])
+    else:
+        if resource not in load_spec()['x-rbac-catalog']['resources'].keys():
+            raise WazuhError(4019)
+        return WazuhResult({resource: load_spec()['x-rbac-catalog']['resources'][resource]})
+
+
+@lru_cache(maxsize=None)
+def get_rbac_actions(endpoint: str = None):
+    """Get the RBAC actions from the catalog
+
+    Parameters
+    ----------
+    endpoint : str
+        Show actions and resources for the specified endpoint. Ex: GET /agents
+
+    Returns
+    -------
+    dict
+        RBAC resources
+    """
+    endpoints_list = get_api_endpoints()
+    if endpoint and endpoint not in endpoints_list:
+        raise WazuhError(4020, extra_remediation=endpoints_list)
+    info_data = load_spec()
+    data = dict()
+    for path, path_info in info_data['paths'].items():
+        for method, payload in path_info.items():
+            try:
+                for ref in payload['x-rbac-actions']:
+                    action = list(ref.values())[0].split('/')[-1]
+                    if endpoint and \
+                            f'{method.upper()} {path}'.encode('ascii', 'ignore') != endpoint.encode('ascii', 'ignore'):
+                        continue
+                    if action not in data.keys():
+                        data[action] = deepcopy(info_data['x-rbac-catalog']['actions'][action])
+                    for index, resource in enumerate(info_data['x-rbac-catalog']['actions'][action]['resources']):
+                        data[action]['resources'][index] = list(resource.values())[0].split('/')[-1]
+                    if 'related_endpoints' not in data[action].keys():
+                        data[action]['related_endpoints'] = list()
+                    data[action]['related_endpoints'].append(f'{method.upper()} {path}')
+            except KeyError:
+                pass
+
+    return WazuhResult(data)
