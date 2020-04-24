@@ -219,11 +219,7 @@ w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentn
     /* Validate the group(s) name(s) */     
     int index = 0;
     char *id_exist = NULL;
-    double antiquity = 0; 
-    int acount = 2;
-    char fname[2048];
-    fname[2047] = '\0';
-
+    double antiquity = 0;
     if (groups){ 
         if (OS_SUCCESS != w_auth_validate_groups(groups, response)){
             return OS_INVALID;
@@ -266,22 +262,9 @@ w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentn
             add_backup(keys.keyentries[index]);
             OS_DeleteKey(&keys, id_exist, 0);
         } else {
-            strncpy(fname, agentname, 2048);
-
-            while (OS_IsAllowedName(&keys, fname) >= 0) {
-                snprintf(fname, 2048, "%s%d", agentname, acount);
-
-                if (++acount > MAX_TAG_COUNTER)
-                    break;
-            }
-
-            if (acount > MAX_TAG_COUNTER) {
-                merror("Invalid agent name %s (duplicated)", agentname);
-                snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);                
-                return OS_INVALID;
-            }
-
-            agentname = fname;
+            merror("Invalid agent name %s (duplicated)", agentname);
+            snprintf(response, 2048, "ERROR: Duplicated agent name: %s\n\n", agentname);                
+            return OS_INVALID;
         }
     }
 
