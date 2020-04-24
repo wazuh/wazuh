@@ -22,7 +22,9 @@ set_target_properties(
 target_link_libraries(OS_AUTH_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 # Generate Analysisd tests
-list(APPEND os_auth_names "test_auth")
+list(APPEND os_auth_names "test_auth_parse")
+list(APPEND os_auth_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_minfo -Wl,--wrap,_mdebug1")
+list(APPEND os_auth_names "test_auth_validate")
 list(APPEND os_auth_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_minfo -Wl,--wrap,_mdebug1")
 
 

@@ -100,6 +100,7 @@ typedef struct _enrollment_response {
     char* response;
 } enrollment_response;
 
+
 //parser arguments
 typedef struct _parse_evaluator {
     char* buffer;
@@ -137,7 +138,6 @@ parse_evaluator parse_values_without_use_src_ip_cfg []={
 parse_evaluator* parse_values = NULL;
 
 /* setup/teardowns */
-//parser setups
 int setup_parse_default(void **state) {
     config.flags.use_source_ip = 1;
     parse_values = parse_values_default_cfg;
@@ -155,8 +155,7 @@ extern w_err_t w_auth_parse_data(const char* buf, char *response, const char *au
 
 static void test_w_auth_parse_data(void **state) {    
 
-    char response[2048];
-    response[2047] = '\0';
+    char response[2048] = {0};
     char ip[IPSIZE + 1];
     char *agentname = NULL;
     char *groups = NULL;    
@@ -165,8 +164,10 @@ static void test_w_auth_parse_data(void **state) {
     for(unsigned i=0; parse_values[i].buffer; i++) {
         set_expected_log(&parse_values[i].expected_log);
         response[0] = '\0';
-        strncpy(ip, parse_values[i].src_ip, IPSIZE);        
+        strncpy(ip, parse_values[i].src_ip, IPSIZE);   
+
         err = w_auth_parse_data(parse_values[i].buffer, response, parse_values[i].pass, ip, &agentname, &groups);
+        
         assert_int_equal(err, parse_values[i].expected_response.err);
         if(err == OS_SUCCESS) {
             assert_string_equal(ip, parse_values[i].expected_params.ip);            
@@ -188,12 +189,11 @@ static void test_w_auth_parse_data(void **state) {
     }    
 }
 
-
-int main(void) {   
+int main(void) {     
     const struct CMUnitTest tests[] = {
         /* w_auth_parse_data tests*/
         cmocka_unit_test_setup(test_w_auth_parse_data, setup_parse_default),
-        cmocka_unit_test_setup(test_w_auth_parse_data, setup_parse_use_src_ip_cfg_0),
+        cmocka_unit_test_setup(test_w_auth_parse_data, setup_parse_use_src_ip_cfg_0),        
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
