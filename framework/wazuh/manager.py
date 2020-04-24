@@ -10,8 +10,6 @@ from datetime import timezone
 from os import remove
 from os.path import exists, join
 
-import yaml
-
 from api import configuration as api_conf
 from wazuh import Wazuh
 from wazuh import common
@@ -20,7 +18,7 @@ from wazuh.configuration import get_ossec_conf
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart, read_cluster_config
 from wazuh.core.manager import status, get_ossec_log_fields, upload_xml, upload_list, validate_xml, validate_cdb_list, \
-    parse_execd_output
+    parse_execd_output, update_api_conf
 from wazuh.exception import WazuhError, WazuhInternalError
 from wazuh.rbac.decorators import expose_resources
 from wazuh.results import WazuhResult, AffectedItemsWazuhResult
@@ -275,20 +273,26 @@ def delete_file(path):
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_api_config"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_api_config"], resources=['*:*:*'])
 def get_api_config():
     """Returns current API configuration."""
     return api_conf.api_conf
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:update_api_config"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+_update_config_default_result_kwargs = {
+    'all_msg': f"API configuration successfully updated. Some settings may require restarting the API to be applied.",
+    'none_msg': "API configuration could not be updated.",
+    'sort_casting': ['str']
+}
+
+
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:update_api_config"], resources=['*:*:*'],
+                  post_proc_kwargs={'default_result_kwargs': _update_config_default_result_kwargs})
 def update_api_config(updated_config=None):
     """Update or restore current API configuration.
 
     Update the shared configuration object "api_conf"  wih
-    "new_config" and then overwrite the content of api.yaml.
+    "updated_config" and then overwrite the content of api.yaml.
 
     Parameters
     ----------
@@ -297,31 +301,17 @@ def update_api_config(updated_config=None):
 
     Returns
     -------
-    result : WazuhResult
+    result : AffectedItemsWazuhResult
         Confirmation/Error message.
     """
-    def update(original, new_config):
-        # Update dict and subdicts without overriding unspecified keys.
-        for key in new_config:
-            if key in original:
-                if isinstance(original[key], dict) and isinstance(new_config[key], dict):
-                    original[key].update(new_config[key])
-                else:
-                    original[key] = new_config[key]
+    result = AffectedItemsWazuhResult(**_update_config_default_result_kwargs)
 
-    if updated_config:
-        update(api_conf.api_conf, updated_config)
-        result = WazuhResult({'message': "API configuration updated successfully."})
-    else:
-        return WazuhResult({'message': "API configuration could not be updated."})
-
-    # Update api.yaml with current api_conf dict
-    if get_node().get('type') == 'master':
-        try:
-            with open(common.api_config_path, 'w+') as f:
-                yaml.dump(api_conf.api_conf, f)
-        except IOError:
-            raise WazuhInternalError(1005)
+    try:
+        update_api_conf(updated_config, get_node().get('type'))
+        result.affected_items.append(node_id)
+    except WazuhInternalError as e:
+        result.add_failed_item(id_=node_id, error=e)
+    result.total_affected_items = len(result.affected_items)
 
     return result
 

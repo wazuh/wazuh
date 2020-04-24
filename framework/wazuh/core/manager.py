@@ -10,11 +10,13 @@ from collections import OrderedDict
 from datetime import datetime
 from os import chmod, remove
 from os.path import join
+from pyexpat import ExpatError
 from shutil import Error
 from typing import Dict
-from xml.dom.minidom import parseString
 
-from pyexpat import ExpatError
+import yaml
+from xml.dom.minidom import parseString
+from api import configuration
 
 from wazuh import common, WazuhInternalError, WazuhError
 from wazuh.core.cluster.utils import get_manager_status
@@ -213,3 +215,31 @@ def replace_in_comments(original_content, to_be_replaced, replacement):
         good_comment = comment.group(2).replace(to_be_replaced, replacement)
         original_content = original_content.replace(comment.group(2), good_comment)
     return original_content
+
+
+def update_api_conf(new_config, node_type):
+    """Update dict and subdicts without overriding unspecified keys and write it in the API.yaml file.
+
+    Parameters
+    ----------
+    new_config : dict
+        Dictionary with the new configuration.
+    node_type : str
+        Type of node (master, worker)
+    """
+    if new_config:
+        for key in new_config:
+            if key in configuration.api_conf:
+                if isinstance(configuration.api_conf[key], dict) and isinstance(new_config[key], dict):
+                    configuration.api_conf[key].update(new_config[key])
+                else:
+                    configuration.api_conf[key] = new_config[key]
+
+        if node_type == 'master':
+            try:
+                with open(common.api_config_path, 'w+') as f:
+                    yaml.dump(configuration.api_conf, f)
+            except IOError:
+                raise WazuhInternalError(1005)
+    else:
+        raise WazuhError(1105)

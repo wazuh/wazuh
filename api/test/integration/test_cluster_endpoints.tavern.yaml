@@ -2533,53 +2533,6 @@ stages:
         message: !anystr
 
 ---
-test_name: PUT /cluster/restart
-
-stages:
-
-  - name: Restart cluster
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        list_nodes: 'worker1,worker2'
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - 'worker1'
-            - 'worker2'
-          failed_items: []
-          total_affected_items: 2
-          total_failed_items: 0
-        message: !anystr
-    delay_after: 30
-
-  - name: Restart cluster
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - 'master-node'
-            - 'worker1'
-            - 'worker2'
-          failed_items: []
-          total_affected_items: 3
-          total_failed_items: 0
-        message: !anystr
-
----
 test_name: GET /cluster/api/config
 
 stages:
@@ -2642,8 +2595,13 @@ stages:
           time: 1
     response:
       status_code: 200
-      json:
-        message: "API configuration updated successfully."
+      json: &update_api_config_ok
+        data:
+          affected_items: !anything
+          total_affected_items: 3
+          total_failed_items: 0
+          failed_items: []
+        message: !anystr
 
   # PUT /cluster/api/config
   - name: Modify API configuration (all allowed fields)
@@ -2674,7 +2632,7 @@ stages:
     response:
       status_code: 200
       json:
-        message: "API configuration updated successfully."
+        <<: *update_api_config_ok
 
   # PUT /cluster/api/config
   - name: Modify API configuration (forbidden field)
@@ -2745,7 +2703,7 @@ stages:
     response:
       status_code: 200
       json:
-        message: "API configuration updated successfully."
+        <<: *update_api_config_ok
 
   # GET /cluster/api/config
   - name: Get API default configuration
@@ -2777,3 +2735,50 @@ stages:
         use_only_authd: false
         drop_privileges: !anybool
         experimental_features: false
+
+---
+test_name: PUT /cluster/restart
+
+stages:
+
+  - name: Restart cluster
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_nodes: 'worker1,worker2'
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - 'worker1'
+            - 'worker2'
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+        message: !anystr
+    delay_after: 30
+
+  - name: Restart cluster
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - 'master-node'
+            - 'worker1'
+            - 'worker2'
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+        message: !anystr
