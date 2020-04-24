@@ -814,7 +814,7 @@ async def get_group_file_json(request, group_id, file_name, pretty=False, wait_f
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = Data(data['data']['items'])
+    response = Data(data['data']['affectedItems'])
 
     return web.json_response(data=response, status=200, dumps=dumps)
 

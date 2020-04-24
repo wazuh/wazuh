@@ -116,3 +116,21 @@ def test_validate_data_dict_field(response, fields_dict):
             except KeyError:
                 assert len(element) == 1
                 assert isinstance(element['count'], int)
+
+
+def test_validate_upgrade(response):
+    # We accept the test as passed if it either ugprades correctly or the version is not available
+    assert response.status_code == 200 or (response.status_code == 400 and response.json()['code'] == 1718)
+    if response.status_code == 200:
+        return Box({"upgraded": True})
+    else:
+        return Box({"upgraded": False})
+
+
+def test_validate_upgrade_result(response, upgraded):
+    if upgraded:
+        assert response.status_code == 200
+        assert response.json()['message'] == "Agent upgraded successfully"
+    else:
+        # If upgrade didnt work because no version was available, we expect an empty upgrade_result with error 1716
+        assert response.json()['code'] == 1716

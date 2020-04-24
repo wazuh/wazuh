@@ -2649,10 +2649,8 @@ stages:
      status_code: 200
      json:
        data:
-         affected_items:
-           - config: !anything
-             filters: !anything
-         total_affected_items: !anyint
+         affected_items: []
+         total_affected_items: 1
 
  - name: Try show agents with limit 0
    request:
@@ -3928,10 +3926,8 @@ stages:
      params:
        force: True
    response:
-     status_code: 200
-     json:
-       message: !anystr
-   delay_after: 60
+     verify_response_with:
+       function: tavern_utils:test_validate_upgrade
 
  - name: Get agent upgrade result
    request:
@@ -3940,7 +3936,10 @@ stages:
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
+     params:
+       wait_for_complete: True
    response:
-     status_code: 200
-     json:
-       message: Agent upgraded successfully
+     verify_response_with:
+       function: tavern_utils:test_validate_upgrade_result
+       extra_kwargs:
+        upgraded: "{upgraded:b}"
