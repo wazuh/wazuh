@@ -1895,13 +1895,13 @@ stages:
         path: etc/rules/new-rules.xml
         overwrite: True
     response:
-      status_code: 500 # should be 400?
+      status_code: 400
       json:
         code: 3022
         dapi_errors: {}
         detail: !anystr
         remediation: !anystr
-        status: 500
+        status: 400
         title: !anystr
         type: !anystr
 
@@ -1918,13 +1918,13 @@ stages:
         path: etc/decoders/new-decoder.xml
         overwrite: True
     response:
-      status_code: 500 # should be 400
+      status_code: 400
       json:
         code: 3022
         dapi_errors: {}
         detail: !anystr
         remediation: !anystr
-        status: 500
+        status: 400
         title: !anystr
         type: !anystr
 
@@ -1941,13 +1941,13 @@ stages:
         path: etc/lists/new-list
         overwrite: False
     response:
-      status_code: 500  # should be 400?
+      status_code: 400
       json:
         code: 3022
         dapi_errors: {}
         detail: !anystr
         remediation: !anystr
-        status: 500
+        status: 400
         title: !anystr
         type: !anystr
 
@@ -2298,13 +2298,13 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 500 #Should be 400?
+      status_code: 400
       json:
         code: 3022
         dapi_errors: !anything
         detail: !anystr
         remediation: !anystr
-        status: 500
+        status: 400
         title: !anystr
         type: !anystr
 
