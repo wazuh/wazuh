@@ -165,6 +165,22 @@ x-rbac-catalog:
         actions: ['cluster:read_config']
         resources: ['node:id:worker1', 'node:id:worker3']
         effect: "deny"
+    'cluster:read_api_config':
+      description: "Check Wazuh's cluster API configuration"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['cluster:read_api_config']
+        resources: ['*:*:*']
+        effect: "allow"
+    'cluster:update_api_config':
+      description: "Modify Wazuh's cluster API configuration"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['cluster:update_api_config']
+        resources: ['*:*:*']
+        effect: "allow"
     'cluster:read_file':
       description: "Read Wazuh's cluster files"
       resources:
@@ -213,6 +229,22 @@ x-rbac-catalog:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
         actions: ['manager:read_config']
+        resources: ['*:*:*']
+        effect: "allow"
+    'manager:read_api_config':
+      description: "Read Wazuh manager API configuration"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['manager:read_api_config']
+        resources: ['*:*:*']
+        effect: "allow"
+    'manager:update_api_config':
+      description: "Modify Wazuh manager API configuration"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['manager:update_api_config']
         resources: ['*:*:*']
         effect: "allow"
     'manager:read_file':
@@ -2160,7 +2192,7 @@ components:
               type: integer
               format: int32
               minimum: 30
-              example: 30
+              example: 3600
         logs:
           type: object
           additionalProperties: false
