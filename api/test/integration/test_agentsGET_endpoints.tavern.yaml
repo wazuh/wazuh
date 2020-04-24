@@ -3926,8 +3926,14 @@ stages:
      params:
        force: True
    response:
+     status_code:
+       - 200
+       - 500
      verify_response_with:
        function: tavern_utils:test_validate_upgrade
+     save:
+       $ext:
+         function: tavern_utils:test_validate_upgrade
 
  - name: Get agent upgrade result
    request:
@@ -3939,6 +3945,9 @@ stages:
      params:
        wait_for_complete: True
    response:
+     status_code:
+       - 200
+       - 400
      verify_response_with:
        function: tavern_utils:test_validate_upgrade_result
        extra_kwargs:

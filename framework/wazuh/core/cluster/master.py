@@ -232,7 +232,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         else:
             status, request_result = result
             if status != b'ok':
-                raise exception.WazuhClusterError(3016, extra_message=request_result.decode())
+                raise exception.WazuhClusterError(3022, extra_message=request_result.decode())
             request_result = request_result.decode()
         return request_result
 

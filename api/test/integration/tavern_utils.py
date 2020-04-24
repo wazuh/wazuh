@@ -1,9 +1,11 @@
 #tavern_utils.py
 import json
+import time
+
 from box import Box
 
 
-def calc_offset(response, total):
+def calc_offset(response):
     """
     :param response: Request response
     :param total: Number
@@ -120,17 +122,22 @@ def test_validate_data_dict_field(response, fields_dict):
 
 def test_validate_upgrade(response):
     # We accept the test as passed if it either ugprades correctly or the version is not available
-    assert response.status_code == 200 or (response.status_code == 400 and response.json()['code'] == 1718)
-    if response.status_code == 200:
+    assert response.json().get('message', None) == "Upgrade procedure started" \
+           or response.json().get('code', None) == 1718
+    if response.json().get('message', None) == "Upgrade procedure started":
+        time.sleep(45)
         return Box({"upgraded": True})
     else:
         return Box({"upgraded": False})
 
 
 def test_validate_upgrade_result(response, upgraded):
-    if upgraded:
-        assert response.status_code == 200
-        assert response.json()['message'] == "Agent upgraded successfully"
+    if upgraded == 1:
+        assert response.json().get('message', None) == "Agent upgraded successfully"
     else:
         # If upgrade didnt work because no version was available, we expect an empty upgrade_result with error 1716
-        assert response.json()['code'] == 1716
+        assert response.json().get('code', None) == 1716
+
+
+def test_validate_update_latest_version(response):
+    assert response.json().get('code', None) == 1749 or response.json().get('code', None) == 1718
