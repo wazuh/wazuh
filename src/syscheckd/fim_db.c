@@ -648,7 +648,7 @@ fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt) {
     entry->data->options = (time_t)sqlite3_column_int(stmt, 6);
     strncpy(entry->data->checksum, (char *)sqlite3_column_text(stmt, 7), sizeof(os_sha1) - 1);
     entry->data->dev = (unsigned long int)sqlite3_column_int(stmt, 8);
-    entry->data->inode = (unsigned long int)sqlite3_column_int(stmt, 9);
+    entry->data->inode = (unsigned long int)sqlite3_column_int64(stmt, 9);
     entry->data->size = (unsigned int)sqlite3_column_int(stmt, 10);
     sqlite_strdup((char *)sqlite3_column_text(stmt, 11), entry->data->perm);
     sqlite_strdup((char *)sqlite3_column_text(stmt, 12), entry->data->attributes);
@@ -671,7 +671,7 @@ fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt) {
 void fim_db_bind_insert_data(fdb_t *fim_sql, fim_entry_data *entry) {
 #ifndef WIN32
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_INSERT_DATA], 1, entry->dev);
-    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_INSERT_DATA], 2, entry->inode);
+    sqlite3_bind_int64(fim_sql->stmt[FIMDB_STMT_INSERT_DATA], 2, entry->inode);
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_INSERT_DATA], 3, entry->size);
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_INSERT_DATA], 4, entry->perm, -1, NULL);
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_INSERT_DATA], 5, entry->attributes, -1, NULL);
@@ -722,7 +722,7 @@ void fim_db_bind_path(fdb_t *fim_sql, int index, const char *file_path) {
 void fim_db_bind_get_inode(fdb_t *fim_sql, int index, const unsigned long int inode, const unsigned long int dev) {
     if (index == FIMDB_STMT_GET_PATHS_INODE || index == FIMDB_STMT_GET_PATHS_INODE_COUNT
         || index == FIMDB_STMT_GET_DATA_ROW) {
-        sqlite3_bind_int(fim_sql->stmt[index], 1, inode);
+        sqlite3_bind_int64(fim_sql->stmt[index], 1, inode);
         sqlite3_bind_int(fim_sql->stmt[index], 2, dev);
     }
 }
@@ -940,7 +940,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) 
             it will delete it and insert the new one.
          */
         if (res_inode == SQLITE_ROW) {
-            inode = sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_INODE], 0);
+            inode = sqlite3_column_int64(fim_sql->stmt[FIMDB_STMT_GET_INODE], 0);
 
             if (inode != entry->inode) {
                 fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_INODE_ID);
