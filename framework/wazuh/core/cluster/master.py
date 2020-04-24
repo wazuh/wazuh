@@ -216,8 +216,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 result = (await self.server.clients[client].send_request(b'dapi', request_id.encode() + b' ' + request)).decode()
             else:
                 raise exception.WazuhClusterError(3022, extra_message=client)
-        else:
+        elif command == b'dapi':
             result = (await self.send_request(b'dapi', request_id.encode() + b' ' + data)).decode()
+        else:
+            result = self.process_request(command=command, data=data)
 
         if command == b'dapi' or command == b'dapi_forward':
             try:
@@ -228,7 +230,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             except asyncio.TimeoutError:
                 raise exception.WazuhClusterError(3021)
         else:
-            request_result = result
+            status, request_result = result
+            if status != b'ok':
+                raise exception.WazuhClusterError(3016, extra_message=request_result.decode())
+            request_result = request_result.decode()
         return request_result
 
     def hello(self, data: bytes) -> Tuple[bytes, bytes]:
