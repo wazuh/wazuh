@@ -17,6 +17,7 @@
 #include "shared.h"
 #include "../../os_auth/auth.h"
 #include "../../addagent/manage_agents.h"
+#include "../../headers/sec.h"
 
 
 /* redefinitons/wrapping */
@@ -112,6 +113,12 @@ static int setup_group(void **state) {
     return 0;
 }
 
+static int teardown_group(void **state) {
+    OS_FreeKeys(&keys);
+
+    return 0;
+}
+
 
 /* tests */
 
@@ -122,29 +129,30 @@ static void test_w_auth_add_agent(void **state) {
     char* new_id = NULL;
     char* new_key = NULL;
 
+    /* Successful new agent */
     err = w_auth_add_agent(response, "192.0.0.0", "agent1", NULL, &new_id, &new_key);
     assert_int_equal(err, OS_SUCCESS);
     assert_string_equal(response, "");  
     assert_non_null(new_id);
     assert_non_null(new_key);
 
-    err = w_auth_add_agent(response, "192.0.0.0", "agent1", "Group1,Group2,Group3", &new_id, &new_key);
+    /* Successful new agent with group */
+    err = w_auth_add_agent(response, "192.0.0.1", "agent2", "Group1,Group2,Group3", &new_id, &new_key);
     assert_int_equal(err, OS_SUCCESS);
     assert_string_equal(response, "");  
     assert_non_null(new_id);
     assert_non_null(new_key);
+    
 }
 
 
 
 
-int main(void) {
-    bool block = true;
-    while(block){;}
+int main(void) {   
     const struct CMUnitTest tests[] = { 
         cmocka_unit_test(test_w_auth_add_agent),          
              
     };
 
-    return cmocka_run_group_tests(tests, setup_group, NULL);
+    return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

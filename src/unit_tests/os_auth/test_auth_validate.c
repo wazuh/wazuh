@@ -16,6 +16,7 @@
 
 #include "shared.h"
 #include "../../os_auth/auth.h"
+#include "../../headers/sec.h"
 #include "../../addagent/manage_agents.h"
 
 #define EXISTENT_AGENT1 "ExistentAgent1"
@@ -146,6 +147,12 @@ static int setup_group(void **state) {
     insert_tail = &queue_insert;
     backup_tail = &queue_backup;
     remove_tail = &queue_remove;
+
+    return 0;
+}
+
+static int teardown_group(void **state) {
+    OS_FreeKeys(&keys);
 
     return 0;
 }
@@ -324,5 +331,5 @@ int main(void) {
              
     };
 
-    return cmocka_run_group_tests(tests, setup_group, NULL);
+    return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
