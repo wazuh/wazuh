@@ -1298,6 +1298,10 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
         os_strdup(lf->filename,lf_cpy->filename);
     }
 
+    if (lf->mode) {
+        os_strdup(lf->mode, lf_cpy->mode);
+    }
+
     if (lf->perm_before) {
         os_strdup(lf->perm_before, lf_cpy->perm_before);
     }
