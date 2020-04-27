@@ -238,6 +238,7 @@ static int setup_group(void ** state) {
     return 0;
 }
 
+#ifndef TEST_WINAGENT
 static int setup_tmp_file(void **state) {
     fim_tmp_file *tmp_file = calloc(1, sizeof(fim_tmp_file));
     tmp_file->elements = 1;
@@ -246,6 +247,7 @@ static int setup_tmp_file(void **state) {
 
     return 0;
 }
+#endif
 
 /* teardown */
 
@@ -257,12 +259,14 @@ static int teardown_group(void **state) {
     return 0;
 }
 
+#ifndef TEST_WINAGENT
 static int teardown_tmp_file(void **state) {
     fim_tmp_file *tmp_file = *state;
     free(tmp_file);
 
     return 0;
 }
+#endif
 
 /* tests */
 
@@ -780,7 +784,7 @@ void test_fim_link_check_delete_noentry_error(void **state) {
 void test_fim_delete_realtime_watches(void **state) {
     (void) state;
 
-    int pos = 1;
+    unsigned int pos = 1;
 
     will_return(__wrap_fim_configuration_directory, 0);
 

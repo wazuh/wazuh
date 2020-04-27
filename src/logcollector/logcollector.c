@@ -1814,7 +1814,7 @@ void * w_output_thread(void * args){
             // When dealing with this type of messages we don't want any of them to be lost
             // Continuously attempt to reconnect to the queue and send the message.
 
-            if(SendMSG(logr_queue, message->buffer, message->file, message->queue_mq) != 0) {
+            if(SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) != 0) {
                 #ifdef CLIENT
                 merror("Unable to send message to '%s' (ossec-agentd might be down). Attempting to reconnect.", DEFAULTQPATH);
                 #else
