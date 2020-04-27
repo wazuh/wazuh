@@ -23,8 +23,8 @@ from api import alogging, configuration, __path__ as api_path
 from api import validator
 from api.aiohttp_cache import setup_cache
 from api.api_exception import APIException
-from api.configuration import generate_self_signed_certificate, generate_private_key, generate_pem_phrase
-from api.constants import CONFIG_FILE_PATH, SECURITY_PATH, API_LOG_FILE_PATH
+from api.configuration import generate_self_signed_certificate, generate_private_key
+from api.constants import CONFIG_FILE_PATH, API_LOG_FILE_PATH
 from api.middlewares import set_user_name, check_experimental
 from api.util import to_relative_path
 from wazuh import pyDaemonModule, common
@@ -65,16 +65,32 @@ def start(foreground, root, config_file):
         print(f"Cannot start API while other processes are running. Kill these before {pids}")
         sys.exit(2)
 
-    # Foreground/Daemon
-    if not foreground:
-        print(f"Starting API in background")
-        pyDaemonModule.pyDaemon()
-
     configuration.api_conf.update(configuration.read_api_config(config_file=args.config_file))
     api_conf = configuration.api_conf
     cors = api_conf['cors']
     cache_conf = api_conf['cache']
     log_path = api_conf['logs']['path']
+
+    ssl_context = None
+    if api_conf['https']['enabled'] and os.path.exists(api_conf['https']['key']) and \
+            os.path.exists(api_conf['https']['cert']):
+        try:
+            ssl_context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS)
+            if api_conf['https']['use_ca']:
+                ssl_context.verify_mode = ssl.CERT_REQUIRED
+                ssl_context.load_verify_locations(api_conf['https']['ca'])
+            ssl_context.load_cert_chain(certfile=api_conf['https']['cert'],
+                                        keyfile=api_conf['https']['key'])
+        except ssl.SSLError as e:
+            raise APIException(2003, details='Private key does not match with the certificate')
+        except OSError as e:
+            if e.errno == 22:
+                raise APIException(2003, details='PEM phrase is not correct')
+
+    # Foreground/Daemon
+    if not foreground:
+        print(f"Starting API in background")
+        pyDaemonModule.pyDaemon()
 
     # Drop privileges to ossec
     if not root:
@@ -138,34 +154,24 @@ def start(foreground, root, config_file):
             logger = logging.getLogger('wazuh')
             logger.info('HTTPS is enabled but cannot find the private key and/or certificate. '
                         'Attempting to generate them.')
-            pem_phrase = generate_pem_phrase()
-            logger.info(f'Generated PEM phrase in WAZUH_PATH/{to_relative_path(SECURITY_PATH)}.')
-            private_key = generate_private_key(pem_phrase, api_conf['https']['key'])
+            private_key = generate_private_key(api_conf['https']['key'])
             logger.info(f"Generated private key file in WAZUH_PATH/{to_relative_path(api_conf['https']['key'])}.")
             generate_self_signed_certificate(private_key, api_conf['https']['cert'])
             logger.info(f"Generated certificate file in WAZUH_PATH/{to_relative_path(api_conf['https']['cert'])}.")
 
-        try:
-            ssl_context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS)
-            if api_conf['https']['use_ca']:
-                ssl_context.verify_mode = ssl.CERT_REQUIRED
-                ssl_context.load_verify_locations(api_conf['https']['ca'])
+        if ssl_context is None:
             try:
-                with open(os.path.join(SECURITY_PATH, 'ssl_secret'), 'r') as f:
-                    pem_phrase = f.read()
-            except FileNotFoundError:
-                raise APIException(2003, details='Could not find the secret file with the PEM phrase. Please check '
-                                                 f'{SECURITY_PATH}/ssl_secret')
-            ssl_context.load_cert_chain(certfile=api_conf['https']['cert'],
-                                        keyfile=api_conf['https']['key'],
-                                        password=pem_phrase)
-        except ssl.SSLError as e:
-            raise APIException(2003, details='Private key does not match with the certificate')
-        except IOError as e:
-            raise APIException(2003, details='Please, ensure if path to certificates is correct in the configuration '
-                                             f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}')
-    else:
-        ssl_context = None
+                ssl_context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS)
+                if api_conf['https']['use_ca']:
+                    ssl_context.verify_mode = ssl.CERT_REQUIRED
+                    ssl_context.load_verify_locations(api_conf['https']['ca'])
+                ssl_context.load_cert_chain(certfile=api_conf['https']['cert'],
+                                            keyfile=api_conf['https']['key'])
+            except ssl.SSLError as e:
+                raise APIException(2003, details='Private key does not match with the certificate')
+            except IOError as e:
+                raise APIException(2003, details='Please, ensure if path to certificates is correct in the configuration '
+                                                 f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}')
 
     app.run(port=api_conf['port'],
             host=api_conf['host'],

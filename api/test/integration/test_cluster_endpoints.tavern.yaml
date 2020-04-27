@@ -1340,8 +1340,6 @@ stages:
                   file_max_size: !anyint
                   max_audit_entries: !anyint
                   rt_delay: !anyint
-                  sleep: !anyint
-                  sleep_after: !anyint
                   symlink_scan_interval: !anyint
           failed_items: []
           total_affected_items: 1
@@ -1872,9 +1870,7 @@ stages:
           affected_items: []
           failed_items:
             - error:
-                code: 1802
-                message: !anystr
-                remediation: !anystr
+                code: 1800
               id:
                 - 'etc/lists/new-list'
           total_affected_items: 0
@@ -2206,7 +2202,6 @@ stages:
           affected_items:
             - ossec-agentlessd: !anything
             - ossec-analysisd: !anything
-            - ossec-authd: !anything
             - ossec-csyslogd: !anything
             - ossec-dbd: !anything
             - ossec-execd: !anything
@@ -2220,6 +2215,7 @@ stages:
             - wazuh-db: !anything
             - wazuh-modulesd: !anything
             - wazuh-modulesd:ciscat: !anything
+            - wazuh-modulesd:control: !anything
             - wazuh-modulesd:database: !anything
             - wazuh-modulesd:download: !anything
             - wazuh-modulesd:oscap: !anything

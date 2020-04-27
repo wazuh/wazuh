@@ -28,7 +28,7 @@ def check_hotfix_database():
 def get_health():
     os.system("/var/ossec/bin/agent_control -ls > /tmp/output.txt")
     check = os.popen("diff -q /tmp/output.txt /tmp/agent_control_check.txt").read()
-    output = os.system("grep -q 'wazuh-modulesd:syscollector: INFO: Module started.' /var/ossec/logs/ossec.log")
+    output = os.system("grep -q 'wazuh-modulesd:syscollector: INFO: Evaluation finished.' /var/ossec/logs/ossec.log")
     db = check_hotfix_database()
 
     if "differ" not in check and output == 0 and db == 0:

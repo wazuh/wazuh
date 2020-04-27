@@ -29,6 +29,8 @@ ADD base/wazuh-manager/entrypoint.sh /scripts/entrypoint.sh
 
 FROM base AS wazuh-env-base
 
+FROM base AS wazuh-env-active-response
+
 FROM base AS wazuh-env-agents
 COPY configurations/agents/test_custom_upgrade_3.10.2.wpk /var/ossec/test_custom_upgrade_3.10.2.wpk
 
@@ -121,11 +123,11 @@ FROM wazuh-env-syscollector AS wazuh-env-syscollector_black_rbac
 ADD configurations/rbac/syscollector/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
-FROM base as wazuh-env-active-response_white_rbac
+FROM wazuh-env-active-response as wazuh-env-active-response_white_rbac
 ADD configurations/rbac/active-response/white_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
-FROM base as wazuh-env-active-response_black_rbac
+FROM wazuh-env-active-response as wazuh-env-active-response_black_rbac
 ADD configurations/rbac/active-response/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
