@@ -7,7 +7,6 @@ import json
 import os
 import re
 import yaml
-import psutil
 
 from api.api_exception import APIException
 from api.constants import CONFIG_FILE_PATH

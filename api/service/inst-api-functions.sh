@@ -108,6 +108,7 @@ restore_old_api() {
         exit 1
     fi
 
+    # check current REVISION and perform the applicable restore
     if [ "$1" -lt 40000 ]; then
 		    restore_old_api_3x
 		else

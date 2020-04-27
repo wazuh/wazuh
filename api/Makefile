@@ -16,9 +16,9 @@ INSTALL_FILE   = install -o root -g ${OSSEC_GROUP} -m 0640
 PYTHON_BIN     = $(PREFIX)/framework/python/bin/python3
 
 
-.PHONY: all backup install service restore
+.PHONY: all backup install restore service
 
-all: backup install service restore
+all: backup install restore service
 
 backup:
 	# Backup previous configuration

@@ -86,17 +86,17 @@ UpdateStartOSSEC()
    if [ `stat /proc/1/exe 2> /dev/null | grep "systemd" | wc -l` -ne 0 ]; then
        systemctl start wazuh-$TYPE
        if [ "X$TYPE" = "Xmanager" ]; then
-         systemctl start wazuh-api
+         systemctl restart wazuh-api
        fi
    elif [ `stat /proc/1/exe 2> /dev/null | grep "init.d" | wc -l` -ne 0 ]; then
        service wazuh-$TYPE start
        if [ "X$TYPE" = "Xmanager" ]; then
-         service wazuh-api start
+         service wazuh-api restart
        fi
    else
        $DIRECTORY/bin/ossec-control start
        if [ "X$TYPE" = "Xmanager" ]; then
-         $DIRECTORY/bin/wazuh-apid start
+         $DIRECTORY/bin/wazuh-apid restart
        fi
    fi
 }
