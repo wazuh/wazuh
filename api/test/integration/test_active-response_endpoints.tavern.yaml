@@ -56,6 +56,7 @@ stages:
         message: Command sent to all agents
 
   - name: Send a message to a list of agents (Status=Active)
+    delay_before: 45
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"

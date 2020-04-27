@@ -16,7 +16,7 @@ from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param
 from wazuh import security
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhError
-from wazuh.rbac.orm import AuthenticationManager
+from wazuh.rbac import preprocessor
 
 logger = logging.getLogger('wazuh')
 auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
@@ -28,11 +28,18 @@ async def login_user(request, user, auth_context=None):
     This method should be called to get an API token. This token will expire at some time. # noqa: E501
     :return: TokenResponse
     """
-    with AuthenticationManager() as auth:
-        if auth.user_auth_context(user):
-            return web.json_response(data=TokenResponse(token=generate_token(user_id=user, auth_context=auth_context)),
-                                     status=200, dumps=dumps)
-    return web.json_response(data=TokenResponse(token=generate_token(user_id=user)),
+    f_kwargs = {'auth_context': auth_context,
+                'user_id': user}
+
+    dapi = DistributedAPI(f=preprocessor.get_permissions,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          logger=logger
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=TokenResponse(token=generate_token(user_id=user, rbac_policies=data.dikt)),
                              status=200, dumps=dumps)
 
 
@@ -577,7 +584,7 @@ async def revoke_all_tokens(request):
 
     dapi = DistributedAPI(f=security.revoke_tokens,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
+                          request_type='local_any',
                           is_async=False,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']

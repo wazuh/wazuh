@@ -401,14 +401,15 @@ stages:
           affected_items:
             - "001"
             - "002"
+            - "003"
             - "004"
             - "005"
             - "006"
             - "007"
             - "008"
           failed_items: !anything
-          total_affected_items: 7
-          total_failed_items: 5
+          total_affected_items: 8
+          total_failed_items: 4
         message: !anystr
     delay_after: 40
 
@@ -623,10 +624,11 @@ stages:
         force: True
         wait_for_complete: 'true'
     response:
-      status_code: 200
-      json:
-        message: !anystr
-    delay_after: 30
+     status_code:
+       - 200
+       - 500
+     verify_response_with:
+       function: tavern_utils:test_validate_upgrade
 
     # PUT /agents/001/upgrade
   - name: Try to upgrade an agent that is updated to the latest version
@@ -637,9 +639,11 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
-      json:
-        code: 1749
+      status_code:
+        - 400
+        - 500
+      verify_response_with:
+        function: tavern_utils:test_validate_update_latest_version
 
     # PUT /agents/003/upgrade
   - name: Downgrade agent to an specific version using force
@@ -672,10 +676,11 @@ stages:
         force: true
         wait_for_complete: 'true'
     response:
-      status_code: 200
-      json:
-        message: !anystr
-    delay_after: 30
+     status_code:
+       - 200
+       - 500
+     verify_response_with:
+       function: tavern_utils:test_validate_upgrade
 
     # PUT /agents/005/upgrade
   - name: Upgrade an agent using wkp repo
@@ -690,9 +695,11 @@ stages:
         force: true
         wait_for_complete: 'true'
     response:
-      status_code: 200
-      json:
-        message: !anystr
+     status_code:
+       - 200
+       - 500
+     verify_response_with:
+       function: tavern_utils:test_validate_upgrade
 
 ---
 test_name: PUT /agents/{agent_id}/upgrade_custom
@@ -808,7 +815,7 @@ stages:
       status_code: 200
       json:
         message: "Installation started"
-    delay_after: 60
+    delay_after: 45
 
   - name: Get agent 007 upgrade result
     request:

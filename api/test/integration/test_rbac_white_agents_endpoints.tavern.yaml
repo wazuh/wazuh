@@ -731,7 +731,7 @@ stages:
       status_code: 200
       json:
         message: "Agent '002' removed from 'group2'."
-    delay_after: 1
+    delay_after: 10
 
 ---
 test_name: DELETE /agents/{agent_id}/group
@@ -1362,6 +1362,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 2
         message: !anystr
+    delay_after: 10
 
   - name: Try to assign all agents to group2 (Partially allowed, user agnostic)
     request:
@@ -1518,7 +1519,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 1
         message: !anystr
-    delay_after: 45
+    delay_after: 60
 
 ---
 test_name: PUT /agents/{agent_id}/group/{group_id}

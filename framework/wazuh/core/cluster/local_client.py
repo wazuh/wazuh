@@ -76,6 +76,9 @@ class LocalClientHandler(client.AbstractClient):
         self.response_available.set()
         return data
 
+    def connection_lost(self, exc):
+        self.on_con_lost.set_result(True)
+
 
 class LocalClient(client.AbstractClientManager):
     """
@@ -150,7 +153,10 @@ class LocalClient(client.AbstractClientManager):
         :return: The response decoded as a dict
         """
         await self.start()
-        return await self.send_api_request(command, data, wait_for_complete)
+        result = await self.send_api_request(command, data, wait_for_complete)
+        self.transport.close()
+        await self.protocol.on_con_lost
+        return result
 
     async def send_file(self, path: str, node_name: str = None) -> str:
         """
