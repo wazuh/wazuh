@@ -340,8 +340,6 @@ stages:
       save:
         $ext:
           function: tavern_utils:calc_offset
-          extra_kwargs:
-            total: "{returned_total}"
         json:
           sort_item: data.affected_items[0]
 
@@ -885,8 +883,6 @@ stages:
       save:
         $ext:
           function: tavern_utils:calc_offset
-          extra_kwargs:
-            total: "{returned_total}"
         json:
           sort_item: data.affected_items[0]
 
