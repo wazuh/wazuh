@@ -682,7 +682,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         char* new_key = NULL;
         if(OS_SUCCESS == w_auth_parse_data(buf, response, authpass, ip, &agentname, &centralized_group)){
             if (worker_node) {                
-                if( 0 == w_request_agent_add_clustered(new_id, agentname, ip, centralized_group, new_key, config.flags.force_insert?config.force_time:-1, TRUE, NULL) ) {
+                if( 0 == w_request_agent_add_clustered(agentname, ip, centralized_group, &new_id, &new_key, config.flags.force_insert?config.force_time:-1, TRUE, NULL) ) {
                     enrollment_ok = TRUE;
                 }     
                 else {
@@ -710,9 +710,8 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 if (ret < 0) {
                     merror("SSL write error (%d)", ret);
                     
-                    ERR_print_errors_fp(stderr); 
-                    int master_err = 0;                   
-                    if (0 != w_request_agent_remove_clustered(&master_err, new_id, TRUE, TRUE) || master_err != 0) {
+                    ERR_print_errors_fp(stderr);       
+                    if (0 != w_request_agent_remove_clustered(new_id, TRUE, TRUE)) {
                         merror("Agent key unable to be shared with %s and unable to delete from master node", agentname);
                     }
                     else {
