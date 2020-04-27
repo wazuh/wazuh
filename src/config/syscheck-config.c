@@ -417,15 +417,21 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     const char *xml_recursion_level = "recursion_level";
     const char *xml_tag = "tags";
 
+    /* Variables for extract options */
     char *restrictfile = NULL;
     int recursion_limit = syscheck->max_depth;
     char *tag = NULL;
     char *clean_tag = NULL;
+    char **attrs = g_attrs;
+    char **values = g_values;
+    int opts = 0;
+
+    /* Variables for extract directories and free memory after that */
     char **dir;
     char *tmp_str;
+    char *tmp_dir;
     dir = OS_StrBreak(',', dirs, MAX_DIR_SIZE); /* Max number */
     char **dir_org = dir;
-
     int i;
 
     /* Dir can not be null */
@@ -433,12 +439,292 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         return (0);
     }
 
-    while (*dir) {
-        int opts = 0;
-        char *tmp_dir;
+    /* Default values */
+    opts &= ~ CHECK_FOLLOW;
+    opts |= SCHEDULED_ACTIVE;
+    opts |= CHECK_SIZE;
+    opts |= CHECK_PERM;
+    opts |= CHECK_OWNER;
+    opts |= CHECK_GROUP;
+    opts |= CHECK_SHA256SUM;
+    opts |= CHECK_MD5SUM;
+    opts |= CHECK_SHA1SUM;
+    opts |= CHECK_MTIME;
+    opts |= CHECK_INODE;
+#ifdef WIN32
+    opts |= CHECK_ATTRS;
+#endif
 
-        char **attrs = NULL;
-        char **values = NULL;
+    /* Extract all options */
+    while (attrs && values && *attrs && *values) {
+        /* Check all */
+        if (strcmp(*attrs, xml_check_all) == 0) {
+            if (strcmp(*values, "yes") == 0) {
+                opts |= CHECK_MD5SUM;
+                opts |= CHECK_SHA1SUM;
+                opts |= CHECK_SHA256SUM;
+                opts |= CHECK_PERM;
+                opts |= CHECK_SIZE;
+                opts |= CHECK_OWNER;
+                opts |= CHECK_GROUP;
+                opts |= CHECK_MTIME;
+                opts |= CHECK_INODE;
+#ifdef WIN32
+                opts |= CHECK_ATTRS;
+#endif
+            } else if (strcmp(*values, "no") == 0) {
+                opts &= ~ ( CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_PERM | CHECK_SHA256SUM | CHECK_SIZE
+                        | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE);
+#ifdef WIN32
+                opts &= ~ CHECK_ATTRS;
+#endif
+            } else {
+                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
+                goto out_free;
+            }
+        }
+        /* Check sum */
+        else if (strcmp(*attrs, xml_check_sum) == 0) {
+            if (strcmp(*values, "yes") == 0) {
+                opts |= CHECK_MD5SUM;
+                opts |= CHECK_SHA1SUM;
+                opts |= CHECK_SHA256SUM;
+            } else if (strcmp(*values, "no") == 0) {
+                opts &= ~ (CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM);
+            } else {
+                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
+                goto out_free;
+            }
+        }
+        /* Check md5sum */
+        else if (strcmp(*attrs, xml_check_md5sum) == 0) {
+            if (strcmp(*values, "yes") == 0) {
+                opts |= CHECK_MD5SUM;
+            } else if (strcmp(*values, "no") == 0) {
+                opts &= ~ CHECK_MD5SUM;
+            } else {
+                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
+                goto out_free;
+            }
+        }
+        /* Check sha1sum */
+        else if (strcmp(*attrs, xml_check_sha1sum) == 0) {
+            if (strcmp(*values, "yes") == 0) {
+                opts |= CHECK_SHA1SUM;
+            } else if (strcmp(*values, "no") == 0) {
+                opts &= ~ CHECK_SHA1SUM;
+            } else {
+                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
+                goto out_free;
+            }
+        }
+        /* Check sha256sum */
+        else if (strcmp(*attrs, xml_check_sha256sum) == 0) {
+            if (strcmp(*values, "yes") == 0) {
+                opts |= CHECK_SHA256SUM;
+            } else if (strcmp(*values, "no") == 0) {
+                opts &= ~ CHECK_SHA256SUM;
+            } else {
+                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
+                goto out_free;
+            }
+        }
+        /* Check whodata */
+        else if (strcmp(*attrs, xml_whodata) == 0) {
+            if (strcmp(*values, "yes") == 0) {
+                opts &= ~ REALTIME_ACTIVE;
+                opts &= ~ SCHEDULED_ACTIVE;
+                opts |= WHODATA_ACTIVE;
+            } else if (strcmp(*values, "no") == 0) {
+                opts &= ~ WHODATA_ACTIVE;
+            } else {
+                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
+                goto out_free;
+            }
+        }
+        /* Check permission */
+        else if (strcmp(*attrs, xml_check_perm) == 0) {
+            if (strcmp(*values, "yes") == 0) {
+                opts |= CHECK_PERM;
+            } else if (strcmp(*values, "no") == 0) {
+                opts &= ~ CHECK_PERM;
+            } else {
+                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
+                goto out_free;
+            }
+        }
+        /* Check size */
+        else if (strcmp(*attrs, xml_check_size) == 0) {
+            if (strcmp(*values, "yes") == 0) {
+                opts |= CHECK_SIZE;
+            } else if (strcmp(*values, "no") == 0) {
+                opts &= ~ CHECK_SIZE;
+            } else {
+                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
+                goto out_free;
+            }
+        }
+        /* Check owner */
+        else if (strcmp(*attrs, xml_check_owner) == 0) {
+            if (strcmp(*values, "yes") == 0) {
+                opts |= CHECK_OWNER;
+            } else if (strcmp(*values, "no") == 0) {
+                opts &= ~ CHECK_OWNER;
+            } else {
+                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
+                goto out_free;
+            }
+        }
+        /* Check group */
+        else if (strcmp(*attrs, xml_check_group) == 0) {
+            if (strcmp(*values, "yes") == 0) {
+                opts |= CHECK_GROUP;
+            } else if (strcmp(*values, "no") == 0) {
+                opts &= ~ CHECK_GROUP;
+            } else {
+                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
+                goto out_free;
+            }
+        }
+        /* Check modification time */
+        else if (strcmp(*attrs, xml_check_mtime) == 0) {
+            if (strcmp(*values, "yes") == 0) {
+                opts |= CHECK_MTIME;
+            } else if (strcmp(*values, "no") == 0) {
+                opts &= ~ CHECK_MTIME;
+            } else {
+                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
+                goto out_free;
+            }
+        }
+        /* Check inode */
+        else if (strcmp(*attrs, xml_check_inode) == 0) {
+            if (strcmp(*values, "yes") == 0) {
+                opts |= CHECK_INODE;
+            } else if (strcmp(*values, "no") == 0) {
+                opts &= ~ CHECK_INODE;
+            } else {
+                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
+                goto out_free;
+            }
+        }
+        /* Check attributes */
+        else if (strcmp(*attrs, xml_check_attrs) == 0) {
+#ifdef WIN32
+            if (strcmp(*values, "yes") == 0) {
+                opts |= CHECK_ATTRS;
+            } else if (strcmp(*values, "no") == 0) {
+                opts &= ~ CHECK_ATTRS;
+            } else {
+                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
+                goto out_free;
+            }
+#else
+            mdebug1("Option '%s' is only available on Windows systems.", xml_check_attrs);
+#endif
+        }
+        /* Check real time */
+        else if (strcmp(*attrs, xml_real_time) == 0) {
+            if (strcmp(*values, "yes") == 0 && !(opts & WHODATA_ACTIVE)) {
+                opts &= ~ SCHEDULED_ACTIVE;
+                opts |= REALTIME_ACTIVE;
+            } else if (strcmp(*values, "no") == 0) {
+                opts &= ~ REALTIME_ACTIVE;
+            } else {
+                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
+                goto out_free;
+            }
+        }
+        /* Check report changes */
+        else if (strcmp(*attrs, xml_report_changes) == 0) {
+            if (strcmp(*values, "yes") == 0) {
+                opts |= CHECK_SEECHANGES;
+            } else if (strcmp(*values, "no") == 0) {
+                opts &= ~ CHECK_SEECHANGES;
+            } else {
+                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
+                goto out_free;
+            }
+        }
+        /* Check file restriction */
+        else if (strcmp(*attrs, xml_restrict) == 0) {
+            os_free(restrictfile);
+            os_strdup(*values, restrictfile);
+#ifdef WIN32
+            str_lowercase(restrictfile);
+#endif
+        }
+        /* Check recursion limit */
+        else if (strcmp(*attrs, xml_recursion_level) == 0) {
+            if (!OS_StrIsNum(*values)) {
+                merror(XML_VALUEERR, xml_recursion_level, *values);
+                goto out_free;
+            }
+            recursion_limit = (unsigned int) atoi(*values);
+            if (recursion_limit < 0) {
+                mwarn("Invalid recursion level value: %d. Setting default (%d).", recursion_limit, syscheck->max_depth);
+                recursion_limit = syscheck->max_depth;
+            } else if (recursion_limit > MAX_DEPTH_ALLOWED) {
+                mwarn("Recursion level '%d' exceeding limit. Setting %d.", recursion_limit, MAX_DEPTH_ALLOWED);
+                recursion_limit = syscheck->max_depth;
+            }
+        }
+
+        /* Check tag */
+        else if (strcmp(*attrs, xml_tag) == 0) {
+            os_free(tag);
+            os_strdup(*values, tag);
+        }
+        /* Check follow symbolic links */
+        else if (strcmp(*attrs, xml_follow_symbolic_link) == 0) {
+            if (strcmp(*values, "yes") == 0) {
+                opts |= CHECK_FOLLOW;
+            } else if (strcmp(*values, "no") == 0) {
+                opts &= ~ CHECK_FOLLOW;
+            } else {
+                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
+                goto out_free;
+            }
+        } else {
+            mwarn(FIM_UNKNOWN_ATTRIBUTE, *attrs);
+        }
+        attrs++;
+        values++;
+    }
+
+    /* You must have something set */
+    if (opts == 0) {
+        mwarn(FIM_NO_OPTIONS, dirs);
+        goto out_free;
+    }
+
+    /* Remove spaces from tag */
+
+    if (tag) {
+        if (clean_tag = os_strip_char(tag, ' '), !clean_tag) {
+            merror("Processing tag '%s'", tag);
+            goto out_free;
+        } else {
+            os_free(tag);
+            os_strdup(clean_tag, tag);
+            os_free(clean_tag);
+        }
+        if (clean_tag = os_strip_char(tag, '!'), !clean_tag) {
+            merror("Processing tag '%s'", tag);
+            goto out_free;
+        } else {
+            os_free(tag);
+            os_strdup(clean_tag, tag);
+            os_free(clean_tag);
+        }
+        if (clean_tag = os_strip_char(tag, ':'), !clean_tag) {
+            merror("Processing tag '%s'", tag);
+            goto out_free;
+        }
+    }
+
+    /* Extract all directories */
+    while (*dir) {
 
         tmp_dir = *dir;
 
@@ -453,6 +739,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             *tmp_str = '\0';
             tmp_str--;
         }
+
 #ifdef WIN32
         /* Change forward slashes to backslashes on entry */
         tmp_str = strchr(tmp_dir, '/');
@@ -470,300 +757,12 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             continue;
         }
 
-        attrs = g_attrs;
-        values = g_values;
-
-        /* Default values */
-        opts &= ~ CHECK_FOLLOW;
-        opts |= SCHEDULED_ACTIVE;
-        opts |= CHECK_SIZE;
-        opts |= CHECK_PERM;
-        opts |= CHECK_OWNER;
-        opts |= CHECK_GROUP;
-        opts |= CHECK_SHA256SUM;
-        opts |= CHECK_MD5SUM;
-        opts |= CHECK_SHA1SUM;
-        opts |= CHECK_MTIME;
-        opts |= CHECK_INODE;
-#ifdef WIN32
-        opts |= CHECK_ATTRS;
-#endif
-
-        while (attrs && values && *attrs && *values) {
-            /* Check all */
-            if (strcmp(*attrs, xml_check_all) == 0) {
-                if (strcmp(*values, "yes") == 0) {
-                    opts |= CHECK_MD5SUM;
-                    opts |= CHECK_SHA1SUM;
-                    opts |= CHECK_SHA256SUM;
-                    opts |= CHECK_PERM;
-                    opts |= CHECK_SIZE;
-                    opts |= CHECK_OWNER;
-                    opts |= CHECK_GROUP;
-                    opts |= CHECK_MTIME;
-                    opts |= CHECK_INODE;
-#ifdef WIN32
-                    opts |= CHECK_ATTRS;
-#endif
-                } else if (strcmp(*values, "no") == 0) {
-                    opts &= ~ ( CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_PERM | CHECK_SHA256SUM | CHECK_SIZE
-                            | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE);
-#ifdef WIN32
-                    opts &= ~ CHECK_ATTRS;
-#endif
-                } else {
-                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                    goto out_free;
-                }
-            }
-            /* Check sum */
-            else if (strcmp(*attrs, xml_check_sum) == 0) {
-                if (strcmp(*values, "yes") == 0) {
-                    opts |= CHECK_MD5SUM;
-                    opts |= CHECK_SHA1SUM;
-                    opts |= CHECK_SHA256SUM;
-                } else if (strcmp(*values, "no") == 0) {
-                    opts &= ~ (CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM);
-                } else {
-                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                    goto out_free;
-                }
-            }
-            /* Check md5sum */
-            else if (strcmp(*attrs, xml_check_md5sum) == 0) {
-                if (strcmp(*values, "yes") == 0) {
-                    opts |= CHECK_MD5SUM;
-                } else if (strcmp(*values, "no") == 0) {
-                    opts &= ~ CHECK_MD5SUM;
-                } else {
-                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                    goto out_free;
-                }
-            }
-            /* Check sha1sum */
-            else if (strcmp(*attrs, xml_check_sha1sum) == 0) {
-                if (strcmp(*values, "yes") == 0) {
-                    opts |= CHECK_SHA1SUM;
-                } else if (strcmp(*values, "no") == 0) {
-                    opts &= ~ CHECK_SHA1SUM;
-                } else {
-                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                    goto out_free;
-                }
-            }
-            /* Check sha256sum */
-            else if (strcmp(*attrs, xml_check_sha256sum) == 0) {
-                if (strcmp(*values, "yes") == 0) {
-                    opts |= CHECK_SHA256SUM;
-                } else if (strcmp(*values, "no") == 0) {
-                    opts &= ~ CHECK_SHA256SUM;
-                } else {
-                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                    goto out_free;
-                }
-            }
-            /* Check whodata */
-            else if (strcmp(*attrs, xml_whodata) == 0) {
-                if (strcmp(*values, "yes") == 0) {
-                    opts &= ~ REALTIME_ACTIVE;
-                    opts &= ~ SCHEDULED_ACTIVE;
-                    opts |= WHODATA_ACTIVE;
-                } else if (strcmp(*values, "no") == 0) {
-                    opts &= ~ WHODATA_ACTIVE;
-                } else {
-                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                    goto out_free;
-                }
-            }
-            /* Check permission */
-            else if (strcmp(*attrs, xml_check_perm) == 0) {
-                if (strcmp(*values, "yes") == 0) {
-                    opts |= CHECK_PERM;
-                } else if (strcmp(*values, "no") == 0) {
-                    opts &= ~ CHECK_PERM;
-                } else {
-                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                    goto out_free;
-                }
-            }
-            /* Check size */
-            else if (strcmp(*attrs, xml_check_size) == 0) {
-                if (strcmp(*values, "yes") == 0) {
-                    opts |= CHECK_SIZE;
-                } else if (strcmp(*values, "no") == 0) {
-                    opts &= ~ CHECK_SIZE;
-                } else {
-                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                    goto out_free;
-                }
-            }
-            /* Check owner */
-            else if (strcmp(*attrs, xml_check_owner) == 0) {
-                if (strcmp(*values, "yes") == 0) {
-                    opts |= CHECK_OWNER;
-                } else if (strcmp(*values, "no") == 0) {
-                    opts &= ~ CHECK_OWNER;
-                } else {
-                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                    goto out_free;
-                }
-            }
-            /* Check group */
-            else if (strcmp(*attrs, xml_check_group) == 0) {
-                if (strcmp(*values, "yes") == 0) {
-                    opts |= CHECK_GROUP;
-                } else if (strcmp(*values, "no") == 0) {
-                    opts &= ~ CHECK_GROUP;
-                } else {
-                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                    goto out_free;
-                }
-            }
-            /* Check modification time */
-            else if (strcmp(*attrs, xml_check_mtime) == 0) {
-                if (strcmp(*values, "yes") == 0) {
-                    opts |= CHECK_MTIME;
-                } else if (strcmp(*values, "no") == 0) {
-                    opts &= ~ CHECK_MTIME;
-                } else {
-                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                    goto out_free;
-                }
-            }
-            /* Check inode */
-            else if (strcmp(*attrs, xml_check_inode) == 0) {
-                if (strcmp(*values, "yes") == 0) {
-                    opts |= CHECK_INODE;
-                } else if (strcmp(*values, "no") == 0) {
-                    opts &= ~ CHECK_INODE;
-                } else {
-                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                    goto out_free;
-                }
-            }
-            /* Check attributes */
-            else if (strcmp(*attrs, xml_check_attrs) == 0) {
-#ifdef WIN32
-                if (strcmp(*values, "yes") == 0) {
-                    opts |= CHECK_ATTRS;
-                } else if (strcmp(*values, "no") == 0) {
-                    opts &= ~ CHECK_ATTRS;
-                } else {
-                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                    goto out_free;
-                }
-#else
-                mdebug1("Option '%s' is only available on Windows systems.", xml_check_attrs);
-#endif
-            }
-            /* Check real time */
-            else if (strcmp(*attrs, xml_real_time) == 0) {
-                if (strcmp(*values, "yes") == 0 && !(opts & WHODATA_ACTIVE)) {
-                    opts &= ~ SCHEDULED_ACTIVE;
-                    opts |= REALTIME_ACTIVE;
-                } else if (strcmp(*values, "no") == 0) {
-                    opts &= ~ REALTIME_ACTIVE;
-                } else {
-                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                    goto out_free;
-                }
-            }
-            /* Check report changes */
-            else if (strcmp(*attrs, xml_report_changes) == 0) {
-                if (strcmp(*values, "yes") == 0) {
-                    opts |= CHECK_SEECHANGES;
-                } else if (strcmp(*values, "no") == 0) {
-                    opts &= ~ CHECK_SEECHANGES;
-                } else {
-                    mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                    goto out_free;
-                }
-            }
-            /* Check file restriction */
-            else if (strcmp(*attrs, xml_restrict) == 0) {
-                os_free(restrictfile);
-                os_strdup(*values, restrictfile);
-#ifdef WIN32
-                str_lowercase(restrictfile);
-#endif
-            }
-            /* Check recursion limit */
-            else if (strcmp(*attrs, xml_recursion_level) == 0) {
-                if (!OS_StrIsNum(*values)) {
-                    merror(XML_VALUEERR, xml_recursion_level, *values);
-                    goto out_free;
-                }
-                recursion_limit = (unsigned int) atoi(*values);
-                if (recursion_limit < 0) {
-                    mwarn("Invalid recursion level value: %d. Setting default (%d).", recursion_limit, syscheck->max_depth);
-                    recursion_limit = syscheck->max_depth;
-                } else if (recursion_limit > MAX_DEPTH_ALLOWED) {
-                    mwarn("Recursion level '%d' exceeding limit. Setting %d.", recursion_limit, MAX_DEPTH_ALLOWED);
-                    recursion_limit = syscheck->max_depth;
-                }
-            }
-
-            /* Check tag */
-            else if (strcmp(*attrs, xml_tag) == 0) {
-                os_free(tag);
-                os_strdup(*values, tag);
-            }
-            /* Check follow symbolic links */
-            else if (strcmp(*attrs, xml_follow_symbolic_link) == 0) {
-               if (strcmp(*values, "yes") == 0) {
-                   opts |= CHECK_FOLLOW;
-               } else if (strcmp(*values, "no") == 0) {
-                   opts &= ~ CHECK_FOLLOW;
-               } else {
-                   mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                   goto out_free;
-               }
-            } else {
-                mwarn(FIM_UNKNOWN_ATTRIBUTE, *attrs);
-            }
-            attrs++;
-            values++;
-        }
-
-        /* You must have something set */
-        if (opts == 0) {
-            mwarn(FIM_NO_OPTIONS, dirs);
-            goto out_free;
-        }
-
-        /* Remove spaces from tag */
-
-        if (tag) {
-            if (clean_tag = os_strip_char(tag, ' '), !clean_tag) {
-                merror("Processing tag '%s'", tag);
-                goto out_free;
-            } else {
-                os_free(tag);
-                os_strdup(clean_tag, tag);
-                os_free(clean_tag);
-            }
-            if (clean_tag = os_strip_char(tag, '!'), !clean_tag) {
-                merror("Processing tag '%s'", tag);
-                goto out_free;
-            } else {
-                os_free(tag);
-                os_strdup(clean_tag, tag);
-                os_free(clean_tag);
-            }
-            if (clean_tag = os_strip_char(tag, ':'), !clean_tag) {
-                merror("Processing tag '%s'", tag);
-                goto out_free;
-            }
-        }
-
         char real_path[PATH_MAX + 1] = "";
 #ifdef WIN32
         char expandedpath[PATH_MAX + 1];
 
         if(!ExpandEnvironmentStrings(tmp_dir, expandedpath, PATH_MAX + 1)){
             merror("Could not expand the environment variable %s (%ld)", expandedpath, GetLastError());
-            os_free(restrictfile);
-            os_free(tag);
             dir++;
             continue;
         }
@@ -774,8 +773,6 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         if (retval == 0) {
             int error = GetLastError();
             mwarn("Couldn't get full path name '%s' (%d):'%s'\n", expandedpath, error, win_strerror(error));
-            os_free(restrictfile);
-            os_free(tag);
             dir++;
             continue;
         }
@@ -784,6 +781,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 #else
         strncpy(real_path, tmp_dir, PATH_MAX);
 #endif
+
         /* Check for glob */
         /* The mingw32 builder used by travis.ci can't find glob.h
          * Yet glob must work on actual win32.
@@ -797,16 +795,12 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
             if (glob(tmp_dir, 0, NULL, &g) != 0) {
                 merror(GLOB_ERROR, real_path);
-                os_free(restrictfile);
-                os_free(tag);
                 dir++;
                 continue;
             }
 
             if (g.gl_pathv[0] == NULL) {
                 merror(GLOB_NFOUND, real_path);
-                os_free(restrictfile);
-                os_free(tag);
                 dir++;
                 continue;
             }
@@ -831,26 +825,19 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             globfree(&g);
         }
         else {
-            char *resolved_path = NULL;
+            char *resolved_path = realpath(real_path, NULL);
 
-            if (resolved_path = realpath(real_path, NULL), resolved_path) {
-                if (!strcmp(resolved_path, real_path)) {
-                    dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL);
-                } else {
-                    dump_syscheck_entry(syscheck, resolved_path, opts, 0, restrictfile, recursion_limit, clean_tag, real_path);
-                }
+            if (resolved_path && strcmp(resolved_path, real_path)) {
+                dump_syscheck_entry(syscheck, resolved_path, opts, 0, restrictfile, recursion_limit, clean_tag, real_path);
             } else {
                 dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL);
             }
+
             os_free(resolved_path);
         }
 #else
         dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL);
 #endif
-
-        os_free(restrictfile);
-        os_free(tag);
-        os_free(clean_tag);
 
         /* Next entry */
         dir++;
@@ -1031,15 +1018,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 *ptfile = '\0';
             }
 
-#ifdef WIN32
-            if(!ExpandEnvironmentStrings(node[i]->content, dirs, sizeof(dirs) - 1)){
-                merror("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
-                continue;
-            }
-            str_lowercase(dirs);
-#else
             strncpy(dirs, node[i]->content, sizeof(dirs) - 1);
-#endif
 
             if (!read_attr(syscheck,
                            dirs,
