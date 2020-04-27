@@ -36,8 +36,7 @@ void fim_process_scan_info(_sdb * sdb, const char * agent_id, fim_scan_event eve
 int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state);
 int fim_fetch_attributes(cJSON *new_attrs, cJSON *old_attrs, Eventinfo *lf);
 size_t fim_generate_comment(char * str, long size, const char * format, const char * a1, const char * a2);
-int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
-        cJSON *attributes, cJSON *old_attributes, cJSON *audit);
+int fim_generate_alert(Eventinfo *lf, char *event_type, cJSON *attributes, cJSON *old_attributes, cJSON *audit);
 int fim_process_alert(_sdb *sdb, Eventinfo *lf, cJSON *event);
 int decode_fim_event(_sdb *sdb, Eventinfo *lf);
 void fim_adjust_checksum(sk_sum_t *newsum, char **checksum);
@@ -258,7 +257,7 @@ static int setup_fim_data(void **state) {
         return -1;
     if(data->lf->decoder_info->fields[FIM_HARD_LINKS] = strdup("hard_links"), data->lf->decoder_info->fields[FIM_HARD_LINKS] == NULL)
         return -1;
-    if(data->lf->decoder_info->fields[FIM_MODE_FIELD] = strdup("mode"), data->lf->decoder_info->fields[FIM_MODE_FIELD] == NULL)
+    if(data->lf->decoder_info->fields[FIM_MODE] = strdup("mode"), data->lf->decoder_info->fields[FIM_MODE] == NULL)
         return -1;
     if(data->lf->decoder_info->fields[FIM_SIZE] = strdup("size"), data->lf->decoder_info->fields[FIM_SIZE] == NULL)
         return -1;
@@ -1242,7 +1241,6 @@ static void test_fim_generate_comment_invalid_format(void **state) {
 /* fim_generate_alert */
 static void test_fim_generate_alert_full_alert(void **state) {
     fim_data_t *input = *state;
-    char *mode = "fim_mode";
     char *event_type = "fim_event_type";
     int ret;
 
@@ -1265,8 +1263,7 @@ static void test_fim_generate_alert_full_alert(void **state) {
         wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
     }
 
-    ret = fim_generate_alert(input->lf, mode, event_type,
-                             attributes, old_attributes, audit);
+    ret = fim_generate_alert(input->lf, event_type, attributes, old_attributes, audit);
 
     assert_int_equal(ret, 0);
 
@@ -1337,7 +1334,6 @@ static void test_fim_generate_alert_full_alert(void **state) {
 
 static void test_fim_generate_alert_type_not_modified(void **state) {
     fim_data_t *input = *state;
-    char *mode = "fim_mode";
     char *event_type = "fim_event_type";
     int ret;
 
@@ -1357,8 +1353,7 @@ static void test_fim_generate_alert_type_not_modified(void **state) {
         wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
     }
 
-    ret = fim_generate_alert(input->lf, mode, event_type,
-                             attributes, old_attributes, audit);
+    ret = fim_generate_alert(input->lf, event_type, attributes, old_attributes, audit);
 
     assert_int_equal(ret, 0);
 
@@ -1414,7 +1409,6 @@ static void test_fim_generate_alert_type_not_modified(void **state) {
 
 static void test_fim_generate_alert_invalid_element_in_attributes(void **state) {
     fim_data_t *input = *state;
-    char *mode = "fim_mode";
     char *event_type = "fim_event_type";
     int ret;
 
@@ -1429,15 +1423,13 @@ static void test_fim_generate_alert_invalid_element_in_attributes(void **state) 
 
     expect_string(__wrap__mdebug1, formatted_msg, "FIM attribute set contains an item with no key.");
 
-    ret = fim_generate_alert(input->lf, mode, event_type,
-                             attributes, old_attributes, audit);
+    ret = fim_generate_alert(input->lf, event_type, attributes, old_attributes, audit);
 
     assert_int_equal(ret, -1);
 }
 
 static void test_fim_generate_alert_invalid_element_in_audit(void **state) {
     fim_data_t *input = *state;
-    char *mode = "fim_mode";
     char *event_type = "fim_event_type";
     int ret;
 
@@ -1452,8 +1444,7 @@ static void test_fim_generate_alert_invalid_element_in_audit(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "FIM audit set contains an item with no key.");
 
-    ret = fim_generate_alert(input->lf, mode, event_type,
-                             attributes, old_attributes, audit);
+    ret = fim_generate_alert(input->lf, event_type, attributes, old_attributes, audit);
 
     assert_int_equal(ret, -1);
 }
@@ -1479,8 +1470,7 @@ static void test_fim_generate_alert_null_mode(void **state) {
         wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
     }
 
-    ret = fim_generate_alert(input->lf, NULL, event_type,
-                             attributes, old_attributes, audit);
+    ret = fim_generate_alert(input->lf, event_type, attributes, old_attributes, audit);
 
     assert_int_equal(ret, 0);
 
@@ -1536,7 +1526,6 @@ static void test_fim_generate_alert_null_mode(void **state) {
 
 static void test_fim_generate_alert_null_event_type(void **state) {
     fim_data_t *input = *state;
-    char *mode = "fim_mode";
     int ret;
 
     cJSON *data = cJSON_GetObjectItem(input->event, "data");
@@ -1555,8 +1544,7 @@ static void test_fim_generate_alert_null_event_type(void **state) {
         wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
     }
 
-    ret = fim_generate_alert(input->lf, mode, NULL,
-                             attributes, old_attributes, audit);
+    ret = fim_generate_alert(input->lf, NULL, attributes, old_attributes, audit);
 
     assert_int_equal(ret, 0);
 
@@ -1612,7 +1600,6 @@ static void test_fim_generate_alert_null_event_type(void **state) {
 
 static void test_fim_generate_alert_null_attributes(void **state) {
     fim_data_t *input = *state;
-    char *mode = "fim_mode";
     char *event_type = "fim_event_type";
     int ret;
 
@@ -1631,8 +1618,7 @@ static void test_fim_generate_alert_null_attributes(void **state) {
         wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
     }
 
-    ret = fim_generate_alert(input->lf, mode, event_type,
-                             NULL, old_attributes, audit);
+    ret = fim_generate_alert(input->lf, event_type, NULL, old_attributes, audit);
 
     assert_int_equal(ret, 0);
 
@@ -1702,7 +1688,6 @@ static void test_fim_generate_alert_null_attributes(void **state) {
 
 static void test_fim_generate_alert_null_old_attributes(void **state) {
     fim_data_t *input = *state;
-    char *mode = "fim_mode";
     char *event_type = "fim_event_type";
     int ret;
 
@@ -1721,8 +1706,7 @@ static void test_fim_generate_alert_null_old_attributes(void **state) {
         wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
     }
 
-    ret = fim_generate_alert(input->lf, mode, event_type,
-                             attributes, NULL, audit);
+    ret = fim_generate_alert(input->lf, event_type, attributes, NULL, audit);
 
     assert_int_equal(ret, 0);
 
@@ -1793,7 +1777,6 @@ static void test_fim_generate_alert_null_old_attributes(void **state) {
 
 static void test_fim_generate_alert_null_audit(void **state) {
     fim_data_t *input = *state;
-    char *mode = "fim_mode";
     char *event_type = "fim_event_type";
     int ret;
 
@@ -1812,8 +1795,7 @@ static void test_fim_generate_alert_null_audit(void **state) {
         wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
     }
 
-    ret = fim_generate_alert(input->lf, mode, event_type,
-                             attributes, old_attributes, NULL);
+    ret = fim_generate_alert(input->lf, event_type, attributes, old_attributes, NULL);
 
     assert_int_equal(ret, 0);
 
@@ -3151,7 +3133,7 @@ static void test_decode_fim_event_type_event(void **state) {
     if(lf->agent_id = strdup("007"), lf->agent_id == NULL)
         fail();
 
-    lf->decoder_info->fields[FIM_MODE_FIELD] = strdup("mode");
+    lf->decoder_info->fields[FIM_MODE] = strdup("mode");
 
     /* Inside fim_process_alert */
     expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck save2 "
