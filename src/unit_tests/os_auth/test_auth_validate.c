@@ -263,7 +263,15 @@ static void test_w_auth_validate_data_register_limit(void **state) {
     char error_message[2048];
     w_err_t err;
 
-    for(unsigned i=0; i<MAX_AGENTS; i++) {
+    
+    //Filling most of keys element with a fixed key to reduce computing time
+    char fixed_key[KEYSIZE] = "1234";    
+    for(unsigned i=0; i<MAX_AGENTS-10; i++) {
+        OS_AddNewAgent(&keys, NULL, agent_name, ANY_IP, fixed_key);
+    }
+    
+    //Adding last keys as usual
+    for(unsigned i=0; i<10; i++) {
         snprintf(agent_name, 2048, "__agent_%d", i);
         response[0] = '\0';  
         if(keys.keysize >= (MAX_AGENTS - 2)) {
@@ -323,11 +331,12 @@ static void test_w_auth_validate_groups(void **state) {
 
 
 int main(void) {
+        
     const struct CMUnitTest tests[] = { 
         cmocka_unit_test(test_w_auth_validate_groups),   
         cmocka_unit_test_setup(test_w_auth_validate_data, setup_validate_force_insert_0),
         cmocka_unit_test_setup(test_w_auth_validate_data_force_insert, setup_validate_force_insert_1),
-        //cmocka_unit_test_setup(test_w_auth_validate_data_register_limit, setup_validate_register_limit),
+        cmocka_unit_test_setup(test_w_auth_validate_data_register_limit, setup_validate_register_limit),
              
     };
 
