@@ -2174,6 +2174,7 @@ components:
     APIconfiguration:
       type: object
       additionalProperties: false
+      minProperties: 1
       properties:
         behind_proxy_server:
           description: Set this option to "yes" in case the API is running behind a proxy server.

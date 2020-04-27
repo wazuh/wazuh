@@ -2649,7 +2649,7 @@ stages:
       status_code: 400
 
   # GET /cluster/api/config
-  - name: Get API configuration that were set above
+  - name: Get API configuration that was set above
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/api/config"
