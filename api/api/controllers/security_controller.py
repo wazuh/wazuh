@@ -527,7 +527,7 @@ async def revoke_all_tokens(request):
 
     dapi = DistributedAPI(f=security.revoke_tokens,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
+                          request_type='local_any',
                           is_async=False,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
