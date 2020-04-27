@@ -14,7 +14,7 @@
 
 #define WM_GCP_LOGTAG ARGV0 ":gcp-pubsub"
 #define WM_GCP_DEFAULT_DIR WM_DEFAULT_DIR "/gcloud"
-#define WM_GCP_SCRIPT_PATH WM_GCP_DEFAULT_DIR "/gcloud.py"
+#define WM_GCP_SCRIPT_PATH WM_GCP_DEFAULT_DIR "/gcloud"
 
 #define WM_GCP_DEF_INTERVAL 3600
 
