@@ -309,7 +309,7 @@ def update_api_config(updated_config=None):
     try:
         update_api_conf(updated_config, get_node().get('type'))
         result.affected_items.append(node_id)
-    except WazuhInternalError as e:
+    except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)
     result.total_affected_items = len(result.affected_items)
 
