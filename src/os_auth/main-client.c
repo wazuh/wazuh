@@ -84,7 +84,6 @@ int main(int argc, char **argv)
     cert_cfg.agent_key = NULL;
     cert_cfg.ca_cert = NULL;
     cert_cfg.auto_method = 0;
-    //char *dir = DEFAULTDIR;
     int use_src_ip = 0;
     char * buf;
     char *server_address = NULL;
@@ -128,7 +127,7 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-g needs an argument");
                 }
-                // dir = optarg; (NEVER USED)
+                mwarn(DEPRECATED_OPTION_WARN,"-D");
                 break;
 #endif
             case 't':
