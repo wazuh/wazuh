@@ -2,10 +2,11 @@
 # Copyright (C) 2015-2020, Wazuh Inc.
 # May 3, 2017
 #
-# Syntax: make [ all | install]
+# Syntax: make [ all | backup | install | restore | service ]
 
 OSSEC_GROUP       = ossec
 PREFIX            = /var/ossec
+REVISION		  = 10000
 
 RM_FILE        = rm -f
 INSTALL_DIR    = install -o root -g ${OSSEC_GROUP} -m 0750 -d
@@ -15,15 +16,16 @@ INSTALL_FILE   = install -o root -g ${OSSEC_GROUP} -m 0640
 PYTHON_BIN     = $(PREFIX)/framework/python/bin/python3
 
 
-.PHONY: all install service
+.PHONY: all backup install service restore
 
-all: install service
+all: backup install service restore
+
+backup:
+	# Backup previous configuration
+	. ../api/service/inst-api-functions.sh; backup_old_api ${REVISION}
 
 install:
-    # Backup previous configuration
-	. ../api/service/inst-api-functions.sh; backup_old_api
-
-    # Copy files and create folders
+	# Copy files and create folders
 	$(INSTALL_DIR) $(PREFIX)/api
 	$(INSTALL_RW_DIR) $(PREFIX)/api/configuration
 	$(INSTALL_RW_DIR) $(PREFIX)/api/configuration/ssl
@@ -39,12 +41,12 @@ install:
 	$(INSTALL_EXEC) service/wazuh-api.service $(PREFIX)/api/service
 	$(INSTALL_EXEC) service/install_daemon.sh $(PREFIX)/api/service
 
-    # Install scripts/%.py on $(PREFIX)/bin/%
+	# Install scripts/%.py on $(PREFIX)/bin/%
 	$(foreach script,$(wildcard scripts/*),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,$(PREFIX)/bin/%,$(script));)
 
-    # Restore old API config
-	. ../api/service/inst-api-functions.sh; restore_old_api
+restore:
+	# Restore old API config
+	. ../api/service/inst-api-functions.sh; restore_old_api ${REVISION}
 
-    # Install daemon
 service:
 	WAZUH_PATH=$(PREFIX) $(PREFIX)/api/service/install_daemon.sh
