@@ -15,6 +15,9 @@ list(APPEND shared_tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fcl
 list(APPEND shared_tests_names "test_queue_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock,--wrap=pthread_cond_wait,--wrap=pthread_cond_signal,--wrap=pthread_cond_timedwait")
 
+list(APPEND shared_tests_names "test_agent_op")
+list(APPEND shared_tests_flags "-Wl,--wrap,_merror")
+
 set(SYSCHECK_OP_BASE_FLAGS "-Wl,--wrap,rmdir_ex -Wl,--wrap,wreaddir -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 \
                             -Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,getpwuid_r -Wl,--wrap,getgrgid \
                             -Wl,--wrap,wstr_split -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP,--wrap=sysconf")
