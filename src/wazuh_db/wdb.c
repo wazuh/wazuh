@@ -98,7 +98,8 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_FIM_DELETE_RANGE] = "DELETE FROM fim_entry WHERE file > ? AND file < ?;",
     [WDB_STMT_FIM_CLEAR] = "DELETE FROM fim_entry;",
     [WDB_STMT_SYNC_UPDATE_ATTEMPT] = "UPDATE sync_info SET last_attempt = ?, n_attempts = n_attempts + 1 WHERE component = ?;",
-    [WDB_STMT_SYNC_UPDATE_COMPLETION] = "UPDATE sync_info SET last_attempt = ?, last_completion = ?, n_attempts = n_attempts + 1, n_completions = n_completions + 1 WHERE component = ?;"
+    [WDB_STMT_SYNC_UPDATE_COMPLETION] = "UPDATE sync_info SET last_attempt = ?, last_completion = ?, n_attempts = n_attempts + 1, n_completions = n_completions + 1 WHERE component = ?;",
+    [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
 };
 
 sqlite3 *wdb_global = NULL;
@@ -175,6 +176,11 @@ sqlite3* wdb_open_agent(int id_agent, const char *name) {
             return NULL;
         }
 
+        if (wdb_journal_wal(db) == -1) {
+            merror("Cannot open database '%s': error setting the journalig mode.", dir);
+            sqlite3_close_v2(db);
+            return NULL;
+        }
     }
 
     sqlite3_busy_timeout(db, BUSY_SLEEP);
@@ -911,4 +917,21 @@ cJSON *wdb_remove_multiple_agents(char *agent_list) {
     mdebug1("Deleting databases. JSON output: %s", json_formated);
     os_free(json_formated);
     return response;
+}
+
+
+// Set the database journal mode to write-ahead logging
+
+int wdb_journal_wal(sqlite3 *db) {
+    char *sql_error = NULL;
+
+    sqlite3_exec(db, SQL_STMT[WDB_STMT_PRAGMA_JOURNAL_WAL], NULL, NULL, &sql_error);
+
+    if (sql_error != NULL) {
+        merror("Cannot set database journaling mode to WAL: '%s'", sql_error);
+        sqlite3_free(sql_error);
+        return -1;
+    }
+
+    return 0;
 }

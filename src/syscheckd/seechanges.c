@@ -22,7 +22,7 @@
 #endif
 
 /* Prototypes */
-static char *gen_diff_alert(const char *filename, time_t alert_diff_time) __attribute__((nonnull));
+static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attribute__((unused)) int status) __attribute__((nonnull));
 static int seechanges_dupfile(const char *old, const char *current) __attribute__((nonnull));
 static int seechanges_createpath(const char *filename) __attribute__((nonnull));
 #ifdef WIN32
@@ -147,7 +147,7 @@ int is_nodiff(const char *filename){
 }
 
 /* Generate diffs alerts */
-static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
+static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attribute__((unused)) int status)
 {
     size_t n = 0;
     FILE *fp;
@@ -195,6 +195,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
     case 0:
         merror(FIM_ERROR_GENDIFF_READ);
         return (NULL);
+    #ifndef WIN32
     case OS_MAXSTR - OS_SK_HEADER - 1:
         buf[n] = '\0';
         n -= strlen(STR_MORE_CHANGES);
@@ -204,6 +205,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
 
         strcpy(buf + n, STR_MORE_CHANGES);
         break;
+    #endif
     default:
         buf[n] = '\0';
     }
@@ -213,6 +215,25 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
         return NULL;
     }
 
+    // On Windows we handle long diffs after adapting the fc output.
+    if(status) {
+        char *p = strchr(buf, '\n');
+
+        n = strlen(diff_str);
+
+        if(*(++p) != '*') {
+            // If the second line does not start with '*', an error message was printed,
+            // most likely stating that the files are "too different"
+            if(n >= OS_MAXSTR - OS_SK_HEADER - 1 - strlen(STR_MORE_CHANGES)) {
+                n -= strlen(STR_MORE_CHANGES);
+
+                while (n > 0 && diff_str[n - 1] != '\n')
+                    n--;
+            }
+
+            strcpy(diff_str + n, STR_MORE_CHANGES);
+        }
+    }
 #else
     os_strdup(buf, diff_str);
 #endif
@@ -505,7 +526,11 @@ char *seechanges_addfile(const char *filename)
         }
 
         /* Success */
+#ifndef WIN32
         status = 0;
+#else
+        status = pstatus;
+#endif
     }
 
 cleanup:
@@ -522,7 +547,7 @@ cleanup:
     }
 
     /* Generate alert */
-    return (gen_diff_alert(filename, new_date_of_change));
+    return (gen_diff_alert(filename, new_date_of_change, status));
 }
 
 
