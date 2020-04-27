@@ -4,9 +4,10 @@ services:
   wazuh-master:
     build:
       context: .
-      dockerfile: base/wazuh-manager/master.Dockerfile
+      dockerfile: base/wazuh-manager/manager.Dockerfile
       args:
         wazuhbranch: ${WAZUH_BRANCH}
+        manager_type: master
     image: wazuh-master
     hostname: wazuh-master
     ports:
@@ -23,6 +24,7 @@ services:
       dockerfile: base/wazuh-manager/manager.Dockerfile
       args:
         wazuhbranch: ${WAZUH_BRANCH}
+        manager_type: worker
     image: wazuh-worker
     hostname: wazuh-worker1
     entrypoint:
@@ -37,6 +39,7 @@ services:
       dockerfile: base/wazuh-manager/manager.Dockerfile
       args:
         wazuhbranch: ${WAZUH_BRANCH}
+        manager_type: worker
     image: wazuh-worker
     hostname: wazuh-worker2
     entrypoint:

@@ -941,7 +941,7 @@ stages:
     request:
       <<: *rbac_actions_request
       params:
-        endpoint: "GET ​/rules​/files"
+        endpoint: "GET /rules/files"
     response:
       status_code: 200
       json:
