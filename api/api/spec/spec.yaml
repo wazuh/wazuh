@@ -2562,7 +2562,33 @@ components:
         agent_id:
           $ref: '#/components/schemas/AgentID'
 
-    NetworkInterfacePackets:
+    NetworkInterfaceSentPackets:
+      description: "Information related to sent packets in the network interface"
+      type: object
+      properties:
+        bytes:
+          type: integer
+          format: int32
+          minimum: 0
+          description: "Number of bytes in the network interface"
+        dropped:
+          type: integer
+          format: int32
+          minimum: 0
+          description: "Number of dropped packages in the network interface"
+        error:
+          type: integer
+          format: int32
+          minimum: 0
+          description: "Number of packages containing any error in the network interface"
+        packets:
+          type: integer
+          format: int32
+          minimum: 0
+          description: "Number of packages in the network interface"
+
+    NetworkInterfaceReceivedPackets:
+      description: "Information related to received packets in the network interface"
       type: object
       properties:
         bytes:
@@ -2601,8 +2627,7 @@ components:
           type: string
           description: "Network interface name"
         rx:
-          description: "Information related to received packets in the network interface"
-          $ref: '#/components/schemas/NetworkInterfacePackets'
+          $ref: '#/components/schemas/NetworkInterfaceReceivedPackets'
         scan:
           $ref: '#/components/schemas/ScanIdTime'
         state:
@@ -2612,8 +2637,7 @@ components:
             - up
             - down
         tx:
-          description: "Information related to sent packets in the network interface"
-          $ref: '#/components/schemas/NetworkInterfacePackets'
+          $ref: '#/components/schemas/NetworkInterfaceSentPackets'
         type:
           type: string
           description: "Network interface type"
@@ -2747,7 +2771,21 @@ components:
         agent_id:
           $ref: '#/components/schemas/AgentID'
 
-    PortInfo:
+    LocalPortInfo:
+      description: "Information regarding local opened port"
+      type: object
+      properties:
+        ip:
+          type: string
+          description: "Bind IP"
+        port:
+          type: integer
+          minimum: 0
+          format: int32
+          description: "Port used"
+
+    RemotePortInfo:
+      description: "Information regarding the remote port the machine is connected to"
       type: object
       properties:
         ip:
@@ -2767,8 +2805,7 @@ components:
           format: int64
           description: "Port inode"
         local:
-          $ref: '#/components/schemas/PortInfo'
-          description: "Information regarding local opened port"
+          $ref: '#/components/schemas/LocalPortInfo'
         protocol:
           type: string
           description: "Protocol used in the communication"
@@ -2778,8 +2815,7 @@ components:
             - tcp6
             - udp6
         remote:
-          $ref: '#/components/schemas/PortInfo'
-          description: "Information regarding the remote port the machine is connected to"
+          $ref: '#/components/schemas/RemotePortInfo'
         rx_queue:
           type: integer
           format: int32
