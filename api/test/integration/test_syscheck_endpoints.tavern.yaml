@@ -363,20 +363,18 @@ stages:
       json:
         code: 1724
 
-    # We implement a dual stage to check distinct parameter behaviour
-    # GET /syscheck/000?pretty=false&wait_for_complete=true&offset=0&select=uname%2Cperm&summary=false&distinct=true
+    # GET /syscheck/000?pretty=false&wait_for_complete=true&offset=0&select=uname%2Cperm&distinct=true
   - name: Try to get syscheck scan results for agent 000 using distinct parameter
     request:
+      verify: False
       <<: *get_syscheck_agent
       params:
         distinct: true
         select: uname,perm
     response:
       status_code: 200
-      body:
-        $ext:
-            # Check response item number
-          function: tavern_utils:test_distinct_key
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
 
     # GET /syscheck/000?limit=1&distinct=tr
   - name: Try to get syscheck scan results for agent 000 using an invalid distinct parameter

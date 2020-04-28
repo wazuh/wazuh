@@ -152,7 +152,6 @@ def files(agent_list=None, offset=0, limit=common.database_limit, sort=None, sea
     :param distinct: Look for distinct values
     :return: AffectedItemsWazuhResult.
     """
-
     if filters is None:
         filters = {}
     parameters = {"date": "date", "mtime": "mtime", "file": "file", "size": "size", "perm": "perm", "uname": "uname",
