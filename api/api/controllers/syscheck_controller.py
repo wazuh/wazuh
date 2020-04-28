@@ -41,8 +41,9 @@ async def put_syscheck(request, list_agents='*', pretty=False, wait_for_complete
 
 
 async def get_syscheck_agent(request, agent_id, pretty=False, wait_for_complete=False, offset=0,
-                             limit=None, select=None, sort=None, search=None,
+                             limit=None, select=None, sort=None, search=None, distinct=False,
                              summary=False, md5=None, sha1=None, sha256=None):
+
     """
     :param agent_id: Agent ID
     :type agent_id: str
@@ -68,6 +69,8 @@ async def get_syscheck_agent(request, agent_id, pretty=False, wait_for_complete=
     :type sha1: str
     :param sha256: Filters files with the specified SHA256 checksum.
     :type sha256: str
+    :param distinct: Look for distinct values.
+    :type distinct: bool
     """
 
     # get type parameter from query
@@ -82,7 +85,7 @@ async def get_syscheck_agent(request, agent_id, pretty=False, wait_for_complete=
 
     f_kwargs = {'agent_list': [agent_id], 'offset': offset, 'limit': limit,
                 'select': select, 'sort': parse_api_param(sort, 'sort'), 'search': parse_api_param(search, 'search'),
-                'summary': summary, 'filters': filters}
+                'summary': summary, 'filters': filters, 'distinct': distinct}
 
     dapi = DistributedAPI(f=files,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

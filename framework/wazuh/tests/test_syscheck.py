@@ -235,16 +235,16 @@ def test_syscheck_last_scan_internal_error(glob_mock, version):
             last_scan(['001'])
 
 
-@pytest.mark.parametrize('agent_id, select, filters', [
-    (['001'], None, None),
-    (['001'], ['file', 'size', 'mtime'], None),
-    (['001'], None, {'inode': '15470536'}),
-    (['001'], ['file', 'size'], {'hash': '15470536'}),
-    (['001'], None, {'date': '2019-05-21'})
+@pytest.mark.parametrize('agent_id, select, filters, distinct', [
+    (['001'], None, None, None),
+    (['001'], ['file', 'size', 'mtime'], None, False),
+    (['001'], None, {'inode': '15470536'}, True),
+    (['001'], ['file', 'size'], {'hash': '15470536'}, False),
+    (['001'], None, {'date': '2019-05-21 12:10:20'}, True)
 ])
 @patch('socket.socket.connect')
 @patch('wazuh.common.wdb_path', new=test_data_path)
-def test_syscheck_files(socket_mock, agent_id, select, filters):
+def test_syscheck_files(socket_mock, agent_id, select, filters, distinct):
     """Test function `files` from syscheck module.
 
     Parameters
@@ -255,6 +255,8 @@ def test_syscheck_files(socket_mock, agent_id, select, filters):
         List of parameters to show from the query.
     filters : dict
         Dict to filter out the result.
+    distinct : bool
+        True if all response items must be unique
     """
     select_list = ['date', 'mtime', 'file', 'size', 'perm', 'uname', 'gname', 'md5', 'sha1', 'sha256', 'inode', 'gid', 'uid', 'type', 'changes', 'attributes']
     with patch('wazuh.utils.WazuhDBConnection') as mock_wdb:
@@ -266,6 +268,7 @@ def test_syscheck_files(socket_mock, agent_id, select, filters):
         for item in result.affected_items:
             assert len(select) == len(item.keys())
             assert (param in select for param in item.keys())
+        assert not any(result.affected_items.count(item) > 1 for item in result.affected_items) if distinct else True
         if filters:
             for key, value in filters.items():
                 assert (item[key] == value for item in result.affected_items)

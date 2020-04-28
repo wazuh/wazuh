@@ -844,6 +844,7 @@ class WazuhDBQuery(object):
         :param date_fields: database fields that represent a date
         :param get_data: whether to return data or not
         :param backend: Database engine to use. Possible options are 'wdb' and 'sqlite3'.
+        :param distinct: Look for distinct values.
         :param agent_id: Agent to fetch information about.
         :param distinct: Look for distinct values
         """
@@ -1018,7 +1019,7 @@ class WazuhDBQuery(object):
     def _process_filter(self, field_name, field_filter, q_filter):
         if field_name == "status":
             self._filter_status(q_filter)
-        elif field_name in self.date_fields and re.match(r"^[0-9]+(\.([0-9]+))?$", q_filter['value']) is None:
+        elif field_name in self.date_fields and not isinstance(q_filter['value'], (int, float)):
             # Filter a date, but only if it is in string (YYYY-MM-DD hh:mm:ss) format.
             # If it matches the same format as DB (timestamp integer), filter directly by value (next if cond).
             self._filter_date(q_filter, field_name)
