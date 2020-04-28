@@ -2,14 +2,13 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import copy
 import datetime
 import os
 import uuid
 from typing import Dict, List, Tuple
 
 import yaml
-
-import copy
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend as crypto_default_backend
 from cryptography.hazmat.primitives import hashes
@@ -23,39 +22,39 @@ from wazuh import common
 
 
 default_configuration = {
-        "host": "0.0.0.0",
-        "port": 55000,
-        "behind_proxy_server": False,
-        "rbac": {
-            "mode": "black",
-            "auth_token_exp_timeout": 3600
-        },
-        "https": {
-            "enabled": True,
-            "key": "api/configuration/ssl/server.key",
-            "cert": "api/configuration/ssl/server.crt",
-            "use_ca": False,
-            "ca": "api/configuration/ssl/ca.crt"
-        },
-        "logs": {
-            "level": "info",
-            "path": "logs/api.log"
-        },
-        "cors": {
-            "enabled": False,
-            "source_route": "*",
-            "expose_headers": "*",
-            "allow_headers": "*",
-            "allow_credentials": False,
-        },
-        "cache": {
-            "enabled": True,
-            "time": 0.750
-        },
-        "use_only_authd": False,
-        "drop_privileges": True,
-        "experimental_features": False
-    }
+    "host": "0.0.0.0",
+    "port": 55000,
+    "behind_proxy_server": False,
+    "rbac": {
+        "mode": "black",
+        "auth_token_exp_timeout": 3600
+    },
+    "https": {
+        "enabled": True,
+        "key": "api/configuration/ssl/server.key",
+        "cert": "api/configuration/ssl/server.crt",
+        "use_ca": False,
+        "ca": "api/configuration/ssl/ca.crt"
+    },
+    "logs": {
+        "level": "info",
+        "path": "logs/api.log"
+    },
+    "cors": {
+        "enabled": False,
+        "source_route": "*",
+        "expose_headers": "*",
+        "allow_headers": "*",
+        "allow_credentials": False,
+    },
+    "cache": {
+        "enabled": True,
+        "time": 0.750
+    },
+    "use_only_authd": False,
+    "drop_privileges": True,
+    "experimental_features": False
+}
 
 
 def dict_to_lowercase(mydict: Dict):
