@@ -12,6 +12,10 @@
 #include "syscheck-config.h"
 #include "config.h"
 
+
+static char **get_paths_from_env_variable (char *environment_variable);
+
+
 void organize_syscheck_dirs(syscheck_config *syscheck)
 {
     if (syscheck->dir && syscheck->dir[0]) {
@@ -103,6 +107,7 @@ void organize_syscheck_dirs(syscheck_config *syscheck)
         mdebug2("No directory entries to organize in syscheck configuration.");
     }
 }
+
 
 void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg,
         const char *restrictfile, int recursion_limit, const char *tag, const char *link)
@@ -428,8 +433,6 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
     /* Variables for extract directories and free memory after that */
     char **dir;
-    char *tmp_str;
-    char *tmp_dir;
     dir = OS_StrBreak(',', dirs, MAX_DIR_SIZE); /* Max number */
     char **dir_org = dir;
     int i;
@@ -699,7 +702,6 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     }
 
     /* Remove spaces from tag */
-
     if (tag) {
         if (clean_tag = os_strip_char(tag, ' '), !clean_tag) {
             merror("Processing tag '%s'", tag);
@@ -724,32 +726,28 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     }
 
     /* Extract all directories */
-    while (*dir) {
+    char real_path[PATH_MAX + 1] = "";
+    char *tmp_str;
+    char *tmp_dir;
+    char **env_variable;
+#ifdef WIN32
+    int retvalF;
+    int len_tmp;
+#endif
 
+    while (*dir) {
         tmp_dir = *dir;
 
-        /* Remove spaces at the beginning */
+        /* Remove spaces at the beginning and the end */
         while (*tmp_dir == ' ') {
             tmp_dir++;
         }
 
-        /* Remove spaces at the end */
         tmp_str = tmp_dir + strlen(tmp_dir) - 1;
         while(*tmp_str == ' ') {
             *tmp_str = '\0';
             tmp_str--;
         }
-
-#ifdef WIN32
-        /* Change forward slashes to backslashes on entry */
-        tmp_str = strchr(tmp_dir, '/');
-        while (tmp_str) {
-            *tmp_str = '\\';
-
-            tmp_str++;
-            tmp_str = strchr(tmp_str, '/');
-        }
-#endif
 
         if (!strcmp(tmp_dir,"")) {
             mdebug2(FIM_EMPTY_DIRECTORIES_CONFIG);
@@ -757,36 +755,84 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             continue;
         }
 
-        char real_path[PATH_MAX + 1] = "";
 #ifdef WIN32
-        char expandedpath[PATH_MAX + 1];
 
-        if(!ExpandEnvironmentStrings(tmp_dir, expandedpath, PATH_MAX + 1)){
-            merror("Could not expand the environment variable %s (%ld)", expandedpath, GetLastError());
+        len_tmp = strlen(tmp_dir);
+
+        /* If it's an environment variable, expand it */
+        if (tmp_dir[0] == '%' && tmp_dir[len_tmp-1] == '%') {
+            if(env_variable = get_paths_from_env_variable(tmp_dir), env_variable){
+
+                for(int i = 0; env_variable[i]; i++) {
+                    if(strcmp(env_variable[i], "")) {
+
+                        if (retvalF = GetFullPathName(env_variable[i], PATH_MAX, real_path, NULL), retvalF == 0) {
+                            retvalF = GetLastError();
+                            mwarn("Couldn't get full path name '%s' (%d):'%s'\n", env_variable[i], retvalF, win_strerror(retvalF));
+                            continue;
+                        }
+                        str_lowercase(env_variable[i]);
+                        dump_syscheck_entry(syscheck, env_variable[i], opts, 0, restrictfile, recursion_limit, clean_tag, NULL);
+                    }
+                    os_free(env_variable[i]);
+                }
+            }
+
+            os_free(env_variable);
             dir++;
             continue;
         }
 
-        // Get absolute path
-        int retval = GetFullPathName(expandedpath, PATH_MAX, real_path, NULL);
+        /* Else, treat as a path */
+        /* Change forward slashes to backslashes on entry */
+        tmp_str = strchr(tmp_dir, '/');
+        while (tmp_str) {
+            *tmp_str = '\\';
+            tmp_str++;
+            tmp_str = strchr(tmp_str, '/');
+        }
 
-        if (retval == 0) {
-            int error = GetLastError();
-            mwarn("Couldn't get full path name '%s' (%d):'%s'\n", expandedpath, error, win_strerror(error));
+        /* Get absolute path and monitor it */
+        retvalF = GetFullPathName(tmp_dir, PATH_MAX, real_path, NULL);
+        if (retvalF == 0) {
+            retvalF = GetLastError();
+            mwarn("Couldn't get full path name '%s' (%d):'%s'\n", tmp_dir, retvalF, win_strerror(retvalF));
+            os_free(restrictfile);
+            os_free(tag);
             dir++;
             continue;
         }
 
         str_lowercase(real_path);
+        dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL);
+
 #else
+        /* If it's an environment variable, expand it */
+        if (!strncmp("$", tmp_dir, 1)) {
+            if(env_variable = get_paths_from_env_variable(tmp_dir), env_variable) {
+
+                for(int i = 0; env_variable[i]; i++) {
+                    if(strcmp(env_variable[i], "")) {
+                        str_lowercase(env_variable[i]);
+                        dump_syscheck_entry(syscheck, env_variable[i], opts, 0, restrictfile, recursion_limit, clean_tag, NULL);
+                    }
+                    os_free(env_variable[i]);
+                }
+
+                os_free(env_variable);
+                dir++;
+                continue;
+            }
+        }
+
+        /* Else, check if it's a wildcard, hard/symbolic link or path of file/directory */
         strncpy(real_path, tmp_dir, PATH_MAX);
-#endif
+        str_lowercase(real_path);
 
         /* Check for glob */
         /* The mingw32 builder used by travis.ci can't find glob.h
          * Yet glob must work on actual win32.
          */
-#ifndef __MINGW32__
         if (strchr(real_path, '*') ||
                 strchr(real_path, '?') ||
                 strchr(real_path, '[')) {
@@ -835,8 +881,6 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
             os_free(resolved_path);
         }
-#else
-        dump_syscheck_entry(syscheck, real_path, opts, 0, restrictfile, recursion_limit, clean_tag, NULL);
 #endif
 
         /* Next entry */
@@ -977,7 +1021,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
     syscheck_config *syscheck;
     syscheck = (syscheck_config *)configp;
-    unsigned int nodiff_size = 0;
     char prefilter_cmd[OS_MAXSTR] = "";
 
     if (syscheck->disabled == SK_CONF_UNPARSED) {
@@ -1002,7 +1045,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             char *ptfile;
 
 #ifdef WIN32
-            str_lowercase(node[i]->content);
             /* Change backslashes to forwardslashes on entry */
             ptfile = strchr(node[i]->content, '/');
             while (ptfile) {
@@ -1262,21 +1304,16 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         {
             unsigned int ign_size = 0;
 
-#ifdef WIN32
-            /* For Windows, we attempt to expand environment variables */
-            char *new_ig = NULL;
-            os_calloc(2048, sizeof(char), new_ig);
+            /* We attempt to expand environment variables */
+            char **new_ig = NULL;
 
-            if(!ExpandEnvironmentStrings(node[i]->content, new_ig, 2047)){
-                merror("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
-                free(new_ig);
-                continue;
+            if(new_ig = get_paths_from_env_variable(node[i]->content), !new_ig){
+                new_ig = (char **)calloc(2, sizeof(char *));
+                new_ig[0] = (char *)calloc(i, sizeof(char));
+                os_strdup(node[i]->content, new_ig[0]);
+                new_ig[1] = NULL;
             }
 
-            free(node[i]->content);
-            str_lowercase(new_ig);
-            node[i]->content = new_ig;
-#endif
             /* Add if regex */
             if (node[i]->attributes && node[i]->values && node[i]->attributes[0] && node[i]->values[0]) {
                 if (!strcmp(node[i]->attributes[0], "type") &&
@@ -1314,22 +1351,22 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             }
 
             /* Add if simple entry -- check for duplicates */
-            else if (!os_IsStrOnArray(node[i]->content, syscheck->ignore)) {
-                if (!syscheck->ignore) {
-                    os_calloc(2, sizeof(char *), syscheck->ignore);
-                    syscheck->ignore[0] = NULL;
-                    syscheck->ignore[1] = NULL;
-                } else {
+            else {
+                if (syscheck->ignore) {
                     while (syscheck->ignore[ign_size] != NULL) {
                         ign_size++;
                     }
-
-                    os_realloc(syscheck->ignore,
-                               sizeof(char *) * (ign_size + 2),
-                               syscheck->ignore);
-                    syscheck->ignore[ign_size + 1] = NULL;
                 }
-                os_strdup(node[i]->content, syscheck->ignore[ign_size]);
+
+                for (int i = 0; new_ig[i]; i++) {
+                    if (!os_IsStrOnArray(new_ig[i], syscheck->ignore)) {
+                        os_realloc(syscheck->ignore, sizeof(char *) * (ign_size + 2),
+                                   syscheck->ignore);
+                        os_strdup(new_ig[i], syscheck->ignore[ign_size]);
+                        syscheck->ignore[ign_size + 1] = NULL;
+                        ign_size++;
+                    }
+                }
             }
         }
 
@@ -1385,21 +1422,18 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 #endif
         /* Getting file/dir nodiff */
         } else if (strcmp(node[i]->element,xml_nodiff) == 0) {
-#ifdef WIN32
-            /* For Windows, we attempt to expand environment variables */
-            char *new_nodiff = NULL;
-            os_calloc(2048, sizeof(char), new_nodiff);
 
-            if(!ExpandEnvironmentStrings(node[i]->content, new_nodiff, 2047)){
-                merror("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
-                free(new_nodiff);
-                continue;
+            char **new_nodiff = NULL;
+            unsigned int nodiff_size = 0;
+
+            /* We attempt to expand environment variables */
+            if(new_nodiff = get_paths_from_env_variable(node[i]->content), !new_nodiff){
+                new_nodiff = (char **)calloc(2, sizeof(char *));
+                new_nodiff[0] = (char *)calloc(i, sizeof(char));
+                os_strdup(node[i]->content, new_nodiff[0]);
+                new_nodiff[1] = NULL;
             }
 
-            free(node[i]->content);
-            str_lowercase(new_nodiff);
-            node[i]->content = new_nodiff;
-#endif
             /* Add if regex */
             if (node[i]->attributes && node[i]->values && node[i]->attributes[0] && node[i]->values[0]) {
                 if (!strcmp(node[i]->attributes[0], "type") &&
@@ -1438,23 +1472,24 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             }
 
             /* Add if simple entry -- check for duplicates */
-            else if (!os_IsStrOnArray(node[i]->content, syscheck->nodiff)) {
-                if (!syscheck->nodiff) {
-                    os_calloc(2, sizeof(char *), syscheck->nodiff);
-                    syscheck->nodiff[0] = NULL;
-                    syscheck->nodiff[1] = NULL;
-                } else {
+            else {
+                if (syscheck->nodiff) {
                     while (syscheck->nodiff[nodiff_size] != NULL) {
                         nodiff_size++;
                     }
-
-                    os_realloc(syscheck->nodiff,
-                               sizeof(char *) * (nodiff_size + 2),
-                               syscheck->nodiff);
-                    syscheck->nodiff[nodiff_size + 1] = NULL;
                 }
-                os_strdup(node[i]->content, syscheck->nodiff[nodiff_size]);
+
+                for (int i = 0; new_nodiff[i]; i++) {
+                    if (!os_IsStrOnArray(node[i]->content, syscheck->nodiff)) {
+                        os_realloc(syscheck->nodiff, sizeof(char *) * (nodiff_size + 2),
+                                   syscheck->nodiff);
+                        os_strdup(new_nodiff[i], syscheck->nodiff[nodiff_size]);
+                        syscheck->nodiff[nodiff_size + 1] = NULL;
+                        nodiff_size++;
+                    }
+                }
             }
+
         } else if (strcmp(node[i]->element, xml_auto_ignore) == 0) {
             /* auto_ignore is not read here */
         } else if (strcmp(node[i]->element, xml_alert_new_files) == 0) {
@@ -1821,4 +1856,39 @@ char* check_ascci_hex (char *input) {
         os_strdup(input, output);
     }
     return output;
+}
+
+static char **get_paths_from_env_variable (char *environment_variable) {
+
+    char **paths =NULL;
+
+#ifdef WIN32
+    char expandedpath[PATH_MAX + 1];
+
+    if(!ExpandEnvironmentStrings(environment_variable, expandedpath, PATH_MAX + 1)){
+        merror("Could not expand the environment variable %s (%ld)", expandedpath, GetLastError());
+    }
+
+    /* The env. variable may have multiples paths split by ; */
+    paths = OS_StrBreak(';', expandedpath, MAX_DIR_SIZE);
+
+    for (int i = 0; paths[i]; i++) {
+        str_lowercase(paths[i]);
+    }
+
+#else
+    char *expandedpath = NULL;
+
+    if(environment_variable[0] == '$') {
+        environment_variable++;
+    }
+
+    if(expandedpath = getenv(environment_variable), expandedpath) {
+        /* The env. variable may have multiples paths split by : */
+        paths = OS_StrBreak(':', expandedpath, MAX_DIR_SIZE);
+    }
+
+#endif
+
+    return paths;
 }
