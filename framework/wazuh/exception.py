@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -492,6 +492,10 @@ class WazuhException(Exception):
                               'POST /security/user/{username}/roles/{role_id}'},
         4017: {'message': 'The specified user-role link already exist'},
         4018: {'message': 'Level can not be a negative number'},
+        4019: {'message': 'Invalid resource specified',
+               'remediation': 'Please, check the current RBAC resources, for more information please visit XXXX'},
+        4020: {'message': 'Invalid endpoint specified',
+               'remediation': 'Valid endpoints are: '},
         4500: {'message': 'The specified resources are invalid',
                'remediation': 'Please, make sure permissions are properly defined, '
                               'for more information on setting up permissions please visit XXXX'},

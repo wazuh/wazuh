@@ -2,17 +2,18 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
 import itertools
-import ssl
-import uvloop
-import time
-
-import wazuh.core.cluster.utils
-from wazuh.core.cluster import common as c_common
-from wazuh import common, exception, utils, cluster
 import logging
-from typing import Tuple, Dict
 import random
+import ssl
+import time
 import traceback
+from typing import Tuple, Dict
+
+import uvloop
+
+from wazuh import common, exception, utils
+from wazuh.core.cluster import common as c_common
+from wazuh.core.cluster.utils import ClusterFilter, context_tag, context_subtag
 
 
 class AbstractServerHandler(c_common.Handler):
@@ -37,7 +38,7 @@ class AbstractServerHandler(c_common.Handler):
         self.loop = loop
         self.last_keepalive = time.time()
         self.tag = tag
-        self.logger_filter.update_tag(self.tag)
+        context_tag.set(self.tag)
         self.name = None
         self.ip = None
         self.transport = None
@@ -90,6 +91,7 @@ class AbstractServerHandler(c_common.Handler):
         :param data: client's data -> name
         :return: successful result
         """
+
         self.name = data.decode()
         if self.name in self.server.clients:
             self.name = ''
@@ -99,7 +101,7 @@ class AbstractServerHandler(c_common.Handler):
         else:
             self.server.clients[self.name] = self
             self.tag = '{} {}'.format(self.tag, self.name)
-            self.logger_filter.update_tag(self.tag)
+            context_tag.set(self.tag)
             return b'ok', 'Client {} added'.format(self.name).encode()
 
     def process_response(self, command: bytes, payload: bytes) -> bytes:
@@ -162,9 +164,10 @@ class AbstractServer:
         self.cluster_items = cluster_items
         self.enable_ssl = enable_ssl
         self.tag = tag
-        self.logger = logger.getChild(tag)
+        self.logger = logging.getLogger('wazuh')
         # logging tag
-        self.logger.addFilter(wazuh.core.cluster.utils.ClusterFilter(tag=tag, subtag="Main"))
+        context_tag.set(self.tag)
+        context_subtag.set("Main")
         self.tasks = [self.check_clients_keepalive]
         self.handler_class = AbstractServerHandler
         self.loop = asyncio.get_running_loop()
@@ -177,7 +180,7 @@ class AbstractServer:
 
     def setup_task_logger(self, task_tag: str) -> logging.Logger:
         task_logger = self.logger.getChild(task_tag)
-        task_logger.addFilter(wazuh.core.cluster.utils.ClusterFilter(tag=self.tag, subtag=task_tag))
+        task_logger.addFilter(ClusterFilter(tag=self.tag, subtag=task_tag))
         return task_logger
 
     def get_connected_nodes(self, filter_node: str = None, offset: int = 0, limit: int = common.database_limit,
@@ -282,6 +285,7 @@ class AbstractServer:
         """
         # Get a reference to the event loop as we plan to use
         # low-level APIs.
+        context_tag.set(self.tag)
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         self.loop.set_exception_handler(c_common.asyncio_exception_handler)
 

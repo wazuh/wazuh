@@ -9,6 +9,7 @@ stages:
 
   - name: Get cluster config
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/local/config"
       method: GET
       headers:
@@ -39,6 +40,7 @@ stages:
 
   - name: Get cluster healtcheck
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/healthcheck"
       method: GET
       headers:
@@ -70,6 +72,7 @@ stages:
 
   - name: Get cluster healtcheck
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/healthcheck"
       method: GET
       headers:
@@ -104,6 +107,7 @@ stages:
 
   - name: Get cluster node
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/local/info"
       method: GET
       headers:
@@ -128,6 +132,7 @@ stages:
 
   - name: Get cluster nodes
     request: &get_cluster_nodes
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/nodes"
       method: GET
       headers:
@@ -150,6 +155,7 @@ stages:
 
   - name: Get cluster nodes
     request:
+      verify: False
       <<: *get_cluster_nodes
       params:
         limit: 500
@@ -167,6 +173,7 @@ stages:
 
   - name: Filters (type) -> master
     request:
+      verify: False
       <<: *get_cluster_nodes
       params:
         type: master
@@ -184,6 +191,7 @@ stages:
 
   - name: Filters (type) -> worker
     request:
+      verify: False
       <<: *get_cluster_nodes
       params:
         limit: 5
@@ -207,6 +215,7 @@ stages:
 
   - name: Get cluster {worker1} (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/nodes"
       method: GET
       headers:
@@ -221,6 +230,7 @@ stages:
 
   - name: Get cluster {worker2} (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/nodes"
       method: GET
       headers:
@@ -241,6 +251,7 @@ stages:
 
   - name: Get cluster {master-node,worker1,worker2} (Allow, Deny, Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/nodes"
       method: GET
       headers:
@@ -274,6 +285,7 @@ stages:
 
   - name: Get cluster status
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/status"
       method: GET
       headers:
@@ -292,6 +304,7 @@ stages:
 
   - name: Request {node_id}
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration"
       method: GET
       headers:
@@ -328,6 +341,7 @@ stages:
 
   - name: Request (worker1) (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/configuration"
       method: GET
       headers:
@@ -339,6 +353,7 @@ stages:
 
   - name: Filters -> section=alerts (worker2) (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker2/configuration"
       method: GET
       headers:
@@ -365,6 +380,7 @@ stages:
 
   - name: Request cluster validation
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/configuration/validation"
       method: GET
       headers:
@@ -385,6 +401,7 @@ stages:
 
   - name: Request cluster validation
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/configuration/validation"
       method: GET
       headers:
@@ -416,6 +433,7 @@ stages:
 
   - name: Try to show the config of analisys/global through a worker
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/configuration/analysis/global"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -427,6 +445,7 @@ stages:
 
   - name: Try to show the config of analisys/global through a worker
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker2/configuration/analysis/global"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -441,6 +460,7 @@ stages:
 
   - name: Request {node_id}
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/info"
       method: GET
       headers:
@@ -452,6 +472,7 @@ stages:
 
   - name: Request {node_id}
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/info"
       method: GET
       headers:
@@ -466,6 +487,7 @@ stages:
 
   - name: Request {worker2} (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker2/logs"
       method: GET
       headers:
@@ -475,6 +497,7 @@ stages:
 
   - name: Request {worker1} (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/logs"
       method: GET
       headers:
@@ -491,6 +514,7 @@ stages:
 
   - name: Request {worker2} (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker2/logs/summary"
       method: GET
       headers:
@@ -500,6 +524,7 @@ stages:
 
   - name: Request {worker1} (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/logs/summary"
       method: GET
       headers:
@@ -516,6 +541,7 @@ stages:
 
   - name: Cluster stats {worker1} today (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/stats"
       method: GET
       headers:
@@ -527,6 +553,7 @@ stages:
 
   - name: Cluster stats {worker2} today (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker2/stats"
       method: GET
       headers:
@@ -543,6 +570,7 @@ stages:
 
   - name: Request {worker2} (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker2/status"
       method: GET
       headers:
@@ -552,6 +580,7 @@ stages:
 
   - name: Request {worker1} (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/status"
       method: GET
       headers:
@@ -568,6 +597,7 @@ stages:
 
   - name: Restart cluster
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/restart"
       method: PUT
       headers:
@@ -594,6 +624,7 @@ stages:
 
   - name: Restart cluster
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/restart"
       method: PUT
       headers:
@@ -617,6 +648,7 @@ stages:
 
   - name: Get ossec.conf {worker2} (Allow) (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker2/files"
       method: GET
       headers:
@@ -630,6 +662,7 @@ stages:
 
   - name: Get ossec.conf {worker2} (Allow) (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker2/files"
       method: GET
       headers:
@@ -643,6 +676,7 @@ stages:
 
   - name: Get ossec.conf {worker1} (Deny) (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/files"
       method: GET
       headers:
@@ -656,6 +690,7 @@ stages:
 
   - name: Get ossec.conf {worker1} (Deny) (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/files"
       method: GET
       headers:
@@ -674,6 +709,7 @@ stages:
 
   - name: Get ossec.conf {node_id}
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker2/files"
       method: GET
       headers:
@@ -690,6 +726,7 @@ stages:
 
   - name: Upload ossec.conf {worker2} (Allow) (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker2/files"
       method: PUT
       data: "{ossec_conf}"
@@ -704,6 +741,7 @@ stages:
 
   - name: Upload ossec.conf {worker1} (Deny) (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/files"
       method: PUT
       data: "{ossec_conf}"
@@ -725,6 +763,7 @@ stages:
 
   - name: Delete rules file (Deny) (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/files"
       method: DELETE
       headers:
@@ -738,6 +777,7 @@ stages:
 
   - name: Delete rules file (Allow) (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker2/files"
       method: DELETE
       headers:
@@ -749,6 +789,7 @@ stages:
 
   - name: Delete rules file (Deny) (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/files"
       method: DELETE
       headers:
@@ -762,6 +803,7 @@ stages:
 
   - name: Delete rules file (Allow) (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker2/files"
       method: DELETE
       headers:

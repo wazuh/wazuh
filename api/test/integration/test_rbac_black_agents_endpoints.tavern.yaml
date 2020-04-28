@@ -9,6 +9,7 @@ stages:
 
   - name: Get all agents (Partially allowed, user agnostic)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
       method: GET
       headers:
@@ -30,6 +31,7 @@ stages:
 
   - name: Get a list of agents (Denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
       method: GET
       headers:
@@ -44,6 +46,7 @@ stages:
 
   - name: Get a list of agents (Partially allowed, user aware)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
       method: GET
       headers:
@@ -70,6 +73,7 @@ stages:
 
   - name: Get a list of agents (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
       method: GET
       headers:
@@ -96,6 +100,7 @@ stages:
 
   - name: Try to get agent 008 (Denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
       method: GET
       headers:
@@ -109,6 +114,7 @@ stages:
 
   - name: Get agent 009 (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
       method: GET
       headers:
@@ -132,6 +138,7 @@ stages:
 
   - name: Try tp get Request-Agent-Client for agent 004 (Denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/004/config/agent/client"
       method: GET
       headers:
@@ -144,6 +151,7 @@ stages:
   - name: Get Request-Agent-Client for agent 003 (Allowed)
     delay_before: 3
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/003/config/agent/client"
       method: GET
       headers:
@@ -168,6 +176,7 @@ stages:
 
   - name: Try to get sync of agent 008 (Denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/008/group/is_sync"
       method: GET
       headers:
@@ -179,6 +188,7 @@ stages:
 
   - name: Get agent sync (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/007/group/is_sync"
       method: GET
       headers:
@@ -201,6 +211,7 @@ stages:
 
  - name: Try get key agent 006 (Denied)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/006/key"
      method: GET
      headers:
@@ -212,6 +223,7 @@ stages:
 
  - name: Get agent key for 005 (Allowed)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/005/key"
      method: GET
      headers:
@@ -233,6 +245,7 @@ stages:
 
  - name: Get all groups (Partially allowed, user agnostic)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
      method: GET
      headers:
@@ -250,6 +263,7 @@ stages:
 
  - name: Try to read group1 (Denied)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
      method: GET
      headers:
@@ -263,6 +277,7 @@ stages:
 
  - name: Get a list of groups (Partially allowed, user aware)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
      method: GET
      headers:
@@ -286,6 +301,7 @@ stages:
 
  - name: Get a list of groups (Allowed)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
      method: GET
      headers:
@@ -310,6 +326,7 @@ stages:
 
  - name: Try get all agents in one group (Partially allowed, user agnostic)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group3/agents"
      method: GET
      headers:
@@ -332,6 +349,7 @@ stages:
 
  - name: Try to get the configuration of a group (Denied)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/default/configuration"
      method: GET
      headers:
@@ -343,6 +361,7 @@ stages:
 
  - name: Try get the configuration of a group (Allowed)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group2/configuration"
      method: GET
      headers:
@@ -351,10 +370,10 @@ stages:
      status_code: 200
      json:
        data:
-         items:
+         affected_items:
            - config: !anything
              filters: !anything
-         totalItems: !anyint
+         total_affected_items: !anyint
 
 ---
 test_name: GET /groups/{group_id}/files
@@ -363,6 +382,7 @@ stages:
 
  - name: Try get the files of a group (Denied)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group1/files"
      method: GET
      headers:
@@ -372,8 +392,9 @@ stages:
      json:
        <<: *permission_denied
 
- - name: Try get the files of a group (Denied)
+ - name: Try get the files of a group (Allow)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group3/files"
      method: GET
      headers:
@@ -385,12 +406,15 @@ stages:
      status_code: 200
      json:
        data:
-         items:
+         affected_items:
            - filename: agent.conf
              hash: !anystr
            - filename: ar.conf
              hash: !anystr
-         totalItems: !anyint
+         total_affected_items: 3
+         total_failed_items: 0
+         failed_items: []
+       message: !anystr
 
 ---
 test_name: GET /groups/{group_id}/files/{filename}/json
@@ -399,6 +423,7 @@ stages:
 
  - name: Try get one file of a group (Denied)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/default/files/agent.conf/json"
      method: GET
      headers:
@@ -410,6 +435,7 @@ stages:
 
  - name: Try get one file of a group (Allowed)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group2/files/agent.conf/json"
      method: GET
      headers:
@@ -426,6 +452,7 @@ stages:
 
  - name: Try get one file of a group (Denied)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group1/files/agent.conf/xml"
      method: GET
      headers:
@@ -437,6 +464,7 @@ stages:
 
  - name: Try get one file of a group (Allowed)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group3/files/agent.conf/xml"
      method: GET
      headers:
@@ -453,6 +481,7 @@ stages:
 
  - name: Basic response agents name (Denied)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
      method: GET
      headers:
@@ -467,6 +496,7 @@ stages:
 
  - name: Basic response agents name (Allowed)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
      method: GET
      headers:
@@ -491,6 +521,7 @@ stages:
 
  - name: Get the agents without group (Partially allowed, user agnostic)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/no_group"
      method: GET
      headers:
@@ -512,6 +543,7 @@ stages:
 
  - name: Get the outdated agents (Partially allowed, user agnostic)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/outdated"
      method: GET
      headers:
@@ -536,6 +568,7 @@ stages:
 
  - name: Get the different combinations for os.platform (Partially allowed, user agnostic)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/stats/distinct"
      method: GET
      headers:
@@ -563,6 +596,7 @@ stages:
 
  - name: Get the agents status summary (Partially allowed, user agnostic)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/summary/status"
      method: GET
      headers:
@@ -584,6 +618,7 @@ stages:
 
  - name: Get the summary/os of all agents (Partially allowed, user agnostic)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/summary/os"
      method: GET
      headers:
@@ -592,9 +627,12 @@ stages:
      status_code: 200
      json:
        data:
-         items:
-           - 'ubuntu'
-         totalItems: 1
+         affected_items:
+           - ubuntu
+         total_affected_items: 1
+         total_failed_items: 0
+         failed_items: []
+       message: !anystr
 
 ---
 test_name: GET /agents/{agent_id}/upgrade_result
@@ -603,6 +641,7 @@ stages:
 
  - name: Try get upgrade result agent 002 (Denied)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/002/upgrade_result?wait_for_complete=true"
      method: GET
      headers:
@@ -619,6 +658,7 @@ stages:
 
   - name: Try to remove agent 004 from group2 (Denied group)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/004/group/group2"
       method: DELETE
       headers:
@@ -630,6 +670,7 @@ stages:
 
   - name: Try to remove agent 001 from group1 (Denied agent)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/group/group1"
       method: DELETE
       headers:
@@ -641,6 +682,7 @@ stages:
 
   - name: Try to remove agent 004 from group1 (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/004/group/group1"
       method: DELETE
       headers:
@@ -652,6 +694,7 @@ stages:
 
   - name: Remove agent 005 from group1 (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/005/group/group1"
       method: DELETE
       headers:
@@ -669,6 +712,7 @@ stages:
 
   - name: Try to remove agent 008 from all groups (Denied agent)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/008/group"
       method: DELETE
       headers:
@@ -680,6 +724,7 @@ stages:
 
   - name: Try to remove agent 009 from group2 (Denied group)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/009/group"
       method: DELETE
       headers:
@@ -693,6 +738,7 @@ stages:
 
   - name: Remove agent 009 from all groups Partially allowed, user agnostic)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/009/group"
       method: DELETE
       headers:
@@ -711,6 +757,7 @@ stages:
 
   - name: Try to remove agent 005 from a list of groups (Partially allowed, user aware)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/005/group"
       method: DELETE
       headers:
@@ -744,6 +791,7 @@ stages:
 
   - name: Try to remove all agents from group2 (Denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: DELETE
       headers:
@@ -757,6 +805,7 @@ stages:
 
   - name: Remove all agents from group1 (Partially allowed, user agnostic)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: DELETE
       headers:
@@ -776,6 +825,7 @@ stages:
 
   - name: Remove a list of agents from group1 (Partially allowed, user aware)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: DELETE
       headers:
@@ -812,6 +862,7 @@ stages:
 
   - name: Try to delete group1 (Group denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
       method: DELETE
       headers:
@@ -825,6 +876,7 @@ stages:
 
   - name: Try to delete group2 (Group modification denied, indirectly denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
       method: DELETE
       headers:
@@ -848,6 +900,7 @@ stages:
 
   - name: Try to delete group antonio (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
       method: DELETE
       headers:
@@ -876,6 +929,7 @@ stages:
 
   - name: Try to delete all groups (Partially allowed, indirectly denied to delete group2, user agnostic)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
       method: DELETE
       headers:
@@ -898,6 +952,7 @@ stages:
 
   - name: Try to delete a list of groups (Partially allowed, indirectly denied to delete group2, user aware)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
       method: DELETE
       headers:
@@ -937,6 +992,7 @@ stages:
 
   - name: Try to delete agent 003 (Denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
       method: DELETE
       headers:
@@ -950,6 +1006,7 @@ stages:
 
   - name: Delete agent 002 (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
       method: DELETE
       headers:
@@ -976,6 +1033,7 @@ stages:
 
   - name: Try to delete a list of agents (Denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
       method: DELETE
       headers:
@@ -990,6 +1048,7 @@ stages:
   - name: Try to delete a list of agents (Allowed)
     delay_before: 3
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
       method: DELETE
       headers:
@@ -1013,6 +1072,7 @@ stages:
 
   - name: Try to delete a list of agents (Partially allowed, user aware)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
       method: DELETE
       headers:
@@ -1044,6 +1104,7 @@ stages:
 
   - name: Try to delete all agents (Partially allowed, user agnostic)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
       method: DELETE
       headers:
@@ -1070,6 +1131,7 @@ stages:
 
   - name: Try to create a new agent (Denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
       method: POST
       headers:
@@ -1089,6 +1151,7 @@ stages:
 
   - name: Try to create a new agent specifying id, ip, key and name (Denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/insert"
       method: POST
       headers:
@@ -1110,6 +1173,7 @@ stages:
 
   - name: Try to create new agent specifying its name (Denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/insert/quick"
       method: POST
       headers:
@@ -1128,6 +1192,7 @@ stages:
 
   - name: Try to create a group called group4 (Denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
       method: POST
       headers:
@@ -1146,6 +1211,7 @@ stages:
 
   - name: Try to assign all agents to group2 (Group denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
@@ -1159,6 +1225,7 @@ stages:
 
   - name: Try to assign a list of agents to group1 (Agents denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
@@ -1173,6 +1240,7 @@ stages:
 
   - name: Try to assign a list of agents to group1 (Partially allowed, user aware)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
@@ -1198,6 +1266,7 @@ stages:
 
   - name: Try to assign all agents to group1 (Partially allowed, user agnostic)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: PUT
       headers:
@@ -1222,6 +1291,7 @@ stages:
 
   - name: Update group1 configuration (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group1/configuration"
       method: PUT
       headers:
@@ -1236,6 +1306,7 @@ stages:
 
   - name: Try to update group3 configuration (Denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group3/configuration"
       method: PUT
       headers:
@@ -1255,6 +1326,7 @@ stages:
 
   - name: Try to restart agent 001 (Denied)default,group1,group3,pepito
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/restart"
       method: PUT
       headers:
@@ -1266,9 +1338,9 @@ stages:
       json:
         <<: *permission_denied
 
-# THIS FAILS BECAUSE ONE OF THE DISTRIBUTED RESPONSES IS A 4000 EXCEPTION AND IT KILLS THE WAZUH RESULTS
   - name: Try to restart a list of agents (Partially allowed, user aware)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/restart"
       method: PUT
       headers:
@@ -1293,9 +1365,9 @@ stages:
         message: !anystr
     delay_after: 45
 
-# THIS FAILS BECAUSE ONE OF THE DISTRIBUTED RESPONSES IS A 4000 EXCEPTION AND IT KILLS THE WAZUH RESULTS
   - name: Try to restart all agents (Partially allowed, user agnostic)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/restart"
       method: PUT
       headers:
@@ -1319,6 +1391,7 @@ stages:
 
   - name: Try to assign agent 003 to group1 (Agent denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/003/group/group1"
       method: PUT
       headers:
@@ -1330,6 +1403,7 @@ stages:
 
   - name: Try to assign agent 009 to group3 (Group denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/009/group/group3"
       method: PUT
       headers:
@@ -1341,6 +1415,7 @@ stages:
 
   - name: Try to assign agent 005 to group1 (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/005/group/group1"
       method: PUT
       headers:
@@ -1366,6 +1441,7 @@ stages:
 
   - name: Try to restart agent 008 (Denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/008/restart"
       method: PUT
       headers:
@@ -1377,6 +1453,7 @@ stages:
 
   - name: Restart agent 005 (Allowed)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/005/restart"
       method: PUT
       headers:
@@ -1400,6 +1477,7 @@ stages:
 
   - name: Try to upgrade agent 004 (Denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/004/upgrade"
       method: PUT
       headers:
@@ -1416,6 +1494,7 @@ stages:
 
   - name: Try to customly upgrade agent 004 (Denied)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/004/upgrade_custom?installer=agent_upgrade.py&file_path=/var/ossec"
       method: PUT
       headers:

@@ -98,8 +98,8 @@ def test_agent_get_agents_summary_status(sqlite_mock):
 def test_agent_get_agents_summary_os(sqlite_mock):
     """Tests `get_os_summary function`."""
     summary = get_agents_summary_os(short_agent_list)
-    assert isinstance(summary, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
-    assert summary['items'] == ['ubuntu'], f"Expected ['ubuntu'] OS but received '{summary['items']} instead."
+    assert isinstance(summary, AffectedItemsWazuhResult), 'The returned object is not an "WazuhResult" instance.'
+    assert summary.affected_items == ['ubuntu'], f"Expected ['ubuntu'] OS but received '{summary['items']} instead."
 
 
 @pytest.mark.parametrize('agent_list, expected_items, error_code', [
@@ -302,7 +302,6 @@ def test_agent_delete_agents_different_status():
     ('a' * 129, '002', 'f304f582f2417a3fddad69d9ae2b4f3b6e6fda788229668af9a6934d454ef44d')
 ])
 @patch('wazuh.common.database_path_global', new=test_global_bd_path)
-@patch('wazuh.core.core_agent.api_configuration.read_api_config', return_value={'use_only_authd': False})
 @patch('wazuh.core.core_agent.fcntl.lockf')
 @patch('wazuh.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.core_agent.chown')
@@ -313,7 +312,7 @@ def test_agent_delete_agents_different_status():
 @patch('wazuh.core.core_agent.safe_move')
 @patch('builtins.open')
 def test_agent_add_agent(open_mock, safe_move_mock, common_gid_mock, common_uid_mock, copyfile_mock, chmod_mock,
-                         chown_mock, fcntl_mock, read_api_mock, name, agent_id, key):
+                         chown_mock, fcntl_mock, name, agent_id, key):
     """Test `add_agent` from agent module.
 
     Parameters
@@ -326,7 +325,7 @@ def test_agent_add_agent(open_mock, safe_move_mock, common_gid_mock, common_uid_
         The agent key.
     """
     try:
-        add_result = add_agent(name=name, agent_id=agent_id, key=key)
+        add_result = add_agent(name=name, agent_id=agent_id, key=key, use_only_authd=False)
         assert add_result.dikt['id'] == agent_id
         assert add_result.dikt['key']
     except WazuhError as e:
@@ -398,29 +397,28 @@ def test_agent_get_group_files(group_list):
     group_list : List of str
         List of groups to get their files.
     """
-    try:
-        result = get_group_files(group_list=group_list)
-        # Assert 'items' contains agent.conf, merged.mg and ar.conf and 'hash' is not empty
-        assert len(result.dikt['items']) == 3
-        assert set(item['filename'] for item in result.dikt['items']).difference(
+    result = get_group_files(group_list=group_list)
+    # Assert 'items' contains agent.conf, merged.mg and ar.conf and 'hash' is not empty
+    if result.total_failed_items != 0:
+        assert list(result.failed_items.keys())[0].code == 1710
+    else:
+        assert result.total_affected_items == 3
+        assert set(item['filename'] for item in result.affected_items).difference(
             set(['agent.conf', 'merged.mg', 'ar.conf'])) == set()
-        for item in result.dikt['items']:
+        for item in result.affected_items:
             assert item['hash']
-    except WazuhError as e:
-        assert e.code == 1710, 'The exception was raised as expected but "error_code" does not match.'
-        assert e.message == 'The group does not exist: invalid-group'
 
 
-@pytest.mark.parametrize('shared_path, group_list, group_exists, side_effect, expected_exception, error_code', [
-    (test_shared_path, ['none'], False, None, WazuhError, 1710),
-    ('invalid-path', ['default'], True, None, WazuhError, 1006),
-    (test_shared_path, ['default'], True, WazuhError(1405), WazuhError, 1405),
-    (test_shared_path, ['default'], True, WazuhException(1400), WazuhInternalError, 1727)
+@pytest.mark.parametrize('shared_path, group_list, group_exists, side_effect, expected_exception', [
+    (test_shared_path, ['none'], False, None, WazuhError(1710)),
+    ('invalid-path', ['default'], True, None, WazuhError(1006)),
+    (test_shared_path, ['default'], True, WazuhError(1405), WazuhError(1405)),
+    (test_shared_path, ['default'], True, WazuhException(1400), WazuhInternalError(1727))
 ])
 @patch('wazuh.agent.process_array')
 @patch('wazuh.core.core_agent.Agent.group_exists')
 def test_agent_get_group_files_exceptions(mock_group_exists, mock_process_array, shared_path, group_list, group_exists,
-                                          side_effect, expected_exception, error_code):
+                                          side_effect, expected_exception):
     """Test `get_group_files` function from agent module raises the expected exceptions if an invalid 'global.db' path
     is specified.
 
@@ -434,18 +432,15 @@ def test_agent_get_group_files_exceptions(mock_group_exists, mock_process_array,
         Exception type to be raised by the mocked `process_array` function.
     expected_exception : Exception
         Exception expected to be raised by `get_group_files` with the given parameters.
-    error_code : int
-        Expected error code for the Wazuh Exception object raised by `get_group_files` with the given parameters.
     """
     with patch('wazuh.common.shared_path', new=shared_path):
         mock_group_exists.return_value = group_exists
         mock_process_array.side_effect = side_effect
         try:
-            get_group_files(group_list=group_list)
-            pytest.fail()
-        except Exception as e:
-            assert isinstance(e, expected_exception), 'The exception raised is not the one expected.'
-            assert e.code == error_code, 'The exception was raised as expected but "error_code" does not match.'
+            result = get_group_files(group_list=group_list)
+            assert list(result.failed_items.keys())[0] == expected_exception
+        except (WazuhError, WazuhInternalError) as e:
+            assert e.code == expected_exception.code, 'The exception raised is not the one expected.'
 
 
 @pytest.mark.parametrize('group_id', [
@@ -1001,6 +996,8 @@ def test_agent_upgrade_agents_custom_exceptions(sqlite_mock, file_path, installe
         pytest.fail()
     except WazuhInternalError as error:
         assert error == WazuhInternalError(1307)
+    except WazuhError as error:
+        assert error.code == 1006
 
 
 @pytest.mark.parametrize('agent_list, component, configuration', [

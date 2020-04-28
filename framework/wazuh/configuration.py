@@ -4,6 +4,7 @@
 
 import json
 import logging
+import os
 import random
 import re
 import subprocess
@@ -11,6 +12,7 @@ import time
 from configparser import RawConfigParser, NoOptionError
 from io import StringIO
 from os import remove, path as os_path
+
 from xml.dom.minidom import parseString
 
 from wazuh import common
@@ -176,10 +178,16 @@ def _read_option(section_name, opt):
         for a in opt.attrib:
             json_attribs[a] = opt.attrib[a]
 
-        for path in opt.text.split(','):
-            json_path = json_attribs.copy()
-            json_path['path'] = path.strip()
-            opt_value.append(json_path)
+        if opt.text:
+            for path in opt.text.split(','):
+                json_path = json_attribs.copy()
+                json_path['path'] = path.strip()
+                opt_value.append(json_path)
+    elif section_name == 'syscheck' and opt_name in ('synchronization', 'whodata'):
+        opt_value = {}
+        for child in opt:
+            child_section, child_config = _read_option(child.tag.lower(), child)
+            opt_value[child_section] = child_config.split(',') if child_config.find(',') > 0 else child_config
     elif (section_name == 'cluster' and opt_name == 'nodes') or \
             (section_name == 'sca' and opt_name == 'policies'):
         opt_value = [child.text for child in opt]
@@ -498,7 +506,7 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
     except Exception as e:
         raise WazuhError(1101, str(e))
 
-    return {'totalItems': len(data), 'items': cut_array(data, offset=offset, limit=limit)}
+    return {'total_affected_items': len(data), 'affected_items': cut_array(data, offset=offset, limit=limit)}
 
 
 def get_agent_conf_multigroup(multigroup_id=None, offset=0, limit=common.database_limit, filename=None):
@@ -630,7 +638,7 @@ def upload_group_configuration(group_id, file_content):
     try:
         with open(tmp_file_path, 'w') as tmp_file:
             # beauty xml file
-            xml = parseString('<root>' + file_content + '</root>')
+            xml = parseString(f'<root>\n{file_content}\n</root>')
             # remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
             pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[2:-2])) + '\n'
             # revert xml.dom replacements
@@ -676,7 +684,8 @@ def upload_group_configuration(group_id, file_content):
         return 'Agent configuration was updated successfully'
     except Exception as e:
         # remove created temporary file
-        remove(tmp_file_path)
+        if os.path.exists(tmp_file_path):
+            remove(tmp_file_path)
         raise e
 
 

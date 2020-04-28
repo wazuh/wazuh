@@ -10,6 +10,7 @@ stages:
     # GET /syscheck/000
   - name: Try to get syscheck scan results for agent 000
     request: &get_syscheck_agent
+      verify: False
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/000"
       headers:
@@ -27,6 +28,7 @@ stages:
     # GET /syscheck/000?limit=1
   - name: Try to get syscheck scan results for agent 000 with a set limit of 1 answer
     request:
+      verify: False
       <<: *get_syscheck_agent
       params:
         limit: 1
@@ -36,7 +38,7 @@ stages:
         data:
           # We define this items answer as a common one array full answer
           affected_items: &full_items_array
-            - attributes: !anyint
+            - changes: !anyint
               date: !anystr
               file: !anystr
               gid: !anystr
@@ -66,6 +68,7 @@ stages:
     # GET /syscheck/000?limit=1&summary=True
   - name: Try to get limited syscheck scan results for agent 000 using summarize (date,file,mtime) parameter
     request:
+      verify: False
       <<: *get_syscheck_agent
       params:
         limit: 1
@@ -86,6 +89,7 @@ stages:
     # GET /syscheck/000?limit=2&offset=0
   - name: Try to get syscheck scan results for agent 000 using limit and offset parameter
     request:
+      verify: False
       <<: *get_syscheck_agent
       params:
         limit: 2
@@ -108,6 +112,7 @@ stages:
     # GET /syscheck/000?limit=1&offset=1
   - name: Try to get syscheck scan results for agent 000 using limit and offset parameter
     request:
+      verify: False
       <<: *get_syscheck_agent
       params:
         limit: 1
@@ -118,7 +123,7 @@ stages:
         data:
           affected_items:
               # Save second item to check offset in next stage
-            - attributes: !int "{offset_item.attributes}"
+            - changes: !int "{offset_item.changes}"
               date: "{offset_item.date}"
               file: "{offset_item.file}"
               gid: "{offset_item.gid}"
@@ -140,6 +145,7 @@ stages:
     # GET /syscheck/000?limit=1&search=a
   - name: Try to get limited syscheck scan results for agent 000 using search parameter
     request:
+      verify: False
       <<: *get_syscheck_agent
       params:
         limit: 1
@@ -156,6 +162,7 @@ stages:
     # GET /syscheck/000?limit=1&type=file
   - name: Try to get limited syscheck scan results for agent 000 using type filtering (file)
     request:
+      verify: False
       <<: *get_syscheck_agent
       params:
         limit: 1
@@ -172,6 +179,7 @@ stages:
     # GET /syscheck/000?limit=1&type=registry
   - name: Try to get limited syscheck scan results for agent 000 using type filtering (registry)
     request:
+      verify: False
       <<: *get_syscheck_agent
       params:
         limit: 1
@@ -188,6 +196,7 @@ stages:
     # GET /syscheck/000?limit=1&md5={returned_md5}
   - name: Try to get limited syscheck scan results for agent 000 using md5 filtering
     request:
+      verify: False
       <<: *get_syscheck_agent
       params:
         limit: 1
@@ -205,6 +214,7 @@ stages:
     # GET /syscheck/000?limit=1&sha1={returned_sha1}
   - name: Try to get limited syscheck scan results for agent 000 using sha1 filtering
     request:
+      verify: False
       <<: *get_syscheck_agent
       params:
         limit: 1
@@ -222,6 +232,7 @@ stages:
     # GET /syscheck/000?limit=1&sha256={returned_sha256}
   - name: Try to get limited syscheck scan results for agent 000 using sha256 filtering
     request:
+      verify: False
       <<: *get_syscheck_agent
       params:
         limit: 1
@@ -239,6 +250,7 @@ stages:
     # GET /syscheck/000?limit=1&hash=returned_md5
   - name: Try to get limited syscheck scan results for agent 000 using hash filtering (md5)
     request:
+      verify: False
       <<: *get_syscheck_agent
       params:
         limit: 1
@@ -256,6 +268,7 @@ stages:
     # GET /syscheck/000?limit=1&hash={returned_sha1}
   - name: Try to get limited syscheck scan results for agent 000 using hash filtering (sha1)
     request:
+      verify: False
       <<: *get_syscheck_agent
       params:
         limit: 1
@@ -273,6 +286,7 @@ stages:
     # GET /syscheck/000?limit=1&hash={returned_sha256}
   - name: Try to get limited syscheck scan results for agent 000 using hash filtering (sha256)
     request:
+      verify: False
       <<: *get_syscheck_agent
       params:
         limit: 1
@@ -290,6 +304,7 @@ stages:
     # GET /syscheck/000?limit=1&file={returned_file}
   - name: Try to get limited syscheck scan results for agent 000 using filename filtering
     request:
+      verify: False
       <<: *get_syscheck_agent
       params:
         limit: 1
@@ -304,10 +319,10 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-    # We implement a dual stage to check sort parameter behaviour
     # GET /syscheck/000?limit=2&sort=file,date
   - name: Try to get syscheck scan results for agent 000 using limit and sort ascending filtering
     request:
+      verify: False
       <<: *get_syscheck_agent
       params:
         limit: 1
@@ -321,49 +336,11 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-      save:
-        verify_response_with:
-          function: tavern_utils:calc_offset
-          extra_kwargs:
-            total: "{returned_total}"
-        json:
-          sort_item: data.affected_items[0]
-
-    # GET /syscheck/000?limit=1&sort=-file,date&offset={sort_offset}
-  - name: Try to get syscheck scan results for agent 000 using limit and sort descending filtering
-    request:
-      <<: *get_syscheck_agent
-      params:
-        limit: 1
-        sort: -file,date
-        offset: "{sort_offset:s}"
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - attributes: !int "{sort_item.attributes}"
-              date: "{sort_item.date}"
-              file: !anystr
-              gid: "{sort_item.gid}"
-              gname: "{sort_item.gname}"
-              inode: !int "{sort_item.inode}"
-              md5: "{sort_item.md5}"
-              mtime: "{sort_item.mtime}"
-              perm: "{sort_item.perm}"
-              sha1: "{sort_item.sha1}"
-              sha256: "{sort_item.sha256}"
-              size: !int "{sort_item.size}"
-              type: "{sort_item.type}"
-              uid: "{sort_item.uid}"
-              uname: "{sort_item.uname}"
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
     # GET /syscheck/000?limit=1&sort=wrongparam
   - name: Try to get syscheck scan results for agent 000 using an invalid sort parameter
     request:
+      verify: False
       <<: *get_syscheck_agent
       params:
         limit: 1
@@ -376,6 +353,7 @@ stages:
     # GET /syscheck/000?limit=1&select=wrongparam
   - name: Try to get syscheck scan results for agent 000 using an invalid select parameter
     request:
+      verify: False
       <<: *get_syscheck_agent
       params:
         limit: 1
@@ -413,6 +391,7 @@ stages:
     # GET /syscheck/000?limit=1&sort={field}
   - name: Try to get syscheck scan results for agent 000 with a sorted field answer
     request:
+      verify: False
       <<: *get_syscheck_agent
       params:
         limit: 1
@@ -429,6 +408,7 @@ stages:
     # GET /syscheck/000?limit=1&select={field}
   - name: Try to get syscheck scan results for agent 000 with a selected field answer
     request:
+      verify: False
       <<: *get_syscheck_agent
       params:
         limit: 1
@@ -452,6 +432,7 @@ stages:
     # GET /syscheck/000/last_scan
   - name: Try to get when the last scan for agent 000 started and ended
     request:
+      verify: False
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/000/last_scan"
       headers:
@@ -468,47 +449,13 @@ stages:
           total_failed_items: 0
 
 ---
-test_name: PUT /syscheck
-
-stages:
-
-    # PUT /syscheck
-  - name: Try to run a syscheck scan in all agents
-    request:
-      method: PUT
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items: !anything
-          failed_items:
-            - error:
-                code: 1601
-                message: !anystr
-                remediation: !anystr
-              id:
-                - '011'
-                - '012'
-            - error:
-                code: 1601
-                message: !anystr
-                remediation: !anystr
-              id:
-                - '009'
-                - '010'
-          total_affected_items: 9
-          total_failed_items: 4
-
----
 test_name: PUT /syscheck/000
 
 stages:
 
   - name: Try to run a syscheck scan in agent 000
     request:
+      verify: False
       method: PUT
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck"
       headers:
@@ -527,6 +474,7 @@ stages:
 
   - name: Try to run a syscheck scan for a list of agents
     request:
+      verify: False
       method: PUT
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck"
       headers:
@@ -566,6 +514,7 @@ stages:
 
   - name: Try to get syscheck scan results for agent 002
     request: &get_syscheck_agent_002
+      verify: False
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/002"
       headers:
@@ -582,6 +531,7 @@ stages:
     # GET /syscheck/002?limit=1
   - name: Try to get syscheck scan results for agent 002 with a set limit of 1 answer
     request:
+      verify: False
       <<: *get_syscheck_agent_002
       params:
         limit: 1
@@ -591,7 +541,7 @@ stages:
         data:
           # We define this items answer as a common one array full answer
           affected_items: &full_items_array_002
-            - attributes: !anyint
+            - changes: !anyint
               date: !anystr
               file: !anystr
               gid: !anystr
@@ -621,6 +571,7 @@ stages:
     # GET /syscheck/002?limit=1&summary=True
   - name: Try to get limited syscheck scan results for agent 002 using summarize (date,file,mtime) parameter
     request:
+      verify: False
       <<: *get_syscheck_agent_002
       params:
         limit: 1
@@ -641,6 +592,7 @@ stages:
     # GET /syscheck/002?limit=2&offset=0
   - name: Try to get syscheck scan results for agent 002 using limit and offset parameter
     request:
+      verify: False
       <<: *get_syscheck_agent_002
       params:
         limit: 2
@@ -663,6 +615,7 @@ stages:
     # GET /syscheck/002?limit=1&offset=1
   - name: Try to get syscheck scan results for agent 002 using limit and offset parameter
     request:
+      verify: False
       <<: *get_syscheck_agent_002
       params:
         limit: 1
@@ -673,7 +626,7 @@ stages:
         data:
           affected_items:
               # Save second item to check offset in next stage
-            - attributes: !int "{offset_item.attributes}"
+            - changes: !int "{offset_item.changes}"
               date: "{offset_item.date}"
               file: "{offset_item.file}"
               gid: "{offset_item.gid}"
@@ -695,6 +648,7 @@ stages:
     # GET /syscheck/002?limit=1&search=a
   - name: Try to get limited syscheck scan results for agent 002 using search parameter
     request:
+      verify: False
       <<: *get_syscheck_agent_002
       params:
         limit: 1
@@ -711,6 +665,7 @@ stages:
     # GET /syscheck/002?limit=1&type=file
   - name: Try to get limited syscheck scan results for agent 002 using type filtering (file)
     request:
+      verify: False
       <<: *get_syscheck_agent_002
       params:
         limit: 1
@@ -727,6 +682,7 @@ stages:
     # GET /syscheck/002?limit=1&type=registry
   - name: Try to get limited syscheck scan results for agent 002 using type filtering (registry)
     request:
+      verify: False
       <<: *get_syscheck_agent_002
       params:
         limit: 1
@@ -743,6 +699,7 @@ stages:
     # GET /syscheck/002?limit=1&md5={returned_md5}
   - name: Try to get limited syscheck scan results for agent 002 using md5 filtering
     request:
+      verify: False
       <<: *get_syscheck_agent_002
       params:
         limit: 1
@@ -760,6 +717,7 @@ stages:
     # GET /syscheck/002?limit=1&sha1={returned_sha1}
   - name: Try to get limited syscheck scan results for agent 002 using sha1 filtering
     request:
+      verify: False
       <<: *get_syscheck_agent_002
       params:
         limit: 1
@@ -777,6 +735,7 @@ stages:
     # GET /syscheck/002?limit=1&sha256={returned_sha256}
   - name: Try to get limited syscheck scan results for agent 002 using sha256 filtering
     request:
+      verify: False
       <<: *get_syscheck_agent_002
       params:
         limit: 1
@@ -794,6 +753,7 @@ stages:
     # GET /syscheck/002?limit=1&hash=returned_md5
   - name: Try to get limited syscheck scan results for agent 002 using hash filtering (md5)
     request:
+      verify: False
       <<: *get_syscheck_agent_002
       params:
         limit: 1
@@ -811,6 +771,7 @@ stages:
     # GET /syscheck/002?limit=1&hash={returned_sha1}
   - name: Try to get limited syscheck scan results for agent 002 using hash filtering (sha1)
     request:
+      verify: False
       <<: *get_syscheck_agent_002
       params:
         limit: 1
@@ -828,6 +789,7 @@ stages:
     # GET /syscheck/002?limit=1&hash={returned_sha256}
   - name: Try to get limited syscheck scan results for agent 002 using hash filtering (sha256)
     request:
+      verify: False
       <<: *get_syscheck_agent_002
       params:
         limit: 1
@@ -845,6 +807,7 @@ stages:
     # GET /syscheck/002?limit=1&file={returned_file}
   - name: Try to get limited syscheck scan results for agent 002 using filename filtering
     request:
+      verify: False
       <<: *get_syscheck_agent_002
       params:
         limit: 1
@@ -863,6 +826,7 @@ stages:
     # GET /syscheck/002?limit=2&sort=file,date
   - name: Try to get syscheck scan results for agent 002 using limit and sort ascending filtering
     request:
+      verify: False
       <<: *get_syscheck_agent_002
       params:
         limit: 2
@@ -877,49 +841,11 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-      save:
-        verify_response_with:
-          function: tavern_utils:calc_offset
-          extra_kwargs:
-            total: "{returned_total}"
-        json:
-          sort_item: data.affected_items[0]
-
-    # GET /syscheck/002?limit=1&sort=-file,date&offset={sort_offset}
-  - name: Try to get syscheck scan results for agent 002 using limit and sort descending filtering
-    request:
-      <<: *get_syscheck_agent_002
-      params:
-        limit: 1
-        sort: -file,date
-        offset: "{sort_offset:s}"
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - attributes: !int "{sort_item.attributes}"
-              date: "{sort_item.date}"
-              file: !anystr
-              gid: "{sort_item.gid}"
-              gname: "{sort_item.gname}"
-              inode: !int "{sort_item.inode}"
-              md5: "{sort_item.md5}"
-              mtime: "{sort_item.mtime}"
-              perm: "{sort_item.perm}"
-              sha1: "{sort_item.sha1}"
-              sha256: "{sort_item.sha256}"
-              size: !int "{sort_item.size}"
-              type: "{sort_item.type}"
-              uid: "{sort_item.uid}"
-              uname: "{sort_item.uname}"
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
     # GET /syscheck/002?limit=1&sort=wrongparam
   - name: Try to get syscheck scan results for agent 002 using an invalid sort parameter
     request:
+      verify: False
       <<: *get_syscheck_agent_002
       params:
         limit: 1
@@ -932,6 +858,7 @@ stages:
     # GET /syscheck/002?limit=1&select=wrongparam
   - name: Try to get syscheck scan results for agent 002 using an invalid select parameter
     request:
+      verify: False
       <<: *get_syscheck_agent_002
       params:
         limit: 1
@@ -969,6 +896,7 @@ stages:
     # GET /syscheck/002?limit=1&sort={field}
   - name: Try to get syscheck scan results for agent 002 with a sorted field answer
     request:
+      verify: False
       <<: *get_syscheck_agent_002
       params:
         limit: 1
@@ -985,6 +913,7 @@ stages:
     # GET /syscheck/002?limit=1&select={field}
   - name: Try to get syscheck scan results for agent 002 with a selected field answer
     request:
+      verify: False
       <<: *get_syscheck_agent_002
       params:
         limit: 1
@@ -1008,6 +937,7 @@ stages:
     # GET /syscheck/002/last_scan
   - name: Try to get when the last scan for agent 002 started and ended
     request:
+      verify: False
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/002/last_scan"
       headers:
@@ -1030,6 +960,7 @@ stages:
 
   - name: Try to delete syscheck scans in agent 000
     request:
+      verify: False
       method: DELETE
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/001"
       headers:
@@ -1042,3 +973,39 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
+
+---
+test_name: PUT /syscheck
+
+stages:
+
+    # PUT /syscheck
+  - name: Try to run a syscheck scan in all agents
+    request:
+      verify: False
+      method: PUT
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: !anything
+          failed_items:
+            - error:
+                code: 1601
+                message: !anystr
+                remediation: !anystr
+              id:
+                - '011'
+                - '012'
+            - error:
+                code: 1601
+                message: !anystr
+                remediation: !anystr
+              id:
+                - '009'
+                - '010'
+          total_affected_items: 9
+          total_failed_items: 4

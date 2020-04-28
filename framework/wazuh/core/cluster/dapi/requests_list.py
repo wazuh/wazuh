@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import wazuh.core.cluster.cluster
@@ -103,8 +103,8 @@ functions = {
         'is_async': False
     },
     'PUT/agents/groups/:group_id/restart': {
-        'function': Agent.restart_agents_by_group,
-        'type': 'local_master',
+        'function': Agent.restart_agents,
+        'type': 'distributed_master',
         'is_async': False
     },
     'PUT/agents/:agent_name': {

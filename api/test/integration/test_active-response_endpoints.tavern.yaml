@@ -3,12 +3,13 @@ test_name: PUT /active-response/{:agent_id}
 
 marks:
   - usefixtures:
-    - base_tests
+    - active-response_tests
 
 stages:
 
   - name: Runs an Active Response command on a specified agent
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
@@ -32,6 +33,7 @@ stages:
 
   - name: Send a message to an agent (Status=Active)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
@@ -54,7 +56,9 @@ stages:
         message: Command sent to all agents
 
   - name: Send a message to a list of agents (Status=Active)
+    delay_before: 45
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
@@ -83,6 +87,7 @@ stages:
 
   - name: Try to send a message to an agent (status=disconnected/never_connected)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
@@ -111,6 +116,7 @@ stages:
 
   - name: Try to send a message to an unexisting agent
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
@@ -140,6 +146,7 @@ stages:
 
   - name: Try to send a message to an agent, without body
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
@@ -151,6 +158,7 @@ stages:
 
   - name: Try to send a message to an agent, malformed body
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
@@ -166,6 +174,7 @@ stages:
 
   - name: Send a message to one agent (Active response disabled)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
@@ -201,6 +210,7 @@ stages:
     # PUT /active-response
   - name: Runs an Active Response command on all agents
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
@@ -238,6 +248,7 @@ stages:
     # PUT /active-response
   - name: Try to send a message to all agents, malformed body
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:

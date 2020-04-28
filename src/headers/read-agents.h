@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -85,12 +85,6 @@ char *agent_file_perm(mode_t mode);
  * Returns -1 on error
  */
 int send_msg_to_agent(int msocket, const char *msg, const char *agt_id, const char *exec) __attribute__((nonnull(2)));
-
-/*
- * Send query to Wazuh-db
- * Returns -1 on error
- */
-int query_wazuhdb(const char *wazuhdb_query, const char *source, char **output);
 
 /*
  * Gets FIM scan-time

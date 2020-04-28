@@ -9,6 +9,7 @@ stages:
 
   - name: Try to get syscheck scan results for agent 000 (Deny)
     request:
+      verify: False
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/000"
       headers:
@@ -26,6 +27,7 @@ stages:
 
   - name: Try to get syscheck scan results for agent 002 (Allow)
     request:
+      verify: False
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/002"
       headers:
@@ -46,6 +48,7 @@ stages:
 
   - name: Try to get when the last scan for agent 000 started and ended
     request:
+      verify: False
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/000/last_scan"
       headers:
@@ -57,6 +60,7 @@ stages:
 
   - name: Try to get when the last scan for agent 002 started and ended
     request:
+      verify: False
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/002/last_scan"
       headers:
@@ -79,6 +83,7 @@ stages:
 
   - name: Try to run a syscheck scan in all agents
     request:
+      verify: False
       method: PUT
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck"
       headers:
@@ -109,6 +114,7 @@ stages:
 
   - name: Try to run a syscheck scan on a list of agents
     request:
+      verify: False
       method: PUT
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck"
       headers:
@@ -135,6 +141,7 @@ stages:
 
   - name: Try to run a syscheck scan on a list of agents
     request:
+      verify: False
       method: PUT
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck"
       headers:
@@ -153,6 +160,7 @@ stages:
 
   - name: Try to delete syscheck scans in agent 000
     request:
+      verify: False
       method: DELETE
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/002"
       headers:
@@ -168,6 +176,7 @@ stages:
 
   - name: Try to check the answer is empty after deleting the scans for agent 000
     request:
+      verify: False
       method: DELETE
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/001"
       headers:

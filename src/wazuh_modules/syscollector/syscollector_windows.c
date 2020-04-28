@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for System inventory for Windows
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * Aug, 2017.
  *
  * This program is free software; you can redistribute it
@@ -141,17 +141,12 @@ char* get_process_name(DWORD pid){
                         {
                             mterror(WM_SYS_LOGTAG, "'WideCharToMultiByte' failed (%lu).", GetLastError());
                         } else {
-                            string = (char*)malloc(size_needed + 1);
-                            if (string == NULL)
+                            os_malloc(size_needed + 1, string);
+                            if (WideCharToMultiByte(CP_UTF8, 0, procInfo.ImageName.Buffer, procInfo.ImageName.Length / 2, string, size_needed, NULL, NULL) != size_needed)
                             {
-                                mterror(WM_SYS_LOGTAG, "Unable to allocate memory for UTF-16 -> UTF-8 conversion.");
-                            } else {
-                                if (WideCharToMultiByte(CP_UTF8, 0, procInfo.ImageName.Buffer, procInfo.ImageName.Length / 2, string, size_needed, NULL, NULL) != size_needed)
-                                {
-                                    mterror(WM_SYS_LOGTAG, "'WideCharToMultiByte' failed (%lu).", GetLastError());
-                                    free(string);
-                                    string = NULL;
-                                }
+                                mterror(WM_SYS_LOGTAG, "'WideCharToMultiByte' failed (%lu).", GetLastError());
+                                free(string);
+                                string = NULL;
                             }
                         }
                     }
@@ -936,8 +931,6 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const cha
     FILETIME ftLastWriteTime;      // last write time
     long unsigned int i, result;
 
-    // Remove unused variables
-
     result = RegQueryInfoKey(
         hKey,                    // key handle
         achClass,                // buffer for class name
@@ -952,7 +945,8 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const cha
         &cbSecurityDescriptor,   // security descriptor
         &ftLastWriteTime);       // last write time
 
-    if (!cSubKeys) {
+    // Exit if the number of subkeys is 0 or if not success
+    if (cSubKeys == 0 || result != ERROR_SUCCESS) {
         return;
     }
 
@@ -1023,6 +1017,9 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const cha
             }
         } else {
             mterror(WM_SYS_LOGTAG, "Error reading key '%s'. Error code: %lu", achKey, result);
+            // Avoid infinite loops
+            break;
+
         }
     }
 }
@@ -1131,7 +1128,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
 
         // Get name of program
 
-        program_name = (char *)malloc(TOTALBYTES);
+        os_calloc(TOTALBYTES, 1, program_name);
         cbData = buffer_size;
 
         ret = RegQueryValueEx(program_key, "DisplayName", NULL, NULL, (LPBYTE)program_name, &cbData);
@@ -1166,7 +1163,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
 
             // Get version
 
-            version = (char *)malloc(TOTALBYTES);
+            os_calloc(TOTALBYTES, 1, version);
             cbData = buffer_size;
 
             ret = RegQueryValueEx(program_key, "DisplayVersion", NULL, NULL, (LPBYTE)version, &cbData);
@@ -1188,7 +1185,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
 
             // Get vendor
 
-            vendor = (char *)malloc(TOTALBYTES);
+            os_calloc(TOTALBYTES, 1, vendor);
             cbData = buffer_size;
 
             ret = RegQueryValueEx(program_key, "Publisher", NULL, NULL, (LPBYTE)vendor, &cbData);
@@ -1210,7 +1207,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
 
             // Get install date
 
-            date = (char *)malloc(TOTALBYTES);
+            os_calloc(TOTALBYTES, 1, date);
             cbData = buffer_size;
 
             ret = RegQueryValueEx(program_key, "InstallDate", NULL, NULL, (LPBYTE)date, &cbData);
@@ -1232,7 +1229,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
 
             // Get install location
 
-            location = (char *)malloc(TOTALBYTES);
+            os_calloc(TOTALBYTES, 1, location);
             cbData = buffer_size;
 
             ret = RegQueryValueEx(program_key, "InstallLocation", NULL, NULL, (LPBYTE)location, &cbData);
@@ -1337,16 +1334,16 @@ void sys_hw_windows(const char* LOCATION){
                 switch(ret)
                 {
                     case 1:
-                        mterror(WM_SYS_LOGTAG, "Unable to get raw SMBIOS firmware table size.");
+                        mtwarn(WM_SYS_LOGTAG, "Unable to get raw SMBIOS firmware table size.");
                         break;
                     case 2:
-                        mterror(WM_SYS_LOGTAG, "Unable to allocate memory for the SMBIOS firmware table.");
+                        mtwarn(WM_SYS_LOGTAG, "Unable to allocate memory for the SMBIOS firmware table.");
                         break;
                     case 3:
-                        mterror(WM_SYS_LOGTAG, "Unable to get the SMBIOS firmware table.");
+                        mtwarn(WM_SYS_LOGTAG, "Unable to get the SMBIOS firmware table.");
                         break;
                     case 4:
-                        mterror(WM_SYS_LOGTAG, "Serial Number not available in SMBIOS firmware table.");
+                        mtdebug1(WM_SYS_LOGTAG, "Serial Number not available in SMBIOS firmware table.");
                         break;
                     default:
                         break;
@@ -1395,11 +1392,10 @@ void sys_hw_windows(const char* LOCATION){
         }
     }
 
-    if (!serial)
-        os_strdup("unknown", serial);
-
-    cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
-    free(serial);
+    if (serial) {
+        cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
+        free(serial);
+    }
 
     /* Get CPU and memory information */
     hw_info *sys_info;
@@ -2122,15 +2118,11 @@ int ntpath_to_win32path(char *ntpath, char **outbuf)
 				len = (strlen(ntpath) - strlen(read_buff) + 3);
 
 				/* Allocate memory */
-				*outbuf = (char*)malloc(len);
-				if (*outbuf)
-				{
-					/* Copy the new filepath */
-					snprintf(*outbuf, len, "%s%s", msdos_drive, ntpath + strlen(read_buff));
-					success = 1;
-				} else {
-					mtwarn(WM_SYS_LOGTAG, "Unable to allocate %lu bytes to hold the full Win32 converted filepath.", len);
-				}
+                os_calloc(len, 1, *outbuf);
+
+                /* Copy the new filepath */
+                snprintf(*outbuf, len, "%s%s", msdos_drive, ntpath + strlen(read_buff));
+                success = 1;
 
 				break;
 			}

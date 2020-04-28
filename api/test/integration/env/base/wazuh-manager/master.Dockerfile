@@ -29,6 +29,8 @@ ADD base/wazuh-manager/entrypoint.sh /scripts/entrypoint.sh
 
 FROM base AS wazuh-env-base
 
+FROM base AS wazuh-env-active-response
+
 FROM base AS wazuh-env-agents
 COPY configurations/agents/test_custom_upgrade_3.10.2.wpk /var/ossec/test_custom_upgrade_3.10.2.wpk
 
@@ -44,6 +46,7 @@ COPY configurations/syscollector/wazuh-master/send_to_wdb.py /send_to_wdb.py
 ADD configurations/syscollector/wazuh-master/entrypoint.sh /scripts/entrypoint.sh
 
 FROM wazuh-env-syscollector AS wazuh-env-experimental
+COPY configurations/experimental/api.yaml /var/ossec/api/configuration/api.yaml
 
 FROM base AS wazuh-env-security
 COPY configurations/security/wazuh-master/schema_security_test.sql /var/ossec/api/configuration/security/schema_security_test.sql
@@ -120,11 +123,11 @@ FROM wazuh-env-syscollector AS wazuh-env-syscollector_black_rbac
 ADD configurations/rbac/syscollector/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
-FROM base as wazuh-env-active-response_white_rbac
+FROM wazuh-env-active-response as wazuh-env-active-response_white_rbac
 ADD configurations/rbac/active-response/white_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
-FROM base as wazuh-env-active-response_black_rbac
+FROM wazuh-env-active-response as wazuh-env-active-response_black_rbac
 ADD configurations/rbac/active-response/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
@@ -180,11 +183,11 @@ FROM wazuh-env-cluster AS wazuh-env-cluster_black_rbac
 ADD configurations/rbac/cluster/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
-FROM wazuh-env-syscollector AS wazuh-env-experimental_black_rbac
+FROM wazuh-env-experimental AS wazuh-env-experimental_black_rbac
 ADD configurations/rbac/experimental/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
-FROM wazuh-env-syscollector AS wazuh-env-experimental_white_rbac
+FROM wazuh-env-experimental AS wazuh-env-experimental_white_rbac
 ADD configurations/rbac/experimental/white_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 

@@ -21,7 +21,7 @@ import wazuh.core.manager
 import wazuh.results as wresults
 from wazuh import exception, agent, common
 from wazuh.core.cluster import local_client, common as c_common
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhClusterError, WazuhError
 
 
 class DistributedAPI:
@@ -209,9 +209,6 @@ class DistributedAPI:
                 data = await asyncio.wait_for(task, timeout=timeout)
             except asyncio.TimeoutError:
                 raise exception.WazuhException(3021)
-            finally:
-                if self.local_client_arg is not None:
-                    lc.transport.close()
 
             after = time.time()
             self.logger.debug("Time calculating request result: {}s".format(after - before))
@@ -351,13 +348,23 @@ class DistributedAPI:
                 if 'tmp_file' in self.f_kwargs:
                     await self.send_tmp_file(node_name)
                 client = self.get_client()
-                result = json.loads(await client.execute(b'dapi_forward',
-                                                         "{} {}".format(node_name,
-                                                                        json.dumps(self.to_dict(),
-                                                                                   cls=c_common.WazuhJSONEncoder)
-                                                                        ).encode(),
-                                                         self.wait_for_complete),
-                                    object_hook=c_common.as_wazuh_object)
+                try:
+                    result = json.loads(await client.execute(b'dapi_forward',
+                                                             "{} {}".format(node_name,
+                                                                            json.dumps(self.to_dict(),
+                                                                                       cls=c_common.WazuhJSONEncoder)
+                                                                            ).encode(),
+                                                             self.wait_for_complete),
+                                        object_hook=c_common.as_wazuh_object)
+                except WazuhClusterError as e:
+                    if e.code == 3022:
+                        result = e
+                    else:
+                        raise e
+                # Convert a non existing node into a WazuhError exception
+                if isinstance(result, WazuhClusterError) and result.code == 3022:
+                    result = WazuhError.from_dict(result.to_dict())
+
             return result if isinstance(result, (wresults.AbstractWazuhResult, exception.WazuhException)) \
                 else wresults.WazuhResult(result)
 

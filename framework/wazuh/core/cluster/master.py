@@ -1,25 +1,26 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
+import fcntl
+import functools
 import json
+import operator
+import os
 import random
 import re
 import shutil
 from calendar import timegm
 from datetime import datetime
-import functools
-import operator
-import os
 from typing import Tuple, Dict, Callable
-import fcntl
 
 import wazuh.core.cluster.cluster
-from wazuh.core.core_agent import Agent
-from wazuh.core.cluster import server, common as c_common
+from wazuh import common, utils, exception
 from wazuh.core import cluster as metadata
-from wazuh import common, utils, exception, cluster
+from wazuh.core.cluster import server, common as c_common
 from wazuh.core.cluster.dapi import dapi
+from wazuh.core.cluster.utils import context_tag
+from wazuh.core.core_agent import Agent
 
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):
@@ -148,6 +149,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.node_type = ""
         # dictionary to save loggers for each sync task
         self.task_loggers = {}
+        context_tag.set(self.tag)
 
     def to_dict(self):
         """
@@ -214,20 +216,24 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 result = (await self.server.clients[client].send_request(b'dapi', request_id.encode() + b' ' + request)).decode()
             else:
                 raise exception.WazuhClusterError(3022, extra_message=client)
-        else:
+        elif command == b'dapi':
             result = (await self.send_request(b'dapi', request_id.encode() + b' ' + data)).decode()
+        else:
+            result = self.process_request(command=command, data=data)
 
         if command == b'dapi' or command == b'dapi_forward':
             try:
                 timeout = None if wait_for_complete \
                                else self.cluster_items['intervals']['communication']['timeout_api_request']
                 await asyncio.wait_for(self.server.pending_api_requests[request_id]['Event'].wait(), timeout=timeout)
-                request_result = json.loads(self.server.pending_api_requests[request_id]['Response'],
-                                            cls=c_common.as_wazuh_object)
+                request_result = self.server.pending_api_requests[request_id]['Response']
             except asyncio.TimeoutError:
                 raise exception.WazuhClusterError(3021)
         else:
-            request_result = json.loads(result, cls=c_common.as_wazuh_object)
+            status, request_result = result
+            if status != b'ok':
+                raise exception.WazuhClusterError(3022, extra_message=request_result.decode())
+            request_result = request_result.decode()
         return request_result
 
     def hello(self, data: bytes) -> Tuple[bytes, bytes]:

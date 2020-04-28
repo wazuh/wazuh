@@ -16,7 +16,6 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 
 from api.api_exception import APIException
-from api.constants import SECURITY_PATH
 from wazuh import common
 
 
@@ -62,29 +61,11 @@ def fill_dict(default: Dict, config: Dict) -> Dict:
     return {**default, **config}
 
 
-def generate_pem_phrase():
-    """Generate a random PEM phrase for the private key in 'SECURITY_PATH/ssl_secret'.
-
-    Returns
-    -------
-    bytes
-        Encoded PEM phrase.
-    """
-    pem_ssl = str(uuid.uuid4()).replace('-', '')
-    ssl_secret_path = os.path.join(SECURITY_PATH, 'ssl_secret')
-    with open(ssl_secret_path, 'w') as f:
-        f.write(pem_ssl)
-
-    return pem_ssl.encode()
-
-
-def generate_private_key(pem_phrase, private_key_path, public_exponent=65537, key_size=2048):
+def generate_private_key(private_key_path, public_exponent=65537, key_size=2048):
     """Generate a private key in 'CONFIG_PATH/ssl/server.key'.
 
     Parameters
     ----------
-    pem_phrase : bytes
-        Encoded PEM phrase.
     private_key_path : str
         Path where the private key will be generated.
     public_exponent : int, optional
@@ -105,8 +86,8 @@ def generate_private_key(pem_phrase, private_key_path, public_exponent=65537, ke
     with open(private_key_path, 'wb') as f:
         f.write(key.private_bytes(
             encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.TraditionalOpenSSL,
-            encryption_algorithm=serialization.BestAvailableEncryption(pem_phrase)
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption()
         ))
     return key
 
@@ -163,10 +144,10 @@ def read_api_config(config_file=common.api_config_path) -> Dict:
     default_configuration = {
         "host": "0.0.0.0",
         "port": 55000,
-        "basic_auth": True,
         "behind_proxy_server": False,
         "rbac": {
-            "mode": "black"
+            "mode": "black",
+            "auth_token_exp_timeout": 36000
         },
         "https": {
             "enabled": True,
@@ -179,10 +160,15 @@ def read_api_config(config_file=common.api_config_path) -> Dict:
             "level": "info",
             "path": "logs/api.log"
         },
-        "cors": True,
-        "cache": {
+        "cors": {
             "enabled": False,
-            "debug": False,
+            "source_route": "*",
+            "expose_headers": "*",
+            "allow_headers": "*",
+            "allow_credentials": False,
+        },
+        "cache": {
+            "enabled": True,
             "time": 0.750
         },
         "use_only_authd": False,
@@ -210,3 +196,7 @@ def read_api_config(config_file=common.api_config_path) -> Dict:
     append_ossec_path(configuration, [('logs', 'path'), ('https', 'key'), ('https', 'cert'), ('https', 'ca')])
 
     return configuration
+
+
+# Configuration - global object
+api_conf = read_api_config()

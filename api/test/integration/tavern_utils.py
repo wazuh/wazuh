@@ -1,28 +1,8 @@
 #tavern_utils.py
 import json
+import time
 
-
-def calc_offset(response, total):
-    """
-    :param response: Request response
-    :param total: Number
-    :return: Number - 1
-    """
-    return {"sort_offset": str(int(total)-1)}
-
-
-def test_select_key(response, select_key):
-    """
-    :param response: Request response
-    :param select_key: Parametrized key used for select param in request
-    :return: True if request response item key matches used select param
-    """
-    if '.' in select_key:
-        assert list(response.json()["data"]["items"][0])[0] == select_key.split('.')[0]
-        assert list(response.json()["data"]["items"][0][select_key.split('.')[0]])[0] == select_key.split('.')[1]
-    else:
-        assert list(response.json()["data"]["items"][0])[0] == select_key
-    return
+from box import Box
 
 
 def test_select_key_affected_items(response, select_key):
@@ -56,40 +36,6 @@ def test_select_key_affected_items_with_agent_id(response, select_key):
     return
 
 
-def test_select_key_no_items(response, select_key):
-    """
-    :param response: Request response
-    :param select_key: Parametrized key used for select param in request
-    :return: True if request response item key matches used select param
-    """
-    if '.' in select_key:
-        assert list(response.json()["data"])[0] == select_key.split('.')[0]
-        assert list(response.json()["data"][select_key.split('.')[0]])[0] == select_key.split('.')[1]
-    else:
-        assert list(response.json()["data"])[0] == select_key
-    return
-
-
-def calc_agents(response, total):
-    """
-    :param response: Request response
-    :param total: Number
-    :return: Number - 1
-    """
-    return {"totalAgents": str(int(total)-1)}
-
-
-def test_affected_items_response(response, affected_items):
-    """
-    :param response: Request response
-    :param affected_items: List of agent
-    :return: True if request response have this items
-    """
-    assert set(response.json()['data']['affected_items']) != set(affected_items)
-
-    return
-
-
 def test_sort_response(response, affected_items):
     """
     :param response: Request response
@@ -115,3 +61,26 @@ def test_validate_data_dict_field(response, fields_dict):
             except KeyError:
                 assert len(element) == 1
                 assert isinstance(element['count'], int)
+
+
+def test_validate_upgrade(response):
+    # We accept the test as passed if it either ugprades correctly or the version is not available
+    assert response.json().get('message', None) == "Upgrade procedure started" \
+           or response.json().get('code', None) == 1718
+    if response.json().get('message', None) == "Upgrade procedure started":
+        time.sleep(45)
+        return Box({"upgraded": True})
+    else:
+        return Box({"upgraded": False})
+
+
+def test_validate_upgrade_result(response, upgraded):
+    if upgraded == 1:
+        assert response.json().get('message', None) == "Agent upgraded successfully"
+    else:
+        # If upgrade didnt work because no version was available, we expect an empty upgrade_result with error 1716
+        assert response.json().get('code', None) == 1716
+
+
+def test_validate_update_latest_version(response):
+    assert response.json().get('code', None) == 1749 or response.json().get('code', None) == 1718

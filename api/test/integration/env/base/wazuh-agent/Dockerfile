@@ -13,9 +13,18 @@ COPY configurations/base/wazuh-agent/config/test.keys /var/ossec/etc/test.keys
 COPY configurations/base/wazuh-agent/config/ossec.conf /var/ossec/etc/ossec.conf
 COPY configurations/base/wazuh-agent/healthcheck/healthcheck.py /tmp/healthcheck.py
 
+ADD base/wazuh-agent/entrypoint.sh /scripts/entrypoint.sh
+
 FROM base_agent AS wazuh-env-agent-base
+
+FROM base_agent AS wazuh-env-agent-active-response
+ADD configurations/active-response/wazuh-agent/entrypoint.sh /scripts/entrypoint.sh
+
 FROM base_agent AS wazuh-env-agent-agents
+
 FROM base_agent AS wazuh-env-agent-syscollector
+COPY configurations/syscollector/wazuh-agent/healthcheck/healthcheck.py /tmp/healthcheck.py
+
 FROM base_agent AS wazuh-env-agent-security
 FROM base_agent AS wazuh-env-agent-manager
 FROM base_agent AS wazuh-env-agent-cluster
@@ -45,10 +54,10 @@ FROM base_agent AS wazuh-env-agent-rules_white_rbac
 FROM base_agent AS wazuh-env-agent-rules_black_rbac
 FROM base_agent AS wazuh-env-agent-decoders_white_rbac
 FROM base_agent AS wazuh-env-agent-decoders_black_rbac
-FROM base_agent AS wazuh-env-agent-syscollector_white_rbac
-FROM base_agent AS wazuh-env-agent-syscollector_black_rbac
-FROM base_agent AS wazuh-env-agent-active-response_white_rbac
-FROM base_agent AS wazuh-env-agent-active-response_black_rbac
+FROM wazuh-env-agent-syscollector AS wazuh-env-agent-syscollector_white_rbac
+FROM wazuh-env-agent-syscollector AS wazuh-env-agent-syscollector_black_rbac
+FROM wazuh-env-agent-active-response AS wazuh-env-agent-active-response_white_rbac
+FROM wazuh-env-agent-active-response AS wazuh-env-agent-active-response_black_rbac
 FROM base_agent AS wazuh-env-agent-overview_white_rbac
 FROM base_agent AS wazuh-env-agent-overview_black_rbac
 FROM base_agent AS wazuh-env-agent-lists_white_rbac
@@ -66,5 +75,4 @@ FROM wazuh-env-agent-ciscat AS wazuh-env-agent-experimental_black_rbac
 
 FROM wazuh-env-agent-${ENVIRONMENT}
 
-ADD base/wazuh-agent/entrypoint.sh /scripts/entrypoint.sh
 HEALTHCHECK --retries=30 --interval=10s --timeout=30s --start-period=30s CMD /usr/bin/python3 /tmp/healthcheck.py || exit 1

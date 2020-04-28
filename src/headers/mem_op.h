@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -18,8 +18,8 @@
 #define win_free(x) HeapFree(GetProcessHeap(), 0, (x))
 #endif
 
-#define w_FreeArray(x) if (x) {char **x_it = x; for (; *x_it; (x_it)++) {free(*x_it); *x_it = NULL;}}
-#define w_FreeDoubleArray(y) if (y) {char ***y_it = y; for (; *y_it; (y_it)++) {w_FreeArray(*y_it); *y_it = NULL;}}
+#define w_FreeArray(x) if (x) {char **x_it = x; for (; *x_it; (x_it)++) {os_free(*x_it);}}
+#define w_FreeDoubleArray(y) if (y) {char ***y_it = y; for (; *y_it; (y_it)++) {w_FreeArray(*y_it); os_free(*y_it);}}
 void **os_AddPtArray(void *pt, void **array);
 char **os_AddStrArray(const char *str, char **array);
 void   os_FreeArray(char *ch1, char **ch2);

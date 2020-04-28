@@ -21,11 +21,11 @@ FROM base AS wazuh-env-base
 FROM base AS wazuh-env-agents
 COPY configurations/agents/test_custom_upgrade_3.10.2.wpk /var/ossec/test_custom_upgrade_3.10.2.wpk
 
+FROM base AS wazuh-env-active-response
 FROM base AS wazuh-env-sca
 FROM base AS wazuh-env-syscheck
 FROM base AS wazuh-env-ciscat
 FROM base AS wazuh-env-syscollector
-
 FROM base as wazuh-env-rules_white_rbac
 FROM base as wazuh-env-rules_black_rbac
 FROM base as wazuh-env-decoders_white_rbac
@@ -87,11 +87,11 @@ FROM base as wazuh-env-sca_black_rbac
 ADD configurations/rbac/sca/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
-FROM base as wazuh-env-active-response_white_rbac
+FROM wazuh-env-active-response as wazuh-env-active-response_white_rbac
 ADD configurations/rbac/active-response/white_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
-FROM base as wazuh-env-active-response_black_rbac
+FROM wazuh-env-active-response as wazuh-env-active-response_black_rbac
 ADD configurations/rbac/active-response/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
@@ -106,11 +106,11 @@ FROM wazuh-env-cluster AS wazuh-env-cluster_black_rbac
 ADD configurations/rbac/cluster/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
-FROM base AS wazuh-env-experimental_black_rbac
+FROM wazuh-env-experimental AS wazuh-env-experimental_black_rbac
 ADD configurations/rbac/experimental/black_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
-FROM base AS wazuh-env-experimental_white_rbac
+FROM wazuh-env-experimental AS wazuh-env-experimental_white_rbac
 ADD configurations/rbac/experimental/white_configuration_rbac.sh /scripts/configuration_rbac.sh
 RUN /scripts/configuration_rbac.sh
 
