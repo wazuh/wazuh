@@ -693,7 +693,7 @@ class Agent:
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                      filters=filters, query=q, distinct=True)
+                                      filters=filters, query=q)
         data = db_query.run()
 
         return data

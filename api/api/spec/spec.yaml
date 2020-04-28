@@ -4158,7 +4158,7 @@ components:
     distinct:
       in: query
       name: distinct
-      description: Removes duplicate items in the query result.
+      description: Look for distinct values.
       schema:
         type: boolean
         default: false

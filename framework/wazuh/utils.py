@@ -844,7 +844,7 @@ class WazuhDBQuery(object):
         :param date_fields: database fields that represent a date
         :param get_data: whether to return data or not
         :param backend: Database engine to use. Possible options are 'wdb' and 'sqlite3'.
-        :param distinct: If true, removes duplicate items in the query result.
+        :param distinct: Look for distinct values.
         :param agent_id: Agent to fetch information about.
         :param distinct: Look for distinct values
         """
@@ -1113,8 +1113,6 @@ class WazuhDBQuery(object):
 
         :return: The default query
         """
-        return "SELECT {0} FROM " + self.table if not self.distinct else "SELECT DISTINCT {0} FROM " + self.table
-
         return "SELECT {0} FROM " + self.table if not self.distinct else "SELECT DISTINCT {0} FROM " + self.table
 
     def _default_count_query(self):
