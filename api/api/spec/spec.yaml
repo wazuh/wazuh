@@ -5682,13 +5682,6 @@ paths:
                         format: int32
               example:
                 data:
-                  - filters:
-                      os: Linux
-                  - config:
-                      localfile:
-                      - location: /var/log/linux.log
-                      - log_format: syslog
-                  total_affected_items: 3
                   affected_items:
                     - filters:
                         name: agent_name
@@ -5708,6 +5701,7 @@ paths:
                         localfile:
                           - location: "/var/log/database.log"
                             log_format: syslog
+                  total_affected_items: 3
         '400':
           description: "Request error"
           $ref: '#/components/responses/ResponseError'
