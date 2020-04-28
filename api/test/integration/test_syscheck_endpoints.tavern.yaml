@@ -379,6 +379,7 @@ stages:
     # GET /syscheck/000?limit=1&distinct=tr
   - name: Try to get syscheck scan results for agent 000 using an invalid distinct parameter
     request:
+      verify: False
       <<: *get_syscheck_agent
       params:
         limit: 1
