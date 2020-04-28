@@ -41,7 +41,7 @@ class WazuhException(Exception):
         1015: 'Error agent version is null. Was the agent ever connected?',
         1016: {'message': 'Error moving file',
                'remediation': 'Please, ensure you have the required file permissions in Wazuh directories'},
-        1017: 'Some Wazuh daemons are not ready yet in node \'{node_name}\' ',
+        1017: 'Some Wazuh daemons are not ready yet in node "{node_name}" ({not_ready_daemons})',
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
         1101: {'message': 'Requested component does not exist',

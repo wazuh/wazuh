@@ -317,3 +317,69 @@ stages:
       status_code: 400
       json:
         code: 4000
+
+
+---
+test_name: GET /manager/api/config
+
+stages:
+
+  - name: Request API config (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/api/config"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        code: 4000
+
+---
+test_name: PUT /manager/api/config
+
+stages:
+
+  - name: Modify API configuration (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/api/config"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        cache:
+          enabled: false
+          time: 1
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+          failed_items: []
+        message: !anystr
+
+---
+test_name: DELETE /manager/api/config
+
+stages:
+
+  - name: Restore API config (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/api/config"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+          failed_items: []
+        message: !anystr

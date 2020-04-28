@@ -34,7 +34,7 @@ class APIException(Exception):
             2006: 'Error parsing body request to UTF-8',
             2007: 'Body is empty',
             2008: 'Experimental features are disabled. '
-                  'It can be changed in the API configuration file'
+                  'It can be changed in the API configuration'
         }
 
     def __str__(self):
