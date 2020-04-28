@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -78,11 +78,19 @@ def get_agents_summary_os(agent_list=None):
     :param agent_list: List of agents ID's.
     :return: WazuhResult.
     """
-    result = WazuhResult({})
+    result = AffectedItemsWazuhResult(none_msg='Could not get the operative system of the agents',
+                                      all_msg='Showing the operative system of all specified agents',
+                                      some_msg='Could not get the operative system of some agents')
     if len(agent_list) != 0:
-        db_query = WazuhDBQueryDistinctAgents(select=['os.platform'], filters={'id': agent_list},
-                                              default_sort_field='os_platform', min_select_fields=set())
-        result.dikt = db_query.run()
+
+        db_query = WazuhDBQueryAgents(select=['os.platform'], filters={'id': agent_list},
+                                      default_sort_field='os_platform', min_select_fields=set(),
+                                      distinct=True)
+        query_data = db_query.run()
+        query_data['items'] = [row['os']['platform'] for row in query_data['items']]
+        result.affected_items = query_data['items']
+        result.total_affected_items = len(result.affected_items)
+
     return result
 
 
@@ -224,7 +232,7 @@ def get_agents_keys(agent_list=None):
 
 @expose_resources(actions=["agent:delete"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703]})
-def delete_agents(agent_list=None, backup=False, purge=False, status="all", older_than="7d"):
+def delete_agents(agent_list=None, backup=False, purge=False, status="all", older_than="7d", use_only_authd=False):
     """Deletes a list of agents.
 
     :param agent_list: List of agents ID's.
@@ -234,6 +242,7 @@ def delete_agents(agent_list=None, backup=False, purge=False, status="all", olde
     "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s". For never_connected agents, uses the register date.
     :param status: Filters by agent status: active, disconnected or never_connected. Multiples statuses separated
     by commas.
+    :param use_only_authd: Force the use of authd when adding and removing agents.
     :return: AffectedItemsWazuhResult.
     """
     result = AffectedItemsWazuhResult(all_msg='All selected agents were deleted',
@@ -261,7 +270,7 @@ def delete_agents(agent_list=None, backup=False, purge=False, status="all", olde
                             extra_message="The agent has a status different to '{0}' or the specified time "
                                           "frame 'older_than {1}' does not apply".format(status, older_than)
                         )
-                    my_agent.remove(backup, purge)
+                    my_agent.remove(backup=backup, purge=purge, use_only_authd=use_only_authd)
                     result.affected_items.append(agent_id)
             except WazuhException as e:
                 result.add_failed_item(id_=agent_id, error=e)
@@ -273,21 +282,22 @@ def delete_agents(agent_list=None, backup=False, purge=False, status="all", olde
 
 
 @expose_resources(actions=["agent:create"], resources=["*:*:*"], post_proc_func=None)
-def add_agent(name=None, agent_id=None, key=None, ip='any', force_time=-1):
+def add_agent(name=None, agent_id=None, key=None, ip='any', force_time=-1, use_only_authd=False):
     """Adds a new Wazuh agent.
 
     :param name: name of the new agent.
     :param agent_id: id of the new agent.
     :param ip: IP of the new agent. It can be an IP, IP/NET or ANY.
-    :param key: name of the new agent.
+    :param key: key of the new agent.
     :param force_time: Remove old agent with same IP if disconnected since <force_time> seconds.
+    :param use_only_authd: Force the use of authd when adding and removing agents.
     :return: Agent ID and Agent key.
     """
     # Check length of agent name
     if len(name) > 128:
         raise WazuhError(1738)
 
-    new_agent = Agent(name=name, ip=ip, id=agent_id, key=key, force=force_time)
+    new_agent = Agent(name=name, ip=ip, id=agent_id, key=key, force=force_time, use_only_authd=use_only_authd)
 
     return WazuhResult({'id': new_agent.id, 'key': new_agent.key})
 
@@ -323,11 +333,13 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort_by=None, sort_a
                                       )
 
     # Group names
+    system_groups = get_groups()
     for group_id in group_list:
         try:
-            # Check if the group exists
-            if group_id not in group_list:
+            # Check if group exists
+            if group_id not in system_groups:
                 raise WazuhError(1710)
+
             full_entry = path.join(common.shared_path, group_id)
 
             # Get the id of the group
@@ -335,9 +347,6 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort_by=None, sort_a
             request = {'group_id': group_id}
             conn.execute(query, request)
             id_group = conn.fetch()
-
-            if id_group is None:
-                continue
 
             # Group count
             query = "SELECT {0} FROM belongs WHERE id_group = :id"
@@ -390,39 +399,43 @@ def get_group_files(group_list=None, offset=0, limit=None, search_text=None, sea
     # a list of groups
     group_id = group_list[0]
     group_path = common.shared_path
+    result = AffectedItemsWazuhResult(all_msg='All selected groups files are shown',
+                                      some_msg='Some groups files are not shown',
+                                      none_msg='No groups files are shown'
+                                      )
     if group_id:
         if not Agent.group_exists(group_id):
-            raise WazuhError(1710, extra_message=group_id)
+            result.add_failed_item(id_=group_id, error=WazuhError(1710))
+            return result
         group_path = path.join(common.shared_path, group_id)
 
     if not path.exists(group_path):
-        raise WazuhError(1006, extra_message=group_path)
+        result.add_failed_item(id_=group_path, error=WazuhError(1006))
+        return result
 
     try:
         data = []
         for entry in listdir(group_path):
             item = dict()
-            try:
-                item['filename'] = entry
-                item['hash'] = get_hash(path.join(group_path, entry), hash_algorithm)
-                data.append(item)
-            except (OSError, IOError):
-                pass
+            item['filename'] = entry
+            item['hash'] = get_hash(path.join(group_path, entry), hash_algorithm)
+            data.append(item)
 
-        try:
-            # ar.conf
-            ar_path = path.join(common.shared_path, 'ar.conf')
-            data.append({'filename': "ar.conf", 'hash': get_hash(ar_path, hash_algorithm)})
-        except (OSError, IOError):
-            pass
-
-        return WazuhResult(process_array(data, search_text=search_text, search_in_fields=search_in_fields,
-                                         complementary_search=complementary_search, sort_by=sort_by,
-                                         sort_ascending=sort_ascending, offset=offset, limit=limit))
+        # ar.conf
+        ar_path = path.join(common.shared_path, 'ar.conf')
+        data.append({'filename': "ar.conf", 'hash': get_hash(ar_path, hash_algorithm)})
+        data = process_array(data, search_text=search_text, search_in_fields=search_in_fields,
+                             complementary_search=complementary_search, sort_by=sort_by,
+                             sort_ascending=sort_ascending, offset=offset, limit=limit)
+        result.affected_items = data['items']
+        result.total_affected_items = data['totalItems']
     except WazuhError as e:
+        result.add_failed_item(id_=group_path, error=e)
         raise e
     except Exception as e:
         raise WazuhInternalError(1727, extra_message=str(e))
+
+    return result
 
 
 @expose_resources(actions=["group:create"], resources=["*:*:*"], post_proc_func=None)
@@ -720,9 +733,6 @@ def upgrade_agents_custom(agent_list=None, file_path=None, installer=None):
     :param installer: Selected installer.
     :return: Upgrade message.
     """
-    if not file_path or not installer:
-        raise WazuhInternalError(1307)
-
     # We access unique agent_id from list, this may change if and when we decide to add option to upgrade a list of
     # agents
     agent_id = agent_list[0]

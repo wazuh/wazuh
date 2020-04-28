@@ -4,11 +4,14 @@
 
 import datetime
 import logging
+from json.decoder import JSONDecodeError
 
 from aiohttp import web
 
 import wazuh.manager as manager
 import wazuh.stats as stats
+from api import configuration
+from api.api_exception import APIError
 from api.encoder import dumps
 from api.models.base_model_ import Data
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
@@ -312,9 +315,9 @@ async def put_files(request, body, overwrite=False, pretty=False, wait_for_compl
     try:
         body = body.decode('utf-8')
     except UnicodeDecodeError:
-        raise WazuhError(1911)
+        raise_if_exc(WazuhError(1911))
     except AttributeError:
-        raise WazuhError(1912)
+        raise_if_exc(WazuhError(1912))
 
     f_kwargs = {'path': path,
                 'overwrite': overwrite,
@@ -350,6 +353,81 @@ async def delete_files(request, pretty=False, wait_for_complete=False, path=None
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
                           logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=dumps)
+
+
+
+async def get_api_config(request, pretty=False, wait_for_complete=False):
+    """Get active API configuration in manager or local_node.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    """
+    f_kwargs = {}
+
+    dapi = DistributedAPI(f=manager.get_api_config,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=dumps)
+
+
+async def put_api_config(request, pretty=False, wait_for_complete=False):
+    """Update current API configuration with the given one.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    """
+    try:
+        f_kwargs = {"updated_config": await request.json()}
+    except JSONDecodeError as e:
+        raise_if_exc(APIError(code=2005, details=e.msg))
+
+    dapi = DistributedAPI(f=manager.update_api_config,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger,
+                          broadcasting=True,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=dumps)
+
+
+async def delete_api_config(request, pretty=False, wait_for_complete=False):
+    """Restore default API configuration.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    """
+    allowed_fields = {'behind_proxy_server', 'rbac', 'logs', 'cache', 'cors', 'use_only_authd', 'experimental_features'}
+    default_config = {key: configuration.default_configuration[key] for key in allowed_fields}
+
+    f_kwargs = {"updated_config": default_config}
+
+    dapi = DistributedAPI(f=manager.update_api_config,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger,
+                          broadcasting=True,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())

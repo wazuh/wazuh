@@ -5,17 +5,11 @@ marks:
   - usefixtures:
     - active-response_black_rbac_tests
 
-includes:
-  - !include common.yaml
-
 stages:
-
-    # Authentication stage
-  - type: ref
-    id: login_get_token
 
   - name: Runs an Active Response command on a specified agent (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
@@ -28,12 +22,13 @@ stages:
         list_agents: '001'
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
-        detail: "Permission denied: Resource type: agent:id"
+        detail: !anystr
 
   - name: Send a message to an agent (Status=Active) (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
@@ -46,7 +41,7 @@ stages:
         list_agents: '002'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '002'
@@ -57,6 +52,7 @@ stages:
 
   - name: Send a message to a list of agents
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
@@ -69,7 +65,7 @@ stages:
         list_agents: 002,004,005,007,010,011
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '002'
@@ -77,15 +73,14 @@ stages:
           failed_items:
             - error:
                 code: 1651
-                message: Active response - Agent is not active
+                message: !anystr
                 remediation: !anything
               id:
                 - '010'
             - error:
                 code: 4000
-                message: 'Permission denied: Resource type: agent:id'
-                remediation: Please, make sure you have permissions to execute current request,
-                  for more information on setting up permissions please visit XXXX
+                message: !anystr
+                remediation: !anystr
               id:
                 - '004'
                 - '007'
@@ -96,6 +91,7 @@ stages:
 
   - name: Try to send a message to an agent (status=disconnected/never_connected) (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
@@ -108,12 +104,13 @@ stages:
         list_agents: '009'
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
-        detail: "Permission denied: Resource type: agent:id"
+        detail: !anystr
 
   - name: Try to send a message to an unexisting agent (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
@@ -126,15 +123,14 @@ stages:
         list_agents: 251,252
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
             - error:
                 code: 1701
-                message: Agent does not exist
-                remediation: Please, use `GET /agents?select=id,name` to find all available
-                  agents
+                message: !anystr
+                remediation: !anystr
               id:
                 - '251'
                 - '252'
@@ -150,6 +146,7 @@ stages:
     # PUT /active-response
   - name: Runs an Active Response command on all agents
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
@@ -160,13 +157,13 @@ stages:
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items:
             - error:
                 code: 1651
-                message: Active response - Agent is not active
+                message: !anystr
                 remediation: !anything
               id:
                 - '010'

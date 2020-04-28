@@ -3,26 +3,20 @@ test_name: GET /agents
 
 marks:
   - usefixtures:
-    - base_tests
-
-includes:
- - !include common.yaml
+    - agents_tests
 
 stages:
 
- # Authentication stage
- - type: ref
-   id: login_get_token
-
  - name: Get all agents
    request: &get_agents
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body: &basic_response
+     json: &basic_response
        data:
          affected_items:
            - id: '000'
@@ -44,12 +38,13 @@ stages:
 
  - name: Get all agents inverse order
    request:
+     verify: False
      <<: *get_agents
      params:
        sort: -id
    response:
      status_code: 200
-     body: &basic_response_inverse
+     json: &basic_response_inverse
        data:
          affected_items:
            - id: '012'
@@ -71,6 +66,7 @@ stages:
 
  - name: Pagination with offset 0 and limit 2
    request:
+     verify: False
      <<: *get_agents
      params:
        offset: 0
@@ -78,16 +74,16 @@ stages:
    response:
      status_code: 200
      save:
-       body:
-         expected_agent_name: data.affected_items.0.name
-         expected_os_platform: data.affected_items.0.os.platform
-         expected_os_version: data.affected_items.0.os.version
-         expected_os_name: data.affected_items.0.os.name
-         expected_manager_host: data.affected_items.0.manager
-         expected_node_name: data.affected_items.0.node_name
-         expected_name: data.affected_items.0.name
-         expected_ip: data.affected_items.0.ip
-     body:
+       json:
+         expected_agent_name: data.affected_items[0].name
+         expected_os_platform: data.affected_items[0].os.platform
+         expected_os_version: data.affected_items[0].os.version
+         expected_os_name: data.affected_items[0].os.name
+         expected_manager_host: data.affected_items[0].manager
+         expected_node_name: data.affected_items[0].node_name
+         expected_name: data.affected_items[0].name
+         expected_ip: data.affected_items[0].ip
+     json:
        data:
          affected_items:
            - status: active
@@ -100,12 +96,13 @@ stages:
 
  - name: Try to show agents using offset -1
    request:
+     verify: False
      <<: *get_agents
      params:
        offset: -1
    response:
      status_code: 400
-     body: &error_spec
+     json: &error_spec
        detail: !anystr
        status: !anyint
        title: !anystr
@@ -113,63 +110,69 @@ stages:
 
  - name: Try to show agents with offset not integer value
    request:
+     verify: False
      <<: *get_agents
      params:
        offset: wrong_offset
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try to show agents with offset too large 9999999999999999999
    request:
+     verify: False
      <<: *get_agents
      params:
        offset: 9999999999999999999
    response:
      status_code: 400
-     body:
+     json:
        code: 2003
 
  - name: Try to show agents with limit 0
    request:
+     verify: False
      <<: *get_agents
      params:
        limit: 0
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try to show agents with an invalid limit value
    request:
+     verify: False
      <<: *get_agents
      params:
        limit: wrong_limit
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try to show agents with limit 9999
    request:
+     verify: False
      <<: *get_agents
      params:
        limit: 9999
    response:
      status_code: 400
-     body:
+     json:
        code: 1405
 
  - name: Sort
    request:
+     verify: False
      <<: *get_agents
      params:
        sort: -id
        limit: 2
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '012'
@@ -180,22 +183,24 @@ stages:
 
  - name: Try to show agents using wrong sort
    request:
+     verify: False
      <<: *get_agents
      params:
        sort: -wrong_sort
    response:
      status_code: 400
-     body:
+     json:
        code: 1403
 
  - name: Search
    request:
+     verify: False
      <<: *get_agents
      params:
        search: '000'
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '000'
@@ -205,12 +210,13 @@ stages:
 
  - name: Try to show agents using a search with no return
    request:
+     verify: False
      <<: *get_agents
      params:
        search: wrong_search
    response:
      status_code: 200
-     body:
+     json:
        data: &affected_empty_answer
          affected_items: []
          failed_items: []
@@ -219,13 +225,14 @@ stages:
 
  - name: Filter select one field
    request:
+     verify: False
      <<: *get_agents
      params:
        select: 'os.platform'
        limit: 2
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '000'
@@ -240,6 +247,7 @@ stages:
 
  - name: Filter select multiple fields
    request:
+     verify: False
      <<: *get_agents
      params:
        select: 'dateAdd,mergedSum'
@@ -247,7 +255,7 @@ stages:
        offset: 1
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '001'
@@ -262,32 +270,35 @@ stages:
 
  - name: Try to show agents using a not allowed selector
    request:
+     verify: False
      <<: *get_agents
      params:
        select: param_test
    response:
      status_code: 400
-     body:
+     json:
        code: 1724
 
  - name: Try to show agents using not allowed selector (invalid character)
    request:
+     verify: False
      <<: *get_agents
      params:
        select: param_%_test
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Filter by agent version
    request:
+     verify: False
      <<: *get_agents
      params:
        version: 'Wazuh v3.9.2'
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '009'
@@ -298,34 +309,37 @@ stages:
 
  - name: Try to show agents using a non existing version
    request:
+     verify: False
      <<: *get_agents
      params:
        version: 'TestVersion'
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *affected_empty_answer
 
  - name: Try to show agents using an invalid version
    request:
+     verify: False
      <<: *get_agents
      params:
        version: 'Test%Version'
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Filter by agent OS Platform
    request:
+     verify: False
      <<: *get_agents
      params:
        os.platform: "{expected_os_platform:s}"
        limit: 1
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '000'
@@ -337,34 +351,37 @@ stages:
 
  - name: Try to show agents using a non existing OS Platform
    request:
+     verify: False
      <<: *get_agents
      params:
        os.platform: test_platform
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *affected_empty_answer
 
  - name: Try show agents with not existed OS Platform (invalid character)
    request:
+     verify: False
      <<: *get_agents
      params:
        os.platform: test_%_platform
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Filter by agent OS Version
    request:
+     verify: False
      <<: *get_agents
      params:
        os.version: "{expected_os_version:s}"
        limit: 1
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '000'
@@ -376,34 +393,37 @@ stages:
 
  - name: Try to show agents using a non existing OS Version
    request:
+     verify: False
      <<: *get_agents
      params:
        os.version: test_version
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *affected_empty_answer
 
  - name: Try to show agents using an invalid OS Version
    request:
+     verify: False
      <<: *get_agents
      params:
        os.version: test_version_%
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Filter by agent OS Name
    request:
+     verify: False
      <<: *get_agents
      params:
        os.name: "{expected_os_name:s}"
        limit: 1
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '000'
@@ -415,34 +435,37 @@ stages:
 
  - name: Try to show agents using a non existing OS Name
    request:
+     verify: False
      <<: *get_agents
      params:
        os.name: test_name
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *affected_empty_answer
 
  - name: Try to show agents using an invalid OS Name
    request:
+     verify: False
      <<: *get_agents
      params:
        os.name: test_name_%
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Filter by agent Node Name
    request:
+     verify: False
      <<: *get_agents
      params:
        node_name: "{expected_node_name:s}"
        limit: 1
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '000'
@@ -452,33 +475,36 @@ stages:
 
  - name: Try to show agents using a non existing Node Name
    request:
+     verify: False
      <<: *get_agents
      params:
        node_name: test_node_name
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *affected_empty_answer
 
  - name: Try show agents using an invalid Node Name
    request:
+     verify: False
      <<: *get_agents
      params:
        node_name: test_node_name_%
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Filter by agent name
    request:
+     verify: False
      <<: *get_agents
      params:
        name: "{expected_name:s}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '000'
@@ -489,33 +515,36 @@ stages:
 
  - name: Try to show agents using a non existing agent name
    request:
+     verify: False
      <<: *get_agents
      params:
        name: test_name
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *affected_empty_answer
 
  - name: Try to show agents using an invalid agent name
    request:
+     verify: False
      <<: *get_agents
      params:
        name: test_name_%
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Filter by agent IP
    request:
+     verify: False
      <<: *get_agents
      params:
        ip: "{expected_ip:s}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '000'
@@ -526,34 +555,37 @@ stages:
 
  - name: Try to show agents using a non existing IP
    request:
+     verify: False
      <<: *get_agents
      params:
        ip: test_ip
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *affected_empty_answer
 
  - name: Try to show agents using an invalid IP
    request:
+     verify: False
      <<: *get_agents
      params:
        ip: test_ip_%
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Filter by agent ManagerHost
    request:
+     verify: False
      <<: *get_agents
      params:
        manager: "{expected_manager_host:s}"
        limit: 1
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - manager: "{expected_manager_host:s}"
@@ -562,33 +594,36 @@ stages:
 
  - name: Try to show agents using a non existing ManagerHost
    request:
+     verify: False
      <<: *get_agents
      params:
        manager: test_manager
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *affected_empty_answer
 
  - name: Try to show agents using an invalid ManagerHost
    request:
+     verify: False
      <<: *get_agents
      params:
        manager: test_manager_%
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Filter by agent status
    request:
+     verify: False
      <<: *get_agents
      params:
        status: disconnected
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '009'
@@ -597,43 +632,45 @@ stages:
          total_affected_items: 2
          total_failed_items: 0
 
-# THIS FAILS RIGHT NOW, SEVERAL STATUSES DOES NOT WORK
-# - name: Filter by agent status 2
-#   request:
-#     <<: *get_agents
-#     params:
-#       status: disconnected,never_connected
-#   response:
-#     status_code: 200
-#     body:
-#       data:
-#         affected_items:
-#           - id: '009'
-#           - id: '010'
-#           - id: '011'
-#           - id: '012'
-#         failed_items: []
-#         total_affected_items: 4
-#         total_failed_items: 0
+ - name: Filter by agent status 2
+   request:
+     verify: False
+     <<: *get_agents
+     params:
+       status: disconnected,never_connected
+   response:
+     status_code: 200
+     json:
+       data:
+         affected_items:
+           - id: '009'
+           - id: '010'
+           - id: '011'
+           - id: '012'
+         failed_items: []
+         total_affected_items: 4
+         total_failed_items: 0
 
  - name: Try to show agents with a non existing status
    request:
+     verify: False
      <<: *get_agents
      params:
        status: test_status
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Filter agents by group
    request:
+     verify: False
      <<: *get_agents
      params:
        group: group1
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '001'
@@ -647,33 +684,36 @@ stages:
 
  - name: Try to show agents using a non existing group
    request:
+     verify: False
      <<: *get_agents
      params:
        group: test_group
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *affected_empty_answer
 
  - name: Try show agents using an invalid group
    request:
+     verify: False
      <<: *get_agents
      params:
        group: test_group_%
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Filter agents by query
    request:
+     verify: False
      <<: *get_agents
      params:
        q: group=group2;lastKeepAlive<1d
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '002'
@@ -686,32 +726,35 @@ stages:
 
  - name: Try to show agents using an wrong query
    request:
+     verify: False
      <<: *get_agents
      params:
        q: group=default;lastKeepAe<1d
    response:
      status_code: 400
-     body:
+     json:
        code: 1408
 
  - name: Try to show agents using an invalid query
    request:
+     verify: False
      <<: *get_agents
      params:
        q: group=default;lastKeep%<1d
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Filter agents using older_than param
    request:
+     verify: False
      <<: *get_agents
      params:
        older_than: 30s
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '009'
@@ -724,22 +767,24 @@ stages:
 
  - name: Try show agents using an invalid older_than
    request:
+     verify: False
      <<: *get_agents
      params:
        older_than: bad_time
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try to show a list of agents
    request:
+     verify: False
      <<: *get_agents
      params:
        list_agents: "001,002,003"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - status: active
@@ -760,6 +805,7 @@ stages:
   # GET /agents?list_agents=000
  - name: Basic response agent
    request: &get_agent
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
      method: GET
      headers:
@@ -768,7 +814,7 @@ stages:
        list_agents: '000'
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            -  dateAdd: !anystr
@@ -797,6 +843,7 @@ stages:
   # GET /agents?list_agents=999
  - name: Try to show not existing agent
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
      method: GET
      headers:
@@ -805,7 +852,7 @@ stages:
        list_agents: '999'
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items: []
          failed_items:
@@ -819,6 +866,7 @@ stages:
   # GET /agents?list_agents=wrong_name
  - name: Try show not existing agent by name
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
      method: GET
      headers:
@@ -827,19 +875,20 @@ stages:
        list_agents: wrong_name
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
   # GET /agents?list_agents=000&select=os.platform
  - name: Filter select one field
    request:
+     verify: False
      <<: *get_agent
      params:
        select: 'os.platform'
        list_agents: '000'
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '000'
@@ -852,13 +901,14 @@ stages:
   # GET /agents?list_agents=000&select=dateAdd,status
  - name: Filter select multiple fields
    request:
+     verify: False
      <<: *get_agent
      params:
        select: 'dateAdd,status'
        list_agents: '000'
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '000'
@@ -871,25 +921,27 @@ stages:
   # GET /agents?list_agents=000&select=param_test
  - name: Try show agents with not allowed selector
    request:
+     verify: False
      <<: *get_agent
      params:
        select: param_test
        list_agents: '000'
    response:
      status_code: 400
-     body:
+     json:
        code: 1724
 
   # GET /agents?list_agents=000&select=param_%_test
  - name: Try show agents with not allowed selector (invalid character)
    request:
+     verify: False
      <<: *get_agent
      params:
        select: param_%_test
        list_agents: '000'
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
 ---
@@ -900,13 +952,14 @@ stages:
   # GET /agents/001/config/agent/client
  - name: Request-Agent-Client
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/agent/client"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          client:
            auto_restart: !anystr
@@ -919,13 +972,14 @@ stages:
 
  - name: Request-Agent-Buffer
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/agent/buffer"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          buffer:
            disabled: !anystr
@@ -934,25 +988,27 @@ stages:
 
  - name: Request-Agent-Labels
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/agent/labels"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          labels: !anything
 
  - name: Request-Agent-Internal
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/agent/internal"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          internal:
            agent:
@@ -982,13 +1038,14 @@ stages:
 
  - name: Request-Agentless-Agentless
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/agentless/agentless"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          agentless:
            - arguments: !anystr
@@ -1000,13 +1057,14 @@ stages:
 
  - name: Request-Analysis-Global
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/analysis/global"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          global:
            alerts_log: !anystr
@@ -1027,25 +1085,27 @@ stages:
 
  - name: Request-Analysis-Active-response
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/analysis/active_response"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          active-response: !anything
 
  - name: Request-Analysis-Alerts
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/analysis/alerts"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          alerts:
            email_alert_level: !anyint
@@ -1053,25 +1113,27 @@ stages:
 
  - name: Request-Analysis-Command
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/analysis/command"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          command: !anything
 
  - name: Request-Analysis-Internal
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/analysis/internal"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          internal:
            analysisd:
@@ -1091,13 +1153,14 @@ stages:
 
  - name: Request-Auth-Auth
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/auth/auth"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          auth:
            ciphers: !anystr
@@ -1116,13 +1179,14 @@ stages:
 
  - name: Request-Com-Active-response (Manager)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/com/active-response"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          active-response:
            ca_verification: !anystr
@@ -1130,13 +1194,14 @@ stages:
 
  - name: Request-Com-Active-response (Agent)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/com/active-response"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          active-response:
            ca_store: !anything
@@ -1145,13 +1210,14 @@ stages:
 
  - name: Request-Com-Internal (Manager)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/com/internal"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          internal:
            execd:
@@ -1160,13 +1226,14 @@ stages:
 
  - name: Request-Com-Internal (Agent)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/com/internal"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          internal:
            execd:
@@ -1175,13 +1242,14 @@ stages:
 
  - name: Request-Com-Cluster (Manager)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/com/cluster"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          bind_addr: !anystr
          disabled: !anybool
@@ -1195,13 +1263,14 @@ stages:
 
  - name: Request-Csyslog-Csyslog
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/csyslog/csyslog"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          syslog_output:
            - format: !anystr
@@ -1212,13 +1281,14 @@ stages:
 
  - name: Request-Integrator-Integration
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/integrator/integration"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          integration:
            - alert_format: !anystr
@@ -1230,30 +1300,33 @@ stages:
 
  - name: Request-Logcollector-Localfile (Manager)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/logcollector/localfile"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          localfile: !anything
 
  - name: Request-Logcollector-Localfile (Agent)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/logcollector/localfile"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          localfile: !anything
 
  - name: Request-Logcollector-Socker (Manager)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/logcollector/socket"
      method: GET
      headers:
@@ -1263,6 +1336,7 @@ stages:
 
  - name: Request-Logcollector-Socker (Agent)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/logcollector/socket"
      method: GET
      headers:
@@ -1272,13 +1346,14 @@ stages:
 
  - name: Request-Logcollector-Internal (Manager)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/logcollector/internal"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          internal:
            logcollector:
@@ -1300,13 +1375,14 @@ stages:
 
  - name: Request-Logcollector-Internal (Agent)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/logcollector/internal"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          internal:
            logcollector:
@@ -1328,13 +1404,14 @@ stages:
 
  - name: Request-Mail-Global
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/mail/global"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          global:
            email_from: !anystr
@@ -1345,25 +1422,27 @@ stages:
 
  - name: Request-Mail-Alerts
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/mail/alerts"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          email_alerts: !anything
 
  - name: Request-Mail-Internal
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/mail/internal"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          internal:
            mail:
@@ -1372,13 +1451,14 @@ stages:
 
  - name: Request-Monitor-Internal
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/monitor/internal"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          monitord:
            compress: !anyint
@@ -1393,13 +1473,14 @@ stages:
 
  - name: Request-Request-Remote
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/request/remote"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          remote:
            - connection: !anystr
@@ -1410,13 +1491,14 @@ stages:
 
  - name: Request-Request-Internal
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/request/internal"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          internal:
            remoted:
@@ -1442,13 +1524,14 @@ stages:
 
  - name: Request-Syscheck-Syscheck (Manager)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/syscheck/syscheck"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          syscheck:
            directories: !anything
@@ -1462,13 +1545,14 @@ stages:
 
  - name: Request-Syscheck-Syscheck (Agent)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/syscheck/syscheck"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          syscheck:
            directories: !anything
@@ -1482,13 +1566,14 @@ stages:
 
  - name: Request-Syscheck-Rootcheck (Manager)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/syscheck/rootcheck"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          rootcheck:
            check_dev: !anystr
@@ -1508,13 +1593,14 @@ stages:
 
  - name: Request-Syscheck-Rootcheck (Agent)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/syscheck/rootcheck"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          rootcheck:
            check_dev: !anystr
@@ -1534,13 +1620,14 @@ stages:
 
  - name: Request-Syscheck-Internal (Manager)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/syscheck/internal"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          internal:
            rootcheck:
@@ -1550,118 +1637,128 @@ stages:
              default_max_depth: !anyint
              max_audit_entries: !anyint
              rt_delay: !anyint
-             sleep: !anyint
-             sleep_after: !anyint
+             file_max_size: !anyint
+             symlink_scan_interval: !anyint
 
  - name: Request-Syscheck-Internal (Agent)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/syscheck/internal"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          internal:
+           syscheck:
+             rt_delay: !anyint
+             default_max_depth: !anyint
+             symlink_scan_interval: !anyint
+             debug: !anyint
+             file_max_size: !anyint
+             max_audit_entries: !anyint
            rootcheck:
              sleep: !anyint
-           syscheck:
-             debug: !anyint
-             default_max_depth: !anyint
-             max_audit_entries: !anyint
-             rt_delay: !anyint
-             sleep: !anyint
-             sleep_after: !anyint
+
 
  - name: Request-Wmodules-Wmodules (Manager)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/config/wmodules/wmodules"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          wmodules: !anything
 
  - name: Request-Wmodules-Wmodules (Agent)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/wmodules/wmodules"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          wmodules: !anything
 
  - name: Try to show config of a non existing agent
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/999/config/mail/global"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        code: 1701
 
  - name: Try to show config of an invalid agent
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/wrong_name/config/mail/global"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Request Error
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/mail/global"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        code: 1117
 
  - name: Request Error Component Parameter
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/wrong_component/global"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Request Error Configuration Parameter
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/mail/wrong_configuration"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Request Error Component and Configuration Parameters
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/config/wrong_component/wrong_configuration"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
 ---
@@ -1671,13 +1768,14 @@ stages:
 
  - name: Try to get sync of agent 000 (manager)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/group/is_sync"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items: []
          failed_items:
@@ -1690,13 +1788,14 @@ stages:
 
  - name: Try to get sync of a non existing agent
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/999/group/is_sync"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items: []
          failed_items:
@@ -1709,24 +1808,26 @@ stages:
 
  - name: Try get sync agent by name
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/bad_id/group/is_sync"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Get agent sync
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/group/is_sync"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '001'
@@ -1742,13 +1843,14 @@ stages:
 
  - name: Try get key agent 000 (manager)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/key"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items: []
          failed_items:
@@ -1761,13 +1863,14 @@ stages:
 
  - name: Try get key not existing agent
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/999/key"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items: []
          failed_items:
@@ -1780,24 +1883,26 @@ stages:
 
  - name: Try get key agent by name
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/bad_id/key"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Get agent key
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/key"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '001'
@@ -1812,6 +1917,7 @@ stages:
 
  - name: Basic response agents groups
    request: &get_agents_groups
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
      method: GET
      headers:
@@ -1819,9 +1925,9 @@ stages:
    response:
      status_code: 200
      save:
-       body:
-         expected_total_agents: data.affected_items.2.count
-     body:
+       json:
+         expected_total_agents: data.affected_items[2].count
+     json:
        data: &get_groups_answer
          affected_items:
            - name: 'default'
@@ -1838,13 +1944,14 @@ stages:
 
  - name: Pagination
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        offset: 2
        limit: 1
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - name: 'group2'
@@ -1855,32 +1962,35 @@ stages:
 
  - name: Try show groups with offset -1
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        offset: -1
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show groups with offset not integer value
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        offset: wrong_offset
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show groups with offset too large 9999999999999999999
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        offset: 9999999999999999999
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items: []
          failed_items: []
@@ -1889,42 +1999,46 @@ stages:
 
  - name: Try show groups with limit 0
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        limit: 0
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show groups with limit not integer value
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        limit: wrong_limit
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show groups with limit 9999
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        limit: 9999
    response:
      status_code: 400
-     body:
+     json:
        code: 1405
 
  - name: Sort
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        sort: -name
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - name: 'group3'
@@ -1941,22 +2055,24 @@ stages:
 
  - name: Try to show groups with wrong sort
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        sort: -wrong_sort
    response:
      status_code: 400
-     body:
+     json:
        code: 1403
 
  - name: Search
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        search: default
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - name: 'default'
@@ -1967,33 +2083,36 @@ stages:
 
  - name: Try show groups with wrong search
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        search: wrong_search
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *affected_empty_answer
 
  - name: Try show agents with wrong hash
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        hash: wrong_hash
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try to get a list of groups information
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        list_groups: 'group1,group3'
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - name: 'group1'
@@ -2026,12 +2145,13 @@ stages:
 
  - name: Filter hash
    request:
+     verify: False
      <<: *get_agents_groups
      params:
        hash: "{hash:s}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *get_groups_answer
 
@@ -2042,13 +2162,14 @@ stages:
 
  - name: Try get all agents in one group
    request: &groups_id_request
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group3/agents"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '003'
@@ -2061,13 +2182,14 @@ stages:
 
  - name: Pagination
    request:
+     verify: False
      <<: *groups_id_request
      params:
        offset: 1
        limit: 2
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '006'
@@ -2078,95 +2200,104 @@ stages:
 
  - name: Try show agents with offset -1
    request:
+     verify: False
      <<: *groups_id_request
      params:
        offset: -1
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with offset not integer value
    request:
+     verify: False
      <<: *groups_id_request
      params:
        offset: wrong_offset
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with offset too large 9999999999999999999
    request:
+     verify: False
      <<: *groups_id_request
      params:
        offset: 9999999999999999999
    response:
      status_code: 400
-     body:
+     json:
        code: 2003
 
  - name: Try show agents with limit 0
    request:
+     verify: False
      <<: *groups_id_request
      params:
        limit: 0
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with limit not integer value
    request:
+     verify: False
      <<: *groups_id_request
      params:
        limit: wrong_limit
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with limit 9999
    request:
+     verify: False
      <<: *groups_id_request
      params:
        limit: 9999
    response:
      status_code: 400
-     body:
+     json:
        code: 1405
 
  - name: Params, bad group name
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_group/agents"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        code: 1710
 
  - name: Params, invalid group name (not alphanumeric)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_%_group/agents"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Sort
    request:
+     verify: False
      <<: *groups_id_request
      params:
        sort: -id
        limit: 3
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '008'
@@ -2178,22 +2309,24 @@ stages:
 
  - name: Try show agents with wrong sort
    request:
+     verify: False
      <<: *groups_id_request
      params:
        sort: -wrong_sort
    response:
      status_code: 400
-     body:
+     json:
        code: 1403
 
  - name: Search
    request:
+     verify: False
      <<: *groups_id_request
      params:
        search: '008'
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '008'
@@ -2203,23 +2336,25 @@ stages:
 
  - name: Try show agents with wrong search
    request:
+     verify: False
      <<: *groups_id_request
      params:
        search: wrong_search
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *affected_empty_answer
 
  - name: Filter select one field
    request:
+     verify: False
      <<: *groups_id_request
      params:
        select: 'os.platform'
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '003'
@@ -2240,6 +2375,7 @@ stages:
 
  - name: Filter select multiple fields
    request:
+     verify: False
      <<: *groups_id_request
      params:
        select: 'dateAdd,mergedSum'
@@ -2247,7 +2383,7 @@ stages:
        offset: 2
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '007'
@@ -2259,56 +2395,65 @@ stages:
 
  - name: Try show agents with not allowed selector
    request:
+     verify: False
      <<: *groups_id_request
      params:
        select: param_test
    response:
      status_code: 400
-     body:
+     json:
        code: 1724
 
  - name: Try show agents with not allowed selector (invalid character)
    request:
+     verify: False
      <<: *groups_id_request
      params:
        select: param_%_test
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
-# THIS FAILS RIGHT NOW, SEVERAL STATUSES DOES NOT WORK
-# - name: Status multiple
-#   request:
-#     <<: *groups_id_request
-#     params:
-#       limit: 1
-#       status: active,disconnected
-#   response:
-#     status_code: 200
-#     body:
-#       <<: *groups_id_response
-#       data:
-#        totalItems: !anyint
-#
+ - name: Status multiple
+   request:
+     verify: False
+     <<: *groups_id_request
+     params:
+       status: active,disconnected
+   response:
+     status_code: 200
+     json:
+       data:
+         affected_items:
+           - id: '003'
+           - id: '006'
+           - id: '007'
+           - id: '008'
+         failed_items: []
+         total_affected_items: 4
+         total_failed_items: 0
+
  - name: Try show agents with not allowed status
    request:
+     verify: False
      <<: *groups_id_request
      params:
        status: wrong_status
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Filter agents by query
    request:
+     verify: False
      <<: *groups_id_request
      params:
        q: group=group1;lastKeepAlive<1d
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '007'
@@ -2319,22 +2464,24 @@ stages:
 
  - name: Try show agents with bad query
    request:
+     verify: False
      <<: *groups_id_request
      params:
        q: group=default;lastKeepAe<1d
    response:
      status_code: 400
-     body:
+     json:
        code: 1408
 
  - name: Try show agents with bad query (invalid character)
    request:
+     verify: False
      <<: *groups_id_request
      params:
        q: group=default;lastKeep%<1d
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
 ---
@@ -2371,12 +2518,13 @@ stages:
 
  - name: Filter groups, select
    request:
+     verify: False
      <<: *groups_id_request
      params:
        select: "{field}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '003'
@@ -2389,12 +2537,13 @@ stages:
 
  - name: Filter groups, sort
    request:
+     verify: False
      <<: *groups_id_request
      params:
        sort: "{field}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: !anystr
@@ -2412,6 +2561,7 @@ stages:
 
  - name: Try get the configuration of a group
    request: &groups_id_config_request
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/default/configuration"
      method: GET
      headers:
@@ -2420,15 +2570,16 @@ stages:
        limit: 1
    response:
      status_code: 200
-     body: &groups_id_config_response
+     json: &groups_id_config_response
        data:
-         items:
+         affected_items:
            - config: !anything
              filters: !anything
-         totalItems: !anyint
+         total_affected_items: !anyint
 
  - name: Try get the configuration of a bad group
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_group/configuration"
      method: GET
      headers:
@@ -2437,11 +2588,12 @@ stages:
        limit: 1
    response:
      status_code: 400
-     body:
+     json:
        code: 1710
 
  - name: Try get the configuration of a bad group (not alphanumeric)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_%group/configuration"
      method: GET
      headers:
@@ -2450,80 +2602,87 @@ stages:
        limit: 1
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Pagination
    request:
+     verify: False
      <<: *groups_id_config_request
      params:
        offset: 0
        limit: 1
    response:
      status_code: 200
-     body:
+     json:
        <<: *groups_id_config_response
 
  - name: Try show agents with offset -1
    request:
+     verify: False
      <<: *groups_id_config_request
      params:
        offset: -1
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with offset not integer value
    request:
+     verify: False
      <<: *groups_id_config_request
      params:
        offset: wrong_offset
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with offset too large 9999999999999999999
    request:
+     verify: False
      <<: *groups_id_config_request
      params:
        offset: 9999999999999999999
    response:
      status_code: 200
-     body:
+     json:
        data:
-         items: []
-         totalItems: !anyint
+         affected_items: []
+         total_affected_items: 1
 
  - name: Try show agents with limit 0
    request:
+     verify: False
      <<: *groups_id_config_request
      params:
        limit: 0
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with limit not integer value
    request:
+     verify: False
      <<: *groups_id_config_request
      params:
        limit: wrong_limit
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with limit 9999
    request:
+     verify: False
      <<: *groups_id_config_request
      params:
        limit: 9999
    response:
      status_code: 400
-     body:
+     json:
        code: 1405
 
 ---
@@ -2533,6 +2692,7 @@ stages:
 
  - name: Try get the files of a group
    request: &groups_id_files_request
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/default/files"
      method: GET
      headers:
@@ -2542,98 +2702,115 @@ stages:
        offset: 0
    response:
      status_code: 200
-     body:
+     json:
        data:
-         items:
-           - filename: agent.conf
+         affected_items:
+           - filename: !anystr
              hash: !anystr
-           - filename: ar.conf
+           - filename: !anystr
              hash: !anystr
-         totalItems: !anyint
+         total_affected_items: !anyint
+         total_failed_items: 0
+         failed_items: []
+       message: !anystr
      save:
-       body:
-         filename_saved: data.items.1.filename
-         hash_saved: data.items.1.hash
+       json:
+         filename_saved: data.affected_items[1].filename
+         hash_saved: data.affected_items[1].hash
 
  - name: Pagination
    request:
+     verify: False
      <<: *groups_id_files_request
      params:
        limit: 1
        offset: 1
    response:
      status_code: 200
-     body:
+     json:
        data:
-         items:
+         affected_items:
            - filename: "{filename_saved}"
              hash: "{hash_saved}"
-         totalItems: !anyint
+         total_affected_items: !anyint
+         total_failed_items: 0
+         failed_items: []
+       message: !anystr
 
  - name: Try get the files of a group with offset -1
    request:
+     verify: False
      <<: *groups_id_files_request
      params:
        offset: -1
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try get the files of a group with offset not integer value
    request:
+     verify: False
      <<: *groups_id_files_request
      params:
        offset: wrong_offset
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try get the files of a group with offset too large 9999999999999999999
    request:
+     verify: False
      <<: *groups_id_files_request
      params:
        offset: 9999999999999999999
    response:
      status_code: 200
-     body:
+     json:
        data:
-         items: []
-         totalItems: !anyint
+         affected_items: []
+         total_affected_items: !anyint
+         total_failed_items: 0
+         failed_items: []
+       message: !anystr
 
  - name: Try get the files of a group with limit 0
    request:
+     verify: False
      <<: *groups_id_files_request
      params:
        limit: 0
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try get the files of a group with limit not integer value
    request:
+     verify: False
      <<: *groups_id_files_request
      params:
        limit: wrong_limit
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try get the files of a group with limit 9999
    request:
+     verify: False
      <<: *groups_id_files_request
      params:
        limit: 9999
    response:
      status_code: 400
-     body:
+     json:
        code: 1405
 
  - name: Try get the files of a bad group name
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_group/files"
      method: GET
      headers:
@@ -2641,12 +2818,24 @@ stages:
      params:
        limit: 1
    response:
-     status_code: 400
-     body:
-       code: 1710
+     status_code: 200
+     json:
+       data:
+         affected_items: []
+         total_affected_items: 0
+         total_failed_items: 1
+         failed_items:
+           - error:
+               code: 1710
+               message: The group does not exist
+               remediation: Please, `GET /agents/groups` to find all available groups
+             id:
+               - wrong_group
+       message: No groups files are shown
 
  - name: Try get the files of a bad group name (no alphanumeric)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_%_group/files"
      method: GET
      headers:
@@ -2655,64 +2844,79 @@ stages:
        limit: 1
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Sort
    request:
+     verify: False
      <<: *groups_id_files_request
      params:
        sort: -hash
    response:
      status_code: 200
-     body:
+     json:
        data:
-         items: !anything
-         totalItems: !anyint
+         affected_items: !anything
+         total_affected_items: !anyint
+         total_failed_items: 0
+         failed_items: []
+       message: !anystr
 
  - name: Try get the files of a group with wrong sort
    request:
+     verify: False
      <<: *groups_id_files_request
      params:
        sort: -wrong_sort
    response:
      status_code: 400
-     body:
+     json:
        code: 1403
 
  - name: Search
    request:
+     verify: False
      <<: *groups_id_files_request
      params:
        search: agent.conf
    response:
      status_code: 200
-     body:
+     json:
        data:
-         items: !anything
-           filename: agent.conf
-         totalItems: !anyint
+         affected_items:
+           - filename: !anystr
+             hash: !anystr
+         total_affected_items: 1
+         total_failed_items: 0
+         failed_items: []
+       message: !anystr
 
  - name: Try get the files of a group with wrong search
    request:
+     verify: False
      <<: *groups_id_files_request
      params:
        search: wrong_search
    response:
      status_code: 200
-     body:
+     json:
        data:
-         items: !anything
-         totalItems: 0
+         affected_items: []
+         total_affected_items: 0
+         total_failed_items: 0
+         failed_items: []
+       message: !anystr
 
  - name: Try get the files of a group, filter bad hash
    request:
+     verify: False
      <<: *groups_id_files_request
      params:
        hash: wrong_hash
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
 ---
@@ -2739,15 +2943,21 @@ stages:
 
  - name: Filter hash
    request:
+     verify: False
      <<: *groups_id_files_request
      params:
        hash: "{hash:s}"
    response:
      status_code: 200
-     body:
+     json:
        data:
-         items: !anything
-         totalItems: !anyint
+         affected_items:
+           - filename: !anystr
+             hash: !anystr
+         total_affected_items: !anyint
+         total_failed_items: 0
+         failed_items: []
+       message: !anystr
 
 ---
 test_name: GET /groups/{group_id}/files/{filename}/json
@@ -2756,35 +2966,38 @@ stages:
 
  - name: Try get one file of a group
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/default/files/agent.conf/json"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data: !anything
 
  - name: Try get one file of a group, bad group
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_group/files/agent.conf/json"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        code: 1710
 
  - name: Try get one file of a group, bad group (not aplhanumeric)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_%_group/files/agent.conf/json"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
 ---
@@ -2794,6 +3007,7 @@ stages:
 
  - name: Try get one file of a group
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/default/files/agent.conf/xml"
      method: GET
      headers:
@@ -2806,24 +3020,26 @@ stages:
 
  - name: Try get one file of a group, bad group
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_group/files/agent.conf/xml"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        code: 1710
 
  - name: Try get one file of a group, bad group (not aplhanumeric)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_%_group/files/agent.conf/xml"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
 ---
@@ -2833,6 +3049,7 @@ stages:
 
  - name: Basic response agents name
    request: &get_agents_by_name
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
      method: GET
      headers:
@@ -2841,7 +3058,7 @@ stages:
        name: wazuh-agent1
    response:
      status_code: 200
-     body:
+     json:
        data: &get_agents_by_name_response
          affected_items:
            - id: '001'
@@ -2852,6 +3069,7 @@ stages:
 
  - name: Error agent name
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents?name=wrong_agent"
      method: GET
      headers:
@@ -2860,31 +3078,33 @@ stages:
        name: wrong_agent
    response:
      status_code: 200
-     body:
+     json:
        data:
          total_affected_items: 0
 
  - name: Select one field
    request:
+     verify: False
      <<: *get_agents_by_name
      params:
        select: name
        name: wazuh-agent1
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *get_agents_by_name_response
 
  - name: Select three fields
    request:
+     verify: False
      <<: *get_agents_by_name
      params:
        select: name,id,status
        name: wazuh-agent1
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '001'
@@ -2896,13 +3116,14 @@ stages:
 
  - name: Try show agents with wrong select
    request:
+     verify: False
      <<: *get_agents_by_name
      params:
        select: wrong_select
        name: wazuh-agent1
    response:
      status_code: 400
-     body:
+     json:
        code: 1724
 
 ---
@@ -2912,13 +3133,14 @@ stages:
 
  - name: Get the agents without group
    request: &no_group_request
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/no_group"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body: &no_group_response
+     json: &no_group_response
        data:
          affected_items:
            - id: '011'
@@ -2929,13 +3151,14 @@ stages:
 
  - name: Pagination
    request:
+     verify: False
      <<: *no_group_request
      params:
        offset: 0
        limit: 1
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '011'
@@ -2945,72 +3168,79 @@ stages:
 
  - name: Try show agents with offset -1
    request:
+     verify: False
      <<: *no_group_request
      params:
        offset: -1
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with offset not integer value
    request:
+     verify: False
      <<: *no_group_request
      params:
        offset: wrong_offset
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with offset too large 9999999999999999999
    request:
+     verify: False
      <<: *no_group_request
      params:
        offset: 9999999999999999999
    response:
      status_code: 400
-     body:
+     json:
        code: 2003
 
  - name: Try show agents with limit 0
    request:
+     verify: False
      <<: *no_group_request
      params:
        limit: 0
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with limit not integer value
    request:
+     verify: False
      <<: *no_group_request
      params:
        limit: wrong_limit
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with limit 9999
    request:
+     verify: False
      <<: *no_group_request
      params:
        limit: 9999
    response:
      status_code: 400
-     body:
+     json:
        code: 1405
 
  - name: Sort
    request:
+     verify: False
      <<: *no_group_request
      params:
        sort: -id
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '012'
@@ -3021,22 +3251,24 @@ stages:
 
  - name: Try show agents with wrong sort
    request:
+     verify: False
      <<: *no_group_request
      params:
        sort: -wrong_sort
    response:
      status_code: 400
-     body:
+     json:
        code: 1403
 
  - name: Search
    request:
+     verify: False
      <<: *no_group_request
      params:
        search: wazuh-agent11
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '011'
@@ -3046,43 +3278,47 @@ stages:
 
  - name: Try show agents with empty search
    request:
+     verify: False
      <<: *no_group_request
      params:
        search: wrong_search
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *affected_empty_answer
 
  - name: Filter agents by query
    request:
+     verify: False
      <<: *no_group_request
      params:
        q: registerIP=any
    response:
      status_code: 200
-     body:
+     json:
        <<: *no_group_response
 
  - name: Try show agents with bad query
    request:
+     verify: False
      <<: *no_group_request
      params:
        q: group=default;lastKeepAe<1d
    response:
      status_code: 400
-     body:
+     json:
        code: 1408
 
  - name: Try show agents with bad query (invalid character)
    request:
+     verify: False
      <<: *no_group_request
      params:
        q: group=default;lastKeep%<1d
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
 ---
@@ -3104,6 +3340,7 @@ stages:
 
  - name: Get the agents without group, sort
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/no_group"
      method: GET
      headers:
@@ -3112,11 +3349,12 @@ stages:
        sort: "{field}"
    response:
      status_code: 200
-     body:
+     json:
        <<: *no_group_response
 
  - name: Select
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/no_group"
      method: GET
      headers:
@@ -3125,7 +3363,7 @@ stages:
        select: "{field}"
    response:
      status_code: 200
-     body:
+     json:
        <<: *no_group_response
 
 ---
@@ -3135,6 +3373,7 @@ stages:
 
  - name: Get the outdated agents
    request: &agents_outdated_request
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/outdated"
      method: GET
      headers:
@@ -3144,7 +3383,7 @@ stages:
        sort: -id
    response:
      status_code: 200
-     body:
+     json:
        data: &outdated_agents_response
          affected_items:
            - id: '010'
@@ -3155,6 +3394,7 @@ stages:
 
  - name: Pagination
    request:
+     verify: False
      <<: *agents_outdated_request
      params:
        offset: 1
@@ -3162,7 +3402,7 @@ stages:
        sort: -id
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - id: '009'
@@ -3172,104 +3412,114 @@ stages:
 
  - name: Try show agents with offset -1
    request:
+     verify: False
      <<: *agents_outdated_request
      params:
        offset: -1
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with offset not integer value
    request:
+     verify: False
      <<: *agents_outdated_request
      params:
        offset: wrong_offset
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with offset too large 9999999999999999999
    request:
+     verify: False
      <<: *agents_outdated_request
      params:
        offset: 9999999999999999999
    response:
      status_code: 400
-     body:
+     json:
        code: 2003
 
  - name: Try show agents with limit 0
    request:
+     verify: False
      <<: *agents_outdated_request
      params:
        limit: 0
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with limit not integer value
    request:
+     verify: False
      <<: *agents_outdated_request
      params:
        limit: wrong_limit
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with limit 9999
    request:
+     verify: False
      <<: *agents_outdated_request
      params:
        limit: 9999
    response:
      status_code: 400
-     body:
+     json:
        code: 1405
 
  - name: Try show agents with wrong sort
    request:
+     verify: False
      <<: *agents_outdated_request
      params:
        sort: -wrong_sort
    response:
      status_code: 400
-     body:
+     json:
        code: 1403
 
  - name: Filter agents by query
    request:
+     verify: False
      <<: *agents_outdated_request
      params:
        q: group=default;lastKeepAlive>1d
        sort: -id
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *outdated_agents_response
 
  - name: Try show agents with bad query
    request:
+     verify: False
      <<: *agents_outdated_request
      params:
        q: group=default;lastKeepAe<1d
    response:
      status_code: 400
-     body:
+     json:
        code: 1408
 
  - name: Try show agents with bad query (invalid character)
    request:
+     verify: False
      <<: *agents_outdated_request
      params:
        q: group=default;lastKeep%<1d
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
 ---
@@ -3279,24 +3529,26 @@ stages:
 
  - name: Returns all the different combinations that agents have for the selected fields. It also indicates the total number of agents that have each combination.
    request: &distinct_request
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/stats/distinct"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        <<: *basic_response
 
  - name: Get the different combinations for os.platform
    request:
+     verify: False
      <<: *distinct_request
      params:
        limit: 2
        fields: os.platform
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - count: !anyint
@@ -3309,17 +3561,19 @@ stages:
 
  - name: Fields error
    request:
+     verify: False
      <<: *distinct_request
      params:
        limit: 2
        fields: wrong_field
    response:
      status_code: 400
-     body:
+     json:
        code: 1724
 
  - name: Get the different combinations for os.platform, search
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/stats/distinct"
      method: GET
      headers:
@@ -3329,7 +3583,7 @@ stages:
        search: linux
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - count: !anyint
@@ -3341,6 +3595,7 @@ stages:
 
  - name: Invalid select
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/stats/distinct"
      method: GET
      headers:
@@ -3351,18 +3606,19 @@ stages:
        select: invalid
    response:
      status_code: 400
-     body:
+     json:
        code: 1724
 
  - name: Pagination
    request:
+     verify: False
      <<: *distinct_request
      params:
        offset: 0
        limit: 1
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - count: !anyint
@@ -3372,93 +3628,102 @@ stages:
 
  - name: Try show agents with offset -1
    request:
+     verify: False
      <<: *distinct_request
      params:
        offset: -1
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with offset not integer value
    request:
+     verify: False
      <<: *distinct_request
      params:
        offset: wrong_offset
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with offset too large 9999999999999999999
    request:
+     verify: False
      <<: *distinct_request
      params:
        offset: 9999999999999999999
    response:
      status_code: 400
-     body:
+     json:
        code: 2003
 
  - name: Try show agents with limit 0
    request:
+     verify: False
      <<: *distinct_request
      params:
        limit: 0
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with limit not integer value
    request:
+     verify: False
      <<: *distinct_request
      params:
        limit: wrong_limit
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Try show agents with limit 9999
    request:
+     verify: False
      <<: *distinct_request
      params:
        limit: 9999
    response:
      status_code: 400
-     body:
+     json:
        code: 1405
 
  - name: Sort
    request:
+     verify: False
      <<: *distinct_request
      params:
        sort: -id
    response:
      status_code: 200
-     body:
+     json:
        <<: *basic_response_inverse
 
  - name: Try show agents with wrong sort
    request:
+     verify: False
      <<: *distinct_request
      params:
        sort: -wrong_sort
    response:
      status_code: 400
-     body:
+     json:
        code: 1403
 
  - name: Search
    request:
+     verify: False
      <<: *distinct_request
      params:
        search: unknown
        fields: node_name
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items:
            - count: 2
@@ -3469,33 +3734,36 @@ stages:
 
  - name: Try show agents with wrong search
    request:
+     verify: False
      <<: *distinct_request
      params:
        search: wrong_search
    response:
      status_code: 200
-     body:
+     json:
        data:
          <<: *affected_empty_answer
 
  - name: Try show agents with bad query
    request:
+     verify: False
      <<: *distinct_request
      params:
        q: group=default;lastKeepAe<1d
    response:
      status_code: 400
-     body:
+     json:
        code: 1408
 
  - name: Try show agents with bad query (invalid character)
    request:
+     verify: False
      <<: *distinct_request
      params:
        q: group=default;lastKeep%<1d
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
 ---
@@ -3529,6 +3797,7 @@ stages:
 
  - name: Get the different combinations for all fields
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/stats/distinct"
      method: GET
      headers:
@@ -3537,7 +3806,7 @@ stages:
        fields: "{field}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          affected_items: !anything
          failed_items: []
@@ -3551,13 +3820,14 @@ stages:
 
  - name: Get the agents status summary
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/summary/status"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
          active: 9
          disconnected: 2
@@ -3572,68 +3842,73 @@ stages:
 
  - name: Get the summary/os of all agents
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/summary/os"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     body:
+     json:
        data:
-         items:
-           - 'ubuntu'
-         totalItems: 1
+         affected_items:
+           - ubuntu
+         total_affected_items: 1
+         total_failed_items: 0
+         failed_items: []
+       message: !anystr
 
 ---
 test_name: GET /agents/{agent_id}/upgrade_result
-
-marks:
-  - skip
 
 stages:
 
  - name: Try get upgrade result agent 000 (manager)
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/upgrade_result?wait_for_complete=true"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        code: 1703
 
  - name: Try get upgrade result not existing agent
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/999/upgrade_result?wait_for_complete=true"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        code: 1701
 
  - name: Try get upgrade result agent by name
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/bad_id/upgrade_result?wait_for_complete=true"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        <<: *error_spec
 
  - name: Get agent upgrade result not upgrade
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/upgrade_result?wait_for_complete=true"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 400
-     body:
+     json:
        code: !anyint
        dapi_errors: !anything
        detail: !anystr
@@ -3643,23 +3918,37 @@ stages:
 
  - name: Upgrade an agent
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/upgrade?wait_for_complete=true"
      method: PUT
      headers:
        Authorization: "Bearer {test_login_token}"
+     params:
+       force: True
    response:
-     status_code: 200
-     body:
-       message: !anystr
-   delay_after: 60
+     status_code:
+       - 200
+       - 500
+     verify_response_with:
+       function: tavern_utils:test_validate_upgrade
+     save:
+       $ext:
+         function: tavern_utils:test_validate_upgrade
 
  - name: Get agent upgrade result
    request:
+     verify: False
      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/upgrade_result?wait_for_complete=true"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
+     params:
+       wait_for_complete: True
    response:
-     status_code: 200
-     body:
-       message: Agent upgraded successfully
+     status_code:
+       - 200
+       - 400
+     verify_response_with:
+       function: tavern_utils:test_validate_upgrade_result
+       extra_kwargs:
+        upgraded: "{upgraded:b}"

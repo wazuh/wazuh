@@ -94,11 +94,7 @@ async def get_agents(lc: local_client.LocalClient, filter_node=None, filter_stat
 async def get_system_nodes():
     try:
         lc = local_client.LocalClient()
-        try:
-            result = await get_nodes(lc)
-        finally:
-            lc.transport.close()
-
+        result = await get_nodes(lc)
         return [node['name'] for node in result['items']]
     except Exception:
         raise WazuhInternalError(3012)

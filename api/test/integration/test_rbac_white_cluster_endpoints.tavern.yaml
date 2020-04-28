@@ -5,24 +5,18 @@ marks:
   - usefixtures:
     - cluster_white_rbac_tests
 
-includes:
-  - !include common.yaml
-
 stages:
-
-    # Authentication stage
-  - type: ref
-    id: login_get_token
 
   - name: Get cluster config
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/local/config"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - name: !anystr
@@ -46,6 +40,7 @@ stages:
 
   - name: Get cluster healtcheck
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/healthcheck"
       method: GET
       headers:
@@ -54,7 +49,7 @@ stages:
         list_nodes: 'worker1,worker2'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - info:
@@ -77,13 +72,14 @@ stages:
 
   - name: Get cluster healtcheck
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/healthcheck"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - info:
@@ -111,13 +107,14 @@ stages:
 
   - name: Get cluster node
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/local/info"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - cluster: wazuh
@@ -135,6 +132,7 @@ stages:
 
   - name: Get cluster nodes
     request: &get_cluster_nodes
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/nodes"
       method: GET
       headers:
@@ -143,7 +141,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: &cluster_nodes_response
             - name: !anystr
@@ -157,12 +155,13 @@ stages:
 
   - name: Get cluster nodes
     request:
+      verify: False
       <<: *get_cluster_nodes
       params:
         limit: 500
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -174,12 +173,13 @@ stages:
 
   - name: Filters (type) -> master
     request:
+      verify: False
       <<: *get_cluster_nodes
       params:
         type: master
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -191,13 +191,14 @@ stages:
 
   - name: Filters (type) -> worker
     request:
+      verify: False
       <<: *get_cluster_nodes
       params:
         limit: 5
         type: worker
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -214,6 +215,7 @@ stages:
 
   - name: Get cluster {worker1} (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/nodes"
       method: GET
       headers:
@@ -222,12 +224,13 @@ stages:
         list_nodes: 'worker1'
     response:
       status_code: 400
-      body: &permission_denied
+      json: &permission_denied
         code: 4000
         detail: !anystr
 
   - name: Get cluster {worker2} (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/nodes"
       method: GET
       headers:
@@ -236,7 +239,7 @@ stages:
         list_nodes: 'worker2'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -248,6 +251,7 @@ stages:
 
   - name: Get cluster {master-node,worker1,worker2} (Allow, Deny, Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/nodes"
       method: GET
       headers:
@@ -256,7 +260,7 @@ stages:
         list_nodes: 'master-node,worker1,worker2'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -281,13 +285,14 @@ stages:
 
   - name: Get cluster status
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           enabled: "yes"
           running: "yes"
@@ -299,13 +304,14 @@ stages:
 
   - name: Request {node_id}
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - agentless: !anything
@@ -335,17 +341,19 @@ stages:
 
   - name: Request (worker1) (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Filters -> section=alerts (worker2) (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker2/configuration"
       method: GET
       headers:
@@ -354,7 +362,7 @@ stages:
         section: alerts
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - alerts:
@@ -372,13 +380,14 @@ stages:
 
   - name: Request cluster validation
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/configuration/validation"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - name: master-node
@@ -392,6 +401,7 @@ stages:
 
   - name: Request cluster validation
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/configuration/validation"
       method: GET
       headers:
@@ -400,7 +410,7 @@ stages:
         list_nodes: 'worker1,worker2'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - name: worker2
@@ -423,17 +433,19 @@ stages:
 
   - name: Try to show the config of analisys/global through a worker
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/configuration/analysis/global"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Try to show the config of analisys/global through a worker
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker2/configuration/analysis/global"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -448,17 +460,19 @@ stages:
 
   - name: Request {node_id}
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/info"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Request {node_id}
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/info"
       method: GET
       headers:
@@ -473,6 +487,7 @@ stages:
 
   - name: Request {worker2} (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker2/logs"
       method: GET
       headers:
@@ -482,13 +497,14 @@ stages:
 
   - name: Request {worker1} (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -498,6 +514,7 @@ stages:
 
   - name: Request {worker2} (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker2/logs/summary"
       method: GET
       headers:
@@ -507,13 +524,14 @@ stages:
 
   - name: Request {worker1} (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/logs/summary"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -523,17 +541,19 @@ stages:
 
   - name: Cluster stats {worker1} today (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Cluster stats {worker2} today (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker2/stats"
       method: GET
       headers:
@@ -550,6 +570,7 @@ stages:
 
   - name: Request {worker2} (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker2/status"
       method: GET
       headers:
@@ -559,14 +580,73 @@ stages:
 
   - name: Request {worker1} (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
+
+---
+test_name: GET /cluster/api/config
+
+stages:
+
+  - name: Request API config (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/api/config"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+---
+test_name: PUT /cluster/api/config
+
+stages:
+
+  - name: Modify API configuration (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/api/config"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        cache:
+          enabled: false
+          time: 1
+    response:
+      status_code: 200
+      json: &update_api_config_ok
+        data:
+          affected_items: !anything
+          total_affected_items: 3
+          total_failed_items: 0
+          failed_items: []
+        message: !anystr
+
+---
+test_name: DELETE /cluster/api/config
+
+stages:
+
+  - name: Restore API config (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/api/config"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        <<: *update_api_config_ok
 
 ---
 test_name: PUT /cluster/restart
@@ -575,6 +655,7 @@ stages:
 
   - name: Restart cluster
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/restart"
       method: PUT
       headers:
@@ -583,7 +664,7 @@ stages:
         list_nodes: 'worker1,worker2'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - worker1
@@ -601,13 +682,14 @@ stages:
 
   - name: Restart cluster
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'worker1'
@@ -624,6 +706,7 @@ stages:
 
   - name: Get ossec.conf {worker2} (Allow) (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker2/files"
       method: GET
       headers:
@@ -632,11 +715,12 @@ stages:
         path: etc/ossec.conf
     response:
       status_code: 200
-      body:
+      json:
         contents: !anystr
 
   - name: Get ossec.conf {worker2} (Allow) (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker2/files"
       method: GET
       headers:
@@ -645,11 +729,12 @@ stages:
         path: ruleset/decoders/0005-wazuh_decoders.xml
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Get ossec.conf {worker1} (Deny) (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/files"
       method: GET
       headers:
@@ -658,11 +743,12 @@ stages:
         path: etc/ossec.conf
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Get ossec.conf {worker1} (Deny) (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/files"
       method: GET
       headers:
@@ -671,7 +757,7 @@ stages:
         path: ruleset/decoders/0005-wazuh_decoders.xml
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -681,6 +767,7 @@ stages:
 
   - name: Get ossec.conf {node_id}
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker2/files"
       method: GET
       headers:
@@ -689,14 +776,15 @@ stages:
         path: etc/ossec.conf
     response:
       save:
-        body:
+        json:
           ossec_conf: contents
       status_code: 200
-      body:
+      json:
         contents: !anystr
 
   - name: Upload ossec.conf {worker2} (Allow) (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker2/files"
       method: PUT
       data: "{ossec_conf}"
@@ -711,6 +799,7 @@ stages:
 
   - name: Upload ossec.conf {worker1} (Deny) (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/files"
       method: PUT
       data: "{ossec_conf}"
@@ -722,7 +811,7 @@ stages:
         path: etc/decoders/local_decoder.xml
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -732,6 +821,7 @@ stages:
 
   - name: Delete rules file (Deny) (Deny)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/files"
       method: DELETE
       headers:
@@ -740,11 +830,12 @@ stages:
         path: etc/rules/local_rules.xml
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Delete rules file (Allow) (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker2/files"
       method: DELETE
       headers:
@@ -756,6 +847,7 @@ stages:
 
   - name: Delete rules file (Deny) (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/files"
       method: DELETE
       headers:
@@ -764,11 +856,12 @@ stages:
         path: etc/ossec.conf
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Delete rules file (Allow) (Allow)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker2/files"
       method: DELETE
       headers:

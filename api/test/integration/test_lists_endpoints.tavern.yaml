@@ -5,25 +5,19 @@ marks:
   - usefixtures:
     - base_tests
 
-includes:
-  - !include common.yaml
-
 stages:
-
-    # Authentication stage
-  - type: ref
-    id: login_get_token
 
     # GET /lists
   - name: Try to get all lists
     request: &get_lists
+      verify: False
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -33,6 +27,7 @@ stages:
     # GET /lists?limit=0
   - name: Try to get lists using wrong limit parameter
     request:
+      verify: False
       <<: *get_lists
       params:
         limit: 0
@@ -42,37 +37,39 @@ stages:
     # GET /lists?limit=1
   - name: Try to get lists using limit parameter
     request:
+      verify: False
       <<: *get_lists
       params:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - items: !anything
               relative_dirname: !anystr
               filename: !anystr
           failed_items: []
-          total_affected_items: 1
+          total_affected_items: 4 # Number of cdb_lists by default in Wazuh, this number may change anytime, update accordingly
           total_failed_items: 0
       # Save some data for future use in the test
       save:
-        body:
-          returned_relative_dirname: data.affected_items.0.relative_dirname
-          returned_filename: data.affected_items.0.filename
+        json:
+          returned_relative_dirname: data.affected_items[0].relative_dirname
+          returned_filename: data.affected_items[0].filename
 
     # We implement a dual stage to check offset parameter behaviour
     # GET /lists?limit=2&offset=0
   - name: Try to get lists using limit and offset parameter
     request:
+      verify: False
       <<: *get_lists
       params:
         limit: 2
         offset: 0
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - items: !anything
@@ -86,20 +83,21 @@ stages:
           total_failed_items: 0
       # Save second item to check offset in next stage
       save:
-        body:
-          offset_item_relative_dirname: data.affected_items.1.relative_dirname
-          offset_item_filename: data.affected_items.1.filename
+        json:
+          offset_item_relative_dirname: data.affected_items[1].relative_dirname
+          offset_item_filename: data.affected_items[1].filename
 
     # GET /lists?limit=1&offset=1
   - name: Try to get lists using limit and offset parameter
     request:
+      verify: False
       <<: *get_lists
       params:
         limit: 1
         offset: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - items: !anything
@@ -112,13 +110,14 @@ stages:
     # GET /lists?limit=1&search={returned_relative_dirname:s}
   - name: Try to get lists using limit and search parameter
     request:
+      verify: False
       <<: *get_lists
       params:
         limit: 1
         search: "{returned_relative_dirname:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - items: !anything
@@ -129,13 +128,14 @@ stages:
     # GET /lists?limit=1&search=-{returned_filename:s}
   - name: Try to get lists using limit and search parameter
     request:
+      verify: False
       <<: *get_lists
       params:
         limit: 1
         search: "-{returned_filename:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - items: !anything
@@ -146,13 +146,14 @@ stages:
     # GET /lists?limit=1&search=empty_search
   - name: Try to get lists using limit and an empty search parameter
     request:
+      verify: False
       <<: *get_lists
       params:
         limit: 1
         search: "empty_search"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items: []
@@ -162,24 +163,26 @@ stages:
     # GET /lists?limit=1&relative_dirname={returned_relative_dirname}
   - name: Try to get lists using limit and relative_dirname parameter
     request:
+      verify: False
       <<: *get_lists
       params:
         limit: 1
         relative_dirname: "{returned_relative_dirname:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - items: !anything
               relative_dirname: "{tavern.request_vars.params.relative_dirname}"
           failed_items: []
-          total_affected_items: 1
+          total_affected_items: 2 # Number of cdb_lists by default in Wazuh with this relative_dirname, this number may change anytime, update accordingly
           total_failed_items: 0
 
     # GET /lists?limit=1&relative_dirname=wrong_dirname
   - name: Try to get lists using limit and a wrong relative_dirname parameter
     request:
+      verify: False
       <<: *get_lists
       params:
         limit: 1
@@ -190,6 +193,7 @@ stages:
     # GET /lists?relative_dirname=etc/files
   - name: Try to get a CBD list from a bad format etc path
     request:
+      verify: False
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/lists"
       headers:
@@ -202,6 +206,7 @@ stages:
     # GET /lists?filename=wrong_filename
   - name: Try to get a CBD list from a non existing filename
     request:
+      verify: False
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/lists"
       headers:
@@ -210,7 +215,7 @@ stages:
         filename: "wrong_dirname"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items: []
@@ -225,13 +230,14 @@ stages:
   # GET /lists/files
   - name: Try to get paths from all CDB lists
     request: &get_lists_files
+      verify: False
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/lists/files"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
            # We get totalItems number of arrays in items, using !anything to check items key is in the response
           affected_items: !anything
@@ -242,6 +248,7 @@ stages:
     # GET /lists/files?limit=0
   - name: Try to get paths from all CDB lists using wrong limit parameter
     request:
+      verify: False
       <<: *get_lists_files
       params:
         limit: 0
@@ -251,12 +258,13 @@ stages:
     # GET /lists/files?limit=1
   - name: Try to get paths from all CDB lists using limit parameter
     request:
+      verify: False
       <<: *get_lists_files
       params:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: &full_items_array_files
             - relative_dirname: !anystr
@@ -266,21 +274,22 @@ stages:
           total_failed_items: 0
       # Save some data for future use in the test
       save:
-        body:
-          returned_relative_dirname: data.affected_items.0.relative_dirname
-          returned_filename: data.affected_items.0.filename
+        json:
+          returned_relative_dirname: data.affected_items[0].relative_dirname
+          returned_filename: data.affected_items[0].filename
 
     # We implement a dual stage to check offset parameter behaviour
     # GET /lists/files?limit=2&offset=0
   - name: Try to get paths from all CDB lists using limit and offset parameter
     request:
+      verify: False
       <<: *get_lists_files
       params:
         limit: 2
         offset: 0
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *full_items_array_files
@@ -290,20 +299,21 @@ stages:
           total_failed_items: 0
       # Save second item to check offset in next stage
       save:
-        body:
-          offset_item_relative_dirname: data.affected_items.1.relative_dirname
-          offset_item_filename: data.affected_items.1.filename
+        json:
+          offset_item_relative_dirname: data.affected_items[1].relative_dirname
+          offset_item_filename: data.affected_items[1].filename
 
     # GET /lists/files?limit=1&offset=1
   - name: Try to get paths from all CDB lists using limit and offset parameter
     request:
+      verify: False
       <<: *get_lists_files
       params:
         limit: 1
         offset: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
               # Check offset matches with previous request
@@ -316,13 +326,14 @@ stages:
     # GET /lists/files?limit=1&search={returned_relative_dirname:s}
   - name: Try to get paths from all CDB lists using limit and search parameter
     request:
+      verify: False
       <<: *get_lists_files
       params:
         limit: 1
         search: "{returned_relative_dirname:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *full_items_array_files
@@ -333,13 +344,14 @@ stages:
     # GET /lists/files?limit=1&search=-{returned_relative_dirname:s}
   - name: Try to get paths from all CDB lists using limit and search parameter
     request:
+      verify: False
       <<: *get_lists_files
       params:
         limit: 1
         search: "-{returned_relative_dirname:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items: []
@@ -349,13 +361,14 @@ stages:
     # GET /lists/files?limit=1&search=empty_search
   - name: Try to get paths from all CDB lists using limit and an empty search parameter
     request:
+      verify: False
       <<: *get_lists_files
       params:
         limit: 1
         search: "empty_search"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []

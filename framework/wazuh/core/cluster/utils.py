@@ -1,13 +1,15 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import fcntl
 import json
 import logging
+import os
 import re
 import socket
 import typing
+from contextvars import ContextVar
 from functools import lru_cache
 from glob import glob
 from operator import setitem
@@ -172,7 +174,8 @@ def manager_restart():
 @lru_cache()
 def get_cluster_items():
     try:
-        with open('{0}/framework/wazuh/core/cluster/cluster.json'.format(common.ossec_path)) as f:
+        here = os.path.abspath(os.path.dirname(__file__))
+        with open(os.path.join(common.ossec_path, here, 'cluster.json')) as f:
             cluster_items = json.load(f)
         list(map(lambda x: setitem(x, 'permissions', int(x['permissions'], base=0)),
                  filter(lambda x: 'permissions' in x, cluster_items['files'].values())))
@@ -185,6 +188,11 @@ def get_cluster_items():
 def read_config(config_file=common.ossec_conf):
     """ Returns the cluster configuration. """
     return read_cluster_config(config_file=config_file)
+
+
+# Context vars
+context_tag: ContextVar[str] = ContextVar('tag', default='')
+context_subtag: ContextVar[str] = ContextVar('subtag', default='')
 
 
 class ClusterFilter(logging.Filter):
@@ -205,8 +213,8 @@ class ClusterFilter(logging.Filter):
         self.subtag = subtag
 
     def filter(self, record):
-        record.tag = self.tag
-        record.subtag = self.subtag
+        record.tag = context_tag.get() if context_tag.get() != '' else self.tag
+        record.subtag = context_subtag.get() if context_subtag.get() != '' else self.subtag
         return True
 
     def update_tag(self, new_tag: str):

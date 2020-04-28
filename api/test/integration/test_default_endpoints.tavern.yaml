@@ -5,25 +5,19 @@ marks:
   - usefixtures:
       - base_tests
 
-includes:
-  - !include common.yaml
-
 stages:
-
-    # Authentication stage
-  - type: ref
-    id: login_get_token
 
     # GET /
   - name: Get default API information
     request:
+      verify: False
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         api_version: !anystr
         hostname: !anystr
         license_name: !anystr

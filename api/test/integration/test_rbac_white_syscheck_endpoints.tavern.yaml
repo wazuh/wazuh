@@ -1,28 +1,22 @@
 ---
 test_name: GET /syscheck
 
-includes:
- - !include common.yaml
-
 marks:
   - usefixtures:
     - syscheck_white_rbac_tests
 
 stages:
 
-    # Authentication stage
-  - type: ref
-    id: login_get_token
-
   - name: Try to get syscheck scan results for agent 000 (Allow)
     request:
+      verify: False
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/000"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -31,13 +25,14 @@ stages:
 
   - name: Try to get syscheck scan results for agent 002 (Deny)
     request:
+      verify: False
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/002"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body: &permission_denied
+      json: &permission_denied
         code: 4000
         dapi_errors: !anything
         detail: !anystr
@@ -53,13 +48,14 @@ stages:
 
   - name: Try to get when the last scan for agent 000 started and ended
     request:
+      verify: False
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/000/last_scan"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - end: !anything
@@ -70,13 +66,14 @@ stages:
 
   - name: Try to get when the last scan for agent 002 started and ended
     request:
+      verify: False
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/002/last_scan"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -86,13 +83,14 @@ stages:
 
   - name: Try to run a syscheck scan in all agents
     request:
+      verify: False
       method: PUT
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -102,6 +100,7 @@ stages:
 
   - name: Try to run a syscheck scan on a list of agents
     request:
+      verify: False
       method: PUT
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck"
       headers:
@@ -110,7 +109,7 @@ stages:
         list_agents: '000,003,001,004,008'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items:
@@ -127,6 +126,7 @@ stages:
 
   - name: Try to run a syscheck scan on a list of agents
     request:
+      verify: False
       method: PUT
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck"
       headers:
@@ -135,7 +135,7 @@ stages:
         list_agents: '004'
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -145,13 +145,14 @@ stages:
 
   - name: Try to delete syscheck scans in agent 000
     request:
+      verify: False
       method: DELETE
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/001"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -160,11 +161,12 @@ stages:
 
   - name: Try to check the answer is empty after deleting the scans for agent 000
     request:
+      verify: False
       method: DELETE
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscheck/002"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -12,8 +12,8 @@
 #include "rootcheck.h"
 
 /* Prototypes */
-static int read_sys_file(const char *file_name, int do_read, int depth);
-static int read_sys_dir(const char *dir_name, int do_read, int depth);
+static int read_sys_file(const char *file_name, int do_read);
+static int read_sys_dir(const char *dir_name, int do_read);
 
 /* Global variables */
 static int   _sys_errors;
@@ -24,7 +24,7 @@ static FILE *_ww;
 static FILE *_suid;
 
 
-static int read_sys_file(const char *file_name, int do_read, int depth)
+static int read_sys_file(const char *file_name, int do_read)
 {
     struct stat statbuf;
 
@@ -62,7 +62,7 @@ static int read_sys_file(const char *file_name, int do_read, int depth)
             return (0);
         }
 
-        return (read_sys_dir(file_name, do_read, depth + 1));
+        return (read_sys_dir(file_name, do_read));
     }
 
     /* Check if the size from stats is the same as when we read the file */
@@ -140,16 +140,23 @@ static int read_sys_file(const char *file_name, int do_read, int depth)
     return (0);
 }
 
-static int read_sys_dir(const char *dir_name, int do_read, int depth)
+static int read_sys_dir(const char *dir_name, int do_read)
 {
     int i = 0;
     unsigned int entry_count = 0;
     int did_changed = 0;
     DIR *dp;
-    struct dirent *entry;
+    struct dirent *entry = NULL;
     struct stat statbuf;
     short is_nfs;
     short skip_fs;
+
+#ifndef WIN32
+    const char *(dirs_to_doread[]) = { "/bin", "/sbin", "/usr/bin",
+                                       "/usr/sbin", "/dev", "/etc",
+                                       "/boot", NULL
+                                     };
+#endif
 
     if ((dir_name == NULL) || (strlen(dir_name) > PATH_MAX)) {
         mterror(ARGV0, "Invalid directory given.");
@@ -188,9 +195,13 @@ static int read_sys_dir(const char *dir_name, int do_read, int depth)
     }
 
 #ifndef WIN32
-    /* Only the root files will be read */
-    if (!depth) {
-        do_read = 1;
+    /* Check if the do_read is valid for this directory */
+    while (dirs_to_doread[i]) {
+        if (strcmp(dir_name, dirs_to_doread[i]) == 0) {
+            do_read = 1;
+            break;
+        }
+        i++;
     }
 #else
     do_read = 0;
@@ -270,7 +281,7 @@ static int read_sys_dir(const char *dir_name, int do_read, int depth)
             }
         }
 
-        read_sys_file(f_name, do_read, depth);
+        read_sys_file(f_name, do_read);
     }
 
     /* skip further test because the FS cant deliver the stats (btrfs link count always is 1) */
@@ -298,7 +309,7 @@ static int read_sys_dir(const char *dir_name, int do_read, int depth)
                      "(%d,%d).",
                      dir_name, entry_count, (int)statbuf.st_nlink);
 
-            /* Solaris /boot is terrible, as is /dev! */
+            /* Solaris /boot is terrible :), as is /dev! */
 #ifdef SOLARIS
             if ((strncmp(dir_name, "/boot", strlen("/boot")) != 0) && (strncmp(dir_name, "/dev", strlen("/dev")) != 0)) {
                 notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
@@ -357,7 +368,7 @@ void check_rc_sys(const char *basedir)
 #else
         snprintf(file_path, 5, "%s", "C:\\");
 #endif
-        read_sys_dir(file_path, rootcheck.readall, 0);
+        read_sys_dir(file_path, rootcheck.readall);
     } else {
         /* Scan only specific directories */
         int _i;
@@ -378,7 +389,7 @@ void check_rc_sys(const char *basedir)
         _i = 0;
         while (dirs_to_scan[_i] != NULL) {
             snprintf(dir_path, OS_SIZE_1024, "%s%c%s", basedir, PATH_SEP, dirs_to_scan[_i]);
-            read_sys_dir(dir_path, rootcheck.readall, 0);
+            read_sys_dir(dir_path, rootcheck.readall);
             _i++;
         }
     }

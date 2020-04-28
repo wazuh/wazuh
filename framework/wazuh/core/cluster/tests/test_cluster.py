@@ -1,20 +1,28 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import time
+import sys
 from datetime import datetime
-from unittest.mock import patch, mock_open
+from time import time
+from unittest.mock import patch, mock_open, MagicMock
 
-import wazuh.core.cluster.cluster
-import wazuh.core.cluster.utils
+import pytest
+
+from wazuh import common
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
-        from wazuh.exception import WazuhException
-        from wazuh import common, cluster
+        sys.modules['wazuh.rbac.orm'] = MagicMock()
+        import wazuh.rbac.decorators
 
-import pytest
+        del sys.modules['wazuh.rbac.orm']
+        from wazuh.tests.util import RBAC_bypasser
+
+        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+        import wazuh.core.cluster.utils
+        import wazuh.core.cluster.cluster
+        from wazuh import WazuhException
 
 # Valid configurations
 default_cluster_configuration = {
@@ -34,7 +42,7 @@ custom_cluster_configuration = {
     'node_type': 'master',
     'name': 'wazuh',
     'node_name': 'node01',
-    'key': 'a'*32,
+    'key': 'a' * 32,
     'port': 1516,
     'bind_addr': '0.0.0.0',
     'nodes': ['172.10.0.100'],
@@ -42,7 +50,7 @@ custom_cluster_configuration = {
 }
 
 custom_incomplete_configuration = {
-    'key': 'a'*32,
+    'key': 'a' * 32,
     'node_name': 'master'
 }
 
@@ -84,15 +92,15 @@ def test_read_configuration(read_config):
 @pytest.mark.parametrize('read_config', [
     {'disabled': 'yay'},
     {'key': '', 'nodes': ['192.158.35.13']},
-    {'key': 'a'*15, 'nodes': ['192.158.35.13']},
-    {'port': 'string', 'key': 'a'*32, 'nodes': ['192.158.35.13']},
-    {'port': 90, 'key': 'a'*32, 'nodes': ['192.158.35.13']},
-    {'port': 70000, 'key': 'a'*32, 'nodes': ['192.158.35.13']},
-    {'node_type': 'random', 'key': 'a'*32, 'nodes': ['192.158.35.13']},
-    {'nodes': ['NODE_IP'], 'key': 'a'*32},
-    {'nodes': ['localhost'], 'key': 'a'*32},
-    {'nodes': ['0.0.0.0'], 'key': 'a'*32},
-    {'nodes': ['127.0.1.1'], 'key': 'a'*32}
+    {'key': 'a' * 15, 'nodes': ['192.158.35.13']},
+    {'port': 'string', 'key': 'a' * 32, 'nodes': ['192.158.35.13']},
+    {'port': 90, 'key': 'a' * 32, 'nodes': ['192.158.35.13']},
+    {'port': 70000, 'key': 'a' * 32, 'nodes': ['192.158.35.13']},
+    {'node_type': 'random', 'key': 'a' * 32, 'nodes': ['192.158.35.13']},
+    {'nodes': ['NODE_IP'], 'key': 'a' * 32},
+    {'nodes': ['localhost'], 'key': 'a' * 32},
+    {'nodes': ['0.0.0.0'], 'key': 'a' * 32},
+    {'nodes': ['127.0.1.1'], 'key': 'a' * 32}
 ])
 def test_checking_configuration(read_config):
     """

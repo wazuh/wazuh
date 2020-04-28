@@ -16,7 +16,7 @@ from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param
 from wazuh import security
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhError
-from wazuh.rbac.orm import AuthenticationManager
+from wazuh.rbac import preprocessor
 
 logger = logging.getLogger('wazuh')
 auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
@@ -28,11 +28,18 @@ async def login_user(request, user, auth_context=None):
     This method should be called to get an API token. This token will expire at some time. # noqa: E501
     :return: TokenResponse
     """
-    with AuthenticationManager() as auth:
-        if auth.user_auth_context(user):
-            return web.json_response(data=TokenResponse(token=generate_token(user_id=user, auth_context=auth_context)),
-                                     status=200, dumps=dumps)
-    return web.json_response(data=TokenResponse(token=generate_token(user_id=user)),
+    f_kwargs = {'auth_context': auth_context,
+                'user_id': user}
+
+    dapi = DistributedAPI(f=preprocessor.get_permissions,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          logger=logger
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=TokenResponse(token=generate_token(user_id=user, rbac_policies=data.dikt)),
                              status=200, dumps=dumps)
 
 
@@ -390,17 +397,28 @@ async def update_policy(request, policy_id, pretty=False, wait_for_complete=Fals
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-async def set_user_role(request, username, role_ids, pretty=False, wait_for_complete=False):
+async def set_user_role(request, username, role_ids, position=None, pretty=False, wait_for_complete=False):
     """Add a list of roles to one specified user
 
-    :param username: User's username
-    :param role_ids: List of role ids
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :return User-Role information
-    """
-    f_kwargs = {'user_id': username, 'role_ids': role_ids}
+    Parameters
+    ----------
+    username : str
+        User's username
+    role_ids : list of int
+        List of role ids
+    position : int
+        Position where the new role will be inserted
+    pretty : bool
+        Show results in human-readable format
+    wait_for_complete : bool
+        Disable timeout response
 
+    Returns
+    -------
+    Dict
+        User-Role information
+    """
+    f_kwargs = {'user_id': username, 'role_ids': role_ids, 'position': position}
     dapi = DistributedAPI(f=security.set_user_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -440,16 +458,28 @@ async def remove_user_role(request, username, role_ids, pretty=False, wait_for_c
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-async def set_role_policy(request, role_id, policy_ids, pretty=False, wait_for_complete=False):
+async def set_role_policy(request, role_id, policy_ids, position=None, pretty=False, wait_for_complete=False):
     """Add a list of policies to one specified role
 
-    :param role_id: Role id
-    :param policy_ids: List of policy ids
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :return Role information
+    Parameters
+    ----------
+    role_id : int
+        Role ID
+    policy_ids : list of int
+        List of policy IDs
+    position : int
+        Position where the new role will be inserted
+    pretty : bool
+        Show results in human-readable format
+    wait_for_complete : bool
+        Disable timeout response
+
+    Returns
+    -------
+    dict
+        Role information
     """
-    f_kwargs = {'role_id': role_id, 'policy_ids': policy_ids}
+    f_kwargs = {'role_id': role_id, 'policy_ids': policy_ids, 'position': position}
 
     dapi = DistributedAPI(f=security.set_role_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -490,6 +520,63 @@ async def remove_role_policy(request, role_id, policy_ids, pretty=False, wait_fo
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
+async def get_rbac_resources(pretty=False, resource: str = None):
+    """Gets all the current defined resources for RBAC
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format
+    resource : str
+        Show the information of the specified resource. Ex: agent:id
+
+    Returns
+    -------
+    dict
+        RBAC resources
+    """
+
+    dapi = DistributedAPI(f=security.get_rbac_resources,
+                          f_kwargs=remove_nones_to_dict({'resource': resource}),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=True,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=dumps)
+
+
+async def get_rbac_actions(pretty=False, endpoint: str = None):
+    """Gets all the current defined actions for RBAC
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format
+    endpoint : str
+        Show actions and resources for the specified endpoint. Ex: GET /agents
+
+    Returns
+    -------
+    dict
+        RBAC actions
+    """
+    dapi = DistributedAPI(f=security.get_rbac_actions,
+                          f_kwargs=remove_nones_to_dict({'endpoint': endpoint}),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=True,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=dumps)
+
+
 async def revoke_all_tokens(request):
     """ Revoke all tokens """
 
@@ -497,7 +584,7 @@ async def revoke_all_tokens(request):
 
     dapi = DistributedAPI(f=security.revoke_tokens,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
+                          request_type='local_any',
                           is_async=False,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']

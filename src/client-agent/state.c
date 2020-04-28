@@ -1,7 +1,7 @@
 /* Agent state management functions
  * August 2, 2017
  *
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * All right reserved.
  *
  * This program is free software; you can redistribute it
@@ -53,7 +53,7 @@ void update_ack(time_t curr_time) {
 
 int write_state() {
     FILE * fp;
-    struct tm tm;
+    struct tm tm = { .tm_sec = 0 };
     const char * status;
     char path[PATH_MAX - 8];
     char last_keepalive[1024] = "";

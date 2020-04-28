@@ -1,7 +1,13 @@
-import pytest
-import time
+import json
 import os
 import subprocess
+import time
+from base64 import b64encode
+
+import pytest
+import requests
+import urllib3
+import yaml
 
 
 def build_and_up(env: str):
@@ -46,6 +52,20 @@ def check_health(interval=10, node_type='master', agents=None):
 @pytest.fixture(name="base_tests", scope="session")
 def environment_base():
     values = build_and_up("base")
+    while values['retries'] < values['max_retries']:
+        health = check_health()
+        if health:
+            time.sleep(10)
+            yield
+            break
+        else:
+            values['retries'] += 1
+    down_env()
+
+
+@pytest.fixture(name="agents_tests", scope="session")
+def environment_agents():
+    values = build_and_up("agents")
     while values['retries'] < values['max_retries']:
         health = check_health()
         if health:
@@ -148,6 +168,22 @@ def environment_sca():
 @pytest.fixture(name="syscheck_tests", scope="session")
 def environment_syscheck():
     values = build_and_up("syscheck")
+    while values['retries'] < values['max_retries']:
+        master_health = check_health()
+        if master_health:
+            agents_healthy = check_health(node_type='agent', agents=[1, 2, 3])
+            if agents_healthy:
+                time.sleep(10)
+                yield
+                break
+        else:
+            values['retries'] += 1
+    down_env()
+
+
+@pytest.fixture(name="experimental_tests", scope="session")
+def environment_experimental():
+    values = build_and_up("experimental")
     while values['retries'] < values['max_retries']:
         master_health = check_health()
         if master_health:
@@ -333,13 +369,27 @@ def environment_black_syscollector_rbac():
     down_env()
 
 
+@pytest.fixture(name="active-response_tests", scope="session")
+def environment_active_response():
+    values = build_and_up("active-response")
+    while values['retries'] < values['max_retries']:
+        health = check_health()
+        if health:
+            time.sleep(30)
+            yield
+            break
+        else:
+            values['retries'] += 1
+    down_env()
+
+
 @pytest.fixture(name="active-response_white_rbac_tests", scope="session")
 def environment_white_active_response_rbac():
     values = build_and_up("active-response_white_rbac")
     while values['retries'] < values['max_retries']:
         health = check_health()
         if health:
-            time.sleep(10)
+            time.sleep(30)
             yield
             break
         else:
@@ -353,7 +403,7 @@ def environment_black_active_response_rbac():
     while values['retries'] < values['max_retries']:
         health = check_health()
         if health:
-            time.sleep(10)
+            time.sleep(30)
             yield
             break
         else:
@@ -449,11 +499,13 @@ def environment_black_sca_rbac():
 def environment_white_syscheck_rbac():
     values = build_and_up("syscheck_white_rbac")
     while values['retries'] < values['max_retries']:
-        health = check_health()
-        if health:
-            time.sleep(10)
-            yield
-            break
+        master_health = check_health()
+        if master_health:
+            agents_healthy = check_health(node_type='agent', agents=[1, 2, 3])
+            if agents_healthy:
+                time.sleep(30)
+                yield
+                break
         else:
             values['retries'] += 1
     down_env()
@@ -463,17 +515,20 @@ def environment_white_syscheck_rbac():
 def environment_black_syscheck_rbac():
     values = build_and_up("syscheck_black_rbac")
     while values['retries'] < values['max_retries']:
-        health = check_health()
-        if health:
-            time.sleep(10)
-            yield
-            break
+        master_health = check_health()
+        if master_health:
+            agents_healthy = check_health(node_type='agent', agents=[1, 2, 3])
+            if agents_healthy:
+                time.sleep(30)
+                yield
+                break
         else:
             values['retries'] += 1
     down_env()
 
+
 @pytest.fixture(name="manager_white_rbac_tests", scope="session")
-def environment_white_syscheck_rbac():
+def environment_white_manager_rbac():
     values = build_and_up("manager_white_rbac")
     while values['retries'] < values['max_retries']:
         health = check_health()
@@ -487,7 +542,7 @@ def environment_white_syscheck_rbac():
 
 
 @pytest.fixture(name="manager_black_rbac_tests", scope="session")
-def environment_black_syscheck_rbac():
+def environment_black_manager_rbac():
     values = build_and_up("manager_black_rbac")
     while values['retries'] < values['max_retries']:
         health = check_health()
@@ -558,3 +613,25 @@ def environment_experimental_black_ciscat_rbac():
         else:
             values['retries'] += 1
     down_env()
+
+
+with open('common.yaml', 'r') as stream:
+    common = yaml.safe_load(stream)['variables']
+login_url = f"{common['protocol']}://{common['host']}:{common['port']}/{common['version']}{common['login_endpoint']}"
+basic_auth = f"{common['user']}:{common['pass']}".encode()
+login_headers = {'Content-Type': 'application/json',
+                 'Authorization': f'Basic {b64encode(basic_auth).decode()}'}
+
+
+def get_token_login_api():
+    response = requests.get(login_url, headers=login_headers, verify=False)
+    if response.status_code == 200:
+        return json.loads(response.content.decode())['token']
+    else:
+        raise Exception(f"Error obtaining login token: {response.json()}")
+
+
+def pytest_tavern_beta_before_every_test_run(test_dict, variables):
+    # Disable HTTPS verification warnings
+    urllib3.disable_warnings()
+    variables["test_login_token"] = get_token_login_api()

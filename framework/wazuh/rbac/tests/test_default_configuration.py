@@ -2,15 +2,33 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import yaml
 import os
+from unittest.mock import patch
 
 import pytest
+import yaml
+from sqlalchemy import create_engine
 
-import wazuh.rbac.decorators
-import wazuh.rbac.orm as orm
+from wazuh.rbac.tests.utils import init_db
 
-wazuh.rbac.decorators.switch_mode('black')
+test_path = os.path.dirname(os.path.realpath(__file__))
+test_data_path = os.path.join(test_path, 'data')
+
+
+@pytest.fixture(scope='function')
+def db_setup():
+    with patch('wazuh.common.ossec_uid'), patch('wazuh.common.ossec_gid'):
+        with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
+            with patch('shutil.chown'), patch('os.chmod'):
+                with patch('api.constants.SECURITY_PATH', new=test_data_path):
+                    import wazuh.rbac.orm as rbac
+                    import wazuh.rbac.decorators
+                    wazuh.rbac.decorators.switch_mode('black')
+    init_db('schema_security_test.sql', test_data_path)
+
+    yield rbac
+
+
 test_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))  # RBAC folder
 default_configuration = os.path.join(test_path, 'default/')
 with open(default_configuration + 'roles.yaml') as f:
@@ -36,40 +54,40 @@ with open(default_configuration + 'relationships.yaml') as f:
 
 
 @pytest.mark.parametrize('role_name, role_rule', roles_configuration)
-def test_roles_default(role_name, role_rule):
-    with orm.RolesManager() as rm:
+def test_roles_default(db_setup, role_name, role_rule):
+    with db_setup.RolesManager() as rm:
         role = rm.get_role(name=role_name)
         assert role_name == role['name']
         assert role_rule == role['rule']
 
 
 @pytest.mark.parametrize('policy_name, policy_policy', policies_configuration)
-def test_policies_default(policy_name, policy_policy):
-    with orm.PoliciesManager() as pm:
+def test_policies_default(db_setup, policy_name, policy_policy):
+    with db_setup.PoliciesManager() as pm:
         policy = pm.get_policy(name=policy_name)
         assert policy_name == policy['name']
         assert policy_policy == policy['policy']
 
 
 @pytest.mark.parametrize('user_name, auth_context', users_configuration)
-def test_users_default(user_name, auth_context):
-    with orm.AuthenticationManager() as am:
+def test_users_default(db_setup, user_name, auth_context):
+    with db_setup.AuthenticationManager() as am:
         assert user_name == am.get_user(username=user_name)['username']
         assert auth_context == am.user_auth_context(username=user_name)
 
 
 @pytest.mark.parametrize('user_name, role_ids', user_roles)
-def test_user_roles_default(user_name, role_ids):
-    with orm.UserRolesManager() as urm:
+def test_user_roles_default(db_setup, user_name, role_ids):
+    with db_setup.UserRolesManager() as urm:
         db_roles = urm.get_all_roles_from_user(username=user_name)
-        orm_role_names = [role['name'] for role in db_roles]
+        orm_role_names = [role.name for role in db_roles]
         assert set(role_ids) == set(orm_role_names)
 
 
 @pytest.mark.parametrize('role_name, policy_names', role_policies)
-def test_role_policies_default(role_name, policy_names):
-    with orm.RolesPoliciesManager() as rpm:
-        with orm.RolesManager() as rm:
+def test_role_policies_default(db_setup, role_name, policy_names):
+    with db_setup.RolesPoliciesManager() as rpm:
+        with db_setup.RolesManager() as rm:
             db_policies = rpm.get_all_policies_from_role(role_id=rm.get_role(name=role_name)['id'])
-            orm_policy_names = [policy['name'] for policy in db_policies]
+            orm_policy_names = [policy.name for policy in db_policies]
             assert set(orm_policy_names) == set(policy_names)

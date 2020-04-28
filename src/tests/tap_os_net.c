@@ -16,6 +16,8 @@
 #define SENDSTRING "Hello World!\n"
 #define BUFFERSIZE 1024
 
+char * getPrimaryIP();
+
 int test_tcpv4_local() {
     int server_root_socket, server_client_socket, client_socket;
     char buffer[BUFFERSIZE];
@@ -32,7 +34,7 @@ int test_tcpv4_local() {
 
     w_assert_int_eq(OS_SendTCP(client_socket, SENDSTRING), 0);
 
-    w_assert_int_eq(OS_RecvTCPBuffer(server_client_socket, buffer, BUFFERSIZE), 0);
+    w_assert_int_eq(OS_RecvTCPBuffer(server_client_socket, buffer, BUFFERSIZE), 13);
 
     w_assert_str_eq(buffer, SENDSTRING);
 
@@ -67,7 +69,7 @@ int test_tcpv4_inet() {
 
     w_assert_int_eq(OS_SendTCP(client_socket, SENDSTRING), 0);
 
-    w_assert_int_eq(OS_RecvTCPBuffer(server_client_socket, buffer, BUFFERSIZE), 0);
+    w_assert_int_eq(OS_RecvTCPBuffer(server_client_socket, buffer, BUFFERSIZE), 13);
 
     w_assert_str_eq(buffer, SENDSTRING);
 
@@ -102,7 +104,7 @@ int test_tcpv6() {
 
     w_assert_int_eq(OS_SendTCP(client_socket, SENDSTRING), 0);
 
-    w_assert_int_eq(OS_RecvTCPBuffer(server_client_socket, buffer, BUFFERSIZE), 0);
+    w_assert_int_eq(OS_RecvTCPBuffer(server_client_socket, buffer, BUFFERSIZE), 13);
 
     w_assert_str_eq(buffer, SENDSTRING);
 
@@ -231,13 +233,13 @@ int test_unix() {
 
     w_assert_int_eq(OS_SendUnix(client_socket, SENDSTRING, 5), 0);
 
-    w_assert_int_eq(OS_RecvUnix(server_socket, BUFFERSIZE, buffer), 5);
+    w_assert_int_eq(OS_RecvUnix(server_socket, BUFFERSIZE - 1, buffer), 5);
 
     w_assert_str_eq(buffer, "Hello");
 
     w_assert_int_eq(OS_SendUnix(client_socket, SENDSTRING, 0), 0);
 
-    w_assert_int_eq(OS_RecvUnix(server_socket, BUFFERSIZE, buffer), strlen(SENDSTRING) + 1);
+    w_assert_int_eq(OS_RecvUnix(server_socket, BUFFERSIZE - 1, buffer), strlen(SENDSTRING) + 1);
 
     w_assert_str_eq(buffer, SENDSTRING);
 
@@ -254,7 +256,7 @@ int test_unix_invalid_sockets() {
 
     w_assert_int_eq(OS_SendUnix(-1, SENDSTRING, strlen(SENDSTRING)), OS_SOCKTERR);
 
-    w_assert_int_eq(OS_RecvUnix(-1, BUFFERSIZE, buffer), 0);
+    w_assert_int_eq(OS_RecvUnix(-1, BUFFERSIZE - 1, buffer), 0);
 
     return 1;
 }
@@ -278,6 +280,13 @@ int test_gethost_null() {
 int test_gethost_not_exists() {
     w_assert_ptr_eq(OS_GetHost("this.should.not.exist", 2), NULL);
     return 1;
+}
+
+int test_get_ip() {
+    char * ip = getPrimaryIP();
+    int retval = OS_IsValidIP(ip, NULL);
+    free(ip);
+    return retval == 1;
 }
 
 int main(void) {
@@ -319,8 +328,11 @@ int main(void) {
     // Try to get host by name with non-existent host name
     TAP_TEST_MSG(test_gethost_not_exists(), "Get host by name: non-existent host test.");
 
+    // Get IP address
+    TAP_TEST_MSG(test_get_ip(), "Get primary IP address collection.");
+
     TAP_PLAN;
-    TAP_SUMMARY;
+    int r = tap_summary();
     printf("\n    ENDING TEST  - OS_NET   \n\n");
-    return 0;
+    return r;
 }

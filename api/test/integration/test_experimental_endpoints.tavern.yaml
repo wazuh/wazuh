@@ -1,29 +1,22 @@
 ---
 test_name: DELETE /experimental/syscheck
 
-includes:
-  - !include common.yaml
-
 marks:
   - usefixtures:
-      # We use ciscat environment for experimental tests
-    - ciscat_tests
+    - experimental_tests
 
 stages:
 
-    # Authentication stage
-  - type: ref
-    id: login_get_token
-
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscheck"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '000'
@@ -46,6 +39,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscheck"
       method: DELETE
       headers:
@@ -54,7 +48,7 @@ stages:
         list_agents: '001,003,005,007'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '001'
@@ -73,13 +67,14 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/ciscat/results"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - &ciscat_response
@@ -109,6 +104,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/ciscat/results"
       method: GET
       headers:
@@ -117,7 +113,7 @@ stages:
         list_agents: '001,003'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *ciscat_response
@@ -136,13 +132,14 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/hardware"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - &hardware_response
@@ -174,6 +171,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/hardware"
       method: GET
       headers:
@@ -182,7 +180,7 @@ stages:
         list_agents: '001,003,005,007'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *hardware_response
@@ -205,13 +203,14 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netaddr"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - &netaddr_response
@@ -237,6 +236,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netaddr"
       method: GET
       headers:
@@ -245,7 +245,7 @@ stages:
         list_agents: '001,003,005,007'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netaddr_response
@@ -268,13 +268,14 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netiface"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - &netiface_response
@@ -311,6 +312,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netiface"
       method: GET
       headers:
@@ -319,7 +321,7 @@ stages:
         list_agents: '001,003,005,007'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netiface_response
@@ -342,13 +344,14 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netproto"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - &netproto_response
@@ -373,6 +376,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netproto"
       method: GET
       headers:
@@ -381,7 +385,7 @@ stages:
         list_agents: '001,003,005,007'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *netproto_response
@@ -404,13 +408,14 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/os"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - &os_response
@@ -444,6 +449,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/os"
       method: GET
       headers:
@@ -452,7 +458,7 @@ stages:
         list_agents: '001,003,005,007'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *os_response
@@ -475,13 +481,14 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/packages"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -491,6 +498,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/packages"
       method: GET
       headers:
@@ -499,7 +507,7 @@ stages:
         list_agents: '001,003,005,007'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -514,13 +522,14 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/ports"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - &ports_response
@@ -557,6 +566,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/ports"
       method: GET
       headers:
@@ -565,7 +575,7 @@ stages:
         list_agents: '001,003,005,007'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *ports_response
@@ -588,13 +598,14 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/processes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -604,6 +615,7 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/processes"
       method: GET
       headers:
@@ -612,7 +624,7 @@ stages:
         list_agents: '001,003,005,007'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -627,34 +639,36 @@ stages:
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/hotfixes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
-          total_affected_items: !anyint
+          total_affected_items: 1 # Only the agent 000 will have results
           total_failed_items: 0
         message: !anystr
 
   - name: Request
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/hotfixes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '001,003,005,007'
+        list_agents: '000,003,005,007' # Only the agent 000 will have results
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
-          total_affected_items: !anyint
+          total_affected_items: 1 # Only the agent 000 will have results
           total_failed_items: 0
         message: !anystr

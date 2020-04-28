@@ -10,6 +10,7 @@ from time import time
 
 from jose import JWTError, jwt
 from werkzeug.exceptions import Unauthorized
+from api import configuration
 
 from api.api_exception import APIException
 from api.constants import SECURITY_PATH
@@ -34,7 +35,7 @@ def check_user(user, password, required_scopes=None):
 
 # Set JWT settings
 JWT_ISSUER = 'wazuh'
-JWT_LIFETIME_SECONDS = 36000
+JWT_LIFETIME_SECONDS = configuration.api_conf['rbac']['auth_token_exp_timeout']
 JWT_ALGORITHM = 'HS256'
 
 # Generate secret file to keep safe or load existing secret
@@ -57,19 +58,14 @@ except IOError as e:
     raise APIException(2002)
 
 
-def generate_token(user_id=None, auth_context=None):
+def generate_token(user_id=None, rbac_policies=None):
     """Generates an encoded jwt token. This method should be called once a user is properly logged on.
 
     :param user_id: Unique username
     :param auth_context: Authorization context of the current user
+    :param rbac_policies: Permissions for the user
     :return: string jwt formatted string
     """
-    # Add dummy rbac_policies for developing here
-    if auth_context:
-        rbac_policies = preprocessor.optimize_resources(auth_context=auth_context)
-    else:
-        rbac_policies = preprocessor.optimize_resources(user_id=user_id)
-
     timestamp = int(time())
     payload = {
         "iss": JWT_ISSUER,

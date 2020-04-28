@@ -1,7 +1,7 @@
 <!--
   -  Windows Event Channel ruleset
   -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2019, Wazuh Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -54,6 +54,13 @@
     <field name="win.system.channel">^Microsoft-Windows-Windows Defender/Operational$</field>
     <options>no_full_log</options>
     <description>Group of Windows rules for the System channel</description>
+  </rule>
+
+  <rule id="60016" level="0">
+    <if_sid>60000</if_sid>
+    <field name="win.system.channel">^Microsoft-Windows-Windows Firewall With Advanced Security/Firewall$</field>
+    <options>no_full_log</options>
+    <description>Group of Microsoft Windows Firewall With Advanced Security rules</description>
   </rule>
 
   <rule id="60006" level="0">

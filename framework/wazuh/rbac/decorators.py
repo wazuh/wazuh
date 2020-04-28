@@ -18,7 +18,7 @@ from wazuh.exception import WazuhError
 from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager
 from wazuh.results import AffectedItemsWazuhResult
 
-mode = configuration.read_api_config()['rbac']['mode']
+mode = configuration.api_conf['rbac']['mode']
 
 
 def switch_mode(m):
@@ -85,7 +85,7 @@ def _expand_resource(resource):
         elif resource_type == 'node:id':
             return set(cluster_nodes.get())
         elif resource_type == 'file:path':
-            return get_files
+            return get_files()
         elif resource_type == '*:*':  # Resourceless
             return {'*'}
         return set()
@@ -194,6 +194,9 @@ def _single_processor(req_resources, user_permissions_for_resource, final_user_p
     """
     req_resources = _optimize_resources(req_resources)
     for user_resource, user_resource_effect in user_permissions_for_resource.items():
+        # Skip combined resources
+        if '&' in user_resource:
+            continue
         user_resource_identifier = ':'.join(user_resource.split(':')[:-1])
         # Modify the identifier agent:group by agent:id in the user's resources
         if user_resource_identifier == 'agent:group':
@@ -381,21 +384,27 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
+            original_kwargs = dict(kwargs)
             target_params, req_permissions, add_denied = \
                 _get_required_permissions(actions=actions, resources=resources, **kwargs)
             allow = _match_permissions(req_permissions=req_permissions)
-            original_kwargs = dict(kwargs)
             skip_execution = False
 
             for res_id, target_param in target_params.items():
                 try:
+                    if target_param in original_kwargs and not isinstance(original_kwargs[target_param], list):
+                        if original_kwargs[target_param] is not None:
+                            original_kwargs[target_param] = [original_kwargs[target_param]]
                     # We don't have any permissions over the required resources
                     if len(allow[res_id]) == 0 and \
                             original_kwargs.get(target_param, None) is not None and \
                             len(original_kwargs[target_param]) != 0:
                         raise Exception
                     if target_param != '*':  # No resourceless and not static
-                        kwargs[target_param] = list(allow[res_id])
+                        if target_param in original_kwargs and original_kwargs[target_param] is not None:
+                            kwargs[target_param] = list(filter(lambda x: x in allow[res_id], original_kwargs[target_param]))
+                        else:
+                            kwargs[target_param] = list(allow[res_id])
                     elif len(allow[res_id]) == 0:
                         raise Exception
                 except Exception:

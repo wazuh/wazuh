@@ -5,24 +5,18 @@ marks:
   - usefixtures:
     - cluster_tests
 
-includes:
-  - !include common.yaml
-
 stages:
-
-    # Authentication stage
-  - type: ref
-    id: login_get_token
 
   - name: Get cluster config
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/local/config"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - name: !anystr
@@ -46,6 +40,7 @@ stages:
 
   - name: Get cluster healtcheck
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/healthcheck"
       method: GET
       headers:
@@ -54,7 +49,7 @@ stages:
         list_nodes: 'worker1,worker2'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - info:
@@ -78,13 +73,14 @@ stages:
 
   - name: Get cluster healtcheck
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/healthcheck"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - info:
@@ -119,13 +115,14 @@ stages:
 
   - name: Get cluster node
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/local/info"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - cluster: wazuh
@@ -143,6 +140,7 @@ stages:
 
   - name: Get cluster nodes
     request: &get_cluster_nodes
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/nodes"
       method: GET
       headers:
@@ -151,7 +149,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: &cluster_nodes_response
             - name: !anystr
@@ -165,12 +163,13 @@ stages:
 
   - name: Get cluster nodes
     request:
+      verify: False
       <<: *get_cluster_nodes
       params:
         limit: 500
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -183,12 +182,13 @@ stages:
 
   - name: Retrieve all elements with limit=0
     request:
+      verify: False
       <<: *get_cluster_nodes
       params:
         limit: 0
     response: &connexion_error
       status_code: 400
-      body:
+      json:
         detail: !anystr
         status: 400
         title: !anystr
@@ -196,12 +196,13 @@ stages:
 
   - name: Sort nodes by name in ascending order
     request:
+      verify: False
       <<: *get_cluster_nodes
       params:
         sort: name
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -220,12 +221,13 @@ stages:
 
   - name: Sort nodes by name in descending order
     request:
+      verify: False
       <<: *get_cluster_nodes
       params:
         sort: -name
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -244,12 +246,13 @@ stages:
 
   - name: Search master
     request:
+      verify: False
       <<: *get_cluster_nodes
       params:
         search: master
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -262,12 +265,13 @@ stages:
 
   - name: Search worker1
     request:
+      verify: False
       <<: *get_cluster_nodes
       params:
         search: worker1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -279,12 +283,13 @@ stages:
 
   - name: Filters (type) -> master
     request:
+      verify: False
       <<: *get_cluster_nodes
       params:
         type: master
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -296,13 +301,14 @@ stages:
 
   - name: Filters (type) -> worker
     request:
+      verify: False
       <<: *get_cluster_nodes
       params:
         limit: 1
         type: worker
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_nodes_response
@@ -315,6 +321,7 @@ stages:
 
   - name: Filters -> invalid type
     request:
+      verify: False
       <<: *get_cluster_nodes
       params:
         type: wrong_type
@@ -323,12 +330,13 @@ stages:
 
   - name: Select name and version
     request:
+      verify: False
       <<: *get_cluster_nodes
       params:
         select: name,version
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - name: !anystr
@@ -344,12 +352,13 @@ stages:
 
   - name: Select type
     request:
+      verify: False
       <<: *get_cluster_nodes
       params:
         select: type
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - type: !anystr
@@ -362,6 +371,7 @@ stages:
 
   - name: Select wrong_field
     request:
+      verify: False
       <<: *get_cluster_nodes
       params:
         select: wrong_field
@@ -383,6 +393,7 @@ stages:
 
   - name: Get cluster {node_id}
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/nodes"
       method: GET
       headers:
@@ -391,7 +402,7 @@ stages:
         list_nodes: "{node_id:s}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - ip: !anystr
@@ -419,6 +430,7 @@ stages:
 
   - name: Get cluster nodes with select
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/nodes"
       method: GET
       headers:
@@ -428,12 +440,11 @@ stages:
         select: "{field}"
     response:
       status_code: 200
-      body:
-        $ext:
-          # Check response item keys are the selected keys
-          function: tavern_utils:test_select_key_affected_items
-          extra_kwargs:
-            select_key: "{field:s}"
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: "{field:s}"
 
 ---
 test_name: GET /cluster/status
@@ -442,13 +453,14 @@ stages:
 
   - name: Get cluster status
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           enabled: "yes"
           running: "yes"
@@ -460,13 +472,14 @@ stages:
 
   - name: Request {node_id}
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - agentless: !anything
@@ -496,13 +509,14 @@ stages:
 
   - name: Request (worker)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - auth: !anything
@@ -526,6 +540,7 @@ stages:
 
   - name: Filters -> section=alerts (master-node)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration"
       method: GET
       headers:
@@ -534,7 +549,7 @@ stages:
         section: alerts
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - alerts:
@@ -548,6 +563,7 @@ stages:
 
   - name: Filters -> section=syscheck (master)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration"
       method: GET
       headers:
@@ -556,7 +572,7 @@ stages:
         section: syscheck
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - syscheck:
@@ -576,6 +592,7 @@ stages:
 
   - name: Filters -> section=syscollector (master)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration"
       method: GET
       headers:
@@ -584,7 +601,7 @@ stages:
         section: syscollector
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - syscollector:
@@ -604,6 +621,7 @@ stages:
 
   - name: Filters -> section=alerts (worker1)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/configuration"
       method: GET
       headers:
@@ -612,7 +630,7 @@ stages:
         section: alerts
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - alerts:
@@ -625,6 +643,7 @@ stages:
 
   - name: Filters -> section=syscheck (worker1)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/configuration"
       method: GET
       headers:
@@ -633,7 +652,7 @@ stages:
         section: syscheck
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - syscheck:
@@ -653,6 +672,7 @@ stages:
 
   - name: Filters -> section=syscollector (worker1)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/configuration"
       method: GET
       headers:
@@ -661,7 +681,7 @@ stages:
         section: syscollector
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - syscollector:
@@ -686,13 +706,14 @@ stages:
 
   - name: Request cluster validation
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/configuration/validation"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - name: master-node
@@ -709,6 +730,7 @@ stages:
   #### Upload corrupted rules file
   - name: Upload corrupted configuration
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: PUT
       data: "{corrupted_rules_file}"
@@ -722,13 +744,14 @@ stages:
 
   - name: Request validation
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/configuration/validation"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - name: worker1
@@ -749,6 +772,7 @@ stages:
     #### Delete corrupted rules file
   - name: Delete rules file
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/manager/files"
       method: DELETE
       headers:
@@ -760,6 +784,7 @@ stages:
 
   - name: Request cluster validation
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/configuration/validation"
       method: GET
       headers:
@@ -768,7 +793,7 @@ stages:
         list_nodes: 'worker1,worker2'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - name: worker1
@@ -782,6 +807,7 @@ stages:
 
   - name: Request cluster validation
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/configuration/validation"
       method: GET
       headers:
@@ -790,7 +816,7 @@ stages:
         list_nodes: 'master-node'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - name: master-node
@@ -807,13 +833,14 @@ stages:
 
   - name: Try to show the config of analisys/global through a worker
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/configuration/analysis/global"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - global:
@@ -839,13 +866,14 @@ stages:
 
   - name: Try to show the config of analysis/active_response through a worker
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/analysis/active_response"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - active-response: !anything
@@ -856,13 +884,14 @@ stages:
 
   - name: Try to show the config of analysis/alerts through a worker
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/configuration/analysis/alerts"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - alerts: !anything
@@ -874,13 +903,14 @@ stages:
   - name: Try to show analysis/command through a worker
 
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/analysis/command"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - command: !anything
@@ -891,13 +921,14 @@ stages:
 
   - name: Try to show the config of authd/authd in the manager through a worker
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/auth/auth"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - auth:
@@ -920,13 +951,14 @@ stages:
 
   - name: Try to show the config of com/internal in the manager through a worker
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/com/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - internal:
@@ -940,13 +972,14 @@ stages:
 
   - name: Try to show the config of csyslog/csyslog in the manager through a worker
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/csyslog/csyslog"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - syslog_output:
@@ -962,13 +995,14 @@ stages:
 
   - name: Try to show the config of integrator/integration in the manager through a worker
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/integrator/integration"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - integration: !anything
@@ -979,13 +1013,14 @@ stages:
 
   - name: Try to show the config of analysis/internal through a worker
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/worker1/configuration/analysis/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - internal:
@@ -1010,13 +1045,14 @@ stages:
 
   - name: Try to show the config of logcollector/localfile in the manager trough a worker
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/logcollector/localfile"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - localfile: !anything
@@ -1027,13 +1063,14 @@ stages:
 
   - name: Try to show the config of logcollector/socket in the manager trough a worker
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/logcollector/socket"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items: []
@@ -1043,13 +1080,14 @@ stages:
 
   - name: Try to show the config of logcollector/internal in the manager trough a worker
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/logcollector/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - internal:
@@ -1076,13 +1114,14 @@ stages:
 
   - name: Try to show the config of mail/global in the manager trough a worker
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/mail/global"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - global:
@@ -1097,13 +1136,14 @@ stages:
 
   - name: Try to show the config of mail/alerts in the manager trough a worker
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/mail/alerts"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - email_alerts:
@@ -1117,13 +1157,14 @@ stages:
 
   - name: Try to show the config of mail/internal in the manager trough a worker
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/mail/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - internal:
@@ -1137,13 +1178,14 @@ stages:
 
   - name: Try to show the config of monitor/internal in the manager trough a worker
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/monitor/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - monitord:
@@ -1163,13 +1205,14 @@ stages:
 
   - name: Try to show the config of request/remote in the manager trough a worker
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/request/remote"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - remote:
@@ -1185,13 +1228,14 @@ stages:
 
   - name: Try to show the config of request/internal in the manager trough a worker
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/request/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - internal:
@@ -1225,13 +1269,14 @@ stages:
 
   - name: Try to show the config of syscheck/syscheck in the manager trough a worker
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/syscheck/syscheck"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - syscheck:
@@ -1243,13 +1288,14 @@ stages:
 
   - name: Try to show the config of syscheck/rootcheck in the manager trough a worker
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/syscheck/rootcheck"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - rootcheck:
@@ -1275,13 +1321,14 @@ stages:
 
   - name: Try to show the config of syscheck/internal in the manager through a worker
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/syscheck/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - internal:
@@ -1293,8 +1340,6 @@ stages:
                   file_max_size: !anyint
                   max_audit_entries: !anyint
                   rt_delay: !anyint
-                  sleep: !anyint
-                  sleep_after: !anyint
                   symlink_scan_interval: !anyint
           failed_items: []
           total_affected_items: 1
@@ -1303,13 +1348,14 @@ stages:
 
   - name: Try to show the config of wmodules/wmodules in the manager trough a worker
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration/wmodules/wmodules"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - wmodules: !anything
@@ -1333,6 +1379,7 @@ stages:
 
   - name: Get ossec.conf {node_id}
     request: &get_cluster_files
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/files"
       method: GET
       headers:
@@ -1341,61 +1388,67 @@ stages:
         path: etc/ossec.conf
     response:
       status_code: 200
-      body:
+      json:
         contents: !anything
 
   - name: Get local rules {node_id}
     request:
+      verify: False
       <<: *get_cluster_files
       params:
         path: etc/rules/local_rules.xml
     response:
       status_code: 200
-      body:
+      json:
         contents: !anything
 
   - name: Get rules {node_id}
     request:
+      verify: False
       <<: *get_cluster_files
       params:
         path: ruleset/rules/0350-amazon_rules.xml
     response:
       status_code: 200
-      body:
+      json:
         contents: !anything
 
   - name: Get local decoder {node_id}
     request:
+      verify: False
       <<: *get_cluster_files
       params:
         path: etc/decoders/local_decoder.xml
     response:
       status_code: 200
-      body:
+      json:
         contents: !anything
 
   - name: Get decoder {node_id}
     request:
+      verify: False
       <<: *get_cluster_files
       params:
         path: ruleset/decoders/0005-wazuh_decoders.xml
     response:
       status_code: 200
-      body:
+      json:
         contents: !anything
 
   - name: Get CDB list {node_id}
     request:
+      verify: False
       <<: *get_cluster_files
       params:
         path: etc/lists/audit-keys
     response:
       status_code: 200
-      body:
+      json:
         contents: !anything
 
   - name: Get file with wrong path (master)
     request:
+      verify: False
       <<: *get_cluster_files
       params:
         path: wrong_path/file.xml
@@ -1404,6 +1457,7 @@ stages:
 
   - name: Get file with empty path (master)
     request:
+      verify: False
       <<: *get_cluster_files
       params:
         path: ''
@@ -1425,6 +1479,7 @@ stages:
 
   - name: Delete rules file
     request: &delete_cluster_files
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/files"
       method: DELETE
       headers:
@@ -1433,7 +1488,7 @@ stages:
         path: etc/rules/local_rules.xml
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'etc/rules/local_rules.xml'
@@ -1444,12 +1499,13 @@ stages:
 
   - name: Delete unexisting rules file
     request:
+      verify: False
       <<: *delete_cluster_files
       params:
         path: etc/rules/local-rules.xml
     response: &non_existing_file
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -1464,12 +1520,13 @@ stages:
 
   - name: Delete decoder file
     request:
+      verify: False
       <<: *delete_cluster_files
       params:
         path: etc/decoders/local_decoder.xml
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'etc/decoders/local_decoder.xml'
@@ -1480,6 +1537,7 @@ stages:
 
   - name: Delete unexisting decoder file
     request:
+      verify: False
       <<: *delete_cluster_files
       params:
         path: etc/decoders/local-decoder.xml
@@ -1488,12 +1546,13 @@ stages:
 
   - name: Delete CDB list file
     request:
+      verify: False
       <<: *delete_cluster_files
       params:
         path: etc/lists/audit-keys
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'etc/lists/audit-keys'
@@ -1504,6 +1563,7 @@ stages:
 
   - name: Delete unexisting CDB list file
     request:
+      verify: False
       <<: *delete_cluster_files
       params:
         path: etc/lists/wrong_list
@@ -1526,6 +1586,7 @@ stages:
   #### Save ossec.conf
   - name: Get ossec.conf {node_id}
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/files"
       method: GET
       headers:
@@ -1534,14 +1595,15 @@ stages:
         path: etc/ossec.conf
     response:
       save:
-        body:
+        json:
           ossec_conf: contents
       status_code: 200
-      body:
+      json:
         contents: !anystr
 
   - name: Upload ossec.conf {node_id}
     request: &upload_cluster_files
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/files"
       method: PUT
       data: "{ossec_conf}"
@@ -1553,7 +1615,7 @@ stages:
         path: etc/ossec.conf
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'etc/ossec.conf'
@@ -1564,13 +1626,14 @@ stages:
 
   - name: Upload new rules {node_id}
     request:
+      verify: False
       <<: *upload_cluster_files
       data: "{new_rules:s}"
       params:
         path: etc/rules/new-rules.xml
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'etc/rules/new-rules.xml'
@@ -1581,6 +1644,7 @@ stages:
 
   - name: Upload rules (overwrite=false) {node_id}
     request:
+      verify: False
       <<: *upload_cluster_files
       data: "{new_rules:s}"
       params:
@@ -1588,7 +1652,7 @@ stages:
         overwrite: False
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -1604,6 +1668,7 @@ stages:
 
   - name: Upload rules (overwrite=true) {node_id}
     request:
+      verify: False
       <<: *upload_cluster_files
       data: "{new_rules:s}"
       params:
@@ -1611,7 +1676,7 @@ stages:
         overwrite: True
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'etc/rules/new-rules.xml'
@@ -1622,6 +1687,7 @@ stages:
 
   - name: Upload rules with XML syntax error (overwrite=true)
     request:
+      verify: False
       <<: *upload_cluster_files
       data: "{new_rules_with_syntax_error:s}"
       params:
@@ -1629,7 +1695,7 @@ stages:
         overwrite: True
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -1645,13 +1711,14 @@ stages:
 
   - name: Upload new decoder
     request:
+      verify: False
       <<: *upload_cluster_files
       data: "{new_decoder:s}"
       params:
         path: etc/decoders/new-decoder.xml
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'etc/decoders/new-decoder.xml'
@@ -1662,6 +1729,7 @@ stages:
 
   - name: Upload decoder (overwrite=false)
     request:
+      verify: False
       <<: *upload_cluster_files
       data: "{new_decoder:s}"
       params:
@@ -1669,7 +1737,7 @@ stages:
         overwrite: False
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -1685,6 +1753,7 @@ stages:
 
   - name: Upload decoder (overwrite=true)
     request:
+      verify: False
       <<: *upload_cluster_files
       data: "{new_decoder:s}"
       params:
@@ -1692,7 +1761,7 @@ stages:
         overwrite: True
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'etc/decoders/new-decoder.xml'
@@ -1703,6 +1772,7 @@ stages:
 
   - name: Upload decoder with XML syntax error (overwrite=true)
     request:
+      verify: False
       <<: *upload_cluster_files
       data: "{new_decoder_with_syntax_error:s}"
       params:
@@ -1710,7 +1780,7 @@ stages:
         overwrite: True
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -1726,13 +1796,14 @@ stages:
 
   - name: Upload new CDB list
     request:
+      verify: False
       <<: *upload_cluster_files
       data: "{new_cdb_list:s}"
       params:
         path: etc/lists/new-list
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'etc/lists/new-list'
@@ -1743,6 +1814,7 @@ stages:
 
   - name: Upload CDB list (overwrite=false)
     request:
+      verify: False
       <<: *upload_cluster_files
       data: "{new_cdb_list:s}"
       params:
@@ -1750,7 +1822,7 @@ stages:
         overwrite: False
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -1766,6 +1838,7 @@ stages:
 
   - name: Upload CDB list (overwrite=true)
     request:
+      verify: False
       <<: *upload_cluster_files
       data: "{new_cdb_list:s}"
       params:
@@ -1773,7 +1846,7 @@ stages:
         overwrite: True
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'etc/lists/new-list'
@@ -1784,6 +1857,7 @@ stages:
 
   - name: Upload CDB list with a syntax error (overwrite=true)
     request:
+      verify: False
       <<: *upload_cluster_files
       data: "{new_cdb_list_with_syntax_error:s}"
       params:
@@ -1791,14 +1865,12 @@ stages:
         overwrite: True
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
             - error:
-                code: 1802
-                message: !anystr
-                remediation: !anystr
+                code: 1800
               id:
                 - 'etc/lists/new-list'
           total_affected_items: 0
@@ -1812,6 +1884,7 @@ stages:
 
   - name: Upload rules to unexisting node (overwrite=false) {node_id}
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/unexisting-node/files"
       method: PUT
       data: "{new_rules:s}"
@@ -1822,18 +1895,19 @@ stages:
         path: etc/rules/new-rules.xml
         overwrite: True
     response:
-      status_code: 500 # should be 400?
-      body:
+      status_code: 400
+      json:
         code: 3022
         dapi_errors: {}
         detail: !anystr
         remediation: !anystr
-        status: 500
+        status: 400
         title: !anystr
         type: !anystr
 
   - name: Upload decoder to unexisting node
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/unexisting-node/files"
       method: PUT
       data: "{new_decoder:s}"
@@ -1844,18 +1918,19 @@ stages:
         path: etc/decoders/new-decoder.xml
         overwrite: True
     response:
-      status_code: 500 # should be 400
-      body:
+      status_code: 400
+      json:
         code: 3022
         dapi_errors: {}
         detail: !anystr
         remediation: !anystr
-        status: 500
+        status: 400
         title: !anystr
         type: !anystr
 
   - name: Upload CDB list to unexisting node
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/unexisting-node/files"
       method: PUT
       data: "{new_cdb_list:s}"
@@ -1866,13 +1941,13 @@ stages:
         path: etc/lists/new-list
         overwrite: False
     response:
-      status_code: 500  # should be 400?
-      body:
+      status_code: 400
+      json:
         code: 3022
         dapi_errors: {}
         detail: !anystr
         remediation: !anystr
-        status: 500
+        status: 400
         title: !anystr
         type: !anystr
 
@@ -1891,13 +1966,14 @@ stages:
 
   - name: Request {node_id}
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/info"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - path: !anystr
@@ -1929,13 +2005,14 @@ stages:
 
   - name: Request {node_id}
     request: &get_cluster_logs
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -1945,12 +2022,13 @@ stages:
 
   - name: Filters -> limit=3 {node_id}
     request:
+      verify: False
       <<: *get_cluster_logs
       params:
         limit: 3
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - &cluster_log
@@ -1967,12 +2045,13 @@ stages:
 
   - name: Filters -> limit=4 {node_id}
     request:
+      verify: False
       <<: *get_cluster_logs
       params:
         limit: 4
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_log
@@ -1986,13 +2065,14 @@ stages:
 
   - name: Filters -> limit=2, sort=tag {node_id}
     request:
+      verify: False
       <<: *get_cluster_logs
       params:
         limit: 2
         sort: tag
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_log
@@ -2004,13 +2084,14 @@ stages:
 
   - name: Filters -> limit=1, sort=-level {node_id}
     request:
+      verify: False
       <<: *get_cluster_logs
       params:
         limit: 1
         sort: -level
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_log
@@ -2021,13 +2102,14 @@ stages:
 
   - name: Filters -> offset=2, limit=3 {node_id}
     request:
+      verify: False
       <<: *get_cluster_logs
       params:
         limit: 3
         offset: 2
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_log
@@ -2040,13 +2122,14 @@ stages:
 
   - name: Filters -> offset=5, limit=2 {node_id}
     request:
+      verify: False
       <<: *get_cluster_logs
       params:
         limit: 2
         offset: 5
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_log
@@ -2058,13 +2141,14 @@ stages:
 
   - name: Filters -> category=ossec-analysisd, limit=1 {node_id}
     request:
+      verify: False
       <<: *get_cluster_logs
       params:
         category: ossec-analysisd
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_log
@@ -2075,13 +2159,14 @@ stages:
 
   - name: Filters -> category=ossec-syscheckd, limit=2 {node_id}
     request:
+      verify: False
       <<: *get_cluster_logs
       params:
         category: ossec-syscheckd
         limit: 2
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *cluster_log
@@ -2105,18 +2190,18 @@ stages:
 
   - name: Request {node_id}
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/logs/summary"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - ossec-agentlessd: !anything
             - ossec-analysisd: !anything
-            - ossec-authd: !anything
             - ossec-csyslogd: !anything
             - ossec-dbd: !anything
             - ossec-execd: !anything
@@ -2130,6 +2215,7 @@ stages:
             - wazuh-db: !anything
             - wazuh-modulesd: !anything
             - wazuh-modulesd:ciscat: !anything
+            - wazuh-modulesd:control: !anything
             - wazuh-modulesd:database: !anything
             - wazuh-modulesd:download: !anything
             - wazuh-modulesd:oscap: !anything
@@ -2155,13 +2241,14 @@ stages:
 
   - name: Cluster stats {node_id} today
     request: &get_cluster_stats
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1308
         dapi_errors: !anything
         detail: !anystr
@@ -2172,22 +2259,24 @@ stages:
 
   - name: Cluster stats {node_id} 2019-08-27
     request:
+      verify: False
       <<: *get_cluster_stats
       params:
         date: "2019-08-27"
     response:
       status_code: 200
-      body:
+      json:
         data: !anything
 
   - name: Cluster stats {node_id} day without stats
     request:
+      verify: False
       <<: *get_cluster_stats
       params:
         date: "1970-01-01"
     response:
       status_code: 400
-      body:
+      json:
         code: 1308
         dapi_errors: !anything
         detail: !anystr
@@ -2203,18 +2292,19 @@ stages:
 
   - name: wrong_node stats
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/wrong_node/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 500 #Should be 400?
-      body:
+      status_code: 400
+      json:
         code: 3022
         dapi_errors: !anything
         detail: !anystr
         remediation: !anystr
-        status: 500
+        status: 400
         title: !anystr
         type: !anystr
 
@@ -2233,13 +2323,14 @@ stages:
 
   - name: Analysisd stats {node_id}
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/stats/analysisd"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_events_decoded: !anyfloat
           syscheck_events_decoded: !anyfloat
@@ -2303,13 +2394,14 @@ stages:
 
   - name: Hourly node stats {node_id}
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/stats/hourly"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           averages: !anything
           interactions: !anyint
@@ -2329,13 +2421,14 @@ stages:
 
   - name: Remoted stats {node_id}
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/stats/remoted"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           queue_size: !anyfloat
           total_queue_size: !anyfloat
@@ -2361,13 +2454,14 @@ stages:
 
   - name: Weekly node stats {node_id}
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/stats/weekly"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           Mon:
             hours: !anything
@@ -2406,13 +2500,14 @@ stages:
 
   - name: Request {node_id}
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - ossec-agentlessd: !anystr
@@ -2438,12 +2533,217 @@ stages:
         message: !anystr
 
 ---
+test_name: GET /cluster/api/config
+
+stages:
+
+  # GET /cluster/api/config
+  - name: Get API configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/api/config"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        host: !anystr
+        port: !anyint
+        behind_proxy_server: !anybool
+        rbac:
+          mode: !anystr
+          auth_token_exp_timeout: !anyint
+        https:
+          enabled: !anybool
+          key: !anystr
+          cert: !anystr
+          use_ca: !anybool
+          ca: !anystr
+        logs:
+          level: !anystr
+          path: !anystr
+        cors:
+          enabled: !anybool
+          source_route: !anystr
+          expose_headers: !anystr
+          allow_headers: !anystr
+          allow_credentials: !anything
+        cache:
+          enabled: !anybool
+          time: !anything
+        use_only_authd: !anybool
+        drop_privileges: !anybool
+        experimental_features: !anybool
+
+---
+test_name: PUT /cluster/api/config
+
+stages:
+
+  # PUT /cluster/api/config
+  - name: Modify API configuration (some fields)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/api/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        cache:
+          enabled: false
+          time: 1
+    response:
+      status_code: 200
+      json: &update_api_config_ok
+        data:
+          affected_items: !anything
+          total_affected_items: 3
+          total_failed_items: 0
+          failed_items: []
+        message: !anystr
+
+  # PUT /cluster/api/config
+  - name: Modify API configuration (all allowed fields)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/api/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        behind_proxy_server: false
+        rbac:
+          mode: "black"
+          auth_token_exp_timeout: 3000
+        logs:
+          level: "debug"
+        cache:
+          enabled: true
+          time: 3
+        cors:
+          enabled: true
+          source_route: "*"
+          expose_headers: "*"
+          allow_headers: "*"
+          allow_credentials: false
+        use_only_authd: true
+        experimental_features: true
+    response:
+      status_code: 200
+      json:
+        <<: *update_api_config_ok
+
+  # PUT /cluster/api/config
+  - name: Modify API configuration (forbidden field)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/api/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        logs:
+          path: "test"
+    response:
+      status_code: 400
+
+  # GET /cluster/api/config
+  - name: Get API configuration that was set above
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/api/config"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json: &api_response
+        host: !anystr
+        port: !anyint
+        behind_proxy_server: false
+        rbac:
+          mode: "black"
+          auth_token_exp_timeout: 3000
+        https:
+          enabled: !anybool
+          key: !anystr
+          cert: !anystr
+          use_ca: !anybool
+          ca: !anystr
+        logs:
+          level: "debug"
+          path: !anystr
+        cors:
+          enabled: true
+          source_route: "*"
+          expose_headers: "*"
+          allow_headers: "*"
+          allow_credentials: false
+        cache:
+          enabled: true
+          time: 3
+        use_only_authd: true
+        drop_privileges: !anybool
+        experimental_features: true
+
+---
+test_name: DELETE /cluster/api/config
+
+stages:
+
+  # DELETE /cluster/api/config
+  - name: Restore API configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/api/config"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        <<: *update_api_config_ok
+
+  # GET /cluster/api/config
+  - name: Get API default configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/api/config"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        <<: *api_response
+        rbac:
+          mode: !anystr
+          auth_token_exp_timeout: 3600
+        logs:
+          level: "info"
+          path: !anystr
+        cors:
+          enabled: false
+          source_route: "*"
+          expose_headers: "*"
+          allow_headers: "*"
+          allow_credentials: false
+        cache:
+          enabled: true
+          time: 0.75
+        use_only_authd: false
+        drop_privileges: !anybool
+        experimental_features: false
+
+---
 test_name: PUT /cluster/restart
 
 stages:
 
   - name: Restart cluster
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/restart"
       method: PUT
       headers:
@@ -2452,7 +2752,7 @@ stages:
         list_nodes: 'worker1,worker2'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'worker1'
@@ -2465,13 +2765,14 @@ stages:
 
   - name: Restart cluster
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - 'master-node'

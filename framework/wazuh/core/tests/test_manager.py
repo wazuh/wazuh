@@ -4,14 +4,17 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
-from unittest.mock import patch, mock_open
+import sys
+from unittest.mock import patch, mock_open, MagicMock, ANY
 
 import pytest
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
+        sys.modules['api'] = MagicMock()
         from wazuh.core.manager import *
         from wazuh.exception import WazuhException
+        del sys.modules['api']
 
 ossec_cdb_list = "172.16.19.:\n172.16.19.:\n192.168.:"
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -238,11 +241,11 @@ def test_upload_list_ko(mock_chmod, mock_random, mock_time, test_manager):
 
     m = mock_open(read_data=ossec_log_file)
     with patch('builtins.open', m):
-        with pytest.raises(WazuhException, match=f'.* 1802 .*'):
+        with pytest.raises(WazuhException, match=f'.* 1800 .*'):
             upload_list(ossec_log_file, output_file)
 
         with patch('wazuh.core.manager.validate_cdb_list', return_value=False):
-            with pytest.raises(WazuhException, match=f'.* 1802 .*'):
+            with pytest.raises(WazuhException, match=f'.* 1800 .*'):
                 upload_list(ossec_log_file, output_file)
 
         with patch('wazuh.core.manager.validate_cdb_list', return_value=True):
@@ -342,3 +345,40 @@ def test_parse_execd_output(error_flag, error_msg):
     else:
         with pytest.raises(WazuhException, match=f'.* 1908 .*'):
             parse_execd_output(json_response)
+
+
+@pytest.mark.parametrize('node_type', [
+    'master',
+    'worker'
+])
+@patch('wazuh.core.manager.yaml.dump')
+@patch('wazuh.core.manager.open')
+def test_update_api_conf(mock_open, mock_yaml, node_type):
+    """Verify whether update_api_conf correctly updates shared api_conf dict.
+
+    It also checks that the configuration is updated in the api.yaml file
+    only if the node type is master.
+
+    Parameters
+    ----------
+    node_type : str
+        Type of cluster node. It can be 'master' or 'worker'
+    """
+    old_config = {'experimental_features': False, 'cache': {'enabled': False, 'time': 0.75}}
+    new_config = {'experimental_features': True, 'cache': {'enabled': True}}
+
+    with patch('wazuh.core.manager.configuration.api_conf', new=old_config):
+        update_api_conf(new_config=new_config, node_type=node_type)
+
+        assert old_config == {'experimental_features': True, 'cache': {'enabled': True, 'time': 0.75}}
+        if node_type == 'master':
+            mock_open.assert_called_once(), '"Open" should be called, but it was not.'
+            mock_yaml.assert_called_once_with(old_config, ANY), '"Yaml.dump" should be called with updated config.'
+        else:
+            mock_open.assert_not_called(), '"Open" should not be called.'
+
+
+def test_update_api_conf_ko():
+    """Verify whether update_api_conf raises expected exception."""
+    with pytest.raises(WazuhException, match=f'.* 1105 .*'):
+        update_api_conf(new_config=None, node_type='master')

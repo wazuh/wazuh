@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -41,7 +41,7 @@ class WazuhException(Exception):
         1015: 'Error agent version is null. Was the agent ever connected?',
         1016: {'message': 'Error moving file',
                'remediation': 'Please, ensure you have the required file permissions in Wazuh directories'},
-        1017: 'Some Wazuh daemons are not ready yet in node \'{node_name}\' ',
+        1017: 'Some Wazuh daemons are not ready yet in node "{node_name}" ({not_ready_daemons})',
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
         1101: {'message': 'Requested component does not exist',
@@ -373,14 +373,14 @@ class WazuhException(Exception):
                },
         1908: {'message': 'Error validating configuration',
                'remediation': 'Please, fix the corrupted files'
-              },
+               },
         1909: {'message': 'Content of file is empty',
                'remediation': 'Try to upload another non-empty file'},
         1910: {'message': 'Content-type header is mandatory',
                'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/current/user-manual/api/reference.html#update-local-file-at-any-cluster-node)'
                               ' to get more information about how to configure a cluster'},
         1911: {'message': 'Error parsing body request to UTF-8',
-               'remediation': 'Please, check if the file content to be uploaded is right'},
+               'remediation': 'Please, check if the file content is valid UTF-8'},
         1912: {'message': 'Body is empty',
                'remediation': 'Please, check the content of the file to be uploaded'},
 
@@ -491,6 +491,11 @@ class WazuhException(Exception):
                'remediation': 'Please, create the specified user-role relation with the endpoint '
                               'POST /security/user/{username}/roles/{role_id}'},
         4017: {'message': 'The specified user-role link already exist'},
+        4018: {'message': 'Level can not be a negative number'},
+        4019: {'message': 'Invalid resource specified',
+               'remediation': 'Please, check the current RBAC resources, for more information please visit XXXX'},
+        4020: {'message': 'Invalid endpoint specified',
+               'remediation': 'Valid endpoints are: '},
         4500: {'message': 'The specified resources are invalid',
                'remediation': 'Please, make sure permissions are properly defined, '
                               'for more information on setting up permissions please visit XXXX'},

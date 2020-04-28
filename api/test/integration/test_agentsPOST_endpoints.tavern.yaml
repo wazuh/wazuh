@@ -3,39 +3,34 @@ test_name: POST /agents
 
 marks:
   - usefixtures:
-    - base_tests
-
-includes:
-  - !include common.yaml
+    - agents_tests
 
 stages:
-
-    # Authentication stage
-  - type: ref
-    id: login_get_token
 
     # POST /agents
   - name: Try to create a new agent without body
     request: &agent_request
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 2005
 
     # POST /agents
   - name: Create a new agent
     request:
+      verify: False
       <<: *agent_request
       json:
         name: "NewAgentPost"
         ip: "any"
     response:
       status_code: 200
-      body: &agent_create_response
+      json: &agent_create_response
         data:
           id: !anystr
           key: !anystr
@@ -43,18 +38,20 @@ stages:
     # POST /agents
   - name: Try to create agent with a name already present
     request:
+      verify: False
       <<: *agent_request
       json:
         name: "NewAgentPost"
         ip: "any"
     response:
       status_code: 400
-      body:
+      json:
         code: 1705
 
     # POST /agents
   - name: Try to create an agent with a name longer than 128 chars
     request:
+      verify: False
       <<: *agent_request
       method: POST
       json:
@@ -63,18 +60,19 @@ stages:
         force_time: 1
     response:
       status_code: 400
-      body:
+      json:
         code: 1738
 
     # POST /agents
   - name: Try to create agent with missing field name
     request:
+      verify: False
       <<: *agent_request
       json:
         ip: "any"
     response:
       status_code: 400
-      body: &error_spec
+      json: &error_spec
         detail: !anystr
         status: !anyint
         title: !anystr
@@ -83,17 +81,19 @@ stages:
     # POST /agents
   - name: Create agent without assigning an specific IP
     request:
+      verify: False
       <<: *agent_request
       json:
         name: "NewAgentPost2"
     response:
       status_code: 200
-      body:
+      json:
         <<: *agent_create_response
 
     # POST /agents
   - name: Create agent with an specific IP
     request:
+      verify: False
       <<: *agent_request
       method: POST
       json:
@@ -101,12 +101,13 @@ stages:
         ip: "100.100.100.100"
     response:
       status_code: 200
-      body:
+      json:
         <<: *agent_create_response
 
     # POST /agents
   - name: Try to create an agent with a duplicated IP
     request:
+      verify: False
       <<: *agent_request
       method: POST
       json:
@@ -114,36 +115,39 @@ stages:
         ip: "100.100.100.100"
     response:
       status_code: 400
-      body:
+      json:
         code: 1706
 
     # POST /agents
   - name: Try to create an agent with an invalid IP (letters)
     request:
+      verify: False
       <<: *agent_request
       json:
         name: "NewAgentPost5"
         ip: "A.B.C.D"
     response:
       status_code: 400
-      body:
+      json:
         code: 1706
 
     # POST /agents
   - name: Try to create an agent with an invalid IP (wrong numbers)
     request:
+      verify: False
       <<: *agent_request
       json:
         name: "NewAgentPost5"
         ip: "333.333.333.333"
     response:
       status_code: 400
-      body:
+      json:
         code: 1706
 
     # POST /agents
   - name: Create an agent with force time
     request:
+      verify: False
       <<: *agent_request
       method: POST
       json:
@@ -152,7 +156,7 @@ stages:
         force_time: 1
     response:
       status_code: 200
-      body:
+      json:
         <<: *agent_create_response
 
 ---
@@ -163,6 +167,7 @@ stages:
     # POST /groups?group_id=group4
   - name: Create a group called group4
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
       method: POST
       headers:
@@ -171,12 +176,13 @@ stages:
         group_id: group4
     response:
       status_code: 200
-      body:
+      json:
         message: !anystr
 
     # POST /groups?group_id=group1
   - name: Try to create a group that already exists
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
       method: POST
       headers:
@@ -185,12 +191,13 @@ stages:
         group_id: group1
     response:
       status_code: 400
-      body:
+      json:
         code: 1711
 
     # POST /groups?group_id=;wrong_name
   - name: Try to create a group with an invalid name
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
       method: POST
       headers:
@@ -199,7 +206,7 @@ stages:
         group_id: ';wrong_name'
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
 ---
@@ -210,18 +217,20 @@ stages:
     # POST /agents/insert
   - name: Try to create a new agent without body
     request: &agent_insert_request
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/insert"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 2005
 
     # POST /agents/insert
   - name: Create a new agent specifying id, ip, key and name
     request:
+      verify: False
       <<: *agent_insert_request
       json:
         name: "NewAgentPostInsert"
@@ -230,12 +239,13 @@ stages:
         key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
     response:
       status_code: 200
-      body:
+      json:
         <<: *agent_create_response
 
     # POST /agents/insert
   - name: Try to create a new agent with an already present name
     request:
+      verify: False
       <<: *agent_insert_request
       json:
         name: "NewAgentPostInsert"
@@ -244,12 +254,13 @@ stages:
         key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
     response:
       status_code: 400
-      body:
+      json:
         code: 1705
 
     # POST /agents/insert
   - name: Try to create a new agent with an already present id
     request:
+      verify: False
       <<: *agent_insert_request
       json:
         name: "NewAgentPostInsert1"
@@ -258,12 +269,13 @@ stages:
         key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
     response:
       status_code: 400
-      body:
+      json:
         code: 1708
 
     # POST /agents/insert
   - name: Try to create a new agent with an invalid key
     request:
+      verify: False
       <<: *agent_insert_request
       json:
         name: "NewAgentPostInsert1"
@@ -272,12 +284,13 @@ stages:
         key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64EXTRA"
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
     # POST /agents/insert
   - name: Try to create a new agent without specifying a name
     request:
+      verify: False
       <<: *agent_insert_request
       json:
         ip: "any"
@@ -285,7 +298,7 @@ stages:
         key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
 
@@ -294,6 +307,7 @@ stages:
   - name: Extra field
     skip: True
     request:
+      verify: False
       <<: *agent_insert_request
       json:
         name: "NewAgentPostInsertExtra"
@@ -303,12 +317,13 @@ stages:
         extra: "Nothing"
     response:
       status_code: 200
-      body:
+      json:
         <<: *agent_create_response
 
     # POST /agents/insert
   - name: Create a new agent using an automatic IP (ip already used by NewAgentPost2)
     request:
+      verify: False
       <<: *agent_insert_request
       json:
         name: "NewAgentPostInsertNOIP"
@@ -316,12 +331,13 @@ stages:
         key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
     response:
       status_code: 400
-      body:
+      json:
         code: 1706
 
     # POST /agents/insert
   - name: Create a new agent using a manual IP
     request:
+      verify: False
       <<: *agent_insert_request
       json:
         name: "NewAgentPostInsertMIP"
@@ -330,12 +346,13 @@ stages:
         key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
     response:
       status_code: 200
-      body:
+      json:
         <<: *agent_create_response
 
     # POST /agents/insert
   - name: Try to create an agent using an already registered IP
     request:
+      verify: False
       <<: *agent_insert_request
       json:
         name: "NewAgentPostInsertDIP"
@@ -344,12 +361,13 @@ stages:
         key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
     response:
       status_code: 400
-      body:
+      json:
         code: 1706
 
     # POST /agents/insert
   - name: Try to create an agent with an invalid IP (letters)
     request:
+      verify: False
       <<: *agent_insert_request
       json:
         name: "NewAgentPostInsert"
@@ -358,12 +376,13 @@ stages:
         key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
     response:
       status_code: 400
-      body:
+      json:
         code: 1706
 
     # POST /agents/insert
   - name: Try to create an agent with an invalid IP (wrong numbers)
     request:
+      verify: False
       <<: *agent_insert_request
       json:
         name: "NewAgentPostInsert"
@@ -372,12 +391,13 @@ stages:
         key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
     response:
       status_code: 400
-      body:
+      json:
         code: 1706
 
     # POST /agents/insert
   - name: Create an agent using force time
     request:
+      verify: False
       <<: *agent_insert_request
       json:
         name: "NewAgentPostInsert"
@@ -385,7 +405,7 @@ stages:
         force_time: 1
     response:
       status_code: 200
-      body:
+      json:
         <<: *agent_create_response
 
 ---
@@ -396,6 +416,7 @@ stages:
     # POST /agents/insert/quick?agent_name=test_agent
   - name: Create new agent specifying its name
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/insert/quick"
       method: POST
       headers:
@@ -404,7 +425,7 @@ stages:
         agent_name: test_agent
     response:
       status_code: 200
-      body:
+      json:
         data:
           id: !anystr
           key: !anystr
@@ -412,6 +433,7 @@ stages:
     # POST /agents/insert/quick?agent_name=wrong%name
   - name: Try to create agent with an invalid name (invalid_character)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/insert/quick"
       method: POST
       headers:
@@ -420,12 +442,13 @@ stages:
         agent_name: 'wrong%name'
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
     # POST /agents/insert/quick?agent_name=test_agent
   - name: Try to create an already existing agent
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/insert/quick"
       method: POST
       headers:
@@ -434,5 +457,5 @@ stages:
         agent_name: test_agent
     response:
       status_code: 400
-      body:
+      json:
         code: 1705

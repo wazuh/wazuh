@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -10,14 +10,15 @@ from datetime import timezone
 from os import remove
 from os.path import exists, join
 
+from api import configuration as api_conf
 from wazuh import Wazuh
 from wazuh import common
 from wazuh import configuration
-from wazuh.core.cluster.cluster import get_node
 from wazuh.configuration import get_ossec_conf
+from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart, read_cluster_config
 from wazuh.core.manager import status, get_ossec_log_fields, upload_xml, upload_list, validate_xml, validate_cdb_list, \
-    parse_execd_output
+    parse_execd_output, update_api_conf
 from wazuh.exception import WazuhError, WazuhInternalError
 from wazuh.rbac.decorators import expose_resources
 from wazuh.results import WazuhResult, AffectedItemsWazuhResult
@@ -221,6 +222,10 @@ def get_file(path, validate=False):
     """
     full_path = join(common.ossec_path, path[0])
 
+    # check if file exists
+    if not exists(full_path):
+        raise WazuhError(1906)
+
     # validate CDB lists files
     if validate and re.match(r'^etc/lists', path[0]) and not validate_cdb_list(path[0]):
         raise WazuhError(1800, {'path': path[0]})
@@ -228,10 +233,6 @@ def get_file(path, validate=False):
     # validate XML files
     if validate and not validate_xml(path[0]):
         raise WazuhError(1113)
-
-    # check if file exists
-    if not exists(full_path):
-        raise WazuhError(1006)
 
     try:
         with open(full_path) as f:
@@ -267,6 +268,49 @@ def delete_file(path):
             raise WazuhError(1906)
     except WazuhError as e:
         result.add_failed_item(id_=path[0], error=e)
+    result.total_affected_items = len(result.affected_items)
+
+    return result
+
+
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_api_config"], resources=['*:*:*'])
+def get_api_config():
+    """Returns current API configuration."""
+    return api_conf.api_conf
+
+
+_update_config_default_result_kwargs = {
+    'all_msg': f"API configuration successfully updated. Some settings may require restarting the API to be applied.",
+    'none_msg': "API configuration could not be updated.",
+    'sort_casting': ['str']
+}
+
+
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:update_api_config"], resources=['*:*:*'],
+                  post_proc_kwargs={'default_result_kwargs': _update_config_default_result_kwargs})
+def update_api_config(updated_config=None):
+    """Update or restore current API configuration.
+
+    Update the shared configuration object "api_conf"  wih
+    "updated_config" and then overwrite the content of api.yaml.
+
+    Parameters
+    ----------
+    updated_config : dict
+        Dictionary with the new configuration.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        Confirmation/Error message.
+    """
+    result = AffectedItemsWazuhResult(**_update_config_default_result_kwargs)
+
+    try:
+        update_api_conf(updated_config, get_node().get('type'))
+        result.affected_items.append(node_id)
+    except WazuhError as e:
+        result.add_failed_item(id_=node_id, error=e)
     result.total_affected_items = len(result.affected_items)
 
     return result

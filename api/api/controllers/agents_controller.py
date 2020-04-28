@@ -39,7 +39,8 @@ async def delete_agents(request, pretty=False, wait_for_complete=False, list_age
     f_kwargs = {'agent_list': list_agents,
                 'purge': purge,
                 'status': status,
-                'older_than': older_than
+                'older_than': older_than,
+                'use_only_authd': configuration.api_conf['use_only_authd']
                 }
     dapi = DistributedAPI(f=agent.delete_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -135,7 +136,7 @@ async def add_agent(request, pretty=False, wait_for_complete=False):
 
     # Get IP if not given
     if not f_kwargs['ip']:
-        if configuration.read_api_config()['behind_proxy_server']:
+        if configuration.api_conf['behind_proxy_server']:
             try:
                 f_kwargs['ip'] = request.headers['X-Forwarded-For']
             except KeyError:
@@ -144,6 +145,7 @@ async def add_agent(request, pretty=False, wait_for_complete=False):
             peername = request.transport.get_extra_info('peername')
             if peername is not None:
                 f_kwargs['ip'], _ = peername
+    f_kwargs['use_only_authd'] = configuration.api_conf['use_only_authd']
 
     dapi = DistributedAPI(f=agent.add_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -453,7 +455,7 @@ async def post_new_agent(request, agent_name, pretty=False, wait_for_complete=Fa
     :param agent_name: Agent name used when the agent was registered.
     :return: AgentIdKeyData
     """
-    f_kwargs = {'name': agent_name}
+    f_kwargs = {'name': agent_name, 'use_only_authd': configuration.api_conf['use_only_authd']}
 
     dapi = DistributedAPI(f=agent.add_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -709,9 +711,8 @@ async def get_group_config(request, group_id, pretty=False, wait_for_complete=Fa
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=dumps)
+    return web.json_response(data=Data(data), status=200, dumps=dumps)
 
 
 async def put_group_config(request, body, group_id, pretty=False, wait_for_complete=False):
@@ -785,9 +786,8 @@ async def get_group_files(request, group_id, pretty=False, wait_for_complete=Fal
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 async def get_group_file_json(request, group_id, file_name, pretty=False, wait_for_complete=False):
@@ -814,7 +814,7 @@ async def get_group_file_json(request, group_id, file_name, pretty=False, wait_f
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = Data(data['data']['items'])
+    response = Data(data['data']['affected_items'])
 
     return web.json_response(data=response, status=200, dumps=dumps)
 
@@ -864,7 +864,7 @@ async def insert_agent(request, pretty=False, wait_for_complete=False):
 
     # Get IP if not given
     if not f_kwargs['ip']:
-        if configuration.read_api_config()['behind_proxy_server']:
+        if configuration.api_conf['behind_proxy_server']:
             try:
                 f_kwargs['ip'] = request.headers['X-Forwarded-For']
             except KeyError:
@@ -873,6 +873,7 @@ async def insert_agent(request, pretty=False, wait_for_complete=False):
             peername = request.transport.get_extra_info('peername')
             if peername is not None:
                 f_kwargs['ip'], _ = peername
+    f_kwargs['use_only_authd'] = configuration.api_conf['use_only_authd']
 
     dapi = DistributedAPI(f=agent.add_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -1043,6 +1044,5 @@ async def get_agent_summary_os(request, pretty=False, wait_for_complete=False):
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=dumps)

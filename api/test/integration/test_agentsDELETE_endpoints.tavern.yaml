@@ -3,51 +3,47 @@ test_name: DELETE /agents/{agent_id}/group/{group_id}
 
 marks:
   - usefixtures:
-    - base_tests
-
-includes:
-  - !include common.yaml
+    - agents_tests
 
 stages:
-
-    # Authentication stage
-  - type: ref
-    id: login_get_token
 
     # DELETE /agents/000/group/group1
   - name: Try to remove agent 000 (manager) from group1
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/group/group1"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1703
 
     # DELETE /agents/999/group/group1
   - name: Try to remove non existing agent from group1
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/999/group/group1"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1701
 
     # DELETE /agents/wrong_id/group/group1
   - name: Try to remove wrong agent_id from group1
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/wrong_id/group/group1"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body: &error_spec
+      json: &error_spec
         detail: !anystr
         status: !anyint
         title: !anystr
@@ -56,73 +52,79 @@ stages:
     # DELETE /agents/001/group/wrong_group
   - name: Try to remove agent 001 from a wrong_group
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/group/wrong_group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1710
 
     # DELETE /agents/001/group/group2
   - name: Try to remove agent 001 from a group where it is not assigned (group2)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/group/group2"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1734
 
     # DELETE /agents/004/group/default
   - name: Try to remove agent 004 (only assigned to default) from group default
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/004/group/default"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1745
 
     # DELETE /agents/001/group/group1
   - name: Remove agent 001 from group1
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/group/group1"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         message: "Agent '001' removed from 'group1'."
 
     # DELETE /agents/002/group/default
   - name: Remove agent 002 from default
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/002/group/default"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         message: "Agent '002' removed from 'default'."
 
     # DELETE /agents/002/group/group2
   - name: Remove agent 002 from group2 when it is the only group assigned
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/002/group/group2"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         message: "Agent '002' removed from 'group2'. Agent reassigned to group default."
 
 ---
@@ -133,49 +135,53 @@ stages:
     # DELETE /agents/000/group
   - name: Try to remove agent 000 (manager) from all groups
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1703
 
     # DELETE /agents/999/group
   - name: Try to remove non existing agent from all groups
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/999/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 1701
 
     # DELETE /agents/wrong_id/group
   - name: Try to remove wrong agent_id from all groups
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/bad_id/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
     # DELETE /agents/005/group
   - name: Remove agent 005 from all groups
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/005/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - "group1"
@@ -186,6 +192,7 @@ stages:
     # DELETE /agents/008/group?list_groups=group1,group3
   - name: Remove agent 008 from group1 and group2
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/008/group"
       method: DELETE
       headers:
@@ -194,7 +201,7 @@ stages:
         list_groups: group1,group3
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - "group1"
@@ -210,6 +217,7 @@ stages:
     # DELETE /agents/group?group_id=wrong_group&list_agents=001,002
   - name: Try to remove agents from non existing group
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: DELETE
       headers:
@@ -219,12 +227,13 @@ stages:
         group_id: wrong_group
     response:
       status_code: 400
-      body:
+      json:
         code: 1710
 
     # DELETE /agents/group?group_id=group1&list_agents=000,002
   - name: Try to remove agents 000 and 002(not assigned to group1) from group1
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: DELETE
       headers:
@@ -234,7 +243,7 @@ stages:
         group_id: group1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -253,6 +262,7 @@ stages:
     # DELETE /agents/group?group1&list_agents=998,999
   - name: Try to remove agents 998 and 999 from group1
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: DELETE
       headers:
@@ -263,7 +273,7 @@ stages:
     response:
       strict: False
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -279,6 +289,7 @@ stages:
     # DELETE /agents/group?group2&list_agents=006,010
   - name: Remove agents 006 and 010 from group2
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: DELETE
       headers:
@@ -288,7 +299,7 @@ stages:
         group_id: group2
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '006'
@@ -299,6 +310,7 @@ stages:
     # DELETE /agents/group?group_id=group2
   - name: Remove all agents from group2 (008)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
       method: DELETE
       headers:
@@ -307,7 +319,7 @@ stages:
         group_id: group2
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '008'
@@ -322,6 +334,7 @@ stages:
     # DELETE /groups?list_groups=wrong_group
   - name: Try to delete non existing group
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
       method: DELETE
       headers:
@@ -330,7 +343,7 @@ stages:
         list_groups: wrong_group
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_agents: []
           affected_items: []
@@ -346,6 +359,7 @@ stages:
     # DELETE /groups?list_groups=default
   - name: Try to delete default group
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
       method: DELETE
       headers:
@@ -354,7 +368,7 @@ stages:
         list_groups: default
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_agents: []
           affected_items: []
@@ -371,6 +385,7 @@ stages:
   - name: Delete group3
     delay_before: 12
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
       method: DELETE
       headers:
@@ -379,7 +394,7 @@ stages:
         list_groups: group3
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_agents:
             - '003'
@@ -398,6 +413,7 @@ stages:
     # DELETE /groups?list_groups=wrong1,wrong2
   - name: Try to delete non existing groups
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
       method: DELETE
       headers:
@@ -406,7 +422,7 @@ stages:
         list_groups: 'wrong1,wrong2'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_agents: []
           affected_items: []
@@ -423,6 +439,7 @@ stages:
     # DELETE /groups?list_groups=group1,default
   - name: Delete groups group1 and default
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
       method: DELETE
       headers:
@@ -431,7 +448,7 @@ stages:
         list_groups: 'group1,default'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_agents:
             - '007'
@@ -449,14 +466,16 @@ stages:
 
     # DELETE /groups
   - name: Delete all groups (group2)
+    delay_before: 12
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_agents: []
           affected_items:
@@ -472,6 +491,7 @@ stages:
     # DELETE /agents?list_agents=000
   - name: Try to delete agent 000 (manager)
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
       method: DELETE
       headers:
@@ -480,7 +500,7 @@ stages:
         list_agents: '000'
     response: &error_delete_agent
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -493,6 +513,7 @@ stages:
     # DELETE /agents?list_agents=999
   - name: Try to delete non existing agent
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
       method: DELETE
       headers:
@@ -501,7 +522,7 @@ stages:
         list_agents: '999'
     response:
       <<: *error_delete_agent
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -516,6 +537,7 @@ stages:
     # DELETE /agents?list_agents=wrong
   - name: Try to delete agent using wrong agent_id format
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
       method: DELETE
       headers:
@@ -524,12 +546,13 @@ stages:
         list_agents: wrong
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
     # DELETE /agents?list_agents=006
   - name: Delete an agent
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
       method: DELETE
       headers:
@@ -539,7 +562,7 @@ stages:
         older_than: '0s'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '006'
@@ -549,6 +572,7 @@ stages:
     # DELETE /agents?list_agents=010&purge=True
   - name: Delete an agent using purge
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
       method: DELETE
       headers:
@@ -559,7 +583,7 @@ stages:
         older_than: '0s'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '010'
@@ -574,6 +598,7 @@ stages:
     # DELETE /agents?list_agents=wrong
   - name: Try to delete agent with a wrong list_agents
     request: &delete_agents
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
       method: DELETE
       headers:
@@ -582,18 +607,19 @@ stages:
         list_agents: 'wrong'
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
     # DELETE /agents?list_agents=998,999
   - name: Try to delete non existing agents
     request:
+      verify: False
       <<: *delete_agents
       params:
         list_agents: '998,999'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -610,12 +636,13 @@ stages:
     # DELETE /agents?list_agents=000
   - name: Try to delete agent 000 (manager)
     request:
+      verify: False
       <<: *delete_agents
       params:
         list_agents: '000'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -632,25 +659,27 @@ stages:
     # DELETE /agents?list_agents=004&status=wrong
   - name: Try to delete agent with a wrong status
     request:
+      verify: False
       <<: *delete_agents
       params:
         list_agents: '004'
         status: 'wrong'
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
     # DELETE /agents?list_agents=004&status=disconnected
   - name: Try to delete agent with a different status
     request:
+      verify: False
       <<: *delete_agents
       params:
         list_agents: '004'
         status: 'disconnected'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -665,6 +694,7 @@ stages:
     # DELETE /agents?list_agents=004&status=active&older_than=1s
   - name: Delete agent with a proper status
     request:
+      verify: False
       <<: *delete_agents
       params:
         list_agents: '004'
@@ -672,7 +702,7 @@ stages:
         older_than: '1s'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '004'
@@ -683,25 +713,27 @@ stages:
     # DELETE /agents?list_agents=007&older_than=wrong
   - name: Try to delete agent with a wrong older_than param
     request:
+      verify: False
       <<: *delete_agents
       params:
         list_agents: '007'
         older_than: 'wrong'
     response:
       status_code: 400
-      body:
+      json:
         <<: *error_spec
 
     # DELETE /agents?list_agents=007&older_than=1h
   - name: Try to delete agent with older_than param older than agent life
     request:
+      verify: False
       <<: *delete_agents
       params:
         list_agents: '007'
         older_than: '1h'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -717,13 +749,14 @@ stages:
     # DELETE /agents?list_agents=007&older_than=1s
   - name: Delete agent older_than 1s
     request:
+      verify: False
       <<: *delete_agents
       params:
         list_agents: '007'
         older_than: '1s'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '007'
@@ -734,13 +767,14 @@ stages:
     # DELETE /agents?list_agents=008,009&older_than=1s
   - name: Delete several agents
     request:
+      verify: False
       <<: *delete_agents
       params:
         list_agents: '008,009'
         older_than: '1s'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - "008"
@@ -752,6 +786,7 @@ stages:
     # DELETE /agents?list_agents=011&older_than=1s&purge=True
   - name: Delete agent older_than 1s with purge
     request:
+      verify: False
       <<: *delete_agents
       params:
         list_agents: '011'
@@ -759,7 +794,7 @@ stages:
         purge: True
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '011'
@@ -771,6 +806,7 @@ stages:
   - name: Delete all agents (001,002,003,005,012)
     delay_before: 12
     request:
+      verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
       method: DELETE
       headers:
@@ -779,7 +815,7 @@ stages:
         older_than: '0s'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - "001"
