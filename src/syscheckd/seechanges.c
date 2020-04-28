@@ -221,7 +221,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attr
 
         n = strlen(diff_str);
 
-        if(*(++p) != '*') {
+        if(p && p[1] != '*') {
             // If the second line does not start with '*', an error message was printed,
             // most likely stating that the files are "too different"
             if(n >= OS_MAXSTR - OS_SK_HEADER - 1 - strlen(STR_MORE_CHANGES)) {
