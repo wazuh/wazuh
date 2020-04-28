@@ -4666,10 +4666,8 @@ paths:
               example:
                 message: "Command sent to shown agents"
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /agents:
@@ -4717,10 +4715,8 @@ paths:
                   total_affected_items: 3
                 message: 'All shown agents were deleted'
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
     get:
       tags:
@@ -4845,10 +4841,8 @@ paths:
                   total_affected_items: 3
                 message: 'All selected agents information is shown'
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
     post:
       tags:
@@ -4901,10 +4895,8 @@ paths:
                   id: "007"
                   key: MDA3IE5ld0hvc3QgMTAuMC4wLjkgZTk5MDE2ZTkzMjMyZDBjZDYyMGIyZTZmMTM2ZjMzMDQxMjY3M2E0NGRmOTNmODk1NzFjMGQyYzczY2VlYzRhZQ==
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /agents/{agent_id}/config/{component}/{configuration}:
@@ -4976,10 +4968,8 @@ paths:
                       target:
                         - agent
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /agents/{agent_id}/group:
@@ -5017,10 +5007,8 @@ paths:
                   total_affected_items: 1
                 message: Agent removed from shown groups
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /agents/{agent_id}/group/is_sync:
@@ -5058,10 +5046,8 @@ paths:
                   total_failed_items: 0
                 message: Sync info shown for all selected agents.
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /agents/{agent_id}/group/{group_id}:
@@ -5089,10 +5075,8 @@ paths:
               example:
                 message: "Agent '004' removed from group 'dmz'."
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
     put:
@@ -5120,10 +5104,8 @@ paths:
               example:
                 message: "Group '004' already belongs to group 'dmz'."
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /agents/{agent_id}/key:
@@ -5159,10 +5141,8 @@ paths:
                   total_affected_items: 1
                 message: Shown keys for all selected agents
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /agents/{agent_id}/restart:
@@ -5196,10 +5176,8 @@ paths:
                     affected_items:
                       - "007"
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /agents/{agent_id}/upgrade:
@@ -5229,10 +5207,8 @@ paths:
               example:
                 message: "Upgrade procedure started"
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /agents/{agent_id}/upgrade_custom:
@@ -5260,10 +5236,8 @@ paths:
               example:
                 message: "Installation started"
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /agents/{agent_id}/upgrade_result:
@@ -5295,10 +5269,8 @@ paths:
               example:
                 message: Agent upgraded successfully
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /agents/group:
@@ -5339,10 +5311,8 @@ paths:
                   total_affected_items: 4
                 message: All selected agents were removed from group testserver
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
     put:
@@ -5395,10 +5365,8 @@ paths:
                   total_failed_items: 2
                 message: Some agents were not assigned to group2 and removed from the other groups
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /groups:
@@ -5441,10 +5409,8 @@ paths:
                   total_failed_items: 0
                   message: All selected groups were deleted
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
     get:
@@ -5494,10 +5460,8 @@ paths:
                   total_affected_items: 3
                 message: Obtained information about all selected groups
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
     post:
@@ -5522,10 +5486,8 @@ paths:
               example:
                 message: "Group 'pciserver' created"
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /groups/{group_id}/agents:
@@ -5641,10 +5603,8 @@ paths:
                   total_affected_items: 3
                 message: All selected agents information is shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /groups/{group_id}/configuration:
@@ -5703,10 +5663,8 @@ paths:
                             log_format: syslog
                   total_affected_items: 3
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
     put:
@@ -5742,10 +5700,8 @@ paths:
               example:
                 message: Agent configuration was updated successfully
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /groups/{group_id}/files:
@@ -5806,10 +5762,8 @@ paths:
                   failed_items: []
                 message: All selected groups files are shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /groups/{group_id}/files/{file_name}/json:
@@ -5854,10 +5808,8 @@ paths:
                       checks:
                         - "f:/etc/fstab -> !r:/tmp;"
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /groups/{group_id}/files/{file_name}/xml:
@@ -5883,10 +5835,8 @@ paths:
               schema:
                 type: string
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /agents/insert:
@@ -5951,10 +5901,8 @@ paths:
                   id: 123
                   key: MTIzIE5ld0hvc3RfMiAxMC4wLjEwLjEwIDFhYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5emFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6YWJjZGVmZ2hpNjQ=
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /agents/insert/quick:
@@ -5987,10 +5935,8 @@ paths:
                   id: "008"
                   key: MDA4IG15TmV3QWdlbnQgYW55IDIyNGVmNmI4NjYyMDk5OTc5NzdiZWJhNDRmZTAyNDI0NjU2ZDM1NjhjNWJiZWI4Njk0M2JkMzdjZjA5YjZlM2M=
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /agents/no_group:
@@ -6104,10 +6050,8 @@ paths:
                   total_affected_items: 3
                 message: All selected agents information is shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /agents/outdated:
@@ -6150,10 +6094,8 @@ paths:
                       name: dmz002
                   total_affected_items: 2
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /agents/restart:
@@ -6189,10 +6131,8 @@ paths:
                       - '004'
                     total_affected_items: 2
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /agents/stats/distinct:
@@ -6282,10 +6222,8 @@ paths:
                   failed_items: []
                 message: All selected agents information is shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /agents/summary/os:
@@ -6318,10 +6256,8 @@ paths:
                   failed_items: []
                 message: Showing the operative system of all specified agents
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /agents/summary/status:
@@ -6356,10 +6292,8 @@ paths:
                   never_connected: 5
                   pending: 0
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /ciscat/{agent_id}/results:
@@ -6420,10 +6354,8 @@ paths:
                   total_failed_items: 0
                 message: All CISCAT results loaded
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /cluster/local/info:
@@ -6465,10 +6397,8 @@ paths:
                   cluster: "wazuh"
                   type: "worker"
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /cluster/nodes:
@@ -6532,10 +6462,8 @@ paths:
                   failed_items: []
                 message: All selected nodes information is shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /cluster/healthcheck:
@@ -6601,10 +6529,8 @@ paths:
                         sync_agentinfo_free: true
                         sync_extravalid_free: true
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /cluster/status:
@@ -6648,10 +6574,8 @@ paths:
                   enabled: "yes"
                   running: "yes"
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /cluster/local/config:
@@ -6723,10 +6647,8 @@ paths:
                   hidden: no
                   disabled: false
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /cluster/{node_id}/status:
@@ -6774,10 +6696,8 @@ paths:
                   wazuh-db: running
                   wazuh-modulesd: running
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /cluster/{node_id}/info:
@@ -6817,10 +6737,8 @@ paths:
                   tz_offset: +0000
                   tz_name: UTC
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /cluster/{node_id}/configuration:
@@ -6886,10 +6804,8 @@ paths:
                     - name: restart-ossec
                       executable: restart-ossec.sh
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /cluster/{node_id}/stats:
@@ -6947,10 +6863,8 @@ paths:
                     syscheck: 0
                     firewall: 0
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /cluster/{node_id}/stats/hourly:
@@ -7007,10 +6921,8 @@ paths:
                     - 23
                   interactions: 0
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /cluster/{node_id}/stats/weekly:
@@ -7230,10 +7142,8 @@ paths:
                     - 23
                     interactions: 0
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /cluster/{node_id}/stats/analysisd:
@@ -7310,10 +7220,8 @@ paths:
                   archives_queue_usage: 0
                   archives_queue_size: 16384
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /cluster/{node_id}/stats/remoted:
@@ -7352,10 +7260,8 @@ paths:
                   msg_sent: 0
                   recv_bytes: 0
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /cluster/{node_id}/logs:
@@ -7409,10 +7315,8 @@ paths:
                   failed_items: []
                 message: Logs read successfully in specified node
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /cluster/{node_id}/logs/summary:
@@ -7464,10 +7368,8 @@ paths:
                     error: 0
                     warning: 0
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /cluster/{node_id}/files:
@@ -7504,10 +7406,8 @@ paths:
                 data:
                   contents: '<!-- Local rules -->\n\n<!-- Modify it at your will. -->\n<!-- Copyright (C) 2015-2019, Wazuh Inc. -->\n\n<!-- Example -->\n<group name=\"local,syslog,sshd,\">\n\n  <!--\n  Dec 10 01:02:02 host sshd[1234]: Failed none for root from 1.1.1.1 port 1066 ssh2\n -->\n  <rule id=\"100001\" level=\"5\">\n    <if_sid>5716</if_sid>\n    <srcip>1.1.1.1</srcip>\n    <description>sshd: authentication failed from IP 1.1.1.1.</description>\n    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n  </rule>\n\n</group>\n'
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
     put:
@@ -7542,10 +7442,8 @@ paths:
               example:
                 message: File updated successfully.
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
     delete:
@@ -7571,10 +7469,8 @@ paths:
               example:
                 message: File was deleted.
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /cluster/restart:
@@ -7612,10 +7508,8 @@ paths:
                     failed_items: []
                     total_failed_items: 0
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /cluster/configuration/validation:
@@ -7657,10 +7551,8 @@ paths:
                     total_failed_items: 0
                   message: Validation checked successfully in all nodes
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /cluster/{node_id}/configuration/{component}/{configuration}:
@@ -7703,10 +7595,8 @@ paths:
                   port: 1516
 
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /lists:
@@ -7782,10 +7672,8 @@ paths:
                 message: All specified lists were shown
 
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /lists/files:
@@ -7834,10 +7722,8 @@ paths:
                   total_failed_items: 0
                 message: All specified paths were shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /manager/status:
@@ -7884,10 +7770,8 @@ paths:
                   wazuh-db: running
                   wazuh-modulesd: running
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /manager/info:
@@ -7926,10 +7810,8 @@ paths:
                   tz_offset: +0000
                   tz_name: UTC
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /manager/configuration:
@@ -7994,10 +7876,8 @@ paths:
                     - name: restart-ossec
                       executable: restart-ossec.sh
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /manager/stats:
@@ -8054,10 +7934,8 @@ paths:
                     syscheck: 0
                     firewall: 0
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /manager/stats/hourly:
@@ -8113,10 +7991,8 @@ paths:
                     - 23
                   interactions: 0
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /manager/stats/weekly:
@@ -8335,10 +8211,8 @@ paths:
                     - 23
                     interactions: 0
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /manager/stats/analysisd:
@@ -8414,10 +8288,8 @@ paths:
                   archives_queue_usage: 0
                   archives_queue_size: 16384
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /manager/stats/remoted:
@@ -8455,10 +8327,8 @@ paths:
                   msg_sent: 0
                   recv_bytes: 0
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /manager/logs:
@@ -8511,10 +8381,8 @@ paths:
                   failed_items: []
                 message: Logs read successfully in specified node
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /manager/logs/summary:
@@ -8565,10 +8433,8 @@ paths:
                     error: 0
                     warning: 0
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /manager/files:
@@ -8604,10 +8470,8 @@ paths:
                 data:
                   contents: '<!-- Local rules -->\n\n<!-- Modify it at your will. -->\n<!-- Copyright (C) 2015-2019, Wazuh Inc. -->\n\n<!-- Example -->\n<group name=\"local,syslog,sshd,\">\n\n  <!--\n  Dec 10 01:02:02 host sshd[1234]: Failed none for root from 1.1.1.1 port 1066 ssh2\n -->\n  <rule id=\"100001\" level=\"5\">\n    <if_sid>5716</if_sid>\n    <srcip>1.1.1.1</srcip>\n    <description>sshd: authentication failed from IP 1.1.1.1.</description>\n    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n  </rule>\n\n</group>\n'
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
     put:
@@ -8643,10 +8507,8 @@ paths:
               example:
                 message: File updated successfully
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
     delete:
@@ -8673,10 +8535,8 @@ paths:
               example:
                 message: File was deleted
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /manager/restart:
@@ -8701,10 +8561,8 @@ paths:
               example:
                 message: Restarting manager
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /manager/configuration/validation:
@@ -8729,10 +8587,8 @@ paths:
                 example:
                   status: OK
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /manager/configuration/{component}/{configuration}:
@@ -8774,10 +8630,8 @@ paths:
                   port: 1516
 
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /rootcheck:
@@ -8800,10 +8654,8 @@ paths:
               example:
                 message: "Restarting Syscheck/Rootcheck on all agents"
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
     delete:
@@ -8825,10 +8677,8 @@ paths:
               example:
                 message: "Rootcheck database deleted"
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /rootcheck/{agent_id}:
@@ -8881,10 +8731,8 @@ paths:
                   total_failed_items: 0
                 message: ToDo
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
     put:
@@ -8907,10 +8755,8 @@ paths:
               example:
                 message: "Restarting Syscheck/Rootcheck locally"
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
     delete:
@@ -8933,10 +8779,8 @@ paths:
               example:
                 message: "Rootcheck database deleted"
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /rootcheck/{agent_id}/pci:
@@ -8975,10 +8819,8 @@ paths:
                   total_failed_items: 0
                 message: ToDo
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /rootcheck/{agent_id}/cis:
@@ -9018,10 +8860,8 @@ paths:
                   total_failed_items: 0
                 message: ToDo
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /rootcheck/{agent_id}/last_scan:
@@ -9052,10 +8892,8 @@ paths:
                   end: "2019-03-08T10:35:21Z"
                   start: "2019-03-08T10:34:56Z"
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /rules:
@@ -9138,10 +8976,8 @@ paths:
                   total_failed_items: 0
                 message: All selected rules were shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /rules/groups:
@@ -9186,10 +9022,8 @@ paths:
                   total_failed_items: 0
                 message: All groups in rules are shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /rules/requirement/{requirement}:
@@ -9236,10 +9070,8 @@ paths:
                   total_failed_items: 0
                 message: Selected rules were shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /rules/files:
@@ -9293,10 +9125,8 @@ paths:
                   total_failed_items: 0
                 message: All rules files were shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /rules/files/{filename}/download:
@@ -9320,10 +9150,8 @@ paths:
               schema:
                 type: string
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /sca/{agent_id}:
@@ -9391,10 +9219,8 @@ paths:
                   total_failed_items: 0
                 message: All selected sca information is shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /sca/{agent_id}/checks/{policy_id}:
@@ -9478,10 +9304,8 @@ paths:
                   total_failed_items: 0
                 message: All selected sca/policy information is shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /syscheck:
@@ -9521,10 +9345,8 @@ paths:
                   total_failed_items: 0
                 message: Restarting Syscheck/Rootcheck on all available agents
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /syscheck/{agent_id}:
@@ -9604,10 +9426,8 @@ paths:
                   total_failed_items: 0
                 message: FIM findings of the agent
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
     delete:
@@ -9643,10 +9463,8 @@ paths:
                   total_failed_items: 0
                 message: Clear Syscheck/Rootcheck database on the agent
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /syscheck/{agent_id}/last_scan:
@@ -9684,10 +9502,8 @@ paths:
                   total_failed_items: 0
                 message: Last scan of the agent
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /decoders:
@@ -9749,10 +9565,8 @@ paths:
                   failed_items: []
                 message: All selected decoders were shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /decoders/files:
@@ -9803,10 +9617,8 @@ paths:
                   failed_items: []
                 message: All decoder files were shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /decoders/files/{filename}/download:
@@ -9830,10 +9642,8 @@ paths:
               schema:
                 type: string
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /decoders/parents:
@@ -9887,10 +9697,8 @@ paths:
                   failed_items: []
                 message: All selected decoders were shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /experimental/syscheck:
@@ -9939,10 +9747,8 @@ paths:
                   total_failed_items: 0
                 message: Cleared syscheck database on shown agents
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /experimental/ciscat/results:
@@ -10027,10 +9833,8 @@ paths:
                   total_failed_items: 0
                 message: All CISCAT results loaded
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /experimental/syscollector/hardware:
@@ -10116,10 +9920,8 @@ paths:
                   total_failed_items: 0
                 message: All specified syscollector information is shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /experimental/syscollector/netaddr:
@@ -10188,10 +9990,8 @@ paths:
                   total_failed_items: 0
                 message: All specified syscollector information is shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /experimental/syscollector/netiface:
@@ -10302,10 +10102,8 @@ paths:
                   total_failed_items: 0
                 message: All specified syscollector information is shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /experimental/syscollector/netproto:
@@ -10371,10 +10169,8 @@ paths:
                   failed_items: []
                 message: All specified syscollector information is shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /experimental/syscollector/os:
@@ -10468,10 +10264,8 @@ paths:
                   failed_items: []
                 message: All specified syscollector information is shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /experimental/syscollector/packages:
@@ -10562,10 +10356,8 @@ paths:
                   failed_items: []
                 message: All specified syscollector information is shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /experimental/syscollector/ports:
@@ -10659,10 +10451,8 @@ paths:
                   failed_items: []
                 message: All specified syscollector information is shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /experimental/syscollector/processes:
@@ -10781,10 +10571,8 @@ paths:
                   failed_items: []
                 message: All specified syscollector information is shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /experimental/syscollector/hotfixes:
@@ -10834,10 +10622,8 @@ paths:
                   total_failed_items: 0
                 message: All specified items were shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /syscollector/{agent_id}/hardware:
@@ -10888,10 +10674,8 @@ paths:
                   total_failed_items: 0
                 message: All specified items were shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /syscollector/{agent_id}/hotfixes:
@@ -10937,10 +10721,8 @@ paths:
                   total_failed_items: 0
                 message: All specified items were shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /syscollector/{agent_id}/netaddr:
@@ -10993,10 +10775,8 @@ paths:
                   total_failed_items: 0
                 message: All specified items were shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /syscollector/{agent_id}/netiface:
@@ -11069,10 +10849,8 @@ paths:
                   failed_items: []
                 message: All specified syscollector information is shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /syscollector/{agent_id}/netproto:
@@ -11124,10 +10902,8 @@ paths:
                   failed_items: []
                 message: All specified syscollector information is shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /syscollector/{agent_id}/os:
@@ -11180,10 +10956,8 @@ paths:
                   failed_items: []
                 message: All specified syscollector information is shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /syscollector/{agent_id}/packages:
@@ -11274,10 +11048,8 @@ paths:
                   failed_items: []
                   message: All specified syscollector information is shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /syscollector/{agent_id}/ports:
@@ -11371,10 +11143,8 @@ paths:
                   failed_items: []
                 message: All specified syscollector information is shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /syscollector/{agent_id}/processes:
@@ -11493,10 +11263,8 @@ paths:
                   failed_items: []
                   message: All specified syscollector information is shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /security/user/authenticate:
@@ -11521,10 +11289,8 @@ paths:
                   token:
                     type: string
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /security/actions:
@@ -11574,10 +11340,8 @@ paths:
                     - POST /agents/insert
                     - POST /agents/insert/quick
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /security/resources:
@@ -11625,10 +11389,8 @@ paths:
                 user:id:
                   description: 'Reference security user via its username (i.e. user:id:wazuh)'
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /security/user/revoke:
@@ -11642,10 +11404,8 @@ paths:
         '200':
           description: "Tokens revoked succesfully"
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /security/roles:
@@ -11704,10 +11464,8 @@ paths:
                   total_affected_items: 2
                 message: "All available roles were shown"
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
     post:
@@ -11755,10 +11513,8 @@ paths:
                   total_affected_items: 1
                 message: Role created correctly
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
     delete:
@@ -11819,10 +11575,8 @@ paths:
                 message: All specified roles were deleted
 
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /security/roles/{role_id}:
@@ -11872,10 +11626,8 @@ paths:
                   total_affected_items: 1
                 message: Role updated correctly
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /security/policies:
@@ -11931,10 +11683,8 @@ paths:
                   total_affected_items: 2
                 message: All available policies were shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
     post:
@@ -11987,10 +11737,8 @@ paths:
                     effect: "allow"
                   roles: []
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
     delete:
@@ -12044,10 +11792,8 @@ paths:
                   total_failed_items: 0
                 message: All specified policies were deleted
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /security/policies/{policy_id}:
@@ -12108,10 +11854,8 @@ paths:
                 message: Policy updated correctly
 
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /security/roles/{role_id}/policies:
@@ -12173,10 +11917,8 @@ paths:
                 message: All policies were linked to role 3
 
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
     delete:
@@ -12215,10 +11957,8 @@ paths:
                   total_failed_items: 0
                 message: All policies were unlinked from role 3
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /security/users/{username}/roles:
@@ -12261,10 +12001,8 @@ paths:
                 message: All roles were linked to user normal
 
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
     delete:
@@ -12302,10 +12040,8 @@ paths:
                   total_failed_items: 0
                 message: All roles were unlinked from user normal
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
   /security/users:
@@ -12371,10 +12107,8 @@ paths:
                     total_failed_items: 0
                   message: All specified users were shown
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
     post:
@@ -12586,10 +12320,8 @@ paths:
                     id: "005"
                     manager: 1a683501f77f
         '400':
-          description: "Request error"
           $ref: '#/components/responses/ResponseError'
         '401':
-          description: "Access unauthorized"
           $ref: '#/components/responses/UnauthorizedResponse'
 
 externalDocs:
