@@ -10,7 +10,7 @@ from aiohttp import web
 
 from api.api_exception import APIError
 from api.authentication import generate_token
-from api.encoder import dumps
+from api.encoder import dumps, prettify
 from api.models.token_response import TokenResponse
 from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param
 from wazuh import security
@@ -71,7 +71,7 @@ async def get_users(request, usernames: list = None, pretty=False, wait_for_comp
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 def _check_body(f_kwargs, keys: list = None):
@@ -190,7 +190,7 @@ async def get_roles(request, role_ids=None, pretty=False, wait_for_complete=Fals
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def add_role(request, pretty=False, wait_for_complete=False):
@@ -219,7 +219,7 @@ async def add_role(request, pretty=False, wait_for_complete=False):
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def remove_roles(request, role_ids=None, pretty=False, wait_for_complete=False):
@@ -243,7 +243,7 @@ async def remove_roles(request, role_ids=None, pretty=False, wait_for_complete=F
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def update_role(request, role_id, pretty=False, wait_for_complete=False):
@@ -274,7 +274,7 @@ async def update_role(request, role_id, pretty=False, wait_for_complete=False):
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_policies(request, policy_ids=None, pretty=False, wait_for_complete=False, offset=0, limit=None,
@@ -309,7 +309,7 @@ async def get_policies(request, policy_ids=None, pretty=False, wait_for_complete
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def add_policy(request, pretty=False, wait_for_complete=False):
@@ -338,7 +338,7 @@ async def add_policy(request, pretty=False, wait_for_complete=False):
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def remove_policies(request, policy_ids=None, pretty=False, wait_for_complete=False):
@@ -362,7 +362,7 @@ async def remove_policies(request, policy_ids=None, pretty=False, wait_for_compl
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def update_policy(request, policy_id, pretty=False, wait_for_complete=False):
@@ -394,7 +394,7 @@ async def update_policy(request, policy_id, pretty=False, wait_for_complete=Fals
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def set_user_role(request, username, role_ids, position=None, pretty=False, wait_for_complete=False):
@@ -430,7 +430,7 @@ async def set_user_role(request, username, role_ids, position=None, pretty=False
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def remove_user_role(request, username, role_ids, pretty=False, wait_for_complete=False):
@@ -455,7 +455,7 @@ async def remove_user_role(request, username, role_ids, pretty=False, wait_for_c
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def set_role_policy(request, role_id, policy_ids, position=None, pretty=False, wait_for_complete=False):
@@ -492,7 +492,7 @@ async def set_role_policy(request, role_id, policy_ids, position=None, pretty=Fa
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def remove_role_policy(request, role_id, policy_ids, pretty=False, wait_for_complete=False):
@@ -517,7 +517,7 @@ async def remove_role_policy(request, role_id, policy_ids, pretty=False, wait_fo
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_rbac_resources(pretty=False, resource: str = None):
@@ -546,7 +546,7 @@ async def get_rbac_resources(pretty=False, resource: str = None):
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_rbac_actions(pretty=False, endpoint: str = None):
@@ -574,7 +574,7 @@ async def get_rbac_actions(pretty=False, endpoint: str = None):
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def revoke_all_tokens(request):

@@ -6,7 +6,7 @@ import logging
 
 from aiohttp import web
 
-from api.encoder import dumps
+from api.encoder import dumps, prettify
 from api.models.base_model_ import Data
 from api.util import raise_if_exc, remove_nones_to_dict
 from wazuh.agent import get_full_overview
@@ -36,4 +36,4 @@ async def get_overview_agents(request, pretty=False, wait_for_complete=False):
     data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=dumps)
+    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)

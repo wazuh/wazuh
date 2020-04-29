@@ -11,7 +11,7 @@ from connexion.lifecycle import ConnexionResponse
 import wazuh.agent as agent
 from api import configuration
 from api.api_exception import APIError
-from api.encoder import dumps
+from api.encoder import dumps, prettify
 from api.models.agent_added import AgentAdded
 from api.models.agent_inserted import AgentInserted
 from api.models.base_model_ import Data
@@ -53,7 +53,7 @@ async def delete_agents(request, pretty=False, wait_for_complete=False, list_age
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_agents(request, pretty=False, wait_for_complete=False, list_agents=None, offset=0, limit=database_limit,
@@ -117,7 +117,7 @@ async def get_agents(request, pretty=False, wait_for_complete=False, list_agents
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def add_agent(request, pretty=False, wait_for_complete=False):
@@ -160,7 +160,7 @@ async def add_agent(request, pretty=False, wait_for_complete=False):
     data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=dumps)
+    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
 
 
 async def restart_agents(request, pretty=False, wait_for_complete=False, list_agents='*'):
@@ -185,7 +185,7 @@ async def restart_agents(request, pretty=False, wait_for_complete=False, list_ag
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_agent_config(request, pretty=False, wait_for_complete=False, agent_id=None, component=None, **kwargs):
@@ -218,7 +218,7 @@ async def get_agent_config(request, pretty=False, wait_for_complete=False, agent
     data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=dumps)
+    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
 
 
 async def delete_single_agent_multiple_groups(request, agent_id, list_groups=None, pretty=False, wait_for_complete=False):
@@ -247,7 +247,7 @@ async def delete_single_agent_multiple_groups(request, agent_id, list_groups=Non
 
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_sync_agent(request, agent_id, pretty=False, wait_for_complete=False):
@@ -274,7 +274,7 @@ async def get_sync_agent(request, agent_id, pretty=False, wait_for_complete=Fals
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def delete_single_agent_single_group(request, agent_id, group_id, pretty=False, wait_for_complete=False):
@@ -303,7 +303,7 @@ async def delete_single_agent_single_group(request, agent_id, group_id, pretty=F
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def put_agent_single_group(request, agent_id, group_id, force_single_group=False, pretty=False, wait_for_complete=False):
@@ -331,7 +331,7 @@ async def put_agent_single_group(request, agent_id, group_id, force_single_group
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_agent_key(request, agent_id, pretty=False, wait_for_complete=False):
@@ -355,7 +355,7 @@ async def get_agent_key(request, agent_id, pretty=False, wait_for_complete=False
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def restart_agent(request, agent_id, pretty=False, wait_for_complete=False):
@@ -379,7 +379,7 @@ async def restart_agent(request, agent_id, pretty=False, wait_for_complete=False
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def put_upgrade_agent(request, agent_id, pretty=False, wait_for_complete=False, wpk_repo=None, version=None,
@@ -412,7 +412,7 @@ async def put_upgrade_agent(request, agent_id, pretty=False, wait_for_complete=F
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def put_upgrade_custom_agent(request, agent_id, pretty=False, wait_for_complete=False, file_path=None,
@@ -442,7 +442,7 @@ async def put_upgrade_custom_agent(request, agent_id, pretty=False, wait_for_com
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def post_new_agent(request, agent_name, pretty=False, wait_for_complete=False):
@@ -469,7 +469,7 @@ async def post_new_agent(request, agent_name, pretty=False, wait_for_complete=Fa
     data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=dumps)
+    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_agent_upgrade(request, agent_id, timeout=3, pretty=False, wait_for_complete=False):
@@ -495,7 +495,7 @@ async def get_agent_upgrade(request, agent_id, timeout=3, pretty=False, wait_for
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def delete_multiple_agent_single_group(request, group_id, list_agents=None, pretty=False,
@@ -522,7 +522,7 @@ async def delete_multiple_agent_single_group(request, group_id, list_agents=None
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def put_multiple_agent_single_group(request, group_id, list_agents=None, pretty=False, wait_for_complete=False,
@@ -551,7 +551,7 @@ async def put_multiple_agent_single_group(request, group_id, list_agents=None, p
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def delete_groups(request, list_groups=None, pretty=False, wait_for_complete=False):
@@ -575,7 +575,7 @@ async def delete_groups(request, list_groups=None, pretty=False, wait_for_comple
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_list_group(request, pretty=False, wait_for_complete=False, list_groups=None, offset=0, limit=None,
@@ -617,7 +617,7 @@ async def get_list_group(request, pretty=False, wait_for_complete=False, list_gr
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_agents_in_group(request, group_id, pretty=False, wait_for_complete=False, offset=0, limit=database_limit,
@@ -660,7 +660,7 @@ async def get_agents_in_group(request, group_id, pretty=False, wait_for_complete
 
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def post_group(request, group_id, pretty=False, wait_for_complete=False):
@@ -684,7 +684,7 @@ async def post_group(request, group_id, pretty=False, wait_for_complete=False):
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_group_config(request, group_id, pretty=False, wait_for_complete=False, offset=0, limit=database_limit):
@@ -712,7 +712,7 @@ async def get_group_config(request, group_id, pretty=False, wait_for_complete=Fa
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=Data(data), status=200, dumps=dumps)
+    return web.json_response(data=Data(data), status=200, dumps=prettify if pretty else dumps)
 
 
 async def put_group_config(request, body, group_id, pretty=False, wait_for_complete=False):
@@ -749,7 +749,7 @@ async def put_group_config(request, body, group_id, pretty=False, wait_for_compl
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_group_files(request, group_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
@@ -787,7 +787,7 @@ async def get_group_files(request, group_id, pretty=False, wait_for_complete=Fal
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_group_file_json(request, group_id, file_name, pretty=False, wait_for_complete=False):
@@ -816,7 +816,7 @@ async def get_group_file_json(request, group_id, file_name, pretty=False, wait_f
     data = raise_if_exc(await dapi.distribute_function())
     response = Data(data['data']['affected_items'])
 
-    return web.json_response(data=response, status=200, dumps=dumps)
+    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_group_file_xml(request, group_id, file_name, pretty=False, wait_for_complete=False):
@@ -887,7 +887,7 @@ async def insert_agent(request, pretty=False, wait_for_complete=False):
     data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=dumps)
+    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_agent_no_group(request, pretty=False, wait_for_complete=False, offset=0, limit=database_limit,
@@ -923,7 +923,7 @@ async def get_agent_no_group(request, pretty=False, wait_for_complete=False, off
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_agent_outdated(request, pretty=False, wait_for_complete=False, offset=0, limit=database_limit, sort=None,
@@ -957,7 +957,7 @@ async def get_agent_outdated(request, pretty=False, wait_for_complete=False, off
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_agent_fields(request, pretty=False, wait_for_complete=False, fields=None, offset=0, limit=database_limit,
@@ -998,7 +998,7 @@ async def get_agent_fields(request, pretty=False, wait_for_complete=False, field
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_agent_summary_status(request, pretty=False, wait_for_complete=False):
@@ -1022,7 +1022,7 @@ async def get_agent_summary_status(request, pretty=False, wait_for_complete=Fals
     data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=dumps)
+    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_agent_summary_os(request, pretty=False, wait_for_complete=False):
@@ -1045,4 +1045,4 @@ async def get_agent_summary_os(request, pretty=False, wait_for_complete=False):
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)

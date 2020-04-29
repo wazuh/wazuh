@@ -14,7 +14,7 @@ import wazuh.manager as manager
 import wazuh.stats as stats
 from api import configuration
 from api.api_exception import APIError
-from api.encoder import dumps
+from api.encoder import dumps, prettify
 from api.models.base_model_ import Data
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
 from wazuh.core.cluster.control import get_system_nodes
@@ -45,7 +45,7 @@ async def get_cluster_node(request, pretty=False, wait_for_complete=False):
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_cluster_nodes(request, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
@@ -87,7 +87,7 @@ async def get_cluster_nodes(request, pretty=False, wait_for_complete=False, offs
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_healthcheck(request, pretty=False, wait_for_complete=False, list_nodes=None):
@@ -117,7 +117,7 @@ async def get_healthcheck(request, pretty=False, wait_for_complete=False, list_n
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_status(request, pretty=False, wait_for_complete=False):
@@ -139,7 +139,7 @@ async def get_status(request, pretty=False, wait_for_complete=False):
     data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=dumps)
+    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_config(request, pretty=False, wait_for_complete=False):
@@ -163,7 +163,7 @@ async def get_config(request, pretty=False, wait_for_complete=False):
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_status_node(request, node_id, pretty=False, wait_for_complete=False):
@@ -188,7 +188,7 @@ async def get_status_node(request, node_id, pretty=False, wait_for_complete=Fals
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_info_node(request, node_id, pretty=False, wait_for_complete=False):
@@ -215,7 +215,7 @@ async def get_info_node(request, node_id, pretty=False, wait_for_complete=False)
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_configuration_node(request, node_id, pretty=False, wait_for_complete=False, section=None, field=None):
@@ -244,7 +244,7 @@ async def get_configuration_node(request, node_id, pretty=False, wait_for_comple
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_stats_node(request, node_id, pretty=False, wait_for_complete=False, date=None):
@@ -278,7 +278,7 @@ async def get_stats_node(request, node_id, pretty=False, wait_for_complete=False
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_stats_hourly_node(request, node_id, pretty=False, wait_for_complete=False):
@@ -307,7 +307,7 @@ async def get_stats_hourly_node(request, node_id, pretty=False, wait_for_complet
     data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=dumps)
+    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_stats_weekly_node(request, node_id, pretty=False, wait_for_complete=False):
@@ -336,7 +336,7 @@ async def get_stats_weekly_node(request, node_id, pretty=False, wait_for_complet
     data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=dumps)
+    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_stats_analysisd_node(request, node_id, pretty=False, wait_for_complete=False):
@@ -363,7 +363,7 @@ async def get_stats_analysisd_node(request, node_id, pretty=False, wait_for_comp
     data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=dumps)
+    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_stats_remoted_node(request, node_id, pretty=False, wait_for_complete=False):
@@ -390,7 +390,7 @@ async def get_stats_remoted_node(request, node_id, pretty=False, wait_for_comple
     data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=dumps)
+    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_log_node(request, node_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
@@ -433,7 +433,7 @@ async def get_log_node(request, node_id, pretty=False, wait_for_complete=False, 
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_log_summary_node(request, node_id, pretty=False, wait_for_complete=False):
@@ -458,7 +458,7 @@ async def get_log_summary_node(request, node_id, pretty=False, wait_for_complete
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_files_node(request, node_id, path, pretty=False, wait_for_complete=False):
@@ -485,7 +485,7 @@ async def get_files_node(request, node_id, path, pretty=False, wait_for_complete
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def put_files_node(request, body, node_id, path, overwrite=False, pretty=False, wait_for_complete=False):
@@ -525,7 +525,7 @@ async def put_files_node(request, body, node_id, path, overwrite=False, pretty=F
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def delete_files_node(request, node_id, path, pretty=False, wait_for_complete=False):
@@ -552,7 +552,7 @@ async def delete_files_node(request, node_id, path, pretty=False, wait_for_compl
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_api_config(request, pretty=False, wait_for_complete=False):
@@ -574,7 +574,7 @@ async def get_api_config(request, pretty=False, wait_for_complete=False):
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def put_api_config(request, pretty=False, wait_for_complete=False):
@@ -600,7 +600,7 @@ async def put_api_config(request, pretty=False, wait_for_complete=False):
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def delete_api_config(request, pretty=False, wait_for_complete=False):
@@ -626,7 +626,7 @@ async def delete_api_config(request, pretty=False, wait_for_complete=False):
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def put_restart(request, pretty=False, wait_for_complete=False, list_nodes='*'):
@@ -652,7 +652,7 @@ async def put_restart(request, pretty=False, wait_for_complete=False, list_nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_conf_validation(request, pretty=False, wait_for_complete=False, list_nodes='*'):
@@ -679,7 +679,7 @@ async def get_conf_validation(request, pretty=False, wait_for_complete=False, li
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_node_config(request, node_id, component, wait_for_complete=False, pretty=False, **kwargs):
@@ -708,4 +708,4 @@ async def get_node_config(request, node_id, component, wait_for_complete=False, 
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)

@@ -9,7 +9,7 @@ from aiohttp import web
 
 import wazuh.active_response as active_response
 from api.api_exception import APIError
-from api.encoder import dumps
+from api.encoder import dumps, prettify
 from api.models.active_response_model import ActiveResponse
 from api.util import remove_nones_to_dict, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -45,4 +45,4 @@ async def run_command(request, list_agents='*', pretty=False, wait_for_complete=
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
