@@ -373,9 +373,12 @@
 #define VU_AGENT_NOT_INITIALIZED    "(5580): The agent structure is not initialized."
 #define VU_DB_NOT_INITIALIZED       "(5581): The DB is not initialized."
 #define VU_OSINFOLNX_ERROR          "(5582): Couldn't get the OS information of the agent %s."
-#define VU_INSERT_PACKAGE_ERROR     "(5590): Agent (%s): Couldn't insert vulnerable package '%s' into CVE '%s' (feed %s)."
-#define VU_GET_CHILDREN_PKG_ID      "(5592): Agent (%s): Couldn't retrieve children IDs from package '%s'."
-#define VU_GET_SIBLINGS_PKG_ID      "(5593): Agent (%s): Couldn't retrieve siblings IDs from package '%s'."
+#define VU_GET_PACKAGES_ERROR       "(5590): Couldn't get the packages of the agent %s."
+#define VU_GET_PACKAGES_VULN_ERROR  "(5591): Couldn't get from the NVD the %s vulnerabilities of the package '%s'"
+#define VU_GET_PACKAGES_DEP_ERROR   "(5592): Couldn't get from the NVD the %s dependencies of the package with ID '%d'"
+#define VU_FILTER_VULN_ERROR        "(5593): Couldn't verify if the vulnerability '%s' of the package '%s' is already patched."
+#define VU_SEND_AGENT_REPORT        "(5594): Couldn't send the report with the vulnerabilities of the agent %s."
+#define VU_INSERT_PACKAGE_ERROR     "(5595): Couldn't insert the package '%s' into the vulnerability '%s' (feed %s)."
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"

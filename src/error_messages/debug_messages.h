@@ -86,8 +86,12 @@
 #define VU_NO_PACKAGE_SCAN    "(5576): The package inventory of the agent %s is not available, but a hotfix analysis will be launched."
 #define VU_NO_HOTFIX_AVAIL    "(5577): It is not possible to perform a hotfix scan on agent %s."
 #define VU_NO_HOTFIX_FEED     "(5578): We have not found a hotfix that solves %s for agent %s in the Microsoft feed, so it is not possible to know it is vulnerable."
-#define VU_PACKAGE_INSERT     "(5580): Agent (%s): Vulnerable package '%s' inserted into CVE '%s'"
-#define VU_DUPLICATED_PACKAGE "(5581): Agent (%s): Trying to insert duplicated vulnerable package '%s' into CVE '%s'"
+#define VU_START_NVD_AG_AN    "(5580): Analyzing NVD vulnerabilities for agent %s."
+#define VU_START_OVAL_AG_AN   "(5581): Analyzing OVAL vulnerabilities for agent %s."
+#define VU_START_VUL_AG_FIL   "(5582): Filtering vulnerabilities obtained for agent %s."
+#define VU_START_VUL_AG_SEND  "(5583): Sending vulnerabilities report for agent %s."
+#define VU_PACKAGE_INSERT     "(5584): Package '%s' inserted into the vulnerability '%s' (feed %s)."
+#define VU_DUPLICATED_PACKAGE "(5585): Trying to insert duplicated package '%s' into the vulnerability '%s' (feed %s)."
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
