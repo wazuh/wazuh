@@ -415,7 +415,7 @@ void set_priority_windows_thread() {
 int fim_whodata_initialize() {
     int retval = 0;
 
-#if defined INOTIFY_ENABLED || defined WIN32
+#if defined ENABLE_AUDIT || defined WIN32
 
 #ifdef WIN32
     set_priority_windows_thread();
