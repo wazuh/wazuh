@@ -584,10 +584,6 @@ int main(int argc, char **argv)
     close(remote_sock);
 
     /* Join threads */
-
-    //Unblock other thread in case queue is empty
-    queue_pop_ex(client_queue);
-
     w_mutex_lock(&mutex_keys);
     w_cond_signal(&cond_pending);
     w_mutex_unlock(&mutex_keys);
@@ -606,7 +602,6 @@ int main(int argc, char **argv)
 
 /* Thread for dispatching connection pool */
 void* run_dispatcher(__attribute__((unused)) void *arg) {
-    struct client *client;
     char ip[IPSIZE + 1];    
     int ret;
     char* buf = NULL;
@@ -626,10 +621,12 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     mdebug1("Dispatch thread ready");
 
     while (running) {
-        client = queue_pop_ex(client_queue);
+        const struct timespec timeout = { .tv_sec = time(NULL) + 1 };
+        struct client *client = queue_pop_ex_timedwait(client_queue, &timeout);
 
-        if (!running)
-            break;
+
+        if (!client)
+            continue;
 
         strncpy(ip, inet_ntoa(client->addr), IPSIZE - 1);
         ssl = SSL_new(ctx);
@@ -640,6 +637,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             mdebug1("SSL Error (%d)", ret);
             SSL_free(ssl);
             close(client->socket);
+            os_free(client);
             continue;
         }
 
@@ -652,6 +650,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 merror("Unable to verify client certificate.");
                 SSL_free(ssl);
                 close(client->socket);
+                os_free(client);
                 continue;
             }
         }
@@ -669,6 +668,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             }
             SSL_free(ssl);
             close(client->socket);
+            os_free(client);
             free(buf);
             continue;
         }      
