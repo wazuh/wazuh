@@ -30,7 +30,7 @@ class DistributedAPI:
     """
 
     def __init__(self, f: Callable, logger: logging.getLogger, f_kwargs: Dict = None, node: c_common.Handler = None,
-                 debug: bool = False, pretty: bool = False, request_type: str = "local_master",
+                 debug: bool = False, request_type: str = "local_master",
                  wait_for_complete: bool = False, from_cluster: bool = False, is_async: bool = False,
                  broadcasting: bool = False, basic_services: tuple = None, local_client_arg: str = None,
                  rbac_permissions: Dict = None, nodes: list = None):
@@ -42,7 +42,6 @@ class DistributedAPI:
         :param logger: Logging logger to use
         :param node: Asyncio protocol object to use when sending requests to other nodes
         :param debug: Enable debug messages and raise exceptions.
-        :param pretty: Return request result with pretty indent
         :param wait_for_complete: true to disable timeout, false otherwise
         """
         self.logger = logger
@@ -51,7 +50,6 @@ class DistributedAPI:
         self.node = node if node is not None else local_client
         self.cluster_items = wazuh.core.cluster.utils.get_cluster_items() if node is None else node.cluster_items
         self.debug = debug
-        self.pretty = pretty
         self.node_info = wazuh.core.cluster.cluster.get_node() if node is None else node.get_node()
         self.request_id = str(random.randint(0, 2**10 - 1))
         self.request_type = request_type

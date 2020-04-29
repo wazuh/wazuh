@@ -8,7 +8,7 @@ from typing import List
 from aiohttp import web
 
 import wazuh.ciscat as ciscat
-from api.encoder import dumps
+from api.encoder import dumps, prettify
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
@@ -65,10 +65,9 @@ async def get_agents_ciscat_results(request, agent_id: str, pretty: bool = False
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     response = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=response, status=200, dumps=dumps)
+    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
