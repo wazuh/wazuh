@@ -47,7 +47,6 @@ async def delete_agents(request, pretty=False, wait_for_complete=False, list_age
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -111,7 +110,6 @@ async def get_agents(request, pretty=False, wait_for_complete=False, list_agents
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -152,7 +150,6 @@ async def add_agent(request, pretty=False, wait_for_complete=False):
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -178,7 +175,6 @@ async def restart_agents(request, pretty=False, wait_for_complete=False, list_ag
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           broadcasting=list_agents == '*',
                           logger=logger
@@ -211,7 +207,6 @@ async def get_agent_config(request, pretty=False, wait_for_complete=False, agent
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -240,7 +235,6 @@ async def delete_single_agent_multiple_groups(request, agent_id, list_groups=Non
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -268,7 +262,6 @@ async def get_sync_agent(request, agent_id, pretty=False, wait_for_complete=Fals
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -297,7 +290,6 @@ async def delete_single_agent_single_group(request, agent_id, group_id, pretty=F
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -325,7 +317,6 @@ async def put_agent_single_group(request, agent_id, group_id, force_single_group
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -349,7 +340,6 @@ async def get_agent_key(request, agent_id, pretty=False, wait_for_complete=False
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -373,7 +363,6 @@ async def restart_agent(request, agent_id, pretty=False, wait_for_complete=False
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -406,7 +395,6 @@ async def put_upgrade_agent(request, agent_id, pretty=False, wait_for_complete=F
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=True,  # Force wait_for_complete until timeout problems are resolved
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -436,7 +424,6 @@ async def put_upgrade_custom_agent(request, agent_id, pretty=False, wait_for_com
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=True,  # Force wait_for_complete until timeout problems are resolved
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -462,7 +449,6 @@ async def post_new_agent(request, agent_name, pretty=False, wait_for_complete=Fa
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -489,7 +475,6 @@ async def get_agent_upgrade(request, agent_id, timeout=3, pretty=False, wait_for
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -516,7 +501,6 @@ async def delete_multiple_agent_single_group(request, group_id, list_agents=None
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -545,7 +529,6 @@ async def put_multiple_agent_single_group(request, group_id, list_agents=None, p
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -569,7 +552,6 @@ async def delete_groups(request, list_groups=None, pretty=False, wait_for_comple
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -611,7 +593,6 @@ async def get_list_group(request, pretty=False, wait_for_complete=False, list_gr
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -653,7 +634,6 @@ async def get_agents_in_group(request, group_id, pretty=False, wait_for_complete
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -678,7 +658,6 @@ async def post_group(request, group_id, pretty=False, wait_for_complete=False):
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -706,7 +685,6 @@ async def get_group_config(request, group_id, pretty=False, wait_for_complete=Fa
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -743,7 +721,6 @@ async def put_group_config(request, body, group_id, pretty=False, wait_for_compl
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -781,7 +758,6 @@ async def get_group_files(request, group_id, pretty=False, wait_for_complete=Fal
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -809,7 +785,6 @@ async def get_group_file_json(request, group_id, file_name, pretty=False, wait_f
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -838,7 +813,6 @@ async def get_group_file_xml(request, group_id, file_name, pretty=False, wait_fo
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -880,7 +854,6 @@ async def insert_agent(request, pretty=False, wait_for_complete=False):
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -917,7 +890,6 @@ async def get_agent_no_group(request, pretty=False, wait_for_complete=False, off
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -951,7 +923,6 @@ async def get_agent_outdated(request, pretty=False, wait_for_complete=False, off
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -992,7 +963,6 @@ async def get_agent_fields(request, pretty=False, wait_for_complete=False, field
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -1015,7 +985,6 @@ async def get_agent_summary_status(request, pretty=False, wait_for_complete=Fals
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -1039,7 +1008,6 @@ async def get_agent_summary_os(request, pretty=False, wait_for_complete=False):
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )

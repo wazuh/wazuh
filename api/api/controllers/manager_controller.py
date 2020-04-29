@@ -35,7 +35,6 @@ async def get_status(request, pretty=False, wait_for_complete=False):
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -57,7 +56,6 @@ async def get_info(request, pretty=False, wait_for_complete=False):
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -82,7 +80,6 @@ async def get_configuration(request, pretty=False, wait_for_complete=False, sect
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -112,7 +109,6 @@ async def get_stats(request, pretty=False, wait_for_complete=False, date=None):
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -137,7 +133,6 @@ async def get_stats_hourly(request, pretty=False, wait_for_complete=False):
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -163,7 +158,6 @@ async def get_stats_weekly(request, pretty=False, wait_for_complete=False):
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -186,7 +180,6 @@ async def get_stats_analysisd(request, pretty=False, wait_for_complete=False):
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -209,7 +202,6 @@ async def get_stats_remoted(request, pretty=False, wait_for_complete=False):
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -247,7 +239,6 @@ async def get_log(request, pretty=False, wait_for_complete=False, offset=0, limi
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -269,7 +260,6 @@ async def get_log_summary(request, pretty=False, wait_for_complete=False):
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -292,7 +282,6 @@ async def get_files(request, pretty=False, wait_for_complete=False, path=None):
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -328,7 +317,6 @@ async def put_files(request, body, overwrite=False, pretty=False, wait_for_compl
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -351,7 +339,6 @@ async def delete_files(request, pretty=False, wait_for_complete=False, path=None
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -374,7 +361,6 @@ async def get_api_config(request, pretty=False, wait_for_complete=False):
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -399,7 +385,6 @@ async def put_api_config(request, pretty=False, wait_for_complete=False):
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           broadcasting=True,
                           rbac_permissions=request['token_info']['rbac_policies']
@@ -425,7 +410,6 @@ async def delete_api_config(request, pretty=False, wait_for_complete=False):
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           broadcasting=True,
                           rbac_permissions=request['token_info']['rbac_policies']
@@ -448,7 +432,6 @@ async def put_restart(request, pretty=False, wait_for_complete=False):
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -470,7 +453,6 @@ async def get_conf_validation(request, pretty=False, wait_for_complete=False):
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -495,7 +477,6 @@ async def get_manager_config_ondemand(request, component, pretty=False, wait_for
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )

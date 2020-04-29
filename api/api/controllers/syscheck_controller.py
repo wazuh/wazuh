@@ -30,7 +30,6 @@ async def put_syscheck(request, list_agents='*', pretty=False, wait_for_complete
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           broadcasting=list_agents == '*',
                           rbac_permissions=request['token_info']['rbac_policies']
@@ -92,7 +91,6 @@ async def get_syscheck_agent(request, agent_id, pretty=False, wait_for_complete=
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -117,7 +115,6 @@ async def delete_syscheck_agent(request, agent_id='*', pretty=False, wait_for_co
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -143,7 +140,6 @@ async def get_last_scan_agent(request, agent_id, pretty=False, wait_for_complete
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )

@@ -65,7 +65,6 @@ async def get_agents_ciscat_results(request, agent_id: str, pretty: bool = False
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )

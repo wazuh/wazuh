@@ -29,7 +29,6 @@ async def get_overview_agents(request, pretty=False, wait_for_complete=False):
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )

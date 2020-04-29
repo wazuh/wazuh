@@ -31,7 +31,6 @@ async def get_hardware_info(request, agent_id, pretty=False, wait_for_complete=F
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -73,7 +72,6 @@ async def get_hotfix_info(request, agent_id, pretty=False, wait_for_complete=Fal
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -123,7 +121,6 @@ async def get_network_address_info(request, agent_id, pretty=False, wait_for_com
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -177,7 +174,6 @@ async def get_network_interface_info(request, agent_id, pretty=False, wait_for_c
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -223,7 +219,6 @@ async def get_network_protocol_info(request, agent_id, pretty=False, wait_for_co
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -250,7 +245,6 @@ async def get_os_info(request, agent_id, pretty=False, wait_for_complete=False, 
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -298,7 +292,6 @@ async def get_packages_info(request, agent_id, pretty=False, wait_for_complete=F
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -351,7 +344,6 @@ async def get_ports_info(request, agent_id, pretty=False, wait_for_complete=Fals
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -420,7 +412,6 @@ async def get_processes_info(request, agent_id, pretty=False, wait_for_complete=
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )

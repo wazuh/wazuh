@@ -38,7 +38,6 @@ async def get_cluster_node(request, pretty=False, wait_for_complete=False):
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
@@ -79,7 +78,6 @@ async def get_cluster_nodes(request, pretty=False, wait_for_complete=False, offs
                           request_type='local_master',
                           is_async=True,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           local_client_arg='lc',
                           rbac_permissions=request['token_info']['rbac_policies'],
@@ -109,7 +107,6 @@ async def get_healthcheck(request, pretty=False, wait_for_complete=False, list_n
                           request_type='local_master',
                           is_async=True,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           local_client_arg='lc',
                           rbac_permissions=request['token_info']['rbac_policies'],
@@ -132,7 +129,6 @@ async def get_status(request, pretty=False, wait_for_complete=False):
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -156,7 +152,6 @@ async def get_config(request, pretty=False, wait_for_complete=False):
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
@@ -181,7 +176,6 @@ async def get_status_node(request, node_id, pretty=False, wait_for_complete=Fals
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
@@ -208,7 +202,6 @@ async def get_info_node(request, node_id, pretty=False, wait_for_complete=False)
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
@@ -237,7 +230,6 @@ async def get_configuration_node(request, node_id, pretty=False, wait_for_comple
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
@@ -271,7 +263,6 @@ async def get_stats_node(request, node_id, pretty=False, wait_for_complete=False
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
@@ -299,7 +290,6 @@ async def get_stats_hourly_node(request, node_id, pretty=False, wait_for_complet
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
@@ -328,7 +318,6 @@ async def get_stats_weekly_node(request, node_id, pretty=False, wait_for_complet
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
@@ -355,7 +344,6 @@ async def get_stats_analysisd_node(request, node_id, pretty=False, wait_for_comp
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
@@ -382,7 +370,6 @@ async def get_stats_remoted_node(request, node_id, pretty=False, wait_for_comple
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
@@ -426,7 +413,6 @@ async def get_log_node(request, node_id, pretty=False, wait_for_complete=False, 
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
@@ -451,7 +437,6 @@ async def get_log_summary_node(request, node_id, pretty=False, wait_for_complete
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
@@ -478,7 +463,6 @@ async def get_files_node(request, node_id, path, pretty=False, wait_for_complete
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
@@ -518,7 +502,6 @@ async def put_files_node(request, body, node_id, path, overwrite=False, pretty=F
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
@@ -545,7 +528,6 @@ async def delete_files_node(request, node_id, path, pretty=False, wait_for_compl
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
@@ -568,7 +550,6 @@ async def get_api_config(request, pretty=False, wait_for_complete=False):
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           )
@@ -593,7 +574,6 @@ async def put_api_config(request, pretty=False, wait_for_complete=False):
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           broadcasting=True,
                           rbac_permissions=request['token_info']['rbac_policies']
@@ -619,7 +599,6 @@ async def delete_api_config(request, pretty=False, wait_for_complete=False):
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           broadcasting=True,
                           rbac_permissions=request['token_info']['rbac_policies']
@@ -644,7 +623,6 @@ async def put_restart(request, pretty=False, wait_for_complete=False, list_nodes
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           broadcasting=list_nodes == '*',
                           rbac_permissions=request['token_info']['rbac_policies'],
@@ -671,7 +649,6 @@ async def get_conf_validation(request, pretty=False, wait_for_complete=False, li
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           broadcasting=list_nodes == '*',
                           rbac_permissions=request['token_info']['rbac_policies'],
@@ -701,7 +678,6 @@ async def get_node_config(request, node_id, component, wait_for_complete=False, 
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes

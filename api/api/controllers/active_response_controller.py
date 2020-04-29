@@ -38,7 +38,6 @@ async def run_command(request, list_agents='*', pretty=False, wait_for_complete=
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           broadcasting=list_agents == '*',
                           rbac_permissions=request['token_info']['rbac_policies']

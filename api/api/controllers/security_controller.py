@@ -184,7 +184,6 @@ async def get_roles(request, role_ids=None, pretty=False, wait_for_complete=Fals
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -213,7 +212,6 @@ async def add_role(request, pretty=False, wait_for_complete=False):
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -237,7 +235,6 @@ async def remove_roles(request, role_ids=None, pretty=False, wait_for_complete=F
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -268,7 +265,6 @@ async def update_role(request, role_id, pretty=False, wait_for_complete=False):
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -303,7 +299,6 @@ async def get_policies(request, policy_ids=None, pretty=False, wait_for_complete
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -332,7 +327,6 @@ async def add_policy(request, pretty=False, wait_for_complete=False):
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -356,7 +350,6 @@ async def remove_policies(request, policy_ids=None, pretty=False, wait_for_compl
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -388,7 +381,6 @@ async def update_policy(request, policy_id, pretty=False, wait_for_complete=Fals
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -424,7 +416,6 @@ async def set_user_role(request, username, role_ids, position=None, pretty=False
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -449,7 +440,6 @@ async def remove_user_role(request, username, role_ids, pretty=False, wait_for_c
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -486,7 +476,6 @@ async def set_role_policy(request, role_id, policy_ids, position=None, pretty=Fa
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -511,7 +500,6 @@ async def remove_role_policy(request, role_id, policy_ids, pretty=False, wait_fo
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -541,7 +529,6 @@ async def get_rbac_resources(pretty=False, resource: str = None):
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=True,
-                          pretty=pretty,
                           logger=logger
                           )
     data = raise_if_exc(await dapi.distribute_function())
@@ -569,7 +556,6 @@ async def get_rbac_actions(pretty=False, endpoint: str = None):
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=True,
-                          pretty=pretty,
                           logger=logger
                           )
     data = raise_if_exc(await dapi.distribute_function())

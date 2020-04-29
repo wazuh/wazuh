@@ -48,7 +48,6 @@ async def get_lists(request, pretty: bool = False, wait_for_complete: bool = Fal
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -92,7 +91,6 @@ async def get_lists_files(request, pretty: bool = False, wait_for_complete: bool
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )

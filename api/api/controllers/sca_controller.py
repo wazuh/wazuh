@@ -52,7 +52,6 @@ async def get_sca_agent(request, agent_id=None, pretty=False, wait_for_complete=
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
@@ -116,7 +115,6 @@ async def get_sca_checks(request, agent_id=None, pretty=False, wait_for_complete
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
