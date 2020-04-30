@@ -199,6 +199,16 @@ int __wrap_realtime_start(void) {
 }
 #endif
 
+#ifdef TEST_WINAGENT
+int __wrap_run_whodata_scan(void) {
+    return mock();
+}
+
+int __wrap_audit_restore(void) {
+    return mock();
+}
+#endif
+
 /* Setup */
 
 static int setup_group(void ** state) {
@@ -390,6 +400,47 @@ void test_fim_send_msg_retry_error(void **state) {
 }
 
 #ifdef TEST_WINAGENT
+
+void test_fim_whodata_initialize_fail_set_policies(void **state)
+{
+    int ret;
+    int i;
+    char *dirs[] = {
+        "%WINDIR%\\System32\\WindowsPowerShell\\v1.0",
+        NULL
+    };
+    char expanded_dirs[1][OS_SIZE_1024];
+
+    will_return(wrap_GetCurrentThread, (HANDLE)123456);
+
+    expect_value(wrap_SetThreadPriority, hThread, (HANDLE)123456);
+    expect_value(wrap_SetThreadPriority, nPriority, THREAD_PRIORITY_LOWEST);
+    will_return(wrap_SetThreadPriority, true);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '10'");
+
+    // Expand directories
+    for(i = 0; dirs[i]; i++) {
+        if(!ExpandEnvironmentStrings(dirs[i], expanded_dirs[i], OS_SIZE_1024))
+            fail();
+
+        str_lowercase(expanded_dirs[i]);
+        expect_string(__wrap_realtime_adddir, dir, expanded_dirs[i]);
+        expect_value(__wrap_realtime_adddir, whodata, 9);
+        will_return(__wrap_realtime_adddir, 0);
+    }
+
+    will_return(__wrap_run_whodata_scan, 1);
+    expect_string(__wrap__merror, formatted_msg,
+      "(6710): Failed to start the Whodata engine. Directories/files will be monitored in Realtime mode");
+
+    will_return(__wrap_audit_restore, NULL);
+
+    ret = fim_whodata_initialize();
+
+    assert_int_equal(ret, -1);
+}
+
 void test_set_priority_windows_thread_highest(void **state) {
     syscheck.process_priority = -10;
 
@@ -560,6 +611,8 @@ void test_fim_whodata_initialize_eventchannel(void **state) {
         expect_value(__wrap_realtime_adddir, whodata, 9);
         will_return(__wrap_realtime_adddir, 0);
     }
+
+    will_return(__wrap_run_whodata_scan, 0);
 
     ret = fim_whodata_initialize();
 
@@ -920,6 +973,7 @@ int main(void) {
     const struct CMUnitTest eventchannel_tests[] = {
         cmocka_unit_test(test_set_whodata_mode_changes),
         cmocka_unit_test(test_fim_whodata_initialize_eventchannel),
+        cmocka_unit_test(test_fim_whodata_initialize_fail_set_policies),
     };
     return cmocka_run_group_tests(eventchannel_tests, setup_group, teardown_group);
     #endif

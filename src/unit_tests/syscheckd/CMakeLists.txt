@@ -181,7 +181,7 @@ elseif(${TARGET} STREQUAL "winagent")
 
   # Create event channel tests for run_check
   list(APPEND syscheckd_event_tests_names "test_run_check_event")
-  list(APPEND syscheckd_event_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=realtime_start")
+  list(APPEND syscheckd_event_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=realtime_start,--wrap=run_whodata_scan,--wrap=audit_restore")
 else()
   list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=sleep")
 endif()
