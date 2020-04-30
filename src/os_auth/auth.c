@@ -323,7 +323,10 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
 
         /* Check limit */
         if(max_multigroups > MAX_GROUPS_PER_MULTIGROUP){
-            merror("Maximum multigroup reached: Limit is %d",MAX_GROUPS_PER_MULTIGROUP);                
+            merror("Maximum multigroup reached: Limit is %d",MAX_GROUPS_PER_MULTIGROUP);     
+            if (response) {
+                snprintf(response, 2048, "ERROR: Maximum multigroup reached: Limit is %d\n\n", MAX_GROUPS_PER_MULTIGROUP); 
+            }             
             return OS_INVALID;
         }
         /* Validate the group name */

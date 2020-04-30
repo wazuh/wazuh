@@ -3,6 +3,7 @@ file(GLOB os_auth_files
     ${SRC_FOLDER}/os_auth/*.o
     ${SRC_FOLDER}/addagent/*.o)
 list(REMOVE_ITEM os_auth_files ${SRC_FOLDER}/os_auth/main-server.o)
+list(REMOVE_ITEM os_auth_files ${SRC_FOLDER}/addagent/main.o)
 
 add_library(OS_AUTH_O STATIC ${os_auth_files})
 
@@ -28,7 +29,8 @@ list(APPEND os_auth_names "test_auth_validate")
 list(APPEND os_auth_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_minfo -Wl,--wrap,_mdebug1 -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,OS_RemoveAgentGroup -Wl,--wrap,add_backup")
 list(APPEND os_auth_names "test_auth_add")
 list(APPEND os_auth_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_minfo -Wl,--wrap,_mdebug1")
-
+list(APPEND os_auth_names "test_ssl")
+list(APPEND os_auth_flags "-Wl,--wrap,SSL_read")
 
 list(LENGTH os_auth_names count)
 math(EXPR count "${count} - 1")

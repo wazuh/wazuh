@@ -45,6 +45,7 @@ extern BIO *bio_err;
 #define DEFAULT_PORT 1515
 #define DEFAULT_CENTRALIZED_GROUP "default"
 #define DEPRECATED_OPTION_WARN "Option '%s' is deprecated. Configure it in the file " DEFAULTCPATH "."
+#define MAX_SSL_PACKET_SIZE 16384
 
 #define full(i, j) ((i + 1) % AUTH_POOL == j)
 #define empty(i, j) (i == j)
@@ -68,6 +69,18 @@ SSL_CTX *get_ssl_context(const char *ciphers, int auto_method);
 int load_cert_and_key(SSL_CTX *ctx, const char *cert, const char *key);
 int load_ca_cert(SSL_CTX *ctx, const char *ca_cert);
 int verify_callback(int ok, X509_STORE_CTX *store);
+
+/**
+ * @brief Wraps SSL_read function to read block largers than a record (16K)
+ * 
+ * Calls SSL_read and if the return value is exactly the size of a record 
+ * calls again with an offset in the buffer until reading is done or until
+ * reaching a reading timeout
+ * @param ssl ssl connection
+ * @param buf buffer to store the read information
+ * @param num maximum number of bytes to read
+ * */
+int wrap_SSL_read(SSL *ssl, void *buf, int num);
 
 // Thread for internal server
 void* run_local_server(void *arg);

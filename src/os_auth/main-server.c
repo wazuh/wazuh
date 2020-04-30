@@ -657,7 +657,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
         os_calloc(OS_SIZE_65536 + OS_SIZE_4096 + 1, sizeof(char), buf);
         buf[0] = '\0'; 
-        ret = SSL_read(ssl, buf, OS_SIZE_65536 + OS_SIZE_4096);
+        ret = wrap_SSL_read(ssl, buf, OS_SIZE_65536 + OS_SIZE_4096);
         if (ret <= 0) {
             switch (ssl_error(ssl, ret)) {
             case 0:
