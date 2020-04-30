@@ -94,8 +94,12 @@
 #define VU_VULN_FILTER_AG     "(5585): A total of %d potential vulnerabilities have been discarded for agent %s."
 #define VU_START_VUL_AG_SEND  "(5586): Sending vulnerabilities report for agent %s."
 #define VU_VULN_SEND_AG       "(5587): A total of %d vulnerabilities have been reported for agent %s."
-#define VU_PACKAGE_INSERT     "(5588): Package '%s' inserted into the vulnerability '%s' (feed %s)."
-#define VU_DUPLICATED_PACKAGE "(5589): Trying to insert duplicated package '%s' into the vulnerability '%s' (feed %s)."
+#define VU_PACKAGE_INSERT     "(5588): Package '%s' inserted into the vulnerability '%s'. Version (%s) %s %s (feed %s)."
+#define VU_DUPLICATED_PACKAGE "(5589): Trying to insert duplicated package '%s' into the vulnerability '%s'. Version (%s) %s %s (feed %s)."
+#define VU_PACKAGE_NOT_VULN   "(5590): Package '%s' not vulnerable to '%s'. Version (%s) not %s %s (feed %s)."
+#define VU_PACKAGE_PATCHED    "(5591): Package '%s' not vulnerable since it is already patched by the vendor."
+#define VU_PACKAGE_NO_DEP     "(5591): Package '%s' not vulnerable since it don't meet its %s dependency on package with ID '%d'."
+#define VU_PACKAGE_DEP_NOT_VU "(5591): Package '%s' not vulnerable since it is a dependency not vulnerable."
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."

@@ -378,7 +378,7 @@
 #define VU_GET_PACKAGES_DEP_ERROR   "(5592): Couldn't get from the NVD the %s dependencies of the package with ID '%d'"
 #define VU_FILTER_VULN_ERROR        "(5593): Couldn't verify if the vulnerability '%s' of the package '%s' is already patched."
 #define VU_SEND_AGENT_REPORT        "(5594): Couldn't send the report with the vulnerabilities of the agent %s."
-#define VU_INSERT_PACKAGE_ERROR     "(5595): Couldn't insert the package '%s' into the vulnerability '%s' (feed %s)."
+#define VU_INSERT_PACKAGE_ERROR     "(5595): Couldn't insert the package '%s' into the vulnerability '%s'. Version (%s) %s %s (feed %s)."
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"
