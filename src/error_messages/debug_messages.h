@@ -13,8 +13,8 @@
 
 /* vulnerability-detector messages*/
 #define VU_DOWNLOAD           "(5450): Downloading %s database."
-#define VU_START_SCAN         "(5452): Starting vulnerability scanning."
-#define VU_END_SCAN           "(5453): Vulnerability scanning finished."
+#define VU_START_SCAN         "(5452): Starting vulnerability scan."
+#define VU_END_SCAN           "(5453): Vulnerability scan finished."
 #define VU_START_AG_AN        "(5454): Analyzing agent %s vulnerabilities."
 #define VU_DETECTED_VUL       "(5455): Vulnerability %s detected in agent %s affecting: %s."
 #define VU_UPDATE_DATE        "(5457): %s OVAL is in its latest version. Update date: %s"
@@ -87,11 +87,15 @@
 #define VU_NO_HOTFIX_AVAIL    "(5577): It is not possible to perform a hotfix scan on agent %s."
 #define VU_NO_HOTFIX_FEED     "(5578): We have not found a hotfix that solves %s for agent %s in the Microsoft feed, so it is not possible to know it is vulnerable."
 #define VU_START_NVD_AG_AN    "(5580): Analyzing NVD vulnerabilities for agent %s."
-#define VU_START_OVAL_AG_AN   "(5581): Analyzing OVAL vulnerabilities for agent %s."
-#define VU_START_VUL_AG_FIL   "(5582): Filtering vulnerabilities obtained for agent %s."
-#define VU_START_VUL_AG_SEND  "(5583): Sending vulnerabilities report for agent %s."
-#define VU_PACKAGE_INSERT     "(5584): Package '%s' inserted into the vulnerability '%s' (feed %s)."
-#define VU_DUPLICATED_PACKAGE "(5585): Trying to insert duplicated package '%s' into the vulnerability '%s' (feed %s)."
+#define VU_VULN_NVD_AG_COUNT  "(5581): The NVD found a total of %d potential vulnerabilities for agent %s."
+#define VU_START_OVAL_AG_AN   "(5582): Analyzing OVAL vulnerabilities for agent %s."
+#define VU_VULN_OVAL_AG_COUNT "(5583): The OVAL found a total of %d new potential vulnerabilities for agent %s."
+#define VU_START_VUL_AG_FIL   "(5584): Filtering vulnerabilities obtained for agent %s."
+#define VU_VULN_FILTER_AG     "(5585): A total of %d potential vulnerabilities have been discarded for agent %s."
+#define VU_START_VUL_AG_SEND  "(5586): Sending vulnerabilities report for agent %s."
+#define VU_VULN_SEND_AG       "(5587): A total of %d vulnerabilities have been reported for agent %s."
+#define VU_PACKAGE_INSERT     "(5588): Package '%s' inserted into the vulnerability '%s' (feed %s)."
+#define VU_DUPLICATED_PACKAGE "(5589): Trying to insert duplicated package '%s' into the vulnerability '%s' (feed %s)."
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
