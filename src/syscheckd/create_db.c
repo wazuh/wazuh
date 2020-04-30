@@ -1107,12 +1107,14 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
 // Sleep during rt_delay milliseconds
 
 void fim_rt_delay() {
+    if (syscheck.rt_delay){
 #ifdef WIN32
-    Sleep(syscheck.rt_delay);
+        Sleep(syscheck.rt_delay);
 #else
-    struct timeval timeout = {0, syscheck.rt_delay * 1000};
-    select(0, NULL, NULL, NULL, &timeout);
+        struct timeval timeout = {0, syscheck.rt_delay * 1000};
+        select(0, NULL, NULL, NULL, &timeout);
 #endif
+    }
 }
 
 // LCOV_EXCL_STOP
