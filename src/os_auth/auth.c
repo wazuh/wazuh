@@ -141,34 +141,9 @@ w_err_t w_auth_parse_data(const char* buf, char *response,const char *authpass, 
         char tmp_groups[OS_SIZE_65536] = {0};
         sscanf(buf," G:\'%65535[^\']\"",tmp_groups);
 
-        /* Validate the group name */
-        int valid = 0;
-        valid = w_validate_group_name(tmp_groups);
-
-        if(valid < 0) {
-
-            merror("Invalid group name: %.255s... ,",tmp_groups);
-
-            switch (valid) {
-                case -6:
-                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... cannot start or end with ','\n\n", tmp_groups);
-                    break;
-                case -5:
-                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... consecutive ',' are not allowed \n\n, ", tmp_groups);
-                    break;
-                case -4:
-                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... white spaces are not allowed \n\n", tmp_groups);
-                    break;
-                case -3:
-                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... multigroup is too large \n\n", tmp_groups);
-                    break;
-                case -2:
-                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large\n\n", tmp_groups);
-                    break;
-                case -1:
-                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited\n\n", tmp_groups);
-                    break;
-            }               
+        /* Validate the group name */        
+        if(0 > w_validate_group_name(tmp_groups, response)) {
+            merror("Invalid group name: %.255s... ,",tmp_groups);                   
             return OS_INVALID;
         }
         *groups = wstr_delete_repeated_groups(tmp_groups);
@@ -327,14 +302,6 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
             if (response) {
                 snprintf(response, 2048, "ERROR: Maximum multigroup reached: Limit is %d\n\n", MAX_GROUPS_PER_MULTIGROUP); 
             }             
-            return OS_INVALID;
-        }
-        /* Validate the group name */
-        if( 0 != w_validate_group_name(group) ){ 
-            merror("Invalid group name: %.255s... ,",group); 
-            if (response){
-                snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large\n\n", group); 
-            }                                   
             return OS_INVALID;
         }       
 

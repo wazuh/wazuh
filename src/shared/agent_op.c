@@ -477,8 +477,9 @@ char* hostname_parse(const char *path) {
     fclose(fp);
     return manager_hostname;
 }
+           
 
-int w_validate_group_name(const char *group){
+int w_validate_group_name(const char *group, char *response){
 
     unsigned int i = 0;
     char valid_chars[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.:;_-=+!@(),";
@@ -491,14 +492,29 @@ int w_validate_group_name(const char *group){
     os_calloc(OS_SIZE_65536,sizeof(char),multi_group_cpy);
     snprintf(multi_group_cpy,OS_SIZE_65536,"%s",group);
 
+    if(strlen(group) == 0) {
+        free(multi_group_cpy);
+        mdebug1("At w_validate_group_name(): Group length is 0");
+        if(response) {
+            snprintf(response, 2048, "ERROR: Invalid group name: Empty Group\n\n");
+        }
+        return -8;
+    }
+
     if(!multigroup && (strlen(group) > MAX_GROUP_NAME)){
         free(multi_group_cpy);
         mdebug1("At w_validate_group_name(): Group length is over %d characters",MAX_GROUP_NAME);
+        if(response) {
+            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large\n\n", group);
+        }
         return -2;
     }
     else if(multigroup && strlen(group) > OS_SIZE_65536 -1 ){
         free(multi_group_cpy);
         mdebug1("At w_validate_group_name(): Multigroup length is over %d characters",OS_SIZE_65536);
+        if(response) {
+            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... multigroup is too large \n\n", group);    
+        }
         return -3;
     }
 
@@ -522,12 +538,24 @@ int w_validate_group_name(const char *group){
         char *individual_group = strtok_r(multi_group_cpy, delim, &save_ptr);
 
         while( individual_group != NULL ) {
-
+            
             /* Spaces are not allowed */
             if(strchr(individual_group,' '))
             {
                 free(multi_group_cpy);
+                if(response) {
+                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... white spaces are not allowed \n\n", group);
+                }
                 return -4;
+            }
+
+            /* Validate the individual group length */
+            if (strlen(individual_group) > MAX_GROUP_NAME) {
+                free(multi_group_cpy);
+                if (response){
+                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large\n\n", group); 
+                } 
+                return -7;   
             }
 
             individual_group = strtok_r(NULL, delim, &save_ptr);
@@ -536,6 +564,9 @@ int w_validate_group_name(const char *group){
         /* Look for consecutive ',' */
         if(strstr(group,",,")){
             free(multi_group_cpy);
+            if(response) {
+                snprintf(response, 2048, "ERROR: Invalid group name: %.255s... consecutive ',' are not allowed \n\n, ", group);
+            }
             return -5;
         }
     }
@@ -543,17 +574,26 @@ int w_validate_group_name(const char *group){
     /* Check if the group is only composed by ',' */
     if(comas == strlen(group)){
         free(multi_group_cpy);
+        if(response) {
+            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited\n\n", group);    
+        }
         return -1;
     }
 
     /* Check if the group starts or ends with ',' */
     if(group[0] == ',' || group[strlen(group) - 1] == ',' ){
         free(multi_group_cpy);
+        if(response) {
+            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... cannot start or end with ','\n\n", group);    
+        }
         return -6;
     }
 
     if(strspn(group,valid_chars) != strlen(group)){
         free(multi_group_cpy);
+        if(response) {
+            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited\n\n", group);    
+        }
         return -1;
     }
 

@@ -296,8 +296,8 @@ cJSON* local_add(const char *id, const char *name, const char *ip, char *groups,
 
     mdebug2("add(%s)", name);
     w_mutex_lock(&mutex_keys);
-
-    /* Validate the group(s) name(s) */ 
+        
+    /* Check if groups are valid to be aggregated */ 
     if (groups){ 
         if (OS_SUCCESS != w_auth_validate_groups(groups, NULL)){
             ierror = EINVGROUP;

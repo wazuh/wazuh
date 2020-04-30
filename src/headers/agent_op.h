@@ -71,9 +71,11 @@ int create_multigroup_dir(const char * multigroup);
 char* hostname_parse(const char *path);
 
 /* Validates the group name
- * Returns 0 on success or  -1 on failure
+ * @params response must be a 2048 buffer or NULL
+ * Returns 0 on success or  -x on failure
  */
-int w_validate_group_name(const char *group);
+
+int w_validate_group_name(const char *group, char *response);
 
 int set_agent_multigroup(char * group);
 
