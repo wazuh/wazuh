@@ -218,7 +218,7 @@ test_name: PUT /groups/{group_id}/configuration
 
 stages:
 
-    # PUT /group/group2/configuration
+    # PUT /groups/group2/configuration
   - name: Update group2 configuration
     request:
       verify: False
@@ -234,7 +234,7 @@ stages:
       json:
         message: !anystr
 
-    # PUT /group/wrong_group/configuration
+    # PUT /groups/wrong_group/configuration
   - name: Try to update configuration of a non existing group
     request:
       verify: False
@@ -250,7 +250,7 @@ stages:
       json:
         code: 1710
 
-    # PUT /group/group1/configuration
+    # PUT /groups/group1/configuration
   - name: Try to update configuration using an empty file
     request:
       verify: False
@@ -264,7 +264,7 @@ stages:
       json:
         code: 2007
 
-    # PUT /group/group1/configuration
+    # PUT /groups/group1/configuration
   - name: Try to update configuration using an invalid configuration file
     request:
       verify: False
@@ -280,7 +280,7 @@ stages:
       json:
         code: 1113
 
-    # PUT /group/group1/configuration
+    # PUT /groups/group1/configuration
   - name: Try to update configuration using a wrong configuration file
     request:
       verify: False
@@ -295,6 +295,88 @@ stages:
       status_code: 400
       json:
         code: 1114
+
+---
+test_name: PUT /groups/{group_id}/restart
+
+stages:
+
+    # PUT /groups/group1/restart (This group has no agents assigned)
+  - name: Restart all agents from group1
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group1/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+    response:
+      status_code: 400
+      json:
+        title: "Wazuh Error"
+        detail: "The group does not have any agent assigned"
+        status: 400
+        remediation: "Please select another group or assign any agent to it"
+        code: 1755
+        dapi_errors:
+          master-node:
+            error: "The group does not have any agent assigned"
+
+    # PUT /groups/group2/restart (Agents 009 and 010 are disconnected)
+  - name: Restart all agents from group2
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group2/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - "001"
+            - "002"
+            - "003"
+            - "004"
+            - "005"
+            - "006"
+            - "007"
+            - "008"
+          total_affected_items: 8
+          failed_items:
+            - error:
+                code: 1707
+                message: "Impossible to restart non-active agent: disconnected"
+                remediation: "Please, make sure agent is active before attempting to restart"
+              id:
+                - "009"
+                - "010"
+          total_failed_items: 2
+        message: "Could not send command to some agents"
+    delay_after: 45
+
+  # PUT /groups/not_exists/restart (Group does not exist)
+  - name: Restart all agents from a group which does not exist
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/not_exists/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+    response:
+      status_code: 400
+      json:
+        title: "Wazuh Error"
+        detail: "The group does not exist"
+        status: 400
+        remediation: "Please, `GET /agents/groups` to find all available groups"
+        code: 1710
+        dapi_errors:
+          master-node:
+            error: "The group does not exist"
 
 ---
 test_name: PUT /agents/restart
