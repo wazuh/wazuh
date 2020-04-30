@@ -22,8 +22,18 @@ else
 fi
 
 sleep 1
-
 /var/ossec/bin/ossec-control restart
+
+# API configuration
+if [ -f /configuration_files/api.yaml ]; then
+  cp -f /configuration_files/api.yaml /var/ossec/api/configuration/api.yaml
+fi
+
+# RBAC configuration
+for sql_file in /configuration_files/rbac/*.sql; do
+  sqlite3 /var/ossec/api/configuration/security/rbac.db < $sql_file
+done
+
 /var/ossec/bin/wazuh-apid restart
 
 /usr/bin/supervisord

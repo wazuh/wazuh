@@ -8,7 +8,7 @@ variables:
   protocol: https
   host: localhost
   port: 55000
-  user: wazuh
+  user: testing
   pass: wazuh
   version: v4
   login_endpoint: /security/user/authenticate
