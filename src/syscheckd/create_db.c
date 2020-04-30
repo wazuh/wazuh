@@ -54,7 +54,6 @@ void fim_scan() {
     struct timespec end;
     clock_t cputime_start;
 
-
     cputime_start = clock();
     gettime(&start);
     minfo(FIM_FREQUENCY_STARTED);
@@ -88,6 +87,11 @@ void fim_scan() {
 
     if (_base_line == 0) {
         _base_line = 1;
+    }
+    else {
+        // In the first scan, the fim inicialization is different between Linux and Windows.
+        // Realtime watches are set after the first scan in Windows.
+        mdebug2(FIM_NUM_WATCHES, count_watches());
     }
 
     check_deleted_files();

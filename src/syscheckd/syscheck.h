@@ -336,6 +336,21 @@ void realtime_process(void);
 void free_syscheck_dirtb_data(char *data);
 
 /**
+ * @brief Deletes subdirectories watches when a folder changes its name
+ * 
+ * @param dir Directory whose subdirectories need to delete their watches
+ */
+
+void delete_subdirectories_watches(char *dir);
+
+/**
+ * @brief Count inotify watches
+ * 
+ * @return Number of inotify watches
+ */
+unsigned int count_watches();
+
+/**
  * @brief Check if a file has changed
  *
  * @param filename The name of the file to be checked

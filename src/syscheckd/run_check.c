@@ -71,6 +71,9 @@ STATIC void fim_link_reload_broken_link(char *path, int index);
 STATIC void fim_delete_realtime_watches(int pos);
 #endif
 
+// Global variables
+static int _base_line = 0;
+
 // Send a message
 STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
     if (SendMSG(syscheck.queue, msg, location, mq) < 0) {
@@ -341,6 +344,12 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
             }
         }
 #endif
+
+        if (_base_line == 0) {
+            _base_line = 1;
+            mdebug2(FIM_NUM_WATCHES, count_watches());
+        }
+
 #ifdef WIN_WHODATA
         if (syscheck.realtime_change) {
             set_whodata_mode_changes();

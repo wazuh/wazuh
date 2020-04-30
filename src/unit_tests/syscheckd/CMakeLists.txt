@@ -83,7 +83,7 @@ if(${TARGET} STREQUAL "winagent")
                                      -Wl,--wrap=decode_win_permissions,--wrap=pthread_mutex_lock \
                                      -Wl,--wrap=pthread_mutex_unlock,--wrap=w_get_file_attrs,--wrap=os_winreg_check")
 else()
-  list(APPEND syscheckd_tests_flags "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat")
+  list(APPEND syscheckd_tests_flags "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches")
 endif()
 
 list(APPEND syscheckd_tests_names "test_syscheck_audit")
@@ -115,7 +115,8 @@ set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watc
                              -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Get -Wl,--wrap,rbtree_insert -Wl,--wrap,_merror \
                              -Wl,--wrap,W_Vector_insert_unique -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 \
                              -Wl,--wrap,_mdebug2 -Wl,--wrap,_merror_exit -Wl,--wrap,send_log_msg -Wl,--wrap,rbtree_keys \
-                             -Wl,--wrap,fim_realtime_event -Wl,--wrap,OSHash_Delete_ex")
+                             -Wl,--wrap,fim_realtime_event -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap=OSHash_Begin \
+                             -Wl,--wrap=OSHash_Next -Wl,--wrap=pthread_mutex_lock  -Wl,--wrap=pthread_mutex_unlock")
 
 list(APPEND syscheckd_tests_names "test_run_realtime")
 if(${TARGET} STREQUAL "agent")
