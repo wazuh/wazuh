@@ -155,6 +155,11 @@ void fim_scan() {
     if (_base_line == 0) {
         _base_line = 1;
     }
+    else {
+        // In the first scan, the fim inicialization is different between Linux and Windows.
+        // Realtime watches are set after the first scan in Windows.
+        mdebug2(FIM_NUM_WATCHES, count_watches());
+    }
 
     minfo(FIM_FREQUENCY_ENDED);
     fim_send_scan_info(FIM_SCAN_END);
@@ -413,7 +418,27 @@ void fim_whodata_event(whodata_evt * w_evt) {
     }
     // Otherwise, it could be a file deleted or a directory moved (or renamed).
     else {
-        fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt);
+        #ifdef WIN32
+            fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt);
+        #else
+            char** paths = NULL;
+            char *evt_path = w_evt->path;
+            const unsigned long int inode = strtoul(w_evt->inode,NULL,10);
+            const unsigned long int dev = strtoul(w_evt->dev,NULL,10);
+
+            w_mutex_lock(&syscheck.fim_entry_mutex);
+            paths = fim_db_get_paths_from_inode(syscheck.database, inode, dev);
+            w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+            fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt);
+            for(int i = 0; paths[i]; i++) {
+                w_evt->path = paths[i];
+                fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt);
+                os_free(paths[i]);
+            }
+            os_free(paths);
+            w_evt->path = evt_path;
+        #endif
     }
 }
 
@@ -1262,12 +1287,14 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
 // Sleep during rt_delay milliseconds
 
 void fim_rt_delay() {
+    if (syscheck.rt_delay){
 #ifdef WIN32
-    Sleep(syscheck.rt_delay);
+        Sleep(syscheck.rt_delay);
 #else
-    struct timeval timeout = {0, syscheck.rt_delay * 1000};
-    select(0, NULL, NULL, NULL, &timeout);
+        struct timeval timeout = {0, syscheck.rt_delay * 1000};
+        select(0, NULL, NULL, NULL, &timeout);
 #endif
+    }
 }
 
 // LCOV_EXCL_STOP

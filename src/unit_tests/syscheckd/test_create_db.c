@@ -321,6 +321,11 @@ int __wrap_send_log_msg(const char * msg) {
     return 1;
 }
 
+int __wrap_count_watches() {
+    function_called();
+
+    return mock();
+}
 
 #ifdef TEST_WINAGENT
 int __wrap_pthread_mutex_lock (pthread_mutex_t *__mutex) {
@@ -505,6 +510,20 @@ static int setup_file_limit(void **state) {
 
 static int teardown_file_limit(void **state) {
     syscheck.file_limit = 50000;
+
+    return 0;
+}
+
+static int teardown_fim_scan_realtime(void **state) {
+    int *dir_opts = *state;
+    int it = 0;
+
+    while (dir_opts[it]) {
+        syscheck.opts[it] = dir_opts[it];
+        it++;
+    }
+
+    free(dir_opts);
 
     return 0;
 }
@@ -1911,17 +1930,78 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     // In fim_checker
     will_return_count(__wrap_lstat, 0, 7);
 
-    expect_string(__wrap_HasFilesystem, path, "/boot");
-    expect_string(__wrap_HasFilesystem, path, "/etc");
-    expect_string(__wrap_HasFilesystem, path, "/home");
-    expect_string(__wrap_HasFilesystem, path, "/media");
-    expect_string(__wrap_HasFilesystem, path, "/usr/bin");
-    expect_string(__wrap_HasFilesystem, path, "/usr/sbin");
+    int it = 0;
+
+    while (syscheck.dir[it]) {
+        expect_string(__wrap_HasFilesystem, path, syscheck.dir[it]);
+        it++;
+    }
+    
     will_return_count(__wrap_HasFilesystem, 0, 7);
 
     expect_string(__wrap_realtime_adddir, dir, "/boot");
     expect_string(__wrap_realtime_adddir, dir, "/home");
     expect_string(__wrap_realtime_adddir, dir, "/media");
+
+    will_return(__wrap_fim_db_get_count_entry_path, 50000);
+
+    expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_not_scanned, NULL);
+    will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
+
+    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_set_all_unscanned, 0);
+
+    will_return(__wrap_fim_db_get_count_entry_path, 45000);
+
+    expect_string(__wrap_HasFilesystem, path, "/boot");
+
+    will_return(__wrap_fim_db_get_count_entry_path, 50000);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
+
+    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_set_all_unscanned, 0);
+
+    will_return(__wrap_fim_db_get_count_entry_path, 50000);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6041): Sending DB 100% full alert.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
+
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
+
+    fim_scan();
+}
+static void test_fim_scan_no_realtime(void **state) {
+    int *dir_opts = calloc(6, sizeof(int));
+    int it = 0;
+
+    if (!dir_opts) {
+        fail();
+    }
+
+    while (syscheck.dir[it] != NULL) {
+        dir_opts[it] = syscheck.opts[it];
+        syscheck.opts[it] &= ~REALTIME_ACTIVE;
+        it++;
+    }
+
+    *state = dir_opts;
+
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+
+    // In fim_checker
+    will_return_count(__wrap_lstat, 0, 7);
+
+    it = 0;
+
+    while (syscheck.dir[it]) {
+        expect_string(__wrap_HasFilesystem, path, syscheck.dir[it]);
+        it++;
+    }
+
+    will_return_count(__wrap_HasFilesystem, 0, 7);
 
     will_return(__wrap_fim_db_get_count_entry_path, 50000);
 
@@ -1970,6 +2050,57 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
 
     expect_string(__wrap_realtime_adddir, dir, "/boot");
     expect_string(__wrap_realtime_adddir, dir, "/home");
+    expect_string(__wrap_realtime_adddir, dir, "/media");
+
+    will_return_count(__wrap_fim_db_get_count_entry_path, 50000, 3);
+
+    expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_not_scanned, NULL);
+    will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
+
+    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_set_all_unscanned, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
+
+    fim_scan();
+}
+
+static void test_fim_scan_realtime_enabled(void **state) {
+    int *dir_opts = calloc(6, sizeof(int));
+    int it = 0;
+
+    if (!dir_opts) {
+        fail();
+    }
+
+    while (syscheck.dir[it] != NULL) {
+        dir_opts[it] = syscheck.opts[it];
+        syscheck.opts[it] |= REALTIME_ACTIVE;
+        it++;
+    }
+
+    *state = dir_opts;
+
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+
+    // In fim_checker
+    will_return_count(__wrap_lstat, 0, 6);
+
+    expect_string(__wrap_HasFilesystem, path, "/etc");
+    expect_string(__wrap_HasFilesystem, path, "/usr/bin");
+    expect_string(__wrap_HasFilesystem, path, "/usr/sbin");
+    expect_string(__wrap_HasFilesystem, path, "/media");
+    expect_string(__wrap_HasFilesystem, path, "/home");
+    expect_string(__wrap_HasFilesystem, path, "/boot");
+    will_return_count(__wrap_HasFilesystem, 0, 6);
+
+    expect_string(__wrap_realtime_adddir, dir, "/etc");
+    expect_string(__wrap_realtime_adddir, dir, "/usr/bin");
+    expect_string(__wrap_realtime_adddir, dir, "/usr/sbin");
     expect_string(__wrap_realtime_adddir, dir, "/media");
 
     will_return_count(__wrap_fim_db_get_count_entry_path, 50000, 3);
@@ -2057,6 +2188,12 @@ static void test_fim_scan_no_limit(void **state) {
 
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_set_all_unscanned, 0);
+
+    // In fim_scan
+    expect_function_call(__wrap_count_watches);
+    will_return(__wrap_count_watches, 6);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6345): Folders monitored with real-time engine: 6");
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
@@ -2440,6 +2577,9 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_set_all_unscanned, 0);
+
+    // In fim_scan
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
     will_return(__wrap_fim_db_get_count_entry_path, 45000);
 
@@ -3427,17 +3567,57 @@ static void test_fim_whodata_event_file_missing(void **state) {
     #endif
     errno = ENOENT;
 
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "./test/test.file");
-    will_return(__wrap_fim_db_get_path, NULL);
+    char **paths = calloc(4, sizeof(char *));
+    paths[0] = strdup("/testdir/dir1/file1");
+    paths[1] = strdup("/testdir/dir1/file2");
+    paths[2] = strdup("/testdir/dir1/file3");
+    paths[3] = NULL;
 
-    expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
-    will_return(__wrap_fim_db_get_path_range, NULL);
-    will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
+#ifdef TEST_WINAGENT
+    // Inside fim_process_missing_entry
+    {
+        expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+        expect_string(__wrap_fim_db_get_path, file_path, "./test/test.file");
+        will_return(__wrap_fim_db_get_path, NULL);
 
+        expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+        expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+        will_return(__wrap_fim_db_get_path_range, NULL);
+        will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
+    }
+#else
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
+    will_return(__wrap_fim_db_get_paths_from_inode, paths);
+
+    // Inside fim_process_missing_entry
+        {
+            expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+            expect_string(__wrap_fim_db_get_path, file_path, paths[i]);
+            will_return(__wrap_fim_db_get_path, NULL);
+
+            expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+            expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+            will_return(__wrap_fim_db_get_path_range, NULL);
+            will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
+        }
+    for(int i = 0; paths[i]; i++) {
+        // Inside fim_process_missing_entry
+        {
+            expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+            expect_string(__wrap_fim_db_get_path, file_path, paths[i]);
+            will_return(__wrap_fim_db_get_path, NULL);
+
+            expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+            expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+            will_return(__wrap_fim_db_get_path_range, NULL);
+            will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
+        }
+    }
+#endif
     fim_whodata_event(fim_data->w_evt);
-    errno = 0;
+    errno=0;
 }
 
 static void test_fim_process_missing_entry_no_data(void **state) {
@@ -3715,6 +3895,12 @@ int main(void) {
         cmocka_unit_test(test_fim_check_db_state_full_to_90_percentage),
         cmocka_unit_test(test_fim_check_db_state_90_percentage_to_80_percentage),
         cmocka_unit_test(test_fim_check_db_state_80_percentage_to_normal),
+        #ifndef TEST_WINAGENT
+        cmocka_unit_test_teardown(test_fim_scan_no_realtime, teardown_fim_scan_realtime),
+        cmocka_unit_test_teardown(test_fim_scan_realtime_enabled, teardown_fim_scan_realtime),
+        #else
+        cmocka_unit_test(test_fim_scan),
+        #endif
 
         /* fim_checker */
         cmocka_unit_test(test_fim_checker_scheduled_configuration_directory_error),

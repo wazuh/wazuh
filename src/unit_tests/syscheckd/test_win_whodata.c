@@ -6992,7 +6992,8 @@ void test_run_whodata_scan_no_audit_policies(void **state) {
     expect_string(__wrap__merror, formatted_msg,
          "(6660): 'tmp\\backup-policies' could not be removed: 'No such file or directory' (2).");
 }
-    expect_string(__wrap__mwarn, formatted_msg,
+
+    expect_string(__wrap__merror, formatted_msg,
          "(6916): Local audit policies could not be configured.");
 
     ret = run_whodata_scan();
@@ -7033,20 +7034,12 @@ void test_run_whodata_scan_no_auto_audit_policies(void **state) {
     expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
     will_return(__wrap_wm_exec, 1);
     will_return(__wrap_wm_exec, 0);
+
+    expect_string(__wrap__merror, formatted_msg,
+        "(6915): Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode.");
 }
 
-    expect_string(__wrap__mwarn, formatted_msg,
-        "(6915): Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode.");
-
-    DWORD fields_number = 9;
-
-    expect_value(wrap_win_whodata_EvtCreateRenderContext, ValuePathsCount, fields_number);
-    expect_value(wrap_win_whodata_EvtCreateRenderContext, ValuePaths, event_fields);
-    expect_value(wrap_win_whodata_EvtCreateRenderContext, Flags, EvtRenderContextValues);
-    will_return(wrap_win_whodata_EvtCreateRenderContext, NULL);
-
-    will_return(wrap_win_whodata_GetLastError, (unsigned int) 5);
-    expect_string(__wrap__merror, formatted_msg, "(6645): Error creating the whodata context. Error 5.");
+    expect_string(__wrap__merror, formatted_msg, "(6916): Local audit policies could not be configured.");
 
     ret = run_whodata_scan();
     assert_int_equal(ret, 1);
@@ -7079,17 +7072,48 @@ void test_run_whodata_scan_error_event_channel(void **state) {
 /* Inside set_policies */
 {
     expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
-    will_return(__wrap_IsFile, 0);
-    expect_string(__wrap_remove, filename, "tmp\\backup-policies");
-    will_return(__wrap_remove, 0);
+    will_return(__wrap_IsFile, 1);
 
     expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
-    will_return(__wrap_wm_exec, 1);
     will_return(__wrap_wm_exec, 0);
-}
+    will_return(__wrap_wm_exec, 0);
 
-    expect_string(__wrap__mwarn, formatted_msg,
-        "(6915): Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode.");
+    expect_string(__wrap_fopen, _Filename, "tmp\\backup-policies");
+    expect_string(__wrap_fopen, _Mode, "r");
+    will_return(__wrap_fopen, (FILE*)1234);
+
+    expect_string(__wrap_fopen, _Filename, "tmp\\new-policies");
+    expect_string(__wrap_fopen, _Mode, "w");
+    will_return(__wrap_fopen, (FILE*)2345);
+
+    expect_value(wrap_win_whodata_fgets, __stream, (FILE*)1234);
+    will_return(wrap_win_whodata_fgets, "some policies");
+
+    expect_value(wrap_win_whodata_fprintf, __stream, 2345);
+    expect_string(wrap_win_whodata_fprintf, formatted_msg, "some policies");
+    will_return(wrap_win_whodata_fprintf, 0);
+
+    expect_value(wrap_win_whodata_fgets, __stream, (FILE*)1234);
+    will_return(wrap_win_whodata_fgets, NULL);
+
+    expect_value(wrap_win_whodata_fprintf, __stream, 2345);
+    expect_string(wrap_win_whodata_fprintf, formatted_msg, ",System,File System,{0CCE921D-69AE-11D9-BED3-505054503030},,,1\n");
+    will_return(wrap_win_whodata_fprintf, 0);
+
+    expect_value(wrap_win_whodata_fprintf, __stream, 2345);
+    expect_string(wrap_win_whodata_fprintf, formatted_msg, ",System,Handle Manipulation,{0CCE9223-69AE-11D9-BED3-505054503030},,,1\n");
+    will_return(wrap_win_whodata_fprintf, 0);
+
+    expect_value(__wrap_fclose, _File, (FILE*)2345);
+    will_return(__wrap_fclose, 0);
+
+    expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\new-policies\"");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_value(__wrap_fclose, _File, (FILE*)1234);
+    will_return(__wrap_fclose, 0);
+}
 
     DWORD fields_number = 9;
     EVT_HANDLE event;
@@ -7149,17 +7173,48 @@ void test_run_whodata_scan_success(void **state) {
 /* Inside set_policies */
 {
     expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
-    will_return(__wrap_IsFile, 0);
-    expect_string(__wrap_remove, filename, "tmp\\backup-policies");
-    will_return(__wrap_remove, 0);
+    will_return(__wrap_IsFile, 1);
 
     expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
-    will_return(__wrap_wm_exec, 1);
     will_return(__wrap_wm_exec, 0);
-}
+    will_return(__wrap_wm_exec, 0);
 
-    expect_string(__wrap__mwarn, formatted_msg,
-        "(6915): Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode.");
+    expect_string(__wrap_fopen, _Filename, "tmp\\backup-policies");
+    expect_string(__wrap_fopen, _Mode, "r");
+    will_return(__wrap_fopen, (FILE*)1234);
+
+    expect_string(__wrap_fopen, _Filename, "tmp\\new-policies");
+    expect_string(__wrap_fopen, _Mode, "w");
+    will_return(__wrap_fopen, (FILE*)2345);
+
+    expect_value(wrap_win_whodata_fgets, __stream, (FILE*)1234);
+    will_return(wrap_win_whodata_fgets, "some policies");
+
+    expect_value(wrap_win_whodata_fprintf, __stream, 2345);
+    expect_string(wrap_win_whodata_fprintf, formatted_msg, "some policies");
+    will_return(wrap_win_whodata_fprintf, 0);
+
+    expect_value(wrap_win_whodata_fgets, __stream, (FILE*)1234);
+    will_return(wrap_win_whodata_fgets, NULL);
+
+    expect_value(wrap_win_whodata_fprintf, __stream, 2345);
+    expect_string(wrap_win_whodata_fprintf, formatted_msg, ",System,File System,{0CCE921D-69AE-11D9-BED3-505054503030},,,1\n");
+    will_return(wrap_win_whodata_fprintf, 0);
+
+    expect_value(wrap_win_whodata_fprintf, __stream, 2345);
+    expect_string(wrap_win_whodata_fprintf, formatted_msg, ",System,Handle Manipulation,{0CCE9223-69AE-11D9-BED3-505054503030},,,1\n");
+    will_return(wrap_win_whodata_fprintf, 0);
+
+    expect_value(__wrap_fclose, _File, (FILE*)2345);
+    will_return(__wrap_fclose, 0);
+
+    expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\new-policies\"");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_value(__wrap_fclose, _File, (FILE*)1234);
+    will_return(__wrap_fclose, 0);
+}
 
     DWORD fields_number = 9;
     EVT_HANDLE event;
@@ -7283,6 +7338,9 @@ void test_set_policies_fail_getting_policies(void **state) {
     will_return(__wrap_wm_exec, 1);
     will_return(__wrap_wm_exec, 0);
 
+    expect_string(__wrap__merror, formatted_msg,
+    "(6915): Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode.");
+
     ret = set_policies();
 
     assert_int_equal(ret, 2);
@@ -7331,7 +7389,7 @@ void test_set_policies_unable_to_open_new_file(void **state) {
     errno = EACCES;
 
     expect_string(__wrap__merror, formatted_msg,
-        "(6661): 'tmp\\new-policies' could not be opened: 'Permission denied' (13).");
+        "(6660): 'tmp\\new-policies' could not be removed: 'Permission denied' (13).");
 
     expect_value(__wrap_fclose, _File, (FILE*)1234);
     will_return(__wrap_fclose, 0);
@@ -7383,6 +7441,8 @@ void test_set_policies_unable_to_restore_policies(void **state) {
     expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\new-policies\"");
     will_return(__wrap_wm_exec, 1);
     will_return(__wrap_wm_exec, 0);
+    expect_string(__wrap__merror, formatted_msg,
+        "(6915): Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode.");
 
     expect_value(__wrap_fclose, _File, (FILE*)1234);
     will_return(__wrap_fclose, 0);
@@ -7991,14 +8051,14 @@ void test_state_checker_dir_readded_error(void **state) {
     }
 
     expect_string(__wrap__merror, formatted_msg,
-        "(6619): Unable to add directory to whodata real time monitoring: 'C:\\a\\path'.");
+        "(6619): Unable to add directory to whodata real time monitoring: 'C:\\a\\path'. It will be monitored in Realtime");
 
     ret = state_checker(input);
 
     assert_int_equal(ret, 0);
     assert_int_equal(syscheck.wdata.dirs_status[0].object_type, WD_STATUS_FILE_TYPE);
     assert_null(syscheck.wdata.dirs_status[0].status & WD_STATUS_EXISTS);
-    assert_non_null(syscheck.opts[0] & WHODATA_ACTIVE);
+    assert_non_null(syscheck.opts[0] & REALTIME_ACTIVE);
 }
 
 void test_state_checker_dir_readded_succesful(void **state) {
