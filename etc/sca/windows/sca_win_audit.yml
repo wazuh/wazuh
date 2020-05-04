@@ -1,6 +1,6 @@
 # Security Configuration Assessment
 # Checks for Windows audit
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -401,6 +401,7 @@ checks:
       - pci_dss: ["10.6.1"]
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.6"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
     condition: all
     rules:
       - 'r:HKLM\Software\Microsoft\Windows\CurrentVersion\Policies\System -> DisableRegistryTools -> 0'
@@ -412,6 +413,7 @@ checks:
       - pci_dss: ["10.6.1"]
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.6"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
     references:
       - https://support.microsoft.com/es-es/help/825750/how-to-disable-dcom-support-in-windows
     condition: all
@@ -424,6 +426,7 @@ checks:
       - pci_dss: ["10.6.1", "11.4"]
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.6", "SI.4"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\LSA -> LMCompatibilityLevel -> r:^5$'
@@ -436,6 +439,7 @@ checks:
       - pci_dss: ["10.6.1"]
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.6"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Security Center -> FirewallDisableNotify -> 0'
@@ -450,6 +454,7 @@ checks:
       - pci_dss: ["10.6.1", "1.4"]
       - hipaa: ["164.312.b", "164.312.a.1"]
       - nist_800_53: ["AU.6", "SC.7"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC6.7"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\software\policies\microsoft\windowsfirewall\domainprofile -> enablefirewall -> 1'
@@ -459,6 +464,7 @@ checks:
     compliance:
       - pci_dss: ["11.4"]
       - nist_800_53: ["SI.4"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
       - 'r:HKLM\System\CurrentControlSet\Control\Lsa -> RestrictAnonymous -> 1'
@@ -469,6 +475,7 @@ checks:
       - pci_dss: ["10.6.1"]
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.6"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
     references:
       - https://windowsir.blogspot.com/2007/04/something-new-to-look-for.html
     condition: all
@@ -482,6 +489,7 @@ checks:
       - pci_dss: ["10.6.1"]
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.6"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
     condition: any
     rules:
       - 'not r:HKLM\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> DefaultPassword'
@@ -493,6 +501,7 @@ checks:
       - pci_dss: ["10.6.1"]
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.6"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
     condition: none
     rules:
       - 'f:%WINDIR%\System32\drivers\npf.sys'
