@@ -313,14 +313,7 @@ stages:
     response:
       status_code: 400
       json:
-        title: "Wazuh Error"
-        detail: "The group does not have any agent assigned"
-        status: 400
-        remediation: "Please select another group or assign any agent to it"
         code: 1755
-        dapi_errors:
-          master-node:
-            error: "The group does not have any agent assigned"
 
     # PUT /groups/group2/restart (Agents 009 and 010 are disconnected)
   - name: Restart all agents from group2
@@ -348,8 +341,6 @@ stages:
           failed_items:
             - error:
                 code: 1707
-                message: "Impossible to restart non-active agent: disconnected"
-                remediation: "Please, make sure agent is active before attempting to restart"
               id:
                 - "009"
                 - "010"
@@ -369,14 +360,8 @@ stages:
     response:
       status_code: 400
       json:
-        title: "Wazuh Error"
-        detail: "The group does not exist"
         status: 400
-        remediation: "Please, `GET /agents/groups` to find all available groups"
         code: 1710
-        dapi_errors:
-          master-node:
-            error: "The group does not exist"
 
 ---
 test_name: PUT /agents/restart

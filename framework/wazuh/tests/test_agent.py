@@ -211,7 +211,7 @@ def test_agent_get_agents_in_group(sqlite_mock, mock_get_groups, mock_get_agents
     """
     mock_get_groups.return_value = ['default']
     if group_exists:
-        # Since the decorator is mocked, pass `agent_list` using `call_args` from mock
+        # Since the decorator is mocked, pass `group_list` using `call_args` from mock
         get_agents_in_group(group_list=[group], select=['id'])
         kwargs = mock_get_agents.call_args[1]
         agents = get_agents(agent_list=short_agent_list, **kwargs)

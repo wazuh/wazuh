@@ -1445,8 +1445,6 @@ stages:
           failed_items:
             - error:
                 code: 4000
-                message: "Permission denied: Resource type: agent:id"
-                remediation: "Please, make sure you have permissions to execute current request, for more information on setting up permissions please visit XXXX"
               id:
                 - "002"
                 - "006"
