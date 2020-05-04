@@ -1511,9 +1511,9 @@ endif
 wpython: install_dependencies install_framework
 
 ifeq (${uname_S},Darwin)
-WLIBPYTHON=libpython3.7m.dylib
+WLIBPYTHON=libpython3.8.dylib
 else
-WLIBPYTHON=libpython3.7m.so.1.0
+WLIBPYTHON=libpython3.8.so.1.0
 endif
 
 build_python:
@@ -1547,8 +1547,7 @@ install_python:
 python_dependencies := requirements.txt
 
 install_dependencies: install_python
-	cd ../framework && LD_LIBRARY_PATH='${PREFIX}/lib' LDFLAGS='-L${PREFIX}/lib' ${WPYTHON_DIR}/bin/pip3 install -r ${python_dependencies} --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
-
+	LD_LIBRARY_PATH="${PREFIX}/lib" LDFLAGS="-L${PREFIX}/lib" ${WPYTHON_DIR}/bin/pip3 install -r ../framework/${python_dependencies}  --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
 
 install_framework: install_python
 	cd ../framework && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR} --wazuh-version=$(shell cat VERSION) --install-type=${TARGET}
