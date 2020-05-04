@@ -12,8 +12,14 @@
 #include "syscheck-config.h"
 #include "config.h"
 
-
+/* Extract the value (one or multiples paths) from environment variable */
 static char **get_paths_from_env_variable (char *environment_variable);
+/* Used for options nodiff_regex and ignore_regex */
+static int process_option_regex(char *option, OSMatch ***syscheck_option, xml_node *node);
+/* Used for options ignore and nodiff */
+static void process_option(char ***syscheck_option, xml_node *node);
+/* Set check_all options in a directory/file */
+static void fim_set_check_all(int *opt);
 
 
 void organize_syscheck_dirs(syscheck_config *syscheck)
@@ -445,36 +451,14 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     /* Default values */
     opts &= ~ CHECK_FOLLOW;
     opts |= SCHEDULED_ACTIVE;
-    opts |= CHECK_SIZE;
-    opts |= CHECK_PERM;
-    opts |= CHECK_OWNER;
-    opts |= CHECK_GROUP;
-    opts |= CHECK_SHA256SUM;
-    opts |= CHECK_MD5SUM;
-    opts |= CHECK_SHA1SUM;
-    opts |= CHECK_MTIME;
-    opts |= CHECK_INODE;
-#ifdef WIN32
-    opts |= CHECK_ATTRS;
-#endif
+    fim_set_check_all(&opts);
 
     /* Extract all options */
     while (attrs && values && *attrs && *values) {
         /* Check all */
         if (strcmp(*attrs, xml_check_all) == 0) {
             if (strcmp(*values, "yes") == 0) {
-                opts |= CHECK_MD5SUM;
-                opts |= CHECK_SHA1SUM;
-                opts |= CHECK_SHA256SUM;
-                opts |= CHECK_PERM;
-                opts |= CHECK_SIZE;
-                opts |= CHECK_OWNER;
-                opts |= CHECK_GROUP;
-                opts |= CHECK_MTIME;
-                opts |= CHECK_INODE;
-#ifdef WIN32
-                opts |= CHECK_ATTRS;
-#endif
+                fim_set_check_all(&opts);
             } else if (strcmp(*values, "no") == 0) {
                 opts &= ~ ( CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_PERM | CHECK_SHA256SUM | CHECK_SIZE
                         | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE);
@@ -1300,73 +1284,15 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         }
 
         /* Getting file/dir ignore */
-        else if (strcmp(node[i]->element,xml_ignore) == 0)
-        {
-            unsigned int ign_size = 0;
-
-            /* We attempt to expand environment variables */
-            char **new_ig = NULL;
-
-            if(new_ig = get_paths_from_env_variable(node[i]->content), !new_ig){
-                new_ig = (char **)calloc(2, sizeof(char *));
-                new_ig[0] = (char *)calloc(i, sizeof(char));
-                os_strdup(node[i]->content, new_ig[0]);
-                new_ig[1] = NULL;
-            }
-
-            /* Add if regex */
+        else if (strcmp(node[i]->element,xml_ignore) == 0) {
+            /* If it is a regex, add it */
             if (node[i]->attributes && node[i]->values && node[i]->attributes[0] && node[i]->values[0]) {
-                if (!strcmp(node[i]->attributes[0], "type") &&
-                    !strcmp(node[i]->values[0], "sregex")) {
-                    OSMatch *mt_pt;
-
-                    if (!syscheck->ignore_regex) {
-                        os_calloc(2, sizeof(OSMatch *), syscheck->ignore_regex);
-                        syscheck->ignore_regex[0] = NULL;
-                        syscheck->ignore_regex[1] = NULL;
-                    } else {
-                        while (syscheck->ignore_regex[ign_size] != NULL) {
-                            ign_size++;
-                        }
-
-                        os_realloc(syscheck->ignore_regex,
-                                   sizeof(OSMatch *) * (ign_size + 2),
-                                   syscheck->ignore_regex);
-                        syscheck->ignore_regex[ign_size + 1] = NULL;
-                    }
-                    os_calloc(1, sizeof(OSMatch),
-                              syscheck->ignore_regex[ign_size]);
-
-                    if (!OSMatch_Compile(node[i]->content,
-                                         syscheck->ignore_regex[ign_size], 0)) {
-                        mt_pt = (OSMatch *)syscheck->ignore_regex[ign_size];
-                        merror(REGEX_COMPILE, node[i]->content,
-                               mt_pt->error);
-                        return (0);
-                    }
-                } else {
-                    merror(FIM_INVALID_OPTION, node[i]->attributes[0] ? node[i]->attributes[0] : "", node[i]->element);
-                    return (OS_INVALID);
+                int result = process_option_regex("ignore", &syscheck->ignore_regex, node[i]);
+                if (result < 1) {
+                    return result;
                 }
-            }
-
-            /* Add if simple entry -- check for duplicates */
-            else {
-                if (syscheck->ignore) {
-                    while (syscheck->ignore[ign_size] != NULL) {
-                        ign_size++;
-                    }
-                }
-
-                for (int i = 0; new_ig[i]; i++) {
-                    if (!os_IsStrOnArray(new_ig[i], syscheck->ignore)) {
-                        os_realloc(syscheck->ignore, sizeof(char *) * (ign_size + 2),
-                                   syscheck->ignore);
-                        os_strdup(new_ig[i], syscheck->ignore[ign_size]);
-                        syscheck->ignore[ign_size + 1] = NULL;
-                        ign_size++;
-                    }
-                }
+            } else {
+                process_option(&syscheck->ignore, node[i]);
             }
         }
 
@@ -1422,79 +1348,25 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 #endif
         /* Getting file/dir nodiff */
         } else if (strcmp(node[i]->element,xml_nodiff) == 0) {
-
-            char **new_nodiff = NULL;
-            unsigned int nodiff_size = 0;
-
-            /* We attempt to expand environment variables */
-            if(new_nodiff = get_paths_from_env_variable(node[i]->content), !new_nodiff){
-                new_nodiff = (char **)calloc(2, sizeof(char *));
-                new_nodiff[0] = (char *)calloc(i, sizeof(char));
-                os_strdup(node[i]->content, new_nodiff[0]);
-                new_nodiff[1] = NULL;
-            }
-
             /* Add if regex */
             if (node[i]->attributes && node[i]->values && node[i]->attributes[0] && node[i]->values[0]) {
-                if (!strcmp(node[i]->attributes[0], "type") &&
-                    !strcmp(node[i]->values[0], "sregex")) {
-                    OSMatch *mt_pt;
-                    if (!syscheck->nodiff_regex) {
-                        os_calloc(2, sizeof(OSMatch *), syscheck->nodiff_regex);
-                        syscheck->nodiff_regex[0] = NULL;
-                        syscheck->nodiff_regex[1] = NULL;
-                    } else {
-                        while (syscheck->nodiff_regex[nodiff_size] != NULL) {
-                            nodiff_size++;
-                        }
-
-                        os_realloc(syscheck->nodiff_regex,
-                                   sizeof(OSMatch *) * (nodiff_size + 2),
-                                   syscheck->nodiff_regex);
-                        syscheck->nodiff_regex[nodiff_size + 1] = NULL;
-                    }
-                    os_calloc(1, sizeof(OSMatch),
-                              syscheck->nodiff_regex[nodiff_size]);
-                    mdebug1("Found nodiff regex node %s", node[i]->content);
-                    if (!OSMatch_Compile(node[i]->content,
-                                         syscheck->nodiff_regex[nodiff_size], 0)) {
-                        mt_pt = (OSMatch *)syscheck->nodiff_regex[nodiff_size];
-                        merror(REGEX_COMPILE, node[i]->content,
-                               mt_pt->error);
-                        return (0);
-                    }
-                    mdebug1("Found nodiff regex node %s OK?", node[i]->content);
-                    mdebug1("Found nodiff regex size %d", nodiff_size);
-                } else {
-                    merror(FIM_INVALID_ATTRIBUTE, node[i]->attributes[0], node[i]->element);
-                    return (OS_INVALID);
+                int result = process_option_regex("nodiff", &syscheck->nodiff_regex, node[i]);
+                if (result < 1) {
+                    return result;
                 }
+            } else {
+                process_option(&syscheck->nodiff, node[i]);
             }
 
-            /* Add if simple entry -- check for duplicates */
-            else {
-                if (syscheck->nodiff) {
-                    while (syscheck->nodiff[nodiff_size] != NULL) {
-                        nodiff_size++;
-                    }
-                }
+        }
 
-                for (int i = 0; new_nodiff[i]; i++) {
-                    if (!os_IsStrOnArray(node[i]->content, syscheck->nodiff)) {
-                        os_realloc(syscheck->nodiff, sizeof(char *) * (nodiff_size + 2),
-                                   syscheck->nodiff);
-                        os_strdup(new_nodiff[i], syscheck->nodiff[nodiff_size]);
-                        syscheck->nodiff[nodiff_size + 1] = NULL;
-                        nodiff_size++;
-                    }
-                }
-            }
-
-        } else if (strcmp(node[i]->element, xml_auto_ignore) == 0) {
+        else if (strcmp(node[i]->element, xml_auto_ignore) == 0) {
             /* auto_ignore is not read here */
         } else if (strcmp(node[i]->element, xml_alert_new_files) == 0) {
             /* alert_new_files option is not read here */
-        } else if (strcmp(node[i]->element, xml_prefilter_cmd) == 0) {
+        }
+
+        else if (strcmp(node[i]->element, xml_prefilter_cmd) == 0) {
             struct stat statbuf;
 
 #ifdef WIN32
@@ -1891,4 +1763,89 @@ static char **get_paths_from_env_variable (char *environment_variable) {
 #endif
 
     return paths;
+}
+
+static int process_option_regex(char *option, OSMatch ***syscheck_option, xml_node *node) {
+
+    unsigned int counter_opt = 0;
+
+    if (!strcmp(node->attributes[0], "type") && !strcmp(node->values[0], "sregex")) {
+        OSMatch *mt_pt;
+
+        if (!syscheck_option[0]) {
+            os_calloc(2, sizeof(OSMatch *), syscheck_option[0]);
+            syscheck_option[0][0] = NULL;
+            syscheck_option[0][1] = NULL;
+        } else {
+            while (syscheck_option[0][counter_opt] != NULL) {
+                counter_opt++;
+            }
+            os_realloc(syscheck_option[0], sizeof(OSMatch *) * (counter_opt + 2),
+                        syscheck_option[0]);
+            syscheck_option[0][counter_opt + 1] = NULL;
+        }
+
+        os_calloc(1, sizeof(OSMatch), syscheck_option[0][counter_opt]);
+        mdebug1("Found %s regex node %s", option, node->content);
+
+        if (!OSMatch_Compile(node->content, syscheck_option[0][counter_opt], 0)) {
+            mt_pt = (OSMatch *)syscheck_option[0][counter_opt];
+            merror(REGEX_COMPILE, node->content, mt_pt->error);
+            return (0);
+        }
+        mdebug1("Found %s regex node %s OK?", option, node->content);
+        mdebug1("Found %s regex size %d", option, counter_opt);
+    }
+    else {
+        merror(FIM_INVALID_ATTRIBUTE, node->attributes[0], node->element);
+        return (OS_INVALID);
+    }
+
+    return 1;
+}
+
+static void process_option(char ***syscheck_option, xml_node *node) {
+
+    unsigned int counter_opt = 0;
+    char **new_opt = NULL;
+
+    /* We attempt to expand environment variables */
+    if (new_opt = get_paths_from_env_variable(node->content), !new_opt) {
+        new_opt = (char **)calloc(2, sizeof(char *));
+        os_strdup(node->content, new_opt[0]);
+        new_opt[1] = NULL;
+    }
+
+    if (syscheck_option[0]) {
+        while (syscheck_option[0][counter_opt] != NULL) {
+            counter_opt++;
+        }
+    }
+
+    for (int i = 0; new_opt[i]; i++) {
+        if (!os_IsStrOnArray(node->content, syscheck_option[0])) {
+            os_realloc(syscheck_option[0], sizeof(char *) * (counter_opt + 2),
+                        syscheck_option[0]);
+            os_strdup(new_opt[i], syscheck_option[0][counter_opt]);
+            syscheck_option[0][counter_opt + 1] = NULL;
+            counter_opt++;
+        }
+        os_free(new_opt[i]);
+    }
+    os_free(new_opt);
+}
+
+static void fim_set_check_all(int *opt) {
+    *opt |= CHECK_MD5SUM;
+    *opt |= CHECK_SHA1SUM;
+    *opt |= CHECK_SHA256SUM;
+    *opt |= CHECK_PERM;
+    *opt |= CHECK_SIZE;
+    *opt |= CHECK_OWNER;
+    *opt |= CHECK_GROUP;
+    *opt |= CHECK_MTIME;
+    *opt |= CHECK_INODE;
+#ifdef WIN32
+    *opt |= CHECK_ATTRS;
+#endif
 }
