@@ -6,8 +6,8 @@
 import os
 import shutil
 import sys
-from pwd import getpwnam
 from grp import getgrnam
+from pwd import getpwnam
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -194,9 +194,9 @@ def test_agent_get_agent_by_name(sqlite_mock, name, expected_id):
 ])
 @patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('wazuh.agent.get_agents')
-@patch('wazuh.core.core_agent.Agent.group_exists')
+@patch('wazuh.agent.get_groups')
 @patch('sqlite3.connect', return_value=test_data.global_db)
-def test_agent_get_agents_in_group(sqlite_mock, mock_group_exists, mock_get_agents, group, group_exists,
+def test_agent_get_agents_in_group(sqlite_mock, mock_get_groups, mock_get_agents, group, group_exists,
                                    expected_agents):
     """Test `get_agents_in_group` from agent module.
 
@@ -209,7 +209,7 @@ def test_agent_get_agents_in_group(sqlite_mock, mock_group_exists, mock_get_agen
     expected_agents : List of str
         List of agent ID's that belongs to a given group.
     """
-    mock_group_exists.return_value = group_exists
+    mock_get_groups.return_value = ['default']
     if group_exists:
         # Since the decorator is mocked, pass `agent_list` using `call_args` from mock
         get_agents_in_group(group_list=[group], select=['id'])
@@ -1112,8 +1112,8 @@ def test_agent_get_file_conf(filename, group_list):
     assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
     assert 'data' in result.dikt
     assert isinstance(result.dikt['data'], dict)
-    assert 'totalItems' in result.dikt['data']
-    assert result.dikt['data']['totalItems'] == 1
+    assert 'total_affected_items' in result.dikt['data']
+    assert result.dikt['data']['total_affected_items'] == 1
 
 
 @pytest.mark.parametrize('group_list', [
@@ -1131,8 +1131,8 @@ def test_agent_get_agent_conf(group_list):
     """
     result = get_agent_conf(group_list=group_list)
     assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
-    assert 'totalItems' in result.dikt
-    assert result.dikt['totalItems'] == 1
+    assert 'total_affected_items' in result.dikt
+    assert result.dikt['total_affected_items'] == 1
 
 
 @pytest.mark.parametrize('group_list', [
