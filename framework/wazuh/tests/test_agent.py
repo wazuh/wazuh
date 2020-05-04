@@ -212,7 +212,7 @@ def test_agent_get_agents_in_group(sqlite_mock, mock_group_exists, mock_get_agen
     mock_group_exists.return_value = group_exists
     if group_exists:
         # Since the decorator is mocked, pass `agent_list` using `call_args` from mock
-        get_agents_in_group(group_id=group, select=['id'])
+        get_agents_in_group(group_list=[group], select=['id'])
         kwargs = mock_get_agents.call_args[1]
         agents = get_agents(agent_list=short_agent_list, **kwargs)
         assert agents.affected_items
@@ -222,7 +222,7 @@ def test_agent_get_agents_in_group(sqlite_mock, mock_group_exists, mock_get_agen
     else:
         # If not `group_exists`, expect an error
         with pytest.raises(WazuhError, match='.* 1710 .*'):
-            get_agents_in_group(group_id=group)
+            get_agents_in_group(group_list=[group])
 
 
 @pytest.mark.parametrize('agent_list, expected_items', [
