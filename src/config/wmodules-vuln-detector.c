@@ -35,6 +35,9 @@ typedef struct provider_options {
     int update_since;
 } provider_options;
 
+int8_t nvd_version_enabled[os_nvd_count] = { [0 ... os_nvd_count-1] = 1 };
+char * linux_version[] = {"precise", "trusty", "xenial", "bionic", "focal", "jessie", "stretch", "buster", "wheezy", "rhel5", "rhel6", "rhel7", "rhel8"};
+
 static int wm_vuldet_get_interval(char *source, time_t *interval);
 static int wm_vuldet_is_valid_year(char *source, int *date, int max);
 static int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list);
@@ -61,6 +64,7 @@ static const char *XML_ENABLED = "enabled";
 static const char *XML_INTERVAL = "interval";
 static const char *XML_NAME = "name";
 static const char *XML_OS = "os";
+static const char *XML_IGNORE_OS = "ignore_os";
 static const char *XML_UPDATE_INTERVAL = "update_interval";
 static const char *XML_RUN_ON_START = "run_on_start";
 static const char *XML_IGNORE_TIME = "ignore_time";
@@ -1035,6 +1039,23 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
         } else if (!strcmp(node[i]->element, XML_OS)) {
             if (multi_provider) {
                 mwarn("'%s' option can only be used in a single-provider.", node[i]->element);
+            }
+        } else if (!strcmp(node[i]->element, XML_IGNORE_OS)) {
+            if(!strcmp(name, "nvd")){
+                int j;
+                bool valid = false;
+                for(j = 0; j < os_nvd_count; j++){
+                    if(!strcmp(node[i]->content, linux_version[j])) {
+                        nvd_version_enabled[j] = 0;
+                        valid = true;
+                    }
+                }
+                if(!valid) {
+                    mwarn("Invalid value '%s' in '%s'.", node[i]->content,node[i]->element);
+                }
+            }
+            else {
+                mwarn("'%s' option can only be used in a nvd-provider.", node[i]->element);
             }
         } else if (strcmp(node[i]->element, XML_ENABLED)) {
             merror("Invalid option in %s section for module %s: %s.", XML_PROVIDER, WM_VULNDETECTOR_CONTEXT.name, node[i]->element);
