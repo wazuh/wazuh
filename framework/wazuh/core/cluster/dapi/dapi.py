@@ -422,6 +422,18 @@ class DistributedAPI:
             del self.f_kwargs['node_id' if 'node_id' in self.f_kwargs else 'node_list']
             return {node_id: [] for node_id in requested_nodes}
 
+        elif 'group_id' in self.f_kwargs:
+            common.rbac.set(self.rbac_permissions)
+            agents = agent.get_agents_in_group(group_list=[self.f_kwargs['group_id']], select=select_node,
+                                               sort={'fields': ['node_name'], 'order': 'desc'}).affected_items
+            if len(agents) == 0:
+                raise WazuhError(1755)
+            del self.f_kwargs['group_id']
+            node_name = {k: list(map(operator.itemgetter('id'), g)) for k, g in
+                         itertools.groupby(agents, key=operator.itemgetter('node_name'))}
+
+            return node_name
+
         else:
             if self.broadcasting:
                 if 'node_list' in self.f_kwargs:

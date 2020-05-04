@@ -10,7 +10,7 @@ from shutil import copyfile
 
 from wazuh import common, configuration
 from wazuh.InputValidator import InputValidator
-from wazuh.core.core_agent import WazuhDBQueryAgents, WazuhDBQueryDistinctAgents, WazuhDBQueryGroupByAgents, \
+from wazuh.core.core_agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, \
     WazuhDBQueryMultigroups, Agent
 from wazuh.core.core_utils import get_agents_info, get_groups
 from wazuh.database import Connection
@@ -183,11 +183,12 @@ def get_agent_by_name(name=None, select=None):
         raise e
 
 
-def get_agents_in_group(group_id, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
+@expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
+def get_agents_in_group(group_list, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
                         filters=None, q=None):
     """Gets a list of available agents with basic attributes.
 
-    :param group_id: Group ID.
+    :param group_list: Group ID.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
     :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
@@ -197,10 +198,10 @@ def get_agents_in_group(group_id, offset=0, limit=common.database_limit, sort=No
     :param q: Defines query to filter in DB.
     :return: AffectedItemsWazuhResult.
     """
-    if not Agent.group_exists(group_id):
+    if group_list[0] not in get_groups():
         raise WazuhError(1710)
 
-    q = 'group=' + group_id + (';' + q if q else '')
+    q = 'group=' + group_list[0] + (';' + q if q else '')
 
     return get_agents(offset=offset, limit=limit, sort=sort, search=search, select=select, filters=filters, q=q)
 

@@ -618,7 +618,7 @@ async def get_agents_in_group(request, group_id, pretty=False, wait_for_complete
     :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
     :return: AllItemsResponseAgents
     """
-    f_kwargs = {'group_id': group_id,
+    f_kwargs = {'group_list': [group_id],
                 'offset': offset,
                 'limit': limit,
                 'sort': parse_api_param(sort, 'sort'),
@@ -820,6 +820,31 @@ async def get_group_file_xml(request, group_id, file_name, pretty=False, wait_fo
     response = ConnexionResponse(body=data["data"], mimetype='application/xml')
 
     return response
+
+
+async def restart_agents_by_group(request, group_id, pretty=False, wait_for_complete=False):
+    """Restart all agents from a group.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :param group_id: Group ID.
+    :return: AllItemsResponseAgents
+    """
+    f_kwargs = {'group_id': group_id}
+
+    dapi = DistributedAPI(f=agent.restart_agents,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=dumps)
 
 
 async def insert_agent(request, pretty=False, wait_for_complete=False):
