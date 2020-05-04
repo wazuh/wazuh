@@ -19,6 +19,9 @@ cp -p /etc/ossec-init.conf ${DIRECTORY}/tmp_bkp/etc
 tar czf ${DIRECTORY}/backup/backup_${VERSION}_[${BDATE}].tar.gz -C ${DIRECTORY}/tmp_bkp . >> ${DIRECTORY}/logs/upgrade.log 2>&1
 rm -rf ${DIRECTORY}/tmp_bkp
 
+# Fix WPK ca path
+sed -i "s/<ca_store>wpk_root.pem<\/ca_store>/<ca_store>\/var\/ossec\/etc\/wpk_root.pem<\/ca_store>/g" ${DIRECTORY}/etc/ossec.conf
+
 # Installing upgrade
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade started." >> ${DIRECTORY}/logs/upgrade.log
 chmod +x ${DIRECTORY}/var/upgrade/install.sh
