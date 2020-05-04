@@ -310,7 +310,7 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
         goto cleanup;
     }
 
-    if ((buffer = calloc(size, sizeof(char))) == NULL) {
+    if (buffer = calloc(size, sizeof(wchar_t)), buffer == NULL) {
         merror(
             "Could not calloc() memory to save bookmark (%s) for (%s) which returned [(%d)-(%s)]",
             channel->bookmark_filename,
