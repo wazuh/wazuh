@@ -376,6 +376,7 @@
 #define VU_INSERT_PACKAGE_ERROR     "(5590): Agent (%s): Couldn't insert vulnerable package '%s' into CVE '%s' (feed %s)."
 #define VU_GET_CHILDREN_PKG_ID      "(5592): Agent (%s): Couldn't retrieve children IDs from package '%s'."
 #define VU_GET_SIBLINGS_PKG_ID      "(5593): Agent (%s): Couldn't retrieve siblings IDs from package '%s'."
+#define VU_DISCARD_KERNEL_PKG       "(5600): Agent (%s): Discarded Linux Kernel package '%s'(not running)."
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"
