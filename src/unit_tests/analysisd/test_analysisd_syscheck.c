@@ -257,7 +257,9 @@ static int setup_fim_data(void **state) {
         return -1;
     if(data->lf->decoder_info->fields[FIM_HARD_LINKS] = strdup("hard_links"), data->lf->decoder_info->fields[FIM_HARD_LINKS] == NULL)
         return -1;
-    if(data->lf->decoder_info->fields[FIM_MODE] = strdup("mode"), data->lf->decoder_info->fields[FIM_MODE] == NULL)
+    if (data->lf->decoder_info->fields[FIM_MODE] = strdup("mode"), data->lf->decoder_info->fields[FIM_MODE] == NULL)
+        return -1;
+    if (data->lf->fields[FIM_MODE].value = strdup("fim_mode"), data->lf->fields[FIM_MODE].value == NULL)
         return -1;
     if(data->lf->decoder_info->fields[FIM_SIZE] = strdup("size"), data->lf->decoder_info->fields[FIM_SIZE] == NULL)
         return -1;
@@ -1470,6 +1472,8 @@ static void test_fim_generate_alert_null_mode(void **state) {
         wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
     }
 
+    input->lf->fields[FIM_MODE].value = NULL;
+
     ret = fim_generate_alert(input->lf, event_type, attributes, old_attributes, audit);
 
     assert_int_equal(ret, 0);
@@ -2417,6 +2421,8 @@ static void test_fim_process_alert_no_mode(void **state) {
 
     cJSON *data = cJSON_GetObjectItem(input->event, "data");
     cJSON_DeleteItemFromObject(data, "mode");
+
+    input->lf->fields[FIM_MODE].value = NULL;
 
     if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
         fail();
