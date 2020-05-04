@@ -7,13 +7,13 @@ opendistro_security.ssl.transport.pemkey_filepath: /etc/elasticsearch/certs/elas
 opendistro_security.ssl.transport.pemtrustedcas_filepath: /etc/elasticsearch/certs/root-ca.pem
 opendistro_security.ssl.transport.enforce_hostname_verification: false
 opendistro_security.ssl.http.enabled: true
-opendistro_security.ssl.http.pemcert_filepath: /etc/elasticsearch/certs/elasticsearch.pem.pem
-opendistro_security.ssl.http.pemkey_filepath: /etc/elasticsearch/certs/elasticsearch.pem-key.pem
+opendistro_security.ssl.http.pemcert_filepath: /etc/elasticsearch/certs/elasticsearch.pem
+opendistro_security.ssl.http.pemkey_filepath: /etc/elasticsearch/certs/elasticsearch-key.pem
 opendistro_security.ssl.http.pemtrustedcas_filepath: /etc/elasticsearch/certs/root-ca.pem
 opendistro_security.allow_unsafe_democertificates: true
 opendistro_security.allow_default_init_securityindex: true
 opendistro_security.authcz.admin_dn:
-  - CN=kirk,OU=client,O=client,L=test, C=de
+  - CN=elk,OU=client,O=client,L=test, C=de
 
 opendistro_security.audit.type: internal_elasticsearch
 opendistro_security.enable_snapshot_restore_privilege: true
