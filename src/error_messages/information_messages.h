@@ -53,6 +53,5 @@
 #define FIM_DB_NORMAL_ALERT                 "(6038): Sending DB back to normal alert."
 #define FIM_DB_80_PERCENTAGE_ALERT          "(6039): Sending DB 80%% full alert."
 #define FIM_DB_90_PERCENTAGE_ALERT          "(6039): Sending DB 90%% full alert."
-#define FIM_DB_FULL_ALERT                   "(6041): Sending DB 100%% full alert."
 
 #endif /* INFO_MESSAGES_H */

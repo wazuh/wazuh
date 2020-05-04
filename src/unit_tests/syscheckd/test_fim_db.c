@@ -1097,7 +1097,6 @@ void test_fim_db_insert_error(void **state) {
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "SQL ERROR: (1)ERROR MESSAGE");
 
-    int ret;
     ret = fim_db_insert(test_data->fim_sql, test_data->entry->path, test_data->entry->data, FIM_MODIFICATION);
     assert_int_equal(ret, FIMDB_ERR);
 }
