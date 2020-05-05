@@ -52,7 +52,7 @@ os_info *get_win_version()
     ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
     osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
 
-    if (!(bOsVersionInfoEx = GetVersionEx ((OSVERSIONINFO *) &osvi))) {
+    if (bOsVersionInfoEx = GetVersionEx ((OSVERSIONINFO *) &osvi), !bOsVersionInfoEx) {
         osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
         if (!GetVersionEx((OSVERSIONINFO *)&osvi)) {
             free(info);

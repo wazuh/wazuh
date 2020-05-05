@@ -256,9 +256,9 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
                          LOAD_LIBRARY_AS_DATAFILE);
     if (hevt) {
         int hr;
-        if (!(hr = FormatMessage(fm_flags, hevt, er->EventID,
-                                 0,
-                                 (LPTSTR) &message, 0, el_sstring))) {
+        if (hr = FormatMessage(fm_flags, hevt, er->EventID,
+                               0,
+                               (LPTSTR) &message, 0, el_sstring), !hr) {
             message = NULL;
         }
         FreeLibrary(hevt);
@@ -627,7 +627,7 @@ void win_startel(char *evt_log)
     }
 
     /* Start event log -- going to last available record */
-    if ((entries_count = startEL(evt_log, &el[el_last])) < 0) {
+    if (entries_count = startEL(evt_log, &el[el_last]), entries_count < 0) {
         merror(INV_EVTLOG, evt_log);
         return;
     } else {

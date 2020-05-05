@@ -1169,7 +1169,7 @@ int checkVista()
     OSVERSIONINFOEX osvi = { .dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX) };
     BOOL bOsVersionInfoEx;
 
-    if (!(bOsVersionInfoEx = GetVersionEx ((OSVERSIONINFO *) &osvi))) {
+    if (bOsVersionInfoEx = GetVersionEx ((OSVERSIONINFO *) &osvi), !bOsVersionInfoEx) {
         osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
         if (!GetVersionEx((OSVERSIONINFO *)&osvi)) {
             merror("Cannot get Windows version number.");
