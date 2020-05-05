@@ -172,11 +172,6 @@ wdb_t * wdb_open_mitre() {
     } else {
         wdb = wdb_init(db, WDB_MITRE_NAME);
         wdb_pool_append(wdb);
-
-        if (new_wdb = wdb_upgrade(wdb), new_wdb != wdb) {
-            // If I had to generate backup and change DB
-            wdb = new_wdb;
-        }
     }
 
 success:

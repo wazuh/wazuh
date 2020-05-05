@@ -32,10 +32,6 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
     char db_version[OS_SIZE_256 + 2];
     int version = 0;
 
-    if(strcmp(wdb->id, "mitre") == 0) {
-        return wdb;
-    }
-
     switch (wdb_metadata_get_entry(wdb, "db_version", db_version)) {
     case -1:
         return wdb;
