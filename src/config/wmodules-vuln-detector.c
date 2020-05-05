@@ -35,7 +35,8 @@ typedef struct provider_options {
     int update_since;
 } provider_options;
 
-int8_t nvd_version_enabled[os_nvd_count] = { [0 ... os_nvd_count-1] = 1 };
+int8_t nvd_version_enabled[os_version_count] = { [0 ... os_version_count-1] = 1 };
+int8_t feeds_version_enabled[os_version_count] = {0};
 char * linux_version[] = {"precise", "trusty", "xenial", "bionic", "focal", "jessie", "stretch", "buster", "wheezy", "rhel5", "rhel6", "rhel7", "rhel8"};
 
 static int wm_vuldet_get_interval(char *source, time_t *interval);
@@ -45,7 +46,7 @@ static int wm_vuldet_read_deprecated_config(const OS_XML *xml, xml_node *node, u
 static int wm_vuldet_read_deprecated_feed_tag(const OS_XML *xml, xml_node *node, update_node **updates, long unsigned int *update);
 static int wm_vuldet_read_deprecated_multifeed_tag(xml_node *node, update_node **updates, long unsigned int *update);
 static int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **updates, wm_vuldet_flags *flags);
-static int wm_vuldet_provider_enable(xml_node **node);
+static int wm_vuldet_provider_enable(xml_node **node, char *name);
 static char *wm_vuldet_provider_name(xml_node *node);
 static int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds);
 static void wm_vuldet_set_port_to_url(char **url, int port);
@@ -628,7 +629,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
         goto end;
     }
 
-    if (result = wm_vuldet_provider_enable(chld_node), !result) {
+    if (result = wm_vuldet_provider_enable(chld_node, pr_name), !result) {
         retval = 0;
         goto end;
     } else if (result == OS_INVALID) {
@@ -740,12 +741,19 @@ end:
     return retval;
 }
 
-int wm_vuldet_provider_enable(xml_node **node) {
+int wm_vuldet_provider_enable(xml_node **node, char *name) {
     int i;
 
     for (i = 0; node[i]; i++) {
         if (!strcmp(node[i]->element, XML_ENABLED)) {
             if (!strcmp(node[i]->content, "yes")) {
+                //Feed enabled for all redhat versions
+                if(!strcmp(name, "redhat")) {
+                    int j;
+                    for(j=RHEL5; j < os_version_count; j++) {
+                        feeds_version_enabled[j] = 1;
+                    }
+                }
                 return 1;
             } else if (!strcmp(node[i]->content, "no")) {
                 return 0;
@@ -1040,22 +1048,34 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
             if (multi_provider) {
                 mwarn("'%s' option can only be used in a single-provider.", node[i]->element);
             }
+            int j;
+            bool valid = false;
+            for(j = 0; j < RHEL5; j++) {    //Feeds for Ubuntu and Debian versions
+                if(!strcmp(node[i]->content, linux_version[j])) {
+                    feeds_version_enabled[j] = 1;
+                    valid = true;
+                }
+            }
+            if(!valid) {
+                mwarn("Invalid value '%s' in '%s'.", node[i]->content,XML_OS);
+            }
+
         } else if (!strcmp(node[i]->element, XML_IGNORE_OS)) {
             if(!strcmp(name, "nvd")){
                 int j;
                 bool valid = false;
-                for(j = 0; j < os_nvd_count; j++){
+                for(j = 0; j < os_version_count; j++){
                     if(!strcmp(node[i]->content, linux_version[j])) {
                         nvd_version_enabled[j] = 0;
                         valid = true;
                     }
                 }
                 if(!valid) {
-                    mwarn("Invalid value '%s' in '%s'.", node[i]->content,node[i]->element);
+                    mwarn("Invalid value '%s' in '%s'.", node[i]->content,XML_IGNORE_OS);
                 }
             }
             else {
-                mwarn("'%s' option can only be used in a nvd-provider.", node[i]->element);
+                mwarn("'%s' option can only be used in a nvd-provider.", XML_IGNORE_OS);
             }
         } else if (strcmp(node[i]->element, XML_ENABLED)) {
             merror("Invalid option in %s section for module %s: %s.", XML_PROVIDER, WM_VULNDETECTOR_CONTEXT.name, node[i]->element);
