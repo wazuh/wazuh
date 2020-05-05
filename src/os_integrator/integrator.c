@@ -243,8 +243,8 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 }
             }
 
-            /* Create temp file once per alert. */
-            if(temp_file_created == 0)
+            /* Create temp file once per alert and integration type. */
+            if(temp_file_created == 0 || strstr(exec_tmp_file, integrator_config[s]->name) == NULL)
             {
                 snprintf(exec_tmp_file, 2048, "/tmp/%s-%d-%ld.alert",
                          integrator_config[s]->name, (int)time(0), (long int)os_random());
