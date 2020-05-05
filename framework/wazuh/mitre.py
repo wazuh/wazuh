@@ -47,6 +47,9 @@ class WazuhDBQueryMitre(WazuhDBQuery):
     def _default_count_query(self):
         return "COUNT(DISTINCT id)"
 
+    def _get_total_items(self):
+        self.total_items = self.backend.execute(self.query.format(self._default_count_query()), self.request, True)
+
     def _add_limit_to_query(self):
         if self.limit:
             if self.limit > database_limit:
