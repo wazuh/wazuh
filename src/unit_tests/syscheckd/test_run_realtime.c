@@ -348,8 +348,6 @@ static int teardown_RTCallBack(void **state) {
 #endif
 #endif
 
-#ifdef WIN_WHODATA
-
 static int setup_realtime_adddir_realtime_start_error(void **state) {
     *state = syscheck.realtime;
     syscheck.realtime = NULL;
@@ -364,8 +362,6 @@ static int teardown_realtime_adddir_realtime_start_error(void **state) {
 
     return 0;
 }
-
-#endif
 
 static int setup_realtime_start(void **state) {
     OSHash *hash = calloc(1, sizeof(OSHash));

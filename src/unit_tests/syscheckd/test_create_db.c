@@ -1943,8 +1943,6 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     expect_string(__wrap_realtime_adddir, dir, "/home");
     expect_string(__wrap_realtime_adddir, dir, "/media");
 
-    will_return(__wrap_fim_db_get_count_entry_path, 50000);
-
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_not_scanned, NULL);
@@ -1966,7 +1964,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
     will_return(__wrap_fim_db_get_count_entry_path, 50000);
 
-    expect_string(__wrap__minfo, formatted_msg, "(6041): Sending DB 100% full alert.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6227): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
@@ -1992,7 +1990,7 @@ static void test_fim_scan_no_realtime(void **state) {
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // In fim_checker
-    will_return_count(__wrap_lstat, 0, 7);
+    will_return_count(__wrap_lstat, 0, 6);
 
     it = 0;
 
@@ -2001,7 +1999,7 @@ static void test_fim_scan_no_realtime(void **state) {
         it++;
     }
 
-    will_return_count(__wrap_HasFilesystem, 0, 7);
+    will_return_count(__wrap_HasFilesystem, 0, 6);
 
     will_return(__wrap_fim_db_get_count_entry_path, 50000);
 
@@ -2013,21 +2011,17 @@ static void test_fim_scan_no_realtime(void **state) {
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_set_all_unscanned, 0);
 
-    will_return(__wrap_fim_db_get_count_entry_path, 45000);
-
-    expect_string(__wrap_HasFilesystem, path, "/boot");
-
     will_return(__wrap_fim_db_get_count_entry_path, 50000);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
 
-    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_set_all_unscanned, 0);
-
-    will_return(__wrap_fim_db_get_count_entry_path, 50000);
-
-    expect_string(__wrap__minfo, formatted_msg, "(6041): Sending DB 100% full alert.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6227): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
+
+    expect_function_call(__wrap_count_watches);
+    will_return(__wrap_count_watches, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6345): Folders monitored with real-time engine: 0");
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
@@ -2052,17 +2046,24 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     expect_string(__wrap_realtime_adddir, dir, "/home");
     expect_string(__wrap_realtime_adddir, dir, "/media");
 
-    will_return_count(__wrap_fim_db_get_count_entry_path, 50000, 3);
-
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_not_scanned, NULL);
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
-
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_set_all_unscanned, 0);
+
+    will_return(__wrap_fim_db_get_count_entry_path, 50000);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
+
+    will_return(__wrap_fim_db_get_count_entry_path, 50000);
+
+    expect_function_call(__wrap_count_watches);
+    will_return(__wrap_count_watches, 6);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6345): Folders monitored with real-time engine: 6");
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
@@ -2090,30 +2091,45 @@ static void test_fim_scan_realtime_enabled(void **state) {
     // In fim_checker
     will_return_count(__wrap_lstat, 0, 6);
 
-    expect_string(__wrap_HasFilesystem, path, "/etc");
-    expect_string(__wrap_HasFilesystem, path, "/usr/bin");
-    expect_string(__wrap_HasFilesystem, path, "/usr/sbin");
-    expect_string(__wrap_HasFilesystem, path, "/media");
-    expect_string(__wrap_HasFilesystem, path, "/home");
-    expect_string(__wrap_HasFilesystem, path, "/boot");
+    it = 0;
+
+    while (syscheck.dir[it]) {
+        expect_string(__wrap_HasFilesystem, path, syscheck.dir[it]);
+        it++;
+    }
+
     will_return_count(__wrap_HasFilesystem, 0, 6);
 
-    expect_string(__wrap_realtime_adddir, dir, "/etc");
-    expect_string(__wrap_realtime_adddir, dir, "/usr/bin");
-    expect_string(__wrap_realtime_adddir, dir, "/usr/sbin");
-    expect_string(__wrap_realtime_adddir, dir, "/media");
+    // fim_scan
+    it = 0;
 
-    will_return_count(__wrap_fim_db_get_count_entry_path, 50000, 3);
+    while (syscheck.dir[it]) {
+        expect_string(__wrap_realtime_adddir, dir, syscheck.dir[it]);
+        it++;
+    }
 
+    // check_deleted_files
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_not_scanned, NULL);
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
-
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_set_all_unscanned, 0);
+
+    // fim_scan
+    will_return(__wrap_fim_db_get_count_entry_path, 50000);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
+
+    // fim_check_db_state
+    will_return(__wrap_fim_db_get_count_entry_path, 50000);
+
+    // fim_scan
+    expect_function_call(__wrap_count_watches);
+    will_return(__wrap_count_watches, 6);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6345): Folders monitored with real-time engine: 6");
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
@@ -2138,14 +2154,9 @@ static void test_fim_scan_db_free(void **state) {
     expect_string(__wrap_realtime_adddir, dir, "/home");
     expect_string(__wrap_realtime_adddir, dir, "/media");
 
-    will_return(__wrap_fim_db_get_count_entry_path, 1000);
-
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_not_scanned, NULL);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
-
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
 
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
@@ -2153,8 +2164,31 @@ static void test_fim_scan_db_free(void **state) {
 
     will_return(__wrap_fim_db_get_count_entry_path, 1000);
 
+    will_return_count(__wrap_lstat, 0, 6);
+    expect_string(__wrap_HasFilesystem, path, "/boot");
+    expect_string(__wrap_HasFilesystem, path, "/etc");
+    expect_string(__wrap_HasFilesystem, path, "/home");
+    expect_string(__wrap_HasFilesystem, path, "/media");
+    expect_string(__wrap_HasFilesystem, path, "/usr/bin");
+    expect_string(__wrap_HasFilesystem, path, "/usr/sbin");
+    will_return_count(__wrap_HasFilesystem, 0, 6);
+
+    will_return_count(__wrap_fim_db_get_count_entry_path, 1000, 6);
+
+    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_set_all_unscanned, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
+
+    will_return(__wrap_fim_db_get_count_entry_path, 1000);
+
     expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":1000,\"alert_type\":\"normal\"}");
+
+    expect_function_call(__wrap_count_watches);
+    will_return(__wrap_count_watches, 6);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6345): Folders monitored with real-time engine: 6");
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
@@ -2846,7 +2880,7 @@ static void test_fim_check_db_state_empty_to_full(void **state) {
 
     will_return(__wrap_fim_db_get_count_entry_path, 50000);
 
-    expect_string(__wrap__minfo, formatted_msg, "(6041): Sending DB 100% full alert.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6227): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
 
     assert_int_equal(_db_state, FIM_STATE_DB_EMPTY);
@@ -2960,7 +2994,7 @@ static void test_fim_check_db_state_normal_to_full(void **state) {
 
     will_return(__wrap_fim_db_get_count_entry_path, 50000);
 
-    expect_string(__wrap__minfo, formatted_msg, "(6041): Sending DB 100% full alert.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6227): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
 
     assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
@@ -3047,7 +3081,7 @@ static void test_fim_check_db_state_80_percentage_to_full(void **state) {
 
     will_return(__wrap_fim_db_get_count_entry_path, 50000);
 
-    expect_string(__wrap__minfo, formatted_msg, "(6041): Sending DB 100% full alert.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6227): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
 
     assert_int_equal(_db_state, FIM_STATE_DB_80_PERCENTAGE);
@@ -3104,7 +3138,7 @@ static void test_fim_check_db_state_90_percentage_to_full(void **state) {
 
     will_return(__wrap_fim_db_get_count_entry_path, 50000);
 
-    expect_string(__wrap__minfo, formatted_msg, "(6041): Sending DB 100% full alert.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6227): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
 
     assert_int_equal(_db_state, FIM_STATE_DB_90_PERCENTAGE);
@@ -3568,23 +3602,24 @@ static void test_fim_whodata_event_file_missing(void **state) {
     errno = ENOENT;
 
     char **paths = calloc(4, sizeof(char *));
-    paths[0] = strdup("/testdir/dir1/file1");
-    paths[1] = strdup("/testdir/dir1/file2");
-    paths[2] = strdup("/testdir/dir1/file3");
+    paths[0] = strdup("./test/test.file");
+    paths[1] = strdup("./test/test.file");
+    paths[2] = strdup("./test/test.file");
+    // paths[0] = strdup("/testdir/dir1/file1");
+    // paths[1] = strdup("/testdir/dir1/file2");
+    // paths[2] = strdup("/testdir/dir1/file3");
     paths[3] = NULL;
 
 #ifdef TEST_WINAGENT
     // Inside fim_process_missing_entry
-    {
-        expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-        expect_string(__wrap_fim_db_get_path, file_path, "./test/test.file");
-        will_return(__wrap_fim_db_get_path, NULL);
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "./test/test.file");
+    will_return(__wrap_fim_db_get_path, NULL);
 
-        expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
-        expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
-        will_return(__wrap_fim_db_get_path_range, NULL);
-        will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
-    }
+    expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_path_range, NULL);
+    will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
 #else
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
@@ -3592,32 +3627,30 @@ static void test_fim_whodata_event_file_missing(void **state) {
     will_return(__wrap_fim_db_get_paths_from_inode, paths);
 
     // Inside fim_process_missing_entry
-        {
-            expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-            expect_string(__wrap_fim_db_get_path, file_path, paths[i]);
-            will_return(__wrap_fim_db_get_path, NULL);
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "./test/test.file");
+    will_return(__wrap_fim_db_get_path, NULL);
 
-            expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
-            expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
-            will_return(__wrap_fim_db_get_path_range, NULL);
-            will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
-        }
+    expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_path_range, NULL);
+    will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
+
     for(int i = 0; paths[i]; i++) {
         // Inside fim_process_missing_entry
-        {
-            expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-            expect_string(__wrap_fim_db_get_path, file_path, paths[i]);
-            will_return(__wrap_fim_db_get_path, NULL);
+        expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+        expect_string(__wrap_fim_db_get_path, file_path, paths[i]);
+        will_return(__wrap_fim_db_get_path, NULL);
 
-            expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
-            expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
-            will_return(__wrap_fim_db_get_path_range, NULL);
-            will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
-        }
+        expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+        expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+        will_return(__wrap_fim_db_get_path_range, NULL);
+        will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
     }
 #endif
+
     fim_whodata_event(fim_data->w_evt);
-    errno=0;
+    errno = 0;
 }
 
 static void test_fim_process_missing_entry_no_data(void **state) {
