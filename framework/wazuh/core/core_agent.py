@@ -41,8 +41,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
                               filters=filters, fields=Agent.fields, default_sort_field=default_sort_field,
                               default_sort_order='ASC', query=query, backend=backend,
                               min_select_fields=min_select_fields, count=count, get_data=get_data,
-                              date_fields={'lastKeepAlive', 'dateAdd'}, extra_fields={'internal_key'},
-                              distinct=distinct)
+                              date_fields={'lastKeepAlive', 'dateAdd'}, extra_fields={'internal_key'}, distinct=distinct)
         self.remove_extra_fields = remove_extra_fields
 
     def _filter_status(self, status_filter):

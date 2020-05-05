@@ -2,6 +2,8 @@ from aiohttp import web
 from aiohttp.web_response import Response
 
 from api import configuration
+from api.api_exception import APIError
+from api.util import raise_if_exc
 
 
 @web.middleware
@@ -16,7 +18,7 @@ async def set_user_name(request, handler):
 async def check_experimental(request, handler):
     if 'experimental' in request.path:
         if not configuration.api_conf['experimental_features']:
-            raise web.HTTPBadRequest()
+            raise_if_exc(APIError(code=2008))
 
     response = await handler(request)
     return response

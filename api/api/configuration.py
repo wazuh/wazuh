@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import copy
 import datetime
 import os
 import uuid
@@ -17,6 +18,42 @@ from cryptography.x509.oid import NameOID
 
 from api.api_exception import APIException
 from wazuh import common
+
+
+default_configuration = {
+    "host": "0.0.0.0",
+    "port": 55000,
+    "behind_proxy_server": False,
+    "rbac": {
+        "mode": "black",
+        "auth_token_exp_timeout": 3600
+    },
+    "https": {
+        "enabled": True,
+        "key": "api/configuration/ssl/server.key",
+        "cert": "api/configuration/ssl/server.crt",
+        "use_ca": False,
+        "ca": "api/configuration/ssl/ca.crt"
+    },
+    "logs": {
+        "level": "info",
+        "path": "logs/api.log"
+    },
+    "cors": {
+        "enabled": False,
+        "source_route": "*",
+        "expose_headers": "*",
+        "allow_headers": "*",
+        "allow_credentials": False,
+    },
+    "cache": {
+        "enabled": True,
+        "time": 0.750
+    },
+    "use_only_authd": False,
+    "drop_privileges": True,
+    "experimental_features": False
+}
 
 
 def dict_to_lowercase(mydict: Dict):
@@ -141,41 +178,6 @@ def read_api_config(config_file=common.api_config_path) -> Dict:
 
     :return: API configuration
     """
-    default_configuration = {
-        "host": "0.0.0.0",
-        "port": 55000,
-        "behind_proxy_server": False,
-        "rbac": {
-            "mode": "black",
-            "auth_token_exp_timeout": 36000
-        },
-        "https": {
-            "enabled": True,
-            "key": "api/configuration/ssl/server.key",
-            "cert": "api/configuration/ssl/server.crt",
-            "use_ca": False,
-            "ca": "api/configuration/ssl/ca.crt"
-        },
-        "logs": {
-            "level": "info",
-            "path": "logs/api.log"
-        },
-        "cors": {
-            "enabled": False,
-            "source_route": "*",
-            "expose_headers": "*",
-            "allow_headers": "*",
-            "allow_credentials": False,
-        },
-        "cache": {
-            "enabled": True,
-            "time": 0.750
-        },
-        "use_only_authd": False,
-        "drop_privileges": True,
-        "experimental_features": False
-    }
-
     if os.path.exists(config_file):
         try:
             with open(config_file) as f:
@@ -187,7 +189,7 @@ def read_api_config(config_file=common.api_config_path) -> Dict:
 
     # If any value is missing from user's cluster configuration, add the default one:
     if configuration is None:
-        configuration = default_configuration
+        configuration = copy.deepcopy(default_configuration)
     else:
         dict_to_lowercase(configuration)
         configuration = fill_dict(default_configuration, configuration)

@@ -683,6 +683,69 @@ stages:
         <<: *permission_denied
 
 ---
+test_name: GET /cluster/api/config
+
+stages:
+
+  - name: Request API config (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/api/config"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+
+---
+test_name: PUT /cluster/api/config
+
+stages:
+
+  - name: Modify API configuration (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/api/config"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        cache:
+          enabled: false
+          time: 1
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+        message: !anystr
+
+---
+test_name: DELETE /cluster/api/config
+
+stages:
+
+  - name: Restore API config (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/api/config"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+        message: API configuration could not be updated.
+
+---
 test_name: PUT /cluster/restart
 
 stages:

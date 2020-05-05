@@ -9,7 +9,7 @@ from aiohttp_cache import cache
 from connexion.lifecycle import ConnexionResponse
 
 from api import configuration
-from api.encoder import dumps
+from api.encoder import dumps, prettify
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh import rule as rule_framework
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -65,13 +65,12 @@ async def get_rules(request, rule_ids=None, pretty=False, wait_for_complete=Fals
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 @cache(expires=configuration.api_conf['cache']['time'], unless=not configuration.api_conf['cache']['enabled'])
@@ -101,13 +100,12 @@ async def get_rules_groups(request, pretty=False, wait_for_complete=False, offse
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 @cache(expires=configuration.api_conf['cache']['time'], unless=not configuration.api_conf['cache']['enabled'])
@@ -136,13 +134,12 @@ async def get_rules_requirement(request, requirement=None, pretty=False, wait_fo
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 @cache(expires=configuration.api_conf['cache']['time'], unless=not configuration.api_conf['cache']['enabled'])
@@ -177,13 +174,12 @@ async def get_rules_files(request, pretty=False, wait_for_complete=False, offset
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 @cache(expires=configuration.api_conf['cache']['time'], unless=not configuration.api_conf['cache']['enabled'])
@@ -202,7 +198,6 @@ async def get_download_file(request, pretty: bool = False, wait_for_complete: bo
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )

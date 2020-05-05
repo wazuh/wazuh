@@ -1,8 +1,15 @@
-#tavern_utils.py
 import json
 import time
 
 from box import Box
+
+
+def test_distinct_key(response):
+    """
+    :param response: Request response
+    :return: True if all request response items are unique
+    """
+    assert not any(response.json()["data"]["affected_items"].count(item) > 1 for item in response.json()["data"]["affected_items"])
 
 
 def test_select_key_affected_items(response, select_key):
@@ -16,7 +23,6 @@ def test_select_key_affected_items(response, select_key):
         assert list(response.json()["data"]["affected_items"][0][select_key.split('.')[0]])[0] == select_key.split('.')[1]
     else:
         assert list(response.json()["data"]["affected_items"][0])[0] == select_key
-    return
 
 
 def test_select_key_affected_items_with_agent_id(response, select_key):
@@ -33,7 +39,6 @@ def test_select_key_affected_items_with_agent_id(response, select_key):
     else:
         expected_keys = {'agent_id', select_key}
         assert set(response.json()["data"]["affected_items"][0].keys()) == expected_keys
-    return
 
 
 def test_sort_response(response, affected_items):
@@ -47,7 +52,6 @@ def test_sort_response(response, affected_items):
     reverse_index = len(affected_items) - 1
     for index, item_response in enumerate(response.json()['data']['affected_items']):
         assert item_response != affected_items[reverse_index - index]
-    return
 
 
 def test_validate_data_dict_field(response, fields_dict):
