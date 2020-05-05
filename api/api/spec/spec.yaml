@@ -6026,8 +6026,10 @@ paths:
                       - '002'
                       - '004'
                     total_affected_items: 2
-        default:
+        '400':
           $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
 
   /agents/insert:
     post:
@@ -6870,8 +6872,10 @@ paths:
                   path: /var/ossec/logs/api.log
                   level: info
                 experimental_features: false
-        default:
+        '400':
           $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
 
     put:
       tags:
@@ -6906,8 +6910,10 @@ paths:
                   failed_items: []
                 message: API configuration successfully updated. Some settings may require restarting the API to be applied.
 
-        default:
+        '400':
           $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
 
     delete:
       tags:
@@ -6935,8 +6941,10 @@ paths:
                   failed_items: []
                 message: API configuration successfully updated. Some settings may require restarting the API to be applied.
 
-        default:
+        '400':
           $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
 
   /cluster/{node_id}/status:
     get:
@@ -8854,8 +8862,10 @@ paths:
                   path: /var/ossec/logs/api.log
                   level: info
                 experimental_features: false
-        default:
+        '400':
           $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
 
     put:
       tags:
@@ -8889,8 +8899,10 @@ paths:
                   failed_items: []
                 message: API configuration successfully updated. Some settings may require restarting the API to be applied.
 
-        default:
+        '400':
           $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
 
     delete:
       tags:
@@ -8918,8 +8930,10 @@ paths:
                   failed_items: []
                 message: API configuration successfully updated. Some settings may require restarting the API to be applied.
 
-        default:
+        '400':
           $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
 
   /manager/restart:
     put:
@@ -11673,8 +11687,6 @@ paths:
                     type: string
         '400':
           $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
 
   /security/actions:
     get:
