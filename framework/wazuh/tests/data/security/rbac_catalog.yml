@@ -156,6 +156,7 @@ get_rbac_actions:
         related_endpoints:
           - PUT /agents/{agent_id}/restart
           - PUT /agents/restart
+          - PUT /groups/{group_id}/restart
       agent:upgrade:
         description: Upgrade the version of an agent
         resources:
@@ -199,6 +200,7 @@ get_rbac_actions:
           - GET /groups
           - GET /groups/{group_id}/agents
           - GET /groups/{group_id}/configuration
+          - PUT /groups/{group_id}/restart
           - GET /overview/agents
       group:create:
         description: Create new groups

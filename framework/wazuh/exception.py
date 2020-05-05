@@ -41,7 +41,7 @@ class WazuhException(Exception):
         1015: 'Error agent version is null. Was the agent ever connected?',
         1016: {'message': 'Error moving file',
                'remediation': 'Please, ensure you have the required file permissions in Wazuh directories'},
-        1017: 'Some Wazuh daemons are not ready yet in node \'{node_name}\' ',
+        1017: 'Some Wazuh daemons are not ready yet in node "{node_name}" ({not_ready_daemons})',
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
         1101: {'message': 'Requested component does not exist',
@@ -144,11 +144,11 @@ class WazuhException(Exception):
         1406: {'message': '0 is not a valid limit',
                'remediation': 'Please select a limit between 1 and 1000'
                },
-        1407: 'query does not match expected format',
+        1407: 'Query does not match expected format',
         1408: 'Field does not exist.',
         1409: 'Invalid query operator.',
         1410: 'Selecting more than one field in distinct mode',
-        1411: 'Timeframe is not valid',
+        1411: 'TimeFrame is not valid',
         1412: 'Date filter not valid. Valid formats are timeframe or YYYY-MM-DD HH:mm:ss',
         1413: {'message': 'Error reading rules file'},
         1414: {'message': 'Error reading rules file',
@@ -339,6 +339,8 @@ class WazuhException(Exception):
                'remediation': 'Please select another agent or connect your agent before assigning groups'},
         1754: {'message': 'Agent does not exist or you do not have permissions to access it',
                'remediation': 'Try listing all agents with GET /agents endpoint'},
+        1755: {'message': 'The group does not have any agent assigned',
+               'remediation': 'Please select another group or assign any agent to it'},
 
         # CDB List: 1800 - 1899
         1800: {'message': 'Bad format in CDB list {path}'},

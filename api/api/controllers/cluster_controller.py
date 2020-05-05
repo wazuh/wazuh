@@ -4,6 +4,7 @@
 
 import datetime
 import logging
+from json.decoder import JSONDecodeError
 
 from aiohttp import web
 
@@ -11,7 +12,9 @@ import wazuh.cluster as cluster
 import wazuh.common as common
 import wazuh.manager as manager
 import wazuh.stats as stats
-from api.encoder import dumps
+from api import configuration
+from api.api_exception import APIError
+from api.encoder import dumps, prettify
 from api.models.base_model_ import Data
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
 from wazuh.core.cluster.control import get_system_nodes
@@ -35,14 +38,13 @@ async def get_cluster_node(request, pretty=False, wait_for_complete=False):
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_cluster_nodes(request, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
@@ -76,7 +78,6 @@ async def get_cluster_nodes(request, pretty=False, wait_for_complete=False, offs
                           request_type='local_master',
                           is_async=True,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           local_client_arg='lc',
                           rbac_permissions=request['token_info']['rbac_policies'],
@@ -84,7 +85,7 @@ async def get_cluster_nodes(request, pretty=False, wait_for_complete=False, offs
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_healthcheck(request, pretty=False, wait_for_complete=False, list_nodes=None):
@@ -106,7 +107,6 @@ async def get_healthcheck(request, pretty=False, wait_for_complete=False, list_n
                           request_type='local_master',
                           is_async=True,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           local_client_arg='lc',
                           rbac_permissions=request['token_info']['rbac_policies'],
@@ -114,7 +114,7 @@ async def get_healthcheck(request, pretty=False, wait_for_complete=False, list_n
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_status(request, pretty=False, wait_for_complete=False):
@@ -129,14 +129,13 @@ async def get_status(request, pretty=False, wait_for_complete=False):
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=dumps)
+    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_config(request, pretty=False, wait_for_complete=False):
@@ -153,14 +152,13 @@ async def get_config(request, pretty=False, wait_for_complete=False):
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_status_node(request, node_id, pretty=False, wait_for_complete=False):
@@ -178,14 +176,13 @@ async def get_status_node(request, node_id, pretty=False, wait_for_complete=Fals
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_info_node(request, node_id, pretty=False, wait_for_complete=False):
@@ -205,14 +202,13 @@ async def get_info_node(request, node_id, pretty=False, wait_for_complete=False)
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_configuration_node(request, node_id, pretty=False, wait_for_complete=False, section=None, field=None):
@@ -234,14 +230,13 @@ async def get_configuration_node(request, node_id, pretty=False, wait_for_comple
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_stats_node(request, node_id, pretty=False, wait_for_complete=False, date=None):
@@ -268,14 +263,13 @@ async def get_stats_node(request, node_id, pretty=False, wait_for_complete=False
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_stats_hourly_node(request, node_id, pretty=False, wait_for_complete=False):
@@ -296,7 +290,6 @@ async def get_stats_hourly_node(request, node_id, pretty=False, wait_for_complet
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
@@ -304,7 +297,7 @@ async def get_stats_hourly_node(request, node_id, pretty=False, wait_for_complet
     data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=dumps)
+    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_stats_weekly_node(request, node_id, pretty=False, wait_for_complete=False):
@@ -325,7 +318,6 @@ async def get_stats_weekly_node(request, node_id, pretty=False, wait_for_complet
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
@@ -333,7 +325,7 @@ async def get_stats_weekly_node(request, node_id, pretty=False, wait_for_complet
     data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=dumps)
+    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_stats_analysisd_node(request, node_id, pretty=False, wait_for_complete=False):
@@ -352,7 +344,6 @@ async def get_stats_analysisd_node(request, node_id, pretty=False, wait_for_comp
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
@@ -360,7 +351,7 @@ async def get_stats_analysisd_node(request, node_id, pretty=False, wait_for_comp
     data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=dumps)
+    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_stats_remoted_node(request, node_id, pretty=False, wait_for_complete=False):
@@ -379,7 +370,6 @@ async def get_stats_remoted_node(request, node_id, pretty=False, wait_for_comple
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
@@ -387,7 +377,7 @@ async def get_stats_remoted_node(request, node_id, pretty=False, wait_for_comple
     data = raise_if_exc(await dapi.distribute_function())
     response = Data(data)
 
-    return web.json_response(data=response, status=200, dumps=dumps)
+    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_log_node(request, node_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
@@ -423,14 +413,13 @@ async def get_log_node(request, node_id, pretty=False, wait_for_complete=False, 
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_log_summary_node(request, node_id, pretty=False, wait_for_complete=False):
@@ -448,14 +437,13 @@ async def get_log_summary_node(request, node_id, pretty=False, wait_for_complete
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_files_node(request, node_id, path, pretty=False, wait_for_complete=False):
@@ -475,14 +463,13 @@ async def get_files_node(request, node_id, path, pretty=False, wait_for_complete
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def put_files_node(request, body, node_id, path, overwrite=False, pretty=False, wait_for_complete=False):
@@ -515,14 +502,13 @@ async def put_files_node(request, body, node_id, path, overwrite=False, pretty=F
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def delete_files_node(request, node_id, path, pretty=False, wait_for_complete=False):
@@ -542,14 +528,84 @@ async def delete_files_node(request, node_id, path, pretty=False, wait_for_compl
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def get_api_config(request, pretty=False, wait_for_complete=False):
+    """Get active API configuration in manager or local_node.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    """
+    f_kwargs = {}
+
+    dapi = DistributedAPI(f=manager.get_api_config,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def put_api_config(request, pretty=False, wait_for_complete=False):
+    """Update current API configuration with the given one.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    """
+    try:
+        f_kwargs = {"updated_config": await request.json()}
+    except JSONDecodeError as e:
+        raise_if_exc(APIError(code=2005, details=e.msg))
+
+    dapi = DistributedAPI(f=manager.update_api_config,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          broadcasting=True,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def delete_api_config(request, pretty=False, wait_for_complete=False):
+    """Restore default API configuration.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    """
+    allowed_fields = {'behind_proxy_server', 'rbac', 'logs', 'cache', 'cors', 'use_only_authd', 'experimental_features'}
+    default_config = {key: configuration.default_configuration[key] for key in allowed_fields}
+
+    f_kwargs = {"updated_config": default_config}
+
+    dapi = DistributedAPI(f=manager.update_api_config,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          broadcasting=True,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def put_restart(request, pretty=False, wait_for_complete=False, list_nodes='*'):
@@ -567,7 +623,6 @@ async def put_restart(request, pretty=False, wait_for_complete=False, list_nodes
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           broadcasting=list_nodes == '*',
                           rbac_permissions=request['token_info']['rbac_policies'],
@@ -575,7 +630,7 @@ async def put_restart(request, pretty=False, wait_for_complete=False, list_nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_conf_validation(request, pretty=False, wait_for_complete=False, list_nodes='*'):
@@ -594,7 +649,6 @@ async def get_conf_validation(request, pretty=False, wait_for_complete=False, li
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           broadcasting=list_nodes == '*',
                           rbac_permissions=request['token_info']['rbac_policies'],
@@ -602,7 +656,7 @@ async def get_conf_validation(request, pretty=False, wait_for_complete=False, li
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_node_config(request, node_id, component, wait_for_complete=False, pretty=False, **kwargs):
@@ -624,11 +678,10 @@ async def get_node_config(request, node_id, component, wait_for_complete=False, 
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)

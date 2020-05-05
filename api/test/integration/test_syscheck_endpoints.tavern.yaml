@@ -362,6 +362,30 @@ stages:
       json:
         code: 1724
 
+    # GET /syscheck/000?pretty=false&wait_for_complete=true&offset=0&select=uname%2Cperm&distinct=true
+  - name: Try to get syscheck scan results for agent 000 using distinct parameter
+    request:
+      verify: False
+      <<: *get_syscheck_agent
+      params:
+        distinct: true
+        select: uname,perm
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
+    # GET /syscheck/000?limit=1&distinct=tr
+  - name: Try to get syscheck scan results for agent 000 using an invalid distinct parameter
+    request:
+      verify: False
+      <<: *get_syscheck_agent
+      params:
+        limit: 1
+        distinct: tr
+    response:
+      status_code: 400
+
 ---
 # Another GET /syscheck/{agent_id} test to parametrize values for sort and select parameters
 test_name: GET /syscheck/000
