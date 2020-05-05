@@ -2,8 +2,7 @@
 test_name: GET /cluster/local/config
 
 marks:
-  - usefixtures:
-    - cluster_tests
+  - base_tests
 
 stages:
 
@@ -470,7 +469,7 @@ test_name: GET /cluster/{node_id}/configuration
 
 stages:
 
-  - name: Request {node_id}
+  - name: Request {master-node}
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/master-node/configuration"
@@ -1964,7 +1963,7 @@ marks:
 
 stages:
 
-  - name: Request {node_id}
+  - name: Request {node_id} 0
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/info"
@@ -2003,7 +2002,7 @@ marks:
 
 stages:
 
-  - name: Request {node_id}
+  - name: Request {node_id} 1
     request: &get_cluster_logs
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/logs"
@@ -2188,7 +2187,7 @@ marks:
 
 stages:
 
-  - name: Request {node_id}
+  - name: Request {node_id} 2
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/logs/summary"
@@ -2498,7 +2497,7 @@ marks:
 
 stages:
 
-  - name: Request {node_id}
+  - name: Request {node_id} 3
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/{node_id}/status"

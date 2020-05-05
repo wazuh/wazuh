@@ -2,8 +2,7 @@
 test_name: PUT /agents/group
 
 marks:
-  - usefixtures:
-    - agents_tests
+  - base_tests
 
 stages:
 

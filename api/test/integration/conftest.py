@@ -14,6 +14,28 @@ import yaml
 current_path = os.path.dirname(os.path.abspath(__file__))
 
 
+with open('common.yaml', 'r') as stream:
+    common = yaml.safe_load(stream)['variables']
+login_url = f"{common['protocol']}://{common['host']}:{common['port']}/{common['version']}{common['login_endpoint']}"
+basic_auth = f"{common['user']}:{common['pass']}".encode()
+login_headers = {'Content-Type': 'application/json',
+                 'Authorization': f'Basic {b64encode(basic_auth).decode()}'}
+
+
+def get_token_login_api():
+    response = requests.get(login_url, headers=login_headers, verify=False)
+    if response.status_code == 200:
+        return json.loads(response.content.decode())['token']
+    else:
+        raise Exception(f"Error obtaining login token: {response.json()}")
+
+
+def pytest_tavern_beta_before_every_test_run(test_dict, variables):
+    # Disable HTTPS verification warnings
+    urllib3.disable_warnings()
+    variables["test_login_token"] = get_token_login_api()
+
+
 def build_and_up():
     pwd = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'env')
     os.chdir(pwd)
@@ -52,33 +74,30 @@ def check_health(interval=10, node_type='master', agents=None):
         return True
 
 
-def active_response_procedure():
-    active_response_config = os.path.join(current_path, 'env', 'configurations', 'active-response', 'wazuh-agent', '*')
-    tmp_active_response_config = os.path.join(current_path, 'env', 'configurations', 'tmp', 'agents', 'scripts/')
-    os.makedirs(os.path.dirname(tmp_active_response_config), exist_ok=True)
-    os.popen(f'cp -rf {active_response_config} {tmp_active_response_config}')
-
-
-@pytest.fixture
-def base_tests(request):
-    create_tmp_folders()
-    tag_processor(request)
-    values = build_and_up()
-    while values['retries'] < values['max_retries']:
-        health = check_health()
-        if health:
-            time.sleep(10)
-            yield
-            break
-        else:
-            values['retries'] += 1
-    clear_tmp_folder()
-    down_env()
-
-
 def create_tmp_folders():
-    os.makedirs(os.path.join(current_path, 'env', 'configurations', 'tmp', 'managers'), exist_ok=True)
-    os.makedirs(os.path.join(current_path, 'env', 'configurations', 'tmp', 'agents'), exist_ok=True)
+    os.makedirs(os.path.join(current_path, 'env', 'configurations', 'tmp', 'manager'), exist_ok=True)
+    os.makedirs(os.path.join(current_path, 'env', 'configurations', 'tmp', 'agent'), exist_ok=True)
+
+
+def general_procedure(module):
+    folder_content = os.path.join(current_path, 'env', 'configurations', module, '*')
+    tmp_content = os.path.join(current_path, 'env', 'configurations', 'tmp')
+    os.makedirs(tmp_content, exist_ok=True)
+    os.popen(f'cp -rf {folder_content} {tmp_content}')
+    healthcheck_procedure(module)
+
+
+def healthcheck_procedure(module):
+    manager_folder = os.path.join(current_path, 'env', 'configurations', module, 'manager', 'healthcheck')
+    agent_folder = os.path.join(current_path, 'env', 'configurations', module, 'agent', 'healthcheck')
+    base_folder = os.path.join(current_path, 'env', 'configurations', 'base', 'wazuh-master', 'healthcheck')
+    tmp_content = os.path.join(current_path, 'env', 'configurations', 'tmp')
+
+    os.popen(f'cp -rf {base_folder} {os.path.join(tmp_content, "manager")}')
+    if os.path.exists(manager_folder):
+        os.popen(f'cp -rf {manager_folder} {os.path.join(tmp_content, "manager")}')
+    elif os.path.exists(agent_folder):
+        os.popen(f'cp -rf {agent_folder} {os.path.join(tmp_content, "agent")}')
 
 
 def change_rbac_mode(rbac_mode):
@@ -126,54 +145,31 @@ def rbac_custom_config_generator(module, rbac_mode, custom_rbac_path):
         rbac_config.writelines(sql_sentences)
 
 
-def tag_processor(request):
-    module = [m.name for m in request.node.own_markers[:-1]]
-
-    if 'active-response' in module:
-        active_response_procedure()
-
-
-@pytest.fixture
-def rbac_test(request):
+@pytest.fixture(scope='session', autouse=True)
+def api_test(request):
+    test_filename = request.node.config.args[0].split('_')
+    if 'rbac' in test_filename:
+        rbac_mode = test_filename[2]
+        module = test_filename[3]
+    else:
+        rbac_mode = None
+        module = test_filename[1]
     create_tmp_folders()
-    tag_processor(request)
-    module, rbac_mode = [m.name for m in request.node.own_markers[:-1]]
-    custom_rbac_path = os.path.join(current_path, 'env', 'configurations', 'tmp', 'managers',
-                                    'rbac', 'custom_rbac_schema.sql')
-
-    change_rbac_mode(rbac_mode)
-    rbac_custom_config_generator(module, rbac_mode, custom_rbac_path)
+    general_procedure(module)
+    if rbac_mode:
+        custom_rbac_path = os.path.join(current_path, 'env', 'configurations', 'tmp',
+                                        'manager', 'custom_rbac_schema.sql')
+        change_rbac_mode(rbac_mode)
+        rbac_custom_config_generator(module, rbac_mode, custom_rbac_path)
 
     values = build_and_up()
     while values['retries'] < values['max_retries']:
         health = check_health()
         if health:
-            time.sleep(10)
+            time.sleep(values['interval'])
             yield
             break
         else:
             values['retries'] += 1
     clear_tmp_folder()
     down_env()
-
-
-with open('common.yaml', 'r') as stream:
-    common = yaml.safe_load(stream)['variables']
-login_url = f"{common['protocol']}://{common['host']}:{common['port']}/{common['version']}{common['login_endpoint']}"
-basic_auth = f"{common['user']}:{common['pass']}".encode()
-login_headers = {'Content-Type': 'application/json',
-                 'Authorization': f'Basic {b64encode(basic_auth).decode()}'}
-
-
-def get_token_login_api():
-    response = requests.get(login_url, headers=login_headers, verify=False)
-    if response.status_code == 200:
-        return json.loads(response.content.decode())['token']
-    else:
-        raise Exception(f"Error obtaining login token: {response.json()}")
-
-
-def pytest_tavern_beta_before_every_test_run(test_dict, variables):
-    # Disable HTTPS verification warnings
-    urllib3.disable_warnings()
-    variables["test_login_token"] = get_token_login_api()

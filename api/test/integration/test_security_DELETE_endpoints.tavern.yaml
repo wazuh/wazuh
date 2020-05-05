@@ -2,8 +2,7 @@
 test_name: DELETE /security/roles/{role_id}
 
 marks:
-  - usefixtures:
-      - security_tests
+  - base_tests
 
 stages:
 
@@ -523,8 +522,10 @@ stages:
               roles: []
             - username: python
               roles: []
+            - username: testing
+              roles: []
           failed_items: []
-          total_affected_items: 4
+          total_affected_items: 5
           total_failed_items: 0
         message: Users deleted correctly
 

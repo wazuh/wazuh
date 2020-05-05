@@ -2,9 +2,7 @@
 test_name: PUT /active-response/{:agent_id}
 
 marks:
-  - active-response
-  - usefixtures:
-    - base_tests
+  - base_tests
 
 stages:
 

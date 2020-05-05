@@ -2,10 +2,7 @@
 test_name: GET /agents
 
 marks:
-  - agents
-  - black
-  - usefixtures:
-    - rbac_test
+  - rbac_tests
 
 stages:
 

@@ -29,8 +29,17 @@ if [ -f /configuration_files/api.yaml ]; then
   cp -f /configuration_files/api.yaml /var/ossec/api/configuration/api.yaml
 fi
 
+# Manager configuration
+for py_file in /configuration_files/*.py; do
+  /usr/bin/python3 $py_file
+done
+
+for sh_file in /configuration_files/*.sh; do
+  . $sh_file
+done
+
 # RBAC configuration
-for sql_file in /configuration_files/rbac/*.sql; do
+for sql_file in /configuration_files/*.sql; do
   sqlite3 /var/ossec/api/configuration/security/rbac.db < $sql_file
 done
 

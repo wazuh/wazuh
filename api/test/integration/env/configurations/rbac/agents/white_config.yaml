@@ -52,7 +52,7 @@
 - actions:
   - agent:create
   resources:
-  - "*"
+  - "*:*:*"
   effect: deny
 
 - actions:
@@ -81,7 +81,7 @@
 - actions:
   - group:create
   resources:
-  - "*"
+  - "*:*:*"
   effect: deny
 
 - actions:

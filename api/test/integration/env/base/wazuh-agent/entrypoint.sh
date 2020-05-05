@@ -9,7 +9,7 @@ chown root:ossec /var/ossec/etc/client.keys
 rm /var/ossec/etc/test.keys
 
 # Agent configuration
-. /configuration_files/scripts/*.sh
+. /configuration_files/*.sh
 sleep 1
 
 /var/ossec/bin/ossec-control start

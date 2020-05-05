@@ -3,7 +3,7 @@ import os
 
 def get_health():
     os.system("/var/ossec/bin/agent_control -ls > /tmp/output.txt")
-    check = os.popen("diff -q /tmp/output.txt /tmp/agent_control_check.txt").read()
+    check = os.popen("diff -q /tmp/output.txt /configuration_files/healthcheck/agent_control_check.txt").read()
 
     if "differ" in check:
         return 1

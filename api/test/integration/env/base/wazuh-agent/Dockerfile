@@ -12,7 +12,7 @@ RUN apt-get install wazuh-agent -y
 COPY configurations/base/wazuh-agent/config/test.keys /var/ossec/etc/test.keys
 COPY configurations/base/wazuh-agent/config/ossec.conf /var/ossec/etc/ossec.conf
 COPY configurations/base/wazuh-agent/healthcheck/healthcheck.py /tmp/healthcheck.py
-COPY configurations/tmp/agents/ /configuration_files/
+COPY configurations/tmp/agent/ /configuration_files/
 
 ADD base/wazuh-agent/entrypoint.sh /scripts/entrypoint.sh
 
