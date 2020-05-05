@@ -1253,6 +1253,7 @@ void audit_read_events(int *audit_sock, int mode) {
     struct timeval timeout;
     count_reload_retries = 0;
     int conn_retries;
+    char * eoe_found = false;
 
     char *buffer;
     os_malloc(BUF_SIZE * sizeof(char), buffer);
@@ -1351,6 +1352,7 @@ void audit_read_events(int *audit_sock, int mode) {
                 } else {
                     merror(FIM_ERROR_WHODATA_EVENT_TOOLONG);
                 }
+                eoe_found = strstr(line, "type=EOE");
 
                 free(cache_id);
                 cache_id = id;
@@ -1361,8 +1363,13 @@ void audit_read_events(int *audit_sock, int mode) {
             line = endline + 1;
         } while (*line && (endline = strchr(line, '\n'), endline));
 
-        // If some data remains in the buffer, move it to the beginning
+        // If some audit log remains in the cache and it is complet (line "end of event" is found), flush cache
+        if (eoe_found){
+            audit_parse(cache);
+            cache_i = 0;
+        }
 
+        // If some data remains in the buffer, move it to the beginning
         if (*line) {
             buffer_i = strlen(line);
             memmove(buffer, line, buffer_i);
