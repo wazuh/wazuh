@@ -419,9 +419,7 @@ void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
             os_free(output);
         }
         pthread_exit(NULL);
-    }
-
-    if (status > 0) {
+    } else if (status > 0) {
         mtwarn(WM_AWS_LOGTAG, "%s Returned exit code %d", trail_title, status);
         if(status == 1) {
             char * unknown_error_msg = strstr(output,"Unknown error");
@@ -553,9 +551,7 @@ void wm_aws_run_service(wm_aws_service *exec_service) {
             os_free(output);
         }
         pthread_exit(NULL);
-    }
-
-    if (status > 0) {
+    } else if (status > 0) {
         mtwarn(WM_AWS_LOGTAG, "%s Returned exit code %d", service_title, status);
         if(status == 1) {
             char * unknown_error_msg = strstr(output,"Unknown error");
