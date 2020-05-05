@@ -1452,13 +1452,21 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
         os_free(hard_links_tmp);
     }
 
+    // When full_log field is too long (max 756), it is fixed to show the last part of the path (more relevant)
+    char path_splitted[757];
+    int path_log_len = strlen(lf->fields[FIM_FILE].value);
+    if (path_log_len > 756){
+        char * aux = lf->fields[FIM_FILE].value + path_log_len - 30;
+        snprintf(path_splitted, 757, "%.719s [...] %s", lf->fields[FIM_FILE].value, aux);
+    }
+
     snprintf(lf->full_log, OS_MAXSTR,
-            "File '%.756s' %s\n"
+            "File '%s' %s\n"
             "%s"
             "Mode: %s\n"
             "%s"
             "%s%s%s%s%s%s%s%s%s%s%s%s",
-            lf->fields[FIM_FILE].value, event_type,
+            path_log_len > 756 ? path_splitted : lf->fields[FIM_FILE].value, event_type,
             lf->fields[FIM_HARD_LINKS].value ? hard_links : "",
             mode,
             lf->fields[FIM_CHFIELDS].value ? changed_attributes : "",

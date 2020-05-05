@@ -314,6 +314,11 @@ int __wrap_fim_db_get_count_entry_path(fdb_t * fim_sql){
     return mock();
 }
 
+int __wrap_count_watches() {
+    function_called();
+
+    return mock();
+}
 
 #ifdef TEST_WINAGENT
 int __wrap_pthread_mutex_lock (pthread_mutex_t *__mutex) {
@@ -473,24 +478,6 @@ static int teardown_local_data(void **state) {
     return 0;
 }
 
-static int setup_inode_data(void **state) {
-    fim_data_t *fim_data = *state;
-
-
-    if(fim_data->inode_data = calloc(1, sizeof(fim_inode_data)), fim_data->inode_data == NULL)
-        return -1;
-
-    return 0;
-}
-
-static int teardown_inode_data(void **state) {
-    fim_data_t *fim_data = *state;
-
-    free_inode_data(&fim_data->inode_data);
-
-    return 0;
-}
-
 static int setup_struct_dirent(void **state) {
     fim_data_t *fim_data = *state;
 
@@ -504,6 +491,20 @@ static int teardown_struct_dirent(void **state) {
     fim_data_t *fim_data = *state;
 
     free(fim_data->entry);
+
+    return 0;
+}
+
+static int teardown_fim_scan_realtime(void **state) {
+    int *dir_opts = *state;
+    int it = 0;
+
+    while (dir_opts[it]) {
+        syscheck.opts[it] = dir_opts[it];
+        it++;
+    }
+
+    free(dir_opts);
 
     return 0;
 }
@@ -1251,6 +1252,30 @@ static void test_fim_configuration_directory_not_found(void **state) {
     assert_int_equal(ret, -1);
 }
 
+#ifdef TEST_WINAGENT
+static void test_fim_configuration_directory_registry_not_found(void **state) {
+    int ret;
+
+    const char *path = "invalid";
+    const char *entry = "registry";
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (registry):'invalid'");
+
+    ret = fim_configuration_directory(path, entry);
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_fim_configuration_directory_registry_found(void **state) {
+    char *path = "[x32] HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce";
+    const char * entry = "registry";
+    int ret;
+
+    ret = fim_configuration_directory(path, entry);
+
+    assert_int_equal(ret, 20);
+}
+#endif
 
 static void test_init_fim_data_entry(void **state) {
     fim_data_t *fim_data = *state;
@@ -1872,7 +1897,22 @@ static void test_fim_checker_fim_directory(void **state) {
     fim_checker(path, fim_data->item, NULL, 1);
 }
 
-static void test_fim_scan(void **state) {
+static void test_fim_scan_no_realtime(void **state) {
+    int *dir_opts = calloc(6, sizeof(int));
+    int it = 0;
+
+    if (!dir_opts) {
+        fail();
+    }
+
+    while (syscheck.dir[it] != NULL) {
+        dir_opts[it] = syscheck.opts[it];
+        syscheck.opts[it] &= ~REALTIME_ACTIVE;
+        it++;
+    }
+
+    *state = dir_opts;
+
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // In fim_checker
@@ -1886,6 +1926,52 @@ static void test_fim_scan(void **state) {
     expect_string(__wrap_HasFilesystem, path, "/boot");
     will_return_count(__wrap_HasFilesystem, 0, 6);
 
+    expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_get_not_scanned, NULL);
+    will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
+
+    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_set_all_unscanned, 0);
+
+    // In fim_scan
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
+
+    fim_scan();
+}
+
+static void test_fim_scan_realtime_enabled(void **state) {
+    int *dir_opts = calloc(6, sizeof(int));
+    int it = 0;
+
+    if (!dir_opts) {
+        fail();
+    }
+
+    while (syscheck.dir[it] != NULL) {
+        dir_opts[it] = syscheck.opts[it];
+        syscheck.opts[it] |= REALTIME_ACTIVE;
+        it++;
+    }
+
+    *state = dir_opts;
+
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+
+    // In fim_checker
+    will_return_count(__wrap_lstat, 0, 6);
+
+    expect_string(__wrap_HasFilesystem, path, "/etc");
+    expect_string(__wrap_HasFilesystem, path, "/usr/bin");
+    expect_string(__wrap_HasFilesystem, path, "/usr/sbin");
+    expect_string(__wrap_HasFilesystem, path, "/media");
+    expect_string(__wrap_HasFilesystem, path, "/home");
+    expect_string(__wrap_HasFilesystem, path, "/boot");
+    will_return_count(__wrap_HasFilesystem, 0, 6);
+
+    expect_string(__wrap_realtime_adddir, dir, "/etc");
+    expect_string(__wrap_realtime_adddir, dir, "/usr/bin");
+    expect_string(__wrap_realtime_adddir, dir, "/usr/sbin");
     expect_string(__wrap_realtime_adddir, dir, "/media");
     expect_string(__wrap_realtime_adddir, dir, "/home");
     expect_string(__wrap_realtime_adddir, dir, "/boot");
@@ -1898,10 +1984,17 @@ static void test_fim_scan(void **state) {
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_set_all_unscanned, 0);
 
+    // In fim_scan
+    expect_function_call(__wrap_count_watches);
+    will_return(__wrap_count_watches, 6);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6345): Folders monitored with real-time engine: 6");
+
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
     fim_scan();
 }
+
 #else
 static void test_fim_checker_invalid_fim_mode(void **state) {
     fim_data_t *fim_data = *state;
@@ -2278,6 +2371,7 @@ static void test_fim_scan(void **state) {
     will_return(__wrap_fim_db_get_not_scanned, NULL);
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
 
+    // In fim_scan
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
     fim_scan();
@@ -2508,6 +2602,40 @@ static void test_fim_get_data_hash_error(void **state) {
     assert_null(fim_data->local_data);
 }
 
+#ifdef TEST_WINAGENT
+static void test_fim_get_data_fail_to_get_file_premissions(void **state) {
+    fim_data_t *fim_data = *state;
+    struct stat buf;
+
+    buf.st_mode = S_IFREG | 00444 ;
+    buf.st_size = 1000;
+    buf.st_uid = 0;
+    buf.st_gid = 0;
+    buf.st_ino = 1234;
+    buf.st_dev = 2345;
+    buf.st_mtime = 3456;
+
+    fim_data->item->index = 1;
+    fim_data->item->statbuf = buf;
+    fim_data->item->configuration = CHECK_SIZE |
+                                    CHECK_PERM |
+                                    CHECK_MTIME |
+                                    CHECK_OWNER |
+                                    CHECK_GROUP |
+                                    CHECK_MD5SUM |
+                                    CHECK_SHA1SUM |
+                                    CHECK_SHA256SUM;
+
+    expect_string(__wrap_w_get_file_permissions, file_path, "test");
+    will_return(__wrap_w_get_file_permissions, "");
+    will_return(__wrap_w_get_file_permissions, ERROR_ACCESS_DENIED);
+
+
+    fim_data->local_data = fim_get_data("test", fim_data->item);
+
+    assert_null(fim_data->local_data);
+}
+#endif
 
 static void test_check_deleted_files(void **state) {
     fim_tmp_file *file = calloc(1, sizeof(fim_tmp_file));
@@ -2646,17 +2774,57 @@ static void test_fim_whodata_event_file_missing(void **state) {
     #endif
     errno = ENOENT;
 
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "./test/test.file");
-    will_return(__wrap_fim_db_get_path, NULL);
+    char **paths = calloc(4, sizeof(char *));
+    paths[0] = strdup("/testdir/dir1/file1");
+    paths[1] = strdup("/testdir/dir1/file2");
+    paths[2] = strdup("/testdir/dir1/file3");
+    paths[3] = NULL;
 
-    expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
-    will_return(__wrap_fim_db_get_path_range, NULL);
-    will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
+#ifdef TEST_WINAGENT
+    // Inside fim_process_missing_entry
+    {
+        expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+        expect_string(__wrap_fim_db_get_path, file_path, "./test/test.file");
+        will_return(__wrap_fim_db_get_path, NULL);
 
+        expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+        expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+        will_return(__wrap_fim_db_get_path_range, NULL);
+        will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
+    }
+#else
+    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
+    will_return(__wrap_fim_db_get_paths_from_inode, paths);
+
+    // Inside fim_process_missing_entry
+        {
+            expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+            expect_string(__wrap_fim_db_get_path, file_path, paths[i]);
+            will_return(__wrap_fim_db_get_path, NULL);
+
+            expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+            expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+            will_return(__wrap_fim_db_get_path_range, NULL);
+            will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
+        }
+    for(int i = 0; paths[i]; i++) {
+        // Inside fim_process_missing_entry
+        {
+            expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+            expect_string(__wrap_fim_db_get_path, file_path, paths[i]);
+            will_return(__wrap_fim_db_get_path, NULL);
+
+            expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
+            expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
+            will_return(__wrap_fim_db_get_path_range, NULL);
+            will_return(__wrap_fim_db_get_path_range, FIMDB_ERR);
+        }
+    }
+#endif
     fim_whodata_event(fim_data->w_evt);
-    errno = 0;
+    errno=0;
 }
 
 static void test_fim_process_missing_entry_no_data(void **state) {
@@ -2885,6 +3053,10 @@ int main(void) {
         cmocka_unit_test(test_fim_configuration_directory_no_path),
         cmocka_unit_test(test_fim_configuration_directory_file),
         cmocka_unit_test(test_fim_configuration_directory_not_found),
+        #ifdef TEST_WINAGENT
+        cmocka_unit_test(test_fim_configuration_directory_registry_not_found),
+        cmocka_unit_test(test_fim_configuration_directory_registry_found),
+        #endif
 
         /* init_fim_data_entry */
         cmocka_unit_test_setup_teardown(test_init_fim_data_entry, setup_fim_entry, teardown_fim_entry),
@@ -2896,7 +3068,12 @@ int main(void) {
         cmocka_unit_test_setup(test_fim_file_error_on_insert, setup_fim_entry),
 
         /* fim_scan */
+        #ifndef TEST_WINAGENT
+        cmocka_unit_test_teardown(test_fim_scan_no_realtime, teardown_fim_scan_realtime),
+        cmocka_unit_test_teardown(test_fim_scan_realtime_enabled, teardown_fim_scan_realtime),
+        #else
         cmocka_unit_test(test_fim_scan),
+        #endif
 
         /* fim_checker */
         cmocka_unit_test(test_fim_checker_scheduled_configuration_directory_error),
@@ -2924,6 +3101,9 @@ int main(void) {
         cmocka_unit_test_teardown(test_fim_get_data, teardown_local_data),
         cmocka_unit_test_teardown(test_fim_get_data_no_hashes, teardown_local_data),
         cmocka_unit_test(test_fim_get_data_hash_error),
+        #ifdef TEST_WINAGENT
+        cmocka_unit_test(test_fim_get_data_fail_to_get_file_premissions),
+        #endif
 
         /* check_deleted_files */
         cmocka_unit_test(test_check_deleted_files),
