@@ -1163,12 +1163,13 @@ int Rules_OP_ReadRules(const char *rulefile)
                                 } else {
                                     int inarray = 0;
                                     for (l = 0; l < mitre_size; l++) {
-                                        if (strcmp(config_ruleinfo->mitre_id[l],mitre_opt[ind]->content)== 0) {
+                                        if (strcmp(config_ruleinfo->mitre_id[l], mitre_opt[ind]->content) == 0) {
                                             inarray = 1;
                                         }
                                     }
                                     if (!inarray) {
-                                        os_realloc(config_ruleinfo->mitre_id, (mitre_size + 2) * sizeof(char *), config_ruleinfo->mitre_id);
+                                        os_realloc(config_ruleinfo->mitre_id, (mitre_size + 2) * sizeof(char *),
+                                                   config_ruleinfo->mitre_id);
                                         os_strdup(mitre_opt[ind]->content, config_ruleinfo->mitre_id[mitre_size]);
                                         config_ruleinfo->mitre_id[mitre_size + 1] = NULL;
                                         mitre_size++;
@@ -1178,6 +1179,12 @@ int Rules_OP_ReadRules(const char *rulefile)
                                 merror("Invalid option '%s' for "
                                 "rule '%d'", mitre_opt[ind]->element,
                                 config_ruleinfo->sigid);
+
+                                for (l = 0; config_ruleinfo->mitre_id[l] != NULL; l++) {
+                                    os_free(config_ruleinfo->mitre_id[l]);
+                                }
+                                os_free(config_ruleinfo->mitre_id);
+                                OS_ClearNode(mitre_opt);
                                 goto cleanup;
                             }
                         }
