@@ -22,6 +22,7 @@ grpcio==1.28.1
 idna==2.9
 isodate==0.6.0
 jmespath==0.9.5
+more-itertools==8.2.0
 msrest==0.6.13
 oauthlib==3.1.0
 protobuf==3.11.3
