@@ -144,11 +144,11 @@ class WazuhException(Exception):
         1406: {'message': '0 is not a valid limit',
                'remediation': 'Please select a limit between 1 and 1000'
                },
-        1407: 'query does not match expected format',
+        1407: 'Query does not match expected format',
         1408: 'Field does not exist.',
         1409: 'Invalid query operator.',
         1410: 'Selecting more than one field in distinct mode',
-        1411: 'Timeframe is not valid',
+        1411: 'TimeFrame is not valid',
         1412: 'Date filter not valid. Valid formats are timeframe or YYYY-MM-DD HH:mm:ss',
         1413: {'message': 'Error reading rules file'},
         1414: {'message': 'Error reading rules file',

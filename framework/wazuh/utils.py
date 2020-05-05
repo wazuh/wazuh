@@ -714,20 +714,23 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
                      '!=': operator.ne,
                      '<': operator.lt,
                      '>': operator.gt}
-        if op == '~':
-            # value1 should be str if operator is '~'
-            value1 = str(value1) if type(value1) == int else value1
-            if value1.startswith(value2, 0):
-                return True
+        value1 = [value1] if not isinstance(value1, list) else value1
+        for val in value1:
+            if op == '~':
+                # value1 should be str if operator is '~'
+                val = str(val) if type(val) == int else val
+                if value2 in val:
+                    return True
             else:
-                return False
+                # cast value2 to integer if value1 is integer
+                value2 = int(value2) if type(val) == int else value2
+                if operators[op](val, value2):
+                    return True
         else:
-            # cast value2 to integer if value1 is integer
-            value2 = int(value2) if type(value1) == int else value2
-            return operators[op](value1, value2)
+            return False
 
     # compile regular expression only one time when function is called
-    re_get_elements = re.compile(r'([\w\-.]+)(=|!=|<|>|~)([\w\-.]+)')  # regex for getting elements in a clause
+    re_get_elements = re.compile(r'([\w\-.]+)(=|!=|<|>|~)([\w\-./]+)')  # regex for getting elements in a clause
     # get a list with OR clauses
     or_clauses = q.split(',')
     output_array = []
@@ -740,7 +743,11 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
             match = True  # flag for checking clauses
             for and_clause in and_clauses:
                 # get elements in a clause
-                field_name, op, value = re_get_elements.match(and_clause).groups()
+                try:
+                    field_name, op, value = re_get_elements.match(and_clause).groups()
+                except AttributeError:
+                    raise WazuhError(1407, extra_message=f"Parameter 'q' is not valid: '{and_clause}'")
+
                 # check if a clause is satisfied
                 if field_name in elem and check_clause(elem[field_name], op, value):
                     continue

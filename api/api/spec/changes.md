@@ -9,6 +9,7 @@
 a human readable message is shown, the new field `message` will be used instead.
 * Changed search negation from `!` to `-`.
 * Changed nested fields from `a_b` to `a.b`
+* Changed parameter **query** to allow reserved characters.
 
 ## Active Response
 ### PUT /active-response
@@ -38,6 +39,9 @@ a human readable message is shown, the new field `message` will be used instead.
 * Endpoint deleted, use `POST /groups?group_id=group_id`
 * In response, `msg` key is now moved to new `message` key
 * Verb changed to POST
+
+### PUT /agents/groups/:group_id/restart
+* Endpoint deleted, use `PUT /groups/{group_id}/restart`
 
 ### POST /agents
 * Changed parameter **force** name to **force_time**

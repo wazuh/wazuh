@@ -3666,7 +3666,7 @@ components:
       description: Query to filter results by. For example q=&quot;status=active&quot;
       schema:
         type: string
-        format: query
+      allowReserved: true
     rationale:
       in: query
       name: rationale
