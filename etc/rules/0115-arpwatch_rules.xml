@@ -72,6 +72,9 @@
     <if_sid>7200</if_sid>
     <match>ethernet mismatch</match>
     <description>Arpwatch: Possible arpspoofing attempt.</description>
+    <mitre>
+      <id>T1095</id>
+    </mitre>
     <group>ip_spoof,pci_dss_1.3.4,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_CA.3,nist_800_53_SI.4,</group>
   </rule>
 
