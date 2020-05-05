@@ -108,6 +108,7 @@ int mitre_load(char * mode){
             cJSON_AddItemToArray(tactics_array, cJSON_Duplicate(tactic,1));
         }
         cJSON_Delete(tactics_json);
+        tactics_json = NULL;
 
         /* Filling Hash table with Mitre's information */
         if (hashcheck = OSHash_Add(mitre_table, ext_id, tactics_array), hashcheck == 0) {
