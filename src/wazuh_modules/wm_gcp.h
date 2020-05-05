@@ -14,21 +14,20 @@
 
 #define WM_GCP_LOGTAG ARGV0 ":gcp-pubsub"
 #define WM_GCP_DEFAULT_DIR WM_DEFAULT_DIR "/gcloud"
-#define WM_GCP_SCRIPT_PATH WM_GCP_DEFAULT_DIR "/gcloud.py"
+#define WM_GCP_SCRIPT_PATH WM_GCP_DEFAULT_DIR "/gcloud"
+
+#define WM_GCP_DEF_INTERVAL 3600
 
 typedef struct wm_gcp {
     int enabled;
     int pull_on_start;
     int logging;
     int max_messages;
-    int scan_day;
-    int scan_wday;
     time_t next_time;
-    char* scan_time;
     char *project_id;
     char *subscription_name;
     char *credentials_file;
-    unsigned int interval;
+    sched_scan_config scan_config;
 } wm_gcp;
 
 extern const wm_context WM_GCP_CONTEXT;   // Context

@@ -9,6 +9,7 @@
 """This module processes events from a Google Cloud subscription."""
 
 import tools
+import os
 from integration import WazuhGCloudSubscriber
 
 try:
@@ -39,3 +40,5 @@ except Exception as e:
 
 else:
     logger.info(f'Received and acknowledged {num_processed_messages} messages')  # noqa: E501
+
+os._exit(0)

@@ -258,5 +258,6 @@ extern const char *__local_name;
 #include "cluster_utils.h"
 #include "auth_client.h"
 #include "os_utils.h"
+#include "schedule_scan.h"
 
 #endif /* SHARED_H */

@@ -23,7 +23,6 @@ typedef struct wm_command_t {
     char * tag;
     char * command;
     char * full_command;
-    unsigned long interval;
     char *md5_hash;
     char *sha1_hash;
     char *sha256_hash;
@@ -35,6 +34,7 @@ typedef struct wm_command_t {
     unsigned int agent_cfg:1;
     unsigned int skip_verification:1;
     int timeout;
+    sched_scan_config scan_config;
 } wm_command_t;
 
 extern const wm_context WM_COMMAND_CONTEXT;   // Context

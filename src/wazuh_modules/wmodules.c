@@ -20,6 +20,10 @@ int wm_max_eps;             // Maximum events per second sent by OpenScap and CI
 int wm_kill_timeout;        // Time for a process to quit before killing it
 int wm_debug_level;
 
+int FOREVER() {
+    return 1;
+}
+
 // Read XML configuration and internal options
 
 int wm_config() {
@@ -350,7 +354,7 @@ int wm_relative_path(const char * path) {
 
 
 // Get time in seconds to the specified hour in hh:mm
-int get_time_to_hour(const char * hour) {
+unsigned long int get_time_to_hour(const char * hour) {
 
     time_t curr_time;
     time_t target_time;
@@ -375,7 +379,7 @@ int get_time_to_hour(const char * hour) {
     target_time = mktime(&t_target);
     diff = difftime(target_time, curr_time);
 
-    if (diff < 0) {
+    if (diff <= 0) {
         diff += (24*60*60);
     }
 
@@ -384,12 +388,12 @@ int get_time_to_hour(const char * hour) {
 
     free(parts);
 
-    return (int)diff;
+    return (unsigned long int)diff;
 }
 
 
 // Get time to reach a particular day of the week and hour
-int get_time_to_day(int wday, const char * hour) {
+unsigned long int get_time_to_day(int wday, const char * hour) {
 
     time_t curr_time;
     time_t target_time;
@@ -417,7 +421,7 @@ int get_time_to_day(int wday, const char * hour) {
 
     if (wday == tm_result.tm_wday) {    // We are in the desired day
 
-        if (diff < 0) {
+        if (diff <= 0) {
             diff += (7*24*60*60);   // Seconds of a week
         }
 
@@ -436,10 +440,60 @@ int get_time_to_day(int wday, const char * hour) {
         }
     }
 
+    free(parts[0]);
+    free(parts[1]);
     free(parts);
 
-    return (int)diff;
+    return (unsigned long int)diff;
 
+}
+
+unsigned long int get_time_to_month_day(int month_day, const char* hour, int num_of_months) {
+    assert(num_of_months > 0);
+
+    time_t curr_time;
+    time_t target_time;
+    double diff;
+    struct tm tm_result = { .tm_sec = 0 };
+
+    // Get current time
+    curr_time = time(NULL);
+    localtime_r(&curr_time, &tm_result);
+
+    struct tm t_target = tm_result;
+    // Get exact hour and minute to go to
+    char ** parts = OS_StrBreak(':', hour, 2);
+    // Look for the target day an hour
+    t_target.tm_mday = month_day;
+    t_target.tm_hour = atoi(parts[0]);
+    t_target.tm_min = atoi(parts[1]);
+    t_target.tm_sec = 0;
+
+    target_time = mktime(&t_target);
+    diff = difftime(target_time, curr_time);
+    if ( (tm_result.tm_mday < month_day) || ((tm_result.tm_mday == month_day) && diff > 0) ) {
+        num_of_months--;
+    }
+
+    if (num_of_months >= 12) {
+        t_target.tm_year += (num_of_months / 12);
+        num_of_months = (num_of_months % 12);
+    }
+
+    if(t_target.tm_mon + num_of_months > 11) {
+        // We should increment a year
+        t_target.tm_mon = (t_target.tm_mon + num_of_months) % 12;
+        t_target.tm_year++;
+    } else {
+        t_target.tm_mon+= num_of_months;
+    }
+    target_time = mktime(&t_target);
+    diff = difftime(target_time, curr_time);
+    free(parts[0]);
+    free(parts[1]);
+    free(parts);
+
+    return (unsigned long int) diff;
 }
 
 // Function to look for the correct day of the month to run a wodle
@@ -595,15 +649,6 @@ int wm_validate_command(const char *command, const char *digest, crypto_type cty
     }
 
     return match;
-}
-
-void wm_delay(unsigned int ms) {
-#ifdef WIN32
-    Sleep(ms);
-#else
-    struct timeval timeout = { ms / 1000, (ms % 1000) * 1000};
-    select(0, NULL, NULL, NULL, &timeout);
-#endif
 }
 
 #ifdef __MACH__

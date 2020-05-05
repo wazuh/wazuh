@@ -15,12 +15,15 @@
 #include "os_crypto/sha256/sha256_op.h"
 #include "shared.h"
 
-static void* wm_gcp_main(const wm_gcp *gcp_config);                        // Module main function. It won't return
+#ifdef UNIT_TESTING
+/* Remove static qualifier when testing */
+#define static
+#endif
+
+static void* wm_gcp_main(wm_gcp *gcp_config);                        // Module main function. It won't return
 static void wm_gcp_run(const wm_gcp *data);                                // Running python script
 static void wm_gcp_destroy(wm_gcp *gcp_config);                      // Destroy data
 cJSON *wm_gcp_dump(const wm_gcp *gcp_config);                        // Read config
-static time_t wm_gcp_get_next_run_time(const wm_gcp *data);          // Calculate next fetch time
-
 
 /* Context definition */
 
@@ -31,12 +34,12 @@ const wm_context WM_GCP_CONTEXT = {
     (cJSON * (*)(const void *))wm_gcp_dump
 };
 
-static time_t time_start = 0; // Last fetch time
-
+#ifdef UNIT_TESTING
+// Replace pthread_exit for testing purposes
+#define pthread_exit(a) return a
+#endif
 // Module main function. It won't return
-void* wm_gcp_main(const wm_gcp *data) {
-    time_t time_sleep = 0;
-
+void* wm_gcp_main(wm_gcp *data) {
     // If module is disabled, exit
     if (data->enabled) {
         mtinfo(WM_GCP_LOGTAG, "Module started.");
@@ -46,79 +49,30 @@ void* wm_gcp_main(const wm_gcp *data) {
     }
 
     do {
-        time_sleep = wm_gcp_get_next_run_time(data);
+        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(data->scan_config), WM_GCP_LOGTAG, data->pull_on_start);
 
         if (time_sleep) {
-            mtdebug1(WM_GCP_LOGTAG, "Sleeping for %li seconds", time_sleep);
-            wm_delay(1000 * time_sleep);
+            const int next_scan_time = sched_get_next_scan_time(data->scan_config);
+            mtdebug2(WM_GCP_LOGTAG, "Sleeping until: %s", w_get_timestamp(next_scan_time));
+            w_sleep_until(next_scan_time);
         }
         mtdebug1(WM_GCP_LOGTAG, "Starting fetching of logs.");
-
-        // Get time and execute
-        time_start = time(NULL);
 
         wm_gcp_run(data);
 
         mtdebug1(WM_GCP_LOGTAG, "Fetching logs finished.");
-    } while(1);
+    } while (FOREVER());
 
     return NULL;
 }
 
-time_t wm_gcp_get_next_run_time(const wm_gcp *data){
-    if (data->pull_on_start && !time_start){
-        // If pull on start then initial waiting time is 0
-        return 0;
-    }
+#ifdef UNIT_TESTING
+/* Replace pthread_exit for testing purposes */
+#undef pthread_exit
+#define pthread_exit(a) return
 
-    if (data->scan_day) {
-        // Option 1: Day of the month
-        int status = -1;
-
-        while (status < 0) {
-            status = check_day_to_scan(data->scan_day, data->scan_time);
-            if (status == 0) {
-                // Correct day, sleep until scan_time and then run
-                return (time_t) get_time_to_hour(data->scan_time);
-            } else {
-                // Sleep until next day and re-evaluate
-                wm_delay(1000); // Sleep one second to avoid an infinite loop
-                const time_t sleep_until_tomorrow = get_time_to_hour("00:00");
-
-                mtdebug2(WM_GCP_LOGTAG, "Sleeping for %d seconds.", (int)sleep_until_tomorrow);
-                wm_delay(1000 * sleep_until_tomorrow);
-            }
-        }
-    } else if (data->scan_wday >= 0) {
-        // Option 2: Day of the week
-        return (time_t) get_time_to_day(data->scan_wday, data->scan_time);
-
-    } else if (data->scan_time) {
-        // Option 3: Time of the day [hh:mm]
-        return (time_t) get_time_to_hour(data->scan_time);
-    } else if (data->interval) {
-        // Option 4: Interval of time
-
-        if(!time_start){
-            // First time
-            return 0;
-        }
-        const time_t last_run_time = time(NULL) - time_start;
-
-        if ((time_t)data->interval >= last_run_time) {
-            return  (time_t)data->interval - last_run_time;
-        } else {
-            mtwarn(WM_GCP_LOGTAG, "Interval overtaken.");
-            return 0;
-        }
-    } else {
-        mtinfo(WM_GCP_LOGTAG, "Invalid Scheduling option. Exiting.");
-        pthread_exit(NULL);
-
-    }
-    return 0;
-}
-
+__attribute__((weak))
+#endif
 void wm_gcp_run(const wm_gcp *data) {
     int status;
     char *output = NULL;
@@ -201,8 +155,6 @@ void wm_gcp_run(const wm_gcp *data) {
             }
         }
         mtdebug1(WM_GCP_LOGTAG, "OUTPUT: %s", output);
-    } else {
-        mtdebug2(WM_GCP_LOGTAG, "OUTPUT: %s", output);
     }
 
     char *line;
@@ -260,41 +212,14 @@ cJSON *wm_gcp_dump(const wm_gcp *data) {
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_wd = cJSON_CreateObject();
 
+    sched_scan_dump(&(data->scan_config), wm_wd);
+
     cJSON_AddStringToObject(wm_wd, "enabled", data->enabled ? "yes" : "no");
     cJSON_AddStringToObject(wm_wd, "pull_on_start", data->pull_on_start ? "yes" : "no");
-    if (data->interval) cJSON_AddNumberToObject(wm_wd, "interval", data->interval);
     if (data->max_messages) cJSON_AddNumberToObject(wm_wd, "max_messages", data->max_messages);
     if (data->project_id) cJSON_AddStringToObject(wm_wd, "project_id", data->project_id);
     if (data->subscription_name) cJSON_AddStringToObject(wm_wd, "subscription_name", data->subscription_name);
     if (data->credentials_file) cJSON_AddStringToObject(wm_wd, "credentials_file", data->credentials_file);
-    if (data->scan_day) cJSON_AddNumberToObject(wm_wd, "day", data->scan_day);
-
-    switch (data->scan_wday) {
-        case 0:
-            cJSON_AddStringToObject(wm_wd, "wday", "sunday");
-            break;
-        case 1:
-            cJSON_AddStringToObject(wm_wd, "wday", "monday");
-            break;
-        case 2:
-            cJSON_AddStringToObject(wm_wd, "wday", "tuesday");
-            break;
-        case 3:
-            cJSON_AddStringToObject(wm_wd, "wday", "wednesday");
-            break;
-        case 4:
-            cJSON_AddStringToObject(wm_wd, "wday", "thursday");
-            break;
-        case 5:
-            cJSON_AddStringToObject(wm_wd, "wday", "friday");
-            break;
-        case 6:
-            cJSON_AddStringToObject(wm_wd, "wday", "saturday");
-            break;
-        default:
-            break;
-    }
-    if (data->scan_time) cJSON_AddStringToObject(wm_wd, "time", data->scan_time);
 
     switch (data->logging) {
         case 0:
