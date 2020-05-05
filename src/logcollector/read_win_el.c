@@ -313,6 +313,7 @@ void readel(os_el *el, int printit)
 
     /* Event log is not open */
     if (!el->h) {
+        el->er = NULL;
         return;
     }
 
@@ -487,6 +488,7 @@ void readel(os_el *el, int printit)
 
     id = GetLastError();
     if (id == ERROR_HANDLE_EOF) {
+        el->er = NULL;
         return;
     }
 
@@ -532,6 +534,7 @@ void readel(os_el *el, int printit)
 
     else if (id == RPC_S_SERVER_UNAVAILABLE || id == RPC_S_UNKNOWN_IF) {
         /* Prevent message flooding when EventLog is stopped */
+        el->er = NULL;
         if (counter == 0) {
             mwarn("The EventLog service is down. Unable to collect logs from its channels.");
             counter = 1;
