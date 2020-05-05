@@ -1087,13 +1087,15 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
             mdebug1("Considering rule: '%s'", rule_ref->valuestring);
 
             os_strdup(rule_ref->valuestring, rule_cp);
-            char *rule_cp_ref = rule_cp;
+            char *rule_cp_ref = NULL;
 
         #ifdef WIN32
             char expanded_rule[2048] = {0};
             ExpandEnvironmentStrings(rule_cp, expanded_rule, 2048);
             rule_cp_ref = expanded_rule;
             mdebug2("Rule after variable expansion: '%s'", rule_cp_ref);
+        #else
+            rule_cp_ref = rule_cp;
         #endif
 
             int rule_is_negated = 0;

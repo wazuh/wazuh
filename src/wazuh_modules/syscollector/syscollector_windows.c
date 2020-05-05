@@ -864,7 +864,7 @@ void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const c
     DWORD i, retCode;
 
     // Get the class name and the value count
-    retCode = RegQueryInfoKey(
+    RegQueryInfoKey(
         hKey,                    // key handle
         achClass,                // buffer for class name
         &cchClassName,           // size of class string
@@ -1044,7 +1044,7 @@ void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char 
     DWORD i, retCode;
 
     // Get the class name and the value count
-    retCode = RegQueryInfoKey(
+    RegQueryInfoKey(
         hKey,                    // key handle
         achClass,                // buffer for class name
         &cchClassName,           // size of class string
