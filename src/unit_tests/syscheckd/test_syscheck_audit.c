@@ -17,8 +17,7 @@
 #include "syscheckd/syscheck.h"
 #include "external/procps/readproc.h"
 
-#if defined(TEST_SERVER) || defined(TEST_AGENT)
-extern volatile int audit_health_check_deletion;
+extern volatile int hc_thread_active;
 
 int test_mode = 0;
 
@@ -1868,11 +1867,7 @@ void test_audit_parse_rm_hc(void **state)
     expect_string(__wrap__mdebug2, msg, FIM_HEALTHCHECK_DELETE);
     expect_string(__wrap__mdebug2, formatted_msg, "(6253): Whodata health-check: Detected file deletion event (263)");
 
-    audit_health_check_deletion = 0;
-
     audit_parse(buffer);
-
-    assert_int_equal(audit_health_check_deletion, 1);
 }
 
 
@@ -2222,13 +2217,3 @@ int main(void) {
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
-
-#elif defined(TEST_WINAGENT)
-
-int main(void) {
-    const struct CMUnitTest tests[] = {
-    };
-    return cmocka_run_group_tests(tests, NULL, NULL);
-}
-
-#endif
