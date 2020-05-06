@@ -639,7 +639,9 @@ cleanup:
     free(filtered_query);
 
     if (status == 0) {
-        free(channel->bookmark_name);
+        if (channel) {
+            os_free(channel->bookmark_name);
+        }
         free(channel);
 
         if (result != NULL) {
