@@ -298,7 +298,7 @@ void readel(os_el *el, int printit)
     char el_domain[OS_FLSIZE + 1];
     char el_string[OS_MAXSTR + 1];
     char final_msg[OS_MAXSTR + 1];
-    LPSTR el_sstring[OS_FLSIZE + 1];
+    LPSTR el_sstring[OS_FLSIZE + 1] = {0};
 
     /* er must point to the mbuffer */
     el->er = (EVENTLOGRECORD *) &mbuffer;
@@ -308,8 +308,6 @@ void readel(os_el *el, int printit)
     el_user[OS_FLSIZE] = '\0';
     el_domain[OS_FLSIZE] = '\0';
     final_msg[OS_MAXSTR] = '\0';
-    el_sstring[0] = NULL;
-    el_sstring[OS_FLSIZE] = NULL;
 
     /* Event log is not open */
     if (!el->h) {
