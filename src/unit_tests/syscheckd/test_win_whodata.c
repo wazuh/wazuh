@@ -7389,7 +7389,7 @@ void test_set_policies_unable_to_open_new_file(void **state) {
     errno = EACCES;
 
     expect_string(__wrap__merror, formatted_msg,
-        "(6660): 'tmp\\new-policies' could not be removed: 'Permission denied' (13).");
+        "(6661): 'tmp\\new-policies' could not be opened: 'Permission denied' (13).");
 
     expect_value(__wrap_fclose, _File, (FILE*)1234);
     will_return(__wrap_fclose, 0);

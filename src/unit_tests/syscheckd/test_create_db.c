@@ -2801,7 +2801,7 @@ static void test_fim_whodata_event_file_missing(void **state) {
     // Inside fim_process_missing_entry
         {
             expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-            expect_string(__wrap_fim_db_get_path, file_path, paths[i]);
+            expect_string(__wrap_fim_db_get_path, file_path, "./test/test.file");
             will_return(__wrap_fim_db_get_path, NULL);
 
             expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
