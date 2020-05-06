@@ -208,6 +208,13 @@ int __wrap_audit_add_rule()
     return mock();
 }
 
+int __wrap_audit_delete_rule(const char *path, const char *key) {
+    check_expected(path);
+    check_expected(key);
+
+    return mock();
+}
+
 int __wrap_W_Vector_insert_unique()
 {
     return mock();
@@ -269,6 +276,37 @@ char *__wrap_get_user(__attribute__((unused)) const char *path, int uid, __attri
 
 int __wrap_readlink(void **state) {
     return mock();
+}
+
+int __wrap_pthread_cond_init(pthread_cond_t *__cond, const pthread_condattr_t *__cond_attr) {
+    function_called();
+    return 0;
+}
+
+int __wrap_pthread_cond_wait (pthread_cond_t *__cond, pthread_mutex_t *__mutex) {
+    function_called();
+
+    hc_thread_active = 1;
+
+    return 0;
+}
+
+int __wrap_pthread_mutex_lock (pthread_mutex_t *__mutex) {
+    function_called();
+    return 0;
+}
+
+int __wrap_pthread_mutex_unlock (pthread_mutex_t *__mutex) {
+    function_called();
+    return 0;
+}
+
+int __wrap_CreateThread(void * (*function_pointer)(void *), void *data) {
+    return 1;
+}
+
+unsigned int __wrap_sleep(unsigned int seconds) {
+    return 0;
 }
 
 /* setup/teardown */
@@ -863,7 +901,9 @@ void test_add_audit_rules_syscheck_not_added(void **state)
 
     // Add rule
     will_return(__wrap_audit_add_rule, 1);
+    expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_W_Vector_insert_unique, 1);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6322): Reloaded audit rule for monitoring directory: '/var/test'");
 
@@ -903,7 +943,9 @@ void test_add_audit_rules_syscheck_not_added_new(void **state)
 
     // Add rule
     will_return(__wrap_audit_add_rule, 1);
+    expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_W_Vector_insert_unique, 0);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6270): Added audit rule for monitoring directory: '/var/test'");
 
@@ -1018,7 +1060,9 @@ void test_add_audit_rules_syscheck_added(void **state)
     will_return(__wrap_search_audit_rule, 1);
 
     // Add rule
+    expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_W_Vector_insert_unique, 0);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6271): Audit rule for monitoring directory '/var/test' already added.");
 
@@ -1586,7 +1630,9 @@ void test_audit_parse_delete(void **state)
     will_return(__wrap_search_audit_rule, 1);
 
     // Add rule
+    expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_W_Vector_insert_unique, 1);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
 
