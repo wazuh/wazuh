@@ -208,6 +208,28 @@ const char* FindField(const Eventinfo *lf, const char *name);
 /* Parse rule comment with dynamic fields */
 char* ParseRuleComment(Eventinfo *lf);
 
+/**
+ * @brief Function to check for repetitions from same fields 
+ * 
+ * @param rule has rule information
+ * @param lf has event information
+ * @param my_lf has last event information
+ * @return true if lf and my_lf are the same
+ * @return false if lf and my_lf are different
+ */
+bool same_loop(RuleInfo *rule, Eventinfo *lf, Eventinfo *my_lf);
+
+/**
+ * @brief Function to check for repetitions from different fields 
+ * 
+ * @param rule has rule information
+ * @param lf has event information
+ * @param my_lf has last event information
+ * @return true if lf and my_lf are different
+ * @return false if lf and my_lf are the same
+ */
+bool different_loop(RuleInfo *rule, Eventinfo *lf, Eventinfo *my_lf);
+
 /* Pointers to the event decoders */
 void *SrcUser_FP(Eventinfo *lf, char *field, const char *order);
 void *DstUser_FP(Eventinfo *lf, char *field, const char *order);
