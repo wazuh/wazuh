@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -1812,9 +1812,9 @@ void * w_output_thread(void * args){
 
         if (strcmp(message->log_target->log_socket->name, "agent") == 0) {
             // When dealing with this type of messages we don't want any of them to be lost
-            // Continuously attempt to reconnect to the queue and send the message. 
+            // Continuously attempt to reconnect to the queue and send the message.
 
-            if(SendMSG(logr_queue, message->buffer, message->file, message->queue_mq) != 0) {
+            if(SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) != 0) {
                 #ifdef CLIENT
                 merror("Unable to send message to '%s' (ossec-agentd might be down). Attempting to reconnect.", DEFAULTQPATH);
                 #else
@@ -1836,14 +1836,12 @@ void * w_output_thread(void * args){
                         sleep_time += 5;
                 }
             }
-            
+
         } else {
-            int messageSent = 0;
             const int MAX_RETRIES = 3;
             int retries = 0;
-            while (messageSent <= 0 && retries < MAX_RETRIES) {
-                messageSent = SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target);
-                if (messageSent < 0) {
+            while (retries < MAX_RETRIES) {
+                if (SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) < 0) {
                     merror(QUEUE_SEND);
 
                     sleep(sleep_time);
@@ -1851,6 +1849,8 @@ void * w_output_thread(void * args){
                     // If we failed, we will wait longer before reattempting to connect
                     sleep_time += 5;
                     retries++;
+                } else {
+                    break;
                 }
             }
             if (retries == MAX_RETRIES) {

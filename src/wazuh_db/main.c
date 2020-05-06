@@ -1,6 +1,6 @@
 /*
  * Wazuh Database Daemon
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * January 03, 2018.
  *
  * This program is free software; you can redistribute it
@@ -128,7 +128,7 @@ int main(int argc, char ** argv) {
         gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
 
         if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-            merror_exit(USER_ERROR, USER, GROUPGLOBAL);
+            merror_exit(USER_ERROR, USER, GROUPGLOBAL, strerror(errno), errno);
         }
 
         if (Privsep_SetGroup(gid) < 0) {

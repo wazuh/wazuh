@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -13,6 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "../headers/file_op.h"
 
@@ -40,9 +41,10 @@ int __wrap_File_DateofChange(const char *file)
     return 1;
 }
 
-int __wrap_stat()
+int __wrap_stat(const char * path, struct stat * buf)
 {
-    return 1;
+    memset(buf, 0, sizeof(struct stat));
+    return 0;
 }
 
 int __wrap_unlink(const char *file)
@@ -105,7 +107,6 @@ void test_CreatePID_success(void **state)
 {
     (void) state;
     int ret;
-    size_t len;
     FILE* fp = __real_fopen("./test_file.tmp", "a");
     char* content = NULL;
 

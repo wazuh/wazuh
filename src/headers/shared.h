@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -259,5 +259,6 @@ extern const char *__local_name;
 #include "auth_client.h"
 #include "os_utils.h"
 #include "schedule_scan.h"
+#include "bzip2_op.h"
 
 #endif /* SHARED_H */

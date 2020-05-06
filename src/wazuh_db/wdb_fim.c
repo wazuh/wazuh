@@ -1,6 +1,6 @@
 /*
  * Wazuh SQLite integration
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * June 06, 2016.
  *
  * This program is free software; you can redistribute it
@@ -535,7 +535,7 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
             } else if (strcmp(element->string, "mtime") == 0) {
                 sqlite3_bind_int(stmt, 12, element->valueint);
             } else if (strcmp(element->string, "inode") == 0) {
-                sqlite3_bind_int(stmt, 13, element->valueint);
+                sqlite3_bind_int64(stmt, 13, element->valuedouble);
             } else {
                 merror("DB(%s) Invalid attribute name: %s", wdb->agent_id, element->string);
                 return -1;

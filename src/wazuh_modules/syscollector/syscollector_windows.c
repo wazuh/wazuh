@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for System inventory for Windows
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * Aug, 2017.
  *
  * This program is free software; you can redistribute it
@@ -931,8 +931,6 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const cha
     FILETIME ftLastWriteTime;      // last write time
     long unsigned int i, result;
 
-    // Remove unused variables
-
     result = RegQueryInfoKey(
         hKey,                    // key handle
         achClass,                // buffer for class name
@@ -947,7 +945,8 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const cha
         &cbSecurityDescriptor,   // security descriptor
         &ftLastWriteTime);       // last write time
 
-    if (!cSubKeys) {
+    // Exit if the number of subkeys is 0 or if not success
+    if (cSubKeys == 0 || result != ERROR_SUCCESS) {
         return;
     }
 
@@ -1018,6 +1017,9 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const cha
             }
         } else {
             mterror(WM_SYS_LOGTAG, "Error reading key '%s'. Error code: %lu", achKey, result);
+            // Avoid infinite loops
+            break;
+
         }
     }
 }
