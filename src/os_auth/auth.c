@@ -319,5 +319,3 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
    
     return OS_SUCCESS;
 }
-
-
