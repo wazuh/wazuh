@@ -284,7 +284,8 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
     int max_multigroups = 0;    
     char *save_ptr = NULL;
     char *tmp_groups = NULL;
-    const char delim[] = {MULTIGROUP_SEPARATOR,'\0'};    
+    const char delim[] = {MULTIGROUP_SEPARATOR,'\0'};  
+    w_err_t ret = OS_SUCCESS;
   
     os_strdup(groups, tmp_groups);
     char *group = strtok_r(tmp_groups, delim, &save_ptr);    
@@ -299,7 +300,8 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
             if (response) {
                 snprintf(response, 2048, "ERROR: Maximum multigroup reached: Limit is %d\n\n", MAX_GROUPS_PER_MULTIGROUP); 
             }             
-            return OS_INVALID;
+            ret = OS_INVALID;
+            break;
         }       
 
         snprintf(dir, PATH_MAX + 1,isChroot() ? SHAREDCFG_DIR"/%s" : DEFAULTDIR SHAREDCFG_DIR"/%s", group);
@@ -309,13 +311,14 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
             if (response){
                 snprintf(response, 2048, "ERROR: Invalid group: %s\n\n", group);
             }             
-            return OS_INVALID;
+            ret = OS_INVALID;
+            break;
         }
 
         group = strtok_r(NULL, delim, &save_ptr);
         max_multigroups++;
         closedir(dp);
     }       
-   
-    return OS_SUCCESS;
+    os_free(tmp_groups);
+    return ret;
 }
