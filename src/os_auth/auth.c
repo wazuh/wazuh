@@ -16,9 +16,6 @@
 #define static
 #endif
 
-/*authd working as worker on cluster*/
-bool worker_node;
-
 keystore keys;
 char shost[512];
 authd_config_t config;

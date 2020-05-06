@@ -372,10 +372,10 @@ int main(int argc, char **argv)
         merror("Invalid option at cluster configuration");
         exit(0);
     case 1:
-        worker_node = TRUE;        
+        config.worker_node = TRUE;        
         break;
     case 0:
-        worker_node = FALSE;
+        config.worker_node = FALSE;
         break;
     }
 
@@ -511,7 +511,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    if (!worker_node) {
+    if (!config.worker_node) {
         status = pthread_create(&thread_writer, NULL, run_writer, NULL);
 
         if (status != 0) {
@@ -590,7 +590,7 @@ int main(int argc, char **argv)
 
     
     pthread_join(thread_dispatcher, NULL);
-    if (!worker_node) {
+    if (!config.worker_node) {
         pthread_join(thread_writer, NULL);
         pthread_join(thread_local_server, NULL);
     }
@@ -614,7 +614,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     /* Initialize some variables */
     memset(ip, '\0', IPSIZE + 1);
     
-    if (!worker_node) {
+    if (!config.worker_node) {
         OS_PassEmptyKeyfile();
         OS_ReadKeys(&keys, 0, !config.flags.clear_removed, 1);
     }
@@ -681,7 +681,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         char* new_id = NULL;
         char* new_key = NULL;
         if(OS_SUCCESS == w_auth_parse_data(buf, response, authpass, ip, &agentname, &centralized_group)){
-            if (worker_node) {                
+            if (config.worker_node) {                
                 if( 0 == w_request_agent_add_clustered(agentname, ip, centralized_group, &new_id, &new_key, config.flags.force_insert?config.force_time:-1, TRUE, NULL) ) {
                     enrollment_ok = TRUE;
                 }     
@@ -706,7 +706,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             minfo("Agent key generated for '%s' (requested by %s)", agentname, ip);
             ret = SSL_write(ssl, response, strlen(response));
 
-            if (worker_node) {
+            if (config.worker_node) {
                 if (ret < 0) {
                     merror("SSL write error (%d)", ret);
                     

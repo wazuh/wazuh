@@ -103,12 +103,44 @@ size_t authcom_getconfig(const char * section, char ** output);
 // Block signals
 void authd_sigblock();
 
-//Validate Groups
+/**
+ * @brief Validate if groups are valid for new enrollment
+ * @param groups Coma separated string with new enrollment groups
+ * @param response 2048 length buffer where the error response will be copied. NULL if no response is required
+ * */
 w_err_t w_auth_validate_groups(const char *groups, char *response);
 
-//Parse complete data from key request
+/**
+ * @brief Parse a raw buffer from agent request into enrollment data. 
+ * @param buf Raw buffer to be parsed
+ * @param response 2048 length buffer where the error response will be copied
+ * @param authpass Authentication password expected on the buffer, NULL if there isn't password
+ * @param ip ip direction of the request. Can be override with IP parsed from buffer
+ * @param agentname pointer where parsed agent name will be allocated
+ * @param groups pointer where parsed groups will be allocated
+ * */
 w_err_t w_auth_parse_data(const char* buf, char *response, const char *authpass, char *ip, char **agentname, char **groups);
+
+/**
+ * @brief Validates if new enrollment is possible with provided data
+ * With force configuration disabled, if enrollment data is already registered, validation will fail.
+ * With force configuration enabled, duplicated entry will be removed.
+ * @param response 2048 length buffer where the error response will be copied
+ * @param ip New enrollment ip direction
+ * @param agentname New enrollment agent name
+ * @param groups New enrollment groups
+ * */
 w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentname, const char *groups);
+
+/**
+ * @brief Adds new agent with provided enrollment data
+ * @param response 2048 length buffer where the error response will be copied
+ * @param ip New enrollment ip direction
+ * @param agentname New enrollment agent name
+ * @param groups New enrollment groups
+ * @param id pointer where new Agent ID will be allocated 
+ * @param key pointer where new Agent key will be allocated 
+ * */
 w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, const char *groups, char **id, char **key);
 
 
@@ -119,6 +151,5 @@ extern volatile int running;
 extern pthread_mutex_t mutex_keys;
 extern pthread_cond_t cond_pending;
 extern authd_config_t config;
-extern bool worker_node;
 
 #endif /* AUTHD_H */
