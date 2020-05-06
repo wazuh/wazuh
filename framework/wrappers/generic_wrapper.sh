@@ -35,4 +35,4 @@ case ${DIR_NAME} in
 esac
 
 
-${WAZUH_PATH}/${WPYTHON_BIN} ${PYTHON_SCRIPT} $@
+${WAZUH_PATH}/${WPYTHON_BIN} ${PYTHON_SCRIPT} "$@"

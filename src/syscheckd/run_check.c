@@ -71,6 +71,9 @@ STATIC void fim_link_reload_broken_link(char *path, int index);
 STATIC void fim_delete_realtime_watches(int pos);
 #endif
 
+// Global variables
+static int _base_line = 0;
+
 // Send a message
 STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
     if (SendMSG(syscheck.queue, msg, location, mq) < 0) {
@@ -341,6 +344,12 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
             }
         }
 #endif
+
+        if (_base_line == 0) {
+            _base_line = 1;
+            mdebug2(FIM_NUM_WATCHES, count_watches());
+        }
+
 #ifdef WIN_WHODATA
         if (syscheck.realtime_change) {
             set_whodata_mode_changes();
@@ -413,36 +422,70 @@ void set_priority_windows_thread() {
 
 
 int fim_whodata_initialize() {
-#if defined INOTIFY_ENABLED || defined WIN32
+    int retval = 0;
+
+#if defined ENABLE_AUDIT || defined WIN32
 
 #ifdef WIN32
     set_priority_windows_thread();
 #endif
 
     for (int i = 0; syscheck.dir[i]; i++) {
+
         if (syscheck.opts[i] & WHODATA_ACTIVE) {
+
+#ifdef WIN_WHODATA // Whodata on Windows
+            if(realtime_adddir(syscheck.dir[i], i + 1, (syscheck.opts[i] & CHECK_FOLLOW) ? 1 : 0) == -2) {
+                syscheck.wdata.dirs_status[i].status &= ~WD_CHECK_WHODATA;
+                syscheck.opts[i] &= ~WHODATA_ACTIVE;
+                syscheck.wdata.dirs_status[i].status |= WD_CHECK_REALTIME;
+                syscheck.realtime_change = 1;
+            }
+#else // Whodata on Linux
             realtime_adddir(syscheck.dir[i], i + 1, (syscheck.opts[i] & CHECK_FOLLOW) ? 1 : 0);
+#endif
+
         }
     }
 
 #ifdef WIN_WHODATA
     HANDLE t_hdle;
     long unsigned int t_id;
-    if (syscheck.wdata.whodata_setup && !run_whodata_scan()) {
+
+    /* If the initialization of the Whodata engine fails,
+    Wazuh must monitor files/directories in Realtime mode. */
+    if (!run_whodata_scan()) {
         if (t_hdle = CreateThread(NULL, 0, state_checker, NULL, 0, &t_id), !t_hdle) {
             merror(FIM_ERROR_CHECK_THREAD);
-            return -1;
+            retval = -1;
         }
+    } else {
+        merror(FIM_ERROR_WHODATA_INIT);
+
+        // In case SACLs and policies have been set, restore them.
+        audit_restore();
+
+        // Add proper flags for the realtime thread monitors the directories/files.
+        for (int i = 0; syscheck.dir[i]; i++) {
+            syscheck.wdata.dirs_status[i].status &= ~WD_CHECK_WHODATA;
+            syscheck.opts[i] &= ~WHODATA_ACTIVE;
+            syscheck.wdata.dirs_status[i].status |= WD_CHECK_REALTIME;
+            syscheck.realtime_change = 1;
+        }
+
+        retval = -1;
     }
+
 #elif ENABLE_AUDIT
     audit_set_db_consistency();
+
 #endif
 
 #else
     mwarn(FIM_WARN_WHODATA_UNSUPPORTED);
 #endif
 
-    return 0;
+    return retval;
 }
 
 

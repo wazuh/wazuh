@@ -482,6 +482,7 @@
 #define FIM_DB_ERROR_CALC_CHECKSUM                  "(6707): Failed to calculate database checksum."
 #define FIM_DB_ERROR_RM_RANGE                       "(6708): Failed to delete a range of paths between '%s' and '%s'"
 #define FIM_DB_ERROR_RM_NOT_SCANNED                 "(6709): Failed to delete from db all unscanned files."
+#define FIM_ERROR_WHODATA_INIT                      "(6710): Failed to start the Whodata engine. Directories/files will be monitored in Realtime mode"
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."

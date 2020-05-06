@@ -22,7 +22,7 @@
 void add_json_attrs(const char *attrs_str, cJSON *file_diff, char after);
 
 /* Convert Eventinfo to json */
-char* Eventinfo_to_jsonstr(const Eventinfo* lf)
+char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
 {
     cJSON* root;
     cJSON* rule = NULL;
@@ -157,7 +157,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     if(lf->dstuser) {
         cJSON_AddStringToObject(data, "dstuser", lf->dstuser);
     }
-    if(lf->full_log && !(lf->generated_rule && lf->generated_rule->alert_opts & NO_FULL_LOG)) {
+    if(lf->full_log && (force_full_log || !(lf->generated_rule && lf->generated_rule->alert_opts & NO_FULL_LOG))) {
         cJSON_AddStringToObject(root, "full_log", lf->full_log);
     }
     if (lf->agent_id) {

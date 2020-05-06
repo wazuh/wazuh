@@ -229,5 +229,7 @@
 #define FIM_DELETE_EVENT_PATH_NOCONF        "(6339): Delete event from path without configuration: '%s'"
 #define FIM_DELETE_DB_TRY                   "(6340): Failed to delete FIM database '%s'- %dº try."
 #define FIM_DELETE_DB                       "(6341): Failed to delete FIM database '%s'."
+#define FIM_INOTIFY_WATCH_DELETED           "(6344): Inotify watch deleted for '%s'"
+#define FIM_NUM_WATCHES                     "(6345): Folders monitored with real-time engine: %u"
 
 #endif /* DEBUG_MESSAGES_H */

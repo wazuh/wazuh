@@ -336,6 +336,21 @@ void realtime_process(void);
 void free_syscheck_dirtb_data(char *data);
 
 /**
+ * @brief Deletes subdirectories watches when a folder changes its name
+ * 
+ * @param dir Directory whose subdirectories need to delete their watches
+ */
+
+void delete_subdirectories_watches(char *dir);
+
+/**
+ * @brief Count inotify watches
+ * 
+ * @return Number of inotify watches
+ */
+unsigned int count_watches();
+
+/**
  * @brief Check if a file has changed
  *
  * @param filename The name of the file to be checked
@@ -517,6 +532,7 @@ extern pthread_mutex_t audit_mutex;
 extern pthread_cond_t audit_thread_started;
 extern pthread_cond_t audit_hc_started;
 extern pthread_cond_t audit_db_consistency;
+
 #elif WIN32
 /**
  * @brief Initializes the whodata scan mode
@@ -540,6 +556,11 @@ int whodata_audit_start();
  * @return 0 on success, 1 on error
  */
 int set_winsacl(const char *dir, int position);
+
+/**
+ * @brief In case SACLs and policies have been set, restore them
+ */
+void audit_restore();
 
 /**
  * @brief Thread that checks the status of the whodata configured folders
