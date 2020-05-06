@@ -186,7 +186,7 @@ void OS_LogOutput(Eventinfo *lf)
 
     /* FIM events */
 
-    if (lf->filename && lf->event_type != FIM_DELETED) {
+    if (lf->filename) {
         printf("Attributes:\n");
 
         if (lf->fields[FIM_SIZE].value && *lf->fields[FIM_SIZE].value) {
@@ -272,16 +272,20 @@ void OS_LogOutput(Eventinfo *lf)
         if (lf->fields[FIM_AUDIT_PCWD].value && strcmp(lf->fields[FIM_AUDIT_PCWD].value, "") != 0) {
             printf(" - (Audit) %s: %s\n", "Parent process cwd", lf->fields[FIM_AUDIT_PCWD].value);
         }
-    }
 
-    if (lf->filename && lf->sk_tag) {
-        if (strcmp(lf->sk_tag, "") != 0) {
-            printf("\nTags:\n");
-            char * tag;
-            tag = strtok_r(lf->sk_tag, ",", &saveptr);
-            while (tag != NULL) {
-                printf(" - %s\n", tag);
-                tag = strtok_r(NULL, ",", &saveptr);
+        if (lf->fields[FIM_DIFF].value) {
+            fprintf(_aflog, "\nWhat changed:\n%s\n", lf->fields[FIM_DIFF].value);
+        }
+
+        if (lf->sk_tag) {
+            if (strcmp(lf->sk_tag, "") != 0) {
+                printf("\nTags:\n");
+                char * tag;
+                tag = strtok_r(lf->sk_tag, ",", &saveptr);
+                while (tag != NULL) {
+                    printf(" - %s\n", tag);
+                    tag = strtok_r(NULL, ",", &saveptr);
+                }
             }
         }
     }
