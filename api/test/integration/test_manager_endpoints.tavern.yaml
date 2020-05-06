@@ -2,8 +2,7 @@
 test_name: GET /manager/status
 
 marks:
-  - usefixtures:
-    - manager_tests
+  - base_tests
 
 stages:
 

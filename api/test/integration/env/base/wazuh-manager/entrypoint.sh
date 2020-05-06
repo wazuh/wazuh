@@ -24,11 +24,6 @@ fi
 sleep 1
 /var/ossec/bin/ossec-control restart
 
-# API configuration
-if [ -f /configuration_files/api.yaml ]; then
-  cp -f /configuration_files/api.yaml /var/ossec/api/configuration/api.yaml
-fi
-
 # Manager configuration
 for py_file in /configuration_files/*.py; do
   /usr/bin/python3 $py_file
