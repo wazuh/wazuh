@@ -64,6 +64,15 @@ static cJSON* local_remove(const char *id, int purge);
 // Get agent data
 static cJSON* local_get(const char *id);
 
+// Generates an agent info json response
+static cJSON* local_create_agent_response(const char *id, const char *name, const char *ip, const char *key);
+
+// Generates an agent deleted response
+static cJSON* local_create_agent_delete_response(void);
+
+// Generates an error json response
+static cJSON* local_create_error_response(int code, const char *message);
+
 // Thread for internal server
 void* run_local_server(__attribute__((unused)) void *arg) {
     int sock;
@@ -277,9 +286,7 @@ char* local_dispatch(const char *input) {
 
 fail:
     merror("ERROR %d: %s.", ERRORS[ierror].code, ERRORS[ierror].message);
-    response = cJSON_CreateObject();
-    cJSON_AddNumberToObject(response, "error", ERRORS[ierror].code);
-    cJSON_AddStringToObject(response, "message", ERRORS[ierror].message);
+    response = local_create_error_response(ERRORS[ierror].code, ERRORS[ierror].message);
     output = cJSON_PrintUnformatted(response);
     cJSON_Delete(response);
     cJSON_Delete(request);
@@ -289,8 +296,7 @@ fail:
 cJSON* local_add(const char *id, const char *name, const char *ip, char *groups, const char *key, int force) {
     int index;
     char *id_exist;
-    cJSON *response;
-    cJSON *data;
+    cJSON *response = NULL;
     int ierror;
     double antiquity;
 
@@ -382,13 +388,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, char *groups,
     write_pending = 1;
     w_cond_signal(&cond_pending);
 
-    response = cJSON_CreateObject();
-    cJSON_AddNumberToObject(response, "error", 0);
-    cJSON_AddItemToObject(response, "data", data = cJSON_CreateObject());
-    cJSON_AddStringToObject(data, "id", keys.keyentries[index]->id);
-    cJSON_AddStringToObject(data, "name", name);
-    cJSON_AddStringToObject(data, "ip", ip);
-    cJSON_AddStringToObject(data, "key", keys.keyentries[index]->key);
+    response = local_create_agent_response(keys.keyentries[index]->id, name, ip, keys.keyentries[index]->key);
     w_mutex_unlock(&mutex_keys);
 
     minfo("Agent key generated for agent '%s' (requested locally)", name);
@@ -397,16 +397,14 @@ cJSON* local_add(const char *id, const char *name, const char *ip, char *groups,
 fail:
     w_mutex_unlock(&mutex_keys);
     merror("ERROR %d: %s.", ERRORS[ierror].code, ERRORS[ierror].message);
-    response = cJSON_CreateObject();
-    cJSON_AddNumberToObject(response, "error", ERRORS[ierror].code);
-    cJSON_AddStringToObject(response, "message", ERRORS[ierror].message);
+    response = local_create_error_response(ERRORS[ierror].code, ERRORS[ierror].message);
     return response;
 }
 
 // Remove an agent
 cJSON* local_remove(const char *id, int purge) {
     int index;
-    cJSON *response = cJSON_CreateObject();
+    cJSON *response = NULL;
 
     mdebug2("local_remove(id='%s', purge=%d)", id, purge);
 
@@ -414,8 +412,7 @@ cJSON* local_remove(const char *id, int purge) {
 
     if (index = OS_IsAllowedID(&keys, id), index < 0) {
         merror("ERROR %d: %s.", ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
-        cJSON_AddNumberToObject(response, "error", ERRORS[ENOAGENT].code);
-        cJSON_AddStringToObject(response, "message", ERRORS[ENOAGENT].message);
+        response = local_create_error_response(ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
     } else {
         minfo("Agent '%s' (%s) deleted (requested locally)", id, keys.keyentries[index]->name);
         /* Add pending key to write */
@@ -423,9 +420,7 @@ cJSON* local_remove(const char *id, int purge) {
         OS_DeleteKey(&keys, id, purge);
         write_pending = 1;
         w_cond_signal(&cond_pending);
-
-        cJSON_AddNumberToObject(response, "error", 0);
-        cJSON_AddStringToObject(response, "data", "Agent deleted successfully.");
+        response = local_create_agent_delete_response();
     }
 
     w_mutex_unlock(&mutex_keys);
@@ -435,25 +430,57 @@ cJSON* local_remove(const char *id, int purge) {
 // Get agent data
 cJSON* local_get(const char *id) {
     int index;
-    cJSON *data;
-    cJSON *response = cJSON_CreateObject();
+    cJSON *response = NULL;
 
     mdebug2("local_get(%s)", id);
     w_mutex_lock(&mutex_keys);
 
     if (index = OS_IsAllowedID(&keys, id), index < 0) {
         merror("ERROR %d: %s.", ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
-        cJSON_AddNumberToObject(response, "error", ERRORS[ENOAGENT].code);
-        cJSON_AddStringToObject(response, "message", ERRORS[ENOAGENT].message);
-    } else {
-        cJSON_AddNumberToObject(response, "error", 0);
-        cJSON_AddItemToObject(response, "data", data = cJSON_CreateObject());
-        cJSON_AddStringToObject(data, "id", id);
-        cJSON_AddStringToObject(data, "name", keys.keyentries[index]->name);
-        cJSON_AddStringToObject(data, "ip", keys.keyentries[index]->ip->ip);
-        cJSON_AddStringToObject(data, "key", keys.keyentries[index]->key);
+        response = local_create_error_response(ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
+    } 
+    else {
+        response = local_create_agent_response(id, keys.keyentries[index]->name, keys.keyentries[index]->ip->ip, keys.keyentries[index]->key);
     }
 
     w_mutex_unlock(&mutex_keys);
+    return response;
+}
+
+// Generates an agent info json response 
+cJSON* local_create_agent_response(const char *id, const char *name, const char *ip, const char *key) {
+    cJSON *response = NULL; 
+    cJSON *data = NULL;
+    
+    response = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response, "error", 0);
+    cJSON_AddItemToObject(response, "data", data = cJSON_CreateObject());
+    cJSON_AddStringToObject(data, "id", id);
+    cJSON_AddStringToObject(data, "name", name);
+    cJSON_AddStringToObject(data, "ip", ip);
+    cJSON_AddStringToObject(data, "key", key);
+
+    return response;
+}
+
+// Generates an agent deleted response
+static cJSON* local_create_agent_delete_response(void) {
+    cJSON *response = NULL; 
+
+    response = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response, "error", 0);
+    cJSON_AddStringToObject(response, "data", "Agent deleted successfully.");
+
+    return response;
+}
+
+// Generates an error json response
+static cJSON* local_create_error_response(int code, const char *message) {
+    cJSON *response = NULL; 
+
+    response = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response, "error", code);
+    cJSON_AddStringToObject(response, "message", message);
+
     return response;
 }
