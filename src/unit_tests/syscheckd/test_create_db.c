@@ -1936,7 +1936,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
         expect_string(__wrap_HasFilesystem, path, syscheck.dir[it]);
         it++;
     }
-    
+
     will_return_count(__wrap_HasFilesystem, 0, 7);
 
     expect_string(__wrap_realtime_adddir, dir, "/boot");
@@ -2154,6 +2154,7 @@ static void test_fim_scan_db_free(void **state) {
     expect_string(__wrap_realtime_adddir, dir, "/home");
     expect_string(__wrap_realtime_adddir, dir, "/media");
 
+    // check_deleted_files
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_not_scanned, NULL);
@@ -2162,6 +2163,7 @@ static void test_fim_scan_db_free(void **state) {
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_set_all_unscanned, 0);
 
+    // fim_scan
     will_return(__wrap_fim_db_get_count_entry_path, 1000);
 
     will_return_count(__wrap_lstat, 0, 6);
@@ -2602,8 +2604,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
     will_return_count(__wrap_HasFilesystem, 0, 11);
 
-    will_return(__wrap_fim_db_get_count_entry_path, 50000);
-
+    // check_deleted_files
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_not_scanned, NULL);
@@ -2613,8 +2614,6 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     will_return(__wrap_fim_db_set_all_unscanned, 0);
 
     // In fim_scan
-    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
-
     will_return(__wrap_fim_db_get_count_entry_path, 45000);
 
     expect_string(__wrap_HasFilesystem, path, expanded_dirs[0]);
@@ -2627,7 +2626,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
     will_return(__wrap_fim_db_get_count_entry_path, 50000);
 
-    expect_string(__wrap__minfo, formatted_msg, "(6041): Sending DB 100% full alert.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6227): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
@@ -2666,8 +2665,7 @@ static void test_fim_scan_db_full_double_scan_winreg_check(void **state) {
 
     will_return_count(__wrap_HasFilesystem, 0, 10);
 
-    will_return(__wrap_fim_db_get_count_entry_path, 50000);
-
+    // check_deleted_files
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_not_scanned, NULL);
@@ -2676,12 +2674,15 @@ static void test_fim_scan_db_full_double_scan_winreg_check(void **state) {
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_set_all_unscanned, 0);
 
+    // fim_scan
     will_return(__wrap_fim_db_get_count_entry_path, 45000);
 
     will_return_count(__wrap_stat, 0, 10);
+
     for(i = 0; i < 10; i++) {
         expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
     }
+
     will_return_count(__wrap_HasFilesystem, 0, 10);
 
     will_return_count(__wrap_fim_db_get_count_entry_path, 45000, 11);
@@ -2694,6 +2695,8 @@ static void test_fim_scan_db_full_double_scan_winreg_check(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":45000,\"alert_type\":\"80_percentage\"}");
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6345): Folders monitored with real-time engine: 0");
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
@@ -2733,8 +2736,7 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
 
     will_return_count(__wrap_HasFilesystem, 0, 10);
 
-    will_return_count(__wrap_fim_db_get_count_entry_path, 50000, 3);
-
+    // check_deleted_files
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_not_scanned, NULL);
@@ -2743,7 +2745,13 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_set_all_unscanned, 0);
 
+    // fim_scan
+    will_return(__wrap_fim_db_get_count_entry_path, 50000);
+
     expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
+    will_return(__wrap_fim_db_get_count_entry_path, 50000);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6345): Folders monitored with real-time engine: 0");
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
@@ -2781,12 +2789,33 @@ static void test_fim_scan_db_free(void **state) {
 
     will_return_count(__wrap_HasFilesystem, 0, 10);
 
-    will_return(__wrap_fim_db_get_count_entry_path, 1000);
-
+    // check_deleted_files
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_not_scanned, NULL);
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
+
+    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_set_all_unscanned, 0);
+
+    // fim_scan
+    will_return(__wrap_fim_db_get_count_entry_path, 1000);
+
+    // In fim_checker
+    will_return_count(__wrap_stat, 0, 10);
+
+    for(i = 0; i < 10; i++) {
+        if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024))
+            fail();
+
+        str_lowercase(expanded_dirs[i]);
+        expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
+    }
+
+    will_return_count(__wrap_HasFilesystem, 0, 10);
+
+    // fim_scan
+    will_return_count(__wrap_fim_db_get_count_entry_path, 1000, 11);
 
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_set_all_unscanned, 0);
@@ -2797,6 +2826,8 @@ static void test_fim_scan_db_free(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":1000,\"alert_type\":\"normal\"}");
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6345): Folders monitored with real-time engine: 0");
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
@@ -2843,6 +2874,8 @@ static void test_fim_scan_no_limit(void **state) {
     will_return(__wrap_fim_db_set_all_unscanned, 0);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6343): No limit set to maximum number of files to be monitored");
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6345): Folders monitored with real-time engine: 0");
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
@@ -3931,8 +3964,6 @@ int main(void) {
         #ifndef TEST_WINAGENT
         cmocka_unit_test_teardown(test_fim_scan_no_realtime, teardown_fim_scan_realtime),
         cmocka_unit_test_teardown(test_fim_scan_realtime_enabled, teardown_fim_scan_realtime),
-        #else
-        cmocka_unit_test(test_fim_scan),
         #endif
 
         /* fim_checker */
