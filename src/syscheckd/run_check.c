@@ -43,6 +43,7 @@
 #define GetLastError        wrap_GetLastError
 #undef  sleep
 #define sleep               wrap_Sleep
+#define CreateThread        wrap_run_check_CreateThread
 #endif
 #else
 #define STATIC static

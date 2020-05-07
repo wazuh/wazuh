@@ -34,6 +34,9 @@ list(APPEND analysisd_flags "-Wl,--wrap,_merror -Wl,--wrap,OS_ConnectUnixDomain 
 list(APPEND analysisd_names "test_mitre")
 list(APPEND analysisd_flags "-Wl,--wrap,wdbc_query_ex")
 
+LIST(APPEND analysisd_names "test_same_different_loop")
+LIST(APPEND analysisd_flags "-W")
+
 list(LENGTH analysisd_names count)
 math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})
