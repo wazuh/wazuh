@@ -217,16 +217,21 @@ void start_agent(int is_startup)
 
                 /* Send message again (after three attempts) */
                 if (attempts >= 3 || recv_b == OS_SOCKTERR) {
-                    int enroll_result = w_enrollment_request_key(agt->enrollment_cfg, agt->server[agt->rip_id].rip);
-                    if(enroll_result == 0) {
-                        // Successfull enroll, read keys
-                        OS_ReadKeys(&keys, 1, 0, 0);
-                        if (!connect_server(agt->rip_id)) {
-                            continue;
+                    if (attempts == 3 && agt->enrollment_cfg && agt->enrollment_cfg->enabled) { // Only one enrollment attemp
+                        int enroll_result = w_enrollment_request_key(agt->enrollment_cfg, agt->server[agt->rip_id].rip);
+                        if(enroll_result == 0) {
+                            // Wait for key update on agent side
+                            mdebug1("Sleeping %d seconds to allow manager key file updates", agt->enrollment_cfg->wait_time);
+                            sleep(agt->enrollment_cfg->wait_time);
+                            // Successfull enroll, read keys
+                            OS_ReadKeys(&keys, 1, 0, 0);
                         }
-                        // if enroll is successfull reconnect and re-send message
-                        send_msg(msg, -1);
                     }
+                    if (!connect_server(agt->rip_id)) {
+                        continue;
+                    }
+                    // if enroll is successfull reconnect and re-send message
+                    send_msg(msg, -1);
                 }
 
                 continue;

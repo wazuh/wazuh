@@ -96,6 +96,7 @@ w_enrollment_ctx * w_enrollment_init(w_enrollment_target *target, w_enrollment_c
     cfg->enabled = 1;
     cfg->ssl = NULL;
     cfg->allow_localhost = 1;
+    cfg->wait_time = 20;
     return cfg;
 }
 

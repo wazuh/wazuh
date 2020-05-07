@@ -193,6 +193,9 @@ int main(int argc, char **argv)
         
 
         if(could_register == 0) {
+            // Wait for key update on agent side
+            mdebug1("Sleeping %d seconds to allow manager key file updates", agt->enrollment_cfg->wait_time);
+            sleep(agt->enrollment_cfg->wait_time);
             // Readkeys again to add obtained key
             OS_ReadKeys(&keys, 1, 0, 0);
         } else {
