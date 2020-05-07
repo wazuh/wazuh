@@ -448,7 +448,7 @@ static void test_wdb_fim_insert_entry2_large_inode(void **state)
     int ret;
 
     wdb_t * wdb = *state;
-    wdb->agent_id = strdup("000");
+    wdb->id = strdup("000");
     cJSON* data = cJSON_Parse(VALID_ENTRY);
     cJSON *object = cJSON_CreateObject();
 
