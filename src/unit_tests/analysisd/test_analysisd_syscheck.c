@@ -231,7 +231,10 @@ static int setup_fim_data(void **state) {
                 "\"effective_uid\":\"effective_uid\","
                 "\"effective_name\":\"effective_name\","
                 "\"ppid\":12345,"
-                "\"process_id\":23456}}}";
+                "\"process_id\":23456,"
+                "\"cwd\":\"cwd\","
+                "\"parent_name\":\"parent_name\","
+                "\"parent_cwd\":\"parent_cwd\"}}}";
 
     if(data = calloc(1, sizeof(fim_data_t)), data == NULL)
         return -1;
@@ -311,6 +314,12 @@ static int setup_fim_data(void **state) {
     if(data->lf->decoder_info->fields[FIM_TAG] = strdup("tag"), data->lf->decoder_info->fields[FIM_TAG] == NULL)
         return -1;
     if(data->lf->decoder_info->fields[FIM_SYM_PATH] = strdup("sym_path"), data->lf->decoder_info->fields[FIM_SYM_PATH] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_AUDIT_CWD] = strdup("cwd"), data->lf->decoder_info->fields[FIM_AUDIT_CWD] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_PROC_PNAME] = strdup("parent_name"), data->lf->decoder_info->fields[FIM_PROC_PNAME] == NULL)
+        return -1;
+    if(data->lf->decoder_info->fields[FIM_AUDIT_PCWD] = strdup("parent_cwd"), data->lf->decoder_info->fields[FIM_AUDIT_PCWD] == NULL)
         return -1;
 
     *state = data;
@@ -397,7 +406,10 @@ static int setup_decode_fim_event(void **state) {
                 "\"effective_uid\":\"effective_uid\","
                 "\"effective_name\":\"effective_name\","
                 "\"ppid\":12345,"
-                "\"process_id\":23456}}}";
+                "\"process_id\":23456,"
+                "\"cwd\":\"cwd\","
+                "\"parent_name\":\"parent_name\","
+                "\"parent_cwd\":\"parent_cwd\"}}}";
 
     if(data = calloc(1, sizeof(Eventinfo)), data == NULL)
         return -1;
@@ -468,6 +480,12 @@ static int setup_decode_fim_event(void **state) {
     if(data->decoder_info->fields[FIM_TAG] = strdup("tag"), data->decoder_info->fields[FIM_TAG] == NULL)
         return -1;
     if(data->decoder_info->fields[FIM_SYM_PATH] = strdup("sym_path"), data->decoder_info->fields[FIM_SYM_PATH] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_AUDIT_CWD] = strdup("cwd"), data->decoder_info->fields[FIM_AUDIT_CWD] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_PROC_PNAME] = strdup("parent_name"), data->decoder_info->fields[FIM_PROC_PNAME] == NULL)
+        return -1;
+    if(data->decoder_info->fields[FIM_AUDIT_PCWD] = strdup("parent_cwd"), data->decoder_info->fields[FIM_AUDIT_PCWD] == NULL)
         return -1;
 
     if(data->log = strdup(plain_event), data->log == NULL)
