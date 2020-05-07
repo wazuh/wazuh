@@ -385,7 +385,7 @@ int main(int argc, char **argv)
     /* Check if the user/group given are valid */
     gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, "", group);
+        merror_exit(USER_ERROR, "", group, strerror(errno), errno);
     }
 
     if (!run_foreground) {
@@ -688,6 +688,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 else {
                    snprintf(response, 2048, "ERROR: Unsuccessful request to master");  
                 }           
+
             }
             else {
                 w_mutex_lock(&mutex_keys);                
