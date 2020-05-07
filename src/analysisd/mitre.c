@@ -32,7 +32,7 @@ int mitre_load(char * mode){
 
     /* Create hash table */
     mitre_table = OSHash_Create();
-    
+
     /* Get Mitre IDs from Mitre's database */
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
     os_calloc(OS_SIZE_6144, sizeof(char), response);

@@ -31,6 +31,17 @@ int __wrap_wdbc_query_ex(int *sock, const char *query, char *response, const int
     return mock();
 }
 
+void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
+}
+
 /* tests */
 
 void test_queryid_error_socket(void **state)
@@ -40,6 +51,8 @@ void test_queryid_error_socket(void **state)
 
     will_return(__wrap_wdbc_query_ex, -2);
     will_return(__wrap_wdbc_query_ex, -2);
+    expect_string(__wrap__merror, formatted_msg, "Unable to connect to socket '/queue/db/wdb'");
+    expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
     ret = mitre_load("test");
     assert_int_equal(-2, ret);
@@ -52,6 +65,8 @@ void test_queryid_no_response(void **state)
 
     will_return(__wrap_wdbc_query_ex, -1);
     will_return(__wrap_wdbc_query_ex, -1);
+    expect_string(__wrap__merror, formatted_msg, "No response or bad response from wazuh-db: ''");
+    expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
     ret = mitre_load("test");
     assert_int_equal(-1, ret);
@@ -67,6 +82,9 @@ void test_queryid_bad_response(void **state)
     will_return(__wrap_wdbc_query_ex, response_ids);
     will_return(__wrap_wdbc_query_ex, -1);
 
+    expect_string(__wrap__merror, formatted_msg, "No response or bad response from wazuh-db: 'Bad response'");
+    expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
+
     ret = mitre_load("test");
     assert_int_equal(-1, ret);
 }
@@ -80,6 +98,9 @@ void test_queryid_error_parse(void **state)
     will_return(__wrap_wdbc_query_ex, 0);    
     will_return(__wrap_wdbc_query_ex, response_ids);
     will_return(__wrap_wdbc_query_ex, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "Response from the Mitre database cannot be parsed: ' '");
+    expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
     ret = mitre_load("test");
     assert_int_equal(-1, ret);
@@ -95,6 +116,9 @@ void test_queryid_empty_array(void **state)
     will_return(__wrap_wdbc_query_ex, response_ids);
     will_return(__wrap_wdbc_query_ex, 0);
 
+    expect_string(__wrap__merror, formatted_msg, "Response from the Mitre database has 0 elements.");
+    expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
+
     ret = mitre_load("test");
     assert_int_equal(-1, ret);
 }
@@ -108,6 +132,9 @@ void test_queryid_error_parse_ids(void **state)
     will_return(__wrap_wdbc_query_ex, 0);    
     will_return(__wrap_wdbc_query_ex, response_ids);
     will_return(__wrap_wdbc_query_ex, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "It was not possible to get Mitre techniques information.");
+    expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
     ret = mitre_load("test");
     assert_int_equal(-1, ret);
@@ -129,6 +156,9 @@ void test_querytactics_error_socket(void **state)
     will_return(__wrap_wdbc_query_ex, -2);
     will_return(__wrap_wdbc_query_ex, -2);
 
+    expect_string(__wrap__merror, formatted_msg, "Unable to connect to socket '/queue/db/wdb'");
+    expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
+
     ret = mitre_load("test");
     assert_int_equal(-2, ret);
 }
@@ -147,6 +177,9 @@ void test_querytactics_no_response(void **state)
     /* Mitre's tactics query */
     will_return(__wrap_wdbc_query_ex, -1);
     will_return(__wrap_wdbc_query_ex, -1);
+
+    expect_string(__wrap__merror, formatted_msg, "No response or bad response from wazuh-db: 'ok [{\"id\":\"T1001\"},{\"id\":\"T1002\"}]'");
+    expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
     ret = mitre_load("test");
     assert_int_equal(-1, ret);
@@ -169,6 +202,9 @@ void test_querytactics_bad_response(void **state)
     will_return(__wrap_wdbc_query_ex, response_tactics);
     will_return(__wrap_wdbc_query_ex, -1);
 
+    expect_string(__wrap__merror, formatted_msg, "No response or bad response from wazuh-db: 'Bad response'");
+    expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
+
     ret = mitre_load("test");
     assert_int_equal(-1, ret);
 }
@@ -189,6 +225,9 @@ void test_querytactics_error_parse(void **state)
     will_return(__wrap_wdbc_query_ex, 0);
     will_return(__wrap_wdbc_query_ex, response_tactics);
     will_return(__wrap_wdbc_query_ex, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "It was not possible to get MITRE tactics information.");
+    expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
     ret = mitre_load("test");
     assert_int_equal(-1, ret);
@@ -211,6 +250,9 @@ void test_querytactics_empty_array(void **state)
     will_return(__wrap_wdbc_query_ex, response_tactics);
     will_return(__wrap_wdbc_query_ex, 0);
 
+    expect_string(__wrap__merror, formatted_msg, "Response from the Mitre database has 0 elements.");
+    expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
+
     ret = mitre_load("test");
     assert_int_equal(-1, ret);
 }
@@ -231,6 +273,9 @@ void test_querytactics_error_parse_tactics(void **state)
     will_return(__wrap_wdbc_query_ex, 0);
     will_return(__wrap_wdbc_query_ex, response_tactics);
     will_return(__wrap_wdbc_query_ex, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "It was not possible to get MITRE tactics information.");
+    expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
     ret = mitre_load("test");
     assert_int_equal(-1, ret);

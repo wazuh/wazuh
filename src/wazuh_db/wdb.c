@@ -150,7 +150,6 @@ wdb_t * wdb_open_mitre() {
     char path[PATH_MAX + 1];
     sqlite3 *db;
     wdb_t * wdb = NULL;
-    wdb_t * new_wdb = NULL;
 
     // Find BD in pool
 
