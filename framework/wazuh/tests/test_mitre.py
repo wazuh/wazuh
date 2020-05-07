@@ -259,6 +259,91 @@ def test_get_attack_filter_multiple(mock_wdb, phase_name, platform_name):
                                          item['platform_name']]
 
 
+@pytest.mark.parametrize('id', [
+    None,
+    'T1015',
+    'T1176',
+    'T1087',
+    'T1015',
+])
+@pytest.mark.parametrize('select', [
+    {'fields': ['id']},
+    {'fields': ['json']},
+    {'fields': ['phase_name']},
+    {'fields': ['platform_name']},
+    {'fields': ['json', 'phase_name']},
+    {'fields': ['json', 'platform_name']},
+    {'fields': ['phase_name', 'platform_name']},
+    {'fields': ['json', 'phase_name', 'platform_name']},
+    {'fields': ['id', 'json', 'phase_name', 'platform_name']},
+])
+@patch.object(WazuhDBQueryMitre, '_final_query', fake_final_query)
+@patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
+        sql_schema_file='schema_mitre_test.sql'))
+def test_get_attack_filter_select(mock_wdb, id, select):
+    """Test if data are retrieved properly from Mitre database."""
+    result = get_attack(id=id, select=select)
+
+    # check result lenght
+    assert len(result['items']) > 0
+
+    # Verify only selected fields (and id) are returned.
+    for item in result['items']:
+        if id:
+            assert id == item['id'], 'Expected id is not equal to the returned one.'
+        for item_key in item.keys():
+            assert item_key in select['fields'] if item_key != 'id' else True, f'"{item_key}" was not in select ' \
+                                                                               'param, but it was returned'
+
+
+@pytest.mark.parametrize('limit', [
+    5,
+    20,
+    50
+])
+@pytest.mark.parametrize('select', [
+    None,
+    {'fields': ['json']},
+    {'fields': ['phase_name']},
+    {'fields': ['phase_name', 'platform_name']},
+    {'fields': ['json', 'phase_name', 'platform_name']},
+])
+@patch.object(WazuhDBQueryMitre, '_final_query', fake_final_query)
+@patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
+        sql_schema_file='schema_mitre_test.sql'))
+def test_get_attack_filter_limit(mock_wdb, limit, select):
+    """Test if data are retrieved properly from Mitre database."""
+    result = get_attack(limit=limit, select=select)
+
+    # Max 10 results returned if json is included
+    if not select or 'json' in select['fields']:
+        expected_limit = min(10, limit)
+        assert len(result['items']) <= expected_limit, f"Max expected results was 10, but {result['items']} returned."
+    else:
+        # Assert all results are returned
+        cur = get_fake_mitre_data('schema_mitre_test.sql').cursor()
+        cur.execute("SELECT COUNT(DISTINCT id) FROM  attack")
+        rows = cur.fetchone()
+        expected_limit = min(rows[0], limit)
+
+        assert len(result['items']) <= expected_limit, f"Expected number or results was {expected_limit}, but " \
+                                                       f"{len(result['items'])} returned."
+
+
+@patch.object(WazuhDBQueryMitre, '_final_query', fake_final_query)
+@patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
+        sql_schema_file='schema_mitre_test.sql'))
+def test_get_attack_distinct(mock_wdb):
+    """Test if data are retrieved properly from Mitre database."""
+    result = get_attack()
+    id_set = set()
+
+    for item in result['items']:
+        id_set.add(item['id'])
+
+    assert len(result['items']) == len(id_set)
+
+
 @patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
         sql_schema_file='schema_mitre_test.sql'))
 def test_check_total_items(mock_wdb):

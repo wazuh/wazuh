@@ -3,7 +3,6 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import json
-import re
 from typing import Dict
 
 import more_itertools
