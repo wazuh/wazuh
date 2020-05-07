@@ -128,7 +128,7 @@ void fim_scan() {
             fim_db_set_all_unscanned(syscheck.database);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
         }
-        
+
     }
 
     gettime(&end);
@@ -317,6 +317,7 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
     char *json_formated;
     int alert_type;
     int result;
+    char *diff = NULL;
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
@@ -335,9 +336,15 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
         alert_type = FIM_MODIFICATION;
     }
 
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
-    json_event = fim_json_event(file, saved ? saved->data : NULL, new, item->index, alert_type, item->mode, w_evt);
-    w_mutex_lock(&syscheck.fim_entry_mutex);
+    if (item->configuration & CHECK_SEECHANGES) {
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
+        diff = seechanges_addfile(file);
+        w_mutex_lock(&syscheck.fim_entry_mutex);
+    }
+
+    json_event = fim_json_event(file, saved ? saved->data : NULL, new, item->index, alert_type, item->mode, w_evt, diff);
+
+    os_free(diff);
 
     if (json_event) {
         if (result = fim_db_insert(syscheck.database, file, new, alert_type), result < 0) {
@@ -505,7 +512,7 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
         }
         w_mutex_unlock(&syscheck.fim_entry_mutex);
         json_event = fim_json_event(key, saved ? saved->data : NULL, data, pos,
-                                    alert_type, 0, NULL);
+                                    alert_type, 0, NULL, NULL);
     } else {
         fim_db_set_scanned(syscheck.database, key);
         result = 0;
@@ -885,7 +892,7 @@ void check_deleted_files() {
 }
 
 
-cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, int pos, unsigned int type, fim_event_mode mode, whodata_evt * w_evt) {
+cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, int pos, unsigned int type, fim_event_mode mode, whodata_evt * w_evt, const char *diff) {
     cJSON * changed_attributes = NULL;
 
     if (old_data != NULL) {
@@ -949,13 +956,8 @@ cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_da
 
         tags = syscheck.tag[pos];
 
-        if (syscheck.opts[pos] & CHECK_SEECHANGES && type != 1) {
-            char * diff = seechanges_addfile(file_name);
-
-            if (diff != NULL) {
-                cJSON_AddStringToObject(data, "content_changes", diff);
-                os_free(diff);
-            }
+        if (diff != NULL) {
+            cJSON_AddStringToObject(data, "content_changes", diff);
         }
     }
 #ifdef WIN32
