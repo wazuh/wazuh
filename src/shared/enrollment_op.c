@@ -88,15 +88,11 @@ void w_enrollment_cert_destroy(w_enrollment_cert *cert_cfg) {
     os_free(cert_cfg);
 }
 
-w_enrollment_ctx * w_enrollment_init(const w_enrollment_target *target, const w_enrollment_cert *cert) {
+w_enrollment_ctx * w_enrollment_init(w_enrollment_target *target, w_enrollment_cert *cert) {
     w_enrollment_ctx *cfg;
     os_malloc(sizeof(w_enrollment_ctx), cfg);
-    // Copy constructor for const parameters
-    w_enrollment_ctx init = {
-        .target_cfg = target,
-        .cert_cfg = cert
-    };
-    memcpy(cfg, &init, sizeof(w_enrollment_ctx));
+    cfg->target_cfg = target;
+    cfg->cert_cfg = cert;
     cfg->enabled = 1;
     cfg->ssl = NULL;
     cfg->allow_localhost = 1;

@@ -44,6 +44,13 @@ int ClientConf(const char *cfgfile)
     os_calloc(1, sizeof(wlabel_t), agt->labels);
     modules |= CCLIENT;
 
+    w_enrollment_cert *cert_cfg = w_enrollment_cert_init();
+    w_enrollment_target *target_cfg = w_enrollment_target_init();
+
+    // Initialize enrollment_cfg
+    agt->enrollment_cfg = w_enrollment_init(target_cfg, cert_cfg);
+    agt->enrollment_cfg->allow_localhost = 0; // Localhost not allowed in auto-enrollment
+
     if (ReadConfig(modules, cfgfile, agt, NULL) < 0 ||
         ReadConfig(CLABELS | CBUFFER, cfgfile, &agt->labels, agt) < 0) {
         return (OS_INVALID);
@@ -60,7 +67,7 @@ int ClientConf(const char *cfgfile)
         mwarn("Client buffer throughput too low: set to %d eps", min_eps);
         agt->events_persec = min_eps;
     }
-
+    
     return (1);
 }
 

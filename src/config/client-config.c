@@ -46,7 +46,6 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     logr->notify_time = 0;
     logr->max_time_reconnect_try = 0;
     logr->rip_id = 0;
-    logr->enrollment_cfg = NULL;
 
     for (i = 0; node[i]; i++) {
         rip = NULL;
@@ -303,13 +302,12 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
     const char *xml_auto_method = "auto_method";
     char * remote_ip = NULL;
     int port = 0;
-    int enabled = 1;
     int j;
     char f_ip[128];
 
 
-    w_enrollment_cert *cert_cfg = w_enrollment_cert_init();
-    w_enrollment_target *target_cfg = w_enrollment_target_init();
+    w_enrollment_cert *cert_cfg = logr->enrollment_cfg->cert_cfg;
+    w_enrollment_target *target_cfg = logr->enrollment_cfg->target_cfg;
 
     for (j = 0; node[j]; j++) {
         if (!node[j]->element) {
@@ -324,9 +322,9 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
             return (OS_INVALID);
         } else if (!strcmp(node[j]->element, xml_enabled)) {
             if (!strcmp(node[j]->content, "yes"))
-                enabled = 1;
+                logr->enrollment_cfg->enabled = 1;
             else if (!strcmp(node[j]->content, "no")) {
-                enabled = 0;
+                logr->enrollment_cfg->enabled = 0;
             } else {
                 merror("Invalid content for tag '%s'.", node[j]->element);
                 w_enrollment_target_destroy(target_cfg);
@@ -411,10 +409,6 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
             return (OS_INVALID);
         }
     }
-    // Initialize enrollment_cfg
-    logr->enrollment_cfg = w_enrollment_init(target_cfg, cert_cfg);
-    logr->enrollment_cfg->enabled = enabled;
-    logr->enrollment_cfg->allow_localhost = 0; // Localhost not allowed in auto-enrollment
     return 0;
 }
 

@@ -155,11 +155,6 @@ int main(int argc, char **argv)
         minfo("Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", agt->notify_time, agt->max_time_reconnect_try);
     }
 
-    /* Check auth keys */
-    if (!OS_CheckKeys()) {
-        merror_exit(AG_NOKEYS_EXIT);
-    }
-
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
@@ -170,6 +165,11 @@ int main(int argc, char **argv)
     if(agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
         // If autoenrollment is enabled, we will avoid exit if there is no valid key
         OS_PassEmptyKeyfile();
+    } else {
+        /* Check auth keys */
+        if (!OS_CheckKeys()) {
+            merror_exit(AG_NOKEYS_EXIT);
+        }
     }
     
     /* Check client keys */
