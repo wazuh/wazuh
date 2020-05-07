@@ -5432,14 +5432,6 @@ void test_whodata_callback_event_4658_rename_dir(void **state) {
     expect_value(__wrap_fim_checker, w_evt, w_evt);
     expect_value(__wrap_fim_checker, report, 1);
 
-    expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
-    expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-    will_return(wrap_win_whodata_AllocateAndInitializeSid, 0);
-    will_return(wrap_win_whodata_GetLastError, ERROR_ACCESS_DENIED);
-    expect_string(__wrap__merror, formatted_msg, "(6683): Could not obtain the sid of Everyone. Error '5'.");
-
-    expect_string(__wrap__mdebug1, formatted_msg, "(6288): Could not refresh the SACL of 'C:\\a\\path'. Its event will not be reported.");
-
     expect_value(__wrap_free_whodata_event, w_evt, w_evt);
 
     int ret = whodata_callback(action, NULL, event);
@@ -7675,7 +7667,7 @@ void test_whodata_list_remove_multiple_remove_more_than_available(void **state) 
 
     expect_value(__wrap_free_whodata_event, w_evt, (whodata_evt *)3456);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6236): '102' events have been deleted from the whodata list.");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6236): '3' events have been deleted from the whodata list.");
 
     whodata_list_remove_multiple(syscheck.w_clist.current_size * 10);
 
