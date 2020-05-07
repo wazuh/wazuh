@@ -121,7 +121,6 @@ int set_policies();
 void set_subscription_query(wchar_t *query);
 extern int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path);
 int restore_audit_policies();
-void audit_restore();
 int check_object_sacl(char *obj, int is_file);
 int whodata_hash_add(OSHash *table, char *id, void *data, char *tag);
 void notify_SACL_change(char *dir);
@@ -366,15 +365,13 @@ int run_whodata_scan() {
 
     // Set the signal handler to restore the policies
     atexit(audit_restore);
+
     // Set the system audit policies
     if (result = set_policies(), result) {
-        if (result == 2) {
-            mwarn(FIM_WARN_WHODATA_AUTOCONF);
-        } else {
-            mwarn(FIM_WARN_WHODATA_LOCALPOLICIES);
-            return 1;
-        }
+        merror(FIM_WARN_WHODATA_LOCALPOLICIES);
+        return 1;
     }
+
     // Select the interesting fields
     if (context = EvtCreateRenderContext(fields_number, event_fields, EvtRenderContextValues), !context) {
         merror(FIM_ERROR_WHODATA_CONTEXT, GetLastError());
@@ -912,7 +909,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
             exists = 0;
             d_status = &syscheck.wdata.dirs_status[i];
 
-            if (!(syscheck.wdata.dirs_status[i].status & WD_CHECK_WHODATA)) {
+            if (!(d_status->status & WD_CHECK_WHODATA)) {
                 // It is not whodata
                 continue;
             }
@@ -924,11 +921,11 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
                 break;
                 case 1:
                     exists = 1;
-                    syscheck.wdata.dirs_status[i].object_type = WD_STATUS_FILE_TYPE;
+                    d_status->object_type = WD_STATUS_FILE_TYPE;
                 break;
                 case 2:
                     exists = 1;
-                    syscheck.wdata.dirs_status[i].object_type = WD_STATUS_DIR_TYPE;
+                    d_status->object_type = WD_STATUS_DIR_TYPE;
                 break;
 
             }
@@ -938,21 +935,28 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
                     minfo(FIM_WHODATA_READDED, syscheck.dir[i]);
                     if (set_winsacl(syscheck.dir[i], i)) {
                         merror(FIM_ERROR_WHODATA_ADD_DIRECTORY, syscheck.dir[i]);
+                        d_status->status &= ~WD_CHECK_WHODATA;
+                        syscheck.opts[i] &= ~WHODATA_ACTIVE;
+                        d_status->status |= WD_CHECK_REALTIME;
+                        syscheck.realtime_change = 1;
                         continue;
                     }
                     d_status->status |= WD_STATUS_EXISTS;
                 } else {
                     // Check if the SACL is invalid
                     if (check_object_sacl(syscheck.dir[i], (d_status->object_type == WD_STATUS_FILE_TYPE) ? 1 : 0)) {
-                        syscheck.realtime_change = 1;
                         minfo(FIM_WHODATA_SACL_CHANGED, syscheck.dir[i]);
-                        // Mark the directory to prevent its children from sending partial whodata alerts
-                        syscheck.wdata.dirs_status[i].status |= WD_CHECK_REALTIME;
-                        syscheck.wdata.dirs_status[i].status &= ~WD_CHECK_WHODATA;
-                        // Removes CHECK_WHODATA from directory properties to prevent from being found in the whodata callback for Windows (find_dir_pos)
+                        // Mark the directory to prevent its children from
+                        // sending partial whodata alerts
+                        d_status->status &= ~WD_CHECK_WHODATA;
+                        // Removes CHECK_WHODATA from directory properties to prevent from
+                        // being found in the whodata callback for Windows
                         syscheck.opts[i] &= ~WHODATA_ACTIVE;
                         // Mark it to prevent the restoration of its SACL
-                        syscheck.wdata.dirs_status[i].status &= ~WD_IGNORE_REST;
+                        d_status->status &= ~WD_IGNORE_REST;
+                        // Mark it to be monitored by Realtime
+                        d_status->status |= WD_CHECK_REALTIME;
+                        syscheck.realtime_change = 1;
                         notify_SACL_change(syscheck.dir[i]);
                         continue;
                     }
@@ -1067,6 +1071,7 @@ int set_policies() {
     int wm_exec_ret_code = wm_exec(command, NULL, &result_code, 5, NULL);
     if (wm_exec_ret_code || result_code) {
         retval = 2;
+        merror(FIM_WARN_WHODATA_AUTOCONF);
         goto end;
     }
 
@@ -1096,6 +1101,7 @@ int set_policies() {
     wm_exec_ret_code = wm_exec(command, NULL, &result_code, 5, NULL);
     if (wm_exec_ret_code || result_code) {
         retval = 2;
+        merror(FIM_WARN_WHODATA_AUTOCONF);
         goto end;
     }
 

@@ -1293,7 +1293,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
 
 
         /* Do diff check */
-        if (rule->context_opts & SAME_DODIFF) {
+        if (rule->context_opts & FIELD_DODIFF) {
             w_mutex_lock(&do_diff_mutex);
             if (!doDiff(rule, lf)) {
                 w_mutex_unlock(&do_diff_mutex);
@@ -1474,7 +1474,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
 
     /* If it is a context rule, search for it */
     if (rule->context == 1) {
-        if (!(rule->context_opts & SAME_DODIFF)) {
+        if (!(rule->context_opts & FIELD_DODIFF)) {
             if (rule->event_search) {
                 if (!rule->event_search(lf, rule, rule_match)) {
                     w_FreeArray(lf->last_events);
