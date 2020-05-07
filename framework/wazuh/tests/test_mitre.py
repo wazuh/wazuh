@@ -18,7 +18,7 @@ from .util import InitWDBSocketMock
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
-        from wazuh.mitre import get_attack
+        from wazuh.mitre import get_attack, WazuhDBQueryMitre
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                               'data')
@@ -41,6 +41,13 @@ def get_fake_mitre_data(sql_file):
         cur.executescript(f.read())
 
     return mitre_db
+
+
+def fake_final_query(self):
+    """
+    :return: The final mitre query
+    """
+    return self._default_query() + f" WHERE id IN ({self.query}) LIMIT {self.limit} OFFSET :offset"
 
 
 @pytest.mark.parametrize('offset, limit', [
@@ -91,17 +98,18 @@ def test_get_attack(mock_wdb, offset, limit):
         assert item_keys.issubset(json_keys)
 
 
-@pytest.mark.parametrize('attack', [
+@pytest.mark.parametrize('id', [
     ('T1015'),
     ('T1176'),
     ('T1087'),
     ('T1015'),
 ])
+@patch.object(WazuhDBQueryMitre, '_final_query', fake_final_query)
 @patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
         sql_schema_file='schema_mitre_test.sql',))
-def test_get_attack_filter_attack(mock_wdb, attack):
+def test_get_attack_filter_attack(mock_wdb, id):
     """Test if data are retrieved properly from Mitre database."""
-    result = get_attack(attack=attack)
+    result = get_attack(id=id)
 
     # check result lenght
     assert len(result['items']) == 1
@@ -112,7 +120,7 @@ def test_get_attack_filter_attack(mock_wdb, attack):
     assert result_keys.issubset(json_keys)
 
 
-@pytest.mark.parametrize('phase', [
+@pytest.mark.parametrize('phase_name', [
     ('Persistence'),
     ('persistence'),
     ('defense evasion'),
@@ -138,11 +146,12 @@ def test_get_attack_filter_attack(mock_wdb, attack):
     ('Initial Access'),
     ('initial ACCess'),
 ])
+@patch.object(WazuhDBQueryMitre, '_final_query', fake_final_query)
 @patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
         sql_schema_file='schema_mitre_test.sql'))
-def test_get_attack_filter_phase(mock_wdb, phase):
+def test_get_attack_filter_phase(mock_wdb, phase_name):
     """Test if data are retrieved properly from Mitre database."""
-    result = get_attack(phase=phase)
+    result = get_attack(phase_name=phase_name)
 
     # check result lenght
     assert len(result['items']) > 0
@@ -154,7 +163,7 @@ def test_get_attack_filter_phase(mock_wdb, phase):
         assert item_keys.issubset(json_keys)
 
 
-@pytest.mark.parametrize('platform', [
+@pytest.mark.parametrize('platform_name', [
     ('Linux'),
     ('linuX'),
     ('macOS'),
@@ -162,11 +171,12 @@ def test_get_attack_filter_phase(mock_wdb, phase):
     ('Windows'),
     ('winDows')
 ])
+@patch.object(WazuhDBQueryMitre, '_final_query', fake_final_query)
 @patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
         sql_schema_file='schema_mitre_test.sql'))
-def test_get_attack_filter_platform(mock_wdb, platform):
+def test_get_attack_filter_platform(mock_wdb, platform_name):
     """Test if data are retrieved properly from Mitre database."""
-    result = get_attack(platform=platform)
+    result = get_attack(platform_name=platform_name)
 
     # check result lenght
     assert len(result['items']) > 0
@@ -179,13 +189,14 @@ def test_get_attack_filter_platform(mock_wdb, platform):
 
 
 @pytest.mark.parametrize('q', [
-    ('attack=T1123'),
-    ('phase=persistence'),
-    ('platform=linux'),
-    ('phase=discovery'),
-    ('attack=T1131'),
-    ('platform=windows')
+    ('id=T1123'),
+    ('phase_name=persistence'),
+    ('platform_name=linux'),
+    ('phase_name=discovery'),
+    ('id=T1131'),
+    ('platform_name=windows')
 ])
+@patch.object(WazuhDBQueryMitre, '_final_query', fake_final_query)
 @patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
         sql_schema_file='schema_mitre_test.sql'))
 def test_get_attack_filter_q(mock_wdb, q):
@@ -202,7 +213,7 @@ def test_get_attack_filter_q(mock_wdb, q):
         assert item_keys.issubset(json_keys)
 
 
-@pytest.mark.parametrize('phase, platform', [
+@pytest.mark.parametrize('phase_name, platform_name', [
     ('persistence', 'macos'),
     ('defense evasion', 'linux'),
     ('Defense Evasion', 'windows'),
@@ -227,11 +238,12 @@ def test_get_attack_filter_q(mock_wdb, q):
     ('Initial Access', 'Windows'),
     ('initial ACCess', 'linux'),
 ])
+@patch.object(WazuhDBQueryMitre, '_final_query', fake_final_query)
 @patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
         sql_schema_file='schema_mitre_test.sql'))
-def test_get_attack_filter_multiple(mock_wdb, phase, platform):
+def test_get_attack_filter_multiple(mock_wdb, phase_name, platform_name):
     """Test if data are retrieved properly from Mitre database."""
-    result = get_attack(phase=phase, platform=platform)
+    result = get_attack(phase_name=phase_name, platform_name=platform_name)
 
     # check result lenght
     assert len(result['items']) > 0
@@ -242,9 +254,9 @@ def test_get_attack_filter_multiple(mock_wdb, phase, platform):
         assert item_keys != set()
         assert item_keys.issubset(json_keys)
         # check phase and platform
-        assert phase.lower() in [phase.lower() for phase in item['phases']]
-        assert platform.lower() in [platform.lower() for platform in
-                                    item['platforms']]
+        assert phase_name.lower() in [phase.lower() for phase in item['phase_name']]
+        assert platform_name.lower() in [platform.lower() for platform in
+                                         item['platform_name']]
 
 
 @patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
@@ -262,28 +274,28 @@ def test_check_total_items(mock_wdb):
     assert expected_total_items == total_items
 
 
-@pytest.mark.parametrize('platform', [
+@pytest.mark.parametrize('platform_name', [
     ('linux'),
     ('macos'),
     ('windows')
 ])
 @patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
         sql_schema_file='schema_mitre_test.sql'))
-def test_check_total_items_platform(mock_wdb, platform):
+def test_check_total_items_platform(mock_wdb, platform_name):
     """Test the number of returned items when filtering by platform."""
     # load test database and make the query
     cur = get_fake_mitre_data('schema_mitre_test.sql').cursor()
     cur.execute("SELECT COUNT(DISTINCT attack_id) FROM has_platform WHERE "
-                f"(platform_name='{platform}' COLLATE NOCASE)")
+                f"(platform_name='{platform_name}' COLLATE NOCASE)")
     rows = cur.fetchone()
     expected_total_items = rows[0]
 
-    total_items = get_attack(platform=platform)['totalItems']
+    total_items = get_attack(platform_name=platform_name)['totalItems']
 
     assert expected_total_items == total_items
 
 
-@pytest.mark.parametrize('phase', [
+@pytest.mark.parametrize('phase_name', [
     ('Persistence'),
     ('Defense Evasion'),
     ('Privilege Escalation'),
@@ -299,21 +311,21 @@ def test_check_total_items_platform(mock_wdb, platform):
 ])
 @patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
         sql_schema_file='schema_mitre_test.sql'))
-def test_check_total_items_phase(mock_wdb, phase):
+def test_check_total_items_phase(mock_wdb, phase_name):
     """Test the number of returned items when filtering by phase."""
     # load test database and make the query
     cur = get_fake_mitre_data('schema_mitre_test.sql').cursor()
     cur.execute("SELECT COUNT(DISTINCT attack_id) FROM has_phase WHERE "
-                f"(phase_name='{phase}' COLLATE NOCASE)")
+                f"(phase_name='{phase_name}' COLLATE NOCASE)")
     rows = cur.fetchone()
     expected_total_items = rows[0]
 
-    total_items = get_attack(phase=phase)['totalItems']
+    total_items = get_attack(phase_name=phase_name)['totalItems']
 
     assert expected_total_items == total_items
 
 
-@pytest.mark.parametrize('platform, phase', [
+@pytest.mark.parametrize('platform_name, phase_name', [
     ('linux', 'Persistence'),
     ('macos', 'Defense Evasion'),
     ('windows', 'Privilege Escalation'),
@@ -329,22 +341,23 @@ def test_check_total_items_phase(mock_wdb, phase):
 ])
 @patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
         sql_schema_file='schema_mitre_test.sql'))
-def test_check_total_items_multiple_filters(mock_wdb, platform, phase):
+def test_check_total_items_multiple_filters(mock_wdb, platform_name, phase_name):
     """Test the number of returned items when filtering by phase and platform."""  # noqa: E501
     # load test database and make the query
     cur = get_fake_mitre_data('schema_mitre_test.sql').cursor()
     cur.execute("SELECT COUNT(DISTINCT has_platform.attack_id) FROM "
                 "has_platform LEFT JOIN has_phase ON has_platform.attack_id = "
-                f"has_phase.attack_id WHERE (platform_name='{platform}' "
-                f" COLLATE NOCASE) AND (phase_name='{phase}' COLLATE NOCASE)")
+                f"has_phase.attack_id WHERE (platform_name='{platform_name}' "
+                f" COLLATE NOCASE) AND (phase_name='{phase_name}' COLLATE NOCASE)")
     rows = cur.fetchone()
     expected_total_items = rows[0]
 
-    total_items = get_attack(platform=platform, phase=phase)['totalItems']
+    total_items = get_attack(platform_name=platform_name, phase_name=phase_name)['totalItems']
 
     assert expected_total_items == total_items
 
 
+@patch.object(WazuhDBQueryMitre, '_final_query', fake_final_query)
 @patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
         sql_schema_file='schema_mitre_test.sql'))
 def test_sort_mitre(mock_wdb):
@@ -376,6 +389,6 @@ def test_check_total_items_searched_attack(mock_wdb, search):
     rows = cur.fetchone()
     expected_total_items = rows[0]
 
-    total_items = get_attack(search={'value':search, 'negation':0})['totalItems']
+    total_items = get_attack(search={'value': search, 'negation': 0})['totalItems']
 
     assert expected_total_items == total_items

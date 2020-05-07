@@ -90,13 +90,13 @@ class WazuhDBQueryMitre(WazuhDBQuery):
         return super()._format_data_into_dictionary()
 
 
-def get_attack(attack: str = None, phase: str = None, platform: str = None, select: dict = None, search: dict = None,
+def get_attack(id: str = None, phase_name: str = None, platform_name: str = None, select: dict = None, search: dict = None,
                offset: int = 0, limit: int = None, sort: dict = None, q: str = None, ) -> Dict:
     """Get information from Mitre database.
 
-    :param attack: Filters by attack ID
-    :param phase: Filters by phase
-    :param platform: Filters by platform
+    :param id: Filters by attack ID
+    :param phase_name: Filters by phase
+    :param platform_name: Filters by platform
     :param search: Search if the string is contained in the db
     :param offset: First item to return
     :param limit: Maximum number of items to return
@@ -109,22 +109,13 @@ def get_attack(attack: str = None, phase: str = None, platform: str = None, sele
     default_limit = 10 if select is None or 'json' in select['fields'] else 500
     limit = min(limit, default_limit) if limit is not None else default_limit
 
-    # Replace filter names in q parameter only if they are followed by an operator
-    if q:
-        filters = {'attack': 'id', 'phase': 'phase_name', 'platform': 'platform_name'}
-        for filter_, substitute in filters.items():
-            try:
-                q = re.sub(re.search(rf'({filter_})(=|!=|<|>|~)', q).group(1), substitute, q)
-            except AttributeError:
-                pass
-
     # Add regular field filters to q
-    if attack:
-        q = f'{q};id={attack}' if q else f'id={attack}'
-    if phase:
-        q = f'{q};phase_name={phase}' if q else f'phase_name={phase}'
-    if platform:
-        q = f'{q};platform_name={platform}' if q else f'platform_name={platform}'
+    if id:
+        q = f'{q};id={id}' if q else f'id={id}'
+    if phase_name:
+        q = f'{q};phase_name={phase_name}' if q else f'phase_name={phase_name}'
+    if platform_name:
+        q = f'{q};platform_name={platform_name}' if q else f'platform_name={platform_name}'
 
     # Execute query
     db_query = WazuhDBQueryMitre(offset=offset, limit=limit, query=q, sort=sort, search=search, select=select)
