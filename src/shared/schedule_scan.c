@@ -124,11 +124,13 @@ static time_t _get_next_time(const sched_scan_config *config, const char *MODULE
         // Option 1: Day of the month
         return (time_t) get_time_to_month_day(config->scan_day,  config->scan_time, config->interval);
     } else if (config->scan_wday >= 0) {
+        unsigned int num_weeks = config->interval / 604800;
         // Option 2: Day of the week
-        return (time_t) get_time_to_day(config->scan_wday, config->scan_time);
+        return (time_t) get_time_to_day(config->scan_wday, config->scan_time, num_weeks, config->next_scheduled_scan_time ? FALSE : TRUE);
     } else if (config->scan_time) {
+        unsigned int num_days = config->interval / 86400;
         // Option 3: Time of the day [hh:mm]
-        return (time_t) get_time_to_hour(config->scan_time);
+        return (time_t) get_time_to_hour(config->scan_time, num_days, config->next_scheduled_scan_time ? FALSE : TRUE);
     } else if (config->interval) {
         // Option 4: Interval of time
         const time_t last_run_time = time(NULL) - config->next_scheduled_scan_time;

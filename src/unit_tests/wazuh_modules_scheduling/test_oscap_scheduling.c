@@ -38,6 +38,11 @@ int __wrap_wm_sendmsg(int usec, int queue, const char *message, const char *locm
     return 0;
 }
 
+int __wrap_SendMSG(int queue, const char *message, const char *locmsg, char loc) {
+    return 0;
+}
+
+
 /******* Helpers **********/
 
 static void wmodule_cleanup(wmodule *module){

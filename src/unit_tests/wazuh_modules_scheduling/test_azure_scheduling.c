@@ -33,6 +33,10 @@ int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const 
     return 0;
 }
 
+int __wrap_SendMSG(int queue, const char *message, const char *locmsg, char loc) {
+    return 0;
+}
+
 static void wmodule_cleanup(wmodule *module){
     wm_azure_t* module_data = (wm_azure_t *)module->data;
     if(module_data->api_config){

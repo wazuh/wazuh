@@ -179,18 +179,22 @@ int wm_relative_path(const char * path);
  * @brief Get time in seconds to the specified hour in hh:mm
  * 
  * @param hourtime of the day hh:mm format
+ * @param num_weeks number of days interval
+ * @param first_time if it the next time we need to obtain or we respect the interval number of days
  * @return amount of time in seconds
 */
-unsigned long int get_time_to_hour(const char * hour);
+unsigned long int get_time_to_hour(const char * hour, const unsigned int num_days, bool first_time);
 
 /**
  * @brief Get time to reach a particular day of the week and hour
  * 
  * @param wday day of the weak
  * @param hour time of the day hh:mm format
+ * @param num_weeks number of weeks interval
+ * @param first_time if it the next day we need to obtain or we respect the interval number of days
  * @return amount of time in seconds
  * */
-unsigned long int get_time_to_day(int wday, const char * hour);
+unsigned long int get_time_to_day(int wday, const char * hour, const unsigned int num_weeks, bool first_time);
 
 /**
  * @brief Get time to reach a particular day of the month and hour

@@ -354,8 +354,7 @@ int wm_relative_path(const char * path) {
 
 
 // Get time in seconds to the specified hour in hh:mm
-unsigned long int get_time_to_hour(const char * hour) {
-
+unsigned long int get_time_to_hour(const char * hour, const unsigned int num_days, bool first_time) {
     time_t curr_time;
     time_t target_time;
     struct tm tm_result = { .tm_sec = 0 };
@@ -380,20 +379,24 @@ unsigned long int get_time_to_hour(const char * hour) {
     diff = difftime(target_time, curr_time);
 
     if (diff <= 0) {
-        diff += (24*60*60);
+        if (first_time) {
+            diff += (24*60*60);
+        } else {
+            diff += num_days*(24*60*60);
+        }
     }
 
     for (i=0; parts[i]; i++)
         free(parts[i]);
 
     free(parts);
-
+    first_time = 1;
     return (unsigned long int)diff;
 }
 
 
 // Get time to reach a particular day of the week and hour
-unsigned long int get_time_to_day(int wday, const char * hour) {
+unsigned long int get_time_to_day(int wday, const char * hour, const unsigned int num_weeks, bool first_time) {
 
     time_t curr_time;
     time_t target_time;
@@ -422,7 +425,7 @@ unsigned long int get_time_to_day(int wday, const char * hour) {
     if (wday == tm_result.tm_wday) {    // We are in the desired day
 
         if (diff <= 0) {
-            diff += (7*24*60*60);   // Seconds of a week
+            diff += first_time ? (7*24*60*60) : num_weeks*(7*24*60*60);   // Seconds of a week
         }
 
     } else if (wday > tm_result.tm_wday) {  // We are looking for a future day
@@ -472,7 +475,7 @@ unsigned long int get_time_to_month_day(int month_day, const char* hour, int num
     target_time = mktime(&t_target);
     diff = difftime(target_time, curr_time);
     if ( (tm_result.tm_mday < month_day) || ((tm_result.tm_mday == month_day) && diff > 0) ) {
-        num_of_months--;
+        num_of_months = 0;
     }
 
     if (num_of_months >= 12) {

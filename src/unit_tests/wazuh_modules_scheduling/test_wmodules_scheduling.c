@@ -121,7 +121,8 @@ static void test_day_of_the_week(void **state){
     state_structure *test = *state;
     const char *string =
         "<wday>tuesday</wday>\n"
-        "<time>0:00</time>"
+        "<time>0:00</time>\n"
+        "<interval>3w</interval>\n"
     ;
     test->nodes = string_to_xml_node(string, &test->lxml);
     sched_scan_read(&test->scan_config, test->nodes, "");
@@ -140,8 +141,7 @@ static void test_day_of_the_week(void **state){
 
     struct tm second_date = *(localtime(&second_time));
     assert_int_equal(second_date.tm_wday,  test->scan_config.scan_wday);
-
-    assert_int_not_equal(first_date.tm_yday, second_date.tm_yday);
+    assert_int_equal(second_date.tm_yday, (first_date.tm_yday + 21) % 365);
 }
 
 /**
