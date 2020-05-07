@@ -111,16 +111,14 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             }
             OS_ClearNode(chld_node);
         } else if (strcmp(node[i]->element, xml_client_auto_enrollment) == 0) {
+            if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
+                if (Read_Client_Enrollment(chld_node, logr) < 0) {
+                    OS_ClearNode(chld_node);
+                    return (OS_INVALID);
+                }
 
-            if (!(chld_node = OS_GetElementsbyNode(xml, node[i]))) {
-                merror(XML_INVELEM, node[i]->element);
-                return (OS_INVALID);
-            }
-            if (Read_Client_Enrollment(chld_node, logr) < 0) {
                 OS_ClearNode(chld_node);
-                return (OS_INVALID);
             }
-            OS_ClearNode(chld_node);
         } else if (strcmp(node[i]->element, xml_notify_time) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
@@ -308,7 +306,7 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
     int enabled = 1;
     int j;
     char f_ip[128];
-    
+
 
     w_enrollment_cert *cert_cfg = w_enrollment_cert_init();
     w_enrollment_target *target_cfg = w_enrollment_target_init();
