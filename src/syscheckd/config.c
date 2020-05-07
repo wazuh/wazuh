@@ -73,11 +73,24 @@ int Read_Syscheck_Config(const char *cfgfile)
     }
 
 #ifdef CLIENT
+    int it = 0;
+
     mdebug1(FIM_CLIENT_CONFIGURATION, cfgfile);
 
     /* Read shared config */
     modules |= CAGENT_CONFIG;
     ReadConfig(modules, AGENTCONFIG, &syscheck, NULL);
+
+    /* Check directories options to determine whether to start the whodata thread or not */
+    while (syscheck.dir[it] != NULL) {
+        if (syscheck.opts[it] & WHODATA_ACTIVE) {
+            syscheck.enable_whodata = 1;
+
+            break;  // Exit loop with the first whodata directory
+        }
+
+        it++;
+    }
 #endif
 
     switch (syscheck.disabled) {

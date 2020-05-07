@@ -274,7 +274,7 @@ typedef struct _config {
     int time;                       /* frequency (secs) for syscheck to run */
     int queue;                      /* file descriptor of socket to write to queue */
     unsigned int restart_audit:1;   /* Allow Syscheck restart Auditd */
-    unsigned int enable_whodata:1;  /* At less one directory configured with whodata */
+    unsigned int enable_whodata:1;  /* At least one directory configured with whodata */
     unsigned int enable_synchronization:1;    /* Enable database synchronization */
 
     int *opts;                      /* attributes set in the <directories> tag element */
