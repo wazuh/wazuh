@@ -13,7 +13,6 @@ import yaml
 
 current_path = os.path.dirname(os.path.abspath(__file__))
 
-
 with open('common.yaml', 'r') as stream:
     common = yaml.safe_load(stream)['variables']
 login_url = f"{common['protocol']}://{common['host']}:{common['port']}/{common['version']}{common['login_endpoint']}"
@@ -59,9 +58,9 @@ def down_env():
     current_process.wait()
 
 
-def check_health(interval=10, node_type='master', agents=None):
+def check_health(interval=10, node_type='manager', agents=None):
     time.sleep(interval)
-    if node_type == 'master':
+    if node_type == 'manager':
         health = subprocess.check_output(
             "docker inspect env_wazuh-master_1 -f '{{json .State.Health.Status}}'", shell=True)
         return False if not health.startswith(b'"healthy"') else True
@@ -90,10 +89,12 @@ def general_procedure(module):
 def healthcheck_procedure(module):
     manager_folder = os.path.join(current_path, 'env', 'configurations', module, 'manager', 'healthcheck')
     agent_folder = os.path.join(current_path, 'env', 'configurations', module, 'agent', 'healthcheck')
-    base_folder = os.path.join(current_path, 'env', 'configurations', 'base', 'wazuh-master', 'healthcheck')
+    master_base_folder = os.path.join(current_path, 'env', 'configurations', 'base', 'wazuh-master', 'healthcheck')
+    agent_base_folder = os.path.join(current_path, 'env', 'configurations', 'base', 'wazuh-agent', 'healthcheck')
     tmp_content = os.path.join(current_path, 'env', 'configurations', 'tmp')
 
-    os.popen(f'cp -rf {base_folder} {os.path.join(tmp_content, "manager")}')
+    os.popen(f'cp -rf {master_base_folder} {os.path.join(tmp_content, "manager")}')
+    os.popen(f'cp -rf {agent_base_folder} {os.path.join(tmp_content, "agent")}')
     if os.path.exists(manager_folder):
         os.popen(f'cp -rf {manager_folder} {os.path.join(tmp_content, "manager")}')
     elif os.path.exists(agent_folder):
@@ -120,7 +121,8 @@ def clear_tmp_folder():
 
 def generate_rbac_pair(index, permission):
     role_policy_pair = [
-        f'INSERT INTO policies VALUES({99 + index},\'testing{index}\',\'{json.dumps(permission)}\',\'1970-01-01 00:00:00\');\n',
+        f'INSERT INTO policies VALUES({99 + index},\'testing{index}\',\'{json.dumps(permission)}\','
+        f'\'1970-01-01 00:00:00\');\n',
         f'INSERT INTO roles_policies VALUES({99 + index},99,{99 + index},{index},\'1970-01-01 00:00:00\');\n'
     ]
 
@@ -155,6 +157,10 @@ def api_test(request):
         rbac_mode = None
         module = test_filename[1]
     create_tmp_folders()
+    # Experimental case
+    if module == 'experimental':
+        general_procedure('ciscat')
+        general_procedure('syscollector')
     general_procedure(module)
     if rbac_mode:
         custom_rbac_path = os.path.join(current_path, 'env', 'configurations', 'tmp',
@@ -164,8 +170,9 @@ def api_test(request):
 
     values = build_and_up()
     while values['retries'] < values['max_retries']:
-        health = check_health()
-        if health:
+        managers_health = check_health()
+        agents_health = check_health(node_type='agent', agents=range(1, 9))
+        if managers_health and agents_health:
             time.sleep(values['interval'])
             yield
             break

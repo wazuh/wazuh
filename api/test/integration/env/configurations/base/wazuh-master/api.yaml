@@ -44,4 +44,4 @@ use_only_authd: no
 drop_privileges: yes
 
 # Enable features under development
-experimental_features: no
+experimental_features: yes

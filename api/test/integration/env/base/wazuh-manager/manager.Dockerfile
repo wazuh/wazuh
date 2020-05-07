@@ -17,13 +17,13 @@ COPY configurations/base/wazuh-master/config/test.keys /aux_testing/etc/client.k
 COPY configurations/base/wazuh-master/config/agent-groups /aux_testing/queue/agent-groups
 COPY configurations/base/wazuh-master/config/shared /aux_testing/etc/shared
 COPY configurations/base/wazuh-master/config/agent-info /aux_testing/queue/agent-info
-COPY configurations/base/wazuh-master/api.yaml /aux_testing/api/configuration/api.yaml
+COPY configurations/base/wazuh-master/api.yaml /var/ossec/api/configuration/api.yaml
+RUN chown ossec:ossec /var/ossec/api/configuration/api.yaml
 
 ARG manager_type
 
 RUN if [ "$manager_type" = "master" ]; then \
         cp -rf /aux_testing/* /var/ossec/; \
-        chown ossec:ossec /var/ossec/api/configuration/api.yaml; \
         # To keep last_keepalive greater than 1 day
         touch -d "2 days ago" /var/ossec/queue/agent-info/wazuh-agent9-any && touch -d "2 days ago" /var/ossec/queue/agent-info/wazuh-agent10-any; \
     fi

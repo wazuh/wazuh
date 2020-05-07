@@ -1,0 +1,7 @@
+---
+- actions:
+  - decoders:read
+  resources:
+  - decoder:file:0005-wazuh_decoders.xml
+  - decoder:file:0160-netscaler_decoders.xml
+  effect: deny

@@ -101,9 +101,6 @@ def optimize_resources(auth_context=None, user_id=None):
     else:
         policies = rbac.run_user_role_link(user_id)
 
-    # Testing
-    # policies = RBAChecker.run_testing()
-
     preprocessor = PreProcessor()
     for policy in policies:
         preprocessor.process_policy(policy)

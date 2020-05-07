@@ -11,9 +11,8 @@ RUN apt-get install wazuh-agent -y
 
 COPY configurations/base/wazuh-agent/config/test.keys /var/ossec/etc/test.keys
 COPY configurations/base/wazuh-agent/config/ossec.conf /var/ossec/etc/ossec.conf
-COPY configurations/base/wazuh-agent/healthcheck/healthcheck.py /tmp/healthcheck.py
 COPY configurations/tmp/agent/ /configuration_files/
 
 ADD base/wazuh-agent/entrypoint.sh /scripts/entrypoint.sh
 
-HEALTHCHECK --retries=30 --interval=10s --timeout=30s --start-period=30s CMD /usr/bin/python3 /tmp/healthcheck.py || exit 1
+HEALTHCHECK --retries=30 --interval=10s --timeout=30s --start-period=30s CMD /usr/bin/python3 /configuration_files/healthcheck/healthcheck.py || exit 1

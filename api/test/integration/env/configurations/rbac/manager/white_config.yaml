@@ -10,7 +10,7 @@
   - manager:read_api_config
   - manager:update_api_config
   resources:
-  - "*"
+  - "*:*:*"
   effect: allow
 - actions:
   - manager:delete_file
