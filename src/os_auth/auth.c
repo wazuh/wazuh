@@ -135,8 +135,8 @@ w_err_t w_auth_parse_data(const char* buf, char *response,const char *authpass, 
 
     if(strncmp(++buf,centralized_group_token,2)==0)
     {
-        char tmp_groups[OS_SIZE_65536] = {0};
-        sscanf(buf," G:\'%65535[^\']\"",tmp_groups);
+        char tmp_groups[OS_SIZE_65536+1] = {0};
+        sscanf(buf," G:\'%65536[^\']\"",tmp_groups);
 
         /* Validate the group name */        
         if(0 > w_validate_group_name(tmp_groups, response)) {

@@ -659,7 +659,7 @@ static int w_send_clustered_message(const char* command, const char* payload, ch
             if(response_length = OS_RecvSecureClusterTCP(sock, response, OS_MAXSTR), response_length <= 0) {
                 switch (response_length) {
                 case -1:
-                    merror("At wcom_main(): OS_RecvSecureClusterTCP(): %s", strerror(errno));  
+                    merror("At w_send_clustered_message(): OS_RecvSecureClusterTCP(): %s", strerror(errno));  
                     break;                 
 
                 case 0:
