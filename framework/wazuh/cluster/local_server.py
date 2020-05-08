@@ -8,7 +8,7 @@ from typing import Tuple, Union
 
 import uvloop
 from wazuh import common, exception
-from wazuh.cluster import server, common as c_common, client
+from wazuh.cluster import server, common as c_common, client, local_client
 from wazuh.cluster.dapi import dapi
 from wazuh.exception import WazuhException
 from wazuh.cluster.cluster import context_tag, context_subtag
@@ -251,6 +251,16 @@ class LocalServerHandlerWorker(LocalServerHandler):
                 return b'ok', b'Added request to API requests queue'
             else:
                 return self.send_request_to_master(command=b'dapi_cluster', arguments=data)
+        elif command == b'send_sync':
+            try:
+                node_name = data.decode().split(' ')[0]
+            except IndexError:
+                raise WazuhException("Could not find destination node")
+            try:
+                payload = data.decode()[len(node_name) + 1:].encode()
+            except Exception as e:
+                raise WazuhException(f"Error extracting payload: {e}")
+            return self.send_sync(node_name, payload)
         else:
             return super().process_request(command, data)
 
@@ -299,6 +309,19 @@ class LocalServerHandlerWorker(LocalServerHandler):
             result = json.dumps(exception.WazuhException(int(code), message).to_dict()).encode()
         asyncio.create_task(self.send_request(command=b'dapi_res' if in_command == b'dapi' else b'control_res',
                                               data=result))
+
+    def send_sync(self, node_name, payload):
+        if node_name == 'master-node':
+            req = asyncio.create_task(local_client.execute(command=b'dapi', data=payload, wait_for_complete=False))
+            req.add_done_callback(functools.partial(self.get_send_sync_response, self.name))
+
+            return None, None
+        else:
+            return b'Error', b'Invalid destination node'
+
+    def get_send_sync_response(self, name, future):
+        result = future.result()
+        self.server.clients[name].push(result.encode())
 
     def send_file_request(self, path, node_name):
         """

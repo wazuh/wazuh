@@ -67,3 +67,16 @@ class OssecSocketJSON(OssecSocket):
                 raise WazuhException(response['error'], response['message'], cmd_error=True)
             else:
                 return response['data']
+
+
+daemons = {
+    "authd": {"protocol": "TCP", "path": common.AUTHD_SOCKET, "header_format": "<I", "size": True}}
+
+
+def send_sync(daemon_name=None, message=None):
+    sock = OssecSocketJSON(daemons[daemon_name]['path'])
+    sock.send(message)
+    data = sock.receive()
+    sock.close()
+
+    return data

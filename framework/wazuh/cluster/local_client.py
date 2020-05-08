@@ -78,6 +78,9 @@ class LocalClientHandler(client.AbstractClient):
             self.response_available.set()
             return b"Error processing request: " + data
 
+    def connection_lost(self, exc):
+        self.on_con_lost.set_result(True)
+
 
 class LocalClient(client.AbstractClientManager):
     """
@@ -162,7 +165,11 @@ async def execute(command: bytes, data: bytes, wait_for_complete: bool) -> str:
     """
     lc = LocalClient(command, data, wait_for_complete)
     await lc.start()
-    return await lc.send_api_request()
+    result = await lc.send_api_request()
+    lc.transport.close()
+    await lc.protocol.on_con_lost
+
+    return result
 
 
 async def send_file(path: str, node_name: str = None) -> bytes:
