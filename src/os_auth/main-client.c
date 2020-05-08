@@ -264,6 +264,11 @@ int main(int argc, char **argv)
 
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
+
+    if (!server_address) {
+        merror("Manager IP not set.");
+        exit(1);
+    }
     
     os_calloc(OS_SIZE_65536 + OS_SIZE_4096 + 1, sizeof(char), buf);
     buf[OS_SIZE_65536 + OS_SIZE_4096] = '\0';
