@@ -475,16 +475,9 @@ static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip) {
     assert(buff != NULL); // buff should not be NULL.
 
     if(sender_ip){
-		/* Check if this is strictly an IP address using a regex */
-		if (OS_IsValidIP(sender_ip, NULL))
-		{
-			char opt_buf[256] = {0};
-			snprintf(opt_buf,254," IP:'%s'",sender_ip);
-			strncat(buff,opt_buf,254);
-		} else {
-			merror("Invalid IP address provided for sender IP.");
-			return -1;
-		}
+        char opt_buf[256] = {0};
+        snprintf(opt_buf,254," IP:'%s'",sender_ip);
+        strncat(buff,opt_buf,254);		
     } else {
         char opt_buf[10] = {0};
         snprintf(opt_buf,10," IP:'src'");
