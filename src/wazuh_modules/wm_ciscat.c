@@ -56,6 +56,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     char *cis_path = NULL;
     char java_fullpath[OS_MAXSTR];
     char bench_fullpath[OS_MAXSTR];
+    char * timestamp = NULL;
 
     // Check configuration and show debug information
 
@@ -153,7 +154,9 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
         
         if (time_sleep) {
             const int next_scan_time = sched_get_next_scan_time(ciscat->scan_config);
-            mtdebug2(WM_CISCAT_LOGTAG, "Sleeping until: %s", w_get_timestamp(next_scan_time));
+            timestamp = w_get_timestamp(next_scan_time);
+            mtdebug2(WM_CISCAT_LOGTAG, "Sleeping until: %s", timestamp);
+            os_free(timestamp);
             w_sleep_until(next_scan_time);
         }
 

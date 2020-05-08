@@ -46,6 +46,7 @@ void* wm_azure_main(wm_azure_t *azure_config) {
     wm_azure_api_t *curr_api = NULL;
     wm_azure_storage_t *curr_storage = NULL;
     char msg[OS_SIZE_6144];
+    char * timestamp = NULL;
 
     wm_azure_setup(azure_config);
     mtinfo(WM_AZURE_LOGTAG, "Module started.");
@@ -63,7 +64,9 @@ void* wm_azure_main(wm_azure_t *azure_config) {
         
         if (time_sleep) {
             const int next_scan_time = sched_get_next_scan_time(azure_config->scan_config);
-            mtdebug2(WM_AZURE_LOGTAG, "Sleeping until: %s", w_get_timestamp(next_scan_time));
+            timestamp = w_get_timestamp(next_scan_time);
+            mtdebug2(WM_AZURE_LOGTAG, "Sleeping until: %s", timestamp);
+            os_free(timestamp);
             w_sleep_until(next_scan_time);
         }
         mtinfo(WM_AZURE_LOGTAG, "Starting fetching of logs.");

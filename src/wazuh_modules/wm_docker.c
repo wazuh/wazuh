@@ -36,6 +36,7 @@ const wm_context WM_DOCKER_CONTEXT = {
 void* wm_docker_main(wm_docker_t *docker_conf) {
     int status = 0;
     char * command = WM_DOCKER_SCRIPT_PATH;
+    char * timestamp = NULL;
     int attempts = 0;
 
     wm_docker_setup(docker_conf);
@@ -47,7 +48,9 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
         
         if (time_sleep) {
             const int next_scan_time = sched_get_next_scan_time(docker_conf->scan_config);
-            mtdebug2(WM_DOCKER_LOGTAG, "Sleeping until: %s", w_get_timestamp(next_scan_time));
+            timestamp = w_get_timestamp(next_scan_time);
+            mtdebug2(WM_DOCKER_LOGTAG, "Sleeping until: %s", timestamp);
+            os_free(timestamp);
             w_sleep_until(next_scan_time);
         }
         mtinfo(WM_DOCKER_LOGTAG, "Starting to listening Docker events.");

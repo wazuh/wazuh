@@ -40,6 +40,7 @@ const wm_context WM_GCP_CONTEXT = {
 #endif
 // Module main function. It won't return
 void* wm_gcp_main(wm_gcp *data) {
+    char * timestamp = NULL;
     // If module is disabled, exit
     if (data->enabled) {
         mtinfo(WM_GCP_LOGTAG, "Module started.");
@@ -53,7 +54,9 @@ void* wm_gcp_main(wm_gcp *data) {
 
         if (time_sleep) {
             const int next_scan_time = sched_get_next_scan_time(data->scan_config);
-            mtdebug2(WM_GCP_LOGTAG, "Sleeping until: %s", w_get_timestamp(next_scan_time));
+            timestamp = w_get_timestamp(next_scan_time);
+            mtdebug2(WM_GCP_LOGTAG, "Sleeping until: %s", timestamp);
+            os_free(timestamp);
             w_sleep_until(next_scan_time);
         }
         mtdebug1(WM_GCP_LOGTAG, "Starting fetching of logs.");

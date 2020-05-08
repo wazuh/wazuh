@@ -44,6 +44,7 @@ void* wm_oscap_main(wm_oscap *oscap) {
     wm_oscap_eval *eval;
     // Check configuration and show debug information
     wm_oscap_setup(oscap);
+    char * timestamp = NULL;
     mtinfo(WM_OSCAP_LOGTAG, "Module started.");
 
     // Main loop
@@ -60,7 +61,9 @@ void* wm_oscap_main(wm_oscap *oscap) {
 
         if (time_sleep) {
             const int next_scan_time = sched_get_next_scan_time(oscap->scan_config);
-            mtdebug2(WM_OSCAP_LOGTAG, "Sleeping until: %s", w_get_timestamp(next_scan_time));
+            timestamp = w_get_timestamp(next_scan_time);
+            mtdebug2(WM_OSCAP_LOGTAG, "Sleeping until: %s", timestamp);
+            os_free(timestamp);
             w_sleep_until(next_scan_time);
         }
 

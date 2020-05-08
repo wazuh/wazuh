@@ -45,6 +45,7 @@ void* wm_aws_main(wm_aws *aws_config) {
     wm_aws_bucket *cur_bucket;
     wm_aws_service *cur_service;
     char *log_info;
+    char * timestamp = NULL;
 
 
     wm_aws_setup(aws_config);
@@ -65,7 +66,9 @@ void* wm_aws_main(wm_aws *aws_config) {
 
         if (time_sleep) {
             const int next_scan_time = sched_get_next_scan_time(aws_config->scan_config);
-            mtdebug2(WM_AWS_LOGTAG, "Sleeping until: %s", w_get_timestamp(next_scan_time));
+            timestamp = w_get_timestamp(next_scan_time);
+            mtdebug2(WM_AWS_LOGTAG, "Sleeping until: %s", timestamp);
+            os_free(timestamp);
             w_sleep_until(next_scan_time);
         }
         mtinfo(WM_AWS_LOGTAG, "Starting fetching of logs.");
