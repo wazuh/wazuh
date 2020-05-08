@@ -13,7 +13,7 @@ opendistro_security.nodes_dn:
   - CN=node-1,OU=Docu,O=Wazuh,L=California,C=ES
   - CN=node-2,OU=Docu,O=Wazuh,L=California,C=ES
   - CN=node-3,OU=Docu,O=Wazuh,L=California,C=ES
-  
+
 node.master: true
 node.data: true 
 node.ingest: true 
@@ -21,7 +21,7 @@ node.ingest: true
 opendistro_security.ssl.transport.pemcert_filepath: /etc/elasticsearch/certs/elasticsearch.pem
 opendistro_security.ssl.transport.pemkey_filepath: /etc/elasticsearch/certs/elasticsearch-key.pem
 opendistro_security.ssl.transport.pemtrustedcas_filepath: /etc/elasticsearch/certs/root-ca.pem
-opendistro_security.ssl.transport.enforce_hostname_verification: false
+opendistro_security.ssl.transport.enforce_hostname_verification: true
 opendistro_security.ssl.http.enabled: true
 opendistro_security.ssl.http.pemcert_filepath: /etc/elasticsearch/certs/elasticsearch.pem
 opendistro_security.ssl.http.pemkey_filepath: /etc/elasticsearch/certs/elasticsearch-key.pem
