@@ -178,7 +178,17 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
     assert(cfg != NULL);
     assert(server_address != NULL);
 
-    char *ip_address = OS_GetHost(server_address, 3);
+    char *ip_address = NULL;
+    char *tmp_str = strchr(server_address, '/'); 
+    if (tmp_str) {
+        // server_address comes in {hostname}/{ip} fomat
+        ip_address = strdup(++tmp_str);
+    }
+    if(!ip_address){
+        // server_address is either a host or a ip
+        ip_address = OS_GetHost(server_address, 3);
+    }
+    
     /* Translate hostname to an ip_adress */
     if (!ip_address) {
         merror("Could not resolve hostname: %s\n", server_address);
