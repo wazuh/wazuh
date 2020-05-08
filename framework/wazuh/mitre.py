@@ -22,9 +22,14 @@ class WazuhDBQueryMitre(WazuhDBQuery):
     """Create a WazuhDB query for getting data from Mitre database."""
 
     def __init__(self, offset: int = 0, limit: int = 10, query: str = '', count: bool = True, get_data: bool = True,
-                 table: str = 'attack', sort: dict = None, default_sort_field: str = 'id', fields: dict = mitre_fields,
-                 search: dict = None, select: dict = None, min_select_fields={'id'}):
+                 table: str = 'attack', sort: dict = None, default_sort_field: str = 'id', fields=None,
+                 search: dict = None, select: dict = None, min_select_fields=None):
         """Create an instance of WazuhDBQueryMitre query."""
+
+        if min_select_fields is None:
+            min_select_fields = {'id'}
+        if fields is None:
+            fields = mitre_fields
 
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table=table, sort=sort, search=search, select=select,
                               fields=fields, default_sort_field=default_sort_field, default_sort_order='ASC',
