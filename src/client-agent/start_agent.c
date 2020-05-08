@@ -232,6 +232,10 @@ void start_agent(int is_startup)
                     }
                     // if enroll is successfull reconnect and re-send message
                     send_msg(msg, -1);
+                    // After sending message wait before response
+                    if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
+                        sleep(attempts);
+                    }
                 }
 
                 continue;
