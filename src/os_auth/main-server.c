@@ -605,7 +605,6 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     int parseok;
     char *tmpstr;
     double antiquity;
-    int acount;
     char response[2048];
     SSL *ssl;
     char *id_exist = NULL;
@@ -728,13 +727,10 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         }
         tmpstr++;
 
-        char fname[2048];
         if (parseok == 0) {
             merror("Invalid request for new agent from: %s", srcip);
         } else {
-            acount = 2;
             response[2047] = '\0';
-            fname[2047] = '\0';
 
             if (!OS_IsValidName(agentname)) {
                 merror("Invalid agent name: %s from %s", agentname, srcip);
@@ -1007,29 +1003,16 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     add_backup(keys.keyentries[index]);
                     OS_DeleteKey(&keys, id_exist, 0);
                 } else {
-                    strncpy(fname, agentname, 2048);
-
-                    while (OS_IsAllowedName(&keys, fname) >= 0) {
-                        snprintf(fname, 2048, "%s%d", agentname, acount);
-
-                        if (++acount > MAX_TAG_COUNTER)
-                            break;
-                    }
-
-                    if (acount > MAX_TAG_COUNTER) {
-                        w_mutex_unlock(&mutex_keys);
-                        merror("Invalid agent name %s (duplicated)", agentname);
-                        snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
-                        SSL_write(ssl, response, strlen(response));
-                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                        SSL_write(ssl, response, strlen(response));
-                        SSL_free(ssl);
-                        close(client.socket);
-                        free(buf);
-                        continue;
-                    }
-
-                    agentname = fname;
+                    w_mutex_unlock(&mutex_keys);
+                    merror("Invalid agent name %s (duplicated)", agentname);
+                    snprintf(response, 2048, "ERROR: Duplicated agent name: %s\n\n", agentname);
+                    SSL_write(ssl, response, strlen(response));
+                    snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                    SSL_write(ssl, response, strlen(response));
+                    SSL_free(ssl);
+                    close(client.socket);
+                    free(buf);
+                    continue;
                 }
             }
 
