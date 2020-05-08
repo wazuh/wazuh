@@ -98,6 +98,9 @@
     <description>Windows Defender: Antimalware scan paused</description>
     <options>no_full_log</options>
     <group>gdpr_IV_35.7.d,</group>
+    <mitre>
+      <id>T1203</id>
+    </mitre>
   </rule>
 
 

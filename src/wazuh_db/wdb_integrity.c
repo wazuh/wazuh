@@ -76,7 +76,7 @@ int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * beg
         const unsigned char * checksum = sqlite3_column_text(stmt, 0);
 
         if (checksum == 0) {
-            mdebug1("DB(%s) has a NULL %s checksum.", wdb->agent_id, COMPONENT_NAMES[component]);
+            mdebug1("DB(%s) has a NULL %s checksum.", wdb->id, COMPONENT_NAMES[component]);
             continue;
         }
 
@@ -138,7 +138,7 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
     }
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -170,7 +170,7 @@ void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp)
     sqlite3_bind_text(stmt, 2, COMPONENT_NAMES[component], -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
     }
 }
 
@@ -200,7 +200,7 @@ static void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long 
     sqlite3_bind_text(stmt, 3, COMPONENT_NAMES[component], -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
     }
 }
 
@@ -210,7 +210,7 @@ int wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, const char * com
     cJSON * data = cJSON_Parse(payload);
 
     if (data == NULL) {
-        mdebug1("DB(%s): cannot parse checksum range payload: '%s'", wdb->agent_id, payload);
+        mdebug1("DB(%s): cannot parse checksum range payload: '%s'", wdb->id, payload);
         return -1;
     }
 
@@ -260,7 +260,7 @@ int wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, const char * com
 
     case 1:
         gettime(&ts_end);
-        mdebug2("Agent '%s' %s range checksum: Time: %.3f ms.", wdb->agent_id, COMPONENT_NAMES[component], time_diff(&ts_start, &ts_end) * 1e3);
+        mdebug2("Agent '%s' %s range checksum: Time: %.3f ms.", wdb->id, COMPONENT_NAMES[component], time_diff(&ts_start, &ts_end) * 1e3);
         retval = strcmp(hexdigest, checksum) ? 1 : 2;
     }
 
@@ -300,7 +300,7 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
     cJSON * data = cJSON_Parse(payload);
 
     if (data == NULL) {
-        mdebug1("DB(%s): cannot parse checksum range payload: '%s'", wdb->agent_id, payload);
+        mdebug1("DB(%s): cannot parse checksum range payload: '%s'", wdb->id, payload);
         goto end;
     }
 
@@ -320,7 +320,7 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
     sqlite3_stmt * stmt = wdb->stmt[INDEXES[component]];
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         goto end;
     }
 
