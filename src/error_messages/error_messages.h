@@ -364,7 +364,7 @@
 #define VU_INSERT_PACKAGE_ERROR     "(5572): Couldn't insert the package '%s' into the vulnerability '%s'. Version (%s) '%s' '%s' (feed '%s')."
 #define VU_FILTER_VULN_ERROR        "(5573): Couldn't verify if the vulnerability '%s' of the package '%s' is already patched."
 #define VU_DISCARD_KERNEL_PKG       "(5574): Discarded Linux Kernel package '%s' (not running) for agent '%s'"
-#define VU_OVAL_UNAVAILABLE_DATA    "(5575): Unavailable vulnerability data for the agent '%s' OS. Skipping it."
+#define VU_OVAL_UNAVAILABLE_DATA    "(5575): Unavailable vulnerability data for the agent '%.3d' OS. Skipping it."
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"
