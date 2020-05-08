@@ -334,7 +334,7 @@
 #define VU_FIND_NVD_ERROR           "(5542): No vulnerabilities could be found in the NVD for agent '%.3d'"
 #define VU_REPORT_NVD_ERROR         "(5543): Could not report vulnerabilities from the NVD for agent '%.3d'"
 #define VU_INVALID_DIC_TAG          "(5544): Invalid tag found when parsing the CPE dictionary: '%s'"
-#define VU_NULL_AGENT_ID            "(5545): The agent database returned a null agent ID. Skipping agent '%.3d'"
+#define VU_NULL_AGENT_ID            "(5545): The agent database returned a null agent ID. Skipping agent."
 #define VU_NULL_AGENT_IP            "(5546): The agent database returned a null registration IP address. Skipping agent '%.3d'"
 #define VU_API_REQ_INV_NEW          "(5547): There was no valid response to '%s' after '%d' attempts. Trying the next page."
 #define VU_UNC_SEVERITY             "(5548): Uncontrolled severity has been found: '%s'"
@@ -365,6 +365,7 @@
 #define VU_FILTER_VULN_ERROR        "(5573): Couldn't verify if the vulnerability '%s' of the package '%s' is already patched."
 #define VU_DISCARD_KERNEL_PKG       "(5574): Discarded Linux Kernel package '%s' (not running) for agent '%.3d'"
 #define VU_OVAL_UNAVAILABLE_DATA    "(5575): Unavailable vulnerability data for the agent '%.3d' OS. Skipping it."
+#define VU_PKG_NO_VER               "(5576): Missing version for package '%s' of the inventory."
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"
