@@ -73,13 +73,14 @@ int Read_Syscheck_Config(const char *cfgfile)
     }
 
 #ifdef CLIENT
-    int it = 0;
-
     mdebug1(FIM_CLIENT_CONFIGURATION, cfgfile);
 
     /* Read shared config */
     modules |= CAGENT_CONFIG;
     ReadConfig(modules, AGENTCONFIG, &syscheck, NULL);
+#endif
+
+    int it = 0;
 
     /* Check directories options to determine whether to start the whodata thread or not */
     if (syscheck.dir) {
@@ -93,7 +94,6 @@ int Read_Syscheck_Config(const char *cfgfile)
             it++;
         }
     }
-#endif
 
     switch (syscheck.disabled) {
     case SK_CONF_UNPARSED:
