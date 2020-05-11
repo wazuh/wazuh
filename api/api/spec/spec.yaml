@@ -4102,7 +4102,7 @@ components:
     tsc:
       in: query
       name: tsc
-      description: Filters by TSC requirement.
+      description: "Filters by TSC requirement."
       schema:
         type: string
         format: alphanumeric
