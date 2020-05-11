@@ -41,6 +41,7 @@ static void w_enrollment_concat_group(char *buff, const char* centralized_group)
 static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip);
 static int w_enrollment_process_agent_key(char *buffer);
 static int w_enrollment_store_key_entry(const char* keys);
+static char *w_enrollment_extract_agent_name(const w_enrollment_ctx *cfg);
 
 /* Constants */
 static const int ENTRY_ID = 0;
@@ -150,8 +151,10 @@ static char *w_enrollment_extract_agent_name(const w_enrollment_ctx *cfg) {
         lhostname = cfg->target_cfg->agent_name;
     }
 
-    if(!cfg->allow_localhost && strcmp(lhostname, "localhost") == 0) {
-        merror_exit(AG_INV_HOST, lhostname);
+    if(!cfg->allow_localhost && (strcmp(lhostname, "localhost") == 0)) {
+        merror(AG_INV_HOST, lhostname);
+        if(lhostname != cfg->target_cfg->agent_name)
+            os_free(lhostname);
         return NULL;
     }
 
