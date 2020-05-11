@@ -225,11 +225,14 @@ def status():
     if get_wazuh_apid_pids():
         print("Wazuh API is running")
     else:
-        print("Wazuh API is stopped.")
-        with open(API_LOG_FILE_PATH, 'r') as log:
-            for line in deque(log, 20):
-                print(line)
-        print(f"Full log in {API_LOG_FILE_PATH}")
+        print("Wazuh API is stopped")
+        try:
+            with open(API_LOG_FILE_PATH, 'r') as log:
+                for line in deque(log, 20):
+                    print(line)
+            print(f"Full log in {API_LOG_FILE_PATH}")
+        except FileNotFoundError:
+            print(f"Could not find API log in '{os.path.dirname(API_LOG_FILE_PATH)}'")
 
 
 def get_wazuh_apid_pids():
