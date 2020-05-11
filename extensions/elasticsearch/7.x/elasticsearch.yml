@@ -14,7 +14,8 @@ opendistro_security.allow_unsafe_democertificates: true
 opendistro_security.allow_default_init_securityindex: true
 opendistro_security.authcz.admin_dn:
   - CN=admin,OU=Docu,O=Wazuh,L=California,C=US
-
+opendistro_security.nodes_dn:
+  - CN=node-1,OU=Docu,O=Wazuh,L=California,C=ES
 opendistro_security.audit.type: internal_elasticsearch
 opendistro_security.enable_snapshot_restore_privilege: true
 opendistro_security.check_snapshot_restore_write_privileges: true
