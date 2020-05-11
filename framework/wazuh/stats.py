@@ -37,7 +37,7 @@ def totals(date):
     stat_filename = ""
     try:
         stat_filename = os.path.join(
-            common.stats_path, "totals", str(date.year), MONTHS[date.month-1], f"ossec-totals-{date.day}.log")
+            common.stats_path, "totals", str(date.year), MONTHS[date.month-1], f"ossec-totals-{date.strftime('%d')}.log")
         stats = open(stat_filename, 'r')
     except IOError:
         raise WazuhError(1308, extra_message=stat_filename)
