@@ -362,23 +362,36 @@ static int w_enrollment_process_response(SSL *ssl) {
  * */
 static int w_enrollment_store_key_entry(const char* keys) {
     assert(keys != NULL);
-    File file;
 
-    if (TempFile(&file, isChroot() ? AUTH_FILE : KEYSFILE_PATH, 0) < 0) {
-        merror("Unable to open key file: %s", isChroot() ? AUTH_FILE : KEYSFILE_PATH);
+#ifdef WIN32
+    FILE *fp;
+    fp = fopen(KEYSFILE_PATH, "w");
+
+    if (!fp) {
+        merror(FOPEN_ERROR, KEYSFILE_PATH, errno, strerror(errno));
         return -1;
     }
+    fprintf(fp, "%s\n", keys);
+    fclose(fp);
 
-    fprintf(file.fp, "%s\n", keys);
-    
+#else /* !WIN32 */
+    File file;
+
+    if (TempFile(&file, isChroot() ? AUTH_FILE : KEYSFILE_PATH, 0) < 0) {        
+        merror(FOPEN_ERROR, isChroot() ? AUTH_FILE : KEYSFILE_PATH, errno, strerror(errno));
+        return -1;
+    }
+    fprintf(file.fp, "%s\n", keys);    
     fclose(file.fp);
-
+    
     if (OS_MoveFile(file.name, isChroot() ? AUTH_FILE : KEYSFILE_PATH) < 0) {
         free(file.name);
         return -1;
     }
-
     free(file.name);
+
+#endif /* !WIN32 */
+
     return 0;
 }
 
@@ -475,9 +488,16 @@ static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip) {
     assert(buff != NULL); // buff should not be NULL.
 
     if(sender_ip){
-        char opt_buf[256] = {0};
-        snprintf(opt_buf,254," IP:'%s'",sender_ip);
-        strncat(buff,opt_buf,254);		
+        /* Check if this is strictly an IP address using a regex */
+        if (OS_IsValidIP(sender_ip, NULL))
+        {
+            char opt_buf[256] = {0};
+            snprintf(opt_buf,254," IP:'%s'",sender_ip);
+            strncat(buff,opt_buf,254);
+        } else {
+            merror("Invalid IP address provided for sender IP.");
+            return -1;
+        }
     } else {
         char opt_buf[10] = {0};
         snprintf(opt_buf,10," IP:'src'");

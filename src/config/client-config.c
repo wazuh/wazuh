@@ -368,8 +368,15 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
             os_free(target_cfg->centralized_group);
             os_strdup(node[j]->content, target_cfg->centralized_group);
         } else if (strcmp(node[j]->element, xml_agent_addr) == 0) {
-            os_free(target_cfg->sender_ip);
-            os_strdup(node[j]->content, target_cfg->sender_ip);
+            if (OS_IsValidIP(node[j]->content, NULL) != 0) {
+                os_free(target_cfg->sender_ip);
+                os_strdup(node[j]->content, target_cfg->sender_ip);
+            } else {
+                merror(AG_INV_HOST, node[j]->content);
+                w_enrollment_target_destroy(target_cfg);
+                w_enrollment_cert_destroy(cert_cfg);
+                return (OS_INVALID);
+            }
         } else if (strcmp(node[j]->element, xml_ssl_cipher) == 0) {
             os_free(cert_cfg->ciphers);
             os_strdup(node[j]->content, cert_cfg->ciphers);
