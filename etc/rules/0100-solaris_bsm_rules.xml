@@ -29,6 +29,9 @@
     <if_sid>6102</if_sid>
     <match>^login</match>
     <description>Solaris: Login session succeeded.</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
     <group>authentication_success,pci_dss_10.2.5,gpg13_7.8,gpg13_7.9,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
   </rule>
 
@@ -43,6 +46,9 @@
     <if_sid>6102</if_sid>
     <match>^su </match>
     <description>Solaris: User successfully changed UID.</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
     <group>authentication_success,pci_dss_10.2.5,gpg13_7.8,gpg13_7.9,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
   </rule>
 

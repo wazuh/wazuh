@@ -65,6 +65,9 @@ ID: 81600 - 80799
         <same_source_ip />
         <options>alert_by_email</options>
         <description>Fortigate: Multiple failed login events from same source.</description>
+        <mitre>
+          <id>T1110</id>
+        </mitre>
         <group>authentication_failures,pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,nist_800_53_AC.7,</group>
     </rule>
 
@@ -84,6 +87,9 @@ ID: 81600 - 80799
         <if_matched_sid>81608</if_matched_sid>
         <same_source_ip />
         <description>Fortigate: Multiple changed configuration events from same source.</description>
+        <mitre>
+            <id>T1089</id>
+        </mitre>
         <group>gdpr_IV_35.7.d,</group>
     </rule>
 
@@ -102,6 +108,9 @@ ID: 81600 - 80799
         <same_source_ip />
         <options>alert_by_email</options>
         <description>Fortigate: Multiple default tunneling setting events from same source.</description>
+        <mitre>
+            <id>T1071</id>
+        </mitre>
         <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
     </rule>
 
@@ -138,6 +147,10 @@ ID: 81600 - 80799
         <same_source_ip />
         <options>alert_by_email</options>
         <description>Fortigate: Multiple Firewall SSL VPN failed login events from same source.</description>
+        <mitre>
+          <id>T1110</id>
+          <id>T1133</id>
+        </mitre>
         <group>authentication_failures,pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,nist_800_53_AC.7,</group>
     </rule>
 
@@ -204,6 +217,9 @@ ID: 81600 - 80799
         <match>level=information</match>
         <action>tunnel-up</action>
         <description>Fortigate: VPN User connected.</description>
+        <mitre>
+            <id>T1078</id>
+        </mitre>
         <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
     </rule>
 
@@ -211,6 +227,9 @@ ID: 81600 - 80799
         <if_matched_sid>81622</if_matched_sid>
         <same_source_ip />
         <description>Fortigate: Multiple vpn user connected from same source.</description>
+        <mitre>
+            <id>T1078</id>
+        </mitre>
         <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
     </rule>
 

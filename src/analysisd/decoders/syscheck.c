@@ -1456,9 +1456,8 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
     char path_splitted[757];
     int path_log_len = 0;
 
-    if (lf->fields[FIM_FILE].value) {
+    if(lf->fields[FIM_FILE].value != NULL) {
         path_log_len = strlen(lf->fields[FIM_FILE].value);
-
         if (path_log_len > 756){
             char * aux = lf->fields[FIM_FILE].value + path_log_len - 30;
             snprintf(path_splitted, 757, "%.719s [...] %s", lf->fields[FIM_FILE].value, aux);

@@ -1173,8 +1173,12 @@ void test_realtime_adddir_max_limit_reached(void **state) {
 
     syscheck.realtime->fd = 1024;
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_string(__wrap__merror, formatted_msg,
         "(6616): Unable to add directory to real time monitoring: 'C:\\a\\path' - Maximum size permitted.");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     ret = realtime_adddir("C:\\a\\path", 0, 0);
 
@@ -1186,10 +1190,14 @@ void test_realtime_adddir_duplicate_entry(void **state) {
 
     syscheck.realtime->fd = 128;
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     will_return(__wrap_OSHash_Get_ex, 1);
 
     expect_string(__wrap_w_directory_exists, path, "C:\\a\\path");
     will_return(__wrap_w_directory_exists, 1);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     ret = realtime_adddir("C:\\a\\path", 0, 0);
 
@@ -1201,6 +1209,8 @@ void test_realtime_adddir_handle_error(void **state) {
 
     syscheck.realtime->fd = 128;
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     will_return(__wrap_OSHash_Get_ex, 0);
 
     expect_string(wrap_run_realtime_CreateFile, lpFileName, "C:\\a\\path");
@@ -1208,6 +1218,8 @@ void test_realtime_adddir_handle_error(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6290): Unable to add directory to real time monitoring: 'C:\\a\\path'");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     ret = realtime_adddir("C:\\a\\path", 0, 0);
 
@@ -1217,10 +1229,14 @@ void test_realtime_adddir_handle_error(void **state) {
 void test_realtime_adddir_out_of_memory_error(void **state) {
     int ret;
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     will_return(__wrap_OSHash_Get_ex, 0);
 
     expect_string(wrap_run_realtime_CreateFile, lpFileName, "C:\\a\\path");
     will_return(wrap_run_realtime_CreateFile, (HANDLE)123456);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     will_return(__wrap_OSHash_Add_ex, NULL);
 
@@ -1236,10 +1252,14 @@ void test_realtime_adddir_out_of_memory_error(void **state) {
 void test_realtime_adddir_success(void **state) {
     int ret;
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     will_return(__wrap_OSHash_Get_ex, 0);
 
     expect_string(wrap_run_realtime_CreateFile, lpFileName, "C:\\a\\path");
     will_return(wrap_run_realtime_CreateFile, (HANDLE)123456);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     will_return(__wrap_OSHash_Add_ex, 1);
 

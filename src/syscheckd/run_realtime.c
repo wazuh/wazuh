@@ -461,7 +461,7 @@ int realtime_adddir(const char *dir, int whodata, __attribute__((unused)) int fo
         GetSystemTime(&syscheck.wdata.dirs_status[whodata - 1].last_check);
         if (set_winsacl(dir, whodata - 1)) {
             merror(FIM_ERROR_WHODATA_ADD_DIRECTORY, dir);
-            return 0;
+            return -2;
         }
 
         return 1;

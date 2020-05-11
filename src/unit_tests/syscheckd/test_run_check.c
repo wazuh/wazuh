@@ -262,7 +262,15 @@ static int setup_tmp_file(void **state) {
 /* teardown */
 
 static int teardown_group(void **state) {
-    (void) state;
+    #ifdef TEST_WINAGENT
+    if (syscheck.realtime) {
+        if (syscheck.realtime->dirtb) {
+            OSHash_Free(syscheck.realtime->dirtb);
+        }
+        free(syscheck.realtime);
+        syscheck.realtime = NULL;
+    }
+    #endif
 
     Free_Syscheck(&syscheck);
 
@@ -617,6 +625,8 @@ void test_fim_whodata_initialize_eventchannel(void **state) {
     }
 
     will_return(__wrap_run_whodata_scan, 0);
+
+    will_return(wrap_run_check_CreateThread, (HANDLE)123456);
 
     ret = fim_whodata_initialize();
 
