@@ -10,7 +10,7 @@ opendistro_security.ssl.http.enabled: true
 opendistro_security.ssl.http.pemcert_filepath: /etc/elasticsearch/certs/elasticsearch.pem
 opendistro_security.ssl.http.pemkey_filepath: /etc/elasticsearch/certs/elasticsearch-key.pem
 opendistro_security.ssl.http.pemtrustedcas_filepath: /etc/elasticsearch/certs/root-ca.pem
-opendistro_security.allow_unsafe_democertificates: true
+opendistro_security.allow_unsafe_democertificates: false
 opendistro_security.allow_default_init_securityindex: true
 opendistro_security.authcz.admin_dn:
   - CN=admin,OU=Docu,O=Wazuh,L=California,C=US
