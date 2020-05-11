@@ -143,8 +143,8 @@ def healthcheck_procedure(module: str):
     """
     manager_folder = os.path.join(current_path, 'env', 'configurations', module, 'manager', 'healthcheck')
     agent_folder = os.path.join(current_path, 'env', 'configurations', module, 'agent', 'healthcheck')
-    master_base_folder = os.path.join(current_path, 'env', 'configurations', 'base', 'wazuh-master', 'healthcheck')
-    agent_base_folder = os.path.join(current_path, 'env', 'configurations', 'base', 'wazuh-agent', 'healthcheck')
+    master_base_folder = os.path.join(current_path, 'env', 'configurations', 'base', 'manager', 'healthcheck')
+    agent_base_folder = os.path.join(current_path, 'env', 'configurations', 'base', 'agent', 'healthcheck')
     tmp_content = os.path.join(current_path, 'env', 'configurations', 'tmp')
 
     os.popen(f'cp -rf {master_base_folder} {os.path.join(tmp_content, "manager")}')
@@ -163,7 +163,7 @@ def change_rbac_mode(rbac_mode: str):
     rbac_mode : str
         RBAC Mode: Black (by default: all allowed), White (by default: all denied)
     """
-    with open(os.path.join(current_path, 'env', 'configurations', 'base', 'wazuh-master', 'api.yaml'),
+    with open(os.path.join(current_path, 'env', 'configurations', 'base', 'manager', 'api.yaml'),
               'r+') as api_conf:
         content = api_conf.read()
         api_conf.seek(0)
@@ -173,7 +173,7 @@ def change_rbac_mode(rbac_mode: str):
 def clean_tmp_folder():
     """Remove temporal folder used te configure the environment and set RBAC mode to Black.
     """
-    with open(os.path.join(current_path, 'env', 'configurations', 'base', 'wazuh-master', 'api.yaml'),
+    with open(os.path.join(current_path, 'env', 'configurations', 'base', 'manager', 'api.yaml'),
               'r+') as api_conf:
         content = api_conf.read()
         api_conf.seek(0)
