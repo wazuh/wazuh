@@ -43,13 +43,13 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
         version = atoi(db_version);
 
         if (version < 0) {
-            merror("DB(%s): Incorrect database version: %d", wdb->agent_id, version);
+            merror("DB(%s): Incorrect database version: %d", wdb->id, version);
             return wdb;
         }
     }
 
     for (unsigned i = version; i < sizeof(UPDATES) / sizeof(char *); i++) {
-        mdebug2("Updating database '%s' to version %d", wdb->agent_id, i + 1);
+        mdebug2("Updating database '%s' to version %d", wdb->id, i + 1);
 
         if (wdb_sql_exec(wdb, UPDATES[i]) == -1 || wdb_adjust_upgrade(wdb, i)) {
             wdb_t * new_wdb = wdb_backup(wdb, version);
@@ -67,7 +67,7 @@ wdb_t * wdb_backup(wdb_t *wdb, int version) {
     wdb_t * new_wdb = NULL;
     sqlite3 * db;
 
-    os_strdup(wdb->agent_id, sagent_id),
+    os_strdup(wdb->id, sagent_id),
     snprintf(path, PATH_MAX, "%s/%s.db", WDB2_DIR, sagent_id);
 
     if (wdb_close(wdb, TRUE) != -1) {
@@ -165,12 +165,12 @@ int wdb_adjust_upgrade(wdb_t *wdb, int upgrade_step) {
 int wdb_adjust_v4(wdb_t *wdb) {
 
     if (wdb_begin2(wdb) < 0) {
-        merror("DB(%s) The begin statement could not be executed.", wdb->agent_id);
+        merror("DB(%s) The begin statement could not be executed.", wdb->id);
         return -1;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_FIM_GET_ATTRIBUTES) < 0) {
-        merror("DB(%s) Can't cache statement: get_attributes.", wdb->agent_id);
+        merror("DB(%s) Can't cache statement: get_attributes.", wdb->id);
         return -1;
     }
 
@@ -188,7 +188,7 @@ int wdb_adjust_v4(wdb_t *wdb) {
         decode_win_attributes(decoded_attrs, (unsigned int) atoi(attrs));
 
         if (wdb_stmt_cache(wdb, WDB_STMT_FIM_UPDATE_ATTRIBUTES) < 0) {
-            merror("DB(%s) Can't cache statement: update_attributes.", wdb->agent_id);
+            merror("DB(%s) Can't cache statement: update_attributes.", wdb->id);
             return -1;
         }
 
@@ -198,12 +198,12 @@ int wdb_adjust_v4(wdb_t *wdb) {
         sqlite3_bind_text(update_stmt, 2, file, -1, NULL);
 
         if (sqlite3_step(update_stmt) != SQLITE_DONE) {
-            mdebug1("DB(%s) The attribute coded as %s could not be updated.", wdb->agent_id, attrs);
+            mdebug1("DB(%s) The attribute coded as %s could not be updated.", wdb->id, attrs);
         }
     }
 
     if (wdb_commit2(wdb) < 0) {
-        merror("DB(%s) The commit statement could not be executed.", wdb->agent_id);
+        merror("DB(%s) The commit statement could not be executed.", wdb->id);
         return -1;
     }
 

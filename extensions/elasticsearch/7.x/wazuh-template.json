@@ -399,6 +399,8 @@
       "rule.groups",
       "rule.id",
       "rule.info",
+      "rule.mitre.id",
+      "rule.mitre.tactics",
       "rule.pci_dss",
       "rule.hipaa",
       "rule.nist_800_53",
@@ -752,6 +754,16 @@
           },
           "mail": {
             "type": "boolean"
+          },
+          "mitre": {
+            "properties": {
+              "id": {
+                "type": "keyword"
+              },
+              "tactics": {
+                "type": "keyword"
+              }
+            }
           }
         }
       },

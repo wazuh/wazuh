@@ -138,6 +138,9 @@ int OS_ReadXMLRules(const char *rulefile,
 
     const char *xml_options = "options";
 
+    const char *xml_mitre = "mitre";
+    const char *xml_mitre_id = "id";
+
     char *rulepath = NULL;
 
     size_t i;
@@ -234,6 +237,7 @@ int OS_ReadXMLRules(const char *rulefile,
         while (rule[j]) {
             /* Rules options */
             int k = 0;
+            int mitre_size = 0;
 
             config_ruleinfo = NULL;
 
@@ -931,6 +935,55 @@ int OS_ReadXMLRules(const char *rulefile,
                         retval = -1;
                         goto cleanup;
                     }
+                } else if (strcasecmp(rule_opt[k]->element, xml_mitre) == 0) {
+                    int ind;
+                    int l;
+                    XML_NODE mitre_opt = NULL;
+                    mitre_opt = OS_GetElementsbyNode(&xml, rule_opt[k]);
+
+                    if (mitre_opt == NULL) {
+                        mwarn("Empty Mitre information for rule '%d'",
+                            config_ruleinfo->sigid);
+                        k++;
+                        continue;
+                    }
+
+                    for (ind = 0; mitre_opt[ind] != NULL; ind++) {
+                        if ((!mitre_opt[ind]->element) || (!mitre_opt[ind]->content)) {
+                            break;
+                        } else if (strcasecmp(mitre_opt[ind]->element, xml_mitre_id) == 0) {
+                            if (strlen(mitre_opt[ind]->content) == 0) {
+                                mwarn("No Mitre Technique ID found for rule '%d'",
+                                    config_ruleinfo->sigid);
+                            } else {
+                                int inarray = 0;
+                                for (l = 0; l < mitre_size; l++) {
+                                    if (strcmp(config_ruleinfo->mitre_id[l],mitre_opt[ind]->content) == 0) {
+                                        inarray = 1;
+                                    }
+                                }
+                                if (!inarray) {
+                                    os_realloc(config_ruleinfo->mitre_id, (mitre_size + 2) * sizeof(char *),
+                                               config_ruleinfo->mitre_id);
+                                    os_strdup(mitre_opt[ind]->content, config_ruleinfo->mitre_id[mitre_size]);
+                                    config_ruleinfo->mitre_id[mitre_size + 1] = NULL;
+                                    mitre_size++;
+                                }
+                            }
+                        } else {
+                            merror("Invalid option '%s' for "
+                            "rule '%d'", mitre_opt[ind]->element,
+                            config_ruleinfo->sigid);
+
+                            for (l = 0; config_ruleinfo->mitre_id[l] != NULL; l++) {
+                                os_free(config_ruleinfo->mitre_id[l]);
+                            }
+                            os_free(config_ruleinfo->mitre_id);
+                            OS_ClearNode(mitre_opt);
+                            goto cleanup;
+                        }
+                    }
+                    OS_ClearNode(mitre_opt);
                 }
                 /* XXX As new features are added into ../analysisd/rules.c
                  * This code needs to be updated to match, but is out of date
