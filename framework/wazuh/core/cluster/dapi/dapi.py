@@ -33,7 +33,7 @@ class DistributedAPI:
                  debug: bool = False, request_type: str = "local_master",
                  wait_for_complete: bool = False, from_cluster: bool = False, is_async: bool = False,
                  broadcasting: bool = False, basic_services: tuple = None, local_client_arg: str = None,
-                 rbac_permissions: Dict = None, nodes: list = None):
+                 rbac_permissions: Dict = None, nodes: list = None, current_user: str = ''):
         """
         Class constructor
 
@@ -58,6 +58,7 @@ class DistributedAPI:
         self.is_async = is_async
         self.broadcasting = broadcasting
         self.rbac_permissions = rbac_permissions if rbac_permissions is not None else dict()
+        self.current_user = current_user
         self.nodes = nodes if nodes is not None else list()
         if not basic_services:
             self.basic_services = ('wazuh-modulesd', 'ossec-analysisd', 'ossec-execd', 'wazuh-db')
@@ -177,6 +178,7 @@ class DistributedAPI:
             common.rbac.set(self.rbac_permissions)
             common.broadcast.set(self.broadcasting)
             common.cluster_nodes.set(self.nodes)
+            common.current_user.set(self.current_user)
             data = self.f(**self.f_kwargs)
             common.reset_context_cache()
             self.logger.debug("Finished executing request locally")
@@ -264,6 +266,7 @@ class DistributedAPI:
                 "local_client_arg": self.local_client_arg,
                 "basic_services": self.basic_services,
                 "rbac_permissions": self.rbac_permissions,
+                "current_user": self.current_user,
                 "broadcasting": self.broadcasting,
                 "nodes": self.nodes
                 }

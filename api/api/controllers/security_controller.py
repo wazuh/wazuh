@@ -151,6 +151,7 @@ async def delete_users(request, usernames=None):
                           request_type='local_master',
                           is_async=False,
                           logger=logger,
+                          current_user=request['token_info']['sub'],
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
