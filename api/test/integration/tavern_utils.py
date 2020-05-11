@@ -51,7 +51,7 @@ def test_sort_response(response, affected_items):
     affected_items = json.loads(affected_items)
     reverse_index = len(affected_items) - 1
     for index, item_response in enumerate(response.json()['data']['affected_items']):
-        assert item_response != affected_items[reverse_index - index]
+        assert item_response == affected_items[reverse_index - index]
 
 
 def test_validate_data_dict_field(response, fields_dict):

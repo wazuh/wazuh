@@ -58,7 +58,8 @@ async def get_rules(request, rule_ids=None, pretty=False, wait_for_complete=Fals
                 'gdpr': gdpr,
                 'gpg13': gpg13,
                 'hipaa': hipaa,
-                'nist_800_53': request.query.get('nist-800-53', None)}
+                'nist_800_53': request.query.get('nist-800-53', None),
+                'tsc': request.query.get('tsc', None)}
 
     dapi = DistributedAPI(f=rule_framework.get_rules,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
