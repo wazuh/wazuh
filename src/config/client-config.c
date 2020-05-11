@@ -300,7 +300,7 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
     const char *xml_agent_key_path = "agent_key_path";
     const char *xml_auth_password = "authorization_pass";
     const char *xml_auto_method = "auto_method";
-    const char *xml_wait_time = "wait_time";
+    const char *xml_delay_after_enrollment = "delay_after_enrollment";
     char * remote_ip = NULL;
     int port = 0;
     int j;
@@ -403,21 +403,21 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
                 w_enrollment_cert_destroy(cert_cfg);
                 return OS_INVALID;
             }
-        } else if (strcmp(node[j]->element, xml_wait_time) == 0) {
+        } else if (strcmp(node[j]->element, xml_delay_after_enrollment) == 0) {
             if (!OS_StrIsNum(node[j]->content)) {
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
                 w_enrollment_target_destroy(target_cfg);
                 w_enrollment_cert_destroy(cert_cfg);
                 return (OS_INVALID);
             }
-            int wait_time;
-            if (wait_time = atoi(node[j]->content), wait_time <= 0) {
+            int delay_after_enrollment;
+            if (delay_after_enrollment = atoi(node[j]->content), delay_after_enrollment <= 0) {
                 merror(PORT_ERROR, port);
                 w_enrollment_target_destroy(target_cfg);
                 w_enrollment_cert_destroy(cert_cfg);
                 return (OS_INVALID);
             } 
-            logr->enrollment_cfg->wait_time = wait_time;
+            logr->enrollment_cfg->delay_after_enrollment = delay_after_enrollment;
         } else {
             merror(XML_INVELEM, node[j]->element);
             w_enrollment_target_destroy(target_cfg);

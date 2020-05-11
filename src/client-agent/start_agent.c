@@ -221,8 +221,8 @@ void start_agent(int is_startup)
                         int enroll_result = w_enrollment_request_key(agt->enrollment_cfg, agt->server[agt->rip_id].rip);
                         if(enroll_result == 0) {
                             // Wait for key update on agent side
-                            mdebug1("Sleeping %d seconds to allow manager key file updates", agt->enrollment_cfg->wait_time);
-                            sleep(agt->enrollment_cfg->wait_time);
+                            mdebug1("Sleeping %d seconds to allow manager key file updates", agt->enrollment_cfg->delay_after_enrollment);
+                            sleep(agt->enrollment_cfg->delay_after_enrollment);
                             // Successfull enroll, read keys
                             OS_ReadKeys(&keys, 1, 0, 0);
                         }

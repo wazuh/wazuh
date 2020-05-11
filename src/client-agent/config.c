@@ -107,7 +107,7 @@ cJSON *getClientConfig(void) {
     if (agt->enrollment_cfg) {
         cJSON *enrollment_cfg = cJSON_CreateObject();
         cJSON_AddStringToObject(enrollment_cfg, "enabled", agt->enrollment_cfg->enabled ? "yes" : "no");
-        cJSON_AddNumberToObject(enrollment_cfg, "wait_time", agt->enrollment_cfg->wait_time);
+        cJSON_AddNumberToObject(enrollment_cfg, "delay_after_enrollment", agt->enrollment_cfg->delay_after_enrollment);
 
         if (agt->enrollment_cfg->target_cfg->manager_name)
             cJSON_AddStringToObject(enrollment_cfg, "manager_address", agt->enrollment_cfg->target_cfg->manager_name);

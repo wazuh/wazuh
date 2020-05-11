@@ -67,7 +67,7 @@ typedef struct _enrollment_ctx {
     SSL *ssl;                               /**> will hold the connection instance with the manager */
     unsigned int enabled:1;                 /**> enabled / disables auto_enrollment */
     unsigned int allow_localhost:1;         /**> 1 by default if this flag is in 0 using agent_name "localhost" will not be allowed */
-    unsigned int wait_time:30;              /**> 20 by default, number of seconds to wait for enrollment */
+    unsigned int delay_after_enrollment:30;              /**> 20 by default, number of seconds to wait for enrollment */
 } w_enrollment_ctx;
 
 /**
