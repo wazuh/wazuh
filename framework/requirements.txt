@@ -12,8 +12,8 @@ chardet==3.0.4
 cryptography==2.9.2
 docker==4.2.0
 docker-pycreds==0.4.0
-docutils==0.16
-google-api-core==1.17.0
+docutils==0.15.2
+google-api-core==1.16.0
 google-auth==1.14.1
 google-cloud-pubsub==1.4.3
 googleapis-common-protos==1.51.0
