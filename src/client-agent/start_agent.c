@@ -224,6 +224,7 @@ void start_agent(int is_startup)
                             mdebug1("Sleeping %d seconds to allow manager key file updates", agt->enrollment_cfg->delay_after_enrollment);
                             sleep(agt->enrollment_cfg->delay_after_enrollment);
                             // Successfull enroll, read keys
+                            OS_FreeKeys(&keys);
                             OS_ReadKeys(&keys, 1, 0, 0);
                         }
                     }

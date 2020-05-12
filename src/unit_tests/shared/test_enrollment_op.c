@@ -254,6 +254,9 @@ int test_teardown_context(void **state) {
     os_free(cfg->cert_cfg->ca_cert);
     os_free(cfg->cert_cfg->ciphers);
     os_free(cfg->cert_cfg);
+    if(cfg->ssl) {
+        SSL_free(cfg->ssl);
+    }
     w_enrollment_destroy(cfg);
     return 0;
 }

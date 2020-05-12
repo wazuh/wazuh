@@ -197,6 +197,7 @@ int main(int argc, char **argv)
             mdebug1("Sleeping %d seconds to allow manager key file updates", agt->enrollment_cfg->delay_after_enrollment);
             sleep(agt->enrollment_cfg->delay_after_enrollment);
             // Readkeys again to add obtained key
+            OS_FreeKeys(&keys);
             OS_ReadKeys(&keys, 1, 0, 0);
         } else {
             merror_exit(AG_ENROLL_FAIL);

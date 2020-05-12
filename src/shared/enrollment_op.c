@@ -102,13 +102,6 @@ w_enrollment_ctx * w_enrollment_init(w_enrollment_target *target, w_enrollment_c
 }
 
 void w_enrollment_destroy(w_enrollment_ctx *cfg) {
-    if (cfg->ssl) {
-        BIO *bio = SSL_get_rbio(cfg->ssl);
-        if (bio) {
-            BIO_free(bio);
-        }
-        SSL_free(cfg->ssl);
-    }
     os_free(cfg);
 }
 
@@ -122,6 +115,10 @@ int w_enrollment_request_key(w_enrollment_ctx *cfg, const char * server_address)
             ret = w_enrollment_process_response(cfg->ssl);
         }
         close(socket);
+    }
+    if (cfg->ssl) {
+        SSL_free(cfg->ssl);
+        cfg->ssl = NULL;
     }
     return ret;
 }
