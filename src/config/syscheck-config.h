@@ -53,6 +53,7 @@ typedef enum fdb_stmt {
 #define MAX_DIR_SIZE    64
 #define MAX_DIR_ENTRY   128
 #define SYSCHECK_WAIT   1
+#define MAX_FILE_LIMIT  2147483647
 
 /* Checking options */
 #define CHECK_SIZE          00000001
@@ -282,6 +283,8 @@ typedef struct _config {
     char *scan_day;                 /* run syscheck on this day */
     char *scan_time;                /* run syscheck at this time */
 
+    unsigned int file_limit;        /* maximum number of files to monitor */
+
     char **ignore;                  /* list of files/dirs to ignore */
     OSMatch **ignore_regex;         /* regex of files/dirs to ignore */
 
@@ -328,6 +331,13 @@ typedef struct _config {
     int process_priority; // Adjusts the priority of the process (or threads in Windows)
     bool allow_remote_prefilter_cmd;
 } syscheck_config;
+
+/**
+ * @brief Organizes syscheck directories and related data according to their priority (whodata-realtime-scheduled) and in alphabetical order
+ *
+ * @param syscheck Syscheck configuration structure
+ */
+void organize_syscheck_dirs(syscheck_config *syscheck) __attribute__((nonnull(1)));
 
 /**
  * @brief Adds (or overwrite if exists) an entry to the syscheck configuration structure

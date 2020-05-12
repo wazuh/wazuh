@@ -28,6 +28,7 @@
 
 #define FIMDB_OK 0   // Successful result.
 #define FIMDB_ERR -1 // Generic error.
+#define FIMDB_FULL -2 // DB is full.
 
 #define FIMDB_RM_MAX_LOOP 10 // Max number of loop iterations
 #define FIMDB_RM_DEFAULT_TIME 100 //miliseconds
@@ -169,9 +170,10 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_entry_data *en
  * @param fim_sql FIM database struct.
  * @param file_path File path.
  * @param entry Entry data to be inserted.
+ * @param alert_type Type of alert: FIM_ADD or FIM_MODIFICATION.
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry);
+int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry, int alert_type);
 
 /**
  * @brief Send sync message for all entries.
