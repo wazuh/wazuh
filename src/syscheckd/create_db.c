@@ -337,9 +337,7 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
     }
 
     if (item->configuration & CHECK_SEECHANGES) {
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
         diff = seechanges_addfile(file);
-        w_mutex_lock(&syscheck.fim_entry_mutex);
     }
 
     json_event = fim_json_event(file, saved ? saved->data : NULL, new, item->index, alert_type, item->mode, w_evt, diff);
