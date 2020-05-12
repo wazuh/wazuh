@@ -1,4 +1,5 @@
 server.host: 0.0.0.0
+server.port: 443
 elasticsearch.hosts: https://localhost:9200
 elasticsearch.ssl.verificationMode: none
 elasticsearch.username: admin
