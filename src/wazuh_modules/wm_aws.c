@@ -413,13 +413,17 @@ void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
     os_free(command);
 
     if (wm_exec_ret_code != 0){
+    #ifndef __clang_analyzer__
         mterror(WM_AWS_LOGTAG, "Internal error. Exiting...");
         os_free(trail_title);
         if (wm_exec_ret_code > 0) {
             os_free(output);
         }
         pthread_exit(NULL);
-    } else if (status > 0) {
+    #endif
+    }
+
+    if (status > 0) {
         mtwarn(WM_AWS_LOGTAG, "%s Returned exit code %d", trail_title, status);
         if(status == 1) {
             char * unknown_error_msg = strstr(output,"Unknown error");
@@ -544,6 +548,7 @@ void wm_aws_run_service(wm_aws_service *exec_service) {
     os_free(command);
 
     if (wm_exec_ret_code) {
+    #ifndef __clang_analyzer__
         mterror(WM_AWS_LOGTAG, "Internal error. Exiting...");
         os_free(service_title);
 
@@ -551,7 +556,10 @@ void wm_aws_run_service(wm_aws_service *exec_service) {
             os_free(output);
         }
         pthread_exit(NULL);
-    } else if (status > 0) {
+    #endif
+    }
+
+    if (status > 0) {
         mtwarn(WM_AWS_LOGTAG, "%s Returned exit code %d", service_title, status);
         if(status == 1) {
             char * unknown_error_msg = strstr(output,"Unknown error");
