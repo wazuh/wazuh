@@ -255,10 +255,9 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
                 break;
 
             case cJSON_Array:
-                os_malloc(OS_MAXSTR, value);
-                *value = '\0';
-
                 if (lf->decoder_info->flags & CSV_STRING) {
+                    os_malloc(OS_MAXSTR, value);
+                    *value = '\0';
                     size_t n = 0;
                     size_t z;
                     for (array = logJSON->child; array; array = array->next){
@@ -338,7 +337,7 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
                     fillData(lf, key, value);
                 }
 
-                free(value);
+                os_free(value);
                 break;
 
             case cJSON_NULL:
