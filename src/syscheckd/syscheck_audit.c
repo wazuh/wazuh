@@ -573,7 +573,7 @@ char *gen_audit_path(char *cwd, char *path0, char *path1) {
     return gen_path;
 }
 
-void get_parent_process_info(char *ppid, char **parent_name, char **parent_cwd) {
+void get_parent_process_info(char *ppid, char ** const parent_name, char ** const parent_cwd) {
 
     char *slinkexe = NULL;
     char *slinkcwd = NULL;
@@ -588,14 +588,14 @@ void get_parent_process_info(char *ppid, char **parent_name, char **parent_cwd) 
     snprintf(slinkcwd, tam_slink, "/proc/%s/cwd", ppid);
 
     if(tam_ppname = readlink(slinkexe, *parent_name, OS_FLSIZE), tam_ppname < 0) {
-        merror("Failure to obtain the name of the process: '%s'. Error: %s", ppid, strerror(errno));
+        mdebug1("Failure to obtain the name of the process: '%s'. Error: %s", ppid, strerror(errno));
         parent_name[0][0] = '\0';
     } else {
         parent_name[0][tam_ppname] = '\0';
     }
 
     if(tam_pcwd = readlink(slinkcwd, *parent_cwd, OS_FLSIZE), tam_pcwd < 0) {
-        merror("Failure to obtain the cwd of the process: '%s'. Error: %s", ppid, strerror(errno));
+        mdebug1("Failure to obtain the cwd of the process: '%s'. Error: %s", ppid, strerror(errno));
         parent_cwd[0][0] = '\0';
     } else {
         parent_cwd[0][tam_pcwd] = '\0';

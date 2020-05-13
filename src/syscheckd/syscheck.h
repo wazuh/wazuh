@@ -481,7 +481,7 @@ char *gen_audit_path(char *cwd, char *path0, char *path1);
  * @param parent_name String where save the parent name (exe)
  * @param parent_cwd String where save the parent working directory (cwd)
  */
-void get_parent_process_info(char *ppid, char **parent_name, char **parent_cwd);
+void get_parent_process_info(char *ppid, char ** const parent_name, char ** const parent_cwd);
 
 /**
  * @brief Reloads audit rules to configured directories

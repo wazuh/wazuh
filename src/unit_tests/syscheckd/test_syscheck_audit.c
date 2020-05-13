@@ -1284,10 +1284,10 @@ void test_get_process_parent_info_failed(void **state)
     parent_cwd = malloc(10);
 
     will_return(__wrap_readlink, -1);
-    expect_string(__wrap__merror, formatted_msg, "Failure to obtain the name of the process: '1515'. Error: File exists");
+    expect_string(__wrap__mdebug1, formatted_msg, "Failure to obtain the name of the process: '1515'. Error: File exists");
 
     will_return(__wrap_readlink, -1);
-    expect_string(__wrap__merror, formatted_msg, "Failure to obtain the cwd of the process: '1515'. Error: File exists");
+    expect_string(__wrap__mdebug1, formatted_msg, "Failure to obtain the cwd of the process: '1515'. Error: File exists");
 
     state[0] = parent_name;
     state[1] = parent_cwd;
