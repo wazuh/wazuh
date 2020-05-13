@@ -31,6 +31,8 @@ extern void mock_assert(const int result, const char* const expression,
 // Global variables
 static int _base_line = 0;
 
+static fim_state_db _db_state = FIM_STATE_DB_EMPTY;
+
 static const char *FIM_EVENT_TYPE[] = {
     "added",
     "deleted",
@@ -53,6 +55,7 @@ void fim_scan() {
     struct timespec start;
     struct timespec end;
     clock_t cputime_start;
+    unsigned int nodes_count;
 
     cputime_start = clock();
     gettime(&start);
@@ -83,7 +86,60 @@ void fim_scan() {
         os_winreg_check();
 #endif
 
+    check_deleted_files();
+
+    if (syscheck.file_limit) {
+        w_mutex_lock(&syscheck.fim_entry_mutex);
+        nodes_count = fim_db_get_count_entry_path(syscheck.database);
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+        if (nodes_count < syscheck.file_limit) {
+            it = 0;
+
+            w_mutex_lock(&syscheck.fim_scan_mutex);
+
+            while ((syscheck.dir[it] != NULL) && (nodes_count < syscheck.file_limit)) {
+                struct fim_element *item;
+                os_calloc(1, sizeof(fim_element), item);
+                item->mode = FIM_SCHEDULED;
+                item->index = it;
+                fim_checker(syscheck.dir[it], item, NULL, 0);
+                it++;
+                os_free(item);
+
+                w_mutex_lock(&syscheck.fim_entry_mutex);
+                nodes_count = fim_db_get_count_entry_path(syscheck.database);
+                w_mutex_unlock(&syscheck.fim_entry_mutex);
+            }
+
+            w_mutex_unlock(&syscheck.fim_scan_mutex);
+
+#ifdef WIN32
+            if (nodes_count < syscheck.file_limit) {
+                os_winreg_check();
+
+                w_mutex_lock(&syscheck.fim_entry_mutex);
+                nodes_count = fim_db_get_count_entry_path(syscheck.database);
+                w_mutex_unlock(&syscheck.fim_entry_mutex);
+            }
+#endif
+
+            w_mutex_lock(&syscheck.fim_entry_mutex);
+            fim_db_set_all_unscanned(syscheck.database);
+            w_mutex_unlock(&syscheck.fim_entry_mutex);
+        }
+        
+    }
+
     gettime(&end);
+
+    if (syscheck.file_limit != 0) {
+        mdebug2(FIM_FILE_LIMIT_VALUE, syscheck.file_limit);
+        fim_check_db_state();
+    }
+    else {
+        mdebug2(FIM_FILE_LIMIT_UNLIMITED);
+    }
 
     if (_base_line == 0) {
         _base_line = 1;
@@ -93,8 +149,6 @@ void fim_scan() {
         // Realtime watches are set after the first scan in Windows.
         mdebug2(FIM_NUM_WATCHES, count_watches());
     }
-
-    check_deleted_files();
 
     minfo(FIM_FREQUENCY_ENDED);
     fim_send_scan_info(FIM_SCAN_END);
@@ -262,6 +316,7 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
     cJSON *json_event = NULL;
     char *json_formated;
     int alert_type;
+    int result;
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
@@ -285,13 +340,13 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
     if (json_event) {
-        if (fim_db_insert(syscheck.database, file, new) == -1) {
+        if (result = fim_db_insert(syscheck.database, file, new, alert_type), result < 0) {
             free_entry_data(new);
             free_entry(saved);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
             cJSON_Delete(json_event);
 
-            return OS_INVALID;
+            return (result == FIMDB_FULL) ? 0 : OS_INVALID;
         }
     }
 
@@ -442,10 +497,11 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
 
     if ((saved && data && saved->data && strcmp(saved->data->hash_sha1, data->hash_sha1) != 0)
         || alert_type == FIM_ADD) {
-        if (fim_db_insert(syscheck.database, key, data) == -1) {
+        if (result = fim_db_insert(syscheck.database, key, data, alert_type), result < 0) {
             free_entry(saved);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
-            return OS_INVALID;
+
+            return (result == FIMDB_FULL) ? 0 : OS_INVALID;
         }
         w_mutex_unlock(&syscheck.fim_entry_mutex);
         json_event = fim_json_event(key, saved ? saved->data : NULL, data, pos,
@@ -467,6 +523,95 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
     return result;
 }
 #endif
+
+// Checks the DB state, sends a message alert if necessary
+void fim_check_db_state() {
+    unsigned int nodes_count = 0;
+    cJSON *json_event = NULL;
+    char *json_plain = NULL;
+    char alert_msg[OS_SIZE_256] = {'\0'};
+
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+    nodes_count = fim_db_get_count_entry_path(syscheck.database);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    switch (_db_state) {
+    case FIM_STATE_DB_FULL:
+        if (nodes_count >= syscheck.file_limit) {
+            return;
+        }
+        break;
+    case FIM_STATE_DB_90_PERCENTAGE:
+        if ((nodes_count < syscheck.file_limit) && (nodes_count >= syscheck.file_limit * 0.9)) {
+            return;
+        }
+        break;
+    case FIM_STATE_DB_80_PERCENTAGE:
+        if ((nodes_count < syscheck.file_limit * 0.9) && (nodes_count >= syscheck.file_limit * 0.8)) {
+            return;
+        }
+        break;
+    case FIM_STATE_DB_NORMAL:
+        if (nodes_count == 0) {
+            _db_state = FIM_STATE_DB_EMPTY;
+            return;
+        }
+        else if (nodes_count < syscheck.file_limit * 0.8) {
+            return;
+        }
+        break;
+    case FIM_STATE_DB_EMPTY:
+        if (nodes_count == 0) {
+            return;
+        }
+        else if (nodes_count < syscheck.file_limit * 0.8) {
+            _db_state = FIM_STATE_DB_NORMAL;
+            return;
+        }
+        break;
+    default: // LCOV_EXCL_LINE
+        break; // LCOV_EXCL_LINE
+    }
+
+    json_event = cJSON_CreateObject();
+    cJSON_AddNumberToObject(json_event, "file_limit", syscheck.file_limit);
+    cJSON_AddNumberToObject(json_event, "file_count", nodes_count);
+
+    if (nodes_count >= syscheck.file_limit) {
+        _db_state = FIM_STATE_DB_FULL;
+        mwarn(FIM_DB_FULL_ALERT);
+        cJSON_AddStringToObject(json_event, "alert_type", "full");
+    }
+    else if (nodes_count >= syscheck.file_limit * 0.9) {
+        _db_state = FIM_STATE_DB_90_PERCENTAGE;
+        minfo(FIM_DB_90_PERCENTAGE_ALERT);
+        cJSON_AddStringToObject(json_event, "alert_type", "90_percentage");
+    }
+    else if (nodes_count >= syscheck.file_limit * 0.8) {
+        _db_state = FIM_STATE_DB_80_PERCENTAGE;
+        minfo(FIM_DB_80_PERCENTAGE_ALERT);
+        cJSON_AddStringToObject(json_event, "alert_type", "80_percentage");
+    }
+    else if (nodes_count > 0) {
+        _db_state = FIM_STATE_DB_NORMAL;
+        minfo(FIM_DB_NORMAL_ALERT);
+        cJSON_AddStringToObject(json_event, "alert_type", "normal");
+    }
+    else {
+        _db_state = FIM_STATE_DB_EMPTY;
+        minfo(FIM_DB_NORMAL_ALERT);
+        cJSON_AddStringToObject(json_event, "alert_type", "normal");
+    }
+
+    json_plain = cJSON_PrintUnformatted(json_event);
+
+    snprintf(alert_msg, OS_SIZE_256, "wazuh: FIM DB: %s", json_plain);
+
+    send_log_msg(alert_msg);
+
+    os_free(json_plain);
+    cJSON_Delete(json_event);
+}
 
 // Returns the position of the path into directories array
 int fim_configuration_directory(const char *path, const char *entry) {

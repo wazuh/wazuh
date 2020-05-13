@@ -40,7 +40,7 @@ static int teardown_wdb_t(void **state) {
     wdb_t *data = *state;
 
     if(data) {
-        os_free(data->agent_id);
+        os_free(data->id);
         os_free(data);
     }
 
@@ -139,7 +139,7 @@ static void test_wdb_syscheck_save2_payload_null(void **state)
     int ret;
 
     wdb_t * wdb = *state;
-    wdb->agent_id = strdup("000");
+    wdb->id = strdup("000");
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000): cannot parse FIM payload: '(null)'");
     ret = wdb_syscheck_save2(wdb, NULL);
     assert_int_equal(ret, -1);
@@ -150,7 +150,7 @@ static void test_wdb_syscheck_save2_data_null(void **state)
     int ret;
 
     wdb_t * wdb = *state;
-    wdb->agent_id = strdup("000");
+    wdb->id = strdup("000");
     will_return(__wrap_wdb_begin2, 0);
     expect_string(__wrap__merror, formatted_msg, "DB(000) fim/save request with no file path argument.");
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Can't insert file entry.");
@@ -164,7 +164,7 @@ static void test_wdb_syscheck_save2_fail_transaction(void **state)
     int ret;
 
     wdb_t * wdb = *state;
-    wdb->agent_id = strdup("000");
+    wdb->id = strdup("000");
     wdb->transaction = 0;
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__merror, formatted_msg, "DB(000) Can't begin transaction.");
@@ -177,7 +177,7 @@ static void test_wdb_syscheck_save2_fail_file_entry(void **state)
     int ret;
 
     wdb_t * wdb = *state;
-    wdb->agent_id = strdup("000");
+    wdb->id = strdup("000");
     wdb->transaction = 1;
     expect_string(__wrap__merror, formatted_msg, "DB(000) fim/save request with no file path argument.");
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Can't insert file entry.");
@@ -196,7 +196,7 @@ static void test_wdb_syscheck_save2_success(void **state)
     int ret;
 
     wdb_t * wdb = *state;
-    wdb->agent_id = strdup("000");
+    wdb->id = strdup("000");
     wdb->transaction = 1;
     will_return(__wrap_cJSON_GetStringValue, "/test");
     will_return(__wrap_cJSON_IsNumber, true);
@@ -228,7 +228,7 @@ static void test_wdb_fim_insert_entry2_data_null(void **state)
     int ret;
 
     wdb_t * wdb = *state;
-    wdb->agent_id = strdup("000");
+    wdb->id = strdup("000");
     expect_string(__wrap__merror, formatted_msg, "DB(000) fim/save request with no file path argument.");
     ret = wdb_fim_insert_entry2(wdb, NULL);
     assert_int_equal(ret, -1);
@@ -239,7 +239,7 @@ static void test_wdb_fim_insert_entry2_path_null(void **state)
     int ret;
 
     wdb_t * wdb = *state;
-    wdb->agent_id = strdup("000");
+    wdb->id = strdup("000");
     cJSON* data = cJSON_CreateObject();
     expect_string(__wrap__merror, formatted_msg, "DB(000) fim/save request with no file path argument.");
     ret = wdb_fim_insert_entry2(wdb, data);
@@ -253,7 +253,7 @@ static void test_wdb_fim_insert_entry2_timestamp_null(void **state)
     cJSON* data;
 
     wdb_t * wdb = *state;
-    wdb->agent_id = strdup("000");
+    wdb->id = strdup("000");
     data = cJSON_Parse(VALID_ENTRY);
     will_return(__wrap_cJSON_GetStringValue, "/test");
     will_return(__wrap_cJSON_IsNumber, false);
@@ -270,7 +270,7 @@ static void test_wdb_fim_insert_entry2_attributes_null(void **state)
     cJSON* data;
 
     wdb_t * wdb = *state;
-    wdb->agent_id = strdup("000");
+    wdb->id = strdup("000");
     data = cJSON_Parse(VALID_ENTRY);
     will_return(__wrap_cJSON_GetStringValue, "/test");
     will_return(__wrap_cJSON_IsNumber, true);
@@ -287,7 +287,7 @@ static void test_wdb_fim_insert_entry2_fail_cache(void **state)
     int ret;
 
     wdb_t * wdb = *state;
-    wdb->agent_id = strdup("000");
+    wdb->id = strdup("000");
     will_return(__wrap_cJSON_GetStringValue, "/test");
     will_return(__wrap_cJSON_IsNumber, true);
     will_return(__wrap_cJSON_IsObject, true);
@@ -304,7 +304,7 @@ static void test_wdb_fim_insert_entry2_fail_element_null(void **state)
     int ret;
 
     wdb_t * wdb = *state;
-    wdb->agent_id = strdup("000");
+    wdb->id = strdup("000");
     cJSON* data = cJSON_Parse(VALID_ENTRY);
     cJSON *array = cJSON_CreateObject();
     cJSON_AddItemToObject(array, "inode", cJSON_CreateObject());
@@ -328,7 +328,7 @@ static void test_wdb_fim_insert_entry2_fail_element_string(void **state)
     int ret;
 
     wdb_t * wdb = *state;
-    wdb->agent_id = strdup("000");
+    wdb->id = strdup("000");
     cJSON* data = cJSON_Parse(VALID_ENTRY);
     cJSON *array = cJSON_CreateObject();
     cJSON_AddItemToObject(array, "invalid_attribute", cJSON_CreateString("sasssss"));
@@ -352,7 +352,7 @@ static void test_wdb_fim_insert_entry2_fail_element_number(void **state)
     int ret;
 
     wdb_t * wdb = *state;
-    wdb->agent_id = strdup("000");
+    wdb->id = strdup("000");
     cJSON* data = cJSON_Parse(VALID_ENTRY);
     cJSON *array = cJSON_CreateObject();
     cJSON_AddItemToObject(array, "invalid_attribute", cJSON_CreateNumber(1000));
@@ -376,7 +376,7 @@ static void test_wdb_fim_insert_entry2_fail_sqlite3_stmt(void **state)
     int ret;
 
     wdb_t * wdb = *state;
-    wdb->agent_id = strdup("000");
+    wdb->id = strdup("000");
     will_return(__wrap_cJSON_GetStringValue, "/test");
     will_return(__wrap_cJSON_IsNumber, true);
     will_return(__wrap_cJSON_IsObject, true);
@@ -398,7 +398,7 @@ static void test_wdb_fim_insert_entry2_success(void **state)
     int ret;
 
     wdb_t * wdb = *state;
-    wdb->agent_id = strdup("000");
+    wdb->id = strdup("000");
     cJSON* data = cJSON_Parse(VALID_ENTRY);
     cJSON *object = cJSON_CreateObject();
 
@@ -448,7 +448,7 @@ static void test_wdb_fim_insert_entry2_large_inode(void **state)
     int ret;
 
     wdb_t * wdb = *state;
-    wdb->agent_id = strdup("000");
+    wdb->id = strdup("000");
     cJSON* data = cJSON_Parse(VALID_ENTRY);
     cJSON *object = cJSON_CreateObject();
 

@@ -79,6 +79,9 @@
     <if_sid>52500</if_sid>
     <match>stop|Stop</match>
     <description>Clamd stopped</description>
+    <mitre>
+      <id>T1089</id>
+    </mitre>
     <group>virus,pci_dss_5.1,gpg13_4.14,nist_800_53_SI.3,</group>
   </rule>
 

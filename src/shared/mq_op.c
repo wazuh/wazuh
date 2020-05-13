@@ -195,6 +195,7 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, __attribute
         free(_message);
         return (0);
     }
+    free(_message);
     return (0);
 }
 

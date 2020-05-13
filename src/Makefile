@@ -1508,7 +1508,7 @@ ifneq (,$(filter ${OPTIMIZE_CPYTHON},YES yes y Y 1))
 CPYTHON_FLAGS=--enable-optimizations
 endif
 
-wpython: install_dependencies install_framework
+wpython: install_dependencies install_framework install_mitre
 
 ifeq (${uname_S},Darwin)
 WLIBPYTHON=libpython3.8.dylib
@@ -1554,6 +1554,8 @@ install_framework: install_python
 	chown -R root:${OSSEC_GROUP} ${WPYTHON_DIR}
 	chmod -R o=- ${WPYTHON_DIR}/*
 
+install_mitre: install_python
+	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${PREFIX}/var/db/mitre.db 
 
 ####################
 #### test ##########
