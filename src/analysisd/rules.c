@@ -1404,11 +1404,12 @@ int Rules_OP_ReadRules(const char *rulefile)
                                 merror("Invalid option '%s' for "
                                 "rule '%d'", mitre_opt[ind]->element,
                                 config_ruleinfo->sigid);
-
-                                for (l = 0; config_ruleinfo->mitre_id[l] != NULL; l++) {
-                                    os_free(config_ruleinfo->mitre_id[l]);
+                                if (config_ruleinfo->mitre_id) {
+                                    for (l = 0; config_ruleinfo->mitre_id[l] != NULL; l++) {
+                                        os_free(config_ruleinfo->mitre_id[l]);
+                                    }
+                                    os_free(config_ruleinfo->mitre_id);
                                 }
-                                os_free(config_ruleinfo->mitre_id);
                                 OS_ClearNode(mitre_opt);
                                 goto cleanup;
                             }
