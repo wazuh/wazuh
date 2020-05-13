@@ -24,6 +24,7 @@ extern int w_enrollment_store_key_entry(const char* keys);
 extern int w_enrollment_process_agent_key(char *buffer);
 extern int w_enrollment_process_response(SSL *ssl);
 extern char *w_enrollment_extract_agent_name(const w_enrollment_ctx *cfg);
+extern void w_enrollment_load_pass(w_enrollment_cert *cert_cfg);
 
 /*************** WRAPS ************************/
 void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
@@ -152,6 +153,16 @@ FILE * __wrap_fopen ( const char * filename, const char * mode ) {
     check_expected(filename);
     check_expected(mode);
     return mock_ptr_type(FILE *);
+}
+
+extern char * __real_fgets(char * buf, int size, FILE *stream);
+char * __wrap_fgets(char * buf, int size, FILE *stream) {
+    if(!flag_fopen)
+        return __real_fgets(buf, size, stream);
+    snprintf(buf, size, "%s", mock_ptr_type(char*));
+    check_expected(size);
+    check_expected(stream);
+    return mock_ptr_type(char *);
 }
 
 extern int __real_fclose ( FILE * stream );
@@ -350,6 +361,23 @@ int test_setup_ssl_context(void **state) {
 int test_teardow_ssl_context(void **state) {
     SSL_free(*state);
     teardown_file_ops(state);
+    return 0;
+}
+
+int test_setup_enrollment_load_pass(void **state) {
+    w_enrollment_cert *cert_cfg = w_enrollment_cert_init();
+    *state = cert_cfg;
+    flag_fopen = 1;
+    return 0;
+}
+
+int test_teardown_enrollment_load_pass(void **state) {
+    w_enrollment_cert *cert_cfg;
+    cert_cfg = *state;
+    os_free(cert_cfg->authpass);
+    os_free(cert_cfg->authpass_file);
+    os_free(cert_cfg);
+    flag_fopen = 0;
     return 0;
 }
 /**********************************************/
@@ -986,6 +1014,51 @@ void test_w_enrollment_extract_agent_name_localhost_not_allowed(void **state) {
     char *lhostname = w_enrollment_extract_agent_name(cfg);
     assert_int_equal( lhostname, NULL);
 }
+/******* w_enrollment_load_pass ********/
+void test_w_enrollment_load_pass_null_cert(void **state) {
+    expect_assert_failure(w_enrollment_load_pass(NULL));
+}
+
+void test_w_enrollment_load_pass_empty_file(void **state) {
+    w_enrollment_cert *cert = *state; 
+    
+    expect_string(__wrap_fopen, filename, AUTHDPASS_PATH);
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 4);
+
+    expect_value(__wrap_fgets, size, 4095);
+    expect_value(__wrap_fgets, stream, 4);
+    will_return(__wrap_fgets, "");
+    will_return(__wrap_fgets, NULL);
+    
+    char buff[1024];
+    snprintf(buff, 1024, "Using password specified on file: %s", AUTHDPASS_PATH);
+    expect_string(__wrap__minfo, formatted_msg, buff);
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided.");
+    
+    w_enrollment_load_pass(cert);
+    assert_int_equal(cert->authpass, NULL);
+}
+
+void test_w_enrollment_load_pass_file_with_content(void **state) {
+    w_enrollment_cert *cert = *state; 
+    
+    expect_string(__wrap_fopen, filename, AUTHDPASS_PATH);
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 4);
+
+    expect_value(__wrap_fgets, size, 4095);
+    expect_value(__wrap_fgets, stream, 4);
+    will_return(__wrap_fgets, "content_password");
+    will_return(__wrap_fgets, "content_password");
+    
+    char buff[1024];
+    snprintf(buff, 1024, "Using password specified on file: %s", AUTHDPASS_PATH);
+    expect_string(__wrap__minfo, formatted_msg, buff);
+    
+    w_enrollment_load_pass(cert);
+    assert_string_equal(cert->authpass, "content_password");
+}
 
 /**********************************************/
 int main()
@@ -1042,6 +1115,10 @@ int main()
         // w_enrollment_extract_agent_name
         cmocka_unit_test_setup_teardown(test_w_enrollment_extract_agent_name_localhost_allowed, test_setup_context, test_teardown_context),
         cmocka_unit_test_setup_teardown(test_w_enrollment_extract_agent_name_localhost_not_allowed, test_setup_context, test_teardown_context),
+        // w_enrollment_load_pass
+        cmocka_unit_test(test_w_enrollment_load_pass_null_cert),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_load_pass_empty_file, test_setup_enrollment_load_pass, test_teardown_enrollment_load_pass),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_load_pass_file_with_content, test_setup_enrollment_load_pass, test_teardown_enrollment_load_pass),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -51,7 +51,8 @@ typedef struct _enrollment_target_cfg {
  */
 typedef struct _enrollment_cert_cfg {
     char *ciphers;     /**> chipers string (default DEFAULT_CIPHERS) */
-    char *authpass;    /**> for password verification */
+    char *authpass_file; /**> password file (default AUTHDPASS_PATH) */
+    char *authpass;    /**> override password file for password verification */
     char *agent_cert;  /**> Agent Certificate (null if not used) */
     char *agent_key;   /**> Agent Key (null if not used) */
     char *ca_cert;     /**> CA Certificate to verificate server (null if not used) */

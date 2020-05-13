@@ -42,6 +42,7 @@ static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip);
 static int w_enrollment_process_agent_key(char *buffer);
 static int w_enrollment_store_key_entry(const char* keys);
 static char *w_enrollment_extract_agent_name(const w_enrollment_ctx *cfg);
+static void w_enrollment_load_pass(w_enrollment_cert *cert_cfg);
 
 /* Constants */
 static const int ENTRY_ID = 0;
@@ -72,6 +73,7 @@ w_enrollment_cert *w_enrollment_cert_init(){
     w_enrollment_cert *cert_cfg;
     os_malloc(sizeof(w_enrollment_cert), cert_cfg);
     cert_cfg->ciphers = strdup(DEFAULT_CIPHERS);
+    cert_cfg->authpass_file = strdup(AUTHDPASS_PATH);
     cert_cfg->authpass = NULL;
     cert_cfg->agent_cert = NULL;
     cert_cfg->agent_key = NULL;
@@ -82,6 +84,7 @@ w_enrollment_cert *w_enrollment_cert_init(){
 
 void w_enrollment_cert_destroy(w_enrollment_cert *cert_cfg) {
     os_free(cert_cfg->ciphers);
+    os_free(cert_cfg->authpass_file);
     os_free(cert_cfg->authpass);
     os_free(cert_cfg->agent_cert);
     os_free(cert_cfg->agent_key);
@@ -111,6 +114,7 @@ int w_enrollment_request_key(w_enrollment_ctx *cfg, const char * server_address)
     minfo("Starting enrollment process to server: %s", server_address ? server_address : cfg->target_cfg->manager_name);
     int socket = w_enrollment_connect(cfg, server_address ? server_address : cfg->target_cfg->manager_name);
     if ( socket >= 0) {
+        w_enrollment_load_pass(cfg->cert_cfg);
         if (w_enrollment_send_message(cfg) == 0) {
             ret = w_enrollment_process_response(cfg->ssl);
         }
@@ -505,4 +509,38 @@ static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip) {
     }
 
     return 0;
+}
+
+/**
+ * Loads enrollment password
+ * If no override pass is set checks in authpass_file
+ * @param cert_cfg certificate configuration
+ * */
+static void w_enrollment_load_pass(w_enrollment_cert *cert_cfg) {
+    assert(cert_cfg != NULL);
+    /* Checking if there is a custom password file */
+    if (cert_cfg->authpass == NULL) {
+        FILE *fp;
+        fp = fopen(cert_cfg->authpass_file, "r");
+
+        if (fp) {
+            char buf[4096];
+            char *ret = fgets(buf, 4095, fp);
+
+            if (ret && strlen(buf) > 2) {
+                /* Remove newline */
+                if (buf[strlen(buf) - 1] == '\n')
+                    buf[strlen(buf) - 1] = '\0';
+
+                cert_cfg->authpass = strdup(buf);
+            }
+
+            fclose(fp);
+            minfo("Using password specified on file: %s", cert_cfg->authpass_file);
+        }
+
+        if (!cert_cfg->authpass) {
+            minfo("No authentication password provided.");
+        }
+    }
 }

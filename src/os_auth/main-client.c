@@ -86,7 +86,6 @@ int main(int argc, char **argv)
     cert_cfg.auto_method = 0;
     //char *dir = DEFAULTDIR;
     int use_src_ip = 0;
-    char * buf;
     char *server_address = NULL;
     bio_err = 0;
     int debug_level = 0;
@@ -269,38 +268,9 @@ int main(int argc, char **argv)
         merror("Manager IP not set.");
         exit(1);
     }
-    
-    os_calloc(OS_SIZE_65536 + OS_SIZE_4096 + 1, sizeof(char), buf);
-    buf[OS_SIZE_65536 + OS_SIZE_4096] = '\0';
 
-    /* Checking if there is a custom password file */
-    if (cert_cfg.authpass == NULL) {
-        FILE *fp;
-        fp = fopen(AUTHDPASS_PATH, "r");
-        buf[0] = '\0';
-
-        if (fp) {
-            buf[4096] = '\0';
-            char *ret = fgets(buf, 4095, fp);
-
-            if (ret && strlen(buf) > 2) {
-                /* Remove newline */
-                if (buf[strlen(buf) - 1] == '\n')
-                    buf[strlen(buf) - 1] = '\0';
-
-                cert_cfg.authpass = strdup(buf);
-            }
-
-            fclose(fp);
-            minfo("Using password specified on file: %s", AUTHDPASS_PATH);
-        }
-    }
-    if (!cert_cfg.authpass) {
-        minfo("No authentication password provided.");
-    }
     w_enrollment_ctx *cfg = w_enrollment_init(&target_cfg, &cert_cfg);
     int ret = w_enrollment_request_key(cfg, server_address); 
     
-    free(buf);
     exit((ret == 0) ? 0 : 1);
 }
