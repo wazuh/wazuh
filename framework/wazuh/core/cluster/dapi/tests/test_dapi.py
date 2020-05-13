@@ -4,10 +4,11 @@
 import asyncio
 import os
 import sys
-from unittest.mock import patch, MagicMock
 from logging import getLogger
+from unittest.mock import patch, MagicMock
 
 import pytest
+from connexion import ProblemException
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../../../../../api'))
 
@@ -24,7 +25,7 @@ with patch('wazuh.common.ossec_uid'):
         from wazuh.core.cluster.dapi.dapi import DistributedAPI
         from wazuh.core.manager import get_manager_status
         from wazuh.results import WazuhResult
-        from wazuh import agent, cluster, ciscat, manager, WazuhError, WazuhException
+        from wazuh import agent, cluster, ciscat, manager, WazuhError
         from api.util import raise_if_exc
 
 logger = getLogger('wazuh')
@@ -86,8 +87,8 @@ def test_DistributedAPI_distribute_function_exception(api_request, cluster_req, 
     dapi = DistributedAPI(f=api_request, logger=logger, cluster_required=cluster_req)
     try:
         raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    except WazuhException as e:
-        assert e.code == error_code
+    except ProblemException as e:
+        assert e.ext['code'] == error_code
 
 
 @pytest.mark.parametrize('api_request', [
