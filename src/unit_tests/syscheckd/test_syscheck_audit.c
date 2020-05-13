@@ -272,6 +272,32 @@ int __wrap_readlink(void **state) {
     return mock();
 }
 
+int __wrap_select(int nfds, fd_set *restrict readfds, fd_set *restrict writefds, fd_set *restrict errorfds, struct timeval *restrict timeout)
+{
+    if(audit_thread_active) audit_thread_active--;
+    return mock();
+}
+
+int __wrap_sleep(int time)
+{
+    return 1;
+}
+
+int __wrap_recv(int __fd, void *__buf, size_t __n, int __flags)
+{
+    int ret;
+    int n;
+    check_expected(__fd);
+    n = mock();
+    if(n < __n)
+        ret = n;
+    else
+        ret = __n;
+    if(ret > 0)
+        memcpy(__buf, mock_type(void*), ret);
+    return ret;
+}
+
 /* setup/teardown */
 static int setup_group(void **state) {
     (void) state;
@@ -291,6 +317,20 @@ static int free_string(void **state)
 {
     char * string = *state;
     free(string);
+    return 0;
+}
+
+static int test_audit_read_events_setup(void **state) {
+    int *audit_sock;
+    audit_sock = calloc(1, sizeof(int));
+    *state = audit_sock;
+    return 0;
+}
+
+static int test_audit_read_events_teardown(void **state)
+{
+    int *audit_sock = *state;
+    free(audit_sock);
     return 0;
 }
 
@@ -2157,6 +2197,148 @@ void test_audit_parse_delete_folder_hex5_error(void **state)
 }
 
 
+
+void test_audit_read_events_select_error(void **state)
+{
+    (void) state;
+    int *audit_sock = *state;
+    audit_thread_active = 1;
+    errno = EEXIST;
+
+    // Switch
+    will_return(__wrap_select, -1);
+    expect_string(__wrap__merror, formatted_msg, "(1114): Error during select()-call due to [(17)-(File exists)].");
+
+    audit_read_events(audit_sock, READING_MODE);
+}
+
+void test_audit_read_events_select_success_recv_error_audit_connection_closed(void **state)
+{
+    (void) state;
+    int *audit_sock = *state;
+    audit_thread_active = 2;
+    errno = EEXIST;
+    int counter = 0;
+    int max_retries = 5;
+
+    // Switch
+    will_return(__wrap_select, 1);
+
+    // If (!byteRead)
+    expect_value(__wrap_recv, __fd, *audit_sock);
+    will_return(__wrap_recv, 0);
+    expect_string(__wrap__mwarn, formatted_msg, "(6912): Audit: connection closed.");
+
+    // init_auditd_socket failure
+    will_return(__wrap_OS_ConnectUnixDomain, -5);
+    expect_string(__wrap__merror, formatted_msg, "(6636): Cannot connect to socket '/var/ossec/queue/ossec/audit'.");
+    while (++counter < max_retries){
+        // init_auditd_socket failure
+        will_return(__wrap_OS_ConnectUnixDomain, -5);
+        expect_string(__wrap__merror, formatted_msg, "(6636): Cannot connect to socket '/var/ossec/queue/ossec/audit'.");
+    }
+    expect_string(__wrap_SendMSG, message, "ossec: Audit: Connection closed");
+
+    audit_read_events(audit_sock, READING_MODE);
+}
+
+void test_audit_read_events_select_success_recv_error_audit_reconnect(void **state)
+{
+    (void) state;
+    int *audit_sock = *state;
+    audit_thread_active = 2;
+    errno = EEXIST;
+
+    // Switch
+    will_return(__wrap_select, 1);
+
+    // If (!byteRead)
+    expect_value(__wrap_recv, __fd, *audit_sock);
+    will_return(__wrap_recv, 0);
+    expect_string(__wrap__mwarn, formatted_msg, "(6912): Audit: connection closed.");
+
+    // init_auditd_socket failure
+    will_return(__wrap_OS_ConnectUnixDomain, -5);
+    expect_string(__wrap__merror, formatted_msg, "(6636): Cannot connect to socket '/var/ossec/queue/ossec/audit'.");
+    // While (*audit_sock < 0)
+    // init_auditd_socket succes
+    will_return(__wrap_OS_ConnectUnixDomain, 124);
+
+    // In audit_reload_rules()
+    syscheck.dir = calloc (2, sizeof(char *));
+    syscheck.dir[0] = NULL;
+    expect_string(__wrap__mdebug1, formatted_msg, "(6275): Reloading Audit rules.");
+    // In add_audit_rules_syscheck()
+    will_return(__wrap_audit_get_rule_list, 1);
+    expect_string(__wrap__mdebug1, formatted_msg, "(6276): Audit rules reloaded. Rules loaded: 0");
+
+    will_return(__wrap_select, 1);
+
+    audit_read_events(audit_sock, READING_MODE);
+
+    free(syscheck.dir);
+}
+
+void test_audit_read_events_select_success_recv_success(void **state)
+{
+    (void) state;
+    int *audit_sock = *state;
+    audit_thread_active = 2;
+    errno = EEXIST;
+    char * buffer = " \
+        type=SYSCALL msg=audit(1571914029.306:3004254): arch=c000003e syscall=263 success=yes exit=0 a0=ffffff9c a1=55c5f8170490 a2=0 a3=7ff365c5eca0 items=2 ppid=3211 pid=44082 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"test\" exe=\"74657374C3B1\" key=\"wazuh_fim\"\n\
+        type=CWD msg=audit(1571914029.306:3004254): cwd=\"/root/test\"\n\
+        type=PATH msg=audit(1571914029.306:3004254): item=0 name=\"/root/test\" inode=110 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0\n\
+        type=PATH msg=audit(1571914029.306:3004254): item=1 name=\"test\" inode=19 dev=08:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=DELETE cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0\n\
+        type=PROCTITLE msg=audit(1571914029.306:3004254): proctitle=726D0074657374\n\
+        type=EOE msg=audit(1571914029.306:3004254):\n\
+    ";
+
+
+
+    // Switch
+    will_return(__wrap_select, 1);
+
+    // If (!byteRead)
+    expect_value(__wrap_recv, __fd, *audit_sock);
+    will_return(__wrap_recv, strlen(buffer));
+    will_return(__wrap_recv, buffer);
+
+    // In audit_parse()
+    
+
+    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
+
+    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, strdup("root"));
+    expect_value(__wrap_get_user, uid, 0);
+    will_return(__wrap_get_user, strdup("root"));
+
+    will_return(__wrap_get_group, "root");
+
+    expect_string(__wrap__mdebug2, msg,
+        "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6247): audit_event: uid=root, auid=, euid=root, gid=root, pid=44082, ppid=3211, inode=19, path=/root/test/test, pname=74657374C3B1");
+
+    will_return(__wrap_realpath, "/root/test/test");
+
+    expect_value(__wrap_fim_whodata_event, w_evt->process_id, 44082);
+    expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
+    expect_string(__wrap_fim_whodata_event, w_evt->group_id, "0");
+    expect_string(__wrap_fim_whodata_event, w_evt->process_name, "74657374C3B1");
+    expect_string(__wrap_fim_whodata_event, w_evt->path, "/root/test/test");
+    expect_value(__wrap_fim_whodata_event, w_evt->audit_uid, 0);
+    expect_string(__wrap_fim_whodata_event, w_evt->effective_uid, "0");
+    expect_string(__wrap_fim_whodata_event, w_evt->inode, "19");
+    expect_value(__wrap_fim_whodata_event, w_evt->ppid, 3211);
+
+    will_return(__wrap_select, 1);
+
+    audit_read_events(audit_sock, READING_MODE);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_check_auditd_enabled_success),
@@ -2219,6 +2401,10 @@ int main(void) {
         cmocka_unit_test(test_audit_parse_delete_folder_hex3_error),
         cmocka_unit_test(test_audit_parse_delete_folder_hex4_error),
         cmocka_unit_test(test_audit_parse_delete_folder_hex5_error),
+        cmocka_unit_test_setup_teardown(test_audit_read_events_select_error, test_audit_read_events_setup, test_audit_read_events_teardown),
+        cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_error_audit_connection_closed, test_audit_read_events_setup, test_audit_read_events_teardown),
+        cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_error_audit_reconnect, test_audit_read_events_setup, test_audit_read_events_teardown),
+        cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success, test_audit_read_events_setup, test_audit_read_events_teardown)
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
