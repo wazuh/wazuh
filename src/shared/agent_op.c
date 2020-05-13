@@ -553,7 +553,7 @@ int w_validate_group_name(const char *group, char *response){
             if (strlen(individual_group) > MAX_GROUP_NAME) {
                 free(multi_group_cpy);
                 if (response){
-                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large\n\n", group); 
+                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large\n\n", individual_group); 
                 } 
                 return -7;   
             }
