@@ -145,6 +145,7 @@ w_err_t w_auth_parse_data(const char* buf, char *response,const char *authpass, 
         }
         *groups = wstr_delete_repeated_groups(tmp_groups);
         if(!*groups){
+            snprintf(response, 2048, "ERROR: Insuficient memory\n\n");  
             return OS_MEMERR;
         }
         mdebug1("Group(s) is: %s",*groups);

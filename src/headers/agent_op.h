@@ -91,10 +91,10 @@ int auth_close(int sock);
 int w_request_agent_add_local(int sock, char *id, const char *name, const char *ip, const char * groups, const char *key, const int force, const int json_format, const char *agent_id, int exit_on_error);
 
 // Send a clustered agent add request.
-int w_request_agent_add_clustered(const char *name, const char *ip, const char * groups, char **id, char **key, const int force, const int json_format, const char *agent_id);
+int w_request_agent_add_clustered(char *err_response, const char *name, const char *ip, const char * groups, char **id, char **key, const int force, const char *agent_id);
 
 // Send a clustered agent remove request.
-int w_request_agent_remove_clustered(const char* agent_id, int purge, int json_format);
+int w_request_agent_remove_clustered(char *err_response, const char* agent_id, int purge);
 
 // Get the agent id
 char * get_agent_id_from_name(const char *agent_name);

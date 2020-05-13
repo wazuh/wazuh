@@ -682,13 +682,10 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         char* new_key = NULL;
         if(OS_SUCCESS == w_auth_parse_data(buf, response, authpass, ip, &agentname, &centralized_group)){
             if (config.worker_node) {                
-                if( 0 == w_request_agent_add_clustered(agentname, ip, centralized_group, &new_id, &new_key, config.flags.force_insert?config.force_time:-1, TRUE, NULL) ) {
+                minfo("Dispatching request to master node");
+                if( 0 == w_request_agent_add_clustered(response, agentname, ip, centralized_group, &new_id, &new_key, config.flags.force_insert?config.force_time:-1, NULL) ) {
                     enrollment_ok = TRUE;
-                }     
-                else {
-                   snprintf(response, 2048, "ERROR: Unsuccessful request to master");  
-                }           
-
+                } 
             }
             else {
                 w_mutex_lock(&mutex_keys);                
@@ -712,7 +709,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     merror("SSL write error (%d)", ret);
                     
                     ERR_print_errors_fp(stderr);       
-                    if (0 != w_request_agent_remove_clustered(new_id, TRUE, TRUE)) {
+                    if (0 != w_request_agent_remove_clustered(NULL, new_id, TRUE)) {
                         merror("Agent key unable to be shared with %s and unable to delete from master node", agentname);
                     }
                     else {

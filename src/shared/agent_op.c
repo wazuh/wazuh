@@ -37,10 +37,10 @@ static cJSON* w_create_agent_add_payload(const char *name, const char *ip, const
 static cJSON* w_create_agent_remove_payload(const char *id, const int purge);
 
 //Parse an agent addition response
-static int w_parse_agent_add_response(const char* buffer, char* id, char* key, const int json_format, const int exit_on_error);
+static int w_parse_agent_add_response(const char* buffer, char *err_response, char* id, char* key, const int json_format, const int exit_on_error);
 
 //Parse an agent removal response
-static int w_parse_agent_remove_response(const char* buffer, const int json_format, const int exit_on_error);
+static int w_parse_agent_remove_response(const char* buffer, char *err_response, const int json_format, const int exit_on_error);
 
 /* Check if syscheck is to be executed/restarted
  * Returns 1 on success or 0 on failure (shouldn't be executed now)
@@ -743,7 +743,7 @@ static cJSON* w_create_agent_remove_payload(const char *id, const int purge) {
     return request;
 }
 
-static int w_parse_agent_add_response(const char* buffer, char* id, char* key, const int json_format, const int exit_on_error) { 
+static int w_parse_agent_add_response(const char* buffer, char *err_response, char* id, char* key, const int json_format, const int exit_on_error) { 
     cJSON* response;
     int result;
     cJSON * error;
@@ -770,12 +770,15 @@ static int w_parse_agent_add_response(const char* buffer, char* id, char* key, c
         result = -1;
 
     } else if (error->valueint > 0) {
+        message = cJSON_GetObjectItem(response, "message");
         if (json_format) {
             printf("%s", buffer);
-        } else {
-            message = cJSON_GetObjectItem(response, "message");
+        } else {            
             merror("ERROR %d: %s", error->valueint, message ? message->valuestring : "(undefined)");
         }
+        if(err_response) { 
+            snprintf(err_response, 2048, "ERROR: %s\n\n", message ? message->valuestring : "(undefined)");
+        } 
         result = -1;
 
     } else {
@@ -821,7 +824,7 @@ static int w_parse_agent_add_response(const char* buffer, char* id, char* key, c
     return result;
 }
 
-static int w_parse_agent_remove_response(const char* buffer, const int json_format, const int exit_on_error) { 
+static int w_parse_agent_remove_response(const char* buffer, char *err_response, const int json_format, const int exit_on_error) { 
     cJSON* response;
     int result;
     cJSON * error;
@@ -844,12 +847,15 @@ static int w_parse_agent_remove_response(const char* buffer, const int json_form
         result = -1;
         
     } else if (error->valueint > 0) {
+        message = cJSON_GetObjectItem(response, "message");
         if (json_format) {
             printf("%s", buffer);
-        } else {
-            message = cJSON_GetObjectItem(response, "message");
+        } else {            
             merror("ERROR %d: %s", error->valueint, message ? message->valuestring : "(undefined)");
         }
+        if(err_response) { 
+            snprintf(err_response, 2048, "ERROR: %s\n\n", message ? message->valuestring : "(undefined)");
+        } 
         result = -1;
 
     } else {
@@ -896,14 +902,14 @@ int w_request_agent_add_local(int sock, char *id, const char *name, const char *
         return result;
     } else {
         response[length] = '\0';
-        result = w_parse_agent_add_response(response, id, NULL, json_format, exit_on_error);
+        result = w_parse_agent_add_response(response, NULL, id, NULL, json_format, exit_on_error);
     }
 
     return result; 
 }
 
 //Send a clustered agent add request.
-int w_request_agent_add_clustered(const char *name, const char *ip, const char * groups, char **id, char **key, const int force, const int json_format,const char *agent_id) {
+int w_request_agent_add_clustered(char *err_response, const char *name, const char *ip, const char * groups, char **id, char **key, const int force, const char *agent_id) {
     int result; 
     char response[OS_MAXSTR + 1];
     char new_id[FILE_SIZE+1] = { '\0' };
@@ -915,7 +921,10 @@ int w_request_agent_add_clustered(const char *name, const char *ip, const char *
     cJSON_Delete(payload); 
     
     if(result = w_send_clustered_message("send_sync", output, response), result == 0) {
-        result = w_parse_agent_add_response(response, new_id, new_key, json_format, FALSE);
+        result = w_parse_agent_add_response(response, err_response, new_id, new_key, FALSE, FALSE);
+    }
+    else if(err_response) { 
+        snprintf(err_response, 2048, "ERROR: Cannot comunicate with master\n\n");         
     }
     
     free(output);
@@ -929,7 +938,7 @@ int w_request_agent_add_clustered(const char *name, const char *ip, const char *
 }
 
 //Send a clustered agent remove request.
-int w_request_agent_remove_clustered(const char* agent_id, int purge, int json_format){
+int w_request_agent_remove_clustered(char *err_response, const char* agent_id, int purge){
     int result; 
     char response[OS_MAXSTR + 1];
 
@@ -939,7 +948,10 @@ int w_request_agent_remove_clustered(const char* agent_id, int purge, int json_f
     cJSON_Delete(payload); 
 
     if(result = w_send_clustered_message("send_sync", output, response), result == 0) {
-        result = w_parse_agent_remove_response(response, json_format, FALSE);
+        result = w_parse_agent_remove_response(response, err_response, FALSE, FALSE);
+    }
+    else if(err_response) { 
+        snprintf(err_response, 2048, "ERROR: Cannot comunicate with master\n\n");
     }
 
     free(output);
