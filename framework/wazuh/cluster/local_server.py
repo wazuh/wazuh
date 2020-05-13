@@ -252,15 +252,7 @@ class LocalServerHandlerWorker(LocalServerHandler):
             else:
                 return self.send_request_to_master(command=b'dapi_cluster', arguments=data)
         elif command == b'send_sync':
-            try:
-                node_name = data.decode().split(' ')[0]
-            except IndexError:
-                raise WazuhException("Could not find destination node")
-            try:
-                payload = data.decode()[len(node_name) + 1:].encode()
-            except Exception as e:
-                raise WazuhException(f"Error extracting payload: {e}")
-            return self.send_sync(node_name, payload)
+            return self.send_sync(data)
         else:
             return super().process_request(command, data)
 
@@ -310,18 +302,16 @@ class LocalServerHandlerWorker(LocalServerHandler):
         asyncio.create_task(self.send_request(command=b'dapi_res' if in_command == b'dapi' else b'control_res',
                                               data=result))
 
-    def send_sync(self, node_name, payload):
-        if node_name == 'master-node':
-            req = asyncio.create_task(local_client.execute(command=b'dapi', data=payload, wait_for_complete=False))
-            req.add_done_callback(functools.partial(self.get_send_sync_response, self.name))
+    def send_sync(self, payload):
+        req = asyncio.create_task(local_client.execute(command=b'dapi', data=payload, wait_for_complete=False))
+        req.add_done_callback(functools.partial(self.get_send_sync_response, self.name))
 
-            return None, None
-        else:
-            return b'Error', b'Invalid destination node'
+        return None, None
 
     def get_send_sync_response(self, name, future):
         result = future.result()
-        self.server.clients[name].push(result.encode())
+        msg_counter = self.next_counter()
+        self.server.clients[name].push(self.msg_build(b'send_sync', msg_counter, result.encode()))
 
     def send_file_request(self, path, node_name):
         """
