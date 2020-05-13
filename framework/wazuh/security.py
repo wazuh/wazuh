@@ -3,10 +3,13 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import re
+from copy import deepcopy
+from functools import lru_cache
 from time import time
 
 from api.authentication import validation
 from wazuh import common
+from wazuh.core.security import load_spec
 from wazuh.exception import WazuhError
 from wazuh.rbac import orm
 from wazuh.rbac.decorators import expose_resources
@@ -44,11 +47,11 @@ def get_users(username_list=None, offset=0, limit=common.database_limit, sort_by
             user = auth.get_user(username)
             affected_items.append(user) if user else result.add_failed_item(id_=username, error=WazuhError(5001))
 
-    processed_items = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
-                                    complementary_search=complementary_search, sort_by=sort_by,
-                                    sort_ascending=sort_ascending, offset=offset, limit=limit)
-    result.affected_items = processed_items['items']
-    result.total_affected_items = processed_items['totalItems']
+    data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                         offset=offset, limit=limit)
+    result.affected_items = data['items']
+    result.total_affected_items = data['totalItems']
 
     return result
 
@@ -159,11 +162,11 @@ def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None
                 # Role id does not exist
                 result.add_failed_item(id_=r_id, error=WazuhError(4002))
 
-    affected_items = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
-                                   complementary_search=complementary_search, sort_by=sort_by,
-                                   sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
-    result.affected_items = affected_items
-    result.total_affected_items = len(affected_items)
+    data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                         offset=offset, limit=limit)
+    result.affected_items = data['items']
+    result.total_affected_items = data['totalItems']
 
     return result
 
@@ -277,11 +280,11 @@ def get_policies(policy_ids, offset=0, limit=common.database_limit, sort_by=None
                 # Policy id does not exist
                 result.add_failed_item(id_=p_id, error=WazuhError(4007))
 
-    affected_items = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
-                                   complementary_search=complementary_search, sort_by=sort_by,
-                                   sort_ascending=sort_ascending, offset=offset, limit=limit)['items']
-    result.affected_items = affected_items
-    result.total_affected_items = len(affected_items)
+    data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                         offset=offset, limit=limit)
+    result.affected_items = data['items']
+    result.total_affected_items = data['totalItems']
 
     return result
 
@@ -369,20 +372,32 @@ def update_policy(policy_id=None, name=None, policy=None):
 
 @expose_resources(actions=['security:update'], resources=['user:id:{user_id}', 'role:id:{role_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002, 4017, 4008, 5001]})
-def set_user_role(user_id, role_ids):
-    """Create a relationship between a user and a role
+def set_user_role(user_id, role_ids, position=None):
+    """Create a relationship between a user and a role.
 
-    :param user_id: User id
-    :param role_ids: List of role ids
-    :return User-Roles information
+    Parameters
+    ----------
+    user_id : str
+        Username
+    role_ids : list of int
+        List of role ids
+    position : int
+        Position where the new role will be inserted
+
+    Returns
+    -------
+    Dict
+        User-Roles information
     """
+    if position is not None and position < 0:
+        raise WazuhError(4018)
     result = AffectedItemsWazuhResult(none_msg=f'No link created to user {user_id[0]}',
                                       some_msg=f'Some roles could not be linked to user {user_id[0]}',
                                       all_msg=f'All roles were linked to user {user_id[0]}')
     success = False
     with orm.UserRolesManager() as urm:
         for role_id in role_ids:
-            user_role = urm.add_role_to_user(username=user_id[0], role_id=role_id)
+            user_role = urm.add_role_to_user(username=user_id[0], role_id=role_id, position=position)
             if user_role == SecurityError.ALREADY_EXIST:
                 result.add_failed_item(id_=role_id, error=WazuhError(4017))
             elif user_role == SecurityError.ROLE_NOT_EXIST:
@@ -395,6 +410,8 @@ def set_user_role(user_id, role_ids):
             else:
                 success = True
                 result.total_affected_items += 1
+                if position is not None:
+                    position += 1
         if success:
             with orm.AuthenticationManager() as auth:
                 result.affected_items.append(auth.get_user(user_id[0]))
@@ -441,12 +458,22 @@ def remove_user_role(user_id, role_ids):
 
 @expose_resources(actions=['security:update'], resources=['role:id:{role_id}', 'policy:id:{policy_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002, 4007, 4008, 4011]})
-def set_role_policy(role_id, policy_ids):
+def set_role_policy(role_id, policy_ids, position=None):
     """Create a relationship between a role and a policy
 
-    :param role_id: The new role_id
-    :param policy_ids: List of policies ids
-    :return Role-Policies information
+    Parameters
+    ----------
+    role_id : int
+        The new role_id
+    policy_ids : list of int
+        List of policy IDs
+    position : int
+        Position where the new role will be inserted
+
+    Returns
+    -------
+    dict
+        Role-Policies information
     """
     result = AffectedItemsWazuhResult(none_msg=f'No link created to role {role_id[0]}',
                                       some_msg=f'Some policies could not be linked to role {role_id[0]}',
@@ -454,7 +481,7 @@ def set_role_policy(role_id, policy_ids):
     success = False
     with orm.RolesPoliciesManager() as rpm:
         for policy_id in policy_ids:
-            role_policy = rpm.add_policy_to_role(role_id=role_id[0], policy_id=policy_id)
+            role_policy = rpm.add_policy_to_role(role_id=role_id[0], policy_id=policy_id, position=position)
             if role_policy == SecurityError.ALREADY_EXIST:
                 result.add_failed_item(id_=policy_id, error=WazuhError(4011))
             elif role_policy == SecurityError.ROLE_NOT_EXIST:
@@ -466,6 +493,8 @@ def set_role_policy(role_id, policy_ids):
             else:
                 success = True
                 result.total_affected_items += 1
+                if position is not None:
+                    position += 1
         if success:
             with orm.RolesManager() as rm:
                 result.affected_items.append(rm.get_role_id(role_id=role_id[0]))
@@ -515,3 +544,83 @@ def revoke_tokens():
     validation.key = int(time())
 
     return WazuhResult({'msg': 'Tokens revoked succesfully'})
+
+
+@lru_cache(maxsize=None)
+def get_api_endpoints():
+    """Get a list with all API endpoints
+
+    Returns
+    -------
+    list
+        API endpoints
+    """
+    info_data = load_spec()
+    endpoints_list = list()
+    for path, path_info in info_data['paths'].items():
+        for method in path_info.keys():
+            endpoints_list.append(f'{method.upper()} {path}')
+
+    return endpoints_list
+
+
+@lru_cache(maxsize=None)
+def get_rbac_resources(resource: str = None):
+    """Get the RBAC resources from the catalog
+
+    Parameters
+    ----------
+    resource : str
+        Show the information of the specified resource. Ex: agent:id
+
+    Returns
+    -------
+    dict
+        RBAC resources
+    """
+    if not resource:
+        return WazuhResult(load_spec()['x-rbac-catalog']['resources'])
+    else:
+        if resource not in load_spec()['x-rbac-catalog']['resources'].keys():
+            raise WazuhError(4019)
+        return WazuhResult({resource: load_spec()['x-rbac-catalog']['resources'][resource]})
+
+
+@lru_cache(maxsize=None)
+def get_rbac_actions(endpoint: str = None):
+    """Get the RBAC actions from the catalog
+
+    Parameters
+    ----------
+    endpoint : str
+        Show actions and resources for the specified endpoint. Ex: GET /agents
+
+    Returns
+    -------
+    dict
+        RBAC resources
+    """
+    endpoints_list = get_api_endpoints()
+    if endpoint and endpoint not in endpoints_list:
+        raise WazuhError(4020, extra_remediation=endpoints_list)
+    info_data = load_spec()
+    data = dict()
+    for path, path_info in info_data['paths'].items():
+        for method, payload in path_info.items():
+            try:
+                for ref in payload['x-rbac-actions']:
+                    action = list(ref.values())[0].split('/')[-1]
+                    if endpoint and \
+                            f'{method.upper()} {path}'.encode('ascii', 'ignore') != endpoint.encode('ascii', 'ignore'):
+                        continue
+                    if action not in data.keys():
+                        data[action] = deepcopy(info_data['x-rbac-catalog']['actions'][action])
+                    for index, resource in enumerate(info_data['x-rbac-catalog']['actions'][action]['resources']):
+                        data[action]['resources'][index] = list(resource.values())[0].split('/')[-1]
+                    if 'related_endpoints' not in data[action].keys():
+                        data[action]['related_endpoints'] = list()
+                    data[action]['related_endpoints'].append(f'{method.upper()} {path}')
+            except KeyError:
+                pass
+
+    return WazuhResult(data)

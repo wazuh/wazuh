@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
@@ -40,7 +40,6 @@ def __print_table(data, headers, show_header=False):
 async def print_agents(filter_status, filter_node):
     lc = local_client.LocalClient()
     result = await control.get_agents(lc, filter_node=filter_node, filter_status=filter_status)
-    lc.transport.close()
     headers = {'id': 'ID', 'name': 'Name', 'ip': 'IP', 'status': 'Status', 'version': 'Version',
                'node_name': 'Node name'}
     data = map(operator.itemgetter(*headers.keys()), result['items'])
@@ -50,7 +49,6 @@ async def print_agents(filter_status, filter_node):
 async def print_nodes(filter_node):
     lc = local_client.LocalClient()
     result = await control.get_nodes(lc, filter_node=filter_node)
-    lc.transport.close()
     headers = ["Name", "Type", "Version", "Address"]
     data = map(lambda x: list(x.values()), result['items'])
     __print_table(data, headers, True)
@@ -59,7 +57,6 @@ async def print_nodes(filter_node):
 async def print_health(config, more, filter_node):
     lc = local_client.LocalClient()
     result = await control.get_health(lc, filter_node=filter_node)
-    lc.transport.close()
     msg1 = ""
     msg2 = ""
 

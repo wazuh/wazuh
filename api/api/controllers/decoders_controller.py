@@ -2,24 +2,22 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import asyncio
 import logging
 
-import connexion
+from aiohttp import web
+from connexion.lifecycle import ConnexionResponse
 
-from api.authentication import get_permissions
-from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
+from api.encoder import dumps, prettify
+from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh import decoder as decoder_framework
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
-loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
 
-@exception_handler
-def get_decoders(decoder_names: list = None, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
-                 limit: int = None, sort: str = None, search: str = None, q: str = None, filename: str = None,
-                 relative_dirname: str = None, status: str = None):
+async def get_decoders(request, decoder_names: list = None, pretty: bool = False, wait_for_complete: bool = False,
+                       offset: int = 0, limit: int = None, sort: str = None, search: str = None, q: str = None,
+                       filename: str = None, relative_dirname: str = None, status: str = None):
     """Get all decoders
 
     Returns information about all decoders included in ossec.conf. This information include decoder's route,
@@ -56,19 +54,17 @@ def get_decoders(decoder_names: list = None, pretty: bool = False, wait_for_comp
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-@exception_handler
-def get_decoders_files(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
-                       sort: str = None, search: str = None, filename: str = None, relative_dirname: str = None,
-                       status: str = None):
+async def get_decoders_files(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
+                             limit: int = None, sort: str = None, search: str = None, filename: str = None,
+                             relative_dirname: str = None, status: str = None):
     """Get all decoders files
 
     Returns information about all decoders files used in Wazuh. This information include decoder's file, decoder's route
@@ -101,17 +97,15 @@ def get_decoders_files(pretty: bool = False, wait_for_complete: bool = False, of
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-@exception_handler
-def get_download_file(pretty: bool = False, wait_for_complete: bool = False, filename: str = None):
+async def get_download_file(request, pretty: bool = False, wait_for_complete: bool = False, filename: str = None):
     """Download an specified decoder file.
 
     :param pretty: Show results in human-readable format
@@ -126,19 +120,17 @@ def get_download_file(pretty: bool = False, wait_for_complete: bool = False, fil
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = connexion.lifecycle.ConnexionResponse(body=data["message"], mimetype='application/xml')
+    data = raise_if_exc(await dapi.distribute_function())
+    response = ConnexionResponse(body=data["message"], mimetype='application/xml')
 
     return response
 
 
-@exception_handler
-def get_decoders_parents(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
-                         sort: str = None, search: str = None):
+async def get_decoders_parents(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
+                               limit: int = None, sort: str = None, search: str = None):
     """Get decoders by parents
 
     Returns information about all parent decoders. A parent decoder is a decoder used as base of other decoders
@@ -165,10 +157,9 @@ def get_decoders_parents(pretty: bool = False, wait_for_complete: bool = False, 
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)

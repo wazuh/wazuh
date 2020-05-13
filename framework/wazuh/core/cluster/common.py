@@ -161,11 +161,12 @@ class Handler(asyncio.Protocol):
         # object use to encrypt and decrypt requests
         self.my_fernet = cryptography.fernet.Fernet(base64.b64encode(fernet_key.encode())) if fernet_key else None
         # logging.Logger object used to write logs
-        self.logger = logger.getChild(tag)
+        self.logger = logging.getLogger('wazuh')
         # logging tag
         self.tag = tag
-        self.logger_filter = wazuh.core.cluster.utils.ClusterFilter(tag=self.tag, subtag="Main")
-        self.logger.addFilter(self.logger_filter)
+        # modify filter tags with context vars
+        wazuh.core.cluster.utils.context_tag.set(self.tag)
+        wazuh.core.cluster.utils.context_subtag.set("Main")
         self.cluster_items = cluster_items
         # transports in asyncio are an abstraction of sockets
         self.transport = None
@@ -184,7 +185,7 @@ class Handler(asyncio.Protocol):
 
         :return: new counter
         """
-        self.counter = (self.counter + 1) % (2 ** 32)
+        self.counter = (self.counter + 1) % (2**32)
         return self.counter
 
     def msg_build(self, command: bytes, counter: int, data: bytes) -> bytes:
@@ -277,9 +278,10 @@ class Handler(asyncio.Protocol):
             raise exception.WazuhClusterError(3018, extra_message=str(e))
         try:
             response_data = await asyncio.wait_for(response.read(), timeout=self.cluster_items['intervals']['communication']['timeout_cluster_request'])
+            del self.box[msg_counter]
         except asyncio.TimeoutError:
-            raise exception.WazuhClusterError(3020)
-
+            self.box[msg_counter] = None
+            return b'Error sending request: timeout expired.'
         return response_data
 
     async def send_file(self, filename: str) -> bytes:
@@ -360,7 +362,11 @@ class Handler(asyncio.Protocol):
         self.in_buffer = message
         for command, counter, payload in self.get_messages():
             if counter in self.box:
-                self.box[counter].write(self.process_response(command, payload))
+                if self.box[counter] is None:
+                    # Delete entry for previously expired request, just in case is received too late
+                    del self.box[counter]
+                else:
+                    self.box[counter].write(self.process_response(command, payload))
             else:
                 self.dispatch(command, counter, payload)
 
@@ -611,7 +617,7 @@ class WazuhJSONEncoder(json.JSONEncoder):
                                            '__object__': obj.encode_json()}
                       }
             return result
-        elif isinstance(obj, datetime.datetime):
+        elif isinstance(obj, (datetime.datetime, datetime.date)):
             return {'__wazuh_datetime__': obj.isoformat()}
 
         return json.JSONEncoder.default(self, obj)

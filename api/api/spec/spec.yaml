@@ -14,6 +14,390 @@ info:
     name: 'GPL 2.0'
     url: 'https://github.com/wazuh/wazuh/blob/master/LICENSE'
 
+servers:
+  - url: '{protocol}://{host}:{port}/v4'
+    variables:
+      protocol:
+        default: https
+        enum:
+          - http
+          - https
+      host:
+        default: localhost
+      port:
+        default: '55000'
+
+x-rbac-catalog:
+  resources:
+    '*:*':
+      description: "Resource applied in functions acting on resources that do not yet exist in the system.
+      We call these functions, resourceless functions. Example: agent:create"
+    'agent:id':
+      description: "Reference agents via agent ID (i.e. agent:id:001)"
+    'group:id':
+      description: "Reference agent groups via group ID (i.e. group:id:default)"
+    'node:id':
+      description: "Reference cluster node via node ID (i.e. node:id:worker1)"
+    'file:path':
+      description: "Reference file via its path (i.e. file:path:etc/rules/new_rule.xml)"
+    'decoder:file':
+      description: "Reference decoder file via its path (i.e. decoder:file:0005-wazuh_decoders.xml)"
+    'lists:path':
+      description: "Reference list file via its path (i.e. lists:path:etc/lists/audit-keys)"
+    'rules:file':
+      description: "Reference rule file via its path (i.e. rules:file:0610-win-ms_logs_rules.xml)"
+    'policy:id':
+      description: "Reference security policy via its id (i.e. policy:id:1)"
+    'role:id':
+      description: "Reference security role via its id (i.e. role:id:1)"
+    'user:id':
+      description: "Reference security user via its username (i.e. user:id:wazuh)"
+  actions:
+    'active-response:command':
+      description: "Allow to execute active response commands in the agents"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/agent:id'
+      example:
+        actions: ['active-response:command']
+        resources: ['agent:id:001']
+        effect: "allow"
+    'agent:create':
+      description: "Create new agents"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['agent:create']
+        resources: ['*:*:*']
+        effect: "allow"
+    'agent:read':
+      description: "Access to one or more agents basic information (id, name, group, last keep alive, etc)"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/agent:id'
+      example:
+        actions: ['agent:read']
+        resources: ['agent:id:*']
+        effect: "allow"
+    'agent:delete':
+      description: "Delete system's agents"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/agent:id'
+      example:
+        actions: ['agent:delete']
+        resources: ['agent:id:010']
+        effect: "allow"
+    'agent:modify_group':
+      description: "Change the group of specified agent"
+      resources:
+       - $ref: '#/x-rbac-catalog/resources/agent:id'
+      example:
+        actions: ['agent:modify_group']
+        resources: ['agent:id:*']
+        effect: "allow"
+    'group:modify_assignments':
+      description: "Allow to change the agents assigned to the group"
+      resources:
+       - $ref: '#/x-rbac-catalog/resources/group:id'
+      example:
+        actions: ['group:modify_assignments']
+        resources: ['group:id:*']
+        effect: "allow"
+    'agent:upgrade':
+      description: "Upgrade the version of an agent"
+      resources:
+       - $ref: '#/x-rbac-catalog/resources/agent:id'
+      example:
+        actions: ['agent:upgrade']
+        resources: ['agent:id:*']
+        effect: "allow"
+    'agent:restart':
+      description: "Restart Wazuh for allowed agents"
+      resources:
+       - $ref: '#/x-rbac-catalog/resources/agent:id'
+      example:
+        actions: ['agent:restart']
+        resources: ['agent:id:050', 'agent:id:049']
+        effect: "deny"
+    'group:create':
+      description: "Create new groups"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['group:create']
+        resources: ['*:*:*']
+        effect: "allow"
+    'group:read':
+      description: "Access to one or more groups basic information (id, name, agents, etc)"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['group:create']
+        resources: ['*:*:*']
+        effect: "allow"
+    'group:update_config':
+      description: "Change group's configuration"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/group:id'
+      example:
+        actions: ['group:update_config']
+        resources: ['group:id:*']
+        effect: "deny"
+    'group:delete':
+      description: "Delete system's groups"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/group:id'
+      example:
+        actions: ['group:delete']
+        resources: ['group:id:*']
+        effect: "allow"
+    'ciscat:read':
+      description: "Get CIS-CAT results for a list of agents"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/agent:id'
+      example:
+        actions: ['ciscat:read']
+        resources: ['agent:id:001', 'agent:id:003']
+        effect: "deny"
+    'cluster:read_config':
+      description: "Read Wazuh's cluster configuration"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/node:id'
+      example:
+        actions: ['cluster:read_config']
+        resources: ['node:id:worker1', 'node:id:worker3']
+        effect: "deny"
+    'cluster:read_api_config':
+      description: "Check Wazuh's cluster API configuration"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['cluster:read_api_config']
+        resources: ['*:*:*']
+        effect: "allow"
+    'cluster:update_api_config':
+      description: "Modify Wazuh's cluster API configuration"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['cluster:update_api_config']
+        resources: ['*:*:*']
+        effect: "allow"
+    'cluster:read_file':
+      description: "Read Wazuh's cluster files"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/node:id'
+        - $ref: '#/x-rbac-catalog/resources/file:path'
+      example:
+        actions: ['cluster:read_file']
+        resources: ['node:id:worker1', 'file:path:etc/rules/new-rules.xml']
+        effect: "allow"
+    'cluster:delete_file':
+      description: "Delete Wazuh's cluster files"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/node:id'
+        - $ref: '#/x-rbac-catalog/resources/file:path'
+      example:
+        actions: ['cluster:delete_file']
+        resources: ['node:id:worker1', 'file:path:etc/rules/new-rules.xml']
+        effect: "deny"
+    'cluster:upload_file':
+      description: "Upload new file to Wazuh's cluster node"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/node:id'
+      example:
+        actions: ['cluster:upload_file']
+        resources: ['node:id:worker1']
+        effect: "allow"
+    'cluster:restart':
+      description: "Restart Wazuh's cluster nodes"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/node:id'
+      example:
+        actions: ['cluster:restart']
+        resources: ['node:id:worker1']
+        effect: "allow"
+    'cluster:status':
+      description: "Check Wazuh's cluster status"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['cluster:status']
+        resources: ['*:*:*']
+        effect: "allow"
+    'manager:read_config':
+      description: "Read Wazuh manager configuration"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['manager:read_config']
+        resources: ['*:*:*']
+        effect: "allow"
+    'manager:read_api_config':
+      description: "Read Wazuh manager API configuration"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['manager:read_api_config']
+        resources: ['*:*:*']
+        effect: "allow"
+    'manager:update_api_config':
+      description: "Modify Wazuh manager API configuration"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['manager:update_api_config']
+        resources: ['*:*:*']
+        effect: "allow"
+    'manager:read_file':
+      description: "Read Wazuh manager files"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/file:path'
+      example:
+        actions: ['manager:read_file']
+        resources: ['file:path:etc/rules/new-rules.xml']
+        effect: "allow"
+    'manager:delete_file':
+      description: "Delete Wazuh manager files"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/file:path'
+      example:
+        actions: ['manager:delete_file']
+        resources: ['file:path:etc/rules/new-rules.xml']
+        effect: "allow"
+    'manager:upload_file':
+      description: "Upload new file to Wazuh manager node"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['manager:upload_file']
+        resources: ['*:*:*']
+        effect: "deny"
+    'manager:restart':
+      description: "Restart Wazuh manager nodes"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['manager:restart']
+        resources: ['*:*:*']
+        effect: "deny"
+    'manager:status':
+      description: "Check Wazuh manager status"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['manager:status']
+        resources: ['*:*:*']
+        effect: "deny"
+    'decoder:read':
+      description: "Read decoders files"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/decoder:file'
+      example:
+        actions: ['decoder:read']
+        resources: ['decoder:file:*']
+        effect: "allow"
+    'lists:read':
+      description: "Read lists files"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/lists:path'
+      example:
+        actions: ['lists:read']
+        resources: ['lists:path:etc/lists/audit-keys']
+        effect: "deny"
+    'rules:read':
+      description: "Read rules files"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/rules:file'
+      example:
+        actions: ['rules:read']
+        resources: ['rules:file:0610-win-ms_logs_rules.xml']
+        effect: "allow"
+    'sca:read':
+      description: "Get a list of policies analyzed in the configuration assessment for a given agent"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/agent:id'
+      example:
+        actions: ['sca:read']
+        resources: ['agent:id:*']
+        effect: "allow"
+    'security:create':
+      description: "Create new system security resources"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['security:create']
+        resources: ['*:*:*']
+        effect: "deny"
+    'security:create_user':
+      description: "Create new system user"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['security:create_user']
+        resources: ['*:*:*']
+        effect: "allow"
+    'security:read':
+      description: "Allow read information about system's security resources"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/policy:id'
+        - $ref: '#/x-rbac-catalog/resources/role:id'
+        - $ref: '#/x-rbac-catalog/resources/user:id'
+      example:
+        actions: ['security:read']
+        resources: ['policy:id:*', 'role:id:administrator', 'user:id:python',]
+        effect: "allow"
+    'security:update':
+      description: "Allow update the information of system's security resources"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/policy:id'
+        - $ref: '#/x-rbac-catalog/resources/role:id'
+        - $ref: '#/x-rbac-catalog/resources/user:id'
+      example:
+        actions: ['security:update']
+        resources: ['policy:id:*', 'role:id:administrator', 'user:id:python',]
+        effect: "deny"
+    'security:delete':
+      description: "Delete system's security resources"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/policy:id'
+        - $ref: '#/x-rbac-catalog/resources/role:id'
+        - $ref: '#/x-rbac-catalog/resources/user:id'
+      example:
+        actions: ['security:update']
+        resources: ['policy:id:*', 'role:id:administrator', 'user:id:python',]
+        effect: "deny"
+    'syscheck:read':
+      description: "Read information from syscheck's database"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/agent:id'
+      example:
+        actions: ['syscheck:read']
+        resources: ['agent:id:011']
+        effect: "allow"
+    'syscheck:clear':
+      description: "Clear the syscheck database for specified agents"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/agent:id'
+      example:
+        actions: ['syscheck:clear']
+        resources: ['agent:id:*']
+        effect: "deny"
+    'syscheck:run':
+      description: "Runs rootcheck and syscheck"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/agent:id'
+      example:
+        actions: ['syscheck:run']
+        resources: ['agent:id:*']
+        effect: "allow"
+    'syscollector:read':
+      description: "Get syscollector information about a specified agents"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/agent:id'
+      example:
+        actions: ['syscollector:read']
+        resources: ['agent:id:*']
+        effect: "allow"
+
 components:
   responses:
     ResponseError:
@@ -31,17 +415,6 @@ components:
         message:
           type: string
           description: Human readable description to explain the result of the request
-
-    ListMetadata:
-      type: object
-      required:
-        - totalItems
-      properties:
-        totalItems:
-          type: integer
-          format: int32
-          minimum: 0
-          description: Total elements available. It can be used to implement pagination over results.
 
     SimpleApiError:
       type: object
@@ -275,6 +648,19 @@ components:
               description: Items that successfully applied the API call action.
               items:
                 $ref: '#/components/schemas/AgentIdKey'
+
+    AllItemsResponseRootcheck:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: Items that successfully applied the API call action.
+              items:
+                $ref: '#/components/schemas/RootcheckDatabase'
 
     AllItemsResponseRules:
       allOf:
@@ -1654,6 +2040,7 @@ components:
             - wazuh-modulesd:aws-s3
             - wazuh-modulesd:azure-logs
             - wazuh-modulesd:ciscat
+            - wazuh-modulesd:control
             - wazuh-modulesd:command
             - wazuh-modulesd:database
             - wazuh-modulesd:docker-listener
@@ -1783,6 +2170,85 @@ components:
           description: Configuration status.
           enum:
           - OK
+
+    APIconfiguration:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        behind_proxy_server:
+          description: Set this option to "yes" in case the API is running behind a proxy server.
+          type: boolean
+          default: false
+        rbac:
+          type: object
+          additionalProperties: false
+          properties:
+            mode:
+              description: RBAC mode (white/black).
+              type: string
+              enum: [white, black]
+            auth_token_exp_timeout:
+              description: Time in seconds until the token expires.
+              type: integer
+              format: int32
+              minimum: 30
+              example: 3600
+        logs:
+          type: object
+          additionalProperties: false
+          properties:
+            level:
+              description: Verbosity level of API logs.
+              default: info
+              type: string
+              enum: [disabled, info, warning, error, debug, debug2]
+        cache:
+          type: object
+          additionalProperties: false
+          properties:
+            enabled:
+              description: Enable cache.
+              type: boolean
+              default: true
+            time:
+              description: Cache expiration time in seconds.
+              type: number
+              format: double
+              minimum: 0
+              example: 0.75
+        cors:
+          type: object
+          additionalProperties: false
+          properties:
+            enabled:
+              description: Enable CORS
+              type: boolean
+              default: false
+            source_route:
+              description: Sources for which the resources will be available. For example 'http://client.example.org'
+              type: string
+              example: '*'
+            expose_headers:
+              description: Which headers can be exposed as part of the response.
+              type: string
+              example: '*'
+            allow_headers:
+              description: Which HTTP headers can be used during the actual request.
+              type: string
+              example: '*'
+            allow_credentials:
+              description: Browsers will only expose the response to frontend JavaScript code if this is enabled.
+              type: boolean
+              default: false
+        use_only_authd:
+          description: Force the use of authd when adding and removing agents.
+          type: boolean
+          default: false
+        experimental_features:
+          description: Enable features under development.
+          type: boolean
+          default: false
 
     # Rootcheck models
     RootcheckDatabase:
@@ -2001,7 +2467,6 @@ components:
           description: Date when the alert was raised.
         perm:
           type: string
-          format: numbers_or_empty
           description: File permissions.
         type:
           type: string
@@ -2635,7 +3100,7 @@ components:
 
   parameters:
     auth_context:
-      in: body
+      in: query
       name: Authorization context
       description: 'Authorization context'
       required: False
@@ -2649,7 +3114,7 @@ components:
       schema:
         $ref: '#/components/schemas/AgentID'
     agent_name:
-      in: path
+      in: query
       name: agent_name
       description: Agent name used when the agent was registered.
       required: true
@@ -2771,6 +3236,11 @@ components:
         </tr>
         <tr>
         <td>com</td>
+        <td>logging</td>
+        <td><code>&lt;logging&gt;</code></td>
+        </tr>
+        <tr>
+        <td>com</td>
         <td>internal</td>
         <td>execd</td>
         </tr>
@@ -2825,6 +3295,11 @@ components:
         <td>monitord</td>
         </tr>
         <tr>
+        <td>monitor</td>
+        <td>internal</td>
+        <td>reports</td>
+        </tr>
+        <tr>
         <td>request</td>
         <td>remote</td>
         <td><code>&lt;remote&gt;</code></td>
@@ -2872,6 +3347,8 @@ components:
         - rules
         - decoders
         - auth
+        - logging
+        - reports
         - active-response
         - cluster
         - csyslog
@@ -2970,6 +3447,13 @@ components:
         format: alphanumeric
     group_id:
       in: path
+      name: group_id
+      description: Group ID. (Name of the group)
+      required: true
+      schema:
+        $ref: '#/components/schemas/GroupID'
+    group_id_query:
+      in: query
       name: group_id
       description: Group ID. (Name of the group)
       required: true
@@ -3163,6 +3647,12 @@ components:
       required: True
       schema:
         type: string
+    endpoint:
+      in: query
+      name: endpoint
+      description: Looks the RBAC actions related with the specified endpoint.
+      schema:
+        type: string
     purge:
       in: query
       name: purge
@@ -3176,7 +3666,7 @@ components:
       description: Query to filter results by. For example q=&quot;status=active&quot;
       schema:
         type: string
-        format: query
+      allowReserved: true
     rationale:
       in: query
       name: rationale
@@ -3247,6 +3737,14 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/Role_id'
+    security_position:
+      in: query
+      name: 'position'
+      description: 'Security position for roles/policies'
+      required: False
+      schema:
+        type: integer
+        minimum: 0
     role_name:
       in: query
       name: role_name
@@ -3657,6 +4155,13 @@ components:
       schema:
         type: string
         format: hash
+    distinct:
+      in: query
+      name: distinct
+      description: Look for distinct values.
+      schema:
+        type: boolean
+        default: false
     ram.free:
       in: query
       name: ram.free
@@ -4090,14 +4595,15 @@ components:
     file_path:
       in: query
       name: file_path
-      description: Path to the WPK file. The file must be on a folder on the Wazuh's installation directory (by default, <code>/var/ossec</code>).
+      description: Full path to the WPK file. The file must be on a folder on the Wazuh's installation directory (by default, <code>/var/ossec</code>).
+      required: True
       schema:
         type: string
         format: path
     installer:
       in: query
       name: installer
-      description: Installation script.
+      description: Installation script. Default is <code>upgrade.sh</code> or <code>upgrade.bat</code> for windows agents.
       schema:
         type: string
         format: alphanumeric
@@ -4116,7 +4622,24 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/Username'
-
+    resource_list:
+      in: query
+      name: resource
+      description: List of current RBAC's resources.
+      schema:
+        type: string
+        enum:
+          - '*:*'
+          - 'agent:id'
+          - 'group:id'
+          - 'node:id'
+          - 'file:path'
+          - 'decoder:file'
+          - 'lists:path'
+          - 'rules:file'
+          - 'policy:id'
+          - 'role:id'
+          - 'user:id'
 
 tags:
   - name: active-response
@@ -4131,6 +4654,8 @@ tags:
     description: 'Decoders management'
   - name: experimental
     description: 'Not ready for production endpoints. Use with caution'
+  - name: groups
+    description: 'Group of agents and centralized configurations'
   - name: lists
     description: 'CDB lists management'
   - name: manager
@@ -4185,6 +4710,8 @@ paths:
       summary: 'Run AR command in all agents'
       description: 'Runs an Active Response command on all agents'
       operationId: api.controllers.active_response_controller.run_command
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/active-response:command'
       parameters:
         - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/pretty'
@@ -4213,6 +4740,8 @@ paths:
       summary: Delete agents
       description: Deletes all agents or a list of them with optional criteria based on the status or time of the last connection.
       operationId: api.controllers.agents_controller.delete_agents
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:delete'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4256,6 +4785,8 @@ paths:
       summary: 'Get agents'
       description: 'Returns information about all available agents or a list of them'
       operationId: api.controllers.agents_controller.get_agents
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4378,6 +4909,8 @@ paths:
       summary: 'Add agent'
       description: 'Adds a new agent.'
       operationId: api.controllers.agents_controller.add_agent
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:create'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4423,102 +4956,6 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /agents/{agent_id}:
-    delete:
-      tags:
-        - agents
-      summary: 'Delete an agent'
-      description: 'Deletes an agent.'
-      operationId: api.controllers.agents_controller.delete_agent
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/purge'
-      responses:
-        '200':
-          description: 'Delete an agent'
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/AllItemsResponseAgentIDs'
-                        - type: object
-                          properties:
-                            older_than:
-                              type: string
-                              format: timeframe
-                              description: Returns older than parameter used when deleting the agent.
-              example:
-                data:
-                  affected_items:
-                    - '003'
-                  older_than: 0s
-                  total_affected_items: 1
-                message: All selected agents were deleted
-        default:
-          $ref: '#/components/responses/ResponseError'
-    get:
-      tags:
-        - agents
-      summary: 'Get an agent'
-      description: 'Returns various information from an agent.'
-      operationId: api.controllers.agents_controller.get_agent
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/select'
-      responses:
-        '200':
-          description: 'Get agent'
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/AllItemsResponseAgents'
-              example:
-                data:
-                  affected_items:
-                    - configSum: e2f47d482da37c099fa1d6e4c43b523c
-                      dateAdd: '1970-01-01T00:00:00Z'
-                      group:
-                        - default
-                        - group2
-                      id: '002'
-                      ip: 172.18.0.7
-                      lastKeepAlive: '2019-10-16T09:34:58Z'
-                      manager: wazuh-worker2
-                      mergedSum: d6fde33dc232d8f91359b2e98994c933
-                      name: wazuh-agent2
-                      node_name: worker2
-                      os:
-                        arch: x86_64
-                        codename: Xenial Xerus
-                        major: '16'
-                        minor: '04'
-                        name: Ubuntu
-                        platform: ubuntu
-                        uname: Linux |wazuh-agent2 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
-                          12 13:35:51 UTC 2019 |x86_64
-                        version: 16.04.6 LTS
-                      registerIP: any
-                      status: active
-                      version: Wazuh v3.10.0
-                  total_affected_items: 1
-                message: All selected agents information is shown
-        default:
-          $ref: '#/components/responses/ResponseError'
-
   /agents/{agent_id}/config/{component}/{configuration}:
     get:
       tags:
@@ -4526,6 +4963,8 @@ paths:
       summary: 'Get active configuration'
       description: 'Returns the active configuration the agent is currently using. This can be different from the configuration present in the configuration file, if it has been modified and the agent has not been restarted yet.'
       operationId: api.controllers.agents_controller.get_agent_config
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4595,6 +5034,9 @@ paths:
       summary: 'Remove agent from groups'
       description: 'Removes the agent from all groups or a list of them. The agent will automatically revert to the "default" group if it is removed from all its assigned groups.'
       operationId: api.controllers.agents_controller.delete_single_agent_multiple_groups
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:modify_group'
+        - $ref: '#/x-rbac-catalog/actions/group:modify_assignments'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4629,6 +5071,8 @@ paths:
       summary: 'Get agent configuration sync status'
       description: 'Returns whether the agent configuration has been synchronized with the agent or not. This can be useful to check after updating a group configuration.'
       operationId: api.controllers.agents_controller.get_sync_agent
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4664,6 +5108,9 @@ paths:
       summary: 'Remove an agent from a specific group'
       description: 'Removes an agent from an specified group. If the agent has multigroups, it will preserve all previous groups except the last one.'
       operationId: api.controllers.agents_controller.delete_single_agent_single_group
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:modify_group'
+        - $ref: '#/x-rbac-catalog/actions/group:modify_assignments'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4687,6 +5134,9 @@ paths:
       summary: 'Assign an agent to a group'
       description: 'Assign an agent to a specified group'
       operationId: api.controllers.agents_controller.put_agent_single_group
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:modify_group'
+        - $ref: '#/x-rbac-catalog/actions/group:modify_assignments'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4712,6 +5162,8 @@ paths:
       summary: 'Get agent key'
       description: 'Returns the key of an agent.'
       operationId: api.controllers.agents_controller.get_agent_key
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4745,6 +5197,8 @@ paths:
       summary: 'Restart an agent'
       description: 'Restarts the specified agent.'
       operationId: api.controllers.agents_controller.restart_agent
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:restart'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4776,6 +5230,8 @@ paths:
       summary: 'Upgrade agent using online repository'
       description: 'Upgrade the agent using a WPK file from online repository.'
       operationId: api.controllers.agents_controller.put_upgrade_agent
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4803,6 +5259,8 @@ paths:
       summary: 'Upgrade agent using a custom file'
       description: 'Upgrade the agent using a local WPK file.'
       operationId: api.controllers.agents_controller.put_upgrade_custom_agent
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4821,36 +5279,6 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /agents/{agent_name}:
-    post:
-      tags:
-        - agents
-      summary: 'Add agent (quick method)'
-      description: 'Adds a new agent with name `agent_name`. This agent will use `any` as IP.'
-      operationId: api.controllers.agents_controller.post_new_agent
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_name'
-      responses:
-        '200':
-          description: 'Agent added'
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/AgentIdKey'
-              example:
-                data:
-                  id: "008"
-                  key: MDA4IG15TmV3QWdlbnQgYW55IDIyNGVmNmI4NjYyMDk5OTc5NzdiZWJhNDRmZTAyNDI0NjU2ZDM1NjhjNWJiZWI4Njk0M2JkMzdjZjA5YjZlM2M=
-        default:
-          $ref: '#/components/responses/ResponseError'
-
   /agents/{agent_id}/upgrade_result:
     get:
       tags:
@@ -4858,6 +5286,8 @@ paths:
       summary: 'Get upgrade result from agent'
       description: 'Returns the upgrade result after updating an agent.'
       operationId: api.controllers.agents_controller.get_agent_upgrade
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4880,18 +5310,21 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /agents/group/{group_id}:
+  /agents/group:
     delete:
       tags:
         - agents
       summary: 'Remove agents assignment from a single group.'
       description: 'Remove all agents assignment or a list of them from the specified group.'
       operationId: api.controllers.agents_controller.delete_multiple_agent_single_group
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:modify_group'
+        - $ref: '#/x-rbac-catalog/actions/group:modify_assignments'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/list_agents'
-        - $ref: '#/components/parameters/group_id'
+        - $ref: '#/components/parameters/group_id_query'
       responses:
         '200':
           description: 'Remove multiple agents assignment from a single group.'
@@ -4923,11 +5356,14 @@ paths:
       summary: 'Assign agents to a single group'
       description: 'Assign all agents or a list of them to the specified group.'
       operationId: api.controllers.agents_controller.put_multiple_agent_single_group
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:modify_group'
+        - $ref: '#/x-rbac-catalog/actions/group:modify_assignments'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/list_agents'
-        - $ref: '#/components/parameters/group_id'
+        - $ref: '#/components/parameters/group_id_query'
         - $ref: '#/components/parameters/force_single_group'
       responses:
         '200':
@@ -4966,13 +5402,15 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /agents/groups:
+  /groups:
     delete:
       tags:
-        - agents
+        - groups
       summary: 'Delete groups'
       description: 'Deletes all groups or a list of them'
       operationId: api.controllers.agents_controller.delete_groups
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/group:delete'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -5008,10 +5446,12 @@ paths:
 
     get:
       tags:
-        - agents
+        - groups
       summary: 'Get groups'
       description: 'Get information about all groups or a list of them. Returns a list containing basic information about each group such as number of agents belonging to the group and the checksums of the configuration and shared files.'
       operationId: api.controllers.agents_controller.get_list_group
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/group:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -5053,51 +5493,39 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /agents/groups/{group_id}:
-    delete:
+    post:
       tags:
-        - agents
-      summary: 'Delete group'
-      description: 'Deletes a group. Agents that were assigned only to the deleted group will automatically revert to the "default" group.'
-      operationId: api.controllers.agents_controller.delete_single_group
+        - groups
+      summary: 'Create a group'
+      description: 'Creates a new group.'
+      operationId: api.controllers.agents_controller.post_group
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/group:create'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/group_id'
+        - $ref: '#/components/parameters/group_id_query'
       responses:
         '200':
-          description: 'Delete a group'
+          description: 'Add new agent'
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                      - $ref: '#/components/schemas/AllItemsResponseGroupIDs'
-                      - $ref: '#/components/schemas/AgentGroupDeleted'
+                $ref: '#/components/schemas/ApiResponse'
               example:
-                data:
-                  affected_agents:
-                    - '002'
-                    - '005'
-                    - '003'
-                  affected_items:
-                    - 'webserver'
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  message: All selected groups were deleted
+                message: "Group 'pciserver' created"
         default:
           $ref: '#/components/responses/ResponseError'
 
+  /groups/{group_id}/agents:
     get:
       tags:
-        - agents
+        - groups
       summary: 'Get agents in a group'
       description: 'Returns the list of agents that belongs to the specified group.'
       operationId: api.controllers.agents_controller.get_agents_in_group
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/group:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -5204,35 +5632,15 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-    post:
-      tags:
-        - agents
-      summary: 'Create a group'
-      description: 'Creates a new group.'
-      operationId: api.controllers.agents_controller.post_group
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/group_id'
-      responses:
-        '200':
-          description: 'Add new agent'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                message: "Group 'pciserver' created"
-        default:
-          $ref: '#/components/responses/ResponseError'
-
-  /agents/groups/{group_id}/configuration:
+  /groups/{group_id}/configuration:
     get:
       tags:
-        - agents
+        - groups
       summary: 'Get group configuration'
       description: 'Returns the group configuration defined in the `agent.conf` file.'
       operationId: api.controllers.agents_controller.get_group_config
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/group:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -5248,31 +5656,48 @@ paths:
                 type: object
                 properties:
                   data:
-                    allOf:
-                      - $ref: '#/components/schemas/ListMetadata'
-                      - type: object
-                        properties:
-                          items:
-                            type: array
-                            items:
-                              $ref: '#/components/schemas/GroupConfiguration'
+                    type: object
+                    properties:
+                      affected_items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/GroupConfiguration'
+                      total_affected_items:
+                        type: integer
+                        format: int32
               example:
                 data:
-                  - filters:
-                      os: Linux
-                  - config:
-                      localfile:
-                      - location: /var/log/linux.log
-                      - log_format: syslog
+                  total_affected_items: 3
+                  affected_items:
+                    - filters:
+                        name: agent_name
+                      config:
+                        localfile:
+                          - location: "/var/log/my.log"
+                            log_format: syslog
+                    - filters:
+                        os: Linux
+                      config:
+                        localfile:
+                          - location: "/var/log/linux.log"
+                            log_format: syslog
+                    - filters:
+                        profile: database
+                      config:
+                        localfile:
+                          - location: "/var/log/database.log"
+                            log_format: syslog
         default:
           $ref: '#/components/responses/ResponseError'
 
     put:
       tags:
-        - agents
+        - groups
       summary: 'Update group configuration'
       description: "Update an specified group's configuration. This API call expects a full valid XML file with the shared configuration tags/syntax."
       operationId: api.controllers.agents_controller.put_group_config
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/group:update_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -5300,13 +5725,15 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /agents/groups/{group_id}/files:
+  /groups/{group_id}/files:
     get:
       tags:
-        - agents
+        - groups
       summary: 'Get group files'
       description: 'Return the files placed under the group directory.'
       operationId: api.controllers.agents_controller.get_group_files
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/group:delete'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -5322,74 +5749,37 @@ paths:
           content:
             application/json:
               schema:
-                properties:
-                  data:
-                    allOf:
-                      - $ref: '#/components/schemas/ListMetadata'
-                      - $ref: '#/components/schemas/GroupFile'
-
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
               example:
                 data:
-                  totalItems: 24
-                  items:
+                  affected_items:
                     - filename: agent.conf
                       hash: ab73af41699f13fdd81903b5f23d8d00
                     - filename: ar.conf
                       hash: 76d8be9b97d8eae4c239e530ee7e71c8
-                    - filename: cis_apache2224_rcl.txt
-                      hash: 3c2469443a08b01c454ca35558cb9fa6
-                    - filename: cis_debian_linux_rcl.txt
-                      hash: cc12fdba595817758f308024f61acb71
-                    - filename: cis_mysql5-6_community_rcl.txt
-                      hash: f5f770160baf596373e4f77f987cc422
-                    - filename: cis_mysql5-6_enterprise_rcl.txt
-                      hash: de9865c809f1555d537e5a49872eaf4c
-                    - filename: cis_rhel5_linux_rcl.txt
-                      hash: a3af38b3f81a48332c7bcd9cf8aa6eff
-                    - filename: cis_rhel6_linux_rcl.txt
-                      hash: bdcfa3ab90b553f8e5c84cfa9fd90289
-                    - filename: cis_rhel7_linux_rcl.txt
-                      hash: 039e579029e3edcf8241fb391f46b12f
-                    - filename: cis_rhel_linux_rcl.txt
-                      hash: 569cd8a2cc7527cc75f81f77098de461
-                    - filename: cis_sles11_linux_rcl.txt,
-                      hash: d86ee36d384930293cbcc83c8fb57c93
-                    - filename: cis_sles12_linux_rcl.txt
-                      hash: 6f58710fa8eef659dc782a3fa4699e33
-                    - filename: cis_win2012r2_domainL1_rcl.txt
-                      hash: 8819dfa3523933b113e27a85fc9e568d
-                    - filename: cis_win2012r2_domainL2_rcl.txt
-                      hash: e8a2c7ab57bc8102b237f061b8f82dce
-                    - filename: cis_win2012r2_memberL1_rcl.txt
-                      hash: 38c88156d03af9372efd620e6e57d473
-                    - filename: cis_win2012r2_memberL2_rcl.txt
-                      hash: c4b62b3e01b5f5634a9719eb8a104028
                     - filename: merged.mg
-                      hash: f8d49771911ed9d5c45b03a40babd065
-                    - filename: rootkit_files.txt
-                      hash: e5ddcac443143cef6237d5f9b8d48585
-                    - filename:  rootkit_trojans.txt
-                      hash: 6bcf7016d3e6b4c7faa62cf265c24dcc
-                    - filename: system_audit_rcl.txt
-                      hash: be69b84dd5ee73200bb903a46270e18c
-                    - filename: system_audit_ssh.txt
-                      hash: 407c1f5e103f0cb58249eb7252a84797
-                    - filename: win_applications_rcl.txt
-                      hash: 0a4ad12c8145aca8a28d31de5c448b48
-                    - filename: win_audit_rcl.txt
-                      hash: 92d8011facc8b921ece301ea4ce6a616
-                    - filename: win_malware_rcl.txt
-                      hash: 6a8d3c63a0e77dea35aaed3ee2cca3a1
+                      hash: f5e0305e248bd00e05445f329bd1dd5e
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                message: All selected groups files are shown
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /agents/groups/{group_id}/files/{file_name}/json:
+  /groups/{group_id}/files/{file_name}/json:
     get:
       tags:
-        - agents
+        - groups
       summary: 'Get a file in group'
       description: 'Returns the contents of the specified group file parsed to JSON.'
       operationId: api.controllers.agents_controller.get_group_file_json
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/group:delete'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -5410,7 +5800,7 @@ paths:
                         description: "The output format depends on the type of file that has been requested: rootkit file, rootkit trojans or rcl."
               example:
                 data:
-                  vars:
+                  vars: None
                   controls:
                     - condition: all required
                       name: CIS - Testing against the CIS Debian Linux Benchmark v1
@@ -5425,13 +5815,15 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /agents/groups/{group_id}/files/{file_name}/xml:
+  /groups/{group_id}/files/{file_name}/xml:
     get:
       tags:
-        - agents
+        - groups
       summary: 'Get a file in group'
       description: 'Returns the contents of the specified group file parsed to XML.'
       operationId: api.controllers.agents_controller.get_group_file_xml
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/group:delete'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -5448,6 +5840,42 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
+  /groups/{group_id}/restart:
+    put:
+      tags:
+        - groups
+      summary: 'Restart all agents in a group'
+      description: 'Restart all agents which belong to a given group'
+      operationId: api.controllers.agents_controller.restart_agents_by_group
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/group:read'
+        - $ref: '#/x-rbac-catalog/actions/agent:restart'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/group_id'
+      responses:
+        '200':
+          description: Agents restarted
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseAgentIDs'
+                example:
+                  message: Restart command sent to all selected agents
+                  data:
+                    affected_items:
+                      - '002'
+                      - '004'
+                    total_affected_items: 2
+        default:
+          $ref: '#/components/responses/ResponseError'
+
   /agents/insert:
     post:
       tags:
@@ -5455,6 +5883,8 @@ paths:
       summary: 'Add an agent specifying all its basic properties'
       description: 'Adds an agent specifying its name, ID and IP. If an agent with the same ID already exists, replace it using `force` parameter.'
       operationId: api.controllers.agents_controller.insert_agent
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:create'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -5510,60 +5940,35 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /agents/name/{agent_name}:
-    get:
+  /agents/insert/quick:
+    post:
       tags:
         - agents
-      summary: 'Get an agent by its name'
-      description: 'Returns various information from an agent called :agent_name.'
-      operationId: api.controllers.agents_controller.get_agent_by_name
+      summary: 'Add agent (quick method)'
+      description: 'Adds a new agent with name `agent_name`. This agent will use `any` as IP.'
+      operationId: api.controllers.agents_controller.post_new_agent
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:create'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agent_name'
-        - $ref: '#/components/parameters/select'
       responses:
         '200':
-          description: 'Get agent by name'
+          description: 'Agent added'
           content:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/AllItemsResponseAgents'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AgentIdKey'
               example:
                 data:
-                  affected_items:
-                    - configSum: 29e0926e5a77442212e824868a2a61df
-                      dateAdd: '1970-01-01T00:00:00Z'
-                      group:
-                        - default
-                        - group1
-                      id: '001'
-                      ip: 172.18.0.6
-                      lastKeepAlive: '2019-10-16T09:13:34Z'
-                      manager: wazuh-worker2
-                      mergedSum: a13d9b2edc5bdd5ef7331c0d5b9ecf34
-                      name: wazuh-agent1
-                      node_name: worker2
-                      os:
-                        arch: x86_64
-                        codename: Xenial Xerus
-                        major: '16'
-                        minor: '04'
-                        name: Ubuntu
-                        platform: ubuntu
-                        uname: Linux |wazuh-agent1 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
-                          12 13:35:51 UTC 2019 |x86_64
-                        version: 16.04.6 LTS
-                      registerIP: any
-                      status: active
-                      version: Wazuh v3.10.0
-                  total_affected_items: 1
-                message: All selected agents information is shown
+                  id: "008"
+                  key: MDA4IG15TmV3QWdlbnQgYW55IDIyNGVmNmI4NjYyMDk5OTc5NzdiZWJhNDRmZTAyNDI0NjU2ZDM1NjhjNWJiZWI4Njk0M2JkMzdjZjA5YjZlM2M=
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -5574,6 +5979,8 @@ paths:
       summary: 'Get all agents without group'
       description: 'Returns a list with the available agents without group.'
       operationId: api.controllers.agents_controller.get_agent_no_group
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -5685,6 +6092,8 @@ paths:
       summary: 'Get outdated agents'
       description: 'Returns the list of outdated agents.'
       operationId: api.controllers.agents_controller.get_agent_outdated
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -5725,6 +6134,8 @@ paths:
       summary: 'Restarts agents'
       description: 'Restarts all agents or a list of them'
       operationId: api.controllers.agents_controller.restart_agents
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:restart'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -5758,6 +6169,8 @@ paths:
       summary: 'Get distinct fields in agents'
       description: 'Returns all the different combinations that agents have for the selected fields. It also indicates the total number of agents that have each combination.'
       operationId: api.controllers.agents_controller.get_agent_fields
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -5781,12 +6194,60 @@ paths:
                       data:
                         $ref: '#/components/schemas/AllItemsResponseAgentsDistinct'
               example:
-                items:
-                  - count: 11
-                    os:
-                      arch: x86_64
-                  - count: 2
-                totalItems: 13
+                data:
+                  affected_items:
+                    - os:
+                        arch: x86_64
+                        codename: Bionic Beaver
+                        major: '18'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: Linux |wazuh-master |5.3.0-7642-generic |#34~1584408018~19.10~21df4b1-Ubuntu
+                          SMP Tue Mar 17 13:38:51 UTC  |x86_64
+                        version: 18.04.4 LTS
+                      registerIP: 127.0.0.1
+                      count: 1
+                      name: wazuh-master
+                      version: Wazuh v3.12.0
+                      ip: 127.0.0.1
+                      lastKeepAlive: '9999-12-31T23:59:59Z'
+                      dateAdd: '2020-04-14T10:14:16Z'
+                      node_name: master-node
+                      status: active
+                      manager: wazuh-master
+                      id: '000'
+                    - os:
+                        arch: x86_64
+                        codename: Xenial Xerus
+                        major: '16'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: Linux |wazuh-agent1 |5.3.0-7642-generic |#34~1584408018~19.10~21df4b1-Ubuntu
+                          SMP Tue Mar 17 13:38:51 UTC  |x86_64
+                        version: 16.04.6 LTS
+                      group:
+                        - default
+                        - group1
+                      registerIP: any
+                      count: 1
+                      name: wazuh-agent1
+                      mergedSum: a13d9b2edc5bdd5ef7331c0d5b9ecf34
+                      version: Wazuh v3.12.0
+                      ip: 172.24.0.6
+                      lastKeepAlive: '2020-04-15T11:33:31Z'
+                      internal_key: b7efaafcde1bb0f3d3cbbf5b32e6335878305f4e6a19bec2d065f5e53e134e65
+                      dateAdd: '1970-01-01T00:00:00Z'
+                      configSum: 29e0926e5a77442212e824868a2a61df
+                      node_name: master-node
+                      status: active
+                      manager: wazuh-master
+                      id: '001'
+                  total_affected_items: 13
+                  total_failed_items: 0
+                  failed_items: []
+                message: All selected agents information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -5797,34 +6258,27 @@ paths:
       summary: 'Get agents OS summary'
       description: 'Returns a summary of the OS of available agents.'
       operationId: api.controllers.agents_controller.get_agent_summary_os
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
-          description: 'Get summary of agents OS'
+          description: 'Get outdated agents'
           content:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              description: List of Operating system platforms.
-                              type: array
-                              items:
-                                type: string
+                  - $ref: '#/components/schemas/ApiResponse'
               example:
                 data:
-                  items:
+                  affected_items:
                     - ubuntu
-                  totalItems: 1
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: Showing the operative system of all specified agents
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -5835,6 +6289,8 @@ paths:
       summary: 'Get agents status summary'
       description: 'Returns a summary of the status of available agents.'
       operationId: api.controllers.agents_controller.get_agent_summary_status
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -5867,6 +6323,8 @@ paths:
       summary: 'Get CIS-CAT results from an agent'
       description: "Returns the agent's ciscat results info."
       operationId: api.controllers.ciscat_controller.get_agents_ciscat_results
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -5925,6 +6383,8 @@ paths:
       summary: Get information about the local node.
       description: Returns basic information about the cluster node receiving the request.
       operationId: api.controllers.cluster_controller.get_cluster_node
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -5964,6 +6424,8 @@ paths:
       summary: Get cluster nodes information
       description: Get information about all nodes in the cluster or a list of them
       operationId: api.controllers.cluster_controller.get_cluster_nodes
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -5988,16 +6450,23 @@ paths:
                       $ref: '#/components/schemas/AllItemsResponseClusterNodes'
               example:
                 data:
-                  totalItems: 2
-                  items:
-                    - name: "node02"
-                      type: "worker"
-                      version: "3.9.0"
-                      ip: "172.17.0.101"
-                    - name: "node01"
-                      type: "master"
-                      version: "3.9.0"
-                      ip: "172.17.0.100"
+                  affected_items:
+                    - name: master-node
+                      type: master
+                      version: 3.12.0
+                      ip: wazuh-master
+                    - name: worker1
+                      type: worker
+                      version: 3.12.0
+                      ip: 172.26.0.5
+                    - name: worker2
+                      type: worker
+                      version: 3.12.0
+                      ip: 172.26.0.4
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                message: All selected nodes information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -6008,6 +6477,8 @@ paths:
       summary: Get cluster nodes healthcheck
       description: Returns cluster healthcheck information for all nodes or a list of them. Such information includes last keep alive, last synchronization time and number of agents reporting on each node.
       operationId: api.controllers.cluster_controller.get_healthcheck
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6071,6 +6542,8 @@ paths:
       summary: Get cluster status
       description: Returns information about the cluster status.
       operationId: api.controllers.cluster_controller.get_status
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:status'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6112,6 +6585,8 @@ paths:
       summary: Get local node cluster configuration
       description: Returns the current node cluster configuration
       operationId: api.controllers.cluster_controller.get_config
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6174,6 +6649,103 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
+  /cluster/api/config:
+    get:
+      tags:
+        - cluster
+      summary: Get API configuration.
+      description: Returns the API configuration in JSON format.
+      operationId: api.controllers.cluster_controller.get_api_config
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: Current API configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+              example:
+                host: 0.0.0.0
+                port: 55000
+                behind_proxy_server: false
+                rbac:
+                  mode: white
+                  auth_token_exp_timeout: 3600
+                logs:
+                  path: /var/ossec/logs/api.log
+                  level: info
+                experimental_features: false
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    put:
+      tags:
+        - cluster
+      summary: Update API configuration.
+      description: Updates API configuration with the data contained in the API request.
+      operationId: api.controllers.cluster_controller.put_api_config
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/APIconfiguration'
+
+      responses:
+        '200':
+          description: 'Confirmation message'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  affected_items:
+                    - master-node
+                    - worker1
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: []
+                message: API configuration successfully updated. Some settings may require restarting the API to be applied.
+
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    delete:
+      tags:
+        - cluster
+      summary: Restore default API configuration.
+      description: Replaces API configuration with the original one.
+      operationId: api.controllers.cluster_controller.delete_api_config
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Confirmation message'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  affected_items:
+                    - master-node
+                    - worker1
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: []
+                message: API configuration successfully updated. Some settings may require restarting the API to be applied.
+
+        default:
+          $ref: '#/components/responses/ResponseError'
+
   /cluster/{node_id}/status:
     get:
       tags:
@@ -6181,6 +6753,8 @@ paths:
       summary: Get a specified node's status
       description: Returns the status of all Wazuh daemons in node node_id
       operationId: api.controllers.cluster_controller.get_status_node
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:status'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6226,6 +6800,8 @@ paths:
       summary: Get a specified node's information
       description: Returns basic information about a specified node such as version, compilation date, installation path.
       operationId: api.controllers.cluster_controller.get_info_node
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6263,6 +6839,8 @@ paths:
       summary: Get a specified node's configuration
       description: Returns wazuh configuration used in node {node_id}
       operationId: api.controllers.cluster_controller.get_configuration_node
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6326,6 +6904,8 @@ paths:
       summary: Get a specified node's stats.
       description: Returns Wazuh statistical information in node {node_id} for the current or specified date.
       operationId: api.controllers.cluster_controller.get_stats_node
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6381,6 +6961,8 @@ paths:
       summary: Get a specified node's stats by hour.
       description: Returns Wazuh statistical information in node {node_id} per hour. Each number in the averages field represents the average of alerts per hour.
       operationId: api.controllers.cluster_controller.get_stats_hourly_node
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6435,6 +7017,8 @@ paths:
       summary: Get a specified node's stats by week.
       description: Returns Wazuh statistical information in node {node_id} per week. Each number in the averages field represents the average of alerts per hour for that specific day.
       operationId: api.controllers.cluster_controller.get_stats_weekly_node
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6652,6 +7236,8 @@ paths:
       summary: Get a specified node's analysisd stats.
       description: Returns Wazuh analysisd statistical information in node {node_id}.
       operationId: api.controllers.cluster_controller.get_stats_analysisd_node
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6726,6 +7312,8 @@ paths:
       summary: Get a specified node's remoted stats.
       description: Returns Wazuh remoted statistical information in node {node_id}.
       operationId: api.controllers.cluster_controller.get_stats_remoted_node
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6762,6 +7350,8 @@ paths:
       summary: Get a specified node's wazuh logs.
       description: Returns the last 2000 wazuh log entries in node {node_id}.
       operationId: api.controllers.cluster_controller.get_log_node
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6786,20 +7376,23 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseWazuhLogs'
               example:
                 data:
-                  totalItems: 3
-                  items:
-                    - timestamp: "2019-03-07T11:21:17Z"
-                      tag: ossec-syscheckd
-                      level: info
-                      description: "Syscheck scan frequency: 43200 seconds"
-                    - timestamp: "2019-03-07T11:21:17Z"
-                      tag: ossec-syscheckd
-                      level: info
-                      description: Starting syscheck scan.
-                    - timestamp: "2019-03-07T11:21:17Z"
-                      tag: ossec-rootcheck
-                      level: info
-                      description: Starting rootcheck scan.
+                  affected_items:
+                    - timestamp: '2020-04-15T13:43:38+00:00'
+                      tag: ossec-analysisd
+                      level: error
+                      description: " (1277): Invalid syscheck message received."
+                    - timestamp: '2020-04-15T13:43:38+00:00'
+                      tag: ossec-analysisd
+                      level: error
+                      description: " (1277): Invalid syscheck message received."
+                    - timestamp: '2020-04-15T13:43:30+00:00'
+                      tag: ossec-analysisd
+                      level: error
+                      description: " (1277): Invalid syscheck message received."
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                message: Logs read successfully in specified node
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -6810,6 +7403,8 @@ paths:
       summary: Get a summary of a specified node's wazuh logs.
       description: Returns a summary of the last 2000 wazuh log entries in node {node_id}.
       operationId: api.controllers.cluster_controller.get_log_summary_node
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6859,6 +7454,8 @@ paths:
       summary: Get file contents from a specified node in the cluster.
       description: Returns file contents from any file in cluster node {node_id}.
       operationId: api.controllers.cluster_controller.get_files_node
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read_file'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6892,6 +7489,8 @@ paths:
       summary: Updates file contents in a specified cluster node.
       description: Replaces file contents with the data contained in the API request in a specified cluster node.
       operationId: api.controllers.cluster_controller.put_files_node
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:upload_file'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6924,6 +7523,8 @@ paths:
       summary: Removes a file in a specified cluster node.
       description: Removes a specified file in the node {node-id}.
       operationId: api.controllers.cluster_controller.delete_files_node
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:delete_file'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6948,6 +7549,8 @@ paths:
       summary: Restart cluster nodes.
       description: Restarts all nodes in the cluster or a list of them.
       operationId: api.controllers.cluster_controller.put_restart
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:restart'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6976,7 +7579,6 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-
   /cluster/configuration/validation:
     get:
       tags:
@@ -6984,6 +7586,8 @@ paths:
       summary: Check cluster nodes Wazuh configuration.
       description: Returns whether the Wazuh configuration is correct or not in all cluster nodes or a list of them.
       operationId: api.controllers.cluster_controller.get_conf_validation
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7016,7 +7620,6 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-
   /cluster/{node_id}/configuration/{component}/{configuration}:
     get:
       tags:
@@ -7024,6 +7627,8 @@ paths:
       summary: Get active configuration in node node_id
       description: Returns the requested configuration in JSON format.
       operationId: api.controllers.cluster_controller.get_node_config
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7064,6 +7669,8 @@ paths:
       summary: 'Get all CDB lists'
       description: 'Returns the contents of all CDB lists. Optionally, the result can be filtered by several criteria. See available parameters for more details.'
       operationId: api.controllers.lists_controller.get_lists
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/lists:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7137,6 +7744,8 @@ paths:
       summary: 'Get paths from all CDB lists'
       description: 'Returns the path from all CDB lists. Use this method to know all the CDB lists and their location in the filesystem relative to Wazuh installation folder'
       operationId: api.controllers.lists_controller.get_lists_files
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/lists:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7183,6 +7792,8 @@ paths:
       summary: Get the Wazuh manager status
       description: Returns the status of all Wazuh daemons
       operationId: api.controllers.manager_controller.get_status
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:status'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7227,6 +7838,8 @@ paths:
       summary: Get Wazuh manager information
       description: Returns basic information such as version, compilation date, installation path.
       operationId: api.controllers.manager_controller.get_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7263,6 +7876,8 @@ paths:
       summary: Get configuration
       description: Returns wazuh configuration used
       operationId: api.controllers.manager_controller.get_configuration
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7325,6 +7940,8 @@ paths:
       summary: Get stats.
       description: Returns Wazuh statistical information for the current or specified date.
       operationId: api.controllers.manager_controller.get_stats
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7379,6 +7996,8 @@ paths:
       summary: Get stats by hour.
       description: Returns Wazuh statistical information per hour. Each number in the averages field represents the average of alerts per hour.
       operationId: api.controllers.manager_controller.get_stats_hourly
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7432,6 +8051,8 @@ paths:
       summary: Get stats by week.
       description: Returns Wazuh statistical information per week. Each number in the averages field represents the average of alerts per hour for that specific day.
       operationId: api.controllers.manager_controller.get_stats_weekly
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7648,6 +8269,8 @@ paths:
       summary: Get a analysisd stats.
       description: Returns Wazuh analysisd statistical information.
       operationId: api.controllers.manager_controller.get_stats_analysisd
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7721,6 +8344,8 @@ paths:
       summary: Get remoted stats.
       description: Returns Wazuh remoted statistical information.
       operationId: api.controllers.manager_controller.get_stats_remoted
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7756,6 +8381,8 @@ paths:
       summary: Get the wazuh manager logs.
       description: Returns the last 2000 wazuh log entries.
       operationId: api.controllers.manager_controller.get_log
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7779,20 +8406,23 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseWazuhLogs'
               example:
                 data:
-                  totalItems: 3
-                  items:
-                    - timestamp: "2019-03-07T11:21:17Z"
-                      tag: ossec-syscheckd
+                  affected_items:
+                    - timestamp: '2020-04-15T14:47:54+00:00'
+                      tag: wazuh-modulesd:syscollector
                       level: info
-                      description: "Syscheck scan frequency: 43200 seconds"
-                    - timestamp: "2019-03-07T11:21:17Z"
-                      tag: ossec-syscheckd
+                      description: " Evaluation finished."
+                    - timestamp: '2020-04-15T14:47:51+00:00'
+                      tag: wazuh-modulesd:syscollector
                       level: info
-                      description: Starting syscheck scan.
-                    - timestamp: "2019-03-07T11:21:17Z"
-                      tag: ossec-rootcheck
-                      level: info
-                      description: Starting rootcheck scan.
+                      description: " Starting evaluation."
+                    - timestamp: '2020-04-15T13:50:24+00:00'
+                      tag: ossec-maild
+                      level: error
+                      description: " (1223): Error Sending email to 69.172.200.109 (smtp server)"
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                message: Logs read successfully in specified node
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -7803,6 +8433,8 @@ paths:
       summary: Get a summary of the wazuh manager logs.
       description: Returns a s0ummary of the last 2000 wazuh log entries.
       operationId: api.controllers.manager_controller.get_log_summary
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7851,6 +8483,8 @@ paths:
       summary: Get file contents.
       description: Returns file contents from any file.
       operationId: api.controllers.manager_controller.get_files
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:read_file'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7883,6 +8517,8 @@ paths:
       summary: Update file contents.
       description: Replaces file contents with the data contained in the API request.
       operationId: api.controllers.manager_controller.put_files
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:upload_file'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7916,6 +8552,8 @@ paths:
       summary: Removes a file.
       description: Removes a specified file.
       operationId: api.controllers.manager_controller.delete_files
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:delete_file'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7934,6 +8572,101 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
+  /manager/api/config:
+    get:
+      tags:
+        - manager
+      summary: Get API configuration.
+      description: Returns the API configuration in JSON format.
+      operationId: api.controllers.manager_controller.get_api_config
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: Current API configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                host: 0.0.0.0
+                port: 55000
+                behind_proxy_server: false
+                rbac:
+                  mode: white
+                  auth_token_exp_timeout: 3600
+                logs:
+                  path: /var/ossec/logs/api.log
+                  level: info
+                experimental_features: false
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    put:
+      tags:
+        - manager
+      summary: Update API configuration.
+      description: Updates API configuration with the data contained in the API request.
+      operationId: api.controllers.manager_controller.put_api_config
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/APIconfiguration'
+
+      responses:
+        '200':
+          description: 'Confirmation message'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  affected_items:
+                    - manager
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: API configuration successfully updated. Some settings may require restarting the API to be applied.
+
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    delete:
+      tags:
+        - manager
+      summary: Restore default API configuration.
+      description: Replaces API configuration with the original one.
+      operationId: api.controllers.manager_controller.delete_api_config
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Confirmation message'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  affected_items:
+                    - manager
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: API configuration successfully updated. Some settings may require restarting the API to be applied.
+
+        default:
+          $ref: '#/components/responses/ResponseError'
+
   /manager/restart:
     put:
       tags:
@@ -7941,6 +8674,8 @@ paths:
       summary: Restarts the wazuh manager.
       description: Restarts the wazuh manager.
       operationId: api.controllers.manager_controller.put_restart
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:restart'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7963,6 +8698,8 @@ paths:
       summary: Check Wazuh configuration.
       description: Returns wether the Wazuh configuration is correct.
       operationId: api.controllers.manager_controller.get_conf_validation
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7985,6 +8722,8 @@ paths:
       summary: Get active configuration in manager for one component [on demand]
       description: Returns the requested configuration in JSON format.
       operationId: api.controllers.manager_controller.get_manager_config_ondemand
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8087,31 +8826,28 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/RootcheckDatabase'
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseRootcheck'
               example:
                 data:
-                  totalItems: 2
-                  items:
+                  affected_items:
                     - status: outstanding
-                      readDay: "2019-03-08T09:20:05Z"
-                      oldDay: "2019-03-08T09:20:05Z"
-                      event: "System Audit: SSH Hardening - 3: Root can log in. File: /etc/ssh/sshd_config. Reference: 3 ."
+                      readDay: '2019-03-08T09:20:05Z'
+                      oldDay: '2019-03-08T09:20:05Z'
+                      event: 'System Audit: SSH Hardening - 3: Root can log in. File: /etc/ssh/sshd_config.
+                      Reference: 3 .'
                     - status: outstanding
-                      readDay: "2019-03-08T09:20:05Z"
-                      oldDay: "2019-03-08T09:20:05Z"
-                      pci_dss: 2.2.4
-                      event: "System Audit: SSH Hardening - 4: No Public Key authentication {PCI_DSS: 2.2.4}. File: /etc/ssh/sshd_config. Reference: 4 ."
+                      readDay: '2019-03-08T09:20:05Z'
+                      oldDay: '2019-03-08T09:20:05Z'
+                      event: 'System Audit: SSH Hardening - 3: Root can log in. File: /etc/ssh/sshd_config.
+                      Reference: 3 .'
+                  failed_items: []
+                  total_affected_items: 2
+                  total_failed_items: 0
+                message: ToDo
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -8185,19 +8921,15 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                type: string
+                      $ref: '#/components/schemas/AllItemsResponse'
               example:
                 data:
-                  totalItems: 1
-                  items:
-                  - 2.2.4
+                  affected_items:
+                    - 2.2.4
+                  failed_items: []
+                  total_affected_items: 1
+                  total_failed_items: 0
+                message: ToDo
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -8227,20 +8959,16 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                type: string
+                      $ref: '#/components/schemas/AllItemsResponse'
               example:
                 data:
-                  totalItems: 2
-                  items:
-                  - "2.3 Debian Linux"
-                  - "1.4 Debian Linux"
+                  affected_items:
+                    - 2.3 Debian Linux
+                    - 1.4 Debian Linux
+                  failed_items: []
+                  total_affected_items: 2
+                  total_failed_items: 0
+                message: ToDo
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -8281,6 +9009,8 @@ paths:
       summary: Get information about a list of Wazuh rules.
       description: Returns a list containing information about each rule such as file where it's defined, description, rule group, status, etc.
       operationId: api.controllers.rules_controller.get_rules
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rules:read'
       parameters:
         - $ref: '#/components/parameters/rule_ids'
         - $ref: '#/components/parameters/pretty'
@@ -8361,6 +9091,8 @@ paths:
       summary: Get all rule groups names.
       description: Returns a list containing all rule groups names.
       operationId: api.controllers.rules_controller.get_rules_groups
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rules:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8403,6 +9135,8 @@ paths:
       summary: Get all specified requirements.
       description: Returns all specified requirement names defined in the Wazuh ruleset.
       operationId: api.controllers.rules_controller.get_rules_requirement
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rules:read'
       parameters:
         - $ref: '#/components/parameters/rule_requirement'
         - $ref: '#/components/parameters/pretty'
@@ -8447,6 +9181,8 @@ paths:
       summary: Get all files which defines rules.
       description: Returns a list containing all files used to define rules and their status.
       operationId: api.controllers.rules_controller.get_rules_files
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rules:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8498,6 +9234,8 @@ paths:
       summary: Download an specified rule file.
       description: Download an specified rule file.
       operationId: api.controllers.rules_controller.get_download_file
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rules:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8519,6 +9257,8 @@ paths:
       summary: 'Get security configuration assessment (SCA) database'
       description: 'Returns the security SCA database of an agent.'
       operationId: api.controllers.sca_controller.get_sca_agent
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/sca:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8586,6 +9326,8 @@ paths:
       summary: 'Get policy monitoring alerts for a given policy'
       description: 'Returns the policy monitoring alerts for a given policy'
       operationId: api.controllers.sca_controller.get_sca_checks
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/sca:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8667,6 +9409,8 @@ paths:
       summary: Run a syscheck scan in all agents.
       description: Runs syscheck and rootcheck in all agents (Wazuh launches both processes simultaneously).
       operationId: api.controllers.syscheck_controller.put_syscheck
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscheck:run'
       parameters:
         - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/pretty'
@@ -8704,6 +9448,8 @@ paths:
       summary: Get File integrity monitoring scan results
       description: Returns FIM findings in the specified agent.
       operationId: api.controllers.syscheck_controller.get_syscheck_agent
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscheck:read'
       parameters:
         - $ref: '#/components/parameters/agent_id'
         - $ref: '#/components/parameters/pretty'
@@ -8720,6 +9466,7 @@ paths:
         - $ref: '#/components/parameters/sha1'
         - $ref: '#/components/parameters/sha256'
         - $ref: '#/components/parameters/hashfilter'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: Latest syscheck scan result
@@ -8780,6 +9527,8 @@ paths:
       summary: Clear FIM scan results for a specified agent.
       description: Clear file integrity monitoring scan results for a specified agent.
       operationId: api.controllers.syscheck_controller.delete_syscheck_agent
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscheck:clear'
       parameters:
         - $ref: '#/components/parameters/agent_id'
         - $ref: '#/components/parameters/pretty'
@@ -8814,6 +9563,8 @@ paths:
       summary: Get last syscheck scan dates.
       description: Returns when the last syscheck scan started and ended. If the scan is still in progress the end date will be unknown.
       operationId: api.controllers.syscheck_controller.get_last_scan_agent
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscheck:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8849,6 +9600,8 @@ paths:
       summary: 'Get all decoders'
       description: "Returns information about all decoders included in ossec.conf. This information include decoder's route, decoder's name, decoder's file among others"
       operationId: api.controllers.decoders_controller.get_decoders
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/decoder:read'
       parameters:
         - $ref: '#/components/parameters/decoder_name'
         - $ref: '#/components/parameters/pretty'
@@ -8875,24 +9628,29 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseDecoders'
               example:
                 data:
-                  totalItems: 571
-                  items:
-                  - file: 0005-wazuh_decoders.xml
-                    name: wazuh
-                    position: 0
-                    status: enabled
-                    details:
-                      prematch: "^wazuh: "
-                  - file: 0005-wazuh_decoders.xml
-                    name: agent-buffer
-                    position: 1
-                    status: enabled
-                    details:
-                      parent: wazuh
-                      prematch: "^Agent buffer:"
-                      regex:
-                        - "^ '(\\S+)'."
-                      order: level
+                  affected_items:
+                    - filename: 0005-wazuh_decoders.xml
+                      relative_dirname: ruleset/decoders
+                      status: enabled
+                      name: wazuh
+                      position: 0
+                      details:
+                        prematch: "^wazuh: "
+                    - filename: 0005-wazuh_decoders.xml
+                      relative_dirname: ruleset/decoders
+                      status: enabled
+                      name: agent-buffer
+                      position: 1
+                      details:
+                        parent: wazuh
+                        prematch: "^Agent buffer:"
+                        regex:
+                          - "^ '(\\S+)'."
+                        order: level
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: []
+                message: All selected decoders were shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -8903,6 +9661,8 @@ paths:
       summary: 'Get all decoders files'
       description: "Returns information about all decoders files used in Wazuh. This information include decoder's file, decoder's route and decoder's status among others"
       operationId: api.controllers.decoders_controller.get_decoders_files
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/decoder:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8927,20 +9687,20 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseDecodersFiles'
               example:
                 data:
-                  totalItems: 571
-                  items:
-                  - file: 0185-openldap_decoders.xml
-                    status: enabled
-                    path: /var/ossec/ruleset/decoders
-                  - file: 0220-postfix_decoders.xml
-                    status: enabled
-                    path: /var/ossec/ruleset/decoders
-                  - file: 0400-identity_guard_decoders.xml
-                    status: enabled
-                    path: /var/ossec/ruleset/decoders
-                  - file: 0190-openvpn_decoders.xml
-                    status: enabled
-                    path: /var/ossec/ruleset/decoders
+                  affected_items:
+                    - filename: 0005-wazuh_decoders.xml
+                      relative_dirname: ruleset/decoders
+                      status: enabled
+                    - filename: 0006-json_decoders.xml
+                      relative_dirname: ruleset/decoders
+                      status: enabled
+                    - filename: 0010-active-response_decoders.xml
+                      relative_dirname: ruleset/decoders
+                      status: enabled
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                message: All decoder files were shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -8951,6 +9711,8 @@ paths:
       summary: Download an specified decoder file.
       description: Download an specified decoder file.
       operationId: api.controllers.decoders_controller.get_download_file
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/decoder:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8972,6 +9734,8 @@ paths:
       summary: 'Get all parent decoders'
       description: 'Returns information about all parent decoders. A parent decoder is a decoder used as base of other decoders'
       operationId: api.controllers.decoders_controller.get_decoders_parents
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/decoder:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8993,23 +9757,26 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponse'
               example:
                 data:
-                  totalItems: 153
-                  items:
-                  - file: local_decoder.xml
-                    name: local_decoder_example
-                    position: 0
-                    status: enabled
-                    details:
-                      program_name: local_decoder_example
-                  - file: 0465-azure_decoders.xml
-                    name: azure-storage
-                    position: 1
-                    status: enabled
-                    details:
-                      prematch: "^azure_tag: azure-storage. "
-                      regex:
-                        - "^azure_storage_tag: (\\S+)"
-                      order: tag
+                  affected_items:
+                    - filename: 0005-wazuh_decoders.xml
+                      relative_dirname: ruleset/decoders
+                      status: enabled
+                      name: wazuh
+                      position: 0
+                      details:
+                        prematch: "^wazuh: "
+                    - filename: 0006-json_decoders.xml
+                      relative_dirname: ruleset/decoders
+                      status: enabled
+                      name: json
+                      position: 0
+                      details:
+                        prematch: ^{\s*"
+                        plugin_decoder: JSON_Decoder
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: []
+                message: All selected decoders were shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9020,6 +9787,8 @@ paths:
       summary: 'Clear agents syscheck database'
       description: 'Clears the syscheck database for all agents or a list of them'
       operationId: api.controllers.experimental_controller.clear_syscheck_database
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscheck:clear'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9066,6 +9835,8 @@ paths:
       summary: 'Get CIS-CAT results'
       description: "Return CIS-CAT results for all agents or a list of them"
       operationId: api.controllers.experimental_controller.get_cis_cat_results
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/ciscat:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9148,6 +9919,8 @@ paths:
       summary: 'Get hardware info from agents'
       description: "Returns all agents (or a list of them) hardware info. This information include cpu, ram, scan info among others of all agents."
       operationId: api.controllers.experimental_controller.get_hardware_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9231,6 +10004,8 @@ paths:
       summary: 'Get the IPv4 and IPv6 addresses associated to network interfaces'
       description: "Returns all agents (or a list of them) IPv4 and IPv6 addresses associated to their network interfaces. This information include used IP protocol, interface, and IP address among others."
       operationId: api.controllers.experimental_controller.get_network_address_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9297,6 +10072,8 @@ paths:
       summary: 'Get all network interfaces from agents.'
       description: "Returns all agents (or a list of them) network interfaces. This information includes rx, scan, tx info and some network information among other."
       operationId: api.controllers.experimental_controller.get_network_interface_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9405,6 +10182,8 @@ paths:
       summary: 'Get network protocol info from agents'
       description: "Returns all agents (or a list of them) routing configuration for each network interface. This information includes interface, type protocol information among other."
       operationId: api.controllers.experimental_controller.get_network_protocol_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9432,18 +10211,32 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseSyscollectorProtocol'
               example:
                 data:
-                  totalItems: 16
-                  items:
-                  - iface: "enp0s3"
-                    scan_id: 1203337658
-                    type: "ipv6"
-                    dhcp: "enabled"
-                    agent_id: "000"
-                  - iface: "enp0s8"
-                    scan_id: 1203337658
-                    type: "ipv6"
-                    dhcp: "enabled"
-                    agent_id: "000"
+                  affected_items:
+                    - scan:
+                        id: 1248412797
+                      iface: eth0
+                      type: ipv4
+                      gateway: 172.24.0.1
+                      dhcp: "enabled"
+                      agent_id: '000'
+                    - scan:
+                        id: 1213296763
+                      iface: eth0
+                      type: ipv4
+                      gateway: 172.24.0.1
+                      dhcp: "enabled"
+                      agent_id: '001'
+                    - scan:
+                        id: 341262067
+                      type: ipv4
+                      iface: eth0
+                      dhcp: "enabled"
+                      gateway: 172.24.0.1
+                      agent_id: '002'
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                message: All specified syscollector information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9454,6 +10247,8 @@ paths:
       summary: 'Get OS info from agents'
       description: "Returns all agents (or a list of them) OS info. This information includes os information, architecture information among other."
       operationId: api.controllers.experimental_controller.get_os_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9482,40 +10277,59 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseSyscollectorOS'
               example:
                 data:
-                  totalItems: 4
-                  items:
-                  - os:
-                      codename: "Bionic Beaver"
-                      major: "18"
-                      minor: "04"
-                      name: "Ubuntu"
-                      platform: "ubuntu"
-                      version: "18.04.1 LTS (Bionic Beaver)"
-                    scan:
-                      id: 651932304
-                      time: "2019-02-19T10:22:14Z"
-                    release: "4.15.0-43-generic"
-                    architecture: "x86_64"
-                    version: "#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018"
-                    sysname: "Linux"
-                    hostname: "master"
-                    agent_id: "000"
-                  - os:
-                      codename: "Bionic Beaver"
-                      major: "18"
-                      minor: "04"
-                      name: "Ubuntu"
-                      platform: "ubuntu"
-                      version: "18.04.1 LTS (Bionic Beaver)"
-                    scan:
-                      id: 780978297
-                      time: "2019-02-19T10:26:20Z"
-                    release: "4.15.0-43-generic"
-                    architecture: "x86_64"
-                    version: "#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018"
-                    sysname: "Linux"
-                    hostname: "agent-1"
-                    agent_id: "001"
+                  affected_items:
+                    - os:
+                        codename: Bionic Beaver
+                        major: '18'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        version: 18.04.4 LTS (Bionic Beaver)
+                      scan:
+                        id: 496386874
+                        time: '2020-04-15T11:02:03Z'
+                      sysname: Linux
+                      hostname: wazuh-master
+                      version: "#34~1584408018~19.10~21df4b1-Ubuntu SMP Tue Mar 17 13:38:51 UTC "
+                      release: 5.3.0-7642-generic
+                      architecture: x86_64
+                      agent_id: '000'
+                    - os:
+                        codename: Xenial Xerus
+                        major: '16'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        version: 16.04.6 LTS (Xenial Xerus)
+                      scan:
+                        id: 196194860
+                        time: '2020-04-15T11:02:23Z'
+                      sysname: Linux
+                      hostname: wazuh-agent1
+                      version: "#34~1584408018~19.10~21df4b1-Ubuntu SMP Tue Mar 17 13:38:51 UTC "
+                      release: 5.3.0-7642-generic
+                      architecture: x86_64
+                      agent_id: '001'
+                    - os:
+                        codename: Xenial Xerus
+                        major: '16'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        version: 16.04.6 LTS (Xenial Xerus)
+                      scan:
+                        id: 763390318
+                        time: '2020-04-15T11:02:52Z'
+                      hostname: wazuh-agent2
+                      release: 5.3.0-7642-generic
+                      version: "#34~1584408018~19.10~21df4b1-Ubuntu SMP Tue Mar 17 13:38:51 UTC "
+                      architecture: x86_64
+                      sysname: Linux
+                      agent_id: '002'
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                message: All specified syscollector information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9526,6 +10340,8 @@ paths:
       summary: 'Get packages info from agents'
       description: "Returns all agents (or a list of them) packages info. This information includes name, section, size, and priority information of all packages among other."
       operationId: api.controllers.experimental_controller.get_packages_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9554,36 +10370,56 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseSyscollectorPackages'
               example:
                 data:
-                  totalItems: 2014
-                  items:
-                  - scan:
-                      id: 1631140954
-                      time: "2019-02-19T10:22:14Z"
-                    name: "acl"
-                    section: "utils"
-                    priority: "optional"
-                    size: 200
-                    description: "Access control list utilities"
-                    architecture: "amd64"
-                    multiarch: "foreign"
-                    vendor: "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
-                    version: "2.2.52-3build1"
-                    format: "deb"
-                    agent_id: "000"
-                  - scan:
-                      id: 1631140954
-                      time: "2019-02-19T10:22:14Z"
-                    name: "accountsservice"
-                    section: "admin"
-                    priority: "optional"
-                    size: 440
-                    description: "query and manipulate user account information"
-                    architecture: "amd64"
-                    multiarch: "foreign"
-                    vendor: "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
-                    version: "0.6.45-1ubuntu1"
-                    format: "deb"
-                    agent_id: "000"
+                  affected_items:
+                    - scan:
+                        id: 1137251326
+                        time: '2020-04-15T11:02:03Z'
+                      name: libquadmath0
+                      size: 269
+                      version: 8.4.0-1ubuntu1~18.04
+                      source: gcc-8
+                      format: deb
+                      section: libs
+                      architecture: amd64
+                      multiarch: same
+                      description: GCC Quad-Precision Math Library
+                      priority: optional
+                      vendor: Ubuntu Core developers <ubuntu-devel-discuss@lists.ubuntu.com>
+                      agent_id: '000'
+                    - scan:
+                        id: 1137251326
+                        time: '2020-04-15T11:02:03Z'
+                      name: libnpth0
+                      size: 32
+                      version: 1.5-3
+                      source: npth
+                      format: deb
+                      section: libs
+                      architecture: amd64
+                      multiarch: same
+                      description: replacement for GNU Pth using system threads
+                      priority: optional
+                      vendor: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+                      agent_id: '000'
+                    - scan:
+                        id: 1137251326
+                        time: '2020-04-15T11:02:03Z'
+                      name: fdisk
+                      size: 427
+                      version: 2.31.1-0.4ubuntu3.5
+                      source: util-linux
+                      format: deb
+                      section: utils
+                      architecture: amd64
+                      multiarch: foreign
+                      description: collection of partitioning utilities
+                      priority: important
+                      vendor: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+                      agent_id: '000'
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                message: All specified syscollector information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9594,6 +10430,8 @@ paths:
       summary: 'Get ports info from agents'
       description: "Returns all agents (or a list of them) ports info. This information includes local IP, Remote IP, protocol information among other"
       operationId: api.controllers.experimental_controller.get_ports_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9625,36 +10463,56 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseSyscollectorPorts'
               example:
                 data:
-                  totalItems: 18
-                  items:
-                  - local:
-                      ip: 172.17.0.100
-                      port: 1516
-                    remote:
-                      ip: 172.17.0.101
-                      port: 54550
-                    scan:
-                      id: 1672337392
-                      time: "2019-03-14T10:38:21Z"
-                    state: established
-                    protocol: tcp
-                    rx_queue: 0
-                    tx_queue: 0
-                    inode: 321208
-                  - local:
-                      ip: "::"
-                      port: 55000
-                    remote:
-                      ip: "::"
-                      port: 0
-                    scan:
-                      id: 1672337392
-                      time: "2019-03-14T10:38:21Z"
-                    state: listening
-                    protocol: tcp6
-                    rx_queue: 0
-                    inode: 18153
-                    tx_queue: 0
+                  affected_items:
+                    - local:
+                        ip: 127.0.0.11
+                        port: 46841
+                      remote:
+                        ip: 0.0.0.0
+                        port: 0
+                      scan:
+                        id: 315935312
+                        time: '2020-04-15T11:02:07Z'
+                      rx_queue: 0
+                      state: listening
+                      protocol: tcp
+                      inode: 12387152
+                      tx_queue: 0
+                      agent_id: '000'
+                    - local:
+                        ip: 0.0.0.0
+                        port: 1514
+                      remote:
+                        ip: 0.0.0.0
+                        port: 0
+                      scan:
+                        id: 315935312
+                        time: '2020-04-15T11:02:07Z'
+                      rx_queue: 0
+                      state: listening
+                      protocol: tcp
+                      inode: 12397927
+                      tx_queue: 0
+                      agent_id: '000'
+                    - local:
+                        ip: 0.0.0.0
+                        port: 1515
+                      remote:
+                        ip: 0.0.0.0
+                        port: 0
+                      scan:
+                        id: 315935312
+                        time: '2020-04-15T11:02:07Z'
+                      rx_queue: 0
+                      state: listening
+                      protocol: tcp
+                      inode: 12397153
+                      tx_queue: 0
+                      agent_id: '000'
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                message: All specified syscollector information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9665,6 +10523,8 @@ paths:
       summary: 'Get processes info from agents'
       description: "Returns all agents (or a list of them) processes info."
       operationId: api.controllers.experimental_controller.get_processes_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9702,68 +10562,75 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseSyscollectorProcesses'
               example:
                 data:
-                  totalItems: 420
-                  items:
-                  - scan:
-                      id: 225991434
-                      time: "2019-03-08T08:30:59Z"
-                    fgroup: "root"
-                    state: "S"
-                    priority: 20
-                    suser: "root"
-                    ppid: 0
-                    vm_size: 0
-                    session: 0
-                    pid: "2"
-                    nlwp: 1
-                    name: "kthreadd"
-                    euser: "root"
-                    sgroup: "root"
-                    size: 0
-                    stime: 0
-                    nice: 0
-                    share: 0
-                    processor: 1
-                    ruser: "root"
-                    egroup: "root"
-                    rgroup: "root"
-                    pgrp: 0
-                    resident: 0
-                    utime: 0
-                    tgid: 2
-                    start_time: 8
-                    tty: 0
-                    agent_id: "000"
-                  - scan:
-                      id: 225991434
-                      time: "2019-03-08T08:30:59Z"
-                    fgroup: "root"
-                    state: "S"
-                    priority: 25
-                    suser: "root"
-                    ppid: 2
-                    vm_size: 0
-                    session: 0
-                    pid: "28"
-                    nlwp: 1
-                    name: "ksmd"
-                    euser: "root"
-                    sgroup: "root"
-                    size: 0
-                    stime: 0
-                    nice: 5
-                    share: 0
-                    processor: 1
-                    ruser: "root"
-                    egroup: "root"
-                    rgroup: "root"
-                    pgrp: 0
-                    resident: 0
-                    utime: 0
-                    tgid: 28
-                    start_time: 22
-                    tty: 0
-                    agent_id: "000"
+                  affected_items:
+                    - scan:
+                        id: 28643647
+                        time: '2020-04-15T11:02:07Z'
+                      name: bash
+                      suser: root
+                      nlwp: 1
+                      pgrp: 1
+                      state: S
+                      session: 1
+                      utime: 23
+                      egroup: root
+                      ruser: root
+                      argvs: "/scripts/entrypoint.sh,wazuh-master,master-node,master"
+                      size: 4593
+                      euser: root
+                      processor: 3
+                      resident: 793
+                      tty: 0
+                      nice: 0
+                      pid: '1'
+                      vm_size: 18372
+                      sgroup: root
+                      rgroup: root
+                      fgroup: root
+                      start_time: 1093372
+                      tgid: 1
+                      stime: 1
+                      ppid: 0
+                      share: 726
+                      priority: 20
+                      cmd: bash
+                      agent_id: '000'
+                    - scan:
+                        id: 28643647
+                        time: '2020-04-15T11:02:07Z'
+                      name: ossec-control
+                      suser: root
+                      nlwp: 1
+                      pgrp: 1
+                      state: S
+                      session: 1
+                      utime: 0
+                      egroup: root
+                      ruser: root
+                      argvs: "/var/ossec/bin/ossec-control,restart"
+                      size: 1156
+                      euser: root
+                      processor: 6
+                      resident: 457
+                      tty: 0
+                      nice: 0
+                      pid: '15'
+                      vm_size: 4624
+                      sgroup: root
+                      rgroup: root
+                      fgroup: root
+                      start_time: 1093547
+                      tgid: 15
+                      stime: 3
+                      ppid: 1
+                      share: 417
+                      priority: 20
+                      cmd: "/bin/sh"
+                      agent_id: '000'
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: []
+                message: All specified syscollector information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9774,6 +10641,8 @@ paths:
       summary: 'Get hotfixes info from agents'
       description: "Returns all agents (or a list of them) hotfixes info."
       operationId: api.controllers.experimental_controller.get_hotfixes_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9821,6 +10690,8 @@ paths:
       summary: 'Get hardware info'
       description: "Returns the agent's hardware info. This information include cpu, ram, scan info among others."
       operationId: api.controllers.syscollector_controller.get_hardware_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9869,6 +10740,8 @@ paths:
       summary: "Get hotfixes"
       description: "Returns all hotfixes installed by Microsoft(R) in Windows(R) systems (KB... fixes)"
       operationId: api.controllers.syscollector_controller.get_hotfix_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/agent_id'
         - $ref: '#/components/parameters/pretty'
@@ -9912,6 +10785,8 @@ paths:
       summary: 'Get network address info of an agent'
       description: "Returns the agent's network address info. This information include used IP protocol, interface, IP address  among others."
       operationId: api.controllers.syscollector_controller.get_network_address_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9962,6 +10837,8 @@ paths:
       summary: 'Get network interface info of an agent'
       description: "Returns the agent's network interface info. This information include rx, scan, tx info and some network information among others."
       operationId: api.controllers.syscollector_controller.get_network_interface_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9998,44 +10875,30 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseSyscollectorInterface'
               example:
                 data:
-                  totalItems: 2
-                  items:
-                  - rx:
-                      bytes: 151695946
-                      dropped: 0
-                      errors: 0
-                      packets: 111792
-                    scan:
-                      id: 1478544824
-                      time: "2019-03-08T08:30:53Z"
-                    tx:
-                      bytes: 2408059
-                      dropped: 0
-                      errors: 0
-                      packets: 35104
-                    name: "enp0s3"
-                    state: "up"
-                    type: "ethernet"
-                    mtu: 1500
-                    mac: "02:f9:71:d7:9d:11"
-                  - rx:
-                      bytes: 0
-                      dropped: 0
-                      errors: 0
-                      packets: 0
-                    scan:
-                      id: 1478544824
-                      time: "2019-03-08T08:30:53Z"
-                    tx:
-                      bytes: 5312
-                      dropped: 0
-                      errors: 0
-                      packets: 24
-                    name: "enp0s8"
-                    state: "up"
-                    type: "ethernet"
-                    mtu: 1500
-                    mac: "08:00:27:78:05:d4"
+                  affected_items:
+                    - rx:
+                        bytes: 7774
+                        dropped: 0
+                        errors: 0
+                        packets: 59
+                      scan:
+                        id: 1248412797
+                        time: '2020-04-15T11:02:03Z'
+                      tx:
+                        bytes: 211
+                        dropped: 0
+                        errors: 0
+                        packets: 4
+                      name: eth0
+                      state: up
+                      type: ethernet
+                      mac: 02:42:ac:18:00:02
+                      mtu: 1500
+                      agent_id: '000'
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: All specified syscollector information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -10046,6 +10909,8 @@ paths:
       summary: 'Get network protocol info of an agent'
       description: "Returns the agent's routing configuration for each network interface."
       operationId: api.controllers.syscollector_controller.get_network_protocol_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -10073,16 +10938,18 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseSyscollectorProtocol'
               example:
                 data:
-                  totalItems: 4
-                  items:
-                  - type: "ipv6"
-                    iface: "enp0s3"
-                    dhcp: "enabled"
-                    scan_id: 1478544824
-                  - type: "ipv6"
-                    iface: "enp0s8"
-                    dhcp: "enabled"
-                    scan_id: 1478544824
+                  affected_items:
+                    - scan:
+                        id: 1248412797
+                      iface: eth0
+                      type: ipv4
+                      gateway: 172.24.0.1
+                      dhcp: "enabled"
+                      agent_id: '000'
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: All specified syscollector information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -10093,6 +10960,8 @@ paths:
       summary: 'Get OS info of an agent'
       description: "Returns the agent's OS info. This information include os information, architecture information among others of all agents."
       operationId: api.controllers.syscollector_controller.get_os_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -10112,21 +10981,27 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseSyscollectorOS'
               example:
                 data:
-                  os:
-                    codename: "Bionic Beaver"
-                    major: "18"
-                    minor: "04"
-                    name: "Ubuntu"
-                    platform: "ubuntu"
-                    version: "18.04.1 LTS (Bionic Beaver)"
-                  scan:
-                    id: 242764188
-                    time: "2019-03-08T08:30:53Z"
-                  architecture: "x86_64"
-                  release: "4.15.0-43-generic"
-                  version: "#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018"
-                  sysname: "Linux"
-                  hostname: "master"
+                  affected_items:
+                    - os:
+                        codename: Bionic Beaver
+                        major: '18'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        version: 18.04.4 LTS (Bionic Beaver)
+                      scan:
+                        id: 496386874
+                        time: '2020-04-15T11:02:03Z'
+                      sysname: Linux
+                      hostname: wazuh-master
+                      version: "#34~1584408018~19.10~21df4b1-Ubuntu SMP Tue Mar 17 13:38:51 UTC "
+                      release: 5.3.0-7642-generic
+                      architecture: x86_64
+                      agent_id: '000'
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: All specified syscollector information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -10137,6 +11012,8 @@ paths:
       summary: 'Get packages info of an agent'
       description: "Returns the agent's packages info. This information include name, section, size, priority information of all packages among others."
       operationId: api.controllers.syscollector_controller.get_packages_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -10165,34 +11042,56 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseSyscollectorPackages'
               example:
                 data:
-                  totalItems: 535
-                  items:
-                  - scan:
-                      id: 520922172
-                      time: "2019-03-08T08:30:53Z"
-                    vendor: "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
-                    name: "base-files"
-                    priority: "required"
-                    description: "Debian base system miscellaneous files"
-                    architecture: "amd64"
-                    format: "deb"
-                    size: 386
-                    version: "10.1ubuntu2.3"
-                    section: "admin"
-                    multiarch: "foreign"
-                  - scan:
-                      id: 520922172
-                      time: "2019-03-08T08:30:53Z"
-                    vendor: "Colin Watson <cjwatson@debian.org>"
-                    name: "base-passwd"
-                    priority: "required"
-                    description: "Debian base system master password and group files"
-                    architecture: "amd64"
-                    format: "deb"
-                    size: 228
-                    version: "3.5.44"
-                    section: "admin"
-                    multiarch: "foreign"
+                  affected_items:
+                    - scan:
+                        id: 1137251326
+                        time: '2020-04-15T11:02:03Z'
+                      name: libquadmath0
+                      size: 269
+                      version: 8.4.0-1ubuntu1~18.04
+                      source: gcc-8
+                      format: deb
+                      section: libs
+                      architecture: amd64
+                      multiarch: same
+                      description: GCC Quad-Precision Math Library
+                      priority: optional
+                      vendor: Ubuntu Core developers <ubuntu-devel-discuss@lists.ubuntu.com>
+                      agent_id: '000'
+                    - scan:
+                        id: 1137251326
+                        time: '2020-04-15T11:02:03Z'
+                      name: libnpth0
+                      size: 32
+                      version: 1.5-3
+                      source: npth
+                      format: deb
+                      section: libs
+                      architecture: amd64
+                      multiarch: same
+                      description: replacement for GNU Pth using system threads
+                      priority: optional
+                      vendor: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+                      agent_id: '000'
+                    - scan:
+                        id: 1137251326
+                        time: '2020-04-15T11:02:03Z'
+                      name: fdisk
+                      size: 427
+                      version: 2.31.1-0.4ubuntu3.5
+                      source: util-linux
+                      format: deb
+                      section: utils
+                      architecture: amd64
+                      multiarch: foreign
+                      description: collection of partitioning utilities
+                      priority: important
+                      vendor: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+                      agent_id: '000'
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                  message: All specified syscollector information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -10203,6 +11102,8 @@ paths:
       summary: 'Get ports info of an agent'
       description: "Returns the agent's ports info. This information include local IP, Remote IP, protocol information among others."
       operationId: api.controllers.syscollector_controller.get_ports_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -10234,36 +11135,56 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseSyscollectorPorts'
               example:
                 data:
-                  totalItems: 18
-                  items:
-                  - local:
-                      ip: 172.17.0.100
-                      port: 1516
-                    remote:
-                      ip: 172.17.0.101
-                      port: 54550
-                    scan:
-                      id: 1672337392
-                      time: "2019-03-14T10:38:21Z"
-                    state: established
-                    protocol: tcp
-                    rx_queue: 0
-                    tx_queue: 0
-                    inode: 321208
-                  - local:
-                      ip: "::"
-                      port: 55000
-                    remote:
-                      ip: "::"
-                      port: 0
-                    scan:
-                      id: 1672337392
-                      time: "2019-03-14T10:38:21Z"
-                    state: listening
-                    protocol: tcp6
-                    rx_queue: 0
-                    inode: 18153
-                    tx_queue: 0
+                  affected_items:
+                    - local:
+                        ip: 127.0.0.11
+                        port: 46841
+                      remote:
+                        ip: 0.0.0.0
+                        port: 0
+                      scan:
+                        id: 315935312
+                        time: '2020-04-15T11:02:07Z'
+                      rx_queue: 0
+                      state: listening
+                      protocol: tcp
+                      inode: 12387152
+                      tx_queue: 0
+                      agent_id: '000'
+                    - local:
+                        ip: 0.0.0.0
+                        port: 1514
+                      remote:
+                        ip: 0.0.0.0
+                        port: 0
+                      scan:
+                        id: 315935312
+                        time: '2020-04-15T11:02:07Z'
+                      rx_queue: 0
+                      state: listening
+                      protocol: tcp
+                      inode: 12397927
+                      tx_queue: 0
+                      agent_id: '000'
+                    - local:
+                        ip: 0.0.0.0
+                        port: 1515
+                      remote:
+                        ip: 0.0.0.0
+                        port: 0
+                      scan:
+                        id: 315935312
+                        time: '2020-04-15T11:02:07Z'
+                      rx_queue: 0
+                      state: listening
+                      protocol: tcp
+                      inode: 12397153
+                      tx_queue: 0
+                      agent_id: '000'
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                message: All specified syscollector information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -10274,6 +11195,8 @@ paths:
       summary: 'Get processes info an agent'
       description: "Returns the agent's processes info."
       operationId: api.controllers.syscollector_controller.get_processes_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -10311,68 +11234,75 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseSyscollectorProcesses'
               example:
                 data:
-                  totalItems: 120
-                  items:
-                  - scan:
-                      id: 225991434
-                      time: "2019-03-08T08:30:59Z"
-                    fgroup: "root"
-                    state: "S"
-                    priority: 20
-                    suser: "root"
-                    ppid: 2196
-                    vm_size: 13312
-                    session: 2195
-                    pid: "2204"
-                    nlwp: 1
-                    name: "bash"
-                    euser: "root"
-                    sgroup: "root"
-                    size: 3328
-                    stime: 0
-                    nice: 0
-                    argvs: "/tmp/vagrant-shell,172.17.0.100,master,node01"
-                    share: 595
-                    processor: 1
-                    ruser: "root"
-                    cmd: "bash"
-                    egroup: "root"
-                    rgroup: "root"
-                    pgrp: 2195
-                    resident: 659
-                    utime: 0
-                    tgid: 2204
-                    start_time: 8
-                    tty: 0
-                  - scan:
-                      id: 225991434
-                      time: "2019-03-08T08:30:59Z"
-                    fgroup: "root"
-                    state: "I"
-                    priority: 0
-                    suser: "root"
-                    ppid: 2
-                    vm_size: 0
-                    session: 0
-                    pid: "121"
-                    nlwp: 1
-                    name: "charger_manager"
-                    euser: "root"
-                    sgroup: "root"
-                    size: 0
-                    stime: 0
-                    nice: -20
-                    share: 0
-                    processor: 1
-                    ruser: "root"
-                    egroup: "root"
-                    rgroup: "root"
-                    pgrp: 0
-                    resident: 0
-                    utime: 0
-                    tgid: 121
-                    start_time: 1009
-                    tty: 0
+                  affected_items:
+                    - scan:
+                        id: 28643647
+                        time: '2020-04-15T11:02:07Z'
+                      name: bash
+                      suser: root
+                      nlwp: 1
+                      pgrp: 1
+                      state: S
+                      session: 1
+                      utime: 23
+                      egroup: root
+                      ruser: root
+                      argvs: "/scripts/entrypoint.sh,wazuh-master,master-node,master"
+                      size: 4593
+                      euser: root
+                      processor: 3
+                      resident: 793
+                      tty: 0
+                      nice: 0
+                      pid: '1'
+                      vm_size: 18372
+                      sgroup: root
+                      rgroup: root
+                      fgroup: root
+                      start_time: 1093372
+                      tgid: 1
+                      stime: 1
+                      ppid: 0
+                      share: 726
+                      priority: 20
+                      cmd: bash
+                      agent_id: '000'
+                    - scan:
+                        id: 28643647
+                        time: '2020-04-15T11:02:07Z'
+                      name: ossec-control
+                      suser: root
+                      nlwp: 1
+                      pgrp: 1
+                      state: S
+                      session: 1
+                      utime: 0
+                      egroup: root
+                      ruser: root
+                      argvs: "/var/ossec/bin/ossec-control,restart"
+                      size: 1156
+                      euser: root
+                      processor: 6
+                      resident: 457
+                      tty: 0
+                      nice: 0
+                      pid: '15'
+                      vm_size: 4624
+                      sgroup: root
+                      rgroup: root
+                      fgroup: root
+                      start_time: 1093547
+                      tgid: 15
+                      stime: 3
+                      ppid: 1
+                      share: 417
+                      priority: 20
+                      cmd: "/bin/sh"
+                      agent_id: '000'
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: []
+                  message: All specified syscollector information is shown
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -10400,6 +11330,102 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
+  /security/actions:
+    get:
+      tags:
+        - security
+      summary: 'Get all RBAC actions'
+      description: 'Get all RBAC actions, including the potential related resources and endpoints.'
+      operationId: api.controllers.security_controller.get_rbac_actions
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/endpoint'
+      responses:
+        '200':
+          description: "Return a list of RBAC actions"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+              example:
+                active-response:command:
+                  description: Allow to execute active response commands in the agents
+                  resources:
+                  - "agent:id"
+                  example:
+                    actions:
+                      - active-response:command
+                    resources:
+                      - agent:id:001
+                    effect: allow
+                  related_endpoints:
+                    - PUT /active-response
+                agent:create:
+                  description: Create new agents
+                  resources:
+                  - "*:*"
+                  example:
+                    actions:
+                      - agent:create
+                    resources:
+                      - "*:*:*"
+                    effect: allow
+                  related_endpoints:
+                    - POST /agents
+                    - POST /agents/insert
+                    - POST /agents/insert/quick
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /security/resources:
+    get:
+      tags:
+        - security
+      summary: 'Get RBAC resources'
+      description: 'This method should be called to get all current defined RBAC resources.'
+      operationId: api.controllers.security_controller.get_rbac_resources
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/resource_list'
+      responses:
+        '200':
+          description: "Return all RBAC resources"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+              example:
+                "*:*":
+                  description: 'Resource applied in functions acting on resources that do not yet
+                    exist in the system. We call these functions, resourceless functions. Example:
+                    agent:create'
+                agent:id:
+                  description: 'Reference agents via agent ID (i.e. agent:id:001)'
+                group:id:
+                  description: 'Reference agent groups via group ID (i.e. group:id:default)'
+                node:id:
+                  description: 'Reference cluster node via node ID (i.e. node:id:worker1)'
+                file:path:
+                  description: 'Reference file via its path (i.e. file:path:etc/rules/new_rule.xml)'
+                decoder:file:
+                  description: 'Reference decoder file via its path (i.e. decoder:file:0005-wazuh_decoders.xml)'
+                lists:path:
+                  description: 'Reference list file via its path (i.e. lists:path:etc/lists/audit-keys)'
+                rules:file:
+                  description: 'Reference rule file via its path (i.e. rules:file:0610-win-ms_logs_rules.xml)'
+                policy:id:
+                  description: 'Reference security policy via its id (i.e. policy:id:1)'
+                role:id:
+                  description: 'Reference security role via its id (i.e. role:id:1)'
+                user:id:
+                  description: 'Reference security user via its username (i.e. user:id:wazuh)'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
   /security/user/revoke:
     put:
       tags:
@@ -10420,6 +11446,8 @@ paths:
       summary: 'Gets a list of roles or all roles in the system without specifying anything'
       description: 'For a specific list, indicate the ids separated by commas. Example: ?role_ids=1,2,3'
       operationId: api.controllers.security_controller.get_roles
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:read'
       parameters:
         - $ref: '#/components/parameters/role_ids'
         - $ref: '#/components/parameters/limit'
@@ -10475,6 +11503,8 @@ paths:
       summary: 'Add a new role to the system'
       description: 'Add a new role, all fields need to be specified'
       operationId: api.controllers.security_controller.add_role
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:create'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -10483,9 +11513,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/RolesRequest'
-              required:
-                - name
-                - rule
             example:
               name: "normal"
               rule:
@@ -10523,6 +11550,8 @@ paths:
       summary: 'Delete a list of roles or all roles in the system'
       description: 'Policies linked to roles are not going to be removed.'
       operationId: api.controllers.security_controller.remove_roles
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
         - $ref: '#/components/parameters/role_ids'
         - $ref: '#/components/parameters/pretty'
@@ -10549,7 +11578,6 @@ paths:
                           name: administratorPolicy
                           policy:
                             actions:
-                              - agent:update
                               - agent:delete
                             effect: allow
                             resources:
@@ -10558,7 +11586,6 @@ paths:
                           name: normalPolicy
                           policy:
                             actions:
-                              - agent:update
                               - agent:delete
                             effect: deny
                             resources:
@@ -10585,6 +11612,8 @@ paths:
       description: 'Modify a role, cannot modify associated policies in this endpoint,
                         at least one property must be indicated'
       operationId: api.controllers.security_controller.update_role
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:update'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -10632,6 +11661,8 @@ paths:
       summary: 'Get all policies in the system'
       description: 'Get all policies in the system, including the administrator policy'
       operationId: api.controllers.security_controller.get_policies
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:read'
       parameters:
         - $ref: '#/components/parameters/policy_ids_rbac'
         - $ref: '#/components/parameters/limit'
@@ -10684,6 +11715,8 @@ paths:
       summary: "Add a new policy"
       description: "Add a new policy, all fields need to be specified"
       operationId: api.controllers.security_controller.add_policy
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:create'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -10692,9 +11725,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/PoliciesRequest'
-              required:
-                - name
-                - policy
             example:
               name: 'normal_policy'
               policy:
@@ -10737,6 +11767,8 @@ paths:
       summary: 'Delete a list of policies or all policies in the system'
       description: 'Roles linked to policies are not going to be removed.'
       operationId: api.controllers.security_controller.remove_policies
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
         - $ref: '#/components/parameters/policy_ids_rbac'
         - $ref: '#/components/parameters/pretty'
@@ -10789,6 +11821,8 @@ paths:
       summary: 'Modify a specified policy'
       description: 'Modify a policy, at least one property must be indicated'
       operationId: api.controllers.security_controller.update_policy
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:update'
       parameters:
         - $ref: '#/components/parameters/policy_id_rbac'
         - $ref: '#/components/parameters/pretty'
@@ -10847,9 +11881,12 @@ paths:
       summary: 'Create a relation between one role and one or more policies'
       description: 'Create a specify relation role-policy, one role may have multiples policies'
       operationId: api.controllers.security_controller.set_role_policy
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:create'
       parameters:
         - $ref: '#/components/parameters/role_id'
         - $ref: '#/components/parameters/policy_ids_rbac_required'
+        - $ref: '#/components/parameters/security_position'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -10904,6 +11941,8 @@ paths:
       summary: 'Delete a specify relation role-policy'
       description: 'Delete a specify relation role-policy'
       operationId: api.controllers.security_controller.remove_role_policy
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
         - $ref: '#/components/parameters/role_id'
         - $ref: '#/components/parameters/policy_ids_rbac_required'
@@ -10934,16 +11973,19 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /security/user/{username}/roles:
+  /security/users/{username}/roles:
     post:
       tags:
         - security
-      summary: 'Create a specify relation between one user and one or more roles'
+      summary: 'Create a specify relation between one user and one role'
       description: 'Create a specify relation role-policy, one user may have multiples roles'
       operationId: api.controllers.security_controller.set_user_role
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:create'
       parameters:
         - $ref: '#/components/parameters/username'
         - $ref: '#/components/parameters/role_ids_required'
+        - $ref: '#/components/parameters/security_position'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -10979,6 +12021,8 @@ paths:
       summary: 'Delete a specify relation user-roles'
       description: 'Delete a specify relation user-roles'
       operationId: api.controllers.security_controller.remove_user_role
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
         - $ref: '#/components/parameters/username'
         - $ref: '#/components/parameters/role_ids_required'
@@ -11015,6 +12059,8 @@ paths:
       summary: 'Get user information'
       description: 'Get the information of a specified user.'
       operationId: api.controllers.security_controller.get_users
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:read'
       parameters:
         - $ref: '#/components/parameters/usernames'
         - $ref: '#/components/parameters/limit'
@@ -11079,6 +12125,8 @@ paths:
       summary: 'Create new user'
       description: 'Adds a new user to the system through the API.'
       operationId: api.controllers.security_controller.create_user
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:create_user'
       requestBody:
         content:
           application/json:
@@ -11126,6 +12174,8 @@ paths:
       summary: 'Delete an user'
       description: "Delete a user by specifying their name"
       operationId: api.controllers.security_controller.delete_users
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
         - $ref: '#/components/parameters/usernames'
       responses:
@@ -11151,6 +12201,8 @@ paths:
       summary: 'Modify a user'
       description: "Modify a user's password by specifying their name."
       operationId: api.controllers.security_controller.update_user
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:update'
       parameters:
         - $ref: '#/components/parameters/username'
       requestBody:
@@ -11180,7 +12232,14 @@ paths:
                         $ref: '#/components/schemas/AllItemsResponseUsers'
                 example:
                   data:
-                    message: 'User updated correctly'
+                    affected_items:
+                      - username: wazuh-wui
+                        roles:
+                          - 2
+                    total_affected_items: 1
+                    total_failed_items: 0
+                    failed_items: []
+                  message: User modified correctly
 
   /overview/agents:
     get:
@@ -11189,6 +12248,9 @@ paths:
       summary: 'Get a full agents overview'
       description: 'Returns a dictionary with a full agents overview.'
       operationId: api.controllers.overview_controller.get_overview_agents
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
+        - $ref: '#/x-rbac-catalog/actions/group:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'

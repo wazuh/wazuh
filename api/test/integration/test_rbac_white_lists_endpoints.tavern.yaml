@@ -5,22 +5,18 @@ marks:
   - usefixtures:
     - lists_white_rbac_tests
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
 
   - name: Try to show the lists of the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/lists"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - items: !anything
@@ -36,7 +32,8 @@ stages:
 
   - name: Try to show an specified filename (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/lists"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -44,7 +41,7 @@ stages:
         filename: audit-keys
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - items: !anything
@@ -57,7 +54,8 @@ stages:
 
   - name: Try to show an specified path (Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/lists"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -66,7 +64,7 @@ stages:
         filename: aws-sources
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
         dapi_errors:
           master-node:
@@ -83,13 +81,14 @@ test_name: GET LISTS FILES RBAC
 stages:
   - name: Try to show the lists files of the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/lists/files"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - filename: audit-keys

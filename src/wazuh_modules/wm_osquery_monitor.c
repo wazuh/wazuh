@@ -1,6 +1,6 @@
 /*
  * Wazuh Integration with Osquery
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * April 5, 2018.
  *
  * This program is free software; you can redistribute it
@@ -268,7 +268,12 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
     }
 
     mdebug1("Launching '%s' with config file '%s'", osqueryd_path, osquery->config_path);
+
+#ifdef WIN32
+    snprintf(config_path, sizeof(config_path), "--config_path=\"%s\"", osquery->config_path);
+#else
     snprintf(config_path, sizeof(config_path), "--config_path=%s", osquery->config_path);
+#endif
 
     // We check that the osquery demon is not down, in which case we run it again.
 

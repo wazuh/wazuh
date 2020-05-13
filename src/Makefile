@@ -1,7 +1,7 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # TODO: mysql and postgresql?
 #
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -11,6 +11,7 @@
 
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 uname_P := $(shell sh -c 'uname -p 2>/dev/null || echo not')
+uname_R := $(shell sh -c 'uname -r 2>/dev/null || echo not')
 HAS_CHECKMODULE = $(shell command -v checkmodule > /dev/null && echo YES)
 HAS_SEMODULE_PACKAGE = $(shell command -v semodule_package > /dev/null && echo YES)
 
@@ -25,11 +26,12 @@ EXTERNAL_AUDIT=external/audit-userspace/
 EXTERNAL_LIBFFI=external/libffi/
 EXTERNAL_CPYTHON=external/cpython/
 EXTERNAL_MSGPACK=external/msgpack/
+EXTERNAL_BZIP2=external/bzip2/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
 endif
-MAXAGENTS?=14000
+MAXAGENTS?=100000
 # XXX Becareful NO EXTRA Spaces here
 PREFIX?=/var/ossec
 PG_CONFIG?=pg_config
@@ -77,26 +79,22 @@ DEFINES+=-DUSER=\"${OSSEC_USER}\"
 DEFINES+=-DREMUSER=\"${OSSEC_USER_REM}\"
 DEFINES+=-DGROUPGLOBAL=\"${OSSEC_GROUP}\"
 DEFINES+=-DMAILUSER=\"${OSSEC_USER_MAIL}\"
-DEFINES+=-D${uname_S}
-
-OSSEC_CFLAGS = ${CFLAGS}
-OSSEC_LDFLAGS = ${LDFLAGS}
-OSSEC_LIBS = $(LIBS)
 
 ifneq (${TARGET},winagent)
+		DEFINES+=-D${uname_S}
 ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
 #		DEFINES+=-DUSE_MAGIC
 		OSSEC_CFLAGS+=-pthread -I${EXTERNAL_LIBDB}
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
-		OSSEC_LIBS+=-lrt -ldl
+		OSSEC_LIBS+=-lrt -ldl -lm
 #		OSSEC_LDFLAGS+=-lmagic
 		OSSEC_LDFLAGS+=-pthread -lrt -ldl
 #		OSSEC_LDFLAGS+=-lmagic
-		CFLAGS+=-Wl,--start-group
+		OSSEC_CFLAGS+=-Wl,--start-group
 		USE_AUDIT=yes
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
-		CFLAGS+=-I$(EXTERNAL_AUDIT)lib
+		OSSEC_CFLAGS+=-I$(EXTERNAL_AUDIT)lib
 endif
 else
 ifeq (${uname_S},AIX)
@@ -110,10 +108,13 @@ else
 ifeq (${uname_S},SunOS)
 		DEFINES+=-DSOLARIS
 		DEFINES+=-DHIGHFIRST
-		DEFINES+=-std=gnu99
 		DEFINES+=-D_REENTRANT
 ifneq (${uname_P},sparc)
+ifneq ($(uname_R),5.10)
 		OSSEC_LDFLAGS+=-z relax=secadj
+else
+		OSSEC_CFLAGS+=-DMSGPACK_ZONE_ALIGN=8
+endif
 endif
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		OSSEC_LIBS+=-lsocket -lnsl -lresolv -lrt -lpthread
@@ -227,10 +228,12 @@ ifeq (${COVERITY}, YES)
 endif
 
 OSSEC_CFLAGS+=${DEFINES}
-OSSEC_CFLAGS+=-pipe -Wall -Wextra
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include
+OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2}
 
-
+OSSEC_CFLAGS += ${CFLAGS}
+OSSEC_LDFLAGS += ${LDFLAGS}
+OSSEC_LIBS += $(LIBS)
 
 CCCOLOR="\033[34m"
 LINKCOLOR="\033[34;1m"
@@ -252,19 +255,33 @@ endif
 MING_BASE:=
 ifeq (${TARGET}, winagent)
 # Avoid passing environment variables such CFLAGS to external Makefiles
-MAKEOVERRIDES=
+ifeq (${CC}, gcc)
+	MAKEOVERRIDES=
+endif
 
 CC=gcc
 ifneq (,$(shell which amd64-mingw32msvc-gcc))
-	MING_BASE:=amd64-mingw32msvc-
+	ifeq (${CC}, gcc)
+		MING_BASE:=amd64-mingw32msvc-
+	else
+		MING_BASE:=
+	endif
 	MINGW_HOST="amd64-mingw32msvc"
 else
 ifneq (,$(shell which i686-pc-mingw32-gcc))
-	MING_BASE:=i686-pc-mingw32-
+	ifeq (${CC}, gcc)
+		MING_BASE:=i686-pc-mingw32-
+	else
+		MING_BASE:=
+	endif
 	MINGW_HOST="i686-pc-mingw32"
 else
 ifneq (,$(shell which i686-w64-mingw32-gcc))
-	MING_BASE:=i686-w64-mingw32-
+	ifeq (${CC}, gcc)
+		MING_BASE:=i686-w64-mingw32-
+	else
+		MING_BASE:=
+	endif
 	MINGW_HOST="i686-w64-mingw32"
 else
 $(error No windows cross-compiler found!) #MING_BASE:=unknown-
@@ -494,6 +511,7 @@ settings:
 	@echo "    ONEWAY:             ${ONEWAY}"
 	@echo "    CLEANFULL:          ${CLEANFULL}"
 	@echo "    RESOURCES_URL:      ${RESOURCES_URL}"
+	@echo "    DISABLE_SHARED:     ${DISABLE_SHARED}"
 	@echo "User settings:"
 	@echo "    OSSEC_GROUP:        ${OSSEC_GROUP}"
 	@echo "    OSSEC_USER:         ${OSSEC_USER}"
@@ -522,6 +540,7 @@ settings:
 	@echo "Compiler:"
 	@echo "    CFLAGS            ${OSSEC_CFLAGS}"
 	@echo "    LDFLAGS           ${OSSEC_LDFLAGS}"
+	@echo "    LIBS              ${OSSEC_LIBS}"
 	@echo "    CC                ${CC}"
 	@echo "    MAKE              ${MAKE}"
 
@@ -595,7 +614,7 @@ $(SELINUX_POLICY): $(SELINUX_MODULE)
 $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 	checkmodule -M -m -o $@ $?
 
-test_programs = tap_os_crypto tap_os_net tap_os_regex tap_shared tap_os_zlib tap_os_xml tap_fluentd_forwarder
+test_programs = tap_wazuhdb_op tap_os_crypto tap_os_net tap_os_regex tap_shared tap_os_zlib tap_os_xml tap_fluentd_forwarder
 
 WINDOWS_BINS:=win32/ossec-agent.exe win32/ossec-agent-eventchannel.exe win32/ossec-rootcheck.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe win32/agent-auth.exe
 
@@ -640,13 +659,14 @@ LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.a
 AUDIT_LIB = $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
 LIBFFI_LIB = $(EXTERNAL_LIBFFI)$(TARGET)/.libs/libffi.a
 MSGPACK_LIB = $(EXTERNAL_MSGPACK)libmsgpack.a
+BZIP2_LIB   = $(EXTERNAL_BZIP2)libbz2.a
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB)
 
 ifneq (${TARGET},winagent)
 EXTERNAL_LIBS += $(MSGPACK_LIB)
 ifneq (${TARGET},agent)
-EXTERNAL_LIBS += $(LIBCURL_LIB) $(LIBFFI_LIB)
+EXTERNAL_LIBS += $(LIBCURL_LIB) $(LIBFFI_LIB) $(BZIP2_LIB)
 endif
 ifeq (${uname_S},Linux)
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
@@ -668,7 +688,7 @@ endif
 
 test_external:
 ifeq ($(wildcard external/*/*),)
-	$(error No external directory found. Run "make deps" before compiling external libraries)
+	$(error No external directory found. Run "${MAKE} deps" before compiling external libraries)
 endif
 
 #### OpenSSL ##########
@@ -723,6 +743,11 @@ os_zlib_o := $(os_zlib_c:.c=.o)
 
 os_zlib/%.o: os_zlib/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $< -o $@
+
+#### bzip2 ##########
+
+$(BZIP2_LIB):
+	cd ${EXTERNAL_BZIP2} && ${MAKE} CFLAGS="-fpic -Wall -O2 -D_FILE_OFFSET_BITS=64" libbz2.a
 
 #### SQLite #########
 
@@ -809,10 +834,9 @@ endif
 #### Audit lib ####
 
 ${AUDIT_LIB}: $(EXTERNAL_AUDIT)Makefile
-	make -C $(EXTERNAL_AUDIT)lib CC=$(CC)
+	${MAKE} -C $(EXTERNAL_AUDIT)lib CC=$(CC)
 
 $(EXTERNAL_AUDIT)Makefile:
-
 	cd $(EXTERNAL_AUDIT) && ./autogen.sh && ./configure CFLAGS=-fPIC --with-libcap-ng=no
 
 #### msgpack #########
@@ -869,7 +893,7 @@ endif
 endif
 
 
-EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack
+EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2
 EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
@@ -921,6 +945,16 @@ os_net/%.o: os_net/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
 #### Shared ##########
+
+
+wrappers_shared_c := $(wildcard unit_tests/wrappers/shared/*.c)
+wrappers_shared_o := $(wrappers_shared_c:.c=.o)
+
+ifneq (,$(filter ${TEST},YES yes y Y 1))
+ifeq (${TARGET},winagent)
+	WINDOWS_SHARED_WRAPPERS:=${wrappers_syscheck_o}
+endif
+endif
 
 shared_c := $(wildcard shared/*.c)
 shared_o := $(shared_c:.c=.o)
@@ -1068,7 +1102,7 @@ crypto_o := ${crypto_blowfish_o} \
 
 #### libwazuh #########
 
-libwazuh.a: ${config_o} ${wmodules_dep} ${crypto_o} ${shared_o} ${os_net_o} ${os_regex_o} ${os_xml_o} ${os_zlib_o}
+libwazuh.a: ${config_o} ${wmodules_dep} ${crypto_o} ${shared_o} ${os_net_o} ${os_regex_o} ${os_xml_o} ${os_zlib_o} ${WINDOWS_SHARED_WRAPPERS}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
 
@@ -1271,9 +1305,14 @@ rootcheck.a: ${rootcheck_o_lib}
 #### syscheck ######
 
 
+syscheck_sql := syscheckd/schema_fim_db.sql
 syscheck_c := $(wildcard syscheckd/*.c)
-syscheck_o := $(syscheck_c:.c=.o)
-syscheck_eventchannel_o := $(syscheck_c:.c=-event.o)
+syschecklib_o := $(syschecklib_c:.c=.o) $(syscheck_sql:.sql=.o)
+syscheck_o := $(syschecklib_o:.c=.o) $(syscheck_c:.c=.o) $(syscheck_sql:.sql=.o)
+syscheck_eventchannel_o := $(syscheck_c:.c=-event.o) $(syscheck_sql:.sql=.o)
+
+syscheckd/schema_fim_db.o: syscheckd/schema_fim_db.sql
+	${QUIET_CC}echo 'const char *schema_fim_sql = "'"`cat $< | tr -d \"\n\"`"'";' | ${MING_BASE}${CC} ${OSSEC_CFLAGS} -xc -c -o $@ -
 
 syscheckd/%.o: syscheckd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"ossec-syscheckd\" -c $^ -o $@
@@ -1500,11 +1539,13 @@ install_python:
 python_dependencies := requirements.txt
 
 install_dependencies: install_python
-	${WPYTHON_DIR}/bin/pip3 install -r ../framework/${python_dependencies}
+	LD_LIBRARY_PATH="${PREFIX}/lib" LDFLAGS="-L${PREFIX}/lib" ${WPYTHON_DIR}/bin/pip3 install -r ../framework/${python_dependencies}  --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
 
 
 install_framework: install_python
 	cd ../framework && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR} --wazuh-version=$(shell cat VERSION) --install-type=${TARGET}
+	chown -R root:${OSSEC_GROUP} ${WPYTHON_DIR}
+	chmod -R o=- ${WPYTHON_DIR}/*
 
 install_api: install_python
 	cd ../api && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR}
@@ -1514,16 +1555,32 @@ install_api: install_python
 #### test ##########
 ####################
 
-CFLAGS_TEST = -g -O0 --coverage
+CFLAGS_TEST=-g -O0 --coverage -DUNIT_TESTING
+LIBS_TEST=-lcmocka
 
 # LIBS_TEST = -lcheck -lm -lrt -lsubunit
+
+# Unit tests wrappers
+wrappers_syscheck_c := $(wildcard unit_tests/wrappers/syscheckd/*.c)
+wrappers_syscheck_o := $(wrappers_syscheck_c:.c=.o)
 
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 	OSSEC_CFLAGS+=${CFLAGS_TEST}
 	# OSSEC_CFLAGS+=${CFLAGS_TEST} -Itests
 	OSSEC_LDFLAGS+=${CFLAGS_TEST}
 	OSSEC_LIBS+=${LIBS_TEST}
+
+ifeq (${TARGET},winagent)
+	WINDOWS_UNIT_TEST_WRAPPERS:=${wrappers_syscheck_o}
+	WINDOWS_UNIT_TEST_WRAPPERS+=${wrappers_shared_o}
+endif
 endif #TEST
+
+unit_tests/wrappers/syscheckd/%.o: unit_tests/wrappers/syscheckd/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+
+unit_tests/wrappers/shared/%.o: unit_tests/wrappers/shared/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
 .PHONY: test run_valgrind_tests run_tests build_tests test_valgrind test_coverage
 
@@ -1564,6 +1621,9 @@ tap_os_xml: tests/tap_os_xml.o ${os_xml_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 tap_fluentd_forwarder: tests/tap_fluentd_forwarder.o
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+tap_wazuhdb_op: tests/tap_wazuhdb_op.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 test_valgrind: build_tests
@@ -1613,10 +1673,10 @@ win32_ui_o := $(win32_ui_c:.c=.o)
 win32/ui/%.o: win32/ui/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -UOSSECHIDS -DARGV0=\"ossec-win32ui\" -c $^ -o $@
 
-win32/ossec-agent.exe: win32/icon.o win32/win_agent.o win32/win_service.o ${syscheck_o} ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o wazuh_modules/syscollector/syscollector_win_ext.dll
+win32/ossec-agent.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o ${syscheck_o} ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o wazuh_modules/syscollector/syscollector_win_ext.dll ${WINDOWS_UNIT_TEST_WRAPPERS}
 	${OSSEC_CCBIN} -DARGV0=\"ossec-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/ossec-agent-eventchannel.exe: win32/icon.o win32/win_agent.o win32/win_service.o $(filter-out syscheckd/main-event.o, ${syscheck_eventchannel_o}) ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o wazuh_modules/syscollector/syscollector_win_ext.dll
+win32/ossec-agent-eventchannel.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out syscheckd/main-event.o, ${syscheck_eventchannel_o}) ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o wazuh_modules/syscollector/syscollector_win_ext.dll ${WINDOWS_UNIT_TEST_WRAPPERS}
 	${OSSEC_CCBIN} -DARGV0=\"ossec-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 win32/ossec-rootcheck.exe: win32/icon.o win32/win_service_rk.o ${rootcheck_rk_o}
@@ -1672,12 +1732,13 @@ ifneq ($(wildcard external/*/*),)
 	-cd ${EXTERNAL_CURL} && ${MAKE} distclean
 	rm -f ${procps_o} $(PROCPS_LIB)
 	rm -f $(sqlite_o) $(EXTERNAL_SQLITE)/libsqlite3.*
-	-cd ${EXTERNAL_AUDIT} && make distclean
-	-cd ${EXTERNAL_LIBFFI} && make clean
+	-cd ${EXTERNAL_AUDIT} && ${MAKE} distclean
+	-cd ${EXTERNAL_LIBFFI} && ${MAKE} clean
 	rm -f $(msgpack_o) $(EXTERNAL_MSGPACK)libmsgpack.a
+	-${MAKE} -C $(EXTERNAL_BZIP2) clean
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
-	cd ${EXTERNAL_LIBDB} && make realclean
+	cd ${EXTERNAL_LIBDB} && ${MAKE} realclean
 endif
 endif
 
@@ -1721,6 +1782,8 @@ clean-internals:
 	rm -f ${wdb_o}
 	rm -f ${SELINUX_MODULE}
 	rm -f ${SELINUX_POLICY}
+	rm -f ${wrappers_syscheck_o}
+	rm -f ${wrappers_shared_o}
 
 clean-framework:
 	${MAKE} -C ../framework clean

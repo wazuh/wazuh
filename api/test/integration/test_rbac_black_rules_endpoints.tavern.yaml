@@ -5,16 +5,12 @@ marks:
   - usefixtures:
     - rules_black_rbac_tests
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
 
   - name: Try to show the rules of the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -22,7 +18,7 @@ stages:
         limit: 5
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - &full_item_rules
@@ -50,7 +46,8 @@ stages:
 
   - name: Try to show the rules of the system (try q parameter to bypass a denied resource)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -58,7 +55,7 @@ stages:
         q: 'filename=0010-rules_config.xml'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items: []
@@ -68,7 +65,8 @@ stages:
 
   - name: Try to show the rules of the system (list)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -76,7 +74,7 @@ stages:
         rule_ids: 1,2,200,500,700,702
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *full_item_rules
@@ -101,7 +99,8 @@ stages:
 
   - name: Try to show the rules files of the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/files"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -109,7 +108,7 @@ stages:
         limit: 5
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - &full_item_rules_files
@@ -131,7 +130,8 @@ stages:
 
   - name: Try to show the rules files of the system (list)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/files"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -139,7 +139,7 @@ stages:
         filename: local_rules.xml,0620-win-generic_rules.xml
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *full_item_rules_files
@@ -154,7 +154,8 @@ stages:
 
   - name: Try to show the rules files of the system (list)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/files"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -162,7 +163,7 @@ stages:
         filename: local_rules.xml,0015-ossec_rules.xml,0010-rules_config.xml
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - <<: *full_item_rules_files
@@ -180,7 +181,8 @@ stages:
 
   - name: Try to show the rules files of the system (no permissions)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/files"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -188,7 +190,7 @@ stages:
         filename: 0015-ossec_rules.xml,0010-rules_config.xml
     response:
       status_code: 400
-      body: &permissions_denied
+      json: &permissions_denied
         code: 4000
         dapi_errors:
           master-node:
@@ -206,24 +208,26 @@ stages:
 
   - name: Try get one rule file
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/local_rules.xml/download"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/files/local_rules.xml/download"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
       headers:
-        content-type: application/xml
+        content-type: 'application/xml; charset=utf-8'
 
   - name: Try get one rule file (no permissions)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/0015-ossec_rules.xml/download"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/files/0015-ossec_rules.xml/download"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 400
-      body:
+      json:
         <<: *permissions_denied
 
 ---
@@ -233,13 +237,14 @@ stages:
 
   - name: Try to show the groups of rules in the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/groups"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/groups"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -254,13 +259,14 @@ stages:
 
   - name: Try to show the groups of rules in the system
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/pci_dss"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/requirement/pci_dss"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []

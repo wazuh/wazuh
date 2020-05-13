@@ -1,0 +1,1009 @@
+---
+test_name: GET /security/roles
+
+marks:
+  - usefixtures:
+    - security_tests
+
+stages:
+
+  # GET /security/roles
+  - name: Try to show the roles of the system
+    request: &all_roles_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        limit: 1
+        offset: 0
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: &roles
+            - id: !anyint
+              name: !anystr
+              policies: !anything
+              rule: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: All specified roles were shown
+
+  # GET /security/roles
+  - name: Try to show the roles of the system, offset = 0
+    request:
+      <<: *all_roles_request
+      params:
+        limit: 2
+        offset: 0
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *roles
+            - <<: *roles
+          total_affected_items: !anyint
+      save:
+        json:
+          second_role_id: data.affected_items[1].id
+          second_role_name: data.affected_items[1].name
+
+  # GET /security/roles
+  - name: Try to show the roles of the system, offset = 1
+    request:
+      <<: *all_roles_request
+      params:
+        limit: 2
+        offset: 1
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+          - id: !int "{second_role_id}"
+            name: "{second_role_name}"
+          - <<: *roles
+          total_affected_items: !anyint
+
+  # GET /security/roles
+  - name: Try to show the roles of the system, without limit
+    request:
+      <<: *all_roles_request
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+          - <<: *roles
+
+  # GET /security/roles
+  - name: Try to get all roles with limit = 0
+    request:
+      <<: *all_roles_request
+      params:
+        limit: 0
+    response:
+      status_code: 400
+      json: &error_response
+        detail: !anystr
+        status: 400
+        title: !anystr
+        type: "about:blank"
+
+  # GET /security/roles
+  - name: Sort the roles
+    request:
+      <<: *all_roles_request
+      params:
+        sort: name
+        limit: 2
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *roles
+            - <<: *roles
+          total_affected_items: !anyint
+      save:
+        json:
+          second_role_id: data.affected_items[1].id
+          second_role_name: data.affected_items[1].name
+
+  # GET /security/roles
+  - name: Sort the roles, limit=2, offset=1
+    request:
+      <<: *all_roles_request
+      params:
+        sort: name
+        limit: 2
+        offset: 1
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+          - id: !int "{second_role_id}"
+            name: "{second_role_name}"
+          - <<: *roles
+          total_affected_items: !anyint
+
+  # GET /security/roles
+  - name: Sort without limit
+    request:
+      <<: *all_roles_request
+      params:
+        sort: -name
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: !anyint
+
+  # GET /security/roles
+  - name: Search in roles
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        search: wazuh
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *roles
+          total_affected_items: !anyint
+
+  # GET /security/roles
+  - name: Search without limit
+    request:
+      <<: *all_roles_request
+      params:
+        search: wazuh
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *roles
+            - <<: *roles
+            - <<: *roles
+            - <<: *roles
+          total_affected_items: !anyint
+
+  # GET /security/roles
+  - name: Sort without limit, non existent sort parameter
+    request:
+      <<: *all_roles_request
+      params:
+        sort: +noexist
+    response:
+      status_code: 400
+      json:
+        <<: *error_response
+
+  # GET /security/roles
+  - name: Search without limit, non existent role
+    request:
+      <<: *all_roles_request
+      params:
+        search: noexist
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: 0
+
+  # GET /security/roles
+  - name: Invalid parameter
+    request:
+      <<: *all_roles_request
+      params:
+        noexist: nothing
+    response:
+      status_code: 400
+      json: &error_null
+        detail: "Extra query parameter(s) noexist not in spec"
+        status: 400
+        title: null
+        type: "about:blank"
+
+  # GET /security/roles
+  - name: Invalid parameters - Extra fields
+    request:
+      <<: *all_roles_request
+      params:
+        search: wazuh
+        noexist: True
+    response:
+      status_code: 400
+      json:
+        <<: *error_null
+
+  # GET /security/roles
+  - name: Try to show the roles of the system with a non-existent search
+    request:
+      <<: *all_roles_request
+      params:
+        search: notexist
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: 0
+---
+test_name: GET /security/policies
+
+stages:
+
+  # GET /security/policies
+  - name: Try to show the policies of the system
+    request: &all_policies_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        limit: 1
+        offset: 0
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: &policies
+            - id: !anyint
+              name: !anystr
+              policy: !anything
+          total_affected_items: !anyint
+
+  # GET /security/policies
+  - name: Try to show the policies of the system, offset = 0
+    request:
+      <<: *all_policies_request
+      params:
+        limit: 2
+        offset: 0
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *policies
+            - <<: *policies
+          total_affected_items: !anyint
+      save:
+        json:
+          second_policy_id: data.affected_items[1].id
+          second_policy_name: data.affected_items[1].name
+
+  # GET /security/policies
+  - name: Try to show the policies of the system, offset = 1
+    request:
+      <<: *all_policies_request
+      params:
+        limit: 2
+        offset: 1
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+          - id: !int "{second_policy_id}"
+            name: "{second_policy_name}"
+          - <<: *policies
+          total_affected_items: !anyint
+
+  # GET /security/policies
+  - name: Try to show the policies of the system, without limit
+    request:
+      <<: *all_policies_request
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: !anyint
+
+  # GET /security/policies
+  - name: Try to get all policies with limit = 0
+    request:
+      <<: *all_policies_request
+      params:
+        limit: 0
+    response:
+      status_code: 400
+      json:
+        <<: *error_response
+
+  # GET /security/policies
+  - name: Sort the policies
+    request:
+      <<: *all_policies_request
+      params:
+        sort: -name
+        limit: 2
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *policies
+            - <<: *policies
+          total_affected_items: !anyint
+
+  # GET /security/policies
+  - name: Sort without limit
+    request:
+      <<: *all_policies_request
+      params:
+        sort: -name
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: !anyint
+
+  # GET /security/policies
+  - name: Search in policies
+    request:
+      <<: *all_policies_request
+      params:
+        search: wazuh
+        limit: 2
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *policies
+            - <<: *policies
+          total_affected_items: !anyint
+      save:
+        json:
+          policy_id: data.affected_items[0].id
+
+  # GET /security/policies
+  - name: Search without limit
+    request:
+      <<: *all_policies_request
+      params:
+        search: wazuh
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: 2
+
+  # GET /security/policies
+  - name: Search without limit, non existent policy
+    request:
+      <<: *all_policies_request
+      params:
+        search: noexist
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: 0
+
+  # GET /security/policies
+  - name: Invalid parameter
+    request:
+      <<: *all_policies_request
+      params:
+        noexist: nothing
+    response:
+      status_code: 400
+      json:
+        <<: *error_null
+
+  # GET /security/policies
+  - name: Invalid parameters - Extra fields
+    request:
+      <<: *all_policies_request
+      params:
+        search: wazuh
+        noexist: True
+    response:
+      status_code: 400
+      json:
+        <<: *error_null
+
+  # GET /security/policies
+  - name: Try to show the policies of the system with a non-existent search
+    request:
+      <<: *all_policies_request
+      params:
+        search: notexist
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: 0
+---
+test_name: GET /security/roles
+
+stages:
+
+  # GET /security/roles/{role_id}
+  - name: Try to show a specified role in the system
+    request:
+      <<: *all_roles_request
+      params:
+        role_ids: 2,3,4
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *roles
+            - <<: *roles
+            - <<: *roles
+
+  # GET /security/roles/{non-existent role_id}
+  - name: Try to show a non-existent role in the system
+    request:
+      <<: *all_roles_request
+      params:
+        role_ids: 999
+    response:
+      status_code: 200
+      json: &response_error
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: !anyint
+                message: !anystr
+                remediation: !anystr
+              id:
+                - '999'
+          total_affected_items: 0
+          total_failed_items: 1
+---
+test_name: GET /security/policies/{policy_id}
+
+stages:
+
+  # GET /security/policies/{policy_id}
+  - name: Try to show a specified policy in the system
+    request:
+      <<: *all_policies_request
+      params:
+        policy_ids: 2,3,4
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *policies
+            - <<: *policies
+            - <<: *policies
+
+  # GET /security/policies/{non-existent policy_id}
+  - name: Try to show a non-existent policy in the system
+    request:
+      <<: *all_policies_request
+      params:
+        policy_ids: 999
+    response:
+      status_code: 200
+      json:
+        <<: *response_error
+
+---
+test_name: GET /security/users
+
+stages:
+
+  - name: Get all users in the system
+    request: &all_users_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - username: administrator
+              roles:
+                - 8
+                - 9
+            - username: guest
+              roles: []
+            - username: normal
+              roles:
+                - 12
+                - 13
+                - 11
+            - username: ossec
+              roles:
+                - 9
+                - 12
+            - username: python
+              roles:
+                - 9
+            - username: rbac
+              roles:
+                - 12
+                - 10
+                - 11
+            - username: wazuh
+              roles:
+                - 1
+            - username: wazuh-wui
+              roles:
+                - 2
+          total_affected_items: 8
+          total_failed_items: 0
+          failed_items: []
+        message: All specified users were shown
+
+---
+test_name: GET /security/users
+
+stages:
+
+  - name: Get a specified user by its username
+    request:
+      <<: *all_users_request
+      params:
+        usernames: wazuh
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: &user
+            - username: !anystr
+          total_affected_items: 1
+
+  - name: Get a specified user by its username
+    request:
+      <<: *all_users_request
+      params:
+        usernames: wazuh,wazuh-wui
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - <<: *user
+            - <<: *user
+          total_affected_items: 2
+
+  - name: Get an user by its username (invalid username)
+    request:
+      <<: *all_users_request
+      params:
+        usernames: "!!!"
+    response:
+      status_code: 400
+      json:
+        detail: !anystr
+        status: !anyint
+        title: !anystr
+        type: !anystr
+
+  - name: Get an user by its username (invalid username)
+    request:
+      <<: *all_users_request
+      params:
+        usernames: "####@@@|#|"
+    response:
+      status_code: 400
+      json:
+        detail: !anystr
+        status: !anyint
+        title: !anystr
+        type: !anystr
+
+  - name: Get an non-existent user by its username
+    request:
+      <<: *all_users_request
+      params:
+        usernames: NotFound
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 5001
+                message: !anystr
+                remediation: !anystr
+              id:
+                - NotFound
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
+
+  - name: Get two non-existent users by their usernames
+    request:
+      <<: *all_users_request
+      params:
+        usernames: NotFound,NotFound1
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 5001
+                message: !anystr
+                remediation: !anystr
+              id:
+                - NotFound
+                - NotFound1
+          total_affected_items: 0
+          total_failed_items: 2
+        message: !anystr
+
+  - name: Get two non-existent users and an existing one by their usernames
+    request:
+      <<: *all_users_request
+      params:
+        usernames: NotFound,NotFound1,wazuh
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - username: wazuh
+          failed_items:
+            - error:
+                code: 5001
+                message: !anystr
+                remediation: !anystr
+              id:
+                - NotFound
+                - NotFound1
+          total_affected_items: 1
+          total_failed_items: 2
+        message: !anystr
+
+  - name: Get two non-existent users and two existent by their usernames
+    request:
+      <<: *all_users_request
+      params:
+        usernames: NotFound,NotFound1,wazuh-wui,wazuh
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - username: wazuh
+            - username: wazuh-wui
+          failed_items:
+            - error:
+                code: 5001
+                message: !anystr
+                remediation: !anystr
+              id:
+                - NotFound
+                - NotFound1
+          total_affected_items: 2
+          total_failed_items: 2
+        message: !anystr
+---
+test_name: GET /security/users/?search
+
+marks:
+  - parametrize:
+      key: field
+      vals:
+        - wazuh-wui
+        - normal
+
+stages:
+  - name: Testing search
+    request:
+      <<: *all_users_request
+      params:
+        search: "{field}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - username: "{field}"
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: !anystr
+
+  - name: Testing complementary search
+    request:
+      <<: *all_users_request
+      params:
+        search: "-wazuh"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - username: administrator
+              roles:
+                - 9
+            - username: guest
+              roles: []
+            - username: normal
+              roles:
+                - 12
+                - 13
+                - 11
+            - username: ossec
+              roles:
+                - 9
+                - 12
+            - username: python
+              roles: []
+            - username: rbac
+              roles:
+                - 12
+                - 10
+                - 11
+          total_affected_items: 6
+          total_failed_items: 0
+          failed_items: []
+        message: All specified users were shown
+
+---
+test_name: GET /security/users/?sort
+
+stages:
+  - name: Testing inverse sort
+    request:
+      <<: *all_users_request
+      params:
+        sort: "-username"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - username: wazuh-wui
+              roles:
+                - 2
+            - username: wazuh
+              roles:
+                - 1
+            - username: rbac
+              roles:
+                - 12
+                - 10
+                - 11
+            - username: python
+              roles:
+                - 9
+            - username: ossec
+              roles:
+                - 9
+                - 12
+            - username: normal
+              roles:
+                - 12
+                - 13
+                - 11
+            - username: guest
+              roles: []
+            - username: administrator
+              roles:
+                - 8
+                - 9
+          total_affected_items: 8
+          total_failed_items: 0
+          failed_items: []
+        message: All specified users were shown
+
+  - name: Testing sort
+    request:
+      <<: *all_users_request
+      params:
+        sort: "username"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - username: administrator
+              roles:
+                - 8
+                - 9
+            - username: guest
+              roles: []
+            - username: normal
+              roles:
+                - 12
+                - 13
+                - 11
+            - username: ossec
+              roles:
+                - 9
+                - 12
+            - username: python
+              roles:
+                - 9
+            - username: rbac
+              roles:
+                - 12
+                - 10
+                - 11
+            - username: wazuh
+              roles:
+                - 1
+            - username: wazuh-wui
+              roles:
+                - 2
+          total_affected_items: 8
+          total_failed_items: 0
+          failed_items: []
+        message: All specified users were shown
+
+---
+test_name: GET /security/users/?limit,offset
+
+stages:
+  - name: Testing offset
+    request:
+      <<: *all_users_request
+      params:
+        offset: 3
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - username: ossec
+              roles:
+                - 9
+                - 12
+            - username: python
+              roles:
+                - 9
+            - username: rbac
+              roles:
+                - 12
+                - 10
+                - 11
+            - username: wazuh
+              roles:
+                - 1
+            - username: wazuh-wui
+              roles:
+                - 2
+          total_affected_items: 8
+          total_failed_items: 0
+          failed_items: []
+        message: All specified users were shown
+
+  - name: Testing limit
+    request:
+      <<: *all_users_request
+      params:
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - username: administrator
+              roles:
+                - 9
+          total_affected_items: 8
+          total_failed_items: 0
+          failed_items: []
+        message: All specified users were shown
+
+---
+test_name: GET /security/actions
+
+stages:
+  - name: Testing RBAC's actions catalog
+    request: &rbac_actions_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/actions"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        endpoint: "PUT /active-response"
+    response:
+      status_code: 200
+      json:
+        active-response:command:
+          description: Allow to execute active response commands in the agents
+          resources:
+            - agent:id
+          example:
+            actions:
+              - active-response:command
+            resources:
+              - agent:id:001
+            effect: allow
+          related_endpoints:
+            - PUT /active-response
+
+  - name: Testing RBAC's actions catalog
+    request:
+      <<: *rbac_actions_request
+      params:
+        endpoint: "GET ​/rules​/files"
+    response:
+      status_code: 200
+      json:
+        rules:read:
+          description: Read rules files
+          resources:
+            - rules:file
+          example:
+            actions:
+              - rules:read
+            resources:
+              - rules:file:0610-win-ms_logs_rules.xml
+            effect: allow
+          related_endpoints:
+            - GET /rules/files
+
+---
+test_name: GET /security/resources
+
+stages:
+  - name: Testing RBAC's actions catalog
+    request: &rbac_resources_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/resources"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      json:
+        "*:*":
+          description: 'Resource applied in functions acting on resources that do not yet
+            exist in the system. We call these functions, resourceless functions. Example:
+            agent:create'
+        agent:id:
+          description: Reference agents via agent ID (i.e. agent:id:001)
+        group:id:
+          description: Reference agent groups via group ID (i.e. group:id:default)
+        node:id:
+          description: Reference cluster node via node ID (i.e. node:id:worker1)
+        file:path:
+          description: Reference file via its path (i.e. file:path:etc/rules/new_rule.xml)
+        decoder:file:
+          description: Reference decoder file via its path (i.e. decoder:file:0005-wazuh_decoders.xml)
+        lists:path:
+          description: Reference list file via its path (i.e. lists:path:etc/lists/audit-keys)
+        rules:file:
+          description: Reference rule file via its path (i.e. rules:file:0610-win-ms_logs_rules.xml)
+        policy:id:
+          description: Reference security policy via its id (i.e. policy:id:1)
+        role:id:
+          description: Reference security role via its id (i.e. role:id:1)
+        user:id:
+          description: Reference security user via its username (i.e. user:id:wazuh)
+
+  - name: Testing RBAC's actions catalog
+    request:
+      <<: *rbac_resources_request
+      params:
+        resource: "agent:id"
+    response:
+      status_code: 200
+      json:
+        agent:id:
+          description: Reference agents via agent ID (i.e. agent:id:001)

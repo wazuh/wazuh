@@ -1,28 +1,22 @@
 ---
 test_name: DELETE /experimental/syscheck
 
-includes:
-  - !include common.yaml
-
 marks:
   - usefixtures:
     - experimental_white_rbac_tests
 
 stages:
 
-    # Authentication stage
-  - type: ref
-    id: login_get_token
-
   - name: Request all agents (Partially allowed, user agnostic)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscheck"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscheck"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '001'
@@ -36,7 +30,8 @@ stages:
 
   - name: Request a list of agents (Partially allowed, user aware)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscheck"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscheck"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -44,7 +39,7 @@ stages:
         list_agents: '001,002,005,006'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '001'
@@ -62,20 +57,18 @@ stages:
 ---
 test_name: GET /experimental/ciscat/results
 
-marks:
-  - xfail
-
 stages:
 
   - name: Request all agents (Partially allowed, user agnostic)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/ciscat/results"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - agent_id: '001'
@@ -89,7 +82,8 @@ stages:
 
   - name: Request a list of agents (Partially allowed, user aware)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/ciscat/results"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -97,7 +91,7 @@ stages:
         list_agents: '003,004,007,008'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - agent_id: '003'
@@ -119,13 +113,14 @@ stages:
 
   - name: Request all agents (Partially allowed, user agnostic)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hardware"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/hardware"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - agent_id: '001'
@@ -138,7 +133,8 @@ stages:
 
   - name: Request a list of agents (Partially allowed, user aware)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hardware"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/hardware"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -146,7 +142,7 @@ stages:
         list_agents: '001,002,006,007'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - agent_id: '001'
@@ -168,13 +164,14 @@ stages:
 
   - name: Request all agents (Partially allowed, user agnostic)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netaddr"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netaddr"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - agent_id: '001'
@@ -187,7 +184,8 @@ stages:
 
   - name: Request a list of agents (Partially allowed, user aware)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netaddr"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netaddr"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -195,7 +193,7 @@ stages:
         list_agents: '005,006,007,008'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - agent_id: '005'
@@ -217,13 +215,14 @@ stages:
 
   - name: Request all agents (Partially allowed, user agnostic)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netiface"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - agent_id: '001'
@@ -236,7 +235,8 @@ stages:
 
   - name: Request a list of agents (Partially allowed, user aware)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netiface"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -244,7 +244,7 @@ stages:
         list_agents: '001,005,007,008'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - agent_id: '001'
@@ -266,13 +266,14 @@ stages:
 
   - name: Request all agents (Partially allowed, user agnostic)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netproto"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netproto"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - agent_id: '001'
@@ -285,7 +286,8 @@ stages:
 
   - name: Request a list of agents (Partially allowed, user aware)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netproto"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/netproto"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -293,7 +295,7 @@ stages:
         list_agents: '002,004,005,008'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - agent_id: '005'
@@ -315,13 +317,14 @@ stages:
 
   - name: Request all agents (Partially allowed, user agnostic)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/os"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/os"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - agent_id: '001'
@@ -334,7 +337,8 @@ stages:
 
   - name: Request a list of agents (Partially allowed, user aware)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/os"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/os"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -342,7 +346,7 @@ stages:
         list_agents: '001,002,003,004'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - agent_id: '001'
@@ -364,13 +368,14 @@ stages:
 
   - name:  Request all agents (Partially allowed, user agnostic)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/packages"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -380,7 +385,8 @@ stages:
 
   - name:  Request all agents (Denied)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/packages"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -388,7 +394,7 @@ stages:
         list_agents: '002,004,006,008'
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
 
 ---
@@ -398,13 +404,14 @@ stages:
 
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/ports"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/ports"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - agent_id: '001'
@@ -417,7 +424,8 @@ stages:
 
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/ports"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/ports"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -425,7 +433,7 @@ stages:
         list_agents: '001,003,005,007'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - agent_id: '001'
@@ -443,13 +451,14 @@ stages:
 
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/processes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: []
@@ -459,7 +468,8 @@ stages:
 
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/processes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -467,7 +477,7 @@ stages:
         list_agents: '001,004,005,008'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items:
@@ -483,41 +493,49 @@ stages:
 ---
 test_name: GET /experimental/syscollector/hotfixes
 
-marks:
-  - xfail
-
 stages:
 
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hotfixes"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/hotfixes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
-          affected_items: !anything
+          affected_items: []
           failed_items: []
-          total_affected_items: !anyint
+          total_affected_items: 0  # Only the agent 000 will have results but we don't have permissions
           total_failed_items: 0
         message: !anystr
 
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hotfixes"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/experimental/syscollector/hotfixes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents: '003,004,005,006'
+        list_agents: '000,004,005,006'
     response:
       status_code: 200
-      body:
+      json:
         data:
-          affected_items: !anything
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
+          affected_items: [] # Only the agent 000 will have results but we don't have permissions
+          failed_items:
+          # Even agent IDs do not have permissions
+            - error:
+                code: 4000
+                message: !anystr
+                remediation: !anystr
+              id:
+                - '000'
+                - '004'
+                - '006'
+          total_affected_items: 0
+          total_failed_items: 3
         message: !anystr

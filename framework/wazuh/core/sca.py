@@ -65,7 +65,7 @@ class WazuhDBQuerySCA(WazuhDBQuery):
         return self.default_query
 
     def _default_count_query(self):
-        return f"COUNT(DISTINCT {self.count_field})"
+        return f"SELECT COUNT(DISTINCT {self.count_field})" + " FROM ({0})"
 
     def _format_data_into_dictionary(self):
         def format_fields(field_name, value):

@@ -1,27 +1,22 @@
 ---
 test_name: GET OS SYSCOLLECTOR RBAC
 
-includes:
- - !include common.yaml
-
 marks:
   - usefixtures:
     - syscollector_black_rbac_tests
 
 stages:
 
-  - type: ref
-    id: login_get_token
-
   - name: Get os from an agent (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/os"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/002/os"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - architecture: !anystr
@@ -46,13 +41,14 @@ stages:
 
   - name: Get os from an agent (Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/os"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/001/os"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 400
-      body: &permission_denied
+      json: &permission_denied
         code: 4000
         dapi_errors: !anything
         detail: !anystr
@@ -68,13 +64,14 @@ stages:
 
   - name: Get hardware from an agent (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/hardware"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/002/hardware"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - board_serial: !anything
@@ -96,13 +93,14 @@ stages:
 
   - name: Get hardware from an agent (Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/hardware"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/001/hardware"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -112,13 +110,14 @@ stages:
 
   - name: Get netaddr from an agent (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/netaddr"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/002/netaddr"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - address: !anystr
@@ -132,13 +131,14 @@ stages:
 
   - name: Get netaddr from an agent (Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/netaddr"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/001/netaddr"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -148,13 +148,14 @@ stages:
 
   - name: Get netiface from an agent (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/netiface"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/002/netiface"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - mac: !anystr
@@ -179,13 +180,14 @@ stages:
 
   - name: Get netiface from an agent (Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/netiface"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/001/netiface"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -195,13 +197,14 @@ stages:
 
   - name: Get netiface from an agent (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/004/netproto"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/004/netproto"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - dhcp: !anystr
@@ -214,13 +217,14 @@ stages:
 
   - name: Get netiface from an agent (Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/005/netproto"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/005/netproto"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -230,7 +234,8 @@ stages:
 
   - name: Get netiface from an agent (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/004/packages"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/004/packages"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -238,7 +243,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - architecture: !anystr
@@ -260,13 +265,14 @@ stages:
 
   - name: Get netiface from an agent (Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/005/packages"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/005/packages"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -276,13 +282,14 @@ stages:
 
   - name: Get netiface from an agent (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/ports"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/002/ports"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - inode: !anyint
@@ -306,13 +313,14 @@ stages:
 
   - name: Get netiface from an agent (Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/006/ports"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/006/ports"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
@@ -322,7 +330,8 @@ stages:
 
   - name: Get netiface from an agent (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/processes"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/002/processes"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -330,7 +339,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - cmd: !anystr
@@ -370,77 +379,38 @@ stages:
 
   - name: Get netiface from an agent (Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/006/processes"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/006/processes"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
 ---
 test_name: GET HOTFIXES SYSCOLLECTOR RBAC
 
-marks:
-  - xfail
-
 stages:
-
-  - name: Get all hotfixes from an agent (Allow)
-    request: &hotfix_request_allow
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/hotfixes"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      status_code: 200
-      body:
-        data:
-          affected_items:
-            - hotfix: !anystr
-              scan_id: !anyint
-              scan_time: !anystr
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
-        message: !anystr
-      save:
-        body:
-          hotfix_filter: data.affected_items.0.hotfix
-
-  - name: Filter hotfix (Allow)
-    request:
-      <<: *hotfix_request_allow
-      params:
-        hotfix: "{hotfix_filter}"
-    response:
-      status_code: 200
-      body:
-        data:
-          affected_items:
-            - hotfix: "{hotfix_filter}"
-              scan_id: !anyint
-              scan_time: !anystr
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
   - name: Get all hotfixes from an agent (Deny)
     request: &hotfix_request_deny
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/hotfixes"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/syscollector/000/hotfixes"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied
 
   - name: Filter hotfix (Deny)
     request:
+      verify: False
       <<: *hotfix_request_deny
     response:
       status_code: 400
-      body:
+      json:
         <<: *permission_denied

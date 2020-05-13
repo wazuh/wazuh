@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -9,13 +9,13 @@ from functools import wraps
 from grp import getgrnam
 from pwd import getpwnam
 from typing import Dict
-
+from copy import deepcopy
 
 try:
     here = os.path.abspath(os.path.dirname(__file__))
     with open(os.path.join(here, 'wazuh.json'), 'r') as f:
         metadata = json.load(f)
-except Exception:
+except (FileNotFoundError, PermissionError):
     metadata = {
         'install_type': 'server',
         'installation_date': '',
@@ -149,7 +149,7 @@ def context_cached(key):
             if _context_cache[key].get() is None:
                 result = func(*args, **kwargs)
                 _context_cache[key].set(result)
-            return _context_cache[key].get()
+            return deepcopy(_context_cache[key].get())
         return wrapper
     return decorator
 

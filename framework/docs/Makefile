@@ -1,5 +1,5 @@
 # Makefile for Sphinx documentation
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 #
 
 # You can set these variables from the command line.

@@ -4,23 +4,28 @@ marks:
   - usefixtures:
     - overview_white_rbac_tests
 
-includes:
- - !include common.yaml
-
 stages:
-   # Authentication stage
- - type: ref
-   id: login_get_token
 
  - name: Get full agents overview
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/overview/agents"
+     verify: False
+     url: "{protocol:s}://{host:s}:{port:d}/{version:s}/overview/agents"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
+     verify_response_with:
+       function: tavern_utils:test_validate_data_dict_field
+       extra_kwargs:
+         fields_dict:
+           agent_version:
+             version: str
+             count: int
+           nodes:
+             node: str
+             count: int
      status_code: 200
-     body:
+     json:
        data:
          agent_os:
            - count: !anyint
@@ -45,14 +50,7 @@ stages:
            never_connected: 1
            pending: 0
            total: 7
-         agent_version:
-           - count: !anyint
-             version: !anystr
-           - count: !anyint
-             version: !anystr
-           - count: !anyint
-             version: !anystr
-           - count: !anyint
+         agent_version: !anything # This will be tested with an external function
          groups: []
          last_registered_agent:
            - configSum: !anystr
@@ -77,12 +75,4 @@ stages:
              registerIP: any
              status: active
              version: !anystr
-         nodes:
-           - count: !anyint
-             node_name: !anything
-           - count: !anyint
-             node_name: !anything
-           - count: !anyint
-             node_name: !anything
-           - count: !anyint
-             node_name: !anything
+         nodes: !anything

@@ -5,18 +5,12 @@ marks:
   - usefixtures:
     - active-response_black_rbac_tests
 
-includes:
-  - !include common.yaml
-
 stages:
-
-    # Authentication stage
-  - type: ref
-    id: login_get_token
 
   - name: Runs an Active Response command on a specified agent (Deny)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -27,25 +21,15 @@ stages:
       params:
         list_agents: '001'
     response:
-      status_code: 200
-      body:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 4000
-                message: 'Permission denied: Resource type: agent:id'
-                remediation: Please, make sure you have permissions to execute current request,
-                  for more information on setting up permissions please visit XXXX
-              id:
-                - '001'
-          total_affected_items: 0
-          total_failed_items: 1
-        message: Could not send command to any agent
+      status_code: 400
+      json:
+        code: 4000
+        detail: !anystr
 
   - name: Send a message to an agent (Status=Active) (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -57,7 +41,7 @@ stages:
         list_agents: '002'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '002'
@@ -68,7 +52,8 @@ stages:
 
   - name: Send a message to a list of agents
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -80,7 +65,7 @@ stages:
         list_agents: 002,004,005,007,010,011
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '002'
@@ -88,15 +73,14 @@ stages:
           failed_items:
             - error:
                 code: 1651
-                message: Active response - Agent is not active
+                message: !anystr
                 remediation: !anything
               id:
                 - '010'
             - error:
                 code: 4000
-                message: 'Permission denied: Resource type: agent:id'
-                remediation: Please, make sure you have permissions to execute current request,
-                  for more information on setting up permissions please visit XXXX
+                message: !anystr
+                remediation: !anystr
               id:
                 - '004'
                 - '007'
@@ -107,7 +91,8 @@ stages:
 
   - name: Try to send a message to an agent (status=disconnected/never_connected) (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -118,25 +103,15 @@ stages:
       params:
         list_agents: '009'
     response:
-      status_code: 200
-      body:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 4000
-                message: 'Permission denied: Resource type: agent:id'
-                remediation: Please, make sure you have permissions to execute current request,
-                  for more information on setting up permissions please visit XXXX
-              id:
-                - 009
-          total_affected_items: 0
-          total_failed_items: 1
-        message: Could not send command to any agent
+      status_code: 400
+      json:
+        code: 4000
+        detail: !anystr
 
   - name: Try to send a message to an unexisting agent (Allow)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -148,15 +123,14 @@ stages:
         list_agents: 251,252
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
             - error:
                 code: 1701
-                message: Agent does not exist
-                remediation: Please, use `GET /agents?select=id,name` to find all available
-                  agents
+                message: !anystr
+                remediation: !anystr
               id:
                 - '251'
                 - '252'
@@ -172,7 +146,8 @@ stages:
     # PUT /active-response
   - name: Runs an Active Response command on all agents
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -182,13 +157,13 @@ stages:
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items:
             - error:
                 code: 1651
-                message: Active response - Agent is not active
+                message: !anystr
                 remediation: !anything
               id:
                 - '010'

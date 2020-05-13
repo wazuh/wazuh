@@ -4,7 +4,7 @@
 # Desc:    Add ossec users and groups on OSX using the NetInfo cmds
 # Author:  Chuck L.
 # License: GPL
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 ###
 # for vi: set tabstop=4
 #######################################

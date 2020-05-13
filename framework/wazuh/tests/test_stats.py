@@ -1,14 +1,14 @@
-#!/usr/bin/env python
 # Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import sys
 from unittest.mock import patch, MagicMock
-
+from datetime import date
 import pytest
 
 from wazuh.exception import WazuhException
+
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
@@ -24,14 +24,15 @@ with patch('wazuh.common.ossec_uid'):
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'stats')
 
-@pytest.mark.parametrize('year, month, day, data_list', [
-    (2019, "Aug", 13, ['15-571-3-2', '15--107--1483--1257--0']),
-    (2019, "Aug", 13, ['15-571-3-2']),
-    (2019, "Aug", 13, ['15--107--1483--1257--0']),
-    (2019, "Aug", 13, ['15'])
+
+@pytest.mark.parametrize('date_, data_list', [
+    (date(2019, 8, 13), ['15-571-3-2', '15--107--1483--1257--0']),
+    (date(2019, 8, 13), ['15-571-3-2']),
+    (date(2019, 8, 13), ['15--107--1483--1257--0']),
+    (date(2019, 8, 13), ['15'])
 ])
 @patch('wazuh.stats.common.stats_path', new=test_data_path)
-def test_totals(year, month, day, data_list):
+def test_totals(date_, data_list):
     """Verify totals() function works returns and correct data
 
     Checks data type of returned data. Then makes sure that data returned fit
@@ -39,17 +40,13 @@ def test_totals(year, month, day, data_list):
 
     Parameters
     ----------
-    year : str
-        Name of 'year' directory
-    month : str
-        Name of 'month' directory
-    day : str
-        Name of 'day' file
+    date_ : str
+        Date used to locate file stats.
     data_list : list
         Data to use instead of the original files.
     """
     with patch('wazuh.stats.open', return_value=data_list):
-        response = totals(year, month, day)
+        response = totals(date_)
 
         assert isinstance(response, WazuhResult), f'The result is not WazuhResult type'
 
@@ -71,44 +68,15 @@ def test_totals(year, month, day, data_list):
                         assert int(data[4]) == dict_res['result']['data'][0]['firewall'], f'Data do not match'
 
 
-@pytest.mark.parametrize('year, month, day, expected_exception', [
-    (-1, "Aug", 0, 1307),
-    (1, "Aug", 32, 1307),
-    ("First", "Aug", 13, 1307),
-    (2019, "Test", 13, 1307),
-    (2019, 13, 13, 1307),
-    (2019, 12, 13, 1307)
-])
-@patch('wazuh.stats.MONTHS', new=['One', 'Two'])
-def test_totals_ko_date(year, month, day, expected_exception):
-    """Tests totals function exception with date problems works
-
-    Parameters
-    ----------
-    year : str
-        Name of 'year' directory
-    month : str
-        Name of 'month' directory
-    day : str
-        Name of 'day' file
-    expected_exception : int
-        Expected exception code for given dates
-    """
-    with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
-        totals(year, month, day)
-
-
 def test_totals_ko_data():
     """Tests totals function exception with data problems works"""
     with patch('wazuh.stats.open', side_effect=IOError):
         with pytest.raises(WazuhException, match=".* 1308 .*"):
-            totals(1996, "Aug", 13, today=True)
-        with pytest.raises(WazuhException, match=".* 1310 .*"):
-            totals(1996, "Aug", 13)
+            totals(date(1996, 8, 13))
 
     with patch('wazuh.stats.open', return_value=['15-571-3-2', '15--107--1483']):
         with pytest.raises(WazuhException, match=".* 1309 .*"):
-            totals(1996, "Aug", 13)
+            totals(date(1996, 8, 13))
 
 
 @pytest.mark.parametrize('effect', [

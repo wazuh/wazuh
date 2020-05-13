@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -115,7 +115,7 @@ int read_sys_file(char *file_name)
 int read_sys_dir(char *dir_name)
 {
     DIR *dp;
-    struct dirent *entry;
+    struct dirent *entry = NULL;
     struct stat statbuf;
 
     /* Get the number of nodes. The total number on opendir

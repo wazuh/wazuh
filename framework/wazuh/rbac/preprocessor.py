@@ -6,6 +6,8 @@ import re
 
 from wazuh.exception import WazuhError
 from wazuh.rbac.auth_context import RBAChecker
+from wazuh.rbac.orm import AuthenticationManager
+from wazuh.results import WazuhResult
 
 
 class PreProcessor:
@@ -107,3 +109,13 @@ def optimize_resources(auth_context=None, user_id=None):
         preprocessor.process_policy(policy)
 
     return preprocessor.get_optimize_dict()
+
+
+def get_permissions(user_id=None, auth_context=None):
+    with AuthenticationManager() as auth:
+        if auth.user_auth_context(user_id):
+            # Add dummy rbac_policies for developing here
+            if auth_context:
+                return WazuhResult(optimize_resources(auth_context=auth_context))
+
+    return WazuhResult(optimize_resources(user_id=user_id))

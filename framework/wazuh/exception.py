@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -20,7 +20,8 @@ class WazuhException(Exception):
         # Wazuh: 0999 - 1099
         999: 'Incompatible version of Python',
         1000: {'message': 'Wazuh Internal Error',
-               'remediation': 'Please, check `WAZUH_HOME/logs/ossec.log` to get more information about the error'},
+               'remediation': 'Please, check `WAZUH_HOME/logs/ossec.log`, `WAZUH_HOME/logs/cluster.log` and '
+                              '`WAZUH_HOME/logs/api.log` to get more information about the error'},
         1001: 'Error importing module',
         1002: 'Error executing command',
         1003: 'Command output not in json',
@@ -40,7 +41,7 @@ class WazuhException(Exception):
         1015: 'Error agent version is null. Was the agent ever connected?',
         1016: {'message': 'Error moving file',
                'remediation': 'Please, ensure you have the required file permissions in Wazuh directories'},
-        1017: 'Some Wazuh daemons are not ready yet in node \'{node_name}\' ',
+        1017: 'Some Wazuh daemons are not ready yet in node "{node_name}" ({not_ready_daemons})',
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
         1101: {'message': 'Requested component does not exist',
@@ -123,12 +124,9 @@ class WazuhException(Exception):
         1307: {'message': 'Invalid parameters',
                'remediation': 'Please, check that the update is correct, there is a problem while reading the results, contact us at [official repository](https://github.com/wazuh/wazuh/issues)'
                },
-        1308: {'message': 'Stats file has not been created yet',
-              'remediation': 'Stats files are generated at 12 PM. '
-              'Please, try again later'},
+        1308: {'message': 'Stats file does not exist',
+               'remediation': 'Stats files are usually generated at 12 PM on a daily basis'},
         1309: 'Statistics file damaged',
-        1310: {'message': 'Stats file does not exist',
-              'remediation': 'Please, try to use another date'},
 
         # Utils: 1400 - 1499
         1400: 'Invalid offset',
@@ -146,11 +144,11 @@ class WazuhException(Exception):
         1406: {'message': '0 is not a valid limit',
                'remediation': 'Please select a limit between 1 and 1000'
                },
-        1407: 'query does not match expected format',
+        1407: 'Query does not match expected format',
         1408: 'Field does not exist.',
         1409: 'Invalid query operator.',
         1410: 'Selecting more than one field in distinct mode',
-        1411: 'Timeframe is not valid',
+        1411: 'TimeFrame is not valid',
         1412: 'Date filter not valid. Valid formats are timeframe or YYYY-MM-DD HH:mm:ss',
         1413: {'message': 'Error reading rules file'},
         1414: {'message': 'Error reading rules file',
@@ -341,6 +339,8 @@ class WazuhException(Exception):
                'remediation': 'Please select another agent or connect your agent before assigning groups'},
         1754: {'message': 'Agent does not exist or you do not have permissions to access it',
                'remediation': 'Try listing all agents with GET /agents endpoint'},
+        1755: {'message': 'The group does not have any agent assigned',
+               'remediation': 'Please select another group or assign any agent to it'},
 
         # CDB List: 1800 - 1899
         1800: {'message': 'Bad format in CDB list {path}'},
@@ -375,14 +375,14 @@ class WazuhException(Exception):
                },
         1908: {'message': 'Error validating configuration',
                'remediation': 'Please, fix the corrupted files'
-              },
+               },
         1909: {'message': 'Content of file is empty',
                'remediation': 'Try to upload another non-empty file'},
         1910: {'message': 'Content-type header is mandatory',
                'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/current/user-manual/api/reference.html#update-local-file-at-any-cluster-node)'
                               ' to get more information about how to configure a cluster'},
         1911: {'message': 'Error parsing body request to UTF-8',
-               'remediation': 'Please, check if the file content to be uploaded is right'},
+               'remediation': 'Please, check if the file content is valid UTF-8'},
         1912: {'message': 'Body is empty',
                'remediation': 'Please, check the content of the file to be uploaded'},
 
@@ -493,6 +493,11 @@ class WazuhException(Exception):
                'remediation': 'Please, create the specified user-role relation with the endpoint '
                               'POST /security/user/{username}/roles/{role_id}'},
         4017: {'message': 'The specified user-role link already exist'},
+        4018: {'message': 'Level can not be a negative number'},
+        4019: {'message': 'Invalid resource specified',
+               'remediation': 'Please, check the current RBAC resources, for more information please visit XXXX'},
+        4020: {'message': 'Invalid endpoint specified',
+               'remediation': 'Valid endpoints are: '},
         4500: {'message': 'The specified resources are invalid',
                'remediation': 'Please, make sure permissions are properly defined, '
                               'for more information on setting up permissions please visit XXXX'},
@@ -675,13 +680,6 @@ class WazuhError(WazuhException):
         result = super().to_dict()
         result['ids'] = list(self.ids)
 
-        return result
-
-    def __or__(self, other):
-        result: WazuhError = super().__or__(other)
-        if isinstance(result, WazuhError):
-            if hasattr(other, 'ids'):
-                result._ids = self.ids | other.ids
         return result
 
 

@@ -18,5 +18,6 @@ fi
 sleep 1
 
 /var/ossec/bin/ossec-control start
+/var/ossec/bin/wazuh-apid restart
 
 /usr/bin/supervisord

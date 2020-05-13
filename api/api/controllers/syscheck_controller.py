@@ -1,23 +1,20 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import asyncio
 import logging
 
-import connexion
+from aiohttp import web
 
-from wazuh.syscheck import run, clear, files, last_scan
-from api.authentication import get_permissions
-from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
+from api.encoder import dumps, prettify
+from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.syscheck import run, clear, files, last_scan
 
-loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
 
-@exception_handler
-def put_syscheck(list_agents='*', pretty=False, wait_for_complete=False):
+async def put_syscheck(request, list_agents='*', pretty=False, wait_for_complete=False):
     """Run a syscheck scan over the agent_ids
 
     :type list_agents: List of agent ids
@@ -33,20 +30,19 @@ def put_syscheck(list_agents='*', pretty=False, wait_for_complete=False):
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           broadcasting=list_agents == '*',
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-@exception_handler
-def get_syscheck_agent(agent_id, pretty=False, wait_for_complete=False, offset=0,
-                       limit=None, select=None, sort=None, search=None,
-                       summary=False, md5=None, sha1=None, sha256=None):
+async def get_syscheck_agent(request, agent_id, pretty=False, wait_for_complete=False, offset=0,
+                             limit=None, select=None, sort=None, search=None, distinct=False,
+                             summary=False, md5=None, sha1=None, sha256=None):
+
     """
     :param agent_id: Agent ID
     :type agent_id: str
@@ -72,40 +68,39 @@ def get_syscheck_agent(agent_id, pretty=False, wait_for_complete=False, offset=0
     :type sha1: str
     :param sha256: Filters files with the specified SHA256 checksum.
     :type sha256: str
+    :param distinct: Look for distinct values.
+    :type distinct: bool
     """
 
     # get type parameter from query
-    type_ = connexion.request.args.get('type', None)
+    type_ = request.query.get('type', None)
     # get hash parameter from query
-    hash_ = connexion.request.args.get('hash', None)
+    hash_ = request.query.get('hash', None)
     # get file parameter from query
-    file_ = connexion.request.args.get('file', None)
+    file_ = request.query.get('file', None)
 
     filters = {'type': type_, 'md5': md5, 'sha1': sha1,
                'sha256': sha256, 'hash': hash_, 'file': file_}
 
     f_kwargs = {'agent_list': [agent_id], 'offset': offset, 'limit': limit,
                 'select': select, 'sort': parse_api_param(sort, 'sort'), 'search': parse_api_param(search, 'search'),
-                'summary': summary, 'filters': filters}
+                'summary': summary, 'filters': filters, 'distinct': distinct}
 
     dapi = DistributedAPI(f=files,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-@exception_handler
-def delete_syscheck_agent(agent_id='*', pretty=False, wait_for_complete=False):
+async def delete_syscheck_agent(request, agent_id='*', pretty=False, wait_for_complete=False):
     """
-
     :param pretty: Show results in human-readable format 
     :type pretty: bool
     :param wait_for_complete: Disable timeout response 
@@ -120,17 +115,15 @@ def delete_syscheck_agent(agent_id='*', pretty=False, wait_for_complete=False):
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-@exception_handler
-def get_last_scan_agent(agent_id, pretty=False, wait_for_complete=False):
+async def get_last_scan_agent(request, agent_id, pretty=False, wait_for_complete=False):
     """
 
     :param pretty: Show results in human-readable format 
@@ -147,10 +140,9 @@ def get_last_scan_agent(agent_id, pretty=False, wait_for_complete=False):
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization'])
+                          rbac_permissions=request['token_info']['rbac_policies']
                           )
-    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return data, 200
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)

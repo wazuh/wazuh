@@ -1,16 +1,17 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
+import itertools
+import logging
 import ssl
+import time
+import traceback
 from typing import Tuple, Dict, List
+
 import uvloop
 
-import wazuh.core.cluster.utils
 from wazuh.core.cluster import common
-import logging
-import time
-import itertools
-import traceback
+from wazuh.core.cluster.utils import context_tag, context_subtag
 
 
 class AbstractClientManager:
@@ -37,10 +38,12 @@ class AbstractClientManager:
         self.concurrency_test = concurrency_test
         self.file = file
         self.string = string
-        self.logger = logger.getChild(tag)
+        self.logger = logging.getLogger('wazuh')
         # logging tag
         self.tag = tag
-        self.logger.addFilter(wazuh.core.cluster.utils.ClusterFilter(tag=self.tag, subtag="Main"))
+        # modify filter tags with context vars
+        context_tag.set(self.tag)
+        context_subtag.set("Main")
         self.tasks = []
         self.handler_class = AbstractClient
         self.client = None
@@ -168,6 +171,9 @@ class AbstractClient(common.Handler):
 
         if not self.on_con_lost.done():
             self.on_con_lost.set_result(True)
+        self._cancel_all_tasks()
+
+    def _cancel_all_tasks(self):
         for task in asyncio.Task.all_tasks():
             task.cancel()
 

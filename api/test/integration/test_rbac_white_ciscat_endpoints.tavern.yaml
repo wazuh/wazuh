@@ -5,24 +5,18 @@ marks:
   - usefixtures:
     - ciscat_white_rbac_tests
 
-includes:
- - !include common.yaml
-
 stages:
-
-  # Authentication stage
-  - type: ref
-    id: login_get_token
 
   - name: Get ciscat result for agent 001 (allowed)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/ciscat/001/results"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/ciscat/001/results"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: !anything
@@ -32,13 +26,14 @@ stages:
 
   - name: Get ciscat result for agent 002 (allowed)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/ciscat/002/results"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/ciscat/002/results"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items: !anything
@@ -48,14 +43,15 @@ stages:
 
   - name: Get ciscat result for agent 003 (denied)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/ciscat/003/results"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/ciscat/003/results"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 400
-      body:
+      json:
         code: 4000
-        detail: "Permission denied"
+        detail: !anystr
 
 

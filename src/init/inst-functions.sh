@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Wazuh Installer Functions
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # November 18, 2016.
 #
 # This program is free software; you can redistribute it
@@ -79,7 +79,7 @@ DisableAuthd()
     echo "  <auth>" >> $NEWCONFIG
     echo "    <disabled>yes</disabled>" >> $NEWCONFIG
     echo "    <port>1515</port>" >> $NEWCONFIG
-    echo "    <use_source_ip>yes</use_source_ip>" >> $NEWCONFIG
+    echo "    <use_source_ip>no</use_source_ip>" >> $NEWCONFIG
     echo "    <force_insert>yes</force_insert>" >> $NEWCONFIG
     echo "    <force_time>0</force_time>" >> $NEWCONFIG
     echo "    <purge>yes</purge>" >> $NEWCONFIG
@@ -795,6 +795,8 @@ InstallCommon()
   ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/alerts
   ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/ossec
   ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/diff
+  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fim
+  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fim/db
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset/sca
@@ -926,18 +928,6 @@ InstallLocal()
         LIB_FLAG="no"
     fi
 
-    ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${LIB_FLAG}
-
-    # backup configuration and certificates from old API
-    backup_old_api
-
-    #install API
-    ${MAKEBIN} --quiet -C ../api install PREFIX=${PREFIX}
-
-    # restore configuration and certificates from old API
-    restore_old_api
-
-
     if [ ! -f ${PREFIX}/etc/decoders/local_decoder.xml ]; then
         ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/decoders/local_decoder.xml
     fi
@@ -979,10 +969,21 @@ InstallLocal()
     # Install Vulnerability Detector files
     ${INSTALL} -d -m 0660 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/vulnerabilities
     ${INSTALL} -d -m 0440 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/vulnerabilities/dictionaries
-    ${INSTALL} -m 0440 -o root -g ${OSSEC_GROUP} wazuh_modules/vulnerability_detector/*.json ${PREFIX}/queue/vulnerabilities/dictionaries
+    ${INSTALL} -m 0440 -o root -g ${OSSEC_GROUP} wazuh_modules/vulnerability_detector/cpe_helper.json ${PREFIX}/queue/vulnerabilities/dictionaries
+    ${INSTALL} -m 0440 -o root -g ${OSSEC_GROUP} wazuh_modules/vulnerability_detector/msu.json.gz ${PREFIX}/queue/vulnerabilities/dictionaries
 
     ### Install Python
     ${MAKEBIN} wpython PREFIX=${PREFIX} TARGET=${INSTYPE}
+
+    ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${LIB_FLAG}
+
+    ### Install API
+    ${MAKEBIN} --quiet -C ../api install PREFIX=${PREFIX}
+
+    ### Install API service
+    if [ "X${INSTALL_API_DAEMON}" = "X" ] || [ "X${INSTALL_API_DAEMON}" = "Xy" ]; then
+        ${MAKEBIN} --quiet -C ../api service PREFIX=${PREFIX}
+    fi
 }
 
 TransferShared()
@@ -1043,6 +1044,12 @@ InstallServer()
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/aws/aws_s3.py ${PREFIX}/wodles/aws/aws-s3.py
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/generic_wrapper.sh ${PREFIX}/wodles/aws/aws-s3
 
+    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/gcloud
+    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/gcloud/gcloud.py ${PREFIX}/wodles/gcloud/gcloud.py
+    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/gcloud/integration.py ${PREFIX}/wodles/gcloud/integration.py
+    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/gcloud/tools.py ${PREFIX}/wodles/gcloud/tools.py
+    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/generic_wrapper.sh ${PREFIX}/wodles/gcloud/gcloud
+
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/docker
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/docker-listener/DockerListener.py ${PREFIX}/wodles/docker/DockerListener.py
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/generic_wrapper.sh ${PREFIX}/wodles/docker/DockerListener
@@ -1058,64 +1065,6 @@ InstallServer()
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/generic_wrapper.sh ${PREFIX}/integrations/slack
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/generic_wrapper.sh ${PREFIX}/integrations/virustotal
 
-}
-
-backup_old_api() {
-
-    API_PATH=${PREFIX}/api
-    API_PATH_BACKUP=${PREFIX}/~api
-
-    # do backup only if config.js file exists
-    if [ -f ${API_PATH}/configuration/config.js ]; then
-
-        if [ -e ${API_PATH_BACKUP} ]; then
-            rm -rf ${API_PATH_BACKUP}
-        else
-            ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${API_PATH_BACKUP}
-            chown root:ossec ${API_PATH_BACKUP}
-        fi
-
-        ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${API_PATH_BACKUP}/configuration
-        cp -rLfp ${API_PATH}/configuration/config.js ${API_PATH_BACKUP}/configuration/config.js
-
-        if [ -d ${API_PATH}/configuration/ssl ]; then
-            ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${API_PATH_BACKUP}/configuration/ssl
-            cp -rLfp ${API_PATH}/configuration/ssl/* ${API_PATH_BACKUP}/configuration/ssl
-        fi
-
-        # remove old API directory
-        rm -rf ${API_PATH}
-
-        # delete wazuh-api service
-        if command -v systemctl > /dev/null 2>&1; then
-            systemctl stop wazuh-api > /dev/null
-            systemctl disable wazuh-api > /dev/null
-            rm -f /etc/systemd/system/wazuh-api.service
-        elif command -v update-rc.d > /dev/null 2>&1; then
-            update-rc.d stop wazuh-api
-            chkconfig wazuh-api off
-            chkconfig --del wazuh-api
-            rm -f /etc/rc.d/init.d/wazuh-api
-        fi
-
-    fi
-
-}
-
-restore_old_api() {
-
-    API_PATH=${PREFIX}/api
-    API_PATH_BACKUP=${PREFIX}/~api
-
-    if [ -r ${API_PATH_BACKUP}/configuration/config.js ]; then
-        # execute migration.py
-        ${PREFIX}/framework/python/bin/python3 ../api/migration.py
-        if [ ! -d ${API_PATH}/configuration/ssl ]; then
-            ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${API_PATH}/configuration/ssl
-        fi
-        cp -rLfp ${API_PATH_BACKUP}/configuration/ssl/* ${API_PATH}/configuration/ssl
-        rm -rf ${API_PATH_BACKUP}
-    fi
 }
 
 InstallAgent()
@@ -1149,6 +1098,13 @@ InstallAgent()
     if [ ! -d ${PREFIX}/wodles/aws ]; then
         ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/aws
         ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/aws/aws_s3.py ${PREFIX}/wodles/aws/aws-s3
+    fi
+
+    if [ ! -d ${PREFIX}/wodles/gcloud ]; then
+        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/gcloud
+        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/gcloud/gcloud.py ${PREFIX}/wodles/gcloud/gcloud
+        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/gcloud/integration.py ${PREFIX}/wodles/gcloud/integration.py
+        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/gcloud/tools.py ${PREFIX}/wodles/gcloud/tools.py
     fi
 
     if [ ! -d ${PREFIX}/wodles/docker ]; then

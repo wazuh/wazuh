@@ -3,20 +3,14 @@ test_name: PUT /active-response/{:agent_id}
 
 marks:
   - usefixtures:
-    - base_tests
-
-includes:
-  - !include common.yaml
+    - active-response_tests
 
 stages:
 
-    # Authentication stage
-  - type: ref
-    id: login_get_token
-
   - name: Runs an Active Response command on a specified agent
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -28,7 +22,7 @@ stages:
         list_agents: '001'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '001'
@@ -39,7 +33,8 @@ stages:
 
   - name: Send a message to an agent (Status=Active)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -51,7 +46,7 @@ stages:
         list_agents: '002'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - '002'
@@ -61,8 +56,10 @@ stages:
         message: Command sent to all agents
 
   - name: Send a message to a list of agents (Status=Active)
+    delay_before: 45
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -74,7 +71,7 @@ stages:
         list_agents: 002,004,005,007,010
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items:
@@ -90,7 +87,8 @@ stages:
 
   - name: Try to send a message to an agent (status=disconnected/never_connected)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -102,7 +100,7 @@ stages:
         list_agents: '009'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -118,7 +116,8 @@ stages:
 
   - name: Try to send a message to an unexisting agent
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -130,7 +129,7 @@ stages:
         list_agents: '251'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -147,7 +146,8 @@ stages:
 
   - name: Try to send a message to an agent, without body
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -158,7 +158,8 @@ stages:
 
   - name: Try to send a message to an agent, malformed body
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -173,7 +174,8 @@ stages:
 
   - name: Send a message to one agent (Active response disabled)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -185,7 +187,7 @@ stages:
         list_agents: '003'
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: []
           failed_items:
@@ -208,7 +210,8 @@ stages:
     # PUT /active-response
   - name: Runs an Active Response command on all agents
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -218,7 +221,7 @@ stages:
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items: !anything
           failed_items:
@@ -245,7 +248,8 @@ stages:
     # PUT /active-response
   - name: Try to send a message to all agents, malformed body
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"

@@ -1,8 +1,9 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import os
+import pathlib
 import sys
 from functools import wraps
 from datetime import datetime
@@ -18,11 +19,11 @@ with patch('wazuh.common.ossec_uid'):
         sys.modules['api'] = MagicMock()
         import wazuh.rbac.decorators
         del sys.modules['wazuh.rbac.orm']
-        del sys.modules['api']
 
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh.manager import *
+        del sys.modules['api']
 
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -239,30 +240,28 @@ def test_get_file(test_manager, input_file):
     assert result.render()["contents"] == xml_file
 
 
+@patch('wazuh.manager.common.ossec_path', new=os.path.join(test_data_path, 'manager'))
 def test_get_file_ko():
     """Tests get_file function works"""
 
     # Bad format CDB list
-    with patch('wazuh.manager.validate_cdb_list', return_value=False):
-        with patch('wazuh.manager.re.match', return_value=True):
-            with pytest.raises(WazuhError, match=f'.* 1800 .*'):
-                get_file('input_rules_file', True)
+    with pytest.raises(WazuhError, match=f'.* 1800 .*'):
+        get_file(['etc/lists/bad_format_file'], True)
 
     # Xml syntax error
     with patch('wazuh.manager.validate_cdb_list', return_value=True):
-        with patch('wazuh.manager.validate_xml', return_value=False):
-            with pytest.raises(WazuhError, match=f'.* 1113 .*'):
-                get_file('input_rules_file', True)
+        with pytest.raises(WazuhError, match=f'.* 1113 .*'):
+            get_file(['etc/lists/bad_format_file'], True)
 
     # Path does not exist error
-    with pytest.raises(WazuhError, match=f'.* 1006 .*'):
-        get_file('input_rules_file')
+    with pytest.raises(WazuhError, match=f'.* 1906 .*'):
+        get_file(['does_not_exist'])
 
     # Open function raise IOError
     with patch('wazuh.manager.exists', return_value=True):
         with patch('wazuh.manager.open', side_effect=IOError):
             with pytest.raises(WazuhInternalError, match=f'.* 1005 .*'):
-                get_file('input_rules_file')
+                get_file(['etc/lists/bad_format_file'])
 
 
 def test_delete_file():
@@ -282,6 +281,37 @@ def test_delete_file():
         result = delete_file('/test/file')
         assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
         assert result.render()['data']['failed_items'][0]['error']['code'] == 1906, 'Error code not expected.'
+
+
+@patch('wazuh.manager.api_conf.api_conf', new={'experimental_features': True})
+def test_get_api_config():
+    """Checks that get_api_config method is returning current api_conf dict."""
+    result = get_api_config()
+    assert result == {'experimental_features': True}
+
+
+@patch('wazuh.core.manager.yaml')
+@patch('wazuh.core.manager.open')
+def test_update_api_config(mock_open, mock_yaml):
+    """Checks that update_api_config method is updating current api_conf dict and returning expected result."""
+    old_config = {'experimental_features': True}
+    new_config = {'experimental_features': False}
+
+    with patch('wazuh.core.manager.configuration.api_conf', new=old_config):
+        result = update_api_config(updated_config=new_config)
+
+        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type.'
+        assert result.render()['data']['total_failed_items'] == 0, 'Total_failed_items should be 0.'
+        assert old_config == new_config, 'Old configuration should be equal to new configuration.'
+
+
+def test_update_api_config_ko():
+    """Checks that update_api_config method is returning expected fail."""
+    with patch('wazuh.core.manager.configuration.api_conf'):
+        result = update_api_config()
+
+        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type.'
+        assert result.render()['data']['total_failed_items'] == 1, 'Total_failed_items should be 1.'
 
 
 @patch('socket.socket')

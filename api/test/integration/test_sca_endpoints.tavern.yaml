@@ -1,32 +1,27 @@
 test_name: GET /sca/001
 
-includes:
-  - !include common.yaml
-
 marks:
   - usefixtures:
     - sca_tests
 
 stages:
 
-    # Authentication stage
-  - type: ref
-    id: login_get_token
-
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data: !anything
 
   - name: Parameters -> limit=2
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -34,7 +29,7 @@ stages:
         limit: 2
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - &sca_agent_result_001
@@ -57,7 +52,8 @@ stages:
 
   - name: Parameters -> offset=1,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -66,7 +62,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -76,7 +72,8 @@ stages:
 
   - name: Parameters -> sort=-score,limit=2
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -85,7 +82,7 @@ stages:
         sort: -score
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -96,7 +93,8 @@ stages:
 
   - name: Parameters -> sort=+score,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -105,7 +103,7 @@ stages:
         sort: -score
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -115,7 +113,8 @@ stages:
 
   - name: Parameters -> search=cis,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -124,7 +123,7 @@ stages:
         search: cis
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -134,7 +133,8 @@ stages:
 
   - name: Parameters -> q=score>50,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -143,7 +143,7 @@ stages:
         q: score>40
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -153,7 +153,8 @@ stages:
 
   - name: Parameters -> limit=2500
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -161,7 +162,7 @@ stages:
         limit: 2500
     response:
       status_code: 400
-      body:
+      json:
         code: 1405
         dapi_errors: !anything
         detail: !anystr
@@ -171,7 +172,8 @@ stages:
 
   - name: Parameters -> name=CIS benchmark for Debian/Linux 9 L2,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -180,7 +182,7 @@ stages:
         name: CIS benchmark for Debian/Linux 9 L2
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -191,7 +193,8 @@ stages:
 
   - name: Parameters -> references=https://www.cisecurity.org/cis-benchmarks/,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -200,7 +203,7 @@ stages:
         references: https://www.cisecurity.org/cis-benchmarks/
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -211,7 +214,8 @@ stages:
 
   - name: Parameters -> description=This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux 9.,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -220,7 +224,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -236,18 +240,20 @@ stages:
 
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data: !anything
 
   - name: Parameters -> limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -255,7 +261,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -276,7 +282,8 @@ stages:
 
   - name: Parameters -> limit=4
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -284,7 +291,7 @@ stages:
         limit: 4
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -295,7 +302,8 @@ stages:
 
   - name: Parameters -> sort=-id,limit=2
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -304,7 +312,7 @@ stages:
         sort: -id
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -314,7 +322,8 @@ stages:
 
   - name: Parameters -> search=passwd,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -323,7 +332,7 @@ stages:
         search: passwd
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -333,7 +342,8 @@ stages:
 
   - name: Parameters -> q=id=3098
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -341,7 +351,7 @@ stages:
         q: id=3098
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -352,7 +362,8 @@ stages:
 
   - name: Parameters -> result=failed,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -361,7 +372,7 @@ stages:
         result: failed
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -372,7 +383,8 @@ stages:
 
   - name: Parameters -> file=/etc/shadow,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -381,7 +393,7 @@ stages:
         file: /etc/shadow
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -392,7 +404,8 @@ stages:
 
   - name: Parameters -> limit=2500
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -400,7 +413,7 @@ stages:
         limit: 2500
     response:
       status_code: 400
-      body:
+      json:
         code: 1405
         dapi_errors: !anything
         detail: !anystr
@@ -410,7 +423,8 @@ stages:
 
   - name: Parameters -> title="Ensure shadow group is empty,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -419,7 +433,7 @@ stages:
         title: Ensure shadow group is empty
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -430,7 +444,8 @@ stages:
 
   - name: Parameters -> remediation=Remove any legacy + entries from /etc/group if they exist.,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -439,7 +454,7 @@ stages:
         remediation: Remove any legacy + entries from /etc/group if they exist.
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -455,18 +470,20 @@ stages:
 
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data: !anything
 
   - name: Parameters -> limit=2
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -474,7 +491,7 @@ stages:
         limit: 2
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - &sca_agent_result_002
@@ -497,7 +514,8 @@ stages:
 
   - name: Parameters -> offset=1,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -506,7 +524,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -516,7 +534,8 @@ stages:
 
   - name: Parameters -> sort=-score,limit=2
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -525,7 +544,7 @@ stages:
         sort: -score
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -536,7 +555,8 @@ stages:
 
   - name: Parameters -> sort=+score,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -545,7 +565,7 @@ stages:
         sort: -score
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -555,7 +575,8 @@ stages:
 
   - name: Parameters -> search=cis,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -564,7 +585,7 @@ stages:
         search: cis
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -574,7 +595,8 @@ stages:
 
   - name: Parameters -> q=score>50,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -583,7 +605,7 @@ stages:
         q: score>40
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -593,7 +615,8 @@ stages:
 
   - name: Parameters -> limit=2500
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -601,7 +624,7 @@ stages:
         limit: 2500
     response:
       status_code: 400
-      body:
+      json:
         code: 1405
         dapi_errors: !anything
         detail: !anystr
@@ -611,7 +634,8 @@ stages:
 
   - name: Parameters -> name=CIS benchmark for Debian/Linux 9 L2,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -620,7 +644,7 @@ stages:
         name: CIS benchmark for Debian/Linux 9 L2
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -631,7 +655,8 @@ stages:
 
   - name: Parameters -> references=https://www.cisecurity.org/cis-benchmarks/,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -640,7 +665,7 @@ stages:
         references: https://www.cisecurity.org/cis-benchmarks/
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -651,7 +676,8 @@ stages:
 
   - name: Parameters -> description=This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux 9.,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -660,7 +686,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -676,18 +702,20 @@ stages:
 
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data: !anything
 
   - name: Parameters -> limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -695,7 +723,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -716,7 +744,8 @@ stages:
 
   - name: Parameters -> limit=4
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -724,7 +753,7 @@ stages:
         limit: 4
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -735,7 +764,8 @@ stages:
 
   - name: Parameters -> sort=-id,limit=2
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -744,7 +774,7 @@ stages:
         sort: -id
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -754,7 +784,8 @@ stages:
 
   - name: Parameters -> search=passwd,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -763,7 +794,7 @@ stages:
         search: passwd
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -773,7 +804,8 @@ stages:
 
   - name: Parameters -> q=id=3098
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -781,7 +813,7 @@ stages:
         q: id=3098
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -792,7 +824,8 @@ stages:
 
   - name: Parameters -> result=failed,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -801,7 +834,7 @@ stages:
         result: failed
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -812,7 +845,8 @@ stages:
 
   - name: Parameters -> file=/etc/shadow,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -821,7 +855,7 @@ stages:
         file: /etc/shadow
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -832,7 +866,8 @@ stages:
 
   - name: Parameters -> limit=2500
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -840,7 +875,7 @@ stages:
         limit: 2500
     response:
       status_code: 400
-      body:
+      json:
         code: 1405
         dapi_errors: !anything
         detail: !anystr
@@ -850,7 +885,8 @@ stages:
 
   - name: Parameters -> title="Ensure shadow group is empty,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -859,7 +895,7 @@ stages:
         title: Ensure shadow group is empty
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -870,7 +906,8 @@ stages:
 
   - name: Parameters -> remediation=Remove any legacy + entries from /etc/group if they exist.,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/002/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/002/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -879,7 +916,7 @@ stages:
         remediation: Remove any legacy + entries from /etc/group if they exist.
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -895,18 +932,20 @@ stages:
 
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data: !anything
 
   - name: Parameters -> limit=2
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -914,7 +953,7 @@ stages:
         limit: 2
     response:
       status_code: 200
-      body:
+      json:
         data:
           affected_items:
             - &sca_agent_result_003
@@ -937,7 +976,8 @@ stages:
 
   - name: Parameters -> offset=1,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -946,7 +986,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -956,7 +996,8 @@ stages:
 
   - name: Parameters -> sort=-score,limit=2
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -965,7 +1006,7 @@ stages:
         sort: -score
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -976,7 +1017,8 @@ stages:
 
   - name: Parameters -> sort=+score,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -985,7 +1027,7 @@ stages:
         sort: -score
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -995,7 +1037,8 @@ stages:
 
   - name: Parameters -> search=cis,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1004,7 +1047,7 @@ stages:
         search: cis
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1014,7 +1057,8 @@ stages:
 
   - name: Parameters -> q=score>50,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1023,7 +1067,7 @@ stages:
         q: score>40
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1033,7 +1077,8 @@ stages:
 
   - name: Parameters -> limit=2500
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1041,7 +1086,7 @@ stages:
         limit: 2500
     response:
       status_code: 400
-      body:
+      json:
         code: 1405
         dapi_errors: !anything
         detail: !anystr
@@ -1051,7 +1096,8 @@ stages:
 
   - name: Parameters -> name=CIS benchmark for Debian/Linux 9 L2,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1060,7 +1106,7 @@ stages:
         name: CIS benchmark for Debian/Linux 9 L2
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1071,7 +1117,8 @@ stages:
 
   - name: Parameters -> references=https://www.cisecurity.org/cis-benchmarks/,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1080,7 +1127,7 @@ stages:
         references: https://www.cisecurity.org/cis-benchmarks/
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1091,7 +1138,8 @@ stages:
 
   - name: Parameters -> description=This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux 9.,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1100,7 +1148,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1116,18 +1164,20 @@ stages:
 
   - name: Request
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      body:
+      json:
         data: !anything
 
   - name: Parameters -> limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1135,7 +1185,7 @@ stages:
         limit: 1
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1156,7 +1206,8 @@ stages:
 
   - name: Parameters -> limit=4
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1164,7 +1215,7 @@ stages:
         limit: 4
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1175,7 +1226,8 @@ stages:
 
   - name: Parameters -> sort=-id,limit=2
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1184,7 +1236,7 @@ stages:
         sort: -id
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1194,7 +1246,8 @@ stages:
 
   - name: Parameters -> search=passwd,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1203,7 +1256,7 @@ stages:
         search: passwd
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1213,7 +1266,8 @@ stages:
 
   - name: Parameters -> q=id=3098
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1221,7 +1275,7 @@ stages:
         q: id=3098
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1232,7 +1286,8 @@ stages:
 
   - name: Parameters -> result=failed,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1241,7 +1296,7 @@ stages:
         result: failed
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1252,7 +1307,8 @@ stages:
 
   - name: Parameters -> file=/etc/shadow,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1261,7 +1317,7 @@ stages:
         file: /etc/shadow
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1272,7 +1328,8 @@ stages:
 
   - name: Parameters -> limit=2500
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1280,7 +1337,7 @@ stages:
         limit: 2500
     response:
       status_code: 400
-      body:
+      json:
         code: 1405
         dapi_errors: !anything
         detail: !anystr
@@ -1290,7 +1347,8 @@ stages:
 
   - name: Parameters -> title="Ensure shadow group is empty,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1299,7 +1357,7 @@ stages:
         title: Ensure shadow group is empty
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
@@ -1310,7 +1368,8 @@ stages:
 
   - name: Parameters -> remediation=Remove any legacy + entries from /etc/group if they exist.,limit=1
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/sca/003/checks/cis_debian9_L1"
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/sca/003/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1319,7 +1378,7 @@ stages:
         remediation: Remove any legacy + entries from /etc/group if they exist.
     response:
       status_code: 200
-      body:
+      json:
         data:
           total_affected_items: !anyint
           affected_items:
