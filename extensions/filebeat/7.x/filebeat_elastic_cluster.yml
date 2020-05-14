@@ -1,6 +1,18 @@
 # Wazuh - Filebeat configuration file
-output.elasticsearch.hosts: ["<elasticsearch_ip_node_1>:9200", "<elasticsearch_ip_node_2>:9200", "<elasticsearch_ip_node_3>:9200"]
-output.elasticsearch.password: <elasticsearch_password>
+output.elasticsearch:
+  hosts: ["<elasticsearch_ip_node_1>:9200", "<elasticsearch_ip_node_2>:9200", "<elasticsearch_ip_node_3>:9200"]
+  protocol: https
+  username: "admin"
+  password: "admin"
+  ssl.certificate_authorities:
+    - /etc/filebeat/certs/root-ca.pem
+  ssl.certificate: "/etc/filebeat/certs/filebeat.pem"
+  ssl.key: "/etc/filebeat/certs/filebeat.key"
+setup.template.json.enabled: true
+setup.template.json.path: '/etc/filebeat/wazuh-template.json'
+setup.template.json.name: 'wazuh'
+setup.ilm.overwrite: true
+setup.ilm.enabled: false
 
 filebeat.modules:
   - module: wazuh
@@ -8,15 +20,3 @@ filebeat.modules:
       enabled: true
     archives:
       enabled: false
-
-setup.template.json.enabled: true
-setup.template.json.path: /etc/filebeat/wazuh-template.json
-setup.template.json.name: wazuh
-setup.template.overwrite: true
-setup.ilm.enabled: false
-
-output.elasticsearch.protocol: https
-output.elasticsearch.ssl.certificate: /etc/filebeat/certs/filebeat.crt
-output.elasticsearch.ssl.key: /etc/filebeat/certs/filebeat.key
-output.elasticsearch.ssl.certificate_authorities: /etc/filebeat/certs/ca/ca.crt
-output.elasticsearch.username: elastic
