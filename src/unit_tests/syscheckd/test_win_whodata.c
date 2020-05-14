@@ -4585,7 +4585,7 @@ void test_whodata_callback_event_4656_canceled(void **state){
     buffer[5].Type = EvtVarTypeHexInt64;
     buffer[6].Type = EvtVarTypeHexInt32;
     buffer[7].Type = EvtVarTypeNull;
-    const char* win_path = syscheck.dir[0];
+    const char* win_path = syscheck.dir[1];
     buffer[0].Int16Val = 4656;
     buffer[1].XmlVal = L"USERNAME";
     buffer[2].XmlVal = (const short unsigned int *) win_path;
@@ -4604,13 +4604,13 @@ void test_whodata_callback_event_4656_canceled(void **state){
 
     //Whodata path
     {
-        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, syscheck.dir[0]);
+        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, syscheck.dir[1]);
         expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
         will_return(wrap_win_whodata_WideCharToMultiByte, 21);
 
-        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, syscheck.dir[0]);
+        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, syscheck.dir[1]);
         expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
-        will_return(wrap_win_whodata_WideCharToMultiByte, syscheck.dir[0]);
+        will_return(wrap_win_whodata_WideCharToMultiByte, syscheck.dir[1]);
         will_return(wrap_win_whodata_WideCharToMultiByte, 21);
     }
 
@@ -4628,7 +4628,7 @@ void test_whodata_callback_event_4656_canceled(void **state){
     will_return(__wrap_fim_configuration_directory, 8);
 
     char debug_msg[OS_MAXSTR];
-    snprintf(debug_msg, OS_MAXSTR, "(6240): The monitoring of '%s' in whodata mode has been canceled. Added to the ignore list.", syscheck.dir[0]);
+    snprintf(debug_msg, OS_MAXSTR, "(6240): The monitoring of '%s' in whodata mode has been canceled. Added to the ignore list.", syscheck.dir[1]);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
     int ret = whodata_callback(action, NULL, event);
@@ -4703,11 +4703,11 @@ void test_whodata_callback_event_4656_handler_not_removed(void **state) {
     expect_string(__wrap__mwarn, formatted_msg, "(6681): Invalid parameter type (0) for 'user_id'.");
 
     expect_function_call(__wrap_fim_configuration_directory);
-    expect_string(__wrap_fim_configuration_directory, path, "c:\\windows\\sysnative\\");
+    expect_string(__wrap_fim_configuration_directory, path, "c:\\windows\\sasa.exe");
     expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 1);
 
-    expect_string(__wrap_check_path_type, dir, "c:\\windows\\sysnative\\");
+    expect_string(__wrap_check_path_type, dir, "c:\\windows\\sasa.exe");
     will_return(__wrap_check_path_type, 0);
 
     // OSHash_Add_ex
@@ -7830,7 +7830,7 @@ void test_set_subscription_query(void **state) {
     wchar_t *expected_output = L"Event[ System[band(Keywords, 9007199254740992)] and "
                                 "( ( ( EventData/Data[@Name='ObjectType'] = 'File' ) and "
                                 "( (  System/EventID = 4656 or System/EventID = 4663 ) and "
-                                "( EventData[band(Data[@Name='AccessMask'], 327938)] ) ) ) or "
+                                "( EventData[band(Data[@Name='AccessMask'], 327942)] ) ) ) or "
                                 "System/EventID = 4658 or System/EventID = 4659 or System/EventID = 4660 ) ]";
 
     set_subscription_query(output);

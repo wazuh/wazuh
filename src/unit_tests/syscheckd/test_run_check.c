@@ -438,7 +438,7 @@ void test_fim_whodata_initialize_fail_set_policies(void **state)
 
         str_lowercase(expanded_dirs[i]);
         expect_string(__wrap_realtime_adddir, dir, expanded_dirs[i]);
-        expect_value(__wrap_realtime_adddir, whodata, 9);
+        expect_value(__wrap_realtime_adddir, whodata, 10);
         will_return(__wrap_realtime_adddir, 0);
     }
 
