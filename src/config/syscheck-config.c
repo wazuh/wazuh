@@ -330,7 +330,7 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag)
     char *tmp_str;
 
     /* Get each entry separately */
-    entry = OS_StrBreak(',', entries, MAX_DIR_SIZE); /* Max number */
+    entry = OS_StrBreak(',', entries, MAX_DIR_SIZE + 1); /* Max number */
 
     if (entry == NULL) {
         return (0);
@@ -341,6 +341,14 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag)
         char * clean_tag = NULL;
 
         tmp_entry = entry[j];
+
+
+        /* When the maximum number of registries is reached, the excess is discarded and warned */
+        if (j >= MAX_DIR_SIZE){
+            mwarn(FIM_WARN_MAX_REG_REACH, MAX_DIR_SIZE);
+            free(entry[j]);
+            continue;
+        }
 
         /* Remove spaces at the beginning */
         while (*tmp_entry == ' ') {
@@ -423,10 +431,11 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     char *clean_tag = NULL;
     char **dir;
     char *tmp_str;
-    dir = OS_StrBreak(',', dirs, MAX_DIR_SIZE); /* Max number */
+    dir = OS_StrBreak(',', dirs, MAX_DIR_SIZE + 1); /* Max number */
     char **dir_org = dir;
 
     int i;
+    int j = 0;
 
     /* Dir can not be null */
     if (dir == NULL) {
@@ -441,6 +450,13 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         char **values = NULL;
 
         tmp_dir = *dir;
+
+        /* When the maximum number of directories is reached, the excess is discarded and warned */
+        if (j++ >= MAX_DIR_SIZE){
+            mwarn(FIM_WARN_MAX_DIR_REACH, MAX_DIR_SIZE);
+            dir++;
+            continue;
+        }
 
         /* Remove spaces at the beginning */
         while (*tmp_dir == ' ') {
