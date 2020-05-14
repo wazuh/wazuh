@@ -15,7 +15,7 @@
     static int flag_fopen = 0;
 #endif
 
-extern int w_enrollment_concat_src_ip(char *buff, const char* sender_ip);
+extern int w_enrollment_concat_src_ip(char *buff, const char* sender_ip, const int use_src_ip);
 extern void w_enrollment_concat_group(char *buff, const char* centralized_group);
 extern void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_cert, const char *hostname);
 extern int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_address);
@@ -390,7 +390,7 @@ void test_w_enrollment_concat_src_ip_invalid_ip(void **state) {
     will_return(__wrap_OS_IsValidIP, 0);
 
     expect_string(__wrap__merror, formatted_msg, "Invalid IP address provided for sender IP.");
-    int ret = w_enrollment_concat_src_ip(buf, sender_ip);
+    int ret = w_enrollment_concat_src_ip(buf, sender_ip, 0);
     assert_int_equal(ret, -1);
 }
 
@@ -401,7 +401,7 @@ void test_w_enrollment_concat_src_ip_valid_ip(void **state) {
     expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
     will_return(__wrap_OS_IsValidIP, 1);
 
-    int ret = w_enrollment_concat_src_ip(buf, sender_ip);
+    int ret = w_enrollment_concat_src_ip(buf, sender_ip, 0);
     assert_int_equal(ret, 0);
     assert_string_equal(buf, " IP:'192.168.1.1'");
 }
@@ -410,13 +410,33 @@ void test_w_enrollment_concat_src_ip_empty_ip(void **state) {
     char *buf = *state;
     const char* sender_ip = NULL;
 
-    int ret = w_enrollment_concat_src_ip(buf, sender_ip);
+    int ret = w_enrollment_concat_src_ip(buf, sender_ip, 1);
     assert_int_equal(ret, 0);
     assert_string_equal(buf, " IP:'src'");
 }
 
+void test_w_enrollment_concat_src_ip_incomaptible_opt(void **state) {
+    char *buf = *state;
+    const char* sender_ip ="192.168.1.1";
+
+    expect_string(__wrap__merror, formatted_msg, "Incompatible sender_ip options: Forcing IP while using use_source_ip flag.");
+    int ret = w_enrollment_concat_src_ip(buf, sender_ip, 1);
+    assert_int_equal(ret, -1);
+   
+}
+
+void test_w_enrollment_concat_src_ip_default(void **state) {
+    char *buf = *state;
+    const char* sender_ip = NULL;
+
+    int ret = w_enrollment_concat_src_ip(buf, sender_ip, 0);
+    assert_int_equal(ret, 0);
+    assert_string_equal(buf, "");
+   
+}
+
 void test_w_enrollment_concat_src_ip_empty_buff(void **state) {
-    expect_assert_failure(w_enrollment_concat_src_ip(NULL, NULL));
+    expect_assert_failure(w_enrollment_concat_src_ip(NULL, NULL, 0));
 }
 /**********************************************/
 /************* w_enrollment_concat_group ****************/
@@ -651,7 +671,7 @@ void test_w_enrollment_send_message_fix_invalid_hostname(void **state) {
     // If gethostname returns an invalid string should be fixed by OS_ConvertToValidAgentName
     expect_string(__wrap__minfo, formatted_msg, "Using agent name as: InvalidHostname");
     expect_value(__wrap_SSL_write, ssl, cfg->ssl);
-    expect_string(__wrap_SSL_write, buf, "OSSEC A:'InvalidHostname' IP:'src'\n");
+    expect_string(__wrap_SSL_write, buf, "OSSEC A:'InvalidHostname'\n");
     will_return(__wrap_SSL_write, -1);
     expect_string(__wrap__merror, formatted_msg, "SSL write error (unable to send message.)");
     expect_string(__wrap__merror, formatted_msg, "If Agent verification is enabled, agent key and certifiates are required!");
@@ -670,7 +690,7 @@ void test_w_enrollment_send_message_ssl_error(void **state) {
     #endif
     expect_string(__wrap__minfo, formatted_msg, "Using agent name as: host.name");
     expect_value(__wrap_SSL_write, ssl, cfg->ssl);
-    expect_string(__wrap_SSL_write, buf, "OSSEC A:'host.name' IP:'src'\n");
+    expect_string(__wrap_SSL_write, buf, "OSSEC A:'host.name'\n");
     will_return(__wrap_SSL_write, -1);
     expect_string(__wrap__merror, formatted_msg, "SSL write error (unable to send message.)");
     expect_string(__wrap__merror, formatted_msg, "If Agent verification is enabled, agent key and certifiates are required!");
@@ -1069,6 +1089,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_w_enrollment_concat_src_ip_invalid_ip, test_setup_concats, test_teardown_concats),
         cmocka_unit_test_setup_teardown(test_w_enrollment_concat_src_ip_valid_ip, test_setup_concats, test_teardown_concats),
         cmocka_unit_test_setup_teardown(test_w_enrollment_concat_src_ip_empty_ip, test_setup_concats, test_teardown_concats),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_concat_src_ip_incomaptible_opt, test_setup_concats, test_teardown_concats),
         cmocka_unit_test(test_w_enrollment_concat_src_ip_empty_buff),
         // w_enrollment_concat_group
         cmocka_unit_test(test_w_enrollment_concat_group_empty_buff),
