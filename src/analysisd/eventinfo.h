@@ -112,10 +112,13 @@ typedef struct _Eventinfo {
     char *group_id;
     char *group_name;
     char *process_name;
+    char *cwd;
     char *audit_uid;
     char *audit_name;
     char *effective_uid;
     char *effective_name;
+    char *parent_name;
+    char *parent_cwd;
     char *ppid;
     char *process_id;
     u_int16_t decoder_syscheck_id;
