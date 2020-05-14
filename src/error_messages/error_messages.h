@@ -371,6 +371,7 @@
 #define VU_REPORT_NVD_REF_ERROR     "(5579): Could not fill the report with the CVE references from the NVD for agent '%.3d'"
 #define VU_REPORT_NVD_SCORE_ERROR   "(5580): Could not fill the report with the CVE score from the NVD for agent '%.3d'"
 #define VU_REPORT_OVAL_ERROR        "(5581): Could not fill the report with the CVE info from the Vendor feed for agent '%.3d'"
+#define VU_GET_DEB_STATUS_FEED      "(5582): Couldn't get the Debian feed '%s' to check the status of the packages. This can lead to many false positives."
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"
