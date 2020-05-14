@@ -214,6 +214,10 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
             cJSON_AddItemToObject(file_diff, "hard_links", cJSON_Parse(lf->fields[FIM_HARD_LINKS].value));
         }
 
+        if (lf->fields[FIM_MODE].value) {
+            cJSON_AddStringToObject(file_diff, "mode", lf->fields[FIM_MODE].value);
+        }
+
         if (lf->sym_path && *lf->sym_path) {
             cJSON_AddStringToObject(file_diff, "symbolic_path", lf->sym_path);
         }

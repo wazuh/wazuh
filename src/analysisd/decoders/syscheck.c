@@ -37,20 +37,28 @@ static int fim_db_search (char *f_name, char *c_sum, char *w_sum, Eventinfo *lf,
 
 // Build FIM alert
 static int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, _sdb *localsdb);
+
 // Build fileds whodata alert
 static void InsertWhodata (const sk_sum_t * sum, _sdb *localsdb);
+
 // Compare the first common fields between sum strings
 static int SumCompare (const char *s1, const char *s2);
+
 // Check for exceed num of changes
 static int fim_check_changes (int saved_frequency, long saved_time, Eventinfo *lf);
+
 // Send control message to wazuhdb
 static int fim_control_msg (char *key, time_t value, Eventinfo *lf, _sdb *sdb);
+
 //Update field date at last event generated
 int fim_update_date (char *file, Eventinfo *lf, _sdb *sdb);
+
 // Clean for old entries
 int fim_database_clean (Eventinfo *lf, _sdb *sdb);
+
 // Clean sdb memory
 void sdb_clean(_sdb *localsdb);
+
 // Get timestamp for last scan from wazuhdb
 int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb, const char *param);
 
@@ -58,8 +66,19 @@ int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb, const char *param);
 static int fim_process_alert(_sdb *sdb, Eventinfo *lf, cJSON *event);
 
 // Generate fim alert
-static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
-        cJSON *attributes, cJSON *old_attributes, cJSON *audit);
+
+/**
+ * @brief Generate fim alert
+ * 
+ * @param lf Event information
+ * @param event_type Type of event (added, modified, deleted)
+ * @param attributes New file attributes
+ * @param old_attributes File attributes before the alert
+ * @param audit Audit information
+ * 
+ * @returns 0 on success, -1 on failure
+*/
+static int fim_generate_alert(Eventinfo *lf, char *event_type, cJSON *attributes, cJSON *old_attributes, cJSON *audit);
 
 // Send save query to Wazuh DB
 static void fim_send_db_save(_sdb * sdb, const char * agent_id, cJSON * data);
@@ -119,6 +138,7 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
     fim_decoder->fields[FIM_FILE] = "file";
     fim_decoder->fields[FIM_SIZE] = "size";
     fim_decoder->fields[FIM_HARD_LINKS] = "hard_links";
+    fim_decoder->fields[FIM_MODE] = "mode";
     fim_decoder->fields[FIM_PERM] = "perm";
     fim_decoder->fields[FIM_UID] = "uid";
     fim_decoder->fields[FIM_GID] = "gid";
@@ -1060,7 +1080,7 @@ int decode_fim_event(_sdb *sdb, Eventinfo *lf) {
      *   data: {
      *     path:                string
      *     hard_links:          array
-     *     mode:                "scheduled"|"real-time"|"whodata"
+     *     mode:                "scheduled"|"realtime"|"whodata"
      *     type:                "added"|"deleted"|"modified"
      *     timestamp:           number
      *     changed_attributes: [
@@ -1184,7 +1204,6 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
     cJSON *old_attributes = NULL;
     cJSON *audit = NULL;
     cJSON *object = NULL;
-    char *mode = NULL;
     char *event_type = NULL;
 
     cJSON_ArrayForEach(object, event) {
@@ -1199,7 +1218,8 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
                 os_strdup(object->valuestring, lf->filename);
                 os_strdup(object->valuestring, lf->fields[FIM_FILE].value);
             } else if (strcmp(object->string, "mode") == 0) {
-                mode = object->valuestring;
+                os_strdup(object->valuestring, lf->mode);
+                os_strdup(lf->mode, lf->fields[FIM_MODE].value);
             } else if (strcmp(object->string, "type") == 0) {
                 event_type = object->valuestring;
             } else if (strcmp(object->string, "tags") == 0) {
@@ -1261,7 +1281,7 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
 
     lf->decoder_syscheck_id = lf->decoder_info->id;
 
-    fim_generate_alert(lf, mode, event_type, attributes, old_attributes, audit);
+    fim_generate_alert(lf, event_type, attributes, old_attributes, audit);
 
     switch (lf->event_type) {
     case FIM_ADDED:
@@ -1347,8 +1367,7 @@ end:
 }
 
 
-static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
-    cJSON *attributes, cJSON *old_attributes, cJSON *audit) {
+static int fim_generate_alert(Eventinfo *lf, char *event_type, cJSON *attributes, cJSON *old_attributes, cJSON *audit) {
 
     cJSON *object = NULL;
     char change_size[OS_FLSIZE + 1] = {'\0'};
@@ -1484,7 +1503,7 @@ static int fim_generate_alert(Eventinfo *lf, char *mode, char *event_type,
             "%s%s%s%s%s%s%s%s%s%s%s%s",
             path_log_len > 756 ? path_splitted : lf->fields[FIM_FILE].value, event_type,
             lf->fields[FIM_HARD_LINKS].value ? hard_links : "",
-            mode,
+            lf->fields[FIM_MODE].value,
             lf->fields[FIM_CHFIELDS].value ? changed_attributes : "",
             change_size,
             change_perm,

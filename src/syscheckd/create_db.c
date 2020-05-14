@@ -41,7 +41,7 @@ static const char *FIM_EVENT_TYPE[] = {
 
 static const char *FIM_EVENT_MODE[] = {
     "scheduled",
-    "real-time",
+    "realtime",
     "whodata"
 };
 
