@@ -5,7 +5,7 @@ import re
 import subprocess
 
 
-RESULTS_PATH = PUT_YOUR_RESULTS_PATH_HERE
+RESULTS_PATH = 'test_results'
 PYTEST_COMMAND = 'pytest -vv'
 TESTS_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -16,7 +16,7 @@ def calculate_result(file_name):
     print(f'\t{re.search(r"=+(.*) in (.*)s.*=+", file).group(1)}\n')
 
 
-def run_tests(keyword=None, rbac='both', iterations=1):
+def collect_tests(keyword=None, rbac='both'):
     os.chdir(TESTS_PATH)
 
     def filter_tests(kw, rb):
@@ -34,13 +34,17 @@ def run_tests(keyword=None, rbac='both', iterations=1):
                     test_list.append(file)
         return sorted(test_list)
 
-    tests = filter_tests(keyword, rbac)
-    print(f'Collected tests [{len(tests)}]:')
-    print('{}\n\n'.format(", ".join([t for t in tests])))
+    collected_tests = filter_tests(keyword, rbac)
+    print(f'Collected tests [{len(collected_tests)}]:')
+    print('{}\n\n'.format(", ".join([t for t in collected_tests])))
 
-    for test in tests:
-        for i in range(1, iterations + 1):
-            iteration_info = f'[{i}/{iterations}]' if iterations > 1 else ''
+    return collected_tests
+
+
+def run_tests(collected_tests, n_iterations=1):
+    for test in collected_tests:
+        for i in range(1, n_iterations + 1):
+            iteration_info = f'[{i}/{n_iterations}]' if n_iterations > 1 else ''
             test_name = f'{test.rsplit(".")[0]}{i if i != 1 else ""}'
             print(f'{test} {iteration_info}')
             f = open(os.path.join(RESULTS_PATH, test_name), 'w')
@@ -66,10 +70,11 @@ def get_script_arguments():
 
 
 if __name__ == '__main__':
-    assert os.path.exists(RESULTS_PATH), f'"{RESULTS_PATH}" is not a valid path for the test results.'
+    os.makedirs(os.path.join(TESTS_PATH, RESULTS_PATH), exist_ok=True)
     options = get_script_arguments()
-    keyword = options.keyword
-    rbac = options.rbac
+    key = options.keyword
+    rbac_arg = options.rbac
     iterations = options.iterations
 
-    run_tests(keyword=keyword, rbac=rbac, iterations=iterations)
+    tests = collect_tests(keyword=key, rbac=rbac_arg)
+    run_tests(collected_tests=tests, n_iterations=iterations)

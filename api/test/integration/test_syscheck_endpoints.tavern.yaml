@@ -2,8 +2,7 @@
 test_name: GET /syscheck/000
 
 marks:
-  - usefixtures:
-    - syscheck_tests
+  - base_tests
 
 stages:
 

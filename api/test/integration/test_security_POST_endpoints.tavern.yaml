@@ -2,8 +2,7 @@
 test_name: POST /security/roles
 
 marks:
-  - usefixtures:
-    - security_tests
+  - base_tests
 
 stages:
 
@@ -699,7 +698,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        role_ids: 99,98
+        role_ids: 500,498
     response:
       status_code: 200
       json:
@@ -711,8 +710,8 @@ stages:
                 message: !anystr
                 remediation: !anystr
               id:
-                - '98'
-                - '99'
+                - '498'
+                - '500'
           total_affected_items: 0
           total_failed_items: 2
 
@@ -725,7 +724,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        role_ids: 4,5,3,99,98
+        role_ids: 4,5,3,500,498
     response:
       status_code: 200
       json:
@@ -742,8 +741,8 @@ stages:
                 message: !anystr
                 remediation: !anystr
               id:
-                - '98'
-                - '99'
+                - '498'
+                - '500'
             - error:
                 code: 4017
                 message: !anystr

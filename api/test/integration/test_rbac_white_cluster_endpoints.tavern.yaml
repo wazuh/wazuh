@@ -2,8 +2,7 @@
 test_name: /cluster/local/config
 
 marks:
-  - usefixtures:
-    - cluster_white_rbac_tests
+  - rbac_tests
 
 stages:
 

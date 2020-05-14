@@ -2,8 +2,7 @@
 test_name: PUT /active-response/{:agent_id}
 
 marks:
-  - usefixtures:
-    - active-response_tests
+  - base_tests
 
 stages:
 
@@ -259,4 +258,3 @@ stages:
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
     response:
       status_code: 400
-

@@ -2,8 +2,7 @@
 test_name: DELETE /experimental/syscheck
 
 marks:
-  - usefixtures:
-    - experimental_tests
+  - base_tests
 
 stages:
 

@@ -1,8 +1,7 @@
 test_name: GET /overview/agents
 
 marks:
-  - usefixtures:
-    - overview_white_rbac_tests
+  - rbac_tests
 
 stages:
 

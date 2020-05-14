@@ -2,8 +2,7 @@
 test_name: GET /security/roles
 
 marks:
-  - usefixtures:
-    - security_tests
+  - base_tests
 
 stages:
 
@@ -540,13 +539,16 @@ stages:
                 - 12
                 - 10
                 - 11
+            - username: testing
+              roles:
+                - 99
             - username: wazuh
               roles:
                 - 1
             - username: wazuh-wui
               roles:
                 - 2
-          total_affected_items: 8
+          total_affected_items: 9
           total_failed_items: 0
           failed_items: []
         message: All specified users were shown
@@ -756,7 +758,10 @@ stages:
                 - 12
                 - 10
                 - 11
-          total_affected_items: 6
+            - username: testing
+              roles:
+                - 99
+          total_affected_items: 7
           total_failed_items: 0
           failed_items: []
         message: All specified users were shown
@@ -781,6 +786,9 @@ stages:
             - username: wazuh
               roles:
                 - 1
+            - username: testing
+              roles:
+                - 99
             - username: rbac
               roles:
                 - 12
@@ -804,7 +812,7 @@ stages:
               roles:
                 - 8
                 - 9
-          total_affected_items: 8
+          total_affected_items: 9
           total_failed_items: 0
           failed_items: []
         message: All specified users were shown
@@ -842,13 +850,16 @@ stages:
                 - 12
                 - 10
                 - 11
+            - username: testing
+              roles:
+                - 99
             - username: wazuh
               roles:
                 - 1
             - username: wazuh-wui
               roles:
                 - 2
-          total_affected_items: 8
+          total_affected_items: 9
           total_failed_items: 0
           failed_items: []
         message: All specified users were shown
@@ -879,13 +890,16 @@ stages:
                 - 12
                 - 10
                 - 11
+            - username: testing
+              roles:
+                - 99
             - username: wazuh
               roles:
                 - 1
             - username: wazuh-wui
               roles:
                 - 2
-          total_affected_items: 8
+          total_affected_items: 9
           total_failed_items: 0
           failed_items: []
         message: All specified users were shown
@@ -903,7 +917,7 @@ stages:
             - username: administrator
               roles:
                 - 9
-          total_affected_items: 8
+          total_affected_items: 9
           total_failed_items: 0
           failed_items: []
         message: All specified users were shown
@@ -941,7 +955,7 @@ stages:
     request:
       <<: *rbac_actions_request
       params:
-        endpoint: "GET ​/rules​/files"
+        endpoint: "GET /rules/files"
     response:
       status_code: 200
       json:
