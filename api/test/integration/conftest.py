@@ -134,7 +134,7 @@ def general_procedure(module: str):
 
 def healthcheck_procedure(module: str):
     """Copy base healthchecks for managers and agents.
-    If the environment need a specified one, the base healthcheck will be replaced.
+    If the environment need a specific one, the base healthcheck will be replaced.
 
     Parameters
     ----------
@@ -183,19 +183,19 @@ def clean_tmp_folder():
 
 
 def generate_rbac_pair(index: int, permission: dict):
-    """Generate a policy and the relationship between its and the testing role.
+    """Generate a policy and the relationship between it and the testing role.
 
     Parameters
     ----------
     index : int
-        Integer that is used to define a policy and relationship id that are not used in the database
+        Integer that is used to define a policy and a relationship id that are not used in the database
     permission : dict
-        Dict that contains the policy information
+        Dict containing the policy information
 
     Returns
     -------
     list
-        List with two SQL sentences, the first creates the policy and the second relates it with the testing role
+        List with two SQL sentences, the first creates the policy and the second links it with the testing role
     """
     role_policy_pair = [
         f'INSERT INTO policies VALUES({99 + index},\'testing{index}\',\'{json.dumps(permission)}\','
@@ -253,10 +253,6 @@ def api_test(request):
         rbac_mode = None
         module = test_filename[1]
     create_tmp_folders()
-    # Experimental case
-    if module == 'experimental':
-        general_procedure('ciscat')
-        general_procedure('syscollector')
     general_procedure(module)
     if rbac_mode:
         change_rbac_mode(rbac_mode)
