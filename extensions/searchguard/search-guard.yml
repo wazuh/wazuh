@@ -88,7 +88,8 @@ defaults:
 nodes:
   - name: elasticsearch
     dn: CN=node-1,OU=Docu,O=Wazuh,L=California,C=ES
-    ip: <elasticsearch_IP>
+    ip: 
+      - <elasticsearch_IP>
 
 ###
 ### Clients
