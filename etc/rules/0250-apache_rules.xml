@@ -61,6 +61,9 @@
     <description>Apache: Code Red attack.</description>
     <info type="link">http://www.cert.org/advisories/CA-2001-19.html</info>
     <info type="text">CERT: Advisory CA-2001-19 "Code Red" Worm Exploiting Buffer Overflow In IIS Indexing Service DLL</info>
+    <mitre>
+      <id>T1102</id>
+    </mitre>
     <group>automatic_attack,pci_dss_6.2,pci_dss_6.5.2,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.2,nist_800_53_SA.11,nist_800_53_SI.4,</group>
   </rule>
 
@@ -108,6 +111,9 @@
     <if_matched_sid>30115</if_matched_sid>
     <same_source_ip />
     <description>Apache: Multiple Invalid URI requests from same source.</description>
+    <mitre>
+      <id>T1499</id>
+    </mitre>
     <group>invalid_request,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,</group>
   </rule>
 
@@ -130,6 +136,9 @@
     <if_matched_sid>30118</if_matched_sid>
     <same_source_ip />
     <description>ModSecurity: Multiple attempts blocked.</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
     <group>modsecurity,access_denied,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,</group>
   </rule>
 
@@ -156,6 +165,9 @@
   <rule id="30202" level="10" frequency="10" timeframe="120">
     <if_matched_sid>30201</if_matched_sid>
     <description>ModSecurity: Multiple attempts blocked.</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
     <group>modsecurity,access_denied,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,</group>
   </rule>
 
@@ -206,6 +218,9 @@
     <description>Apache: Client sent malformed Host header. Possible Code Red attack.</description>
     <info type="link">http://www.cert.org/advisories/CA-2001-19.html</info>
     <info type="text">CERT: Advisory CA-2001-19 "Code Red" Worm Exploiting Buffer Overflow In IIS Indexing Service DLL</info>
+    <mitre>
+      <id>T1102</id>
+    </mitre>
     <group>automatic_attack,pci_dss_6.2,pci_dss_6.5.2,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.2,nist_800_53_SA.11,nist_800_53_SI.4,</group>
   </rule>
 
@@ -227,6 +242,9 @@
     <if_matched_sid>30309</if_matched_sid>
     <same_source_ip/>
     <description>Apache: Multiple authentication failures with invalid user.</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,</group>
   </rule>
 
@@ -250,6 +268,9 @@
     <if_matched_sid>30315</if_matched_sid>
     <same_source_ip />
     <description>Apache: Multiple Invalid URI requests from same source.</description>
+    <mitre>
+      <id>T1499</id>
+    </mitre>
     <group>invalid_request,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,</group>
   </rule>
 
@@ -292,6 +313,9 @@
     <if_sid>30402</if_sid>
     <match>with code 403</match>
     <description>ModSecurity rejected a query</description>
+    <mitre>
+      <id>T1083</id>
+    </mitre>
     <group>modsecurity,gpg13_10.1,</group>
   </rule>
 

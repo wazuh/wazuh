@@ -65,6 +65,9 @@ ID: 80200 - 80499
     <rule id="80252" level="10" frequency="22" timeframe="600">
         <if_matched_sid>80251</if_matched_sid>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - high number of deleted object.</description>
+        <mitre>
+            <id>T1485</id>
+        </mitre>
         <group>aws_cloudtrail,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
         <options>no_full_log</options>
     </rule>
@@ -74,6 +77,9 @@ ID: 80200 - 80499
         <if_sid>80202</if_sid>
         <field name="aws.eventName">ConsoleLogin</field>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - User Login Success.</description>
+        <mitre>
+            <id>T1078</id>
+        </mitre>
         <group>aws_cloudtrail,authentication_success,pci_dss_10.2.5,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
         <options>no_full_log</options>
     </rule>
@@ -89,6 +95,9 @@ ID: 80200 - 80499
     <rule id="80255" level="10" frequency="6" timeframe="360">
         <if_matched_sid>80254</if_matched_sid>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - Possible breaking attempt (high number of login attempts).</description>
+        <mitre>
+            <id>T1110</id>
+        </mitre>
         <group>aws_cloudtrail,authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.14,nist_800_53_AC.7,</group>
         <options>no_full_log</options>
     </rule>

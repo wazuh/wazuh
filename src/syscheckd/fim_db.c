@@ -319,12 +319,14 @@ void fim_db_clean(void) {
         //Loop endlessly until the file can be removed. (60s)
         if (rm == FIMDB_ERR) {
             while (remove(FIM_DB_DISK_PATH)) {
+                // LCOV_EXCL_START
                 mdebug2(FIM_DELETE_DB, FIM_DB_DISK_PATH);
 #ifdef WIN32
                 Sleep(60000); //milliseconds
 #else
                 sleep(60); //seconds
 #endif
+                // LCOV_EXCL_STOP
             }
         }
     }
@@ -904,9 +906,26 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_entry_data *en
     return FIMDB_OK;
 }
 
-int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) {
+int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry, int alert_type) {
     int inode_id;
     int res, res_data, res_path;
+    unsigned int nodes_count;
+
+    switch (alert_type) {
+    case FIM_ADD:
+        if (syscheck.file_limit) {
+            nodes_count = fim_db_get_count_entry_path(syscheck.database);
+            if (nodes_count >= syscheck.file_limit) {
+                mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.", file_path);
+                return FIMDB_FULL;
+            }
+        }
+    case FIM_MODIFICATION:
+        break;
+    default:
+        merror("Couldn't insert '%s' entry into DB. Invalid event type: %d.", file_path, alert_type);
+        return FIMDB_ERR;
+    }
 
 #ifdef WIN32
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_DATA_ROW);

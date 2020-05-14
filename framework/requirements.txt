@@ -20,6 +20,7 @@ grpc-google-iam-v1==0.12.3
 grpcio==1.24.0
 idna==2.8
 jmespath==0.9.4
+more-itertools==8.2.0
 protobuf==3.9.2
 pyasn1==0.4.7
 pyasn1-modules==0.2.6
