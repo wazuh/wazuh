@@ -38,7 +38,7 @@ static int w_enrollment_process_response(SSL *ssl);
 /* Auxiliary */
 static void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_cert, const char *hostname);
 static void w_enrollment_concat_group(char *buff, const char* centralized_group);
-static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip);
+static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip, const int use_src_ip);
 static int w_enrollment_process_agent_key(char *buffer);
 static int w_enrollment_store_key_entry(const char* keys);
 static char *w_enrollment_extract_agent_name(const w_enrollment_ctx *cfg);
@@ -58,6 +58,7 @@ w_enrollment_target *w_enrollment_target_init() {
     target_cfg->agent_name = NULL;
     target_cfg->centralized_group = NULL;
     target_cfg->sender_ip = NULL;
+    target_cfg->use_src_ip = 0;
     return target_cfg;
 }
 
@@ -273,7 +274,7 @@ static int w_enrollment_send_message(w_enrollment_ctx *cfg) {
         w_enrollment_concat_group(buf, cfg->target_cfg->centralized_group);
     }
 
-    if(w_enrollment_concat_src_ip(buf, cfg->target_cfg->sender_ip)) {
+    if(w_enrollment_concat_src_ip(buf, cfg->target_cfg->sender_ip, cfg->target_cfg->use_src_ip)) {
         os_free(buf);
         if(lhostname != cfg->target_cfg->agent_name)
             os_free(lhostname);
@@ -488,10 +489,10 @@ static void w_enrollment_concat_group(char *buff, const char* centralized_group)
  * @return 0 on success
  *        -1 if ip is invalid 
  */
-static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip) {
+static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip, const int use_src_ip) {
     assert(buff != NULL); // buff should not be NULL.
 
-    if(sender_ip){
+    if(sender_ip && !use_src_ip) { // Force an IP  
         /* Check if this is strictly an IP address using a regex */
         if (OS_IsValidIP(sender_ip, NULL))
         {
@@ -502,10 +503,13 @@ static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip) {
             merror("Invalid IP address provided for sender IP.");
             return -1;
         }
-    } else {
+    } else if (!sender_ip && use_src_ip){ // Force src IP
         char opt_buf[10] = {0};
         snprintf(opt_buf,10," IP:'src'");
         strncat(buff,opt_buf,10);
+    } else if (sender_ip && use_src_ip) { // Incompatible options
+        merror("Incompatible sender_ip options: Forcing IP while using use_source_ip flag.");
+        return -1;
     }
 
     return 0;
