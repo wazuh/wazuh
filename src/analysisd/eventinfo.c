@@ -758,6 +758,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->decoder_info = NULL_Decoder;
 
     lf->filename = NULL;
+    lf->mode = NULL;
     lf->perm_before = NULL;
     lf->md5_before = NULL;
     lf->sha1_before = NULL;
@@ -958,6 +959,9 @@ void Free_Eventinfo(Eventinfo *lf)
 
     if (lf->filename) {
         free(lf->filename);
+    }
+    if (lf->mode) {
+        free(lf->mode);
     }
     if (lf->sk_tag) {
         free(lf->sk_tag);
@@ -1292,6 +1296,10 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
 
     if(lf->filename){
         os_strdup(lf->filename,lf_cpy->filename);
+    }
+
+    if (lf->mode) {
+        os_strdup(lf->mode, lf_cpy->mode);
     }
 
     if (lf->perm_before) {
