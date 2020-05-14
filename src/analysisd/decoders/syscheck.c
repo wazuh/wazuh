@@ -1198,7 +1198,6 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
     cJSON *old_attributes = NULL;
     cJSON *audit = NULL;
     cJSON *object = NULL;
-    // char *mode = NULL;
     char *event_type = NULL;
 
     cJSON_ArrayForEach(object, event) {
@@ -1213,7 +1212,6 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
                 os_strdup(object->valuestring, lf->filename);
                 os_strdup(object->valuestring, lf->fields[FIM_FILE].value);
             } else if (strcmp(object->string, "mode") == 0) {
-                // mode = object->valuestring;
                 os_strdup(object->valuestring, lf->mode);
                 os_strdup(lf->mode, lf->fields[FIM_MODE].value);
             } else if (strcmp(object->string, "type") == 0) {
