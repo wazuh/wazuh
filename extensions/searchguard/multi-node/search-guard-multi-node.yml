@@ -86,15 +86,15 @@ defaults:
 # Specify the nodes of your ES cluster here
 #
 nodes:
-  - name: node1
+  - name: node-1
     dn: CN=node-1,OU=Docu,O=Wazuh,L=California,C=ES
     ip: 
       - <elasticsearch_1_IP>
-  - name: node2
+  - name: node-2
     dn: CN=node-2,OU=Docu,O=Wazuh,L=California,C=ES
     ip: 
       - <elasticsearch_2_IP>
-  - name: node3
+  - name: node-3
     dn: CN=node-3,OU=Docu,O=Wazuh,L=California,C=ES
     ip:
       - <elasticsearch_3_IP>
