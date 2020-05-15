@@ -359,12 +359,6 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
-    if (!_base_line && item->configuration & CHECK_SEECHANGES) {
-        // The first backup is created. It should return NULL.
-        char *file_changed = seechanges_addfile(file);
-        os_free(file_changed);
-    }
-
     if (json_event && _base_line && report) {
         json_formated = cJSON_PrintUnformatted(json_event);
         send_syscheck_msg(json_formated);

@@ -1394,9 +1394,6 @@ static void test_fim_file_add(void **state) {
     expect_string(__wrap_fim_db_set_scanned, path, "file");
     will_return(__wrap_fim_db_set_scanned, 0);
 
-    expect_string(__wrap_seechanges_addfile, filename, "file");
-    will_return(__wrap_seechanges_addfile, NULL);
-
     ret = fim_file("file", fim_data->item, NULL, 1);
 
     fim_data->item->configuration &= ~CHECK_SEECHANGES;
