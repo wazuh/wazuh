@@ -119,7 +119,7 @@ int w_enrollment_request_key(w_enrollment_ctx *cfg, const char * server_address)
         if (w_enrollment_send_message(cfg) == 0) {
             ret = w_enrollment_process_response(cfg->ssl);
         }
-        close(socket);
+        OS_CloseSocket(socket);
     }
     if (cfg->ssl) {
         SSL_free(cfg->ssl);
