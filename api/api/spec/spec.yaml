@@ -2221,6 +2221,12 @@ components:
           description: Set this option to "yes" in case the API is running behind a proxy server.
           type: boolean
           default: false
+        auth_token_exp_timeout:
+          description: Time in seconds until the token expires.
+          type: integer
+          format: int32
+          minimum: 30
+          example: 36000
         rbac:
           type: object
           additionalProperties: false
@@ -2229,12 +2235,6 @@ components:
               description: RBAC mode (white/black).
               type: string
               enum: [white, black]
-            auth_token_exp_timeout:
-              description: Time in seconds until the token expires.
-              type: integer
-              format: int32
-              minimum: 30
-              example: 3600
         logs:
           type: object
           additionalProperties: false
@@ -6851,9 +6851,9 @@ paths:
                 host: 0.0.0.0
                 port: 55000
                 behind_proxy_server: false
+                auth_token_exp_timeout: 36000
                 rbac:
                   mode: white
-                  auth_token_exp_timeout: 3600
                 https:
                   enabled: true
                   key: "/var/ossec/api/configuration/ssl/server.key"
@@ -8918,9 +8918,9 @@ paths:
                 host: 0.0.0.0
                 port: 55000
                 behind_proxy_server: false
+                auth_token_exp_timeout: 36000
                 rbac:
                   mode: white
-                  auth_token_exp_timeout: 3600
                 logs:
                   path: /var/ossec/logs/api.log
                   level: info

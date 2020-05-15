@@ -589,7 +589,8 @@ async def delete_api_config(request, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    allowed_fields = {'behind_proxy_server', 'rbac', 'logs', 'cache', 'cors', 'use_only_authd', 'experimental_features'}
+    allowed_fields = {'behind_proxy_server', 'rbac', 'logs', 'cache', 'cors', 'use_only_authd', 'experimental_features',
+                      'auth_token_exp_timeout'}
     default_config = {key: configuration.default_configuration[key] for key in allowed_fields}
 
     f_kwargs = {"updated_config": default_config}
