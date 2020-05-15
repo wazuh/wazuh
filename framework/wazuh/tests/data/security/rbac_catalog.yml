@@ -318,6 +318,28 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - PUT /cluster/restart
+      cluster:read_api_config:
+        description: "Check Wazuh's cluster API configuration"
+        resources:
+          - "*:*"
+        example:
+          actions:
+            - cluster:read_api_config
+          resources:
+            - "*:*:*"
+          effect: "allow"
+        related_endpoints:
+          - 'GET /cluster/api/config'
+      cluster:update_api_config:
+        description: "Modify Wazuh's cluster API configuration"
+        resources:
+          - "*:*"
+        example:
+          actions:
+            - cluster:update_api_config
+          resources:
+            - "*:*:*"
+          effect: "allow"
       lists:read:
         description: Read lists files
         resources:
@@ -413,6 +435,26 @@ get_rbac_actions:
           effect: deny
         related_endpoints:
           - PUT /manager/restart
+      manager:read_api_config:
+        description: "Read Wazuh manager API configuration"
+        resources:
+          - "*:*"
+        example:
+          actions:
+            - manager:read_api_config
+          resources:
+            - "*:*:*"
+          effect: "allow"
+      manager:update_api_config:
+        description: "Modify Wazuh manager API configuration"
+        resources:
+          - "*:*"
+        example:
+          actions:
+            - manager:update_api_config
+          resources:
+            - "*:*:*"
+          effect: "allow"
       rules:read:
         description: Read rules files
         resources:
@@ -444,7 +486,7 @@ get_rbac_actions:
           - GET /sca/{agent_id}
           - GET /sca/{agent_id}/checks/{policy_id}
       syscheck:run:
-        description: Runs rootcheck and syscheck
+        description: Run rootcheck and syscheck
         resources:
           - agent:id
         example:
@@ -627,29 +669,27 @@ get_rbac_resources:
       resource: None
     result:
       "*:*":
-        description: 'Resource applied in functions acting on resources that do not yet
-          exist in the system. We call these functions, resourceless functions. Example:
-          agent:create'
+        description: "Resource applied in functions which take part in the creation of a specific resource. We call these functions, resourceless functions. Example: agent:create"
       agent:id:
         description: Reference agents via agent ID (i.e. agent:id:001)
       group:id:
         description: Reference agent groups via group ID (i.e. group:id:default)
       node:id:
-        description: Reference cluster node via node ID (i.e. node:id:worker1)
+        description: Reference cluster nodes via node ID (i.e. node:id:worker1)
       file:path:
-        description: Reference file via its path (i.e. file:path:etc/rules/new_rule.xml)
+        description: Reference files via its path (i.e. file:path:etc/rules/new_rule.xml)
       decoder:file:
-        description: Reference decoder file via its path (i.e. decoder:file:0005-wazuh_decoders.xml)
+        description: Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)
       lists:path:
-        description: Reference list file via its path (i.e. lists:path:etc/lists/audit-keys)
+        description: Reference list files via its path (i.e. lists:path:etc/lists/audit-keys)
       rules:file:
-        description: Reference rule file via its path (i.e. rules:file:0610-win-ms_logs_rules.xml)
+        description: Reference rule files via its path (i.e. rules:file:0610-win-ms_logs_rules.xml)
       policy:id:
-        description: Reference security policy via its id (i.e. policy:id:1)
+        description: Reference security policies via its id (i.e. policy:id:1)
       role:id:
-        description: Reference security role via its id (i.e. role:id:1)
+        description: Reference security roles via its id (i.e. role:id:1)
       user:id:
-        description: Reference security user via its username (i.e. user:id:wazuh)
+        description: Reference security users via its username (i.e. user:id:wazuh)
   - params:
       resource: 'agent:id'
     result:
@@ -659,6 +699,4 @@ get_rbac_resources:
       resource: '*:*'
     result:
       "*:*":
-        description: 'Resource applied in functions acting on resources that do not yet
-          exist in the system. We call these functions, resourceless functions. Example:
-          agent:create'
+        description: "Resource applied in functions which take part in the creation of a specific resource. We call these functions, resourceless functions. Example: agent:create"
