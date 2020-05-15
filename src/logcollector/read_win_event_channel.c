@@ -269,7 +269,7 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
 {
     DWORD size = 0;
     DWORD count = 0;
-    wchar_t *buffer = NULL;
+    void *buffer = NULL;
     int result = 0;
     int status = 0;
     EVT_HANDLE bookmark = NULL;
@@ -310,7 +310,7 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
         goto cleanup;
     }
 
-    if (buffer = calloc(size, sizeof(wchar_t)), buffer == NULL) {
+    if (buffer = calloc(size, sizeof(void)), buffer == NULL) {
         merror(
             "Could not calloc() memory to save bookmark (%s) for (%s) which returned [(%d)-(%s)]",
             channel->bookmark_filename,
