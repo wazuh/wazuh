@@ -54,11 +54,13 @@ void * wm_command_main(wm_command_t * command) {
 
         command_cpy = strdup(command->command);
 
-        if (argv = wm_strtok(command_cpy), !argv) {
+        argv = wm_strtok(command_cpy);
+    #ifndef __clang_analyzer__
+        if (!argv) {
             merror("Could not split command: %s", command_cpy);
             pthread_exit(NULL);
         }
-
+    #endif
         binary = argv[0];
 
         if (!wm_get_path(binary, &full_path)) {

@@ -119,7 +119,7 @@ void fim_scan() {
                 os_winreg_check();
 
                 w_mutex_lock(&syscheck.fim_entry_mutex);
-                nodes_count = fim_db_get_count_entry_path(syscheck.database);
+                fim_db_get_count_entry_path(syscheck.database);
                 w_mutex_unlock(&syscheck.fim_entry_mutex);
             }
 #endif

@@ -445,7 +445,7 @@ char* hostname_parse(const char *path) {
         *value = '\0';
         value += 2;
 
-        if (!(end = strchr(value, '\n'))) {
+        if (end = strchr(value, '\n'), !end) {
             continue;
         }
 

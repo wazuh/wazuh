@@ -151,7 +151,7 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
         lines++;
         /* If need clear is set, we need to clear the line */
         if (need_clear) {
-            if ((q = strchr(str, '\n')) != NULL) {
+            if (q = strchr(str, '\n'), q != NULL) {
                 need_clear = 0;
             }
             continue;
