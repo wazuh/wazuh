@@ -2292,6 +2292,12 @@ void test_audit_read_events_select_success_recv_success(void **state)
         type=PATH msg=audit(1571914029.306:3004254): item=1 name=\"test\" inode=19 dev=08:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=DELETE cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0\n\
         type=PROCTITLE msg=audit(1571914029.306:3004254): proctitle=726D0074657374\n\
         type=EOE msg=audit(1571914029.306:3004254):\n\
+        type=SYSCALL msg=audit(1571914029.306:3004255): arch=c000003e syscall=263 success=yes exit=0 a0=ffffff9c a1=55c5f8170490 a2=0 a3=7ff365c5eca0 items=2 ppid=3211 pid=44082 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"test\" exe=\"74657374C3B1\" key=\"wazuh_fim\"\n\
+        type=CWD msg=audit(1571914029.306:3004255): cwd=\"/root/test\"\n\
+        type=PATH msg=audit(1571914029.306:3004255): item=0 name=\"/root/test\" inode=110 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0\n\
+        type=PATH msg=audit(1571914029.306:3004255): item=1 name=\"test\" inode=19 dev=08:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=DELETE cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0\n\
+        type=PROCTITLE msg=audit(1571914029.306:3004255): proctitle=726D0074657374\n\
+        type=EOE msg=audit(1571914029.306:3004255):\n\
     ";
 
 
@@ -2304,35 +2310,35 @@ void test_audit_read_events_select_success_recv_success(void **state)
     will_return(__wrap_recv, strlen(buffer));
     will_return(__wrap_recv, buffer);
 
-    // In audit_parse()
-    
+    for (int i = 0; i<2; i++){    
+        // In audit_parse()
+        expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
+        expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
 
-    expect_string(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY);
-    expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
+        expect_value(__wrap_get_user, uid, 0);
+        will_return(__wrap_get_user, strdup("root"));
+        expect_value(__wrap_get_user, uid, 0);
+        will_return(__wrap_get_user, strdup("root"));
 
-    expect_value(__wrap_get_user, uid, 0);
-    will_return(__wrap_get_user, strdup("root"));
-    expect_value(__wrap_get_user, uid, 0);
-    will_return(__wrap_get_user, strdup("root"));
+        will_return(__wrap_get_group, "root");
 
-    will_return(__wrap_get_group, "root");
+        expect_string(__wrap__mdebug2, msg,
+            "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
+        expect_string(__wrap__mdebug2, formatted_msg,
+            "(6247): audit_event: uid=root, auid=, euid=root, gid=root, pid=44082, ppid=3211, inode=19, path=/root/test/test, pname=74657374C3B1");
 
-    expect_string(__wrap__mdebug2, msg,
-        "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6247): audit_event: uid=root, auid=, euid=root, gid=root, pid=44082, ppid=3211, inode=19, path=/root/test/test, pname=74657374C3B1");
+        will_return(__wrap_realpath, "/root/test/test");
 
-    will_return(__wrap_realpath, "/root/test/test");
-
-    expect_value(__wrap_fim_whodata_event, w_evt->process_id, 44082);
-    expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
-    expect_string(__wrap_fim_whodata_event, w_evt->group_id, "0");
-    expect_string(__wrap_fim_whodata_event, w_evt->process_name, "74657374C3B1");
-    expect_string(__wrap_fim_whodata_event, w_evt->path, "/root/test/test");
-    expect_value(__wrap_fim_whodata_event, w_evt->audit_uid, 0);
-    expect_string(__wrap_fim_whodata_event, w_evt->effective_uid, "0");
-    expect_string(__wrap_fim_whodata_event, w_evt->inode, "19");
-    expect_value(__wrap_fim_whodata_event, w_evt->ppid, 3211);
+        expect_value(__wrap_fim_whodata_event, w_evt->process_id, 44082);
+        expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
+        expect_string(__wrap_fim_whodata_event, w_evt->group_id, "0");
+        expect_string(__wrap_fim_whodata_event, w_evt->process_name, "74657374C3B1");
+        expect_string(__wrap_fim_whodata_event, w_evt->path, "/root/test/test");
+        expect_value(__wrap_fim_whodata_event, w_evt->audit_uid, 0);
+        expect_string(__wrap_fim_whodata_event, w_evt->effective_uid, "0");
+        expect_string(__wrap_fim_whodata_event, w_evt->inode, "19");
+        expect_value(__wrap_fim_whodata_event, w_evt->ppid, 3211);
+    }
 
     will_return(__wrap_select, 1);
 

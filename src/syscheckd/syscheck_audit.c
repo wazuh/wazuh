@@ -1350,14 +1350,14 @@ void audit_read_events(int *audit_sock, int mode) {
                     cache[cache_i++] = '\n';
                     cache[cache_i] = '\0';
                 } else {
-                    merror(FIM_ERROR_WHODATA_EVENT_TOOLONG);
+                    mwarn(FIM_WARN_WHODATA_EVENT_TOOLONG);
                 }
                 eoe_found = strstr(line, "type=EOE");
 
                 free(cache_id);
                 cache_id = id;
             } else {
-                merror(FIM_ERROR_WHODATA_GETID, line);
+                mwarn(FIM_WARN_WHODATA_GETID, line);
             }
 
             line = endline + 1;
