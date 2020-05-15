@@ -210,6 +210,9 @@
     <decoded_as>open-userdel</decoded_as>
     <match>user removed: name=</match>
     <description>User account deleted.</description>
+    <mitre>
+      <id>T1531</id>
+    </mitre>
     <group>account_changed,pci_dss_10.2.5,pci_dss_8.1.2,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.2,nist_800_53_IA.4,</group>
   </rule>
 

@@ -95,7 +95,7 @@ static int test_setup(void **state) {
     test_struct_t *init_data;
     init_data = malloc(sizeof(test_struct_t));
     init_data->socket = malloc(sizeof(wdb_t));
-    init_data->socket->agent_id = strdup("000");
+    init_data->socket->id = strdup("000");
     init_data->output = malloc(256*sizeof(char));
     *state = init_data;
     return 0;
@@ -104,7 +104,7 @@ static int test_setup(void **state) {
 static int test_teardown(void **state){
     test_struct_t *data  = (test_struct_t *)*state;
     free(data->output);
-    free(data->socket->agent_id);
+    free(data->socket->id);
     free(data->socket);
     free(data);
     return 0;

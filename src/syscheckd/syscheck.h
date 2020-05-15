@@ -46,6 +46,14 @@ typedef enum fim_scan_event {
     FIM_SCAN_END
 } fim_scan_event;
 
+typedef enum fim_state_db {
+    FIM_STATE_DB_EMPTY,
+    FIM_STATE_DB_NORMAL,
+    FIM_STATE_DB_80_PERCENTAGE,
+    FIM_STATE_DB_90_PERCENTAGE,
+    FIM_STATE_DB_FULL
+} fim_state_db;
+
 typedef struct fim_element {
     struct stat statbuf;
     int index;
@@ -318,7 +326,7 @@ int realtime_start(void);
  * @param dir Path to file or directory
  * @param whodata If the path is configured with whodata option
  * @param followsl If the path is configured with follow sym link option
- * @return 0 on success, -1 on error
+ * @return 1 on success, -1 on realtime_start failure, -2 on set_winsacl failure, and 0 on other errors
  */
 int realtime_adddir(const char *dir, int whodata, int followsl) __attribute__((nonnull(1)));
 
@@ -334,6 +342,21 @@ void realtime_process(void);
  * @param [out] data
  */
 void free_syscheck_dirtb_data(char *data);
+
+/**
+ * @brief Deletes subdirectories watches when a folder changes its name
+ * 
+ * @param dir Directory whose subdirectories need to delete their watches
+ */
+
+void delete_subdirectories_watches(char *dir);
+
+/**
+ * @brief Count inotify watches
+ * 
+ * @return Number of inotify watches
+ */
+unsigned int count_watches();
 
 /**
  * @brief Check if a file has changed
@@ -475,6 +498,15 @@ void *audit_healthcheck_thread(int *audit_sock);
 char *gen_audit_path(char *cwd, char *path0, char *path1);
 
 /**
+ * @brief Add cwd and exe of parent process
+ *
+ * @param ppid ID of parent process
+ * @param parent_name String where save the parent name (exe)
+ * @param parent_cwd String where save the parent working directory (cwd)
+ */
+void get_parent_process_info(char *ppid, char ** const parent_name, char ** const parent_cwd);
+
+/**
  * @brief Reloads audit rules to configured directories
  * This is necessary to include audit rules for hot added directories in the configuration
  *
@@ -517,6 +549,7 @@ extern pthread_mutex_t audit_mutex;
 extern pthread_cond_t audit_thread_started;
 extern pthread_cond_t audit_hc_started;
 extern pthread_cond_t audit_db_consistency;
+
 #elif WIN32
 /**
  * @brief Initializes the whodata scan mode
@@ -540,6 +573,11 @@ int whodata_audit_start();
  * @return 0 on success, 1 on error
  */
 int set_winsacl(const char *dir, int position);
+
+/**
+ * @brief In case SACLs and policies have been set, restore them
+ */
+void audit_restore();
 
 /**
  * @brief Thread that checks the status of the whodata configured folders
@@ -803,5 +841,11 @@ cJSON * fim_scan_info_json(fim_scan_event event, long timestamp);
  * @param event Event type (start or end).
  */
 void fim_send_scan_info(fim_scan_event event);
+
+/**
+ * @brief Checks the DB state, sends a message alert if necessary
+ *
+ */
+void fim_check_db_state();
 
 #endif /* SYSCHECK_H */

@@ -68,6 +68,9 @@ TypeMessage:
         <action>02</action>
         <match>logged in</match>
         <description>Serv-U: User logged in</description>
+        <mitre>
+            <id>T1078</id>
+        </mitre>
         <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
     </rule>
 
@@ -100,6 +103,9 @@ TypeMessage:
         <if_matched_sid>80505</if_matched_sid>
         <same_user />
         <description>Serv-U: Multiple authentication failures.</description>
+        <mitre>
+          <id>T1110</id>
+        </mitre>
         <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,</group>
     </rule>
 
@@ -186,6 +192,9 @@ TypeMessage:
         <action>12</action>
         <match>File deleted</match>
         <description>Serv-U: File deleted</description>
+        <mitre>
+            <id>T1107</id>
+        </mitre>
         <group>gdpr_II_5.1.f,</group>
     </rule>
 
@@ -210,6 +219,9 @@ TypeMessage:
         <action>15</action>
         <match>Directory deleted</match>
         <description>Serv-U: Directory deleted</description>
+        <mitre>
+            <id>T1107</id>
+        </mitre>
         <group>gdpr_II_5.1.f,</group>
     </rule>
 
@@ -225,6 +237,10 @@ TypeMessage:
         <match>Received file</match>
         <url>.exe</url>
         <description>Serv-U: File with extension ".exe" uploaded</description>
+        <mitre>
+            <id>T1203</id>
+            <id>T1204</id>
+        </mitre>
     </rule>
 
     <!--
@@ -303,6 +319,9 @@ TypeMessage:
         <action>41</action>
         <match>SESS_PERMISSION_DENIED</match>
         <description>Serv-U: HTTP/HTTPS Permission denied</description>
+        <mitre>
+            <id>T1071</id>
+        </mitre>
         <group>pci_dss_10.2.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
     </rule>
 

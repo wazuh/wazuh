@@ -103,7 +103,9 @@ int os_check_ads(const char *full_path)
             break;
         }
     }
-
+    BackupRead(file_h, (LPBYTE)stream_name,
+                       sid.dwStreamNameSize,
+                       &dwRead, TRUE, FALSE, &context);
     CloseHandle(file_h);
     return (0);
 }
