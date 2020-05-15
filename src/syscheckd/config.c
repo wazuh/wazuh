@@ -81,21 +81,6 @@ int Read_Syscheck_Config(const char *cfgfile)
     ReadConfig(modules, AGENTCONFIG, &syscheck, NULL);
 #endif
 
-    int it = 0;
-
-    /* Check directories options to determine whether to start the whodata thread or not */
-    if (syscheck.dir) {
-        while (syscheck.dir[it] != NULL) {
-            if (syscheck.opts[it] & WHODATA_ACTIVE) {
-                syscheck.enable_whodata = 1;
-
-                break;  // Exit loop with the first whodata directory
-            }
-
-            it++;
-        }
-    }
-
     switch (syscheck.disabled) {
     case SK_CONF_UNPARSED:
         syscheck.disabled = 1;

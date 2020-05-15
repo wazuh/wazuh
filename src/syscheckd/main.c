@@ -239,6 +239,15 @@ int main(int argc, char **argv)
                 mwarn(FIM_WARN_REALTIME_DISABLED, syscheck.dir[r]);
 #endif
             }
+
+            /*
+                Check directories options to determine whether to start
+                the whodata thread or not
+            */
+            if (syscheck.opts[r] & WHODATA_ACTIVE) {
+                syscheck.enable_whodata = 1;
+            }
+
             r++;
         }
     }
