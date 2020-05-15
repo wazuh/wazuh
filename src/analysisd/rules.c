@@ -169,6 +169,9 @@ int Rules_OP_ReadRules(const char *rulefile)
 
     const char *xml_options = "options";
 
+    const char *xml_mitre = "mitre";
+    const char *xml_mitre_id = "id";
+
     char *rulepath = NULL;
     char *regex = NULL;
     char *match = NULL;
@@ -375,6 +378,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                 int ifield = 0;
                 int info_type = 0;
                 int count_info_detail = 0;
+                int mitre_size = 0;
                 RuleInfoDetail *last_info_detail = NULL;
                 regex = NULL;
                 match = NULL;
@@ -1361,6 +1365,55 @@ int Rules_OP_ReadRules(const char *rulefile)
                         }
 
                         free(s_norder);
+                    } else if (strcasecmp(rule_opt[k]->element, xml_mitre) == 0) {
+                        int ind;
+                        int l;
+                        XML_NODE mitre_opt = NULL;
+                        mitre_opt = OS_GetElementsbyNode(&xml, rule_opt[k]);
+
+                        if (mitre_opt == NULL) {
+                            mwarn("Empty Mitre information for rule '%d'",
+                                config_ruleinfo->sigid);
+                            k++;
+                            continue;
+                        }
+
+                        for (ind = 0; mitre_opt[ind] != NULL; ind++) {
+                            if ((!mitre_opt[ind]->element) || (!mitre_opt[ind]->content)) {
+                                break;
+                            } else if (strcasecmp(mitre_opt[ind]->element, xml_mitre_id) == 0) {
+                                if (strlen(mitre_opt[ind]->content) == 0) {
+                                    mwarn("No Mitre Technique ID found for rule '%d'",
+                                        config_ruleinfo->sigid);
+                                } else {
+                                    int inarray = 0;
+                                    for (l = 0; l < mitre_size; l++) {
+                                        if (strcmp(config_ruleinfo->mitre_id[l], mitre_opt[ind]->content) == 0) {
+                                            inarray = 1;
+                                        }
+                                    }
+                                    if (!inarray) {
+                                        os_realloc(config_ruleinfo->mitre_id, (mitre_size + 2) * sizeof(char *),
+                                                   config_ruleinfo->mitre_id);
+                                        os_strdup(mitre_opt[ind]->content, config_ruleinfo->mitre_id[mitre_size]);
+                                        config_ruleinfo->mitre_id[mitre_size + 1] = NULL;
+                                        mitre_size++;
+                                    }
+                                }
+                            } else {
+                                merror("Invalid option '%s' for "
+                                "rule '%d'", mitre_opt[ind]->element,
+                                config_ruleinfo->sigid);
+
+                                for (l = 0; config_ruleinfo->mitre_id[l] != NULL; l++) {
+                                    os_free(config_ruleinfo->mitre_id[l]);
+                                }
+                                os_free(config_ruleinfo->mitre_id);
+                                OS_ClearNode(mitre_opt);
+                                goto cleanup;
+                            }
+                        }
+                        OS_ClearNode(mitre_opt);
                     } else {
                         merror("Invalid option '%s' for "
                                "rule '%d'.", rule_opt[k]->element,

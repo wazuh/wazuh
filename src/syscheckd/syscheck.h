@@ -46,6 +46,14 @@ typedef enum fim_scan_event {
     FIM_SCAN_END
 } fim_scan_event;
 
+typedef enum fim_state_db {
+    FIM_STATE_DB_EMPTY,
+    FIM_STATE_DB_NORMAL,
+    FIM_STATE_DB_80_PERCENTAGE,
+    FIM_STATE_DB_90_PERCENTAGE,
+    FIM_STATE_DB_FULL
+} fim_state_db;
+
 typedef struct fim_element {
     struct stat statbuf;
     int index;
@@ -490,6 +498,15 @@ void *audit_healthcheck_thread(int *audit_sock);
 char *gen_audit_path(char *cwd, char *path0, char *path1);
 
 /**
+ * @brief Add cwd and exe of parent process
+ *
+ * @param ppid ID of parent process
+ * @param parent_name String where save the parent name (exe)
+ * @param parent_cwd String where save the parent working directory (cwd)
+ */
+void get_parent_process_info(char *ppid, char ** const parent_name, char ** const parent_cwd);
+
+/**
  * @brief Reloads audit rules to configured directories
  * This is necessary to include audit rules for hot added directories in the configuration
  *
@@ -824,5 +841,11 @@ cJSON * fim_scan_info_json(fim_scan_event event, long timestamp);
  * @param event Event type (start or end).
  */
 void fim_send_scan_info(fim_scan_event event);
+
+/**
+ * @brief Checks the DB state, sends a message alert if necessary
+ *
+ */
+void fim_check_db_state();
 
 #endif /* SYSCHECK_H */

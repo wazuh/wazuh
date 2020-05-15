@@ -59,6 +59,9 @@ ID,Date,Time,Description,IP Address,Host Name,MAC Address
 	<if_sid>6300</if_sid>
 	<id>^00</id>
     <description>MS-DHCP: The log was started.</description>
+    <mitre>
+      <id>T1050</id>
+    </mitre>
     <group>service_start,pci_dss_10.2.6,gpg13_4.14,gpg13_10.1,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AU.5,</group>
   </rule>
 
@@ -73,6 +76,9 @@ ID,Date,Time,Description,IP Address,Host Name,MAC Address
 	<if_sid>6300</if_sid>
 	<id>^02</id>
     <description>MS-DHCP: The log was temporarily paused due to low disk space.</description>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
     <group>system_error,pci_dss_10.2.6,gpg13_4.14,gpg13_10.1,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AU.5,</group>
   </rule>
 
@@ -108,6 +114,9 @@ ID,Date,Time,Description,IP Address,Host Name,MAC Address
 	<if_sid>6300</if_sid>
 	<id>^14</id>
     <description>MS-DHCP: A lease request could not be satisfied because the scope's address pool was exhausted.</description>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
     <group>service_availability,dhcp_lease_action,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 
@@ -329,6 +338,9 @@ Server 2008 IPv6 Event ID  Meaning
 	<if_sid>6350</if_sid>
 	<id>^11010</id>
     <description>MS-DHCP: Started.</description>
+    <mitre>
+      <id>T1050</id>
+    </mitre>
     <group>service_start,</group>
   </rule>
 
@@ -336,6 +348,9 @@ Server 2008 IPv6 Event ID  Meaning
 	<if_sid>6350</if_sid>
 	<id>^11011</id>
     <description>MS-DHCP: Stopped.</description>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
     <group>service_availability,gdpr_IV_35.7.d,</group>
   </rule>
 
@@ -343,6 +358,9 @@ Server 2008 IPv6 Event ID  Meaning
 	<if_sid>6350</if_sid>
 	<id>^11012</id>
     <description>MS-DHCP: Audit log paused.</description>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
     <group>service_availability,pci_dss_10.1,pci_dss_10.2.6,gpg13_10.1,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.12,nist_800_53_AU.14,nist_800_53_AU.5,</group>
   </rule>
 
@@ -415,6 +433,9 @@ Server 2008 IPv6 Event ID  Meaning
 	<if_sid>6350</if_sid>
 	<id>^11023</id>
     <description>MS-DHCP: Service not authorized in AD.</description>
+    <mitre>
+      <id>T1035</id>
+    </mitre>
     <group>dhcp_ipv6,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 
@@ -429,6 +450,9 @@ Server 2008 IPv6 Event ID  Meaning
 	<if_sid>6350</if_sid>
 	<id>^11025</id>
     <description>MS-DHCP: Service has not determined if it is authorized in AD.</description>
+    <mitre>
+      <id>T1035</id>
+    </mitre>
     <group>dhcp_ipv6,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 </group>

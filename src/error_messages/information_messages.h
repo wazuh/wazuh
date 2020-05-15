@@ -50,4 +50,8 @@
 #define FIM_LINKCHECK_CHANGED               "(6034): Updating the symbolic link from '%s': '%s' to '%s'."
 #define FIM_WHODATA_VOLUMES                 "(6036): Analyzing Windows volumes"
 
+#define FIM_DB_NORMAL_ALERT                 "(6038): Sending DB back to normal alert."
+#define FIM_DB_80_PERCENTAGE_ALERT          "(6039): Sending DB 80%% full alert."
+#define FIM_DB_90_PERCENTAGE_ALERT          "(6039): Sending DB 90%% full alert."
+
 #endif /* INFO_MESSAGES_H */

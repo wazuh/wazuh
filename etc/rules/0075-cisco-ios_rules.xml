@@ -77,6 +77,9 @@
     <if_sid>4715</if_sid>
     <id>^%SEC_LOGIN-5-LOGIN_SUCCESS</id>
     <description>Cisco IOS: Successful login to the router.</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
     <group>authentication_success,pci_dss_10.2.5,gpg13_3.6,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
   </rule>
 
