@@ -52,8 +52,8 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
         mdebug2("Updating database '%s' to version %d", wdb->id, i + 1);
 
         if (wdb_sql_exec(wdb, UPDATES[i]) == -1 || wdb_adjust_upgrade(wdb, i)) {
-            wdb_t * new_wdb = wdb_backup(wdb, version);
-            return new_wdb ? new_wdb : wdb;
+            wdb = wdb_backup(wdb, version);
+            break;
         }
     }
 
@@ -83,13 +83,14 @@ wdb_t * wdb_backup(wdb_t *wdb, int version) {
             }
 
             if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
-                merror("Can't open SQLite backup database '%s': %s", path, sqlite3_errmsg(wdb->db));
-                sqlite3_close_v2(wdb->db);
+                merror("Can't open SQLite backup database '%s': %s", path, sqlite3_errmsg(db));
+                sqlite3_close_v2(db);
                 free(sagent_id);
                 return NULL;
             }
 
             new_wdb = wdb_init(db, sagent_id);
+            wdb_pool_append(new_wdb);
         }
     } else {
         merror("Couldn't create SQLite database backup for agent '%s'", sagent_id);
