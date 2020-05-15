@@ -7,5 +7,5 @@ elasticsearch.requestHeadersWhitelist: ["securitytenant","Authorization"]
 opendistro_security.multitenancy.enabled: false
 opendistro_security.readonly_mode.roles: ["kibana_read_only"]
 server.ssl.enabled: true
-server.ssl.key: "/etc/kibana/certs/kibana-key.pem"
+server.ssl.key: "/etc/kibana/certs/kibana.key"
 server.ssl.certificate: "/etc/kibana/certs/kibana.pem"
