@@ -1,0 +1,3 @@
+[submodule "ruleset"]
+	path = ruleset
+	url = https://github.com/wazuh/wazuh-ruleset
