@@ -215,7 +215,7 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=wpk_root.pem ../../etc/wpk_root.pem
     File ../wazuh_modules/syscollector/syscollector_win_ext.dll
     File /oname=libwazuhext.dll ../libwazuhext.dll
-    File /oname=ruleset\sca\sca_win_audit.yml ../../etc/sca/windows/sca_win_audit.yml
+    File /oname=ruleset\sca\sca_win_audit.yml ../../ruleset/sca/windows/sca_win_audit.yml
     File VERSION
     File REVISION
 

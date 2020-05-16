@@ -235,10 +235,10 @@ InstallSecurityConfigurationAssessmentFiles()
         echo "Installing SCA policies..."
         CONFIGURATION_ASSESSMENT_FILES=$(cat .$CONFIGURATION_ASSESSMENT_FILES_PATH)
         for FILE in $CONFIGURATION_ASSESSMENT_FILES; do
-            if [ -f "../etc/sca/$FILE" ]; then
-                ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/sca/$FILE ${PREFIX}/ruleset/sca
+            if [ -f "../ruleset/sca/$FILE" ]; then
+                ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../ruleset/sca/$FILE ${PREFIX}/ruleset/sca
             else
-                echo "ERROR: SCA policy not found: ./etc/sca/$FILE"
+                echo "ERROR: SCA policy not found: ../ruleset/sca/$FILE"
             fi
         done
     fi
@@ -248,8 +248,8 @@ InstallSecurityConfigurationAssessmentFiles()
         CONFIGURATION_ASSESSMENT_FILES=$(cat .$CONFIGURATION_ASSESSMENT_MANAGER_FILES_PATH)
         for FILE in $CONFIGURATION_ASSESSMENT_FILES; do
             FILENAME=$(basename $FILE)
-            if [ -f "../etc/sca/$FILE" ] && [ ! -f "${PREFIX}/ruleset/sca/$FILENAME" ]; then
-                ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/sca/$FILE ${PREFIX}/ruleset/sca/
+            if [ -f "../ruleset/sca/$FILE" ] && [ ! -f "${PREFIX}/ruleset/sca/$FILENAME" ]; then
+                ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../ruleset/sca/$FILE ${PREFIX}/ruleset/sca/
                 mv ${PREFIX}/ruleset/sca/$FILENAME ${PREFIX}/ruleset/sca/$FILENAME.disabled
             fi
         done

@@ -409,7 +409,7 @@
                           <RemoveFile Id="remove_policies" Name="*" On="install"/>
                         </Component>
                         <Component Id="SCA_WIN_AUDIT.YML" DiskId="1" Guid="1164B8AA-1968-48D3-BAEB-68E6E0BFDBD8">
-                          <File Id="SCA_WIN_AUDIT.YML" Name="sca_win_audit.yml" Source="..\..\etc\sca\windows\sca_win_audit.yml" />
+                          <File Id="SCA_WIN_AUDIT.YML" Name="sca_win_audit.yml" Source="..\..\ruleset\sca\windows\sca_win_audit.yml" />
                         </Component>
                       </Directory>
                     </Directory>
