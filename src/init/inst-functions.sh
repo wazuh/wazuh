@@ -203,10 +203,10 @@ InstallOpenSCAPFiles()
         echo "Installing SCAP security policies..."
         OPENSCAP_FILES=$(cat .$OPENSCAP_FILES_PATH)
         for file in $OPENSCAP_FILES; do
-            if [ -f "../wodles/oscap/content/$file" ]; then
-                ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../wodles/oscap/content/$file ${PREFIX}/wodles/oscap/content
+            if [ -f "../ruleset/scap_content/$file" ]; then
+                ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../ruleset/scap_content/$file ${PREFIX}/wodles/oscap/content
             else
-                echo "ERROR: SCAP security policy not found: ./wodles/oscap/content/$file"
+                echo "ERROR: SCAP security policy not found: ../ruleset/scap_content/$file"
             fi
         done
     fi
