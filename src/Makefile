@@ -1548,7 +1548,7 @@ install_framework: install_python
 	chmod -R o=- ${WPYTHON_DIR}/*
 
 install_mitre: install_python
-	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${PREFIX}/var/db/mitre.db 
+	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${PREFIX}/var/db/mitre.db
 
 ####################
 #### test ##########
@@ -1647,7 +1647,7 @@ test_coverage: build_tests
 ###################
 
 test-rules:
-	( cd ../contrib/ossec-testing && sudo python runtests.py)
+	( cd ../ruleset/tools/rules-testing && sudo python runtests.py)
 
 
 ####################
