@@ -2608,7 +2608,7 @@ int w_compress_gzfile(const char *filesrc, const char *filedst) {
     umask(0027);
 
     /* Read file */
-    fd = fopen(filesrc, "rb");
+    fd = wfopen(filesrc, "rb");
     if (!fd) {
         merror("in w_compress_gzfile(): fopen error %s (%d):'%s'",
                 filesrc,
