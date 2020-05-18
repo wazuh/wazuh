@@ -119,7 +119,6 @@ class DistributedAPI:
             # If the cluster is disabled or the request type is local_any
             # if the request was made in the master node and the request type is local_master
             # if the request came forwarded from the master node and its type is distributed_master
-
             if not is_dapi_enabled or is_cluster_disabled or self.request_type == 'local_any' or \
                     (self.request_type == 'local_master' and self.node_info['type'] == 'master') or \
                     (self.request_type == 'distributed_master' and self.from_cluster):
@@ -211,7 +210,6 @@ class DistributedAPI:
 
         try:
             before = time.time()
-
             self.check_wazuh_status()
 
             timeout = None if self.wait_for_complete \
@@ -448,7 +446,6 @@ class DistributedAPI:
                                                             sort={'fields': ['node_name'], 'order': 'desc'})['items']
             node_name = {k: list(map(operator.itemgetter('id'), g)) for k, g in
                          itertools.groupby(system_agents, key=operator.itemgetter('node_name'))}
-
             if requested_agents != '*':  # When all agents are requested cannot be non existent ids
                 # Add non existing ids in the master's dictionary entry
                 non_existent_ids = list(set(requested_agents) - set(map(operator.itemgetter('id'), system_agents)))
