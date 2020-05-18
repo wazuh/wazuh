@@ -24,8 +24,10 @@ static struct {
     unsigned rootcheck:1;
 } os_restart;
 
+#ifndef WIN32
 //Sends message thru the cluster
 static int w_send_clustered_message(const char* command, const char* payload, char* response);
+#endif
 
 //Alloc and create send_sync command payload
 static cJSON* w_create_send_sync_payload(const char *daemon_name, cJSON *message);
@@ -642,52 +644,6 @@ int auth_close(int sock) {
     return (sock >= 0) ? close(sock) : 0;
 }
 
-static int w_send_clustered_message(const char* command, const char* payload, char* response) {
-    char sockname[PATH_MAX + 1] = {0};
-    int sock = -1;
-    int result = 0;
-    int response_length = 0;    
-    
-    if (isChroot()) {
-        strcpy(sockname, CLUSTER_SOCK);
-    } else {
-        strcpy(sockname, DEFAULTDIR CLUSTER_SOCK);
-    }
-       
-    if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock >= 0) {        
-        if (OS_SendSecureTCPCluster(sock, command, payload, strlen(payload)) >= 0) {
-            if(response_length = OS_RecvSecureClusterTCP(sock, response, OS_MAXSTR), response_length <= 0) {
-                switch (response_length) {
-                case -1:
-                    merror("At w_send_clustered_message(): OS_RecvSecureClusterTCP(): %s", strerror(errno));  
-                    break;                 
-
-                case 0:
-                    mdebug1("Empty message from local client.");
-                    break;
-                    
-
-                case OS_MAXLEN:
-                    merror("Received message > %i", OS_MAXSTR);   
-                    break;                 
-                }
-                result = -1;
-            }            
-        }
-        else{                     
-            merror("OS_SendSecureTCPCluster(): %s", strerror(errno));            
-            result = -2;  
-        }
-        close(sock);
-    }
-    else { 
-        merror("At w_send_clustered_message(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
-        result = -2;            
-    }    
-
-    return result;
-}
-
 static cJSON* w_create_send_sync_payload(const char *daemon_name, cJSON *message) {
     cJSON * request = cJSON_CreateObject();
     cJSON * arguments = cJSON_CreateObject();
@@ -907,6 +863,52 @@ int w_request_agent_add_local(int sock, char *id, const char *name, const char *
 
     return result; 
 }
+#ifndef WIN32
+static int w_send_clustered_message(const char* command, const char* payload, char* response) {
+    char sockname[PATH_MAX + 1] = {0};
+    int sock = -1;
+    int result = 0;
+    int response_length = 0;    
+    
+    if (isChroot()) {
+        strcpy(sockname, CLUSTER_SOCK);
+    } else {
+        strcpy(sockname, DEFAULTDIR CLUSTER_SOCK);
+    }
+       
+    if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock >= 0) {        
+        if (OS_SendSecureTCPCluster(sock, command, payload, strlen(payload)) >= 0) {
+            if(response_length = OS_RecvSecureClusterTCP(sock, response, OS_MAXSTR), response_length <= 0) {
+                switch (response_length) {
+                case -1:
+                    merror("At w_send_clustered_message(): OS_RecvSecureClusterTCP(): %s", strerror(errno));  
+                    break;                 
+
+                case 0:
+                    mdebug1("Empty message from local client.");
+                    break;
+                    
+
+                case OS_MAXLEN:
+                    merror("Received message > %i", OS_MAXSTR);   
+                    break;                 
+                }
+                result = -1;
+            }            
+        }
+        else{                     
+            merror("OS_SendSecureTCPCluster(): %s", strerror(errno));            
+            result = -2;  
+        }
+        close(sock);
+    }
+    else { 
+        merror("At w_send_clustered_message(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
+        result = -2;            
+    }    
+
+    return result;
+}
 
 //Send a clustered agent add request.
 int w_request_agent_add_clustered(char *err_response, const char *name, const char *ip, const char * groups, char **id, char **key, const int force, const char *agent_id) {
@@ -958,6 +960,7 @@ int w_request_agent_remove_clustered(char *err_response, const char* agent_id, i
 
     return result;
 }
+#endif //!WIN32
 
 char * get_agent_id_from_name(const char *agent_name) {
 
