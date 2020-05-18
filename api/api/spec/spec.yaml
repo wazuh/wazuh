@@ -11837,9 +11837,8 @@ paths:
                   - type: object
               example:
                 "*:*":
-                  description: 'Resource applied in functions acting on resources that do not yet
-                    exist in the system. We call these functions, resourceless functions. Example:
-                    agent:create'
+                  description: "Resource applied in functions which take part in the creation of a specific resource.
+                                We call these functions, resourceless functions. Example: agent:create"
                 agent:id:
                   description: 'Reference agents via agent ID (i.e. agent:id:001)'
                 group:id:
