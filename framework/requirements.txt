@@ -37,6 +37,7 @@ jmespath==0.9.4
 jsonschema==2.6.0
 MarkupSafe==1.1.1
 openapi-spec-validator==0.2.6
+more-itertools==8.2.0
 protobuf==3.9.2
 pyasn1==0.4.7
 pyasn1-modules==0.2.6

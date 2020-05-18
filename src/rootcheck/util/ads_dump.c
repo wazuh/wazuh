@@ -90,6 +90,9 @@ int os_get_streams(char *full_path)
         }
     }
 
+    BackupRead(file_h, (LPBYTE)stream_name,
+                       sid.dwStreamNameSize,
+                       &dwRead, TRUE, FALSE, &context);
     CloseHandle(file_h);
     return (0);
 }
@@ -176,4 +179,3 @@ int main(int argc, char **argv)
     }
     return (0);
 }
-

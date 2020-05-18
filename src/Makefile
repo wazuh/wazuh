@@ -1549,6 +1549,8 @@ install_framework: install_python
 
 install_api: install_python
 	cd ../api && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR}
+install_mitre: install_python
+	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${PREFIX}/var/db/mitre.db 
 
 
 ####################
@@ -1577,7 +1579,7 @@ endif
 endif #TEST
 
 unit_tests/wrappers/syscheckd/%.o: unit_tests/wrappers/syscheckd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
 unit_tests/wrappers/shared/%.o: unit_tests/wrappers/shared/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
