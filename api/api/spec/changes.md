@@ -63,7 +63,7 @@
 * Return information about all available agents or a list of them.
 * Added parameter **list_agents** in query used to specify a list of agent IDs (separated by comma) from which agents get the information.
 * Added parameter **registerIP** in query used to filter by the IP used when registering the agent.
-* With this new endpoint, you won't get a 400 response in agent name cannot be found,
+* With this new endpoint, you won't get a 400 response if agent name cannot be found,
 you will get a 200 response with 0 items in the result.
 
 ### GET     /agents/{agent_id}
