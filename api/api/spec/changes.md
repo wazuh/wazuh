@@ -17,8 +17,6 @@
   }
 }
 ```
-* In responses, `msg` key is now moved to new `message` key
-* In responses, `filter` key is now moved to new `filters` key
 * Errors follow the generic error format and are shown in `dapi_errors` key
 
 ## Default
