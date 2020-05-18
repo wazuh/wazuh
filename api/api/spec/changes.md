@@ -43,7 +43,7 @@
 * Endpoint removed. Use `DELETE /agents?list_agents=agent_id` instead
 
 ### DELETE  /agents/{agent_id}/group
-* Added **list_groups** parameter in query to specify an array of group's ID to remove from the agent.
+* Added **list_groups** parameter in query to specify an array of group IDs to remove from the agent.
 * Removes the agent from all groups by default or a list of them if **list_groups** parameter is found.	
 
 ### DELETE  /agents/group
