@@ -177,28 +177,27 @@ int main(int argc, char **argv)
 
     /* Check if we need to auto-enroll */
     if(agt->enrollment_cfg && agt->enrollment_cfg->enabled && keys.keysize == 0) {
-        int could_register = -1;
+        int registration_status = -1;
         int rc = 0;
 
         if (agt->enrollment_cfg->target_cfg->manager_name) {
             // Configured enrollment server
-            could_register = w_enrollment_request_key(agt->enrollment_cfg, agt->enrollment_cfg->target_cfg->manager_name);
+            registration_status = w_enrollment_request_key(agt->enrollment_cfg, agt->enrollment_cfg->target_cfg->manager_name);
         } 
         
         // Try to enroll to server list
-        while (agt->server[rc].rip && (could_register != 0)) {
-            could_register = w_enrollment_request_key(agt->enrollment_cfg, agt->server[rc].rip);
+        while (agt->server[rc].rip && (registration_status != 0)) {
+            registration_status = w_enrollment_request_key(agt->enrollment_cfg, agt->server[rc].rip);
             rc++;
         }
         
 
-        if(could_register == 0) {
+        if(registration_status == 0) {
             // Wait for key update on agent side
             mdebug1("Sleeping %d seconds to allow manager key file updates", agt->enrollment_cfg->delay_after_enrollment);
             sleep(agt->enrollment_cfg->delay_after_enrollment);
-            // Readkeys again to add obtained key
-            OS_FreeKeys(&keys);
-            OS_ReadKeys(&keys, 1, 0, 0);
+            // Update keys to get obtained key
+            OS_UpdateKeys(&keys);
         } else {
             merror_exit(AG_ENROLL_FAIL);
         }
