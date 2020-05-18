@@ -2,8 +2,7 @@
 test_name: GET /syscheck
 
 marks:
-  - usefixtures:
-    - syscheck_white_rbac_tests
+  - rbac_tests
 
 stages:
 

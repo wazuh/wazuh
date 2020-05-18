@@ -119,6 +119,8 @@ def remove_users(username_list):
                                       all_msg='Users deleted correctly')
     with AuthenticationManager() as auth:
         for username in username_list:
+            if username == common.current_user.get():
+                continue
             user = auth.get_user(username)
             query = auth.delete_user(username)
             if not query:

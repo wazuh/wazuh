@@ -8,7 +8,7 @@ cmake_minimum_required(VERSION 3.10)
 
 PROJECT(UnitTests C)
 
-# message("${TARGET}")
+set(CMAKE_C_STANDARD 11)
 get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
 
 message(Source folder: ${SRC_FOLDER})

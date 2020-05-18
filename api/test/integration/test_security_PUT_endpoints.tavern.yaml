@@ -2,8 +2,7 @@
 test_name: PUT /security/roles
 
 marks:
- - usefixtures:
-   - security_tests
+  - base_tests
 
 stages:
 

@@ -15,7 +15,7 @@ class WazuhException(Exception):
     """
 
     ERRORS = {
-        # < 1000: API
+        # < 999: API
 
         # Wazuh: 0999 - 1099
         999: 'Incompatible version of Python',
@@ -459,8 +459,8 @@ class WazuhException(Exception):
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.
         4000: {'message': "Permission denied",
-               'remediation': "Please, make sure you have permissions to execute current request, "
-                              "for more information on setting up permissions please visit XXXX"},
+               'remediation': "Please, make sure you have permissions to execute the current request. "
+                              "For more information on how to set up permissions, please visit XXXX"},
         4001: {'message': 'The body of the request is empty, you must specify that you want to modify',
                'remediation': "The fields available for update are: name(str), rule(str), policies(list(dict))"},
         4002: {'message': 'The specified role does not exist',
@@ -483,7 +483,7 @@ class WazuhException(Exception):
         4012: {'message': 'The specified actions or resources '
                           'are invalid',
                'remediation': 'The actions and resources must be splitted by ":". Example: agent:id:001'},
-        4013: {'message': 'The specified name already exist'},
+        4013: {'message': 'The specified name already exists'},
         4014: {'message': 'Parameter {param} is required',
                'remediation': 'Please, make sure the parameter is defined'},
         4015: {'message': 'Permission denied, could not remove agents from group before deleting it',

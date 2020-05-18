@@ -1500,7 +1500,7 @@ ifneq (,$(filter ${OPTIMIZE_CPYTHON},YES yes y Y 1))
 CPYTHON_FLAGS=--enable-optimizations
 endif
 
-wpython: build_python install_python install_dependencies install_framework install_api
+wpython: build_python install_python install_dependencies install_framework install_api install_mitre
 
 ifeq (${uname_S},Darwin)
 WLIBPYTHON=libpython3.7m.dylib
@@ -1550,6 +1550,9 @@ install_framework: install_python
 install_api: install_python
 	cd ../api && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR}
 
+install_mitre: install_python
+	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${PREFIX}/var/db/mitre.db 
+
 
 ####################
 #### test ##########
@@ -1577,7 +1580,7 @@ endif
 endif #TEST
 
 unit_tests/wrappers/syscheckd/%.o: unit_tests/wrappers/syscheckd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
 unit_tests/wrappers/shared/%.o: unit_tests/wrappers/shared/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@

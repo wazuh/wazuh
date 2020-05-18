@@ -235,7 +235,8 @@ stopa()
 
             if ! wait_pid $pid
             then
-                echo "Process ${i} couldn't be killed.";
+                echo "Process ${i} couldn't be terminated. It will be killed.";
+                kill -9 $pid
             fi
         else
             echo "${i} not running...";

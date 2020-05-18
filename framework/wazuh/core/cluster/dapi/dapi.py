@@ -28,7 +28,7 @@ class DistributedAPI:
     """Represents a distributed API request."""
 
     def __init__(self, f: Callable, logger: logging.getLogger, f_kwargs: Dict = None, node: c_common.Handler = None,
-                 debug: bool = False, request_type: str = "local_master",
+                 debug: bool = False, request_type: str = 'local_master', current_user: str = '',
                  wait_for_complete: bool = False, from_cluster: bool = False, is_async: bool = False,
                  broadcasting: bool = False, basic_services: tuple = None, local_client_arg: str = None,
                  rbac_permissions: Dict = None, nodes: list = None, cluster_required: bool = False):
@@ -46,8 +46,6 @@ class DistributedAPI:
             Asyncio protocol object to use when sending requests to other nodes. Default `None`
         debug : bool, optional
             Enable debug messages and raise exceptions. Default `False`
-        pretty : bool, optional
-            Return request result with pretty indent. Default `False`
         request_type : str, optional
             Default `"local_master"`
         wait_for_complete : bool, optional
@@ -68,6 +66,8 @@ class DistributedAPI:
             Default `None`
         cluster_required : bool, optional
             True when the cluster must be enabled. False otherwise. Default `False`
+        current_user : str
+            User who started the request
         """
         self.logger = logger
         self.f = f
@@ -83,6 +83,7 @@ class DistributedAPI:
         self.is_async = is_async
         self.broadcasting = broadcasting
         self.rbac_permissions = rbac_permissions if rbac_permissions is not None else dict()
+        self.current_user = current_user
         self.nodes = nodes if nodes is not None else list()
         self.cluster_required = cluster_required
         if not basic_services:
@@ -203,6 +204,7 @@ class DistributedAPI:
             common.rbac.set(self.rbac_permissions)
             common.broadcast.set(self.broadcasting)
             common.cluster_nodes.set(self.nodes)
+            common.current_user.set(self.current_user)
             data = self.f(**self.f_kwargs)
             common.reset_context_cache()
             self.logger.debug("Finished executing request locally")
@@ -289,6 +291,7 @@ class DistributedAPI:
                 "local_client_arg": self.local_client_arg,
                 "basic_services": self.basic_services,
                 "rbac_permissions": self.rbac_permissions,
+                "current_user": self.current_user,
                 "broadcasting": self.broadcasting,
                 "nodes": self.nodes
                 }

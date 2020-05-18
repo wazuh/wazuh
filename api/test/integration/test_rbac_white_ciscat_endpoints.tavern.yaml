@@ -2,8 +2,7 @@
 test_name: GET /ciscat/agent_id/results
 
 marks:
-  - usefixtures:
-    - ciscat_white_rbac_tests
+  - rbac_tests
 
 stages:
 

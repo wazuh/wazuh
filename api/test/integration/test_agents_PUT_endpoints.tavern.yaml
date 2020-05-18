@@ -1,0 +1,908 @@
+---
+test_name: PUT /agents/group
+
+marks:
+  - base_tests
+
+stages:
+
+    # PUT /agents/group?group_id=wrong_group
+  - name: Try to assign all agents to a non existing group
+    request: &put_agents_group
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: wrong_group
+    response:
+      status_code: 400
+      json:
+        code: 1710
+
+    # PUT /agents/group?group_id=wrong_group&list_agents=wrong_agent
+  - name: Try to assign an invalid agent_id to a non existing group
+    request:
+      verify: False
+      <<: *put_agents_group
+      params:
+        list_agents: "wrong_agent"
+        group_id: "wrong_group"
+    response:
+      status_code: 400
+      json: &error_spec
+        detail: !anystr
+        status: !anyint
+        title: !anystr
+        type: !anystr
+
+    # PUT /agents/group?group_id=wrong_%_group
+  - name: Try to assign all agents to an invalid group id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: 'wrong_%_group'
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+    # PUT /agents/group?group_id=default&list_agents=998,999
+  - name: Try to assign non existing agents to group default
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: "998,999"
+        group_id: default
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - "998"
+                - "999"
+          total_affected_items: 0
+          total_failed_items: 2
+        message: !anystr
+
+    # PUT /agents/group?group_id=default&list_agents=000,999
+  - name: Try to assign 000 and a non existing agent to group default
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: "000,999"
+        group_id: default
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - "999"
+            - error:
+                code: 1703
+              id:
+                - "000"
+          total_affected_items: 0
+          total_failed_items: 2
+        message: !anystr
+
+    # PUT /agents/group?group_id=default&list_agents=001,002
+  - name: Try to assign agents 001 and 002 to group default where they already belong
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: "001,002"
+        group_id: default
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1751
+              id:
+                - "001"
+                - "002"
+          total_affected_items: 0
+          total_failed_items: 2
+        message: !anystr
+
+    # PUT /agents/group?group_id=group1&list_agents=003,004,005
+  - name: Assign agents 003, 004 and 005 to group1
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: "003,004,005"
+        group_id: group1
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - "003"
+            - "004"
+          failed_items:
+            - error:
+                code: 1751
+              id:
+                - "005"
+          total_affected_items: 2
+          total_failed_items: 1
+        message: !anystr
+
+    # PUT /agents/group?group_id=group2
+  - name: Assign all agents to group2
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: group2
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - "001"
+            - "003"
+            - "004"
+            - "007"
+            - "009"
+          total_affected_items: 5
+        message: !anystr
+
+    # PUT /agents/group?group_id=group2&force_single_group=true
+  - name: Assign all agents to group2 with force_single_group
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        force_single_group: True
+        group_id: group2
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - "001"
+            - "002"
+            - "003"
+            - "004"
+            - "005"
+            - "006"
+            - "007"
+            - "008"
+            - "009"
+            - "010"
+          total_affected_items: 10
+        message: !anystr
+
+---
+test_name: PUT /groups/{group_id}/configuration
+
+stages:
+
+    # PUT /groups/group2/configuration
+  - name: Update group2 configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group2/configuration"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+    response:
+      status_code: 200
+      json:
+        message: !anystr
+
+    # PUT /groups/wrong_group/configuration
+  - name: Try to update configuration of a non existing group
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/wrong_group/configuration"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+    response:
+      status_code: 400
+      json:
+        code: 1710
+
+    # PUT /groups/group1/configuration
+  - name: Try to update configuration using an empty file
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group1/configuration"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+    response:
+      status_code: 400
+      json:
+        code: 2007
+
+    # PUT /groups/group1/configuration
+  - name: Try to update configuration using an invalid configuration file
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group1/configuration"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{invalid_file_xml:s}"
+    response:
+      status_code: 400
+      json:
+        code: 1113
+
+    # PUT /groups/group1/configuration
+  - name: Try to update configuration using a wrong configuration file
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group1/configuration"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{wrong_file_xml:s}"
+    response:
+      status_code: 400
+      json:
+        code: 1114
+
+---
+test_name: PUT /groups/{group_id}/restart
+
+stages:
+
+    # PUT /groups/group1/restart (This group has no agents assigned)
+  - name: Restart all agents from group1
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group1/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+    response:
+      status_code: 400
+      json:
+        code: 1755
+
+    # PUT /groups/group2/restart (Agents 009 and 010 are disconnected)
+  - name: Restart all agents from group2
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/group2/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - "001"
+            - "002"
+            - "003"
+            - "004"
+            - "005"
+            - "006"
+            - "007"
+            - "008"
+          total_affected_items: 8
+          failed_items:
+            - error:
+                code: 1707
+              id:
+                - "009"
+                - "010"
+          total_failed_items: 2
+        message: "Could not send command to some agents"
+    delay_after: 45
+
+  # PUT /groups/not_exists/restart (Group does not exist)
+  - name: Restart all agents from a group which does not exist
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/groups/not_exists/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+    response:
+      status_code: 400
+      json:
+        status: 400
+        code: 1710
+
+---
+test_name: PUT /agents/restart
+
+stages:
+
+    # PUT /agents/restart?list_agents=wrong_id
+  - name: Try to restart agent with wrong_id
+    request: &agent_restart_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: "wrong_id"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+    # PUT /agents/restart?list_agents=998,999
+  - name: Try to restart non existing agents
+    request:
+      verify: False
+      <<: *agent_restart_request
+      params:
+        list_agents: "998,999"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id: !anything
+          total_affected_items: 0
+          total_failed_items: 2
+        message: !anystr
+
+
+    # PUT /agents/restart?list_agents=000,999
+  - name: Try to restart agent 000 and a non existing agent
+    request:
+      verify: False
+      <<: *agent_restart_request
+      params:
+        list_agents: "000,999"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - "999"
+            - error:
+                code: 1703
+              id:
+                - "000"
+          total_affected_items: 0
+          total_failed_items: 2
+        message: !anystr
+
+    # PUT /agents/restart?list_agents=001,002,999
+  - name: Try to restart agents 001,002 and 999
+    request:
+      verify: False
+      <<: *agent_restart_request
+      params:
+        list_agents: "001,002,999"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - "001"
+            - "002"
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - "999"
+          total_affected_items: 2
+          total_failed_items: 1
+        message: !anystr
+    delay_after: 40
+
+    # PUT /agents/restart
+  - name: Try to restart all agents
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - "001"
+            - "002"
+            - "003"
+            - "004"
+            - "005"
+            - "006"
+            - "007"
+            - "008"
+          failed_items: !anything
+          total_affected_items: 8
+          total_failed_items: 4
+        message: !anystr
+    delay_after: 40
+
+---
+test_name: PUT /agents/{agent_id}/group/{group_id}
+
+stages:
+
+    # PUT /agents/001/group/group2
+  - name: Assign agent 001 to group1
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/group/group1"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - "001"
+          total_affected_items: 1
+        message: !anystr
+
+    # PUT /agents/wrong_id/group/group1
+  - name: Try to assign an agent with an invalid id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/wrong_id/group/group1"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+    # PUT /agents/999/group/group3
+  - name: Try to assign a non existing agent to group3
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/999/group/group3"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - "999"
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
+
+    # PUT /agents/001/group/group3?force_single_group=true
+  - name: Assign agent 001 to group3 with force_single_group
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/group/group3?force_single_group=true"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        force_single_group: true
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - "001"
+          total_affected_items: 1
+        message: !anystr
+
+---
+test_name: PUT /agents/{agent_id}/restart
+
+stages:
+
+    # PUT /agents/000/restart
+  - name: Try to restart agent 000 (manager)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1703
+              id:
+                - "000"
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
+
+    # PUT /agents/999/restart
+  - name: Try to restart a not existing agent
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/999/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - "999"
+          total_affected_items: 0
+          total_failed_items: 1
+        message: !anystr
+
+    # PUT /agents/wrong_id/restart
+  - name: Try to restart an agent with an invalid id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/wrong_id/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+    # PUT /agents/002/restart
+  - name: Restart an agent
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/002/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - "002"
+          total_affected_items: 1
+        message: !anystr
+
+---
+test_name: PUT /agents/{agent_id}/upgrade
+
+stages:
+
+    # PUT /agents/002/upgrade
+  - name: Try to upgrade a not existing agent
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/999/upgrade"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        code: 1701
+
+    # PUT /agents/000/upgrade
+  - name: Try to upgrade agent 000 (manager)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/upgrade"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        code: 1703
+
+    # PUT /agents/wrong_id/upgrade
+  - name: Try to upgrade an agent using an invalid id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/wrong_id/upgrade"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+    # PUT /agents/001/upgrade
+  - name: Upgrade an agent
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/upgrade"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        force: True
+        wait_for_complete: 'true'
+    response:
+     status_code:
+       - 200
+       - 500
+     verify_response_with:
+       function: tavern_utils:test_validate_upgrade
+
+    # PUT /agents/001/upgrade
+  - name: Try to upgrade an agent that is updated to the latest version
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/001/upgrade"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code:
+        - 400
+        - 500
+      verify_response_with:
+        function: tavern_utils:test_validate_update_latest_version
+
+    # PUT /agents/003/upgrade
+  - name: Downgrade agent to an specific version using force
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/003/upgrade"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        version: v3.9.3
+        force: true
+        wait_for_complete: 'true'
+    response:
+      status_code: 200
+      json:
+        message: !anystr
+    delay_after: 30
+
+    # PUT /agents/004/upgrade
+  - name: Upgrade an agent using http
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/004/upgrade"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        use_http: true
+        force: true
+        wait_for_complete: 'true'
+    response:
+     status_code:
+       - 200
+       - 500
+     verify_response_with:
+       function: tavern_utils:test_validate_upgrade
+
+    # PUT /agents/005/upgrade
+  - name: Upgrade an agent using wkp repo
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/005/upgrade"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        wpk_repo: "packages.wazuh.com/wpk/"
+        force: true
+        wait_for_complete: 'true'
+    response:
+     status_code:
+       - 200
+       - 500
+     verify_response_with:
+       function: tavern_utils:test_validate_upgrade
+
+---
+test_name: PUT /agents/{agent_id}/upgrade_custom
+
+stages:
+
+    # PUT /agents/002/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
+  - name: Try to customly upgrade a non existing agent
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/999/upgrade_custom"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        installer: upgrade.sh
+        file_path: "{custom_wpk_path:s}"
+    response:
+      status_code: 400
+      json:
+        code: 1701
+
+    # PUT /agents/000/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
+  - name: Try to customly upgrade agent 000 (manager)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/000/upgrade_custom"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        installer: upgrade.sh
+        file_path: "{custom_wpk_path:s}"
+    response:
+      status_code: 400
+      json:
+        code: 1703
+
+    # PUT /agents/wrong_id/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
+  - name: Try to customly upgrade an agent using an invalid id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/wrong_id/upgrade_custom"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        installer: upgrade.sh
+        file_path: "{custom_wpk_path:s}"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+    # PUT /agents/006/upgrade_custom
+  - name: Try to customly upgrade an agent without parameters
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/003/upgrade_custom"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+    # PUT /agents/003/upgrade_custom?installer=invalid.sh&file_path=custom_wpk_path
+  - name: Try to customly upgrade an agent with an invalid installer
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/003/upgrade_custom"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        installer: invalid.sh
+        file_path: "{custom_wpk_path:s}"
+    response:
+      status_code: 400
+      json:
+        code: 1716
+
+    # PUT /agents/007/upgrade_custom?installer=upgrade.sh&file_path=custom_wpk_path
+  - name: Customly upgrade agent 007 selecting installer
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/007/upgrade_custom"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        installer: upgrade.sh
+        file_path: "{custom_wpk_path:s}"
+        wait_for_complete: 'true'
+    response:
+      status_code: 200
+      json:
+        message: "Installation started"
+
+    # PUT /agents/008/upgrade_custom?file_path=custom_wpk_path
+  - name: Customly upgrade agent 008 using default installer
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/008/upgrade_custom"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        file_path: "{custom_wpk_path:s}"
+        wait_for_complete: 'true'
+    response:
+      status_code: 200
+      json:
+        message: "Installation started"
+    delay_after: 45
+
+  - name: Get agent 007 upgrade result
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/007/upgrade_result"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        message: Agent upgraded successfully
+
+  - name: Get agent 008 upgrade result
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents/008/upgrade_result"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        message: Agent upgraded successfully

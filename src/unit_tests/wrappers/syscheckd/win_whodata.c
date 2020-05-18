@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include "headers/defs.h"
 
 BOOL WINAPI wrap_win_whodata_OpenProcessToken(
   __attribute__ ((unused)) HANDLE  ProcessHandle,
@@ -255,4 +256,173 @@ WINBOOL WINAPI wrap_win_whodata_GetVolumePathNamesForVolumeNameW(
   *lpcchReturnLength = buffer_size;
 
   return mock();
+}
+
+HANDLE WINAPI wrap_win_whodata_FindFirstVolumeW(
+  LPWSTR lpszVolumeName,
+  DWORD cchBufferLength
+) {
+  wcsncpy(lpszVolumeName, mock_type(wchar_t*), cchBufferLength);
+
+  return mock_type(HANDLE);
+}
+
+WINBOOL WINAPI wrap_win_whodata_FindVolumeClose (HANDLE hFindVolume) {
+  check_expected(hFindVolume);
+
+  return mock();
+}
+
+DWORD WINAPI wrap_win_whodata_QueryDosDeviceW(
+  LPCWSTR lpDeviceName,
+  LPWSTR lpTargetPath,
+  DWORD ucchMax
+) {
+  DWORD len = mock();
+  check_expected(lpDeviceName);
+
+  if(len <= ucchMax)
+    memcpy(lpTargetPath, mock_type(LPWSTR), len);
+
+  return mock();
+}
+
+WINBOOL WINAPI wrap_win_whodata_FindNextVolumeW(
+  HANDLE hFindVolume,
+  LPWSTR lpszVolumeName,
+  DWORD cchBufferLength
+) {
+  check_expected(hFindVolume);
+
+  wcsncpy(lpszVolumeName, mock_type(LPWSTR), cchBufferLength);
+
+  return mock();
+}
+
+WINBOOL WINAPI wrap_win_whodata_EqualSid(
+  __attribute__ ((unused)) PSID pSid1,
+  __attribute__ ((unused)) PSID pSid2
+) {
+  return mock();
+}
+
+WINBOOL WINAPI wrap_win_whodata_FileTimeToSystemTime(
+  CONST FILETIME *lpFileTime,
+  LPSYSTEMTIME lpSystemTime
+) {
+  check_expected(lpFileTime);
+
+  memcpy(lpSystemTime, mock_type(LPSYSTEMTIME), sizeof(SYSTEMTIME));
+
+  return mock();
+}
+
+BOOL WINAPI wrap_win_whodata_DeleteAce(
+  PACL  pAcl,
+  DWORD dwAceIndex
+){
+  check_expected(pAcl);
+  check_expected(dwAceIndex);
+
+  return mock();
+}
+
+BOOL WINAPI wrap_win_whodata_EvtRender(
+  EVT_HANDLE Context,
+  EVT_HANDLE Fragment,
+  DWORD      Flags,
+  DWORD      BufferSize,
+  PVOID      Buffer,
+  PDWORD     BufferUsed,
+  PDWORD     PropertyCount
+) {
+  check_expected_ptr(Context);
+  check_expected_ptr(Fragment);
+  check_expected(Flags);
+  check_expected(BufferSize);
+  PEVT_VARIANT output = mock_ptr_type(PVOID);
+  *BufferUsed = mock_type(int);
+  *PropertyCount = mock_type(int);
+  if (output && Buffer && *BufferUsed <= BufferSize) {
+    memcpy(Buffer, output, *BufferUsed);
+  }
+
+  return mock();
+}
+
+EVT_HANDLE wrap_win_whodata_EvtCreateRenderContext(
+  DWORD   ValuePathsCount,
+  LPCWSTR *ValuePaths,
+  DWORD   Flags
+) {
+  check_expected(ValuePathsCount),
+  check_expected_ptr(ValuePaths);
+  check_expected(Flags);
+
+  return mock_type(EVT_HANDLE);
+}
+
+EVT_HANDLE wrap_win_whodata_EvtSubscribe(
+  EVT_HANDLE             Session,
+  HANDLE                 SignalEvent,
+  LPCWSTR                ChannelPath,
+  LPCWSTR                Query,
+  EVT_HANDLE             Bookmark,
+  PVOID                  Context,
+  EVT_SUBSCRIBE_CALLBACK Callback,
+  DWORD                  Flags
+) {
+  check_expected_ptr(Session);
+  check_expected(SignalEvent);
+  check_expected(ChannelPath);
+  check_expected(Query);
+  check_expected(Bookmark);
+  check_expected(Context);
+  check_expected_ptr(Callback);
+  check_expected(Flags);
+  return mock_type(EVT_HANDLE);
+}
+
+int wrap_win_whodata_fprintf (FILE *__stream, const char *__format, ...) {
+  char formatted_msg[OS_MAXSTR];
+  va_list args;
+
+  check_expected(__stream);
+
+  va_start(args, __format);
+  vsnprintf(formatted_msg, OS_MAXSTR, __format, args);
+  va_end(args);
+
+  check_expected(formatted_msg);
+
+  return mock();
+}
+
+char * wrap_win_whodata_fgets (char * __s, int __n, FILE * __stream) {
+  char *buffer = mock_type(char*);
+
+  check_expected(__stream);
+
+  if(buffer) {
+    strncpy(__s, buffer, __n - 1);
+    return __s;
+  }
+  return NULL;
+}
+
+int FOREVER() {
+  return mock();
+}
+
+VOID wrap_win_whodata_Sleep (DWORD dwMilliseconds) {
+    check_expected(dwMilliseconds);
+}
+
+VOID WINAPI wrap_win_whodata_GetSystemTime (LPSYSTEMTIME lpSystemTime) {
+  memcpy(lpSystemTime, mock_type(LPSYSTEMTIME), sizeof(SYSTEMTIME));
+}
+
+WINBOOL wrap_win_whodata_ConvertSidToStringSid(__UNUSED_PARAM(PSID Sid),LPSTR *StringSid) {
+    *StringSid = mock_type(LPSTR);
+    return mock();
 }
