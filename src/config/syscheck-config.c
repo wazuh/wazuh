@@ -260,10 +260,6 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
         if (tag) {
             os_strdup(tag, syscheck->tag[pl]);
         }
-
-        if (vals & WHODATA_ACTIVE) {
-            syscheck->enable_whodata = 1;
-        }
     }
 }
 
