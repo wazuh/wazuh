@@ -65,4 +65,16 @@ WazuhUpgrade()
 
     rm -f $DIRECTORY/wodles/cve.db
     rm -f $DIRECTORY/queue/vulnerabilities/cve.db
+
+    # Remove OpenSCAP policies if the module is disabled
+    
+    start_config="$(grep -n '<wodle name="open-scap">' $DIRECTORY/etc/ossec.conf | cut -d':' -f 1)"
+    end_config="$(sed -n '/open-scap/,$p' $DIRECTORY/etc/ossec.conf | grep -n '</wodle>' | head -n1 | cut -d':' -f 1)"
+    end_config="$((start_config + end_config))"
+    if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
+        sed -n "${start_config},${end_config}p" $DIRECTORY/etc/ossec.conf | grep "disabled>yes" > /dev/null
+        if [ $? = 0 ]; then
+            rm -f $DIRECTORY/wodles/oscap/content/*
+        fi
+    fi
 }
