@@ -29,6 +29,7 @@ EXTERNAL_LIBFFI=external/libffi/
 EXTERNAL_CPYTHON=external/cpython/
 EXTERNAL_MSGPACK=external/msgpack/
 EXTERNAL_BZIP2=external/bzip2/
+EXTERNAL_OSQUERY=external/osquery_lib/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
@@ -235,7 +236,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2}
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${EXTERNAL_OSQUERY}include
 
 OSSEC_CFLAGS += ${CFLAGS}
 OSSEC_LDFLAGS += ${LDFLAGS}
@@ -900,9 +901,32 @@ endif
 endif
 endif
 
+OSQUERY := osquery
+ifneq (${uname_S},Linux)
+	OSQUERY := osquery_src
+else
+cpu_arch := ${uname_P}
+ifneq (,$(filter ${cpu_arch},unknown Unknown))
+cpu_arch := $(shell sh -c 'arch 2>/dev/null || echo not')
+endif
 
-EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2
-EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
+ifneq (,$(filter ${cpu_arch},x86_64 amd64))
+OSQUERY := osquery_amd64
+else
+ifneq (,$(filter ${cpu_arch},i386 i686))
+OSQUERY := osquery_i386
+else
+OSQUERY := src_osquery
+endif
+endif
+endif
+
+ifeq (${EXTERNAL_SOURCES},yes)
+OSQUERY := src_osquery
+endif
+
+EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 $(OSQUERY) nlohmann
+EXTERNAL_DIR := $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
 VULN_DETECTOR_DIR := wazuh_modules/vulnerability_detector

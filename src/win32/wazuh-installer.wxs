@@ -281,6 +281,11 @@
                     <Component Id="LIBWAZUHEXT_DLL" DiskId="1" Guid="31F7B5FA-9678-427B-9536-88AAA897A82A">
                         <File Id="LIBWAZUHEXT_DLL" Name="libwazuhext.dll" Source="..\libwazuhext.dll" />
                     </Component>
+                    <Component Id="OSQUERYD_DLL" DiskId="1" Guid="9574C4D5-45C9-4508-9FB5-4726CD893B9B">
+                        <File Id="OSQUERYD_DLL" Name="libosqueryd.dll" Source="..\external\osquery_lib\libosqueryd.dll" />
+                    </Component>
+
+                    
 
                     <!-- Mark this file as permanent, so it is not deleted on uninstall. -->
                     <Component Id="LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="10245598-2EE7-4EDB-A114-5398F01A21F9" NeverOverwrite="yes" Permanent="yes">
@@ -557,6 +562,7 @@
             <ComponentRef Id="AGENT_AUTH.EXE" />
             <ComponentRef Id="SYSCOLLECTOR_DLL" />
             <ComponentRef Id="LIBWAZUHEXT_DLL" />
+            <ComponentRef Id="OSQUERYD_DLL" />
             <ComponentRef Id="LOCAL_INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="OSSEC.CONF" />
             <ComponentRef Id="OSSEC_PRE6.CONF" />

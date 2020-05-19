@@ -1,0 +1,23 @@
+cmake_minimum_required(VERSION 3.12)
+
+project(dbsync)
+
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_BUILD_TYPE RelWithDebInfo)
+
+include_directories(${CMAKE_SOURCE_DIR}/include/)
+include_directories(${EXTERNAL_LIB}/sqlite/)
+include_directories(${EXTERNAL_LIB}/nlohmann/)
+link_directories(${EXTERNAL_LIB}/sqlite/)
+
+file(GLOB DBSYNC_SRC
+    "${CMAKE_SOURCE_DIR}/src/*.cpp")
+
+add_library(dbsync SHARED 
+    "${DBSYNC_SRC}" )
+
+target_link_libraries(dbsync sqlite3)
+
+add_subdirectory(example)

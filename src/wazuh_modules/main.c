@@ -209,6 +209,7 @@ void wm_handler(int signum)
     case SIGHUP:
     case SIGINT:
     case SIGTERM:
+        wm_destroy();
         exit(EXIT_SUCCESS);
     default:
         merror("unknown signal (%d)", signum);
