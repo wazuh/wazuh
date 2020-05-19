@@ -60,7 +60,7 @@
 /* COMMON ERRORS */
 #define CONN_ERROR      "(1201): No remote connection configured."
 #define CONFIG_ERROR    "(1202): Configuration error at '%s'."
-#define USER_ERROR      "(1203): Invalid user '%s' or group '%s' given."
+#define USER_ERROR      "(1203): Invalid user '%s' or group '%s' given: %s (%d)"
 #define CONNTYPE_ERROR  "(1204): Invalid connection type: '%s'."
 #define PORT_ERROR      "(1205): Invalid port number: '%d'."
 #define BIND_ERROR      "(1206): Unable to Bind port '%d' due to [(%d)-(%s)]"
@@ -391,7 +391,7 @@
 #define FIM_ERROR_REALTIME_MAXNUM_WATCHES           "(6616): Unable to add directory to real time monitoring: '%s' - Maximum size permitted."
 
 #define FIM_ERROR_REALTIME_INITIALIZE               "(6618): Unable to initialize real time file monitoring."
-#define FIM_ERROR_WHODATA_ADD_DIRECTORY             "(6619): Unable to add directory to whodata real time monitoring: '%s'."
+#define FIM_ERROR_WHODATA_ADD_DIRECTORY             "(6619): Unable to add directory to whodata real time monitoring: '%s'. It will be monitored in Realtime"
 #define FIM_ERROR_WHODATA_AUDIT_SUPPORT             "(6620): Audit support not built. Whodata is not available."
 #define FIM_ERROR_WHODATA_EVENTCHANNEL              "(6621): Event Channel subscription could not be made. Whodata scan is disabled."
 #define FIM_ERROR_WHODATA_RESTORE_POLICIES          "(6622): There is no backup of audit policies. Policies will not be restored."
@@ -483,6 +483,7 @@
 #define FIM_DB_ERROR_CALC_CHECKSUM                  "(6707): Failed to calculate database checksum."
 #define FIM_DB_ERROR_RM_RANGE                       "(6708): Failed to delete a range of paths between '%s' and '%s'"
 #define FIM_DB_ERROR_RM_NOT_SCANNED                 "(6709): Failed to delete from db all unscanned files."
+#define FIM_ERROR_WHODATA_INIT                      "(6710): Failed to start the Whodata engine. Directories/files will be monitored in Realtime mode"
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
