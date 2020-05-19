@@ -12,6 +12,12 @@ list(APPEND shared_tests_flags " ")
 list(APPEND shared_tests_names "test_version_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose")
 
+list(APPEND shared_tests_names "test_queue_op")
+list(APPEND shared_tests_flags "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock,--wrap=pthread_cond_wait,--wrap=pthread_cond_signal,--wrap=pthread_cond_timedwait")
+
+list(APPEND shared_tests_names "test_agent_op")
+list(APPEND shared_tests_flags "-Wl,--wrap,_merror")
+
 list(APPEND shared_tests_names "test_enrollment_op")
 set(ENROLLMENT_OP_BASE_FLAGS "-Wl,--wrap=OS_IsValidIP,--wrap=_merror,--wrap=_mwarn,--wrap=check_x509_cert \
                                 -Wl,--wrap=_minfo,--wrap=OS_GetHost,--wrap=os_ssl_keys,--wrap=OS_ConnectTCP \
@@ -24,7 +30,6 @@ if(${TARGET} STREQUAL "winagent")
 else()
     list(APPEND shared_tests_flags "${ENROLLMENT_OP_BASE_FLAGS} -Wl,--wrap=gethostname,--wrap=fprintf")
 endif()
-
 
 if(${TARGET} STREQUAL "server")
 list(APPEND shared_tests_names "test_bzip2_op")

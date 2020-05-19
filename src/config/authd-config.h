@@ -33,4 +33,5 @@ typedef struct authd_config_t {
     char *manager_key;
     long timeout_sec;
     long timeout_usec;
+    bool worker_node;
 } authd_config_t;

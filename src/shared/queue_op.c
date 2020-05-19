@@ -90,7 +90,6 @@ void * queue_pop(w_queue_t * queue) {
         return NULL;
     } else {
         data = queue->data[queue->end];
-        queue->data[queue->begin] = data;
         queue->end = (queue->end + 1) % queue->size;
         queue->elements--;
         return data;
