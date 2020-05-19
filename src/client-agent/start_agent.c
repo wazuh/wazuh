@@ -174,7 +174,6 @@ void start_agent(int is_startup)
         /* Send start up message */
         send_msg(msg, -1);
         attempts = 0;
-
         /* Read until our reply comes back */
         while (attempts <= 5) {
             if (agt->server[agt->rip_id].protocol == IPPROTO_TCP) {
@@ -195,6 +194,7 @@ void start_agent(int is_startup)
                 recv_b = recv(agt->sock, buffer, OS_MAXSTR, MSG_DONTWAIT);
             }
 
+
             if (recv_b <= 0) {
                 /* Sleep five seconds before trying to get the reply from
                  * the server again
@@ -206,28 +206,36 @@ void start_agent(int is_startup)
                     merror("Corrupt payload (exceeding size) received.");
                     break;
                 case -1:
-#ifdef WIN32
+                    #ifdef WIN32
                     mdebug1("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
-#else
+                    #else
                     mdebug1("Connection socket: %s (%d)", strerror(errno), errno);
-#endif
+                    #endif
                 }
 
                 sleep(attempts);
 
                 /* Send message again (after three attempts) */
                 if (attempts >= 3 || recv_b == OS_SOCKTERR) {
-                    if (agt->server[agt->rip_id].protocol == IPPROTO_TCP) {
-                        if (!connect_server(agt->rip_id)) {
-                            continue;
+                    if (attempts == 3 && agt->enrollment_cfg && agt->enrollment_cfg->enabled) { // Only one enrollment attemp
+                        int enroll_result = w_enrollment_request_key(agt->enrollment_cfg, agt->server[agt->rip_id].rip);
+                        if(enroll_result == 0) {
+                            // Wait for key update on agent side
+                            mdebug1("Sleeping %d seconds to allow manager key file updates", agt->enrollment_cfg->delay_after_enrollment);
+                            sleep(agt->enrollment_cfg->delay_after_enrollment);
+                            // Successfull enroll, read keys
+                            OS_UpdateKeys(&keys);
                         }
-                    } else {
-                        send_msg(msg, -1);
                     }
-                }
-
-                if (agt->server[agt->rip_id].protocol == IPPROTO_TCP) {
+                    if (!connect_server(agt->rip_id)) {
+                        continue;
+                    }
+                    // if enroll is successfull reconnect and re-send message
                     send_msg(msg, -1);
+                    // After sending message wait before response
+                    if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
+                        sleep(attempts);
+                    }
                 }
 
                 continue;

@@ -179,16 +179,22 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
 
     /* Check if the keys file is present and we can read it */
     if ((keys->file_change = File_DateofChange(keys_file)) < 0) {
-        merror(NO_AUTHFILE, keys_file);
-        merror_exit(NO_CLIENT_KEYS);
+        if (pass_empty_keyfile) {
+            mdebug1(NO_AUTHFILE, keys_file);
+        } else {
+            merror(NO_AUTHFILE, keys_file);
+            merror_exit(NO_CLIENT_KEYS);
+        }
     }
 
     keys->inode = File_Inode(keys_file);
     fp = fopen(keys_file, "r");
     if (!fp) {
-        /* We can leave from here */
-        merror(FOPEN_ERROR, keys_file, errno, strerror(errno));
-        merror_exit(NO_CLIENT_KEYS);
+        if (!pass_empty_keyfile) {
+            /* We can leave from here */
+            merror(FOPEN_ERROR, keys_file, errno, strerror(errno));
+            merror_exit(NO_CLIENT_KEYS);
+        }
     }
 
     /* Initialize hashes */
@@ -210,6 +216,10 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
     /* Zero the buffers */
     __memclear(id, name, ip, key, KEYSIZE + 1);
     memset(buffer, '\0', OS_BUFFER_SIZE + 1);
+
+    if (!fp) {
+        return;
+    }
 
     /* Read each line. Lines are divided as "id name ip key" */
     while (fgets(buffer, OS_BUFFER_SIZE, fp) != NULL) {
