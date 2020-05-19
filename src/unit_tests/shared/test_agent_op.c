@@ -41,8 +41,8 @@ void __wrap__mdebug1(const char * file, int line, const char * func, const char 
 extern cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char * groups, const char *key, const int force, const char *id);
 extern cJSON* w_create_agent_remove_payload(const char *id, const int purge);
 extern cJSON* w_create_send_sync_payload(const char *daemon_name, cJSON *message);
-extern int w_parse_agent_add_response(const char* buffer, char* id, char* key, const int json_format, const int exit_on_error);
-extern int w_parse_agent_remove_response(const char* buffer, const int json_format, const int exit_on_error);
+extern int w_parse_agent_add_response(const char* buffer, char *err_response, char* id, char* key, const int json_format, const int exit_on_error);
+extern int w_parse_agent_remove_response(const char* buffer, char *err_response, const int json_format, const int exit_on_error);
 
 
 static void test_create_agent_add_payload(void **state) {
@@ -161,7 +161,7 @@ static void test_create_send_sync_payload(void **state) {
     cJSON_Delete(payload);  
 }
 
-static void test_parse_agent_add_response(void **state) { 
+static void test_parse_agent_add_response(void **state) {     
     char* success_response = "{\"error\":0,\"data\":{\"id\":\"001\",\"name\":\"agent1\",\"ip\":\"any\",\"key\":\"347e2dc688148aec8544c9777ff291b8868b885\"}}";
     char* missingdata_response = "{\"error\":0,}";
     char* missingkey_response = "{\"error\":0,\"data\":{\"id\":\"001\",\"name\":\"agent1\",\"ip\":\"any\"}}";
@@ -169,55 +169,55 @@ static void test_parse_agent_add_response(void **state) {
     char* error_response = "{\"error\":9009,\"message \":\"Issue generating key\"}";
     char* unknown_response = "{\"message \":\"any_message\"}";   
     char new_id[FILE_SIZE+1] = { '\0' };
-    char new_key[KEYSIZE+1] = { '\0' };
+    char new_key[KEYSIZE+1] = { '\0' };   
     int err = 0;
     
     /* Success parse */    
-    err = w_parse_agent_add_response(success_response, new_id, new_key, TRUE, FALSE);
+    err = w_parse_agent_add_response(success_response, NULL, new_id, new_key, TRUE, FALSE);
     assert_int_equal(err, 0);
     assert_string_equal(new_id, "001");
     assert_string_equal(new_key, "347e2dc688148aec8544c9777ff291b8868b885");
 
-    err = w_parse_agent_add_response(success_response, new_id, NULL, TRUE, FALSE);
+    err = w_parse_agent_add_response(success_response, NULL, new_id, NULL, TRUE, FALSE);
     assert_int_equal(err, 0);
     assert_string_equal(new_id, "001");
 
-    err = w_parse_agent_add_response(success_response, NULL, new_key, TRUE, FALSE);
+    err = w_parse_agent_add_response(success_response, NULL, NULL, new_key, TRUE, FALSE);
     assert_int_equal(err, 0);
     assert_string_equal(new_key, "347e2dc688148aec8544c9777ff291b8868b885");
 
     /* Error parse */   
-    err = w_parse_agent_add_response(error_response, new_id, new_key, TRUE, FALSE);
+    err = w_parse_agent_add_response(error_response, NULL, new_id, new_key, TRUE, FALSE);
     assert_int_equal(err, -1);
 
     /* Unknown parse */    
-    err = w_parse_agent_add_response(unknown_response, new_id, new_key, TRUE, FALSE);
+    err = w_parse_agent_add_response(unknown_response, NULL, new_id, new_key, TRUE, FALSE);
     assert_int_equal(err, -1);
 
     /* Missing Data parse */    
-    err = w_parse_agent_add_response(missingdata_response, new_id, new_key, TRUE, FALSE);
+    err = w_parse_agent_add_response(missingdata_response, NULL, new_id, new_key, TRUE, FALSE);
     assert_int_equal(err, -1);
 
     /* Missing ID parse */    
-    err = w_parse_agent_add_response(missingid_response, new_id, new_key, TRUE, FALSE);
+    err = w_parse_agent_add_response(missingid_response, NULL, new_id, new_key, TRUE, FALSE);
     assert_int_equal(err, -1);
 
     /* Missing key parse */    
-    err = w_parse_agent_add_response(missingkey_response, new_id, new_key, TRUE, FALSE);
+    err = w_parse_agent_add_response(missingkey_response, NULL, new_id, new_key, TRUE, FALSE);
     assert_int_equal(err, -1);
 }
 
 static void test_parse_agent_remove_response(void **state) { 
     char* success_response = "{\"error\":0}";
-    char* error_response = "{\"error\":9011,\"message \":\"Agent ID not found\"}";    
+    char* error_response = "{\"error\":9011,\"message \":\"Agent ID not found\"}"; 
     int err = 0;
-    
+       
     /* Success parse */
-    err = w_parse_agent_remove_response(success_response, TRUE, FALSE);
+    err = w_parse_agent_remove_response(success_response, NULL, TRUE, FALSE);
     assert_int_equal(err, 0);
   
     /* Error parse */    
-    err = w_parse_agent_remove_response(error_response, TRUE, FALSE);
+    err = w_parse_agent_remove_response(error_response, NULL, TRUE, FALSE);
     assert_int_equal(err, -1);
 }
 
