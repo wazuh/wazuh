@@ -44,6 +44,9 @@
     <options>alert_by_email</options>
     <match>Agent disconnected</match>
     <description>Ossec agent disconnected.</description>
+    <mitre>
+      <id>T1089</id>
+    </mitre>
     <group>pci_dss_10.6.1,pci_dss_10.2.6,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,nist_800_53_AU.5,</group>
   </rule>
 
@@ -52,6 +55,9 @@
     <options>alert_by_email</options>
     <match>Agent removed</match>
     <description>Ossec agent removed.</description>
+    <mitre>
+      <id>T1089</id>
+    </mitre>
     <group>pci_dss_10.6.1,pci_dss_10.2.6,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,nist_800_53_AU.5,</group>
   </rule>
 
@@ -129,6 +135,9 @@
     <if_sid>514</if_sid>
     <match>Adware|Spyware</match>
     <description>Windows Adware/Spyware application found.</description>
+    <mitre>
+      <id>T1017</id>
+    </mitre>
     <group>rootcheck,gpg13_4.2,gdpr_IV_35.7.d,</group>
   </rule>
 
@@ -204,6 +213,9 @@
     <category>ossec</category>
     <decoded_as>syscheck_integrity_changed</decoded_as>
     <description>Integrity checksum changed.</description>
+    <mitre>
+      <id>T1492</id>
+    </mitre>
     <group>syscheck,pci_dss_11.5,gpg13_4.11,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,</group>
   </rule>
 
@@ -211,6 +223,10 @@
     <category>ossec</category>
     <decoded_as>syscheck_deleted</decoded_as>
     <description>File deleted.</description>
+    <mitre>
+      <id>T1107</id>
+      <id>T1485</id>
+    </mitre>
     <group>syscheck,pci_dss_11.5,gpg13_4.11,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,</group>
   </rule>
 
@@ -225,6 +241,9 @@
     <if_sid>500</if_sid>
     <match>^ossec: agentless: </match>
     <description>Integrity checksum for agentless device changed.</description>
+    <mitre>
+      <id>T1492</id>
+    </mitre>
     <group>syscheck,agentless,pci_dss_11.5,pci_dss_10.6.1,gpg13_4.11,gdpr_II_5.1.f,gdpr_IV_35.7.d,hipaa_164.312.c.1,hipaa_164.312.c.2,hipaa_164.312.b,nist_800_53_SI.7,nist_800_53_AU.6,</group>
   </rule>
 
@@ -263,6 +282,9 @@
     <if_sid>500</if_sid>
     <match>^ossec: File size reduced</match>
     <description>Log file size reduced.</description>
+    <mitre>
+      <id>T1492</id>
+    </mitre>
     <group>attacks,pci_dss_10.5.2,pci_dss_11.4,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.9,nist_800_53_SI.4,</group>
   </rule>
 
@@ -270,6 +292,9 @@
     <if_sid>500</if_sid>
     <match>^ossec: Event log cleared</match>
     <description>Microsoft Event log cleared.</description>
+    <mitre>
+      <id>T1070</id>
+    </mitre>
     <group>logs_cleared,pci_dss_10.5.2,gpg13_10.1,gdpr_II_5.1.f,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.9,</group>
   </rule>
 
@@ -279,6 +304,9 @@
     <hostname>syscheck-registry</hostname>
     <group>syscheck,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,</group>
     <description>Registry Integrity Checksum Changed</description>
+    <mitre>
+      <id>T1492</id>
+    </mitre>
   </rule>
 
   <rule id="597" level="5">
@@ -287,6 +315,10 @@
     <hostname>syscheck-registry</hostname>
     <group>syscheck,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,</group>
     <description>Registry Entry Deleted.</description>
+    <mitre>
+      <id>T1107</id>
+      <id>T1485</id>
+    </mitre>
   </rule>
 
   <rule id="598" level="5">
