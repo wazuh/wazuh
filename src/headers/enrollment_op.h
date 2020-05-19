@@ -37,6 +37,7 @@ typedef struct _enrollment_target_cfg {
     char *agent_name;         /**> (optional) Name of the agent. In case of NULL enrollment message will send local hostname */
     char *centralized_group;  /**> (optional) In case the agent belong to a group */
     char *sender_ip;          /**> (optional) IP adress or CIDR of the agent. In case of null the manager will use the source ip */
+    int use_src_ip;           /**> (optional) Forces manager to use source ip (-i option in agent_auth)*/
 } w_enrollment_target;
 
 /**
@@ -51,7 +52,8 @@ typedef struct _enrollment_target_cfg {
  */
 typedef struct _enrollment_cert_cfg {
     char *ciphers;     /**> chipers string (default DEFAULT_CIPHERS) */
-    char *authpass;    /**> for password verification */
+    char *authpass_file; /**> password file (default AUTHDPASS_PATH) */
+    char *authpass;    /**> override password file for password verification */
     char *agent_cert;  /**> Agent Certificate (null if not used) */
     char *agent_key;   /**> Agent Key (null if not used) */
     char *ca_cert;     /**> CA Certificate to verificate server (null if not used) */
@@ -62,17 +64,41 @@ typedef struct _enrollment_cert_cfg {
  * @brief Strcture that handles all the enrollment configuration
  * */
 typedef struct _enrollment_ctx {
-    const w_enrollment_target *target_cfg;  /**> for details @see _enrollment_target_cfg */
-    const w_enrollment_cert *cert_cfg;      /**> for details @see _enrollment_cert_cfg */
-    SSL *ssl;                                   /**> will hold the connection instance with the manager */
-    unsigned int enabled:1;
+    w_enrollment_target *target_cfg;  /**> for details @see _enrollment_target_cfg */
+    w_enrollment_cert *cert_cfg;      /**> for details @see _enrollment_cert_cfg */
+    SSL *ssl;                               /**> will hold the connection instance with the manager */
+    unsigned int enabled:1;                 /**> enabled / disables auto_enrollment */
+    unsigned int allow_localhost:1;         /**> 1 by default if this flag is in 0 using agent_name "localhost" will not be allowed */
+    unsigned int delay_after_enrollment:30;              /**> 20 by default, number of seconds to wait for enrollment */
 } w_enrollment_ctx;
+
+/**
+ * Default initialization of w_enrollment_target
+ * structure
+ * */
+w_enrollment_target *w_enrollment_target_init();
+
+/**
+ * Frees enrollment_target structure
+ * */
+void w_enrollment_target_destroy(w_enrollment_target *target);
+
+/**
+ * Default initialization of w_enrollment_cert
+ * structure
+ * */
+w_enrollment_cert *w_enrollment_cert_init();
+
+/**
+ * Frees enrollment_cert structure
+ * */
+void w_enrollment_cert_destroy(w_enrollment_cert *cert);
 
 /**
  * Initializes parameters of an w_enrollment_ctx structure based
  * on a target and certificate configurations
  * */
-w_enrollment_ctx * w_enrollment_init(const w_enrollment_target *target, const w_enrollment_cert *cert);
+w_enrollment_ctx * w_enrollment_init(w_enrollment_target *target, w_enrollment_cert *cert);
 
 /**
  * Frees parameers of an w_enrollment_ctx structure
@@ -85,6 +111,7 @@ void w_enrollment_destroy(w_enrollment_ctx *cfg);
  * 
  * @param cfg configuration @see w_enrollment_ctx
  * @param server_adress (optional) If null server_adress will be obtained from cfg
+ * @return 0 if successfull, -1 on error
  * */
 int w_enrollment_request_key(w_enrollment_ctx *cfg, const char * server_address);
 

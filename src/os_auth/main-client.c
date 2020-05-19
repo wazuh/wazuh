@@ -71,21 +71,8 @@ int main(int argc, char **argv)
     gid_t gid = 0;
     const char *group = GROUPGLOBAL;
 #endif
-    w_enrollment_target target_cfg;
-    w_enrollment_cert cert_cfg;
-    target_cfg.port = DEFAULT_PORT;
-    target_cfg.manager_name = NULL;
-    target_cfg.agent_name = NULL;
-    target_cfg.centralized_group = NULL;
-    target_cfg.sender_ip = NULL;
-    cert_cfg.ciphers = strdup(DEFAULT_CIPHERS);
-    cert_cfg.authpass = NULL;
-    cert_cfg.agent_cert = NULL;
-    cert_cfg.agent_key = NULL;
-    cert_cfg.ca_cert = NULL;
-    cert_cfg.auto_method = 0;
-    int use_src_ip = 0;
-    char * buf;
+    w_enrollment_target *target_cfg = w_enrollment_target_init();
+    w_enrollment_cert *cert_cfg = w_enrollment_cert_init();
     char *server_address = NULL;
     bio_err = 0;
     int debug_level = 0;
@@ -143,14 +130,14 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-%c needs an argument", c);
                 }
-                target_cfg.agent_name = optarg;
+                target_cfg->agent_name = strdup(optarg);
                 break;
             case 'p':
                 if (!optarg) {
                     merror_exit("-%c needs an argument", c);
                 }
-                target_cfg.port = atoi(optarg);
-                if (target_cfg.port <= 0 || target_cfg.port >= 65536) {
+                target_cfg->port = atoi(optarg);
+                if (target_cfg->port <= 0 || target_cfg->port >= 65536) {
                     merror_exit("Invalid port: %s", optarg);
                 }
                 break;
@@ -158,49 +145,49 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-%c needs an argument", c);
                 }
-                cert_cfg.ciphers = optarg;
+                cert_cfg->ciphers = strdup(optarg);
                 break;
             case 'v':
                 if (!optarg) {
                     merror_exit("-%c needs an argument", c);
                 }
-                cert_cfg.ca_cert = optarg;
+                cert_cfg->ca_cert = strdup(optarg);
                 break;
             case 'x':
                 if (!optarg) {
                     merror_exit("-%c needs an argument", c);
                 }
-                cert_cfg.agent_cert = optarg;
+                cert_cfg->agent_cert = strdup(optarg);
                 break;
             case 'k':
                 if (!optarg) {
                     merror_exit("-%c needs an argument", c);
                 }
-                cert_cfg.agent_key = optarg;
+                cert_cfg->agent_key = strdup(optarg);
                 break;
             case 'P':
                 if (!optarg)
                     merror_exit("-%c needs an argument", c);
 
-                cert_cfg.authpass = strdup(optarg);
+                cert_cfg->authpass = strdup(optarg);
                 break;
             case 'a':
-                cert_cfg.auto_method = 1;
+                cert_cfg->auto_method = 1;
                 break;
             case 'G':
                 if(!optarg){
                     merror_exit("-%c needs an argument",c);
                 }
-                target_cfg.centralized_group = optarg;
+                target_cfg->centralized_group = strdup(optarg);
                 break;
             case 'I':
                 if(!optarg){
                     merror_exit("-%c needs an argument",c);
                 }
-                target_cfg.sender_ip = optarg;
+                target_cfg->sender_ip = strdup(optarg);
                 break;
             case 'i':
-                use_src_ip = 1;
+                target_cfg->use_src_ip = 1;
                 break;
             default:
                 help_agent_auth();
@@ -226,7 +213,7 @@ int main(int argc, char **argv)
         exit(0);
     }
 
-    if (target_cfg.sender_ip && use_src_ip) {
+    if (target_cfg->sender_ip && target_cfg->use_src_ip) {
         merror("Options '-I' and '-i' are uncompatible.");
         exit(1);
     }
@@ -263,38 +250,18 @@ int main(int argc, char **argv)
 
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
-    
-    os_calloc(OS_SIZE_65536 + OS_SIZE_4096 + 1, sizeof(char), buf);
-    buf[OS_SIZE_65536 + OS_SIZE_4096] = '\0';
 
-    /* Checking if there is a custom password file */
-    if (cert_cfg.authpass == NULL) {
-        FILE *fp;
-        fp = fopen(AUTHDPASS_PATH, "r");
-        buf[0] = '\0';
-
-        if (fp) {
-            buf[4096] = '\0';
-            char *ret = fgets(buf, 4095, fp);
-
-            if (ret && strlen(buf) > 2) {
-                /* Remove newline */
-                if (buf[strlen(buf) - 1] == '\n')
-                    buf[strlen(buf) - 1] = '\0';
-
-                cert_cfg.authpass = strdup(buf);
-            }
-
-            fclose(fp);
-            minfo("Using password specified on file: %s", AUTHDPASS_PATH);
-        }
+    if (!server_address) {
+        merror("Manager IP not set.");
+        exit(1);
     }
-    if (!cert_cfg.authpass) {
-        minfo("No authentication password provided.");
-    }
-    w_enrollment_ctx *cfg = w_enrollment_init(&target_cfg, &cert_cfg);
+
+    w_enrollment_ctx *cfg = w_enrollment_init(target_cfg, cert_cfg);
     int ret = w_enrollment_request_key(cfg, server_address); 
     
-    free(buf);
+    w_enrollment_target_destroy(target_cfg);
+    w_enrollment_cert_destroy(cert_cfg);
+    w_enrollment_destroy(cfg);
+    
     exit((ret == 0) ? 0 : 1);
 }

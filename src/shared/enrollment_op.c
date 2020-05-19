@@ -38,9 +38,11 @@ static int w_enrollment_process_response(SSL *ssl);
 /* Auxiliary */
 static void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_cert, const char *hostname);
 static void w_enrollment_concat_group(char *buff, const char* centralized_group);
-static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip);
+static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip, const int use_src_ip);
 static int w_enrollment_process_agent_key(char *buffer);
 static int w_enrollment_store_key_entry(const char* keys);
+static char *w_enrollment_extract_agent_name(const w_enrollment_ctx *cfg);
+static void w_enrollment_load_pass(w_enrollment_cert *cert_cfg);
 
 /* Constants */
 static const int ENTRY_ID = 0;
@@ -48,45 +50,126 @@ static const int ENTRY_NAME = 1;
 static const int ENTRY_IP = 2;
 static const int ENTRY_KEY = 3; 
 
-w_enrollment_ctx * w_enrollment_init(const w_enrollment_target *target, const w_enrollment_cert *cert) {
+w_enrollment_target *w_enrollment_target_init() {
+    w_enrollment_target *target_cfg;
+    os_malloc(sizeof(w_enrollment_target), target_cfg);
+    target_cfg->port = DEFAULT_PORT;
+    target_cfg->manager_name = NULL;
+    target_cfg->agent_name = NULL;
+    target_cfg->centralized_group = NULL;
+    target_cfg->sender_ip = NULL;
+    target_cfg->use_src_ip = 0;
+    return target_cfg;
+}
+
+void w_enrollment_target_destroy(w_enrollment_target *target_cfg) {
+    os_free(target_cfg->manager_name);
+    os_free(target_cfg->agent_name);
+    os_free(target_cfg->centralized_group);
+    os_free(target_cfg->sender_ip);
+    os_free(target_cfg);
+}
+
+w_enrollment_cert *w_enrollment_cert_init(){
+    w_enrollment_cert *cert_cfg;
+    os_malloc(sizeof(w_enrollment_cert), cert_cfg);
+    cert_cfg->ciphers = strdup(DEFAULT_CIPHERS);
+    cert_cfg->authpass_file = strdup(AUTHDPASS_PATH);
+    cert_cfg->authpass = NULL;
+    cert_cfg->agent_cert = NULL;
+    cert_cfg->agent_key = NULL;
+    cert_cfg->ca_cert = NULL;
+    cert_cfg->auto_method = 0;
+    return cert_cfg;
+}
+
+void w_enrollment_cert_destroy(w_enrollment_cert *cert_cfg) {
+    os_free(cert_cfg->ciphers);
+    os_free(cert_cfg->authpass_file);
+    os_free(cert_cfg->authpass);
+    os_free(cert_cfg->agent_cert);
+    os_free(cert_cfg->agent_key);
+    os_free(cert_cfg->ca_cert);
+    os_free(cert_cfg);
+}
+
+w_enrollment_ctx * w_enrollment_init(w_enrollment_target *target, w_enrollment_cert *cert) {
     assert(target != NULL);
     assert(cert != NULL);
     w_enrollment_ctx *cfg;
     os_malloc(sizeof(w_enrollment_ctx), cfg);
-    // Copy constructor for const parameters
-    w_enrollment_ctx init = {
-        .target_cfg = target,
-        .cert_cfg = cert
-    };
-    memcpy(cfg, &init, sizeof(w_enrollment_ctx));
+    cfg->target_cfg = target;
+    cfg->cert_cfg = cert;
     cfg->enabled = 1;
     cfg->ssl = NULL;
+    cfg->allow_localhost = 1;
+    cfg->delay_after_enrollment = 20;
     return cfg;
 }
 
 void w_enrollment_destroy(w_enrollment_ctx *cfg) {
     assert(cfg != NULL);
-    if (cfg->ssl) {
-        BIO *bio = SSL_get_rbio(cfg->ssl);
-        if (bio) {
-            BIO_free(bio);
-        }
-        SSL_free(cfg->ssl);
-    }
     os_free(cfg);
 }
 
 int w_enrollment_request_key(w_enrollment_ctx *cfg, const char * server_address) {
     assert(cfg != NULL);
     int ret = -1;
+    minfo("Starting enrollment process to server: %s", server_address ? server_address : cfg->target_cfg->manager_name);
     int socket = w_enrollment_connect(cfg, server_address ? server_address : cfg->target_cfg->manager_name);
     if ( socket >= 0) {
+        w_enrollment_load_pass(cfg->cert_cfg);
         if (w_enrollment_send_message(cfg) == 0) {
             ret = w_enrollment_process_response(cfg->ssl);
         }
-        close(socket);
+        OS_CloseSocket(socket);
+    }
+    if (cfg->ssl) {
+        SSL_free(cfg->ssl);
+        cfg->ssl = NULL;
     }
     return ret;
+}
+
+/**
+ * @brief Retrieves agent name. If no agent_name has been extracted it will 
+ * be obtained by obtaining hostname
+ * 
+ * @param cfg configuration structure
+ * @param allow_localhost 1 will allow localhost as name, 0 will throw an merror_exit
+ * @return agent_name on succes
+ *         NULL on errors
+ * */
+static char *w_enrollment_extract_agent_name(const w_enrollment_ctx *cfg) {
+    char *lhostname = NULL;
+    /* agent_name extraction */
+    if (cfg->target_cfg->agent_name == NULL) {
+        os_malloc(513, lhostname);
+        lhostname[512] = '\0';
+        if (gethostname(lhostname, 512 - 1) != 0) {
+            merror("Unable to extract hostname. Custom agent name not set.");
+            os_free(lhostname);
+            return NULL;
+        }
+        OS_ConvertToValidAgentName(lhostname);
+    } else {
+        lhostname = cfg->target_cfg->agent_name;
+    }
+
+    if(!cfg->allow_localhost && (strcmp(lhostname, "localhost") == 0)) {
+        merror(AG_INV_HOST, lhostname);
+        if(lhostname != cfg->target_cfg->agent_name)
+            os_free(lhostname);
+        return NULL;
+    }
+
+    if (!OS_IsValidName(lhostname)) {
+        merror("Invalid agent name \"%s\". Please pick a valid name.", lhostname);
+        if(lhostname != cfg->target_cfg->agent_name)
+            os_free(lhostname);
+        return NULL;
+    }
+    return lhostname;
 }
 
 /**
@@ -103,7 +186,17 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
     assert(cfg != NULL);
     assert(server_address != NULL);
 
-    char *ip_address = OS_GetHost(server_address, 3);
+    char *ip_address = NULL;
+    char *tmp_str = strchr(server_address, '/'); 
+    if (tmp_str) {
+        // server_address comes in {hostname}/{ip} fomat
+        ip_address = strdup(++tmp_str);
+    }
+    if(!ip_address){
+        // server_address is either a host or a ip
+        ip_address = OS_GetHost(server_address, 3);
+    }
+    
     /* Translate hostname to an ip_adress */
     if (!ip_address) {
         merror("Could not resolve hostname: %s\n", server_address);
@@ -162,27 +255,11 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
  */
 static int w_enrollment_send_message(w_enrollment_ctx *cfg) {
     assert(cfg != NULL);
-    char *lhostname = NULL;
-    /* agent_name extraction */
-    if (cfg->target_cfg->agent_name == NULL) {
-        os_malloc(513, lhostname);
-        lhostname[512] = '\0';
-        if (gethostname(lhostname, 512 - 1) != 0) {
-            merror("Unable to extract hostname. Custom agent name not set.");
-            os_free(lhostname);
-            return -1;
-        }
-        OS_ConvertToValidAgentName(lhostname);
-    } else {
-        lhostname = cfg->target_cfg->agent_name;
-    }
-
-    if (!OS_IsValidName(lhostname)) {
-        merror("Invalid agent name \"%s\". Please pick a valid name.", lhostname);
-        if(lhostname != cfg->target_cfg->agent_name)
-            os_free(lhostname);
+    char *lhostname = w_enrollment_extract_agent_name(cfg);
+    if (!lhostname) {
         return -1;
     }
+    
     minfo("Using agent name as: %s", lhostname);
 
     /* Message formation */
@@ -200,7 +277,7 @@ static int w_enrollment_send_message(w_enrollment_ctx *cfg) {
         w_enrollment_concat_group(buf, cfg->target_cfg->centralized_group);
     }
 
-    if(w_enrollment_concat_src_ip(buf, cfg->target_cfg->sender_ip)) {
+    if(w_enrollment_concat_src_ip(buf, cfg->target_cfg->sender_ip, cfg->target_cfg->use_src_ip)) {
         os_free(buf);
         if(lhostname != cfg->target_cfg->agent_name)
             os_free(lhostname);
@@ -223,7 +300,7 @@ static int w_enrollment_send_message(w_enrollment_ctx *cfg) {
 
     os_free(buf);
     if(lhostname != cfg->target_cfg->agent_name)
-            os_free(lhostname);
+        os_free(lhostname);
     return 0;
 }
 
@@ -293,16 +370,36 @@ static int w_enrollment_process_response(SSL *ssl) {
  * */
 static int w_enrollment_store_key_entry(const char* keys) {
     assert(keys != NULL);
+
+#ifdef WIN32
     FILE *fp;
-    umask(0026);
     fp = fopen(KEYSFILE_PATH, "w");
 
     if (!fp) {
-        merror("Unable to open key file: %s", KEYSFILE_PATH);
+        merror(FOPEN_ERROR, KEYSFILE_PATH, errno, strerror(errno));
         return -1;
     }
     fprintf(fp, "%s\n", keys);
     fclose(fp);
+
+#else /* !WIN32 */
+    File file;
+
+    if (TempFile(&file, isChroot() ? AUTH_FILE : KEYSFILE_PATH, 0) < 0) {        
+        merror(FOPEN_ERROR, isChroot() ? AUTH_FILE : KEYSFILE_PATH, errno, strerror(errno));
+        return -1;
+    }
+    fprintf(file.fp, "%s\n", keys);    
+    fclose(file.fp);
+    
+    if (OS_MoveFile(file.name, isChroot() ? AUTH_FILE : KEYSFILE_PATH) < 0) {
+        free(file.name);
+        return -1;
+    }
+    free(file.name);
+
+#endif /* !WIN32 */
+
     return 0;
 }
 
@@ -395,25 +492,62 @@ static void w_enrollment_concat_group(char *buff, const char* centralized_group)
  * @return 0 on success
  *        -1 if ip is invalid 
  */
-static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip) {
+static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip, const int use_src_ip) {
     assert(buff != NULL); // buff should not be NULL.
 
-    if(sender_ip){
-		/* Check if this is strictly an IP address using a regex */
-		if (OS_IsValidIP(sender_ip, NULL))
-		{
-			char opt_buf[256] = {0};
-			snprintf(opt_buf,254," IP:'%s'",sender_ip);
-			strncat(buff,opt_buf,254);
-		} else {
-			merror("Invalid IP address provided for sender IP.");
-			return -1;
-		}
-    } else {
+    if(sender_ip && !use_src_ip) { // Force an IP  
+        /* Check if this is strictly an IP address using a regex */
+        if (OS_IsValidIP(sender_ip, NULL))
+        {
+            char opt_buf[256] = {0};
+            snprintf(opt_buf,254," IP:'%s'",sender_ip);
+            strncat(buff,opt_buf,254);
+        } else {
+            merror("Invalid IP address provided for sender IP.");
+            return -1;
+        }
+    } else if (!sender_ip && use_src_ip){ // Force src IP
         char opt_buf[10] = {0};
         snprintf(opt_buf,10," IP:'src'");
         strncat(buff,opt_buf,10);
+    } else if (sender_ip && use_src_ip) { // Incompatible options
+        merror("Incompatible sender_ip options: Forcing IP while using use_source_ip flag.");
+        return -1;
     }
 
     return 0;
+}
+
+/**
+ * Loads enrollment password
+ * If no override pass is set checks in authpass_file
+ * @param cert_cfg certificate configuration
+ * */
+static void w_enrollment_load_pass(w_enrollment_cert *cert_cfg) {
+    assert(cert_cfg != NULL);
+    /* Checking if there is a custom password file */
+    if (cert_cfg->authpass == NULL) {
+        FILE *fp;
+        fp = fopen(cert_cfg->authpass_file, "r");
+
+        if (fp) {
+            char buf[4096];
+            char *ret = fgets(buf, 4095, fp);
+
+            if (ret && strlen(buf) > 2) {
+                /* Remove newline */
+                if (buf[strlen(buf) - 1] == '\n')
+                    buf[strlen(buf) - 1] = '\0';
+
+                cert_cfg->authpass = strdup(buf);
+            }
+
+            fclose(fp);
+            minfo("Using password specified on file: %s", cert_cfg->authpass_file);
+        }
+
+        if (!cert_cfg->authpass) {
+            minfo("No authentication password provided.");
+        }
+    }
 }
