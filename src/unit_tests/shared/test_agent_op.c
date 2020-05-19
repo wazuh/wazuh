@@ -139,6 +139,8 @@ static void test_create_send_sync_payload(void **state) {
     item = cJSON_GetObjectItem(arguments, "message");
     assert_null(item);
 
+    cJSON_Delete(payload); 
+
     /* non NULL message */
     message = w_create_agent_remove_payload(id,purge);
     payload = w_create_send_sync_payload(daemon, message);    
