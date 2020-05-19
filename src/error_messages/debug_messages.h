@@ -74,7 +74,7 @@
 #define VU_DUPLICATED_PACKAGE "(5459): Trying to insert duplicated package '%s' into the vulnerability '%s'. Version (%s) '%s' '%s' (feed '%s')."
 #define VU_PACKAGE_NOT_VULN   "(5460): Package '%s' not vulnerable to '%s'. Version (%s) not '%s' '%s' (feed '%s')."
 #define VU_START_VUL_AG_FIL   "(5461): Filtering vulnerabilities obtained for agent '%.3d'"
-#define VU_PACKAGE_PATCHED    "(5462): Package '%s' not vulnerable to '%s' since it is not affected or is already patched by the vendor."
+#define VU_PACKAGE_NOT_AFF    "(5462): Package '%s' not vulnerable to '%s' since it is not affected or is already patched."
 #define VU_PACKAGE_NO_DEP     "(5463): Package '%s' not vulnerable to '%s' since it don't meet its '%s' dependency on package with ID '%d'"
 #define VU_PACKAGE_DEP_NOT_VU "(5464): Package '%s' not vulnerable to '%s' since it is a dependency not vulnerable."
 #define VU_VULN_FILTER_AG     "(5465): A total of '%d' potential vulnerabilities have been discarded for agent '%.3d'"
