@@ -259,5 +259,6 @@ extern const char *__local_name;
 #include "auth_client.h"
 #include "os_utils.h"
 #include "bzip2_op.h"
+#include "enrollment_op.h"
 
 #endif /* SHARED_H */

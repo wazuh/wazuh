@@ -8,8 +8,9 @@
  * @copyright Copyright (c) 2019 Wazuh, Inc.
  */
 
-#include <openssl/evp.h>
+
 #include "shared.h"
+#include <openssl/evp.h>
 #include "syscheck.h"
 #include "external/sqlite/sqlite3.h"
 #include "config/syscheck-config.h"
