@@ -10,17 +10,15 @@ import pytest
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
-        with patch('wazuh.common.ossec_uid'):
-            with patch('wazuh.common.ossec_gid'):
-                sys.modules['wazuh.rbac.orm'] = MagicMock()
-                import wazuh.rbac.decorators
+        sys.modules['wazuh.rbac.orm'] = MagicMock()
+        import wazuh.rbac.decorators
 
-                del sys.modules['wazuh.rbac.orm']
-                from wazuh.tests.util import RBAC_bypasser
+        del sys.modules['wazuh.rbac.orm']
+        from wazuh.tests.util import RBAC_bypasser
 
-                wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-                from wazuh.core.cluster import worker
-                from wazuh import common
+        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+        from wazuh.core.cluster import worker
+        from wazuh import common
 
 old_basic_ck = """001 test1 any 54cfda3bfcc817aadc8f317b3f05d676d174cdf893aa2f9ee2a302ef17ae6794
 002 test2 any 7a9c0990dadeca159c239a06031b04d462d6d28dd59628b41dc7e13cc4d3a344
@@ -65,7 +63,7 @@ new_ck_more_agents_no_purge = """001 !test1 any 54cfda3bfcc817aadc8f317b3f05d676
     (old_basic_ck, new_ck_more_agents_purge, {'001'}),
     (old_basic_ck, new_ck_more_agents_no_purge, {'001'})
 ])
-@patch('wazuh.cluster.worker.WorkerHandler.remove_bulk_agents')
+@patch('wazuh.core.cluster.worker.WorkerHandler.remove_bulk_agents')
 def test_check_removed_agents(remove_agents_patch, old_ck, new_ck, agents_to_remove):
     """
     Tests WorkerHandler._check_removed_agents function.
@@ -87,12 +85,12 @@ def test_check_removed_agents(remove_agents_patch, old_ck, new_ck, agents_to_rem
     {'001'},
     [str(x).zfill(3) for x in range(1, 15)]
 ])
-@patch('wazuh.cluster.worker.WazuhDBConnection')
+@patch('wazuh.core.cluster.worker.WazuhDBConnection')
 @patch('shutil.rmtree')
 @patch('os.remove')
 @patch('glob.iglob')
 @patch('wazuh.core.core_agent.Agent.get_agents_overview')
-@patch('wazuh.cluster.worker.Connection')
+@patch('wazuh.core.cluster.worker.Connection')
 @patch('os.path.isdir')
 def test_remove_bulk_agents(isdir_mock, connection_mock, agents_mock, glob_mock, remove_mock, rmtree_mock, wdb_mock,
                             agents_to_remove):

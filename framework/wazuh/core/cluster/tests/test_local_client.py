@@ -6,7 +6,7 @@ from unittest.mock import patch
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
         from wazuh.exception import WazuhException
-        from wazuh.core.cluster import LocalClient
+        from wazuh.core.cluster.local_client import LocalClient
 import pytest
 import asyncio
 import uvloop
@@ -18,5 +18,5 @@ loop = uvloop.new_event_loop()
 @patch('asyncio.get_running_loop', return_value=loop)
 def test_crypto(mock_runningloop, mock_loop):
     with pytest.raises(WazuhException, match=".* 1119 .*"):
-        local_client = LocalClient(b'send_file', "{} {}".format('/var/ossec', None).encode(), False)
+        local_client = LocalClient()
         loop.run_until_complete(local_client.start())
