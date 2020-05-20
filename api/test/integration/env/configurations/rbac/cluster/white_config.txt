@@ -15,3 +15,4 @@
 | cluster:delete_file      | node:id&file:path | master-node,worker2 | ruleset/decoders/0005-wazuh_decoders.xml                                                    |                     |
 | cluster:read_api_config  | *:*               | *                                                                                                                 |                     |
 | cluster:update_api_config| *:*               | *                                                                                                                 |                     |
+

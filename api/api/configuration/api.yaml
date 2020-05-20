@@ -8,10 +8,12 @@
 
 # Advanced configuration
 
+# JWT token expiration time (in seconds)
+# auth_token_exp_timeout: 36000
+
 # RBAC configuration
 # rbac:
   # mode: white
-  # auth_token_exp_timeout: 36000
 
 # https:
 #  enabled: yes
