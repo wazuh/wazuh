@@ -502,6 +502,18 @@ void test_getSyscheckConfig_no_directories(void **state)
 }
 #endif
 
+void test_SyscheckConf_DirectoriesWithCommas(void **state) {
+    (void) state;
+    cJSON * ret;
+
+    ret = Read_Syscheck_Config("test_syscheck3.conf");
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(syscheck.dir[0], "/,testcommas");
+    assert_string_equal(syscheck.dir[1], "/test,commas");
+    assert_string_equal(syscheck.dir[2], "/testcommas,");
+}
+
 void test_getSyscheckInternalOptions(void **state)
 {
     (void) state;
@@ -533,6 +545,7 @@ int main(void) {
         cmocka_unit_test_teardown(test_getSyscheckConfig_no_audit, restart_syscheck),
         cmocka_unit_test_teardown(test_getSyscheckConfig_no_directories, restart_syscheck),
         cmocka_unit_test_teardown(test_getSyscheckInternalOptions, restart_syscheck),
+        cmocka_unit_test_teardown(test_SyscheckConf_DirectoriesWithCommas, restart_syscheck),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
