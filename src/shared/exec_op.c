@@ -72,9 +72,9 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
             snprintf(lpCommandLine + zcommand - 1, zarg + 1, " %s", argv[i]);
             zcommand += zarg;
         }
-    }
 
-    mdebug2("path = '%s', command = '%s'", path, lpCommandLine);
+        mdebug2("path = '%s', command = '%s'", path, lpCommandLine);
+    }
 
     if (!CreateProcess(path, lpCommandLine, NULL, NULL, TRUE, 0, NULL, NULL, &sinfo, &pinfo)) {
         mdebug1("CreateProcess(): %ld", GetLastError());

@@ -335,7 +335,7 @@ int wdb_create_agent_db(int id, const char *name) {
     gid = Privsep_GetGroup(GROUPGLOBAL);
 
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror(USER_ERROR, ROOT, GROUPGLOBAL);
+        merror(USER_ERROR, ROOT, GROUPGLOBAL, strerror(errno), errno);
         return -1;
     }
 

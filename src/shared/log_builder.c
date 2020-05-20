@@ -103,6 +103,8 @@ char * log_builder_build(log_builder_t * builder, const char * pattern, const ch
         return strdup(logmsg);
     }
 
+    assert(&builder->rwlock != NULL);
+
     os_malloc(OS_MAXSTR, final);
     os_strdup(pattern, _pattern);
 
