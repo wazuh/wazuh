@@ -522,10 +522,7 @@ stages:
               roles: []
             - username: python
               roles: []
-            - username: testing
-              roles: []
           failed_items: []
-          total_affected_items: 5
+          total_affected_items: 4
           total_failed_items: 0
         message: Users deleted correctly
-
