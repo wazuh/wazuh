@@ -2,9 +2,9 @@
 file(GLOB syscollector_files
   ../../../wazuh_modules/*.o
   ../../../wazuh_modules/syscollector/*.o)
-list(REMOVE_ITEM syscollector_files ../wazuh_modules/main.o)
+list(REMOVE_ITEM syscollector_files ../../../wazuh_modules/main.o)
 
-add_library(SYS_COLLECTOR_O STATIC ${syscollector_files})
+add_library(SYSCOLLECTOR_O STATIC ${syscollector_files})
 
 set_source_files_properties(
   ${syscollector_files}
@@ -14,12 +14,12 @@ set_source_files_properties(
 )
 
 set_target_properties(
-  SYS_COLLECTOR_O
+  SYSCOLLECTOR_O
   PROPERTIES
   LINKER_LANGUAGE C
 )
 
-target_link_libraries(SYS_COLLECTOR_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+target_link_libraries(SYSCOLLECTOR_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 # Generate syscollector tests
 list(APPEND syscollector_names "test_syscollector_common")
@@ -39,7 +39,7 @@ foreach(counter RANGE ${count})
         ${test_name}
         ${WAZUHLIB}
         ${WAZUHEXT}
-        SYS_COLLECTOR_O
+        SYSCOLLECTOR_O
         ${TEST_DEPS}
     )
     if(NOT test_flags STREQUAL " ")
