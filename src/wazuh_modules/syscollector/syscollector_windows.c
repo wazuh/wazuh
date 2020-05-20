@@ -327,7 +327,8 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     dwSize = sizeof(MIB_TCPTABLE_OWNER_PID);
 
     /* Initial call to the function to get the necessary size into the dwSize variable */
-    if ((dwRetVal = GetExtendedTcpTable(pTcpTable, &dwSize, bOrder, AF_INET, TableClass, 0)) == ERROR_INSUFFICIENT_BUFFER){
+    if (dwRetVal = GetExtendedTcpTable(pTcpTable, &dwSize, bOrder, AF_INET, TableClass, 0),
+        dwRetVal == ERROR_INSUFFICIENT_BUFFER) {
         win_free(pTcpTable);
         pTcpTable = (MIB_TCPTABLE_OWNER_PID *) win_alloc(dwSize);
         if (pTcpTable == NULL){
@@ -419,7 +420,8 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     dwSize = sizeof(MIB_TCP6TABLE_OWNER_PID);
 
     /* Initial call to the function to get the necessary size into the dwSize variable */
-    if ((dwRetVal = GetExtendedTcpTable(pTcp6Table, &dwSize, bOrder, AF_INET6, TableClass, 0)) == ERROR_INSUFFICIENT_BUFFER){
+    if (dwRetVal = GetExtendedTcpTable(pTcp6Table, &dwSize, bOrder, AF_INET6, TableClass, 0),
+        dwRetVal == ERROR_INSUFFICIENT_BUFFER) {
         win_free(pTcp6Table);
         pTcp6Table = (MIB_TCP6TABLE_OWNER_PID *) win_alloc(dwSize);
         if (pTcp6Table == NULL){
@@ -542,7 +544,8 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     dwSize = sizeof(MIB_UDPTABLE_OWNER_PID);
 
     /* Initial call to the function to get the necessary size into the dwSize variable */
-    if ((dwRetVal = GetExtendedUdpTable(pUdpTable, &dwSize, bOrder, AF_INET, TableClassUdp, 0)) == ERROR_INSUFFICIENT_BUFFER){
+    if (dwRetVal = GetExtendedUdpTable(pUdpTable, &dwSize, bOrder, AF_INET, TableClassUdp, 0),
+        dwRetVal == ERROR_INSUFFICIENT_BUFFER) {
         win_free(pUdpTable);
         pUdpTable = (MIB_UDPTABLE_OWNER_PID *) win_alloc(dwSize);
         if (pUdpTable == NULL){
@@ -609,7 +612,8 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     dwSize = sizeof(MIB_UDP6TABLE_OWNER_PID);
 
     /* Initial call to the function to get the necessary size into the dwSize variable */
-    if ((dwRetVal = GetExtendedUdpTable(pUdp6Table, &dwSize, bOrder, AF_INET6, TableClassUdp, 0)) == ERROR_INSUFFICIENT_BUFFER){
+    if (dwRetVal = GetExtendedUdpTable(pUdp6Table, &dwSize, bOrder, AF_INET6, TableClassUdp, 0),
+        dwRetVal == ERROR_INSUFFICIENT_BUFFER) {
         win_free(pUdp6Table);
         pUdp6Table = (MIB_UDP6TABLE_OWNER_PID *) win_alloc(dwSize);
         if (pUdp6Table == NULL){
@@ -822,7 +826,7 @@ void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const c
     DWORD i, retCode;
 
     // Get the class name and the value count
-    retCode = RegQueryInfoKey(
+    RegQueryInfoKey(
         hKey,                    // key handle
         achClass,                // buffer for class name
         &cchClassName,           // size of class string
@@ -889,8 +893,6 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, const char *LOCAT
     FILETIME ftLastWriteTime;      // last write time
     long unsigned int i, result;
 
-    // Remove unused variables
-
     result = RegQueryInfoKey(
         hKey,                    // key handle
         achClass,                // buffer for class name
@@ -905,7 +907,8 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, const char *LOCAT
         &cbSecurityDescriptor,   // security descriptor
         &ftLastWriteTime);       // last write time
 
-    if (!cSubKeys) {
+    // Exit if the number of subkeys is 0 or if not success
+    if (cSubKeys == 0 || result != ERROR_SUCCESS) {
         return;
     }
 
@@ -976,6 +979,9 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, const char *LOCAT
             }
         } else {
             mterror(WM_SYS_LOGTAG, "Error reading key '%s'. Error code: %lu", achKey, result);
+            // Avoid infinite loops
+            break;
+
         }
     }
 }
@@ -1000,7 +1006,7 @@ void list_users(HKEY hKey, int usec, const char * timestamp, const char * LOCATI
     DWORD i, retCode;
 
     // Get the class name and the value count
-    retCode = RegQueryInfoKey(
+    RegQueryInfoKey(
         hKey,                    // key handle
         achClass,                // buffer for class name
         &cchClassName,           // size of class string

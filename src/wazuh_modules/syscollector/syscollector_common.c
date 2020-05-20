@@ -109,14 +109,11 @@ void* wm_sys_main(wm_sys_t *sys) {
 
         if (time_sleep = get_sleep_time(&run), time_sleep > 0) {
             mtinfo(WM_SYS_LOGTAG, "Waiting for turn to evaluate.");
-            wm_delay(1000 * time_sleep);
-        } else {
-            // Wait for Wazuh DB start
-            wm_delay(1000);
+            w_time_delay(1000 * time_sleep);
         }
     } else {
         // Wait for Wazuh DB start
-        wm_delay(1000);
+        w_time_delay(1000);
         run |= (RUN_HW | RUN_OS | RUN_IFACE | RUN_PKG | RUN_PORT | RUN_PROC);
     #ifdef WIN32
         run |= RUN_HFIX;
@@ -245,7 +242,7 @@ void* wm_sys_main(wm_sys_t *sys) {
 
         if (time_sleep = get_sleep_time(&run), time_sleep >= 0) {
             mtinfo(WM_SYS_LOGTAG, "Waiting for turn to evaluate.");
-            wm_delay(1000 * time_sleep);
+            w_time_delay(1000 * time_sleep);
         } else {
             mterror(WM_SYS_LOGTAG, "Interval overtaken.");
         }
@@ -418,7 +415,7 @@ static void wm_sys_setup(wm_sys_t *_sys) {
     int i;
     // Connect to socket
     for (i = 0; (queue_fd = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
-        wm_delay(1000 * WM_MAX_WAIT);
+        w_time_delay(1000 * WM_MAX_WAIT);
 
     if (i == WM_MAX_ATTEMPTS) {
         mterror(WM_SYS_LOGTAG, "Can't connect to queue.");

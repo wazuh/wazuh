@@ -365,7 +365,7 @@ void sys_rpm_packages(int queue_fd, const char* LOCATION){
     }
 
     // Set Little-endian order by default
-    if ((ret = dbp->set_lorder(dbp, 1234)) != 0) {
+    if (ret = dbp->set_lorder(dbp, 1234), ret != 0) {
         mtwarn(WM_SYS_LOGTAG, "Error setting byte-order.");
     }
 
@@ -414,7 +414,7 @@ void sys_rpm_packages(int queue_fd, const char* LOCATION){
 
         for (i = 0; i < index; i++) {
             offset = 16;
-            if ((ret = read_entry(bytes, info)) == 0) {
+            if ((ret = read_entry(bytes, info)), ret == 0) {
                 os_calloc(1, sizeof(rpm_data), info->next);
                 info = info->next;
             }
@@ -978,7 +978,7 @@ void get_system_linux(hw_entry * info) {
     } else {
         char *aux_string = NULL;
         while (fgets(string, OS_MAXSTR, fp) != NULL){
-            if ((aux_string = strstr(string, "model name")) != NULL){
+            if ((aux_string = strstr(string, "model name")), aux_string != NULL){
 
                 char *cpuname;
                 strtok_r(string, ":", &saveptr);
@@ -989,7 +989,7 @@ void get_system_linux(hw_entry * info) {
 
                 free(info->cpu_name);
                 info->cpu_name = strdup(cpuname);
-            } else if ((aux_string = strstr(string, "cpu MHz")) != NULL){
+            } else if ((aux_string = strstr(string, "cpu MHz")), aux_string != NULL){
 
                 char *frec;
                 strtok_r(string, ":", &saveptr);
@@ -1014,7 +1014,7 @@ void get_system_linux(hw_entry * info) {
         while (fgets(string, OS_MAXSTR, fp) != NULL){
             char *aux_string = NULL;
 
-            if ((aux_string = strstr(string, "MemTotal")) != NULL){
+            if ((aux_string = strstr(string, "MemTotal")), aux_string != NULL){
 
                 char *end_string = NULL;
                 strtok_r(string, ":", &saveptr);
@@ -1027,7 +1027,7 @@ void get_system_linux(hw_entry * info) {
                 } else {
                     info->ram_total = 0;
                 }
-            } else if ((aux_string = strstr(string, "MemFree")) != NULL){
+            } else if ((aux_string = strstr(string, "MemFree")), aux_string != NULL){
 
                 char *end_string = NULL;
                 strtok_r(string, ":", &saveptr);

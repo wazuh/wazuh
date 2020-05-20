@@ -253,7 +253,7 @@ int wdb_parse(char * input, char * output) {
                 if (data = wdb_exec(wdb->db, sql), data) {
                     out = cJSON_PrintUnformatted(data);
                     snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-                    free(out);
+                    os_free(out);
                     cJSON_Delete(data);
                 } else {
                     mdebug1("DB(%s) Cannot execute SQL query.", sagent_id);
@@ -345,6 +345,53 @@ int wdb_parse(char * input, char * output) {
             return -1;
         }
         return result;
+    } else if(strcmp(actor, "mitre") == 0) {
+        query = next;
+
+        if (wdb = wdb_open_mitre(), !wdb) {
+            mdebug2("Couldn't open DB mitre: %s/%s.db", WDB_DIR, WDB_MITRE_NAME);
+            snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB mitre");
+            return -1;
+        }
+
+        if (next = wstr_chr(query, ' '), !next) {
+            mdebug1("Invalid DB query syntax.");
+            mdebug2("DB query error near: %s", query);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+            wdb_leave(wdb);
+            return -1;
+        }
+        *next++ = '\0';
+
+        if (strcmp(query, "sql") == 0) {
+            if (!next) {
+                mdebug1("Mitre DB Invalid DB query syntax.");
+                mdebug2("Mitre DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = -1;
+            } else {
+                sql = next;
+
+                if (data = wdb_exec(wdb->db, sql), data) {
+                    out = cJSON_PrintUnformatted(data);
+                    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+                    os_free(out);
+                    cJSON_Delete(data);
+                } else {
+                    mdebug1("Mitre DB Cannot execute SQL query; err database %s/%s.db: %s", WDB_DIR, WDB_MITRE_NAME, sqlite3_errmsg(wdb->db));
+                    mdebug2("Mitre DB SQL query: %s", sql);
+                    snprintf(output, OS_MAXSTR + 1, "err Cannot execute Mitre database query; %s", sqlite3_errmsg(wdb->db));
+                    result = -1;
+                }
+            }
+        } else {
+            mdebug1("Invalid DB query syntax.");
+            mdebug2("DB query error near: %s", query);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+            result = -1;
+        }
+        wdb_leave(wdb);
+        return result;
     } else {
         mdebug1("DB() Invalid DB query actor: %s", actor);
         snprintf(output, OS_MAXSTR + 1, "err Invalid DB query actor: '%.32s'", actor);
@@ -362,7 +409,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
     long ts;
 
     if (next = wstr_chr(input, ' '), !next) {
-        mdebug2("DB(%s) Invalid FIM query syntax: %s", wdb->agent_id, input);
+        mdebug2("DB(%s) Invalid FIM query syntax: %s", wdb->id, input);
         snprintf(output, OS_MAXSTR + 1, "err Invalid FIM query syntax, near '%.32s'", input);
         return -1;
     }
@@ -372,7 +419,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
 
     if (strcmp(curr, "scan_info_get") == 0) {
         if (result = wdb_scan_info_get(wdb, "fim", next, &ts), result < 0) {
-            mdebug1("DB(%s) Cannot get FIM scan info.", wdb->agent_id);
+            mdebug1("DB(%s) Cannot get FIM scan info.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot get fim scan info.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok %ld", ts);
@@ -381,7 +428,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         return result;
     } else if (strcmp(curr, "updatedate") == 0) {
         if (result = wdb_fim_update_date_entry(wdb, next), result < 0) {
-            mdebug1("DB(%s) Cannot update fim date field.", wdb->agent_id);
+            mdebug1("DB(%s) Cannot update fim date field.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot update fim date field.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -390,7 +437,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         return result;
     } else if (strcmp(curr, "cleandb") == 0) {
         if (result = wdb_fim_clean_old_entries(wdb), result < 0) {
-            mdebug1("DB(%s) Cannot clean fim database.", wdb->agent_id);
+            mdebug1("DB(%s) Cannot clean fim database.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot clean fim database.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -401,7 +448,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         curr = next;
 
         if (next = wstr_chr(curr, ' '), !next) {
-            mdebug1("DB(%s) Invalid scan_info fim query syntax.", wdb->agent_id);
+            mdebug1("DB(%s) Invalid scan_info fim query syntax.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
             return -1;
         }
@@ -409,7 +456,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
         ts = atol(next);
         if (result = wdb_scan_info_update(wdb, "fim", curr, ts), result < 0) {
-            mdebug1("DB(%s) Cannot save fim control message.", wdb->agent_id);
+            mdebug1("DB(%s) Cannot save fim control message.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot save fim control message");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -418,7 +465,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         return result;
     } else if (strcmp(curr, "control") == 0) {
         if (result = wdb_scan_info_fim_checks_control(wdb, next), result < 0) {
-            mdebug1("DB(%s) Cannot save fim check_control message.", wdb->agent_id);
+            mdebug1("DB(%s) Cannot save fim check_control message.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot save fim control message");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -427,7 +474,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         return result;
     } else if (strcmp(curr, "load") == 0) {
         if (result = wdb_syscheck_load(wdb, next, buffer, sizeof(buffer)), result < 0) {
-            mdebug1("DB(%s) Cannot load FIM.", wdb->agent_id);
+            mdebug1("DB(%s) Cannot load FIM.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot load Syscheck");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok %s", buffer);
@@ -436,7 +483,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         return result;
     } else if (strcmp(curr, "delete") == 0) {
         if (result = wdb_fim_delete(wdb, next), result < 0) {
-            mdebug1("DB(%s) Cannot delete FIM entry.", wdb->agent_id);
+            mdebug1("DB(%s) Cannot delete FIM entry.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot delete Syscheck");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -447,8 +494,8 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         curr = next;
 
         if (next = wstr_chr(curr, ' '), !next) {
-            mdebug1("DB(%s) Invalid FIM query syntax.", wdb->agent_id);
-            mdebug2("DB(%s) FIM query: %s", wdb->agent_id, curr);
+            mdebug1("DB(%s) Invalid FIM query syntax.", wdb->id);
+            mdebug2("DB(%s) FIM query: %s", wdb->id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
             return -1;
         }
@@ -460,8 +507,8 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         } else if (strcmp(curr, "registry") == 0) {
             ftype = WDB_FILE_TYPE_REGISTRY;
         } else {
-            mdebug1("DB(%s) Invalid FIM query syntax.", wdb->agent_id);
-            mdebug2("DB(%s) FIM query: %s", wdb->agent_id, curr);
+            mdebug1("DB(%s) Invalid FIM query syntax.", wdb->id);
+            mdebug2("DB(%s) FIM query: %s", wdb->id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
             return -1;
         }
@@ -469,7 +516,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         checksum = next;
 
         if (next = wstr_chr(checksum, ' '), !next) {
-            mdebug1("DB(%s) Invalid FIM query syntax.", wdb->agent_id);
+            mdebug1("DB(%s) Invalid FIM query syntax.", wdb->id);
             mdebug2("FIM query: %s", checksum);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", checksum);
             return -1;
@@ -491,7 +538,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         }
 
         if (result = wdb_syscheck_save(wdb, ftype, unsc_checksum, next), result < 0) {
-            mdebug1("DB(%s) Cannot save FIM.", wdb->agent_id);
+            mdebug1("DB(%s) Cannot save FIM.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Syscheck");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -501,7 +548,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         return result;
     } else if (strcmp(curr, "save2") == 0) {
         if (wdb_syscheck_save2(wdb, next) == -1) {
-            mdebug1("DB(%s) Cannot save FIM.", wdb->agent_id);
+            mdebug1("DB(%s) Cannot save FIM.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Syscheck");
             return -1;
         }
@@ -511,7 +558,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
     } else if (strncmp(curr, "integrity_check_", 16) == 0) {
         switch (wdbi_query_checksum(wdb, WDB_FIM, curr, next)) {
         case -1:
-            mdebug1("DB(%s) Cannot query FIM range checksum.", wdb->agent_id);
+            mdebug1("DB(%s) Cannot query FIM range checksum.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot perform range checksum");
             return -1;
 
@@ -531,7 +578,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
     } else if (strcmp(curr, "integrity_clear") == 0) {
         switch (wdbi_query_clear(wdb, WDB_FIM, next)) {
         case -1:
-            mdebug1("DB(%s) Cannot query FIM range checksum.", wdb->agent_id);
+            mdebug1("DB(%s) Cannot query FIM range checksum.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot perform range checksum");
             return -1;
 
@@ -541,7 +588,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
 
         return 0;
     } else {
-        mdebug1("DB(%s) Invalid FIM query syntax.", wdb->agent_id);
+        mdebug1("DB(%s) Invalid FIM query syntax.", wdb->id);
         mdebug2("DB query error near: %s", curr);
         snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
         return -1;
@@ -555,7 +602,7 @@ int wdb_parse_inventory(wdb_t * wdb, char * input, char * output) {
 
     curr = input;
     if (next = wstr_chr(input, ' '), !next) {
-        mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, input);
+        mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, input);
         snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", input);
         return -1;
     }
@@ -563,13 +610,13 @@ int wdb_parse_inventory(wdb_t * wdb, char * input, char * output) {
 
     if (strcmp(curr, "network") == 0) {
         if (!next) {
-            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
             result = -1;
         } else {
             curr = next;
             if (next = wstr_chr(curr, ' '), !next) {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 return -1;
             }
@@ -590,20 +637,20 @@ int wdb_parse_inventory(wdb_t * wdb, char * input, char * output) {
                     snprintf(output, OS_MAXSTR + 1, "ok");
                 }
             } else {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 result = -1;
             }
         }
     } else if (strcmp(curr, "OS") == 0) {
         if (!next) {
-            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
             result = -1;
         } else {
             curr = next;
             if (next = wstr_chr(curr, ' '), !next) {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 return -1;
             }
@@ -617,20 +664,20 @@ int wdb_parse_inventory(wdb_t * wdb, char * input, char * output) {
                     snprintf(output, OS_MAXSTR + 1, "ok");
                 }
             } else {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 result = -1;
             }
         }
     } else if (strcmp(curr, "hardware") == 0) {
         if (!next) {
-            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
             result = -1;
         } else {
             curr = next;
             if (next = wstr_chr(curr, ' '), !next) {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 return -1;
             }
@@ -644,20 +691,20 @@ int wdb_parse_inventory(wdb_t * wdb, char * input, char * output) {
                     snprintf(output, OS_MAXSTR + 1, "ok");
                 }
             } else {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 result = -1;
             }
         }
     } else if (strcmp(curr, "program") == 0) {
         if (!next) {
-            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
             result = -1;
         } else {
             curr = next;
             if (next = wstr_chr(curr, ' '), !next) {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 return -1;
             }
@@ -678,20 +725,20 @@ int wdb_parse_inventory(wdb_t * wdb, char * input, char * output) {
                     snprintf(output, OS_MAXSTR + 1, "ok");
                 }
             } else {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 result = -1;
             }
         }
     } else if (strcmp(curr, "hotfix") == 0) {
         if (!next) {
-            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
             result = -1;
         } else {
             curr = next;
             if (next = wstr_chr(curr, ' '), !next) {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 return -1;
             }
@@ -712,20 +759,20 @@ int wdb_parse_inventory(wdb_t * wdb, char * input, char * output) {
                     snprintf(output, OS_MAXSTR + 1, "ok");
                 }
             } else {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 result = -1;
             }
         }
     } else if (strcmp(curr, "port") == 0) {
         if (!next) {
-            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
             result = -1;
         } else {
             curr = next;
             if (next = wstr_chr(curr, ' '), !next) {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 return -1;
             }
@@ -746,20 +793,20 @@ int wdb_parse_inventory(wdb_t * wdb, char * input, char * output) {
                     snprintf(output, OS_MAXSTR + 1, "ok");
                 }
             } else {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 result = -1;
             }
         }
     } else if (strcmp(curr, "process") == 0) {
         if (!next) {
-            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
             result = -1;
         } else {
             curr = next;
             if (next = wstr_chr(curr, ' '), !next) {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 return -1;
             }
@@ -780,20 +827,20 @@ int wdb_parse_inventory(wdb_t * wdb, char * input, char * output) {
                     snprintf(output, OS_MAXSTR + 1, "ok");
                 }
             } else {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 result = -1;
             }
         }
     } else if (strcmp(curr, "network_scan") == 0) {
         if (!next) {
-            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
             result = -1;
         } else {
             curr = next;
             if (next = wstr_chr(curr, ' '), !next) {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 return -1;
             }
@@ -807,20 +854,20 @@ int wdb_parse_inventory(wdb_t * wdb, char * input, char * output) {
                     snprintf(output, OS_MAXSTR + 1, "ok");
                 }
             } else {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 result = -1;
             }
         }
     } else if (strcmp(curr, "OS_scan") == 0) {
         if (!next) {
-            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
             result = -1;
         } else {
             curr = next;
             if (next = wstr_chr(curr, ' '), !next) {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 return -1;
             }
@@ -834,20 +881,20 @@ int wdb_parse_inventory(wdb_t * wdb, char * input, char * output) {
                     snprintf(output, OS_MAXSTR + 1, "ok");
                 }
             } else {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 result = -1;
             }
         }
     } else if (strcmp(curr, "hardware_scan") == 0) {
         if (!next) {
-            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
             result = -1;
         } else {
             curr = next;
             if (next = wstr_chr(curr, ' '), !next) {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 return -1;
             }
@@ -861,20 +908,20 @@ int wdb_parse_inventory(wdb_t * wdb, char * input, char * output) {
                     snprintf(output, OS_MAXSTR + 1, "ok");
                 }
             } else {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 result = -1;
             }
         }
     } else if (strcmp(curr, "program_scan") == 0) {
         if (!next) {
-            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
             result = -1;
         } else {
             curr = next;
             if (next = wstr_chr(curr, ' '), !next) {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 return -1;
             }
@@ -888,20 +935,20 @@ int wdb_parse_inventory(wdb_t * wdb, char * input, char * output) {
                     snprintf(output, OS_MAXSTR + 1, "ok");
                 }
             } else {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 result = -1;
             }
         }
     } else if (strcmp(curr, "hotfix_scan") == 0) {
         if (!next) {
-            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
             result = -1;
         } else {
             curr = next;
             if (next = wstr_chr(curr, ' '), !next) {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 return -1;
             }
@@ -915,20 +962,20 @@ int wdb_parse_inventory(wdb_t * wdb, char * input, char * output) {
                     snprintf(output, OS_MAXSTR + 1, "ok");
                 }
             } else {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 result = -1;
             }
         }
     } else if (strcmp(curr, "port_scan") == 0) {
         if (!next) {
-            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
             result = -1;
         } else {
             curr = next;
             if (next = wstr_chr(curr, ' '), !next) {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 return -1;
             }
@@ -942,20 +989,20 @@ int wdb_parse_inventory(wdb_t * wdb, char * input, char * output) {
                     snprintf(output, OS_MAXSTR + 1, "ok");
                 }
             } else {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 result = -1;
             }
         }
     } else if (strcmp(curr, "process_scan") == 0) {
         if (!next) {
-            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+            mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
             result = -1;
         } else {
             curr = next;
             if (next = wstr_chr(curr, ' '), !next) {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 return -1;
             }
@@ -969,13 +1016,13 @@ int wdb_parse_inventory(wdb_t * wdb, char * input, char * output) {
                     snprintf(output, OS_MAXSTR + 1, "ok");
                 }
             } else {
-                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+                mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
                 result = -1;
             }
         }
     } else {
-        mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->agent_id, curr);
+        mdebug1("DB(%s) Invalid inventory query syntax: %s", wdb->id, curr);
         snprintf(output, OS_MAXSTR + 1, "err Invalid inventory query syntax, near '%.32s'", curr);
         result = -1;
     }

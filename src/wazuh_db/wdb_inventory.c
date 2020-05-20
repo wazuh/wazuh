@@ -20,21 +20,21 @@ int wdb_inventory_save_hw(wdb_t * wdb, const char * payload) {
     cJSON * data = cJSON_Parse(payload);
 
     if (data == NULL) {
-        mdebug1("DB(%s): cannot parse inventory payload: '%s'", wdb->agent_id, payload);
+        mdebug1("DB(%s): cannot parse inventory payload: '%s'", wdb->id, payload);
         return -1;
     }
 
     char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(data, "timestamp"));
 
     if (scan_time == NULL) {
-        merror("DB(%s) HW save request with no timestamp path argument.", wdb->agent_id);
+        merror("DB(%s) HW save request with no timestamp path argument.", wdb->id);
         return -1;
     }
 
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
-        merror("DB(%s) HW save request with no attributes argument.", wdb->agent_id);
+        merror("DB(%s) HW save request with no attributes argument.", wdb->id);
         return -1;
     }
 
@@ -76,21 +76,21 @@ int wdb_inventory_save_os(wdb_t * wdb, const char * payload) {
     cJSON * data = cJSON_Parse(payload);
 
     if (data == NULL) {
-        mdebug1("DB(%s): cannot parse inventory payload: '%s'", wdb->agent_id, payload);
+        mdebug1("DB(%s): cannot parse inventory payload: '%s'", wdb->id, payload);
         return -1;
     }
 
     char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(data, "timestamp"));
 
     if (scan_time == NULL) {
-        merror("DB(%s) OS save request with no timestamp path argument.", wdb->agent_id);
+        merror("DB(%s) OS save request with no timestamp path argument.", wdb->id);
         return -1;
     }
 
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
-        merror("DB(%s) OS save request with no attributes argument.", wdb->agent_id);
+        merror("DB(%s) OS save request with no attributes argument.", wdb->id);
         return -1;
     }
 
@@ -137,21 +137,21 @@ int wdb_inventory_save_network(wdb_t * wdb, const char * payload) {
     cJSON * data = cJSON_Parse(payload);
 
     if (data == NULL) {
-        mdebug1("DB(%s): cannot parse inventory payload: '%s'", wdb->agent_id, payload);
+        mdebug1("DB(%s): cannot parse inventory payload: '%s'", wdb->id, payload);
         return -1;
     }
 
     char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(data, "timestamp"));
 
     if (scan_time == NULL) {
-        merror("DB(%s) network save request with no timestamp path argument.", wdb->agent_id);
+        merror("DB(%s) network save request with no timestamp path argument.", wdb->id);
         return -1;
     }
 
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
-        merror("DB(%s) network save request with no attributes argument.", wdb->agent_id);
+        merror("DB(%s) network save request with no attributes argument.", wdb->id);
         return -1;
     }
 
@@ -271,14 +271,14 @@ int wdb_inventory_delete_network(wdb_t * wdb, const char * payload) {
     cJSON * data = cJSON_Parse(payload);
 
     if (data == NULL) {
-        mdebug1("DB(%s): cannot parse inventory payload: '%s'", wdb->agent_id, payload);
+        mdebug1("DB(%s): cannot parse inventory payload: '%s'", wdb->id, payload);
         return -1;
     }
 
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
-        merror("DB(%s) network delete request with no attributes argument.", wdb->agent_id);
+        merror("DB(%s) network delete request with no attributes argument.", wdb->id);
         return -1;
     }
 
@@ -301,21 +301,21 @@ int wdb_inventory_save_program(wdb_t * wdb, const char * payload) {
     cJSON * data = cJSON_Parse(payload);
 
     if (data == NULL) {
-        mdebug1("DB(%s): cannot parse inventory payload: '%s'", wdb->agent_id, payload);
+        mdebug1("DB(%s): cannot parse inventory payload: '%s'", wdb->id, payload);
         return -1;
     }
 
     char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(data, "timestamp"));
 
     if (scan_time == NULL) {
-        merror("DB(%s) program save request with no timestamp path argument.", wdb->agent_id);
+        merror("DB(%s) program save request with no timestamp path argument.", wdb->id);
         return -1;
     }
 
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
-        merror("DB(%s) program save request with no attributes argument.", wdb->agent_id);
+        merror("DB(%s) program save request with no attributes argument.", wdb->id);
         return -1;
     }
 
@@ -362,14 +362,14 @@ int wdb_inventory_delete_program(wdb_t * wdb, const char * payload) {
     cJSON * data = cJSON_Parse(payload);
 
     if (data == NULL) {
-        mdebug1("DB(%s): cannot parse inventory payload: '%s'", wdb->agent_id, payload);
+        mdebug1("DB(%s): cannot parse inventory payload: '%s'", wdb->id, payload);
         return -1;
     }
 
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
-        merror("DB(%s) program delete request with no attributes argument.", wdb->agent_id);
+        merror("DB(%s) program delete request with no attributes argument.", wdb->id);
         return -1;
     }
 
@@ -396,21 +396,21 @@ int wdb_inventory_save_hotfix(wdb_t * wdb, const char * payload) {
     cJSON * data = cJSON_Parse(payload);
 
     if (data == NULL) {
-        mdebug1("DB(%s): cannot parse inventory payload: '%s'", wdb->agent_id, payload);
+        mdebug1("DB(%s): cannot parse inventory payload: '%s'", wdb->id, payload);
         return -1;
     }
 
     char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(data, "timestamp"));
 
     if (scan_time == NULL) {
-        merror("DB(%s) hotfix save request with no timestamp path argument.", wdb->agent_id);
+        merror("DB(%s) hotfix save request with no timestamp path argument.", wdb->id);
         return -1;
     }
 
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
-        merror("DB(%s) hotfix save request with no attributes argument.", wdb->agent_id);
+        merror("DB(%s) hotfix save request with no attributes argument.", wdb->id);
         return -1;
     }
 
@@ -435,14 +435,14 @@ int wdb_inventory_delete_hotfix(wdb_t * wdb, const char * payload) {
     cJSON * data = cJSON_Parse(payload);
 
     if (data == NULL) {
-        mdebug1("DB(%s): cannot parse inventory payload: '%s'", wdb->agent_id, payload);
+        mdebug1("DB(%s): cannot parse inventory payload: '%s'", wdb->id, payload);
         return -1;
     }
 
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
-        merror("DB(%s) hotfix delete request with no attributes argument.", wdb->agent_id);
+        merror("DB(%s) hotfix delete request with no attributes argument.", wdb->id);
         return -1;
     }
 
@@ -465,21 +465,21 @@ int wdb_inventory_save_port(wdb_t * wdb, const char * payload) {
     cJSON * data = cJSON_Parse(payload);
 
     if (data == NULL) {
-        mdebug1("DB(%s): cannot parse inventory payload: '%s'", wdb->agent_id, payload);
+        mdebug1("DB(%s): cannot parse inventory payload: '%s'", wdb->id, payload);
         return -1;
     }
 
     char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(data, "timestamp"));
 
     if (scan_time == NULL) {
-        merror("DB(%s) port save request with no timestamp path argument.", wdb->agent_id);
+        merror("DB(%s) port save request with no timestamp path argument.", wdb->id);
         return -1;
     }
 
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
-        merror("DB(%s) port save request with no attributes argument.", wdb->agent_id);
+        merror("DB(%s) port save request with no attributes argument.", wdb->id);
         return -1;
     }
 
@@ -522,14 +522,14 @@ int wdb_inventory_delete_port(wdb_t * wdb, const char * payload) {
     cJSON * data = cJSON_Parse(payload);
 
     if (data == NULL) {
-        mdebug1("DB(%s): cannot parse inventory payload: '%s'", wdb->agent_id, payload);
+        mdebug1("DB(%s): cannot parse inventory payload: '%s'", wdb->id, payload);
         return -1;
     }
 
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
-        merror("DB(%s) port delete request with no attributes argument.", wdb->agent_id);
+        merror("DB(%s) port delete request with no attributes argument.", wdb->id);
         return -1;
     }
 
@@ -558,21 +558,21 @@ int wdb_inventory_save_process(wdb_t * wdb, const char * payload) {
     cJSON * data = cJSON_Parse(payload);
 
     if (data == NULL) {
-        mdebug1("DB(%s): cannot parse inventory payload: '%s'", wdb->agent_id, payload);
+        mdebug1("DB(%s): cannot parse inventory payload: '%s'", wdb->id, payload);
         return -1;
     }
 
     char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(data, "timestamp"));
 
     if (scan_time == NULL) {
-        merror("DB(%s) process save request with no timestamp path argument.", wdb->agent_id);
+        merror("DB(%s) process save request with no timestamp path argument.", wdb->id);
         return -1;
     }
 
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
-        merror("DB(%s) process save request with no attributes argument.", wdb->agent_id);
+        merror("DB(%s) process save request with no attributes argument.", wdb->id);
         return -1;
     }
 
@@ -658,14 +658,14 @@ int wdb_inventory_delete_process(wdb_t * wdb, const char * payload) {
     cJSON * data = cJSON_Parse(payload);
 
     if (data == NULL) {
-        mdebug1("DB(%s): cannot parse inventory payload: '%s'", wdb->agent_id, payload);
+        mdebug1("DB(%s): cannot parse inventory payload: '%s'", wdb->id, payload);
         return -1;
     }
 
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
-        merror("DB(%s) process delete request with no attributes argument.", wdb->agent_id);
+        merror("DB(%s) process delete request with no attributes argument.", wdb->id);
         return -1;
     }
 
@@ -690,7 +690,7 @@ int wdb_inventory_save_scan_info(wdb_t * wdb, const char * inventory, const char
     cJSON * data = cJSON_Parse(payload);
 
     if (data == NULL) {
-        mdebug1("DB(%s): cannot parse inventory scan info payload: '%s'", wdb->agent_id, payload);
+        mdebug1("DB(%s): cannot parse inventory scan info payload: '%s'", wdb->id, payload);
         return -1;
     }
 

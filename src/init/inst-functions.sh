@@ -416,9 +416,6 @@ WriteAgent()
     # Rootcheck
     WriteRootcheck "agent"
 
-    # OpenSCAP
-    WriteOpenSCAP "agent"
-
     # CIS-CAT configuration
     if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
         WriteCISCAT "agent"
@@ -518,9 +515,6 @@ WriteManager()
 
     # Write rootcheck
     WriteRootcheck "manager"
-
-    # Write OpenSCAP
-    WriteOpenSCAP "manager"
 
     # CIS-CAT configuration
     if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
@@ -644,9 +638,6 @@ WriteLocal()
 
     # Write rootcheck
     WriteRootcheck "manager"
-
-    # Write OpenSCAP
-    WriteOpenSCAP "manager"
 
     # CIS-CAT configuration
     if [ "X$DIST_NAME" !=  "Xdarwin" ]; then

@@ -114,7 +114,7 @@ wdb_t * __wrap_wdb_open_agent2(int agent_id)
         snprintf(sagent_id, sizeof(sagent_id), "%03d", agent_id);
         os_calloc(1, sizeof(wdb_t), wdb);
         w_mutex_init(&wdb->mutex, NULL);
-        wdb->agent_id = strdup(sagent_id);
+        wdb->id = strdup(sagent_id);
     }
     return wdb;
 }
@@ -122,7 +122,7 @@ wdb_t * __wrap_wdb_open_agent2(int agent_id)
 void __wrap_wdb_leave(wdb_t * wdb)
 {
     if (wdb) {
-        free(wdb->agent_id);
+        free(wdb->id);
         w_mutex_destroy(&wdb->mutex);
         free(wdb);
     }
@@ -217,7 +217,7 @@ static int test_setup(void **state) {
     test_struct_t *init_data;
     init_data = malloc(sizeof(test_struct_t));
     init_data->socket = malloc(sizeof(wdb_t));
-    init_data->socket->agent_id = strdup("000");
+    init_data->socket->id = strdup("000");
     init_data->output = malloc(256*sizeof(char));
     *state = init_data;
     return 0;
@@ -226,7 +226,7 @@ static int test_setup(void **state) {
 static int test_teardown(void **state){
     test_struct_t *data  = (test_struct_t *)*state;
     free(data->output);
-    free(data->socket->agent_id);
+    free(data->socket->id);
     free(data->socket);
     free(data);
     return 0;

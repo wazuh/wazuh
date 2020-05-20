@@ -253,7 +253,7 @@ static int init_wdb_object(void **state)
     wdb_t * wdb = NULL;
     os_calloc(1, sizeof(wdb_t), wdb);
     w_mutex_init(&wdb->mutex, NULL);
-    wdb->agent_id = strdup("000");
+    wdb->id = strdup("000");
 
     *state = wdb;
 
@@ -264,7 +264,7 @@ static int delete_wdb_object(void **state)
 {
     wdb_t * wdb = *state;
 
-    free(wdb->agent_id);
+    free(wdb->id);
     w_mutex_destroy(&wdb->mutex);
     free(wdb);
 

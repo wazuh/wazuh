@@ -14,9 +14,8 @@
 
 #include <external/curl/include/curl/curl.h>
 
-#define WURL_WRITE_FILE_ERROR "Failed opening file '%s'"
-#define WURL_DOWNLOAD_FILE_ERROR "Failed to download file '%s' from url: %s"
-#define WURL_HTTP_GET_ERROR "Failed to get a response from '%s'"
+#define WURL_WRITE_FILE_ERROR "Cannot open file '%s'."
+#define WURL_DOWNLOAD_FILE_ERROR "Cannot download file '%s' from URL: %s."
 
 int wurl_get(const char * url, const char * dest, const char * header, const char *data);
 int w_download_status(int status,const char *url,const char *dest);

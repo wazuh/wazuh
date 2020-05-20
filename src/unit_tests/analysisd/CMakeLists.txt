@@ -38,6 +38,11 @@ list(APPEND analysisd_flags "-Wl,--wrap,_merror -Wl,--wrap,OS_ConnectUnixDomain 
 list(APPEND analysisd_names "test_decoder_syscollector")
 list(APPEND analysisd_flags "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,fillData \
                              -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP")
+list(APPEND analysisd_names "test_mitre")
+list(APPEND analysisd_flags "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,_merror")
+
+LIST(APPEND analysisd_names "test_same_different_loop")
+LIST(APPEND analysisd_flags "-W")
 
 list(LENGTH analysisd_names count)
 math(EXPR count "${count} - 1")

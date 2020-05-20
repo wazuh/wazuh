@@ -299,25 +299,25 @@ void test_scan_rotation(void **state)
 
     assert_int_equal(run, 64);
 
-    wm_delay(10 * sleep);
+    w_time_delay(10 * sleep);
     update_next_time(&run);
     sleep = get_sleep_time(&run);
 
     assert_int_equal(run, 96);
 
-    wm_delay(100 * sleep);
+    w_time_delay(100 * sleep);
     update_next_time(&run);
     sleep = get_sleep_time(&run);
 
     assert_int_equal(run, 68);
 
-    wm_delay(10 * sleep);
+    w_time_delay(10 * sleep);
     update_next_time(&run);
     sleep = get_sleep_time(&run);
 
     assert_int_equal(run, 97);
 
-    wm_delay(10 * sleep);
+    w_time_delay(10 * sleep);
     update_next_time(&run);
     sleep = get_sleep_time(&run);
 

@@ -23,7 +23,6 @@
 #define ROOTCHECK_MQ    '9'
 #define SCA_MQ          'p'
 
-
 /* Queues for additional log types */
 #define MYSQL_MQ         'a'
 #define POSTGRESQL_MQ    'b'
