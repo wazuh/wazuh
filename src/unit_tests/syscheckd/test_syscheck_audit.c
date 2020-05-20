@@ -945,7 +945,7 @@ void test_add_audit_rules_syscheck_not_added_error(void **state)
     // Add rule
     will_return(__wrap_audit_add_rule, -1);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6226): Unable to add audit rule for '/var/test'");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6926): Unable to add audit rule for '/var/test'");
 
     int ret;
     ret = add_audit_rules_syscheck(0);
@@ -984,7 +984,7 @@ void test_add_audit_rules_syscheck_not_added_first_error(void **state)
     // Add rule
     will_return(__wrap_audit_add_rule, -1);
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6226): Unable to add audit rule for '/var/test'");
+    expect_string(__wrap__mwarn, formatted_msg, "(6926): Unable to add audit rule for '/var/test'");
 
     int ret;
     ret = add_audit_rules_syscheck(1);
