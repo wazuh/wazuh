@@ -48,6 +48,13 @@ int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char 
         snprintf(_id, 9, "%03d", ++keys->id_counter);
         id = _id;
     }
+    else {
+        char *endptr;
+        int id_number = strtol(id, &endptr, 10);
+
+        if ('\0' == *endptr && id_number > keys->id_counter)
+            keys->id_counter = id_number;
+    }
 
     if (!key) {
         snprintf(str1, STR_SIZE, "%d%s%d%s", (int)time(0), name, os_random(), getuname());
@@ -894,7 +901,7 @@ int OS_LoadUid() {
     gid = Privsep_GetGroup(GROUPGLOBAL);
 
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror(USER_ERROR, USER, GROUPGLOBAL);
+        merror(USER_ERROR, USER, GROUPGLOBAL, strerror(errno), errno);
         return -1;
     } else {
         return 0;

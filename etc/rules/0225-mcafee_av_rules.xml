@@ -89,6 +89,9 @@
     <if_sid>7500</if_sid>
     <match>scan was canceled because</match>
     <description>McAfee Windows AV - Virus scan cancelled due to shutdown.</description>
+    <mitre>
+      <id>T1529</id>
+    </mitre>
     <group>pci_dss_5.1,pci_dss_10.2.6,pci_dss_10.6.1,gpg13_4.14,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.3,nist_800_53_AU.14,nist_800_53_AU.5,nist_800_53_AU.6,</group>
   </rule>
 

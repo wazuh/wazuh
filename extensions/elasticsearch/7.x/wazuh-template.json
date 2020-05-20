@@ -400,6 +400,8 @@
       "rule.groups",
       "rule.id",
       "rule.info",
+      "rule.mitre.id",
+      "rule.mitre.tactics",
       "rule.pci_dss",
       "rule.hipaa",
       "rule.nist_800_53",
@@ -425,6 +427,7 @@
       "syscheck.md5_after",
       "syscheck.md5_before",
       "syscheck.path",
+      "syscheck.mode",
       "syscheck.perm_after",
       "syscheck.perm_before",
       "syscheck.sha1_after",
@@ -560,6 +563,9 @@
             "type": "keyword"
           },
           "hard_links": {
+            "type": "keyword"
+          },
+          "mode": {
             "type": "keyword"
           },
           "sha1_before": {
@@ -753,6 +759,16 @@
           },
           "mail": {
             "type": "boolean"
+          },
+          "mitre": {
+            "properties": {
+              "id": {
+                "type": "keyword"
+              },
+              "tactics": {
+                "type": "keyword"
+              }
+            }
           }
         }
       },

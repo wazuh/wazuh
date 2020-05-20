@@ -529,7 +529,8 @@ stopa()
                 if [ $USE_JSON = true ]; then
                     echo -n '{"daemon":"'${i}'","status":"failed to kill"}'
                 else
-                    echo "Process ${i} couldn't be killed.";
+                    echo "Process ${i} couldn't be terminated. It will be killed.";
+                    kill -9 $pid
                 fi
             fi
         else
