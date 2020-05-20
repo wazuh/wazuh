@@ -697,8 +697,8 @@ stages:
             - error:
                 code: 4000
                 message: 'Permission denied: Resource type: policy:id'
-                remediation: Please, make sure you have permissions to execute current request,
-                  for more information on setting up permissions please visit XXXX
+                remediation: "Please, make sure you have permissions to execute the current request.
+                For more information on how to set up permissions, please visit XXXX"
               id:
                 - '16'
                 - '17'
@@ -872,8 +872,8 @@ stages:
             - error:
                 code: 4000
                 message: 'Permission denied: Resource type: user:id'
-                remediation: Please, make sure you have permissions to execute current request,
-                  for more information on setting up permissions please visit XXXX
+                remediation: "Please, make sure you have permissions to execute the current request.
+                For more information on how to set up permissions, please visit XXXX"
               id:
                 - wazuh
             - error:
