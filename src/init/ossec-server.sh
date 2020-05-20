@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # ossec-control        This shell script takes care of starting
 #                      or stopping ossec-hids
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
@@ -182,7 +182,7 @@ disable()
         exit 1;
     fi
     daemon=''
-  
+
     if [ "X$2" = "Xdatabase" ]; then
         echo "$DATABASE_MSG"
     elif [ "X$2" = "Xclient-syslog" ]; then
@@ -384,7 +384,7 @@ start()
                         if [ $? = 1 ]; then
                             break;
                         fi
-                        sleep 0.5;
+                        sleep 1;
                         j=`expr $j + 1`;
                         if [ "$j" = "${MAX_ITERATION}" ]; then
                             failed=true
@@ -529,7 +529,8 @@ stopa()
                 if [ $USE_JSON = true ]; then
                     echo -n '{"daemon":"'${i}'","status":"failed to kill"}'
                 else
-                    echo "Process ${i} couldn't be killed.";
+                    echo "Process ${i} couldn't be terminated. It will be killed.";
+                    kill -9 $pid
                 fi
             fi
         else

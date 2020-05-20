@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -48,7 +48,21 @@ void time_sub(struct timespec * a, const struct timespec * b);
  */
 double time_diff(const struct timespec * a, const struct timespec * b);
 
-char *w_get_timestamp(time_t time);
+char *w_get_timestamp(const time_t time);
+
+/**
+ * @brief Takes sleeps of 1 second until the input time is reached
+ * 
+ * @param time time until which the thread will sleep
+ * */
+void w_sleep_until(time_t abs_time);
+
+/**
+* @brief Sleep function for Windows and Unix (milliseconds)
+* 
+* @param ms sleep time in miliseconds
+*/
+void w_time_delay(unsigned long int ms);
 
 #ifdef WIN32
 

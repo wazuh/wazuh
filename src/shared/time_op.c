@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -95,6 +95,22 @@ char *w_get_timestamp(time_t time) {
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
     return timestamp;
+}
+
+
+void w_sleep_until(const time_t abs_time) {
+    while( time(NULL) < abs_time ) {
+        w_time_delay(1000);
+    }
+}
+
+void w_time_delay(unsigned long int ms) {
+#ifdef WIN32
+    Sleep(ms);
+#else
+    struct timeval timeout = { ms / 1000, (ms % 1000) * 1000};
+    select(0, NULL, NULL, NULL, &timeout);
+#endif
 }
 
 // Compute time substraction "a - b"

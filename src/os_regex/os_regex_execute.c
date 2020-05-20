@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -115,6 +115,10 @@ const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *re
                 /* We must always have the open and the close */
                 while ((*prts_str)[i][j] && (*prts_str)[i][j + 1]) {
                     size_t length = (size_t) ((*prts_str)[i][j + 1] - (*prts_str)[i][j]);
+                    if (*sub_strings == NULL) {
+                        w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
+                        return (NULL);
+                    }
                     (*sub_strings)[k] = (char *) malloc((length + 1) * sizeof(char));
                     if (!(*sub_strings)[k]) {
                         w_FreeArray(*sub_strings);

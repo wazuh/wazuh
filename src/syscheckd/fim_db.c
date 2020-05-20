@@ -15,6 +15,7 @@
 #include "unit_tests/wrappers/syscheckd/fim_db.h"
 
 #define fprintf wrap_fprintf
+#define Sleep wrap_fim_db_Sleep
 #endif
 
 #define static
@@ -318,12 +319,14 @@ void fim_db_clean(void) {
         //Loop endlessly until the file can be removed. (60s)
         if (rm == FIMDB_ERR) {
             while (remove(FIM_DB_DISK_PATH)) {
+                // LCOV_EXCL_START
                 mdebug2(FIM_DELETE_DB, FIM_DB_DISK_PATH);
 #ifdef WIN32
                 Sleep(60000); //milliseconds
 #else
                 sleep(60); //seconds
 #endif
+                // LCOV_EXCL_STOP
             }
         }
     }
@@ -647,7 +650,7 @@ fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt) {
     entry->data->options = (time_t)sqlite3_column_int(stmt, 6);
     strncpy(entry->data->checksum, (char *)sqlite3_column_text(stmt, 7), sizeof(os_sha1) - 1);
     entry->data->dev = (unsigned long int)sqlite3_column_int(stmt, 8);
-    entry->data->inode = (unsigned long int)sqlite3_column_int(stmt, 9);
+    entry->data->inode = (unsigned long int)sqlite3_column_int64(stmt, 9);
     entry->data->size = (unsigned int)sqlite3_column_int(stmt, 10);
     sqlite_strdup((char *)sqlite3_column_text(stmt, 11), entry->data->perm);
     sqlite_strdup((char *)sqlite3_column_text(stmt, 12), entry->data->attributes);
@@ -670,7 +673,7 @@ fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt) {
 void fim_db_bind_insert_data(fdb_t *fim_sql, fim_entry_data *entry) {
 #ifndef WIN32
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_INSERT_DATA], 1, entry->dev);
-    sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_INSERT_DATA], 2, entry->inode);
+    sqlite3_bind_int64(fim_sql->stmt[FIMDB_STMT_INSERT_DATA], 2, entry->inode);
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_INSERT_DATA], 3, entry->size);
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_INSERT_DATA], 4, entry->perm, -1, NULL);
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_INSERT_DATA], 5, entry->attributes, -1, NULL);
@@ -721,7 +724,7 @@ void fim_db_bind_path(fdb_t *fim_sql, int index, const char *file_path) {
 void fim_db_bind_get_inode(fdb_t *fim_sql, int index, const unsigned long int inode, const unsigned long int dev) {
     if (index == FIMDB_STMT_GET_PATHS_INODE || index == FIMDB_STMT_GET_PATHS_INODE_COUNT
         || index == FIMDB_STMT_GET_DATA_ROW) {
-        sqlite3_bind_int(fim_sql->stmt[index], 1, inode);
+        sqlite3_bind_int64(fim_sql->stmt[index], 1, inode);
         sqlite3_bind_int(fim_sql->stmt[index], 2, dev);
     }
 }
@@ -903,9 +906,26 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_entry_data *en
     return FIMDB_OK;
 }
 
-int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) {
+int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry, int alert_type) {
     int inode_id;
     int res, res_data, res_path;
+    unsigned int nodes_count;
+
+    switch (alert_type) {
+    case FIM_ADD:
+        if (syscheck.file_limit) {
+            nodes_count = fim_db_get_count_entry_path(syscheck.database);
+            if (nodes_count >= syscheck.file_limit) {
+                mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.", file_path);
+                return FIMDB_FULL;
+            }
+        }
+    case FIM_MODIFICATION:
+        break;
+    default:
+        merror("Couldn't insert '%s' entry into DB. Invalid event type: %d.", file_path, alert_type);
+        return FIMDB_ERR;
+    }
 
 #ifdef WIN32
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_DATA_ROW);
@@ -939,7 +959,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_entry_data *entry) 
             it will delete it and insert the new one.
          */
         if (res_inode == SQLITE_ROW) {
-            inode = sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_INODE], 0);
+            inode = sqlite3_column_int64(fim_sql->stmt[FIMDB_STMT_GET_INODE], 0);
 
             if (inode != entry->inode) {
                 fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_INODE_ID);
@@ -1185,7 +1205,7 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
         }
 
         json_event = fim_json_event(entry->path, NULL, entry->data, pos,
-                                                FIM_DELETE, mode, whodata_event);
+                                                FIM_DELETE, mode, whodata_event, NULL);
 
         if (!strcmp(FIM_ENTRY_TYPE[entry->data->entry_type], "file") &&
             syscheck.opts[pos] & CHECK_SEECHANGES) {

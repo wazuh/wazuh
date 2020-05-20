@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * December 18, 2018.
  *
  * This program is free software; you can redistribute it
@@ -114,7 +114,7 @@ void kernel_get_reply(int fd) {
                 continue;
             }
 
-            if ((retval = audit_print_reply(&rep)) == 0) {
+            if (retval = audit_print_reply(&rep), retval == 0) {
                 break;
             } else {
                 i = 0;

@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -8,13 +8,14 @@ cmake_minimum_required(VERSION 3.10)
 
 PROJECT(UnitTests C)
 
-# message("${TARGET}")
+set(CMAKE_C_STANDARD 11)
 get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
 
 message(Source folder: ${SRC_FOLDER})
 include_directories(${SRC_FOLDER}/headers)
 include_directories(${SRC_FOLDER}/external/openssl/include)
 include_directories(${SRC_FOLDER}/external/audit-userspace/lib)
+include_directories(${SRC_FOLDER}/external/bzip2)
 include_directories(${SRC_FOLDER})
 
 # Wazuh libraries

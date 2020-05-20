@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import re
@@ -36,6 +36,7 @@ class Rule:
         self.hipaa = []
         self.nist_800_53 = []
         self.tsc = []
+        self.mitre = []
         self.details = {}
 
     def __str__(self):
@@ -68,7 +69,7 @@ class Rule:
     def to_dict(self):
         return {'file': self.file, 'path': self.path, 'id': self.id, 'description': self.description,
                 'level': self.level, 'status': self.status, 'groups': self.groups, 'pci': self.pci, 'gdpr': self.gdpr,
-                'hipaa': self.hipaa, 'nist-800-53': self.nist_800_53, 'gpg13': self.gpg13, 'tsc': self.tsc, 'details': self.details}
+                'hipaa': self.hipaa, 'nist-800-53': self.nist_800_53, 'gpg13': self.gpg13, 'tsc': self.tsc, 'details': self.details, 'mitre': self.mitre}
 
 
     def set_group(self, group):
@@ -116,12 +117,20 @@ class Rule:
         """
         Rule.__add_unique_element(self.nist_800_53, nist_800_53)
 
+
     def set_tsc(self, tsc):
         """
         Adds a tsc requirement to the tsc list.
         :param tsc: Requirement to add (string or list).
         """
         Rule.__add_unique_element(self.tsc, tsc)
+
+    def set_mitre(self, mitre):
+        """
+        Adds a mitre requirement to the mitre list.
+        :param mitre: Requirement to add (string or list).
+        """
+        Rule.__add_unique_element(self.mitre, mitre)
 
     def add_detail(self, detail, value):
         """
@@ -259,10 +268,8 @@ class Rule:
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param search: Looks for items with the specified string.
         :param filters: Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}.
-            This filter is used for filtering by 'status', 'group', 'pci', 'gpg13', 'gdpr', 'hipaa', 'nist-800-53', 'tsc'
-            'file', 'path', 'id' and 'level'.
+            This filter is used for filtering by 'status', 'group', 'pci', 'gpg13', 'gdpr', 'hipaa', 'nist-800-53', 'tsc', 'mitre', 'file', 'path', 'id' and 'level'.
         :param q: Defines query to filter.
-
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         # set default values to parameters
@@ -274,6 +281,7 @@ class Rule:
         hipaa = filters.get('hipaa', None)
         nist_800_53 = filters.get('nist-800-53', None)
         tsc = filters.get('tsc', None)
+        mitre = filters.get('mitre', None)
         path = filters.get('path', None)
         file_ = filters.get('file', None)
         id_ = filters.get('id', None)
@@ -312,6 +320,11 @@ class Rule:
             elif tsc and tsc not in r.tsc:
                 rules.remove(r)
                 continue
+            elif mitre and mitre not in r.mitre:
+                rules.remove(r)
+                continue
+                rules.remove(r)
+                continue
             elif path and path != r.path:
                 rules.remove(r)
                 continue
@@ -327,8 +340,8 @@ class Rule:
                         rules.remove(r)
                         continue
                 elif not (int(levels[0]) <= r.level <= int(levels[1])):
-                        rules.remove(r)
-                        continue
+                    rules.remove(r)
+                    continue
 
         if search:
             rules = search_array(rules, search['value'], search['negation'])
@@ -383,7 +396,7 @@ class Rule:
         :param requirement: requirement to get (pci, gpg13 or dgpr)
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        valid_requirements = ['pci', 'gdpr', 'gpg13', 'hipaa', 'nist-800-53', 'tsc']
+        valid_requirements = ['pci', 'gdpr', 'gpg13', 'hipaa', 'nist-800-53', 'tsc', 'mitre']
 
         if requirement not in valid_requirements:
             raise WazuhException(1205, requirement)
@@ -468,16 +481,31 @@ class Rule:
 
     @staticmethod
     def get_tsc(offset=0, limit=common.database_limit, sort=None, search=None):
-        """
-        Get all the TSC requirements used in the rules.
+    """
+    Get all the TSC requirements used in the rules.
+    
+    :param offset: First item to return.
+    :param limit: Maximum number of items to return.
+    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    :param search: Looks for items with the specified string.
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    """
+    return Rule._get_requirement('tsc', offset=offset, limit=limit, sort=sort, search=search)
 
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-        """
-        return Rule._get_requirement('tsc', offset=offset, limit=limit, sort=sort, search=search)
+
+    @staticmethod
+    def get_mitre(offset=0, limit=common.database_limit, sort=None, search=None):
+    """
+    Get all the Mitre requirements used in the rules.
+
+    :param offset: First item to return.
+    :param limit: Maximum number of items to return.
+    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    :param search: Looks for items with the specified string.
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    """
+    return Rule._get_requirement('mitre', offset=offset, limit=limit, sort=sort, search=search)
+
 
     @staticmethod
     def __load_rules_from_file(rule_file, rule_path, rule_status):
@@ -493,6 +521,7 @@ class Rule:
                         # New rule
                         if xml_rule.tag.lower() == "rule":
                             groups = []
+                            mitre = []
                             rule = Rule()
                             rule.file = rule_file
                             rule.path = rule_path
@@ -511,6 +540,9 @@ class Rule:
                                     value = ''
                                 if tag == "group":
                                     groups.extend(value.split(","))
+                                if tag == "mitre":
+                                    for mitre_attack in list(xml_rule_tags):
+                                        mitre.append(mitre_attack.text)
                                 elif tag == "description":
                                     rule.description += value
                                 elif tag == "field":
@@ -526,6 +558,9 @@ class Rule:
                                         rule.add_detail(tag, variable.text)
                                 else:
                                     rule.add_detail(tag, value)
+
+                            # set mitre
+                            rule.set_mitre(mitre)
 
                             # Set groups
                             groups.extend(general_groups)

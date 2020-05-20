@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -33,6 +33,10 @@ rule_contents = '''
     <group>pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3,tsc_CC6.8</group>
     <list field="user" lookup="match_key">etc/lists/list-user</list>
     <field name="netinfo.iface.name">ens33</field>
+    <mitre>
+      <id>T1210</id>
+      <id>T1021</id>
+    </mitre>
     <regex>$(\\d+.\\d+.\\d+.\\d+)</regex>
   </rule>
 </group>
@@ -65,6 +69,7 @@ def test_rule__init__():
     assert isinstance(rule.hipaa, list)
     assert isinstance(rule.nist_800_53, list)
     assert isinstance(rule.tsc, list)
+    assert isinstance(rule.mitre, list)
     assert isinstance(rule.details, dict)
 
 
@@ -139,6 +144,10 @@ def test_nist_800_53():
 
 def test_tsc():
     Rule().set_tsc('test')
+
+def test_mitre():
+    Rule().set_mitre('test')
+
 
 @pytest.mark.parametrize('detail, value, details', [
     ('if_sid', '400', {}),
@@ -350,7 +359,9 @@ def test_failed_get_rules_file(mock_config):
     {'filters': {'tsc': 'CC6.8'}},
     {'filters': {'id': '510'}},
     {'filters': {'level': '2'}},
-    {'filters':{'level': '2-2'}}
+    {'filters': {'level': '2-2'}},
+    {'filters': {'mitre': 'T1210'}},
+    {'filters': {'mitre': 'T1021'}}
 ])
 @patch('wazuh.rule.glob', side_effect=rules_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=other_rule_ossec_conf)
@@ -444,6 +455,16 @@ def test_get_tsc(mocked_config, mocked_glob):
         assert isinstance(result, dict)
         assert 'CC6.8' in result['items'][0]
 
+@patch('wazuh.rule.glob', side_effect=rules_files)
+@patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
+def test_get_mitre(mocked_config, mocked_glob):
+    m = mock_open(read_data=rule_contents)
+    with patch('builtins.open', m):
+        result = Rule.get_mitre()
+        assert isinstance(result, dict)
+        assert 'T1021' in result['items'][0]
+
+
 @pytest.mark.parametrize('sort', [
     None,
     {
@@ -463,7 +484,8 @@ def test_get_tsc(mocked_config, mocked_glob):
     'gpg13',
     'wrong',
     'hipaa',
-    'nist-800-53'
+    'nist-800-53',
+    'mitre'
 ])
 @patch('wazuh.rule.glob', side_effect=rules_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)

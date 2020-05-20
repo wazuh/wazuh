@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -544,6 +544,15 @@ def load_wazuh_xml(xml_path):
         data = data.replace(comment.group(2), good_comment)
 
     # < characters should be scaped as &lt; unless < is starting a <tag> or a comment
+
+    custom_entities = {
+        'backslash': '\\'
+    }
+
+    # replace every custom entity
+    for character, replacement in custom_entities.items():
+        data = re.sub(replacement.replace('\\', '\\\\'), f'&{character};', data)
+
     data = re.sub(r"<(?!/?\w+.+>|!--)", "&lt;", data)
 
     # replace \< by &lt;
@@ -552,10 +561,17 @@ def load_wazuh_xml(xml_path):
     # replace \> by &gt;
     data = re.sub(r'\\>', '&gt;', data)
 
-    # & characters should be scaped if they don't represent an &entity;
-    data = re.sub(r"&(?!(amp|lt|gt|apos|quot);)", "&amp;", data)
+    # default entities
+    default_entities = ['amp', 'lt', 'gt', 'apos', 'quot']
 
-    return fromstring('<root_tag>' + data + '</root_tag>')
+    # & characters should be scaped if they don't represent an &entity;
+    data = re.sub(f"&(?!({'|'.join(default_entities + list(custom_entities))});)", "&amp;", data)
+
+    entities = '<!DOCTYPE xmlfile [\n' + \
+               '\n'.join([f'<!ENTITY {name} "{value}">' for name, value in custom_entities.items()]) +\
+               '\n]>\n'
+
+    return fromstring(entities + '<root_tag>' + data + '</root_tag>')
 
 
 class WazuhVersion:
@@ -758,8 +774,9 @@ class WazuhDBBackend(AbstractDatabaseBackend):
     This class describes a wazuh db backend that executes database queries
     """
 
-    def __init__(self, agent_id):
+    def __init__(self, agent_id=None, query_format='agent'):
         self.agent_id = agent_id
+        self.query_format = query_format
         super().__init__()
 
     def connect_to_db(self):
@@ -774,9 +791,17 @@ class WazuhDBBackend(AbstractDatabaseBackend):
             query = query.replace(f':{k}', f"{v}" if isinstance(v, int) else f"'{v}'")
         return query
 
+    def _render_query(self, query):
+        """Render query attending the format."""
+        if self.query_format == 'mitre':
+            return f'mitre sql {query}'
+        else:
+            return f'agent {self.agent_id} sql {query}'
+
     def execute(self, query, request, count=False):
+        """Execute SQL query through WazuhDB socket."""
         query = self._substitute_params(query, request)
-        return self.conn.execute(query=f'agent {self.agent_id} sql {query}', count=count)
+        return self.conn.execute(query=self._render_query(query), count=count)
 
 
 class WazuhDBQuery(object):
@@ -838,7 +863,7 @@ class WazuhDBQuery(object):
             r'(\()?' +  # A ( character.
             r'([\w.]+)' +  # Field name: name of the field to look on DB
             '([' + ''.join(self.query_operators.keys()) + "]{1,2})" +  # Operator: looks for =, !=, <, > or ~.
-            r"([\w _\-\.:/']+)" +  # Value: A string.
+            r"([\[\]\w _\-\.:/']+)" +  # Value: A string.
             r"(\))?" +  # A ) character
             "([" + ''.join(self.query_separators.keys()) + "])?"  # Separator: looks for ;, , or nothing.
         )

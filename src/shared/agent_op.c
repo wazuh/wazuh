@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -445,7 +445,7 @@ char* hostname_parse(const char *path) {
         *value = '\0';
         value += 2;
 
-        if (!(end = strchr(value, '\n'))) {
+        if (end = strchr(value, '\n'), !end) {
             continue;
         }
 

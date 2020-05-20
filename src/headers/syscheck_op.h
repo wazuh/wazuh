@@ -1,6 +1,6 @@
 /*
  * Shared functions for Syscheck events decoding
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -82,6 +82,7 @@
 typedef enum fim_fields {
     FIM_FILE,
     FIM_HARD_LINKS,
+    FIM_MODE,
     FIM_SIZE,
     FIM_PERM,
     FIM_UID,
@@ -101,6 +102,9 @@ typedef enum fim_fields {
     FIM_GROUP_ID,
     FIM_GROUP_NAME,
     FIM_PROC_NAME,
+    FIM_PROC_PNAME,
+    FIM_AUDIT_CWD,
+    FIM_AUDIT_PCWD,
     FIM_AUDIT_ID,
     FIM_AUDIT_NAME,
     FIM_EFFECTIVE_UID,
@@ -149,10 +153,13 @@ typedef struct sk_sum_wdata {
     char *group_id;
     char *group_name;
     char *process_name;
+    char *cwd;
     char *audit_uid;
     char *audit_name;
     char *effective_uid;
     char *effective_name;
+    char *parent_name;
+    char *parent_cwd;
     char *ppid;
     char *process_id;
 } sk_sum_wdata;

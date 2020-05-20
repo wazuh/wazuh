@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Wazuh Installer Functions
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # November 18, 2016.
 #
 # This program is free software; you can redistribute it
@@ -416,9 +416,6 @@ WriteAgent()
     # Rootcheck
     WriteRootcheck "agent"
 
-    # OpenSCAP
-    WriteOpenSCAP "agent"
-
     # CIS-CAT configuration
     if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
         WriteCISCAT "agent"
@@ -518,9 +515,6 @@ WriteManager()
 
     # Write rootcheck
     WriteRootcheck "manager"
-
-    # Write OpenSCAP
-    WriteOpenSCAP "manager"
 
     # CIS-CAT configuration
     if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
@@ -644,9 +638,6 @@ WriteLocal()
 
     # Write rootcheck
     WriteRootcheck "manager"
-
-    # Write OpenSCAP
-    WriteOpenSCAP "manager"
 
     # CIS-CAT configuration
     if [ "X$DIST_NAME" !=  "Xdarwin" ]; then

@@ -1,6 +1,6 @@
 /*
  * Wazuh Module Configuration
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * January, 2018.
  *
  * This program is free software; you can redistribute it
@@ -654,6 +654,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
             updates[os_index]->path = os_list->path;
             updates[os_index]->port = os_list->port;
             if (os_list->allow && wm_vuldet_add_allow_os(updates[os_index], os_list->allow, 0)) {
+                wm_vuldet_remove_os_feed(rem, 0);
                 return OS_INVALID;
             }
 
