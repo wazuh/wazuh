@@ -24,9 +24,9 @@ default_configuration = {
     "host": "0.0.0.0",
     "port": 55000,
     "behind_proxy_server": False,
+    "auth_token_exp_timeout": 36000,
     "rbac": {
-        "mode": "black",
-        "auth_token_exp_timeout": 3600
+        "mode": "black"
     },
     "https": {
         "enabled": True,
