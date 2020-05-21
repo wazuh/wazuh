@@ -6,10 +6,12 @@ behind_proxy_server: no
 
 # Advanced configuration
 
+# JWT token expiration time (in seconds)
+auth_token_exp_timeout: 36000
+
 # RBAC configuration
 rbac:
  mode: black
- auth_token_exp_timeout: 36000
 
 https:
  enabled: yes

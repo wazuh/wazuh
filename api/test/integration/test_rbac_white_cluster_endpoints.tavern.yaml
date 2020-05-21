@@ -631,23 +631,6 @@ stages:
         message: !anystr
 
 ---
-test_name: DELETE /cluster/api/config
-
-stages:
-
-  - name: Restore API config (Allowed)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/api/config"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        <<: *update_api_config_ok
-
----
 test_name: PUT /cluster/restart
 
 stages:
@@ -869,3 +852,20 @@ stages:
         path: etc/ossec.conf
     response:
       status_code: 200
+
+---
+test_name: DELETE /cluster/api/config
+
+stages:
+
+  - name: Restore API config (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/cluster/api/config"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        <<: *update_api_config_ok

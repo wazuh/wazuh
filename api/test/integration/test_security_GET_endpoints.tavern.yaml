@@ -987,29 +987,28 @@ stages:
       status_code: 200
       json:
         "*:*":
-          description: 'Resource applied in functions acting on resources that do not yet
-            exist in the system. We call these functions, resourceless functions. Example:
-            agent:create'
+          description: 'Resource applied in functions which take part in the creation of a specific resource.
+          We call these functions, resourceless functions. Example: agent:create'
         agent:id:
           description: Reference agents via agent ID (i.e. agent:id:001)
         group:id:
           description: Reference agent groups via group ID (i.e. group:id:default)
         node:id:
-          description: Reference cluster node via node ID (i.e. node:id:worker1)
+          description: Reference cluster nodes via node ID (i.e. node:id:worker1)
         file:path:
-          description: Reference file via its path (i.e. file:path:etc/rules/new_rule.xml)
+          description: Reference files via its path (i.e. file:path:etc/rules/new_rule.xml)
         decoder:file:
-          description: Reference decoder file via its path (i.e. decoder:file:0005-wazuh_decoders.xml)
+          description: Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)
         lists:path:
-          description: Reference list file via its path (i.e. lists:path:etc/lists/audit-keys)
+          description: Reference list files via its path (i.e. lists:path:etc/lists/audit-keys)
         rules:file:
-          description: Reference rule file via its path (i.e. rules:file:0610-win-ms_logs_rules.xml)
+          description: Reference rule files via its path (i.e. rules:file:0610-win-ms_logs_rules.xml)
         policy:id:
-          description: Reference security policy via its id (i.e. policy:id:1)
+          description: Reference security policies via its id (i.e. policy:id:1)
         role:id:
-          description: Reference security role via its id (i.e. role:id:1)
+          description: Reference security roles via its id (i.e. role:id:1)
         user:id:
-          description: Reference security user via its username (i.e. user:id:wazuh)
+          description: Reference security users via its username (i.e. user:id:wazuh)
 
   - name: Testing RBAC's actions catalog
     request:
