@@ -143,6 +143,7 @@ def test_failed_get_rules_file(mock_config):
     {'gdpr': 'IV_35.7.a'},
     {'hipaa': '164.312.a'},
     {'nist_800_53': 'AU.1'},
+    {'mitre': 'T1017'},
     {'rule_ids': [510], 'status': 'all'},
     {'rule_ids': [1, 1]},
     {'rule_ids': [510, 1], 'filename': ['noexists.xml']},
@@ -161,8 +162,13 @@ def test_get_rules(mock_config, arg):
     for rule_ in result.to_dict()['affected_items']:
         if list(arg.keys())[0] != 'level':
             key = list(arg.keys())[0] if list(arg.keys())[0] != 'rule_ids' else 'id'
-            for rule_id in arg[list(arg.keys())[0]]:
-                assert rule_id in [rule_[key]]
+
+            if key == 'id':
+                for rule_id in arg[list(arg.keys())[0]]:
+                    assert rule_id in [rule_[key]]
+            else:
+                for rule_id in [arg[list(arg.keys())[0]]]:
+                    assert rule_id in rule_[key]
         else:
             try:
                 found = arg[list(arg.keys())[0]] in str(rule_[list(arg.keys())[0]])
@@ -196,7 +202,7 @@ def test_get_groups(mock_config, arg):
 
 
 @pytest.mark.parametrize('requirement', [
-    'pci_dss', 'gdpr', 'hipaa', 'nist_800_53', 'gpg13'
+    'pci_dss', 'gdpr', 'hipaa', 'nist_800_53', 'gpg13', 'mitre'
 ])
 @patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
 def test_get_requirement(mocked_config, requirement):

@@ -20,7 +20,7 @@ logger = logging.getLogger('wazuh')
 @cache(expires=configuration.api_conf['cache']['time'], unless=not configuration.api_conf['cache']['enabled'])
 async def get_rules(request, rule_ids=None, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
                     search=None, q=None, status=None, group=None, level=None, filename=None, relative_dirname=None,
-                    pci_dss=None, gdpr=None, gpg13=None, hipaa=None):
+                    pci_dss=None, gdpr=None, gpg13=None, hipaa=None, mitre=None):
     """Get information about all Wazuh rules.
 
     :param rule_ids: Filters by rule ID
@@ -41,6 +41,7 @@ async def get_rules(request, rule_ids=None, pretty=False, wait_for_complete=Fals
     :param gdpr: Filters by GDPR requirement.
     :param gpg13: Filters by GPG13 requirement.
     :param hipaa: Filters by HIPAA requirement.
+    :param mitre: Filters by mitre attack ID.
     :return: Data object
     """
     f_kwargs = {'rule_ids': rule_ids, 'offset': offset, 'limit': limit,
@@ -58,7 +59,8 @@ async def get_rules(request, rule_ids=None, pretty=False, wait_for_complete=Fals
                 'gdpr': gdpr,
                 'gpg13': gpg13,
                 'hipaa': hipaa,
-                'nist_800_53': request.query.get('nist-800-53', None)}
+                'nist_800_53': request.query.get('nist-800-53', None),
+                'mitre': mitre}
 
     dapi = DistributedAPI(f=rule_framework.get_rules,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
