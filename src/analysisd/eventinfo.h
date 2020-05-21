@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -86,47 +86,40 @@ typedef struct _Eventinfo {
     /* SYSCHECK Results variables */
     syscheck_event_t event_type;
     char *filename;
+    char *mode;
+    char *hard_links;
     char *sk_tag;
     char *sym_path;
-    int perm_before;
-    int perm_after;
-    char *win_perm_before;
-    char *win_perm_after;
+    char *perm_before;
     char *md5_before;
-    char *md5_after;
     char *sha1_before;
-    char *sha1_after;
     char *sha256_before;
-    char *sha256_after;
     char *size_before;
-    char *size_after;
     char *owner_before;
-    char *owner_after;
     char *gowner_before;
-    char *gowner_after;
     char *uname_before;
-    char *uname_after;
     char *gname_before;
-    char *gname_after;
     long mtime_before;
     long mtime_after;
     long inode_before;
     long inode_after;
+    char *attributes_before;
     char *diff;
     char *previous;
     wlabel_t *labels;
-    unsigned int attrs_before;
-    unsigned int attrs_after;
-    // Whodata fields
+    // Whodata fields. They are duplicated by 'fields'
     char *user_id;
     char *user_name;
     char *group_id;
     char *group_name;
     char *process_name;
+    char *cwd;
     char *audit_uid;
     char *audit_name;
     char *effective_uid;
     char *effective_name;
+    char *parent_name;
+    char *parent_cwd;
     char *ppid;
     char *process_id;
     u_int16_t decoder_syscheck_id;
@@ -218,6 +211,28 @@ const char* FindField(const Eventinfo *lf, const char *name);
 
 /* Parse rule comment with dynamic fields */
 char* ParseRuleComment(Eventinfo *lf);
+
+/**
+ * @brief Function to check for repetitions from same fields 
+ * 
+ * @param rule has rule information
+ * @param lf has event information
+ * @param my_lf has last event information
+ * @return true if lf and my_lf are the same
+ * @return false if lf and my_lf are different
+ */
+bool same_loop(RuleInfo *rule, Eventinfo *lf, Eventinfo *my_lf);
+
+/**
+ * @brief Function to check for repetitions from different fields 
+ * 
+ * @param rule has rule information
+ * @param lf has event information
+ * @param my_lf has last event information
+ * @return true if lf and my_lf are different
+ * @return false if lf and my_lf are the same
+ */
+bool different_loop(RuleInfo *rule, Eventinfo *lf, Eventinfo *my_lf);
 
 /* Pointers to the event decoders */
 void *SrcUser_FP(Eventinfo *lf, char *field, const char *order);

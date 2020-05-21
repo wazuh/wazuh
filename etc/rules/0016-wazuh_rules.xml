@@ -1,7 +1,7 @@
 <!--
   -  Wazuh rules
   -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2019, Wazuh Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -140,6 +140,43 @@
     <match>^wazuh: Could not unmerge shared file.</match>
     <description>The agent could not restart due to a error while unmerging files.</description>
     <group>agent_restarting,configuration_failure,</group>
+  </rule>
+
+  <!-- FIM DB state rules -->
+  <rule id="230" level="0">
+    <if_sid>200</if_sid>
+    <match>^wazuh: FIM DB: </match>
+    <location>syscheck$</location>
+    <description>FIM DB rule</description>
+    <group>syscheck,fim_db_state,</group>
+  </rule>
+
+  <rule id="231" level="7">
+    <if_sid>230</if_sid>
+    <field name="alert_type">80_percentage</field>
+    <description>The file limit set for this agent is $(file_limit). Now, $(file_count) files are being monitored and all files that come after the limit will not be monitored. Change this setting in centralized configuration or locally on the agent.</description>
+    <group>syscheck,fim_db_state,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <rule id="232" level="9">
+    <if_sid>230</if_sid>
+    <field name="alert_type">90_percentage</field>
+    <description>The file limit set for this agent is $(file_limit). Now, $(file_count) files are being monitored and all files that come after the limit will not be monitored. Change this setting in centralized configuration or locally on the agent.</description>
+    <group>syscheck,fim_db_state,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <rule id="233" level="12">
+    <if_sid>230</if_sid>
+    <field name="alert_type">full</field>
+    <description>The file limit set for this agent is $(file_limit). Now, $(file_count) files are being monitored and no more files will be monitored. Change this setting in centralized configuration or locally on the agent.</description>
+    <group>syscheck,fim_db_state,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <rule id="234" level="3">
+    <if_sid>230</if_sid>
+    <field name="alert_type">normal</field>
+    <description>The file limit set for this agent is $(file_limit). Now, $(file_count) files are being monitored.</description>
+    <group>syscheck,fim_db_state,</group>
   </rule>
 
 </group>

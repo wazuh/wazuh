@@ -1,7 +1,7 @@
 <!--
-  -  Windows Event Channel ruleset for the Eventlog channel 
+  -  Windows Event Channel ruleset for the Eventlog channel
   -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2019, Wazuh Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
   -  ID range: 63100 - 63599
 -->
@@ -40,6 +40,9 @@
     <field name="win.system.eventID">^1102$</field>
     <description>The audit log was cleared</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1070</id>
+    </mitre>
     <group>log_clearing_auditlog,gpg13_10.1,gdpr_II_5.1.f,gdpr_IV_30.1.g,</group>
   </rule>
 
@@ -49,6 +52,9 @@
     <field name="win.system.eventID">^104$</field>
     <description>A Windows log file was cleared</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1070</id>
+    </mitre>
     <group>log_clearing,gpg13_10.1,gdpr_II_5.1.f,</group>
   </rule>
 
@@ -57,6 +63,9 @@
     <if_sid>63100</if_sid>
     <field name="win.system.eventID">^6005$</field>
     <description>The Event log service was started</description>
+    <mitre>
+      <id>T1050</id>
+    </mitre>
     <options>no_full_log</options>
     <group>windows_log_service_started,gpg13_10.1,</group>
   </rule>

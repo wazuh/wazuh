@@ -39,14 +39,14 @@ static int tap_fail;
 
 #define TAP_PLAN { printf("1..%d\n", tap_count); }
 
-#define TAP_SUMMARY                                                    \
-{                                                                      \
-    if (tap_fail>0) {                                                  \
-        printf("\n       [ %d TEST FAILED ]\n", tap_fail); \
-    }                                                                  \
-    else {                                                             \
-        printf("\n      [ ALL TESTS PASSED ]\n");          \
-    }                                                                  \
+int tap_summary() {
+    if (tap_fail > 0) {
+        printf("\n       [ %d TEST FAILED ]\n", tap_fail);
+        return 1;
+    } else {
+        printf("\n      [ ALL TESTS PASSED ]\n");
+        return 0;
+    }
 }
 
 /**

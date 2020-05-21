@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -66,7 +66,7 @@ class WazuhDBQuerySCA(WazuhDBQuery):
         return self.default_query
 
     def _default_count_query(self):
-        return f"COUNT(DISTINCT {self.count_field})"
+        return f"SELECT COUNT(DISTINCT {self.count_field})" + " FROM ({0})"
 
 
 def get_sca_list(agent_id=None, q="", offset=0, limit=common.database_limit,

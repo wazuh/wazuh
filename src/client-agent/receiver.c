@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -16,6 +16,7 @@
 #include "os_net/os_net.h"
 #include "wazuh_modules/wmodules.h"
 #include "wazuh_modules/wm_sca.h"
+#include "syscheck_op.h"
 #include "agentd.h"
 
 /* Global variables */
@@ -124,9 +125,9 @@ int receive_msg()
                 continue;
             }
 
-            /* Restart syscheck */
-            else if (strcmp(tmp_msg, HC_SK_RESTART) == 0) {
-                os_set_restart_syscheck();
+            /* Syscheck */
+            else if (strncmp(tmp_msg, HC_SK, strlen(HC_SK)) == 0) {
+                ag_send_syscheck(tmp_msg + strlen(HC_SK));
                 continue;
             }
 

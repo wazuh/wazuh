@@ -1006,7 +1006,7 @@ int main(void) {
     TAP_TEST_MSG(test_node_attribute_value_overflow(), "Node attribute value inside XML overflow test.");
 
     TAP_PLAN;
-    TAP_SUMMARY;
+    int r = tap_summary();
     printf("\n   ENDING TEST  - OS_XML   \n\n");
-    return 0;
+    return r;
 }

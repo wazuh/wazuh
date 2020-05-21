@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -24,11 +24,13 @@ class InitWDBSocketMock:
         return sys_db
 
     def execute(self, query, count=False):
-        query = re.search(r'^agent \d{3} sql (.+)$', query).group(1)
+        query = re.search(r'^(?:mitre|agent \d{3}) sql (.+)$', query).group(1)
         self.__conn.execute(query)
         rows = self.__conn.execute(query).fetchall()
         if len(rows) > 0 and 'COUNT(*)' in rows[0]:
             return rows[0]['COUNT(*)']
+        elif len(rows) > 0 and 'COUNT(DISTINCT id)' in rows[0]:
+            return rows[0]['COUNT(DISTINCT id)']
         elif count:
             return next(iter(rows[0].values()))
         return rows

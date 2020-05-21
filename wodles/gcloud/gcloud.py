@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 #
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
@@ -9,6 +9,7 @@
 """This module processes events from a Google Cloud subscription."""
 
 import tools
+import os
 from integration import WazuhGCloudSubscriber
 
 try:
@@ -39,3 +40,5 @@ except Exception as e:
 
 else:
     logger.info(f'Received and acknowledged {num_processed_messages} messages')  # noqa: E501
+
+os._exit(0)

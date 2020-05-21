@@ -139,6 +139,9 @@
               "type": "keyword",
               "doc_values": "true"
             },
+            "hard_links": {
+              "type": "keyword"
+            },
             "sha1_before": {
               "type": "keyword",
               "doc_values": "true"
@@ -298,6 +301,18 @@
             "nist_800_53": {
               "type": "keyword",
               "doc_values": "true"
+            },
+            "mitre": {
+              "properties": {
+                "id": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "tactics": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                }   
+              }
             }
           }
         },

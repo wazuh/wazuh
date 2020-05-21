@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -12,43 +12,39 @@
 #include "os_crypto/sha256/sha256_op.h"
 #include "../os_net/os_net.h"
 #include "../addagent/manage_agents.h"
+#include "syscheckd/syscheck.h"
 
+/// Pending restart bit field
+static struct {
+    unsigned syscheck:1;
+    unsigned rootcheck:1;
+} os_restart;
 
 /* Check if syscheck is to be executed/restarted
  * Returns 1 on success or 0 on failure (shouldn't be executed now)
  */
 int os_check_restart_syscheck()
 {
-    /* If the restart is not present, return 0 */
-    if (isChroot()) {
-        if (unlink(SYSCHECK_RESTART) == -1) {
-            return (0);
-        }
-    } else {
-        if (unlink(SYSCHECK_RESTART_PATH) == -1) {
-            return (0);
-        }
-    }
-    return (1);
+    int current = os_restart.syscheck;
+    os_restart.syscheck = 0;
+    return current;
 }
 
-/* Set syscheck to be restarted
- * Returns 1 on success or 0 on failure
+/* Check if rootcheck is to be executed/restarted
+ * Returns 1 on success or 0 on failure (shouldn't be executed now)
  */
-int os_set_restart_syscheck()
+int os_check_restart_rootcheck()
 {
-    FILE *fp;
+    int current = os_restart.rootcheck;
+    os_restart.rootcheck = 0;
+    return current;
+}
 
-    fp = fopen(isChroot() ? SYSCHECK_RESTART : SYSCHECK_RESTART_PATH, "w");
-    if (!fp) {
-        merror(FOPEN_ERROR, isChroot() ? SYSCHECK_RESTART : SYSCHECK_RESTART_PATH, errno, strerror(errno));
-        return (0);
-    }
-
-    fprintf(fp, "%s\n", isChroot() ? SYSCHECK_RESTART : SYSCHECK_RESTART_PATH);
-    fclose(fp);
-
-    return (1);
+/* Set syscheck and rootcheck to be restarted */
+void os_set_restart_syscheck()
+{
+    os_restart.syscheck = 1;
+    os_restart.rootcheck = 1;
 }
 
 /* Read the agent name for the current agent
@@ -449,7 +445,7 @@ char* hostname_parse(const char *path) {
         *value = '\0';
         value += 2;
 
-        if (!(end = strchr(value, '\n'))) {
+        if (end = strchr(value, '\n'), !end) {
             continue;
         }
 
@@ -770,7 +766,7 @@ char * get_agent_id_from_name(const char *agent_name) {
 /* Connect to the control socket if available */
 #if defined (__linux__) || defined (__MACH__) || defined(sun)
 int control_check_connection() {
-    int sock = OS_ConnectUnixDomain(isChroot() ? CONTROL_SOCK : CONTROL_SOCK_PATH, SOCK_STREAM, OS_SIZE_128);
+    int sock = OS_ConnectUnixDomain(CONTROL_SOCK_PATH, SOCK_STREAM, OS_SIZE_128);
 
     if (sock < 0) {
         return -1;

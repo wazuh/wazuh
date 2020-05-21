@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -27,6 +27,7 @@ static void files_lock_init(void);
 static void check_text_only();
 static int check_pattern_expand(int do_seek);
 static void check_pattern_expand_excluded();
+static void set_can_read(int value);
 
 /* Global variables */
 int loop_timeout;
@@ -55,6 +56,10 @@ static pthread_mutex_t mutex;
 static pthread_mutex_t win_el_mutex;
 static pthread_mutexattr_t win_el_mutex_attr;
 #endif
+
+/* can read synchronization */
+static int _can_read = 0;
+static pthread_rwlock_t can_read_rwlock;
 
 /* Multiple readers / one write mutex */
 static pthread_rwlock_t files_update_rwlock;
@@ -93,7 +98,6 @@ void LogCollectorStart()
     check_pattern_expand_excluded();
 
     w_mutex_init(&mutex, NULL);
-
 #ifndef WIN32
     /* To check for inode changes */
     struct stat tmp_stat;
@@ -260,8 +264,9 @@ void LogCollectorStart()
         } else {
             /* On Windows we need to forward the seek for wildcard files */
 #ifdef WIN32
-            set_read(current, i, j);
-            minfo(READING_FILE, current->file);
+            if (current->file) {
+                minfo(READING_FILE, current->file);
+            }
 
             if (current->fp) {
                 current->read(current, &r, 1);
@@ -297,14 +302,15 @@ void LogCollectorStart()
     // Start com request thread
     w_create_thread(lccom_main, NULL);
 #endif
-
+    set_can_read(1);
     /* Daemon loop */
     while (1) {
 
         /* Free hash table content for excluded files */
         if (f_free_excluded >= free_excluded_files_interval) {
+            set_can_read(0); // Stop reading threads
             w_rwlock_wrlock(&files_update_rwlock);
-
+            set_can_read(1); // Clean signal once we have the lock
             mdebug1("Refreshing excluded files list.");
 
             OSHash_Free(excluded_files);
@@ -327,7 +333,9 @@ void LogCollectorStart()
         }
 
         if (f_check >= vcheck_files) {
+            set_can_read(0); // Stop reading threads
             w_rwlock_wrlock(&files_update_rwlock);
+            set_can_read(1); // Clean signal once we have the lock
             int i;
             int j = -1;
             f_reload += f_check;
@@ -363,7 +371,9 @@ void LogCollectorStart()
                     nanosleep(&delay, NULL);
                 }
 
+                set_can_read(0); // Stop reading threads
                 w_rwlock_wrlock(&files_update_rwlock);
+                set_can_read(1); // Clean signal once we have the lock
 
                 // Open files again, and restore position
 
@@ -562,7 +572,7 @@ void LogCollectorStart()
                         continue;
                     }
 #ifdef WIN32
-                    else if (current->size > (lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow))
+                    else if ((DWORD)current->size > (lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow))
 #else
                     else if (current->size > tmp_stat.st_size)
 #endif
@@ -1752,6 +1762,15 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
         w_cond_signal(&msg->available);
     }
 
+    if ((result < 0) && !reported) {
+        #ifndef WIN32
+            mwarn("Target '%s' message queue is full (%zu). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
+        #else
+            mwarn("Target '%s' message queue is full (%u). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
+        #endif
+            reported = 1;
+    }
+
     w_mutex_unlock(&msg->mutex);
 
     if (result < 0) {
@@ -1759,15 +1778,6 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
         free(message->buffer);
         free(message);
         mdebug2("Discarding log line for target '%s'", log_target->log_socket->name);
-
-        if (!reported) {
-#ifndef WIN32
-            mwarn("Target '%s' message queue is full (%zu). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
-#else
-            mwarn("Target '%s' message queue is full (%u). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
-#endif
-            reported = 1;
-        }
     }
 
     return result;
@@ -1797,15 +1807,15 @@ void * w_output_thread(void * args){
 
     while(1)
     {
+        int sleep_time = 5;
         /* Pop message from the queue */
         message = w_msg_queue_pop(msg_queue);
 
-        if (SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) < 0) {
-            if (strcmp(message->log_target->log_socket->name, "agent") == 0) {
-                // When dealing with this type of messages we don't want any of them to be lost
-                // Continuously attempt to reconnect to the queue and send the message.
-                int sleep_time = 5;
+        if (strcmp(message->log_target->log_socket->name, "agent") == 0) {
+            // When dealing with this type of messages we don't want any of them to be lost
+            // Continuously attempt to reconnect to the queue and send the message.
 
+            if(SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) != 0) {
                 #ifdef CLIENT
                 merror("Unable to send message to '%s' (ossec-agentd might be down). Attempting to reconnect.", DEFAULTQPATH);
                 #else
@@ -1813,8 +1823,8 @@ void * w_output_thread(void * args){
                 #endif
 
                 while(1) {
-                    if(logr_queue = StartMQ(DEFAULTQPATH, WRITE), logr_queue > 0) {
-                        if (SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) == 0) {
+                    if(logr_queue = StartMQ(DEFAULTQPATH, WRITE), logr_queue >= 0) {
+                        if (SendMSG(logr_queue, message->buffer, message->file, message->queue_mq) == 0) {
                             minfo("Successfully reconnected to '%s'", DEFAULTQPATH);
                             break;  //  We sent the message successfully, we can go on.
                         }
@@ -1826,15 +1836,28 @@ void * w_output_thread(void * args){
                     if(sleep_time < 300)
                         sleep_time += 5;
                 }
-            } else {
-                merror(QUEUE_SEND);
+            }
 
-                if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                    merror_exit(QUEUE_FATAL, DEFAULTQPATH);
+        } else {
+            const int MAX_RETRIES = 3;
+            int retries = 0;
+            while (retries < MAX_RETRIES) {
+                if (SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) < 0) {
+                    merror(QUEUE_SEND);
+
+                    sleep(sleep_time);
+
+                    // If we failed, we will wait longer before reattempting to connect
+                    sleep_time += 5;
+                    retries++;
+                } else {
+                    break;
                 }
             }
+            if (retries == MAX_RETRIES) {
+                merror(SEND_ERROR, message->log_target->log_socket->location, message->buffer);
+            }
         }
-
         free(message->file);
         free(message->buffer);
         free(message);
@@ -2163,6 +2186,7 @@ void files_lock_init()
 #endif
 
     w_rwlock_init(&files_update_rwlock, &attr);
+    w_rwlock_init(&can_read_rwlock, &attr);
     pthread_rwlockattr_destroy(&attr);
 }
 
@@ -2361,3 +2385,18 @@ static void check_pattern_expand_excluded() {
     }
 }
 #endif
+
+
+static void set_can_read(int value){
+    w_rwlock_wrlock(&can_read_rwlock);
+    _can_read = value;
+    w_rwlock_unlock(&can_read_rwlock);
+}
+
+int can_read() {
+    int ret;
+    w_rwlock_rdlock(&can_read_rwlock);
+    ret = _can_read;
+    w_rwlock_unlock(&can_read_rwlock);
+    return ret;
+}

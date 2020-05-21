@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -46,13 +46,13 @@ os_info *get_win_version()
     OSVERSIONINFOEX osvi;
     BOOL bOsVersionInfoEx;
 
-    SYSTEM_INFO si;
+    SYSTEM_INFO si = {0};
     PGNSI pGNSI;
 
     ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
     osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
 
-    if (!(bOsVersionInfoEx = GetVersionEx ((OSVERSIONINFO *) &osvi))) {
+    if (bOsVersionInfoEx = GetVersionEx ((OSVERSIONINFO *) &osvi), !bOsVersionInfoEx) {
         osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
         if (!GetVersionEx((OSVERSIONINFO *)&osvi)) {
             free(info);
@@ -182,6 +182,8 @@ os_info *get_win_version()
                 pGNSI = (PGNSI) GetProcAddress(GetModuleHandle("kernel32.dll"),"GetNativeSystemInfo");
                 if (NULL != pGNSI) {
                     pGNSI(&si);
+                } else {
+                    mwarn("It was not possible to retrieve GetNativeSystemInfo from kernek32.dll");
                 }
                 if (osvi.wProductType == VER_NT_WORKSTATION && si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64) {
                     info->os_name = strdup("Microsoft Windows XP Professional x64 Edition");
@@ -376,6 +378,7 @@ char *OSX_ReleaseName(const int version) {
     else
         return "Unknown";
 }
+
 
 os_info *get_unix_version()
 {
@@ -795,6 +798,7 @@ free_os_info:
 
 #endif /* WIN32 */
 
+
 void free_osinfo(os_info * osinfo) {
     if (osinfo) {
         free(osinfo->os_name);
@@ -813,8 +817,6 @@ void free_osinfo(os_info * osinfo) {
     }
 }
 
-// Get number of processors
-// Returns 1 on error
 
 int get_nproc() {
 #ifdef __linux__

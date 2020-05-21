@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2010 Trend Micro Inc.
  * All rights reserved.
  *
@@ -379,7 +379,7 @@ int main(int argc, char **argv)
     /* Check if the user/group given are valid */
     gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, "", group);
+        merror_exit(USER_ERROR, "", group, strerror(errno), errno);
     }
 
     if (!run_foreground) {
@@ -945,13 +945,13 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                         continue;
                     }
 
-                    memcpy(srcip,client_source_ip,IPSIZE);
+                    snprintf(srcip, IPSIZE, "%s", client_source_ip);
                 }
 
                 use_client_ip = 1;
             } else if(!config.flags.use_source_ip) {
                 // use_source-ip = 0 and no -I argument in agent
-                memcpy(srcip,"any",IPSIZE);
+                snprintf(srcip, IPSIZE, "any");
             }
             // else -> agent IP is already on srcip
 
@@ -1122,7 +1122,8 @@ void* run_writer(__attribute__((unused)) void *arg) {
     struct keynode *next;
     time_t cur_time;
     char wdbquery[OS_SIZE_128];
-    char *wdboutput;
+    char wdboutput[128];
+    int wdb_sock = -1;
 
     authd_sigblock();
 
@@ -1176,8 +1177,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
             OS_BackupAgentInfo(cur->id, cur->name, cur->ip);
 
             snprintf(wdbquery, OS_SIZE_128, "agent %s remove", cur->id);
-            wdb_send_query(wdbquery, &wdboutput);
-            os_free(wdboutput);
+            wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
             free(cur->id);
             free(cur->name);
@@ -1195,8 +1195,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
             OS_RemoveAgentGroup(cur->id);
 
             snprintf(wdbquery, OS_SIZE_128, "agent %s remove", cur->id);
-            wdb_send_query(wdbquery, &wdboutput);
-            os_free(wdboutput);
+            wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
             free(cur->id);
             free(cur->name);

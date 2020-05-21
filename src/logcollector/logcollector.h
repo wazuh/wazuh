@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -192,6 +192,10 @@ void w_create_input_threads();
 
 /* Set mutexes for each file */
 void w_set_file_mutexes();
+
+/* Read stop signal from reader threads */
+int can_read();
+
 extern int sample_log_length;
 extern int lc_debug_level;
 extern int accept_remote;

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -105,7 +105,7 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc)
 }
 
 /* Send a message to socket */
-int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logtarget * target)
+int SendMSGtoSCK(int queue, const char *message, const char *locmsg, __attribute__((unused)) char loc, logtarget * target)
 {
     int __mq_rcode;
     char tmpstr[OS_MAXSTR + 1];
@@ -114,15 +114,14 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
 
     _message = log_builder_build(mq_log_builder, target->format, message, locmsg);
 
+    tmpstr[OS_MAXSTR] = '\0';
+
     if (strcmp(target->log_socket->name, "agent") == 0) {
         if(SendMSG(queue, _message, locmsg, loc) != 0) {
             free(_message);
             return -1;
         }
-    }
-    else {
-        tmpstr[OS_MAXSTR] = '\0';
-
+    }else{
         int sock_type;
         const char * strmode;
 
@@ -167,7 +166,6 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
         }
 
         // Send msg to socket
-
         if (__mq_rcode = OS_SendUnix(target->log_socket->socket, tmpstr, strlen(tmpstr)), __mq_rcode < 0) {
             if (__mq_rcode == OS_SOCKTERR) {
                 if (mtime = time(NULL), mtime > target->log_socket->last_attempt + sock_fail_time) {
@@ -193,8 +191,10 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
                 SendMSG(queue, "Cannot send message to socket.", "logcollector", LOCALFILE_MQ);
             }
         }
-    }
 
+        free(_message);
+        return (0);
+    }
     free(_message);
     return (0);
 }

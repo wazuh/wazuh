@@ -2,7 +2,7 @@
   -  Exim rules
   -  Author: Alexandr Garaga.
   -  Updated by Wazuh, Inc.
-  -  Copyright (C) 2015-2019, Wazuh Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
@@ -31,6 +31,9 @@
       <if_matched_sid>87506</if_matched_sid>
       <same_source_ip />
       <description>Exim brute force attack (multiple auth failures).</description>
+      <mitre>
+        <id>T1110</id>
+      </mitre>
       <group>authentication_failures,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
 

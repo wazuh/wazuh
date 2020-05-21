@@ -2,7 +2,7 @@
   -  Cisco IOS decoders
   -  Author: Daniel Cid.
   -  Updated by Wazuh, Inc.
-  -  Copyright (C) 2015-2019, Wazuh Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
@@ -78,16 +78,17 @@
   - Will extract the action, srcip, srcport, dstip and dstport
   - Samples:
   -
-  - %SEC-6-IPACCESSLOGP: list 102 denied tcp 10.0.6.56(3067) -> 172.36.4.7(139), 1 packet
-  - %SEC-6-IPACCESSLOGP: list 199 denied tcp 10.0.61.108(1477) -> 10.0.127.20(445), 1 packet
+  - 681: Aug 17 17:41:24.776 AEST: %SEC-6-IPACCESSLOGP: list 102 denied tcp 10.0.6.56(3067) -> 172.36.4.7(139), 1 packet
+  - 39222: *Oct 6 03:32:02.070 mng: %SEC-6-IPACCESSLOGP: list 199 denied tcp 10.0.61.108(1477) -> 10.0.127.20(445), 1 packet
+  - 39222: *Oct 6 03:32:02.070 mng: %SEC-6-IPACCESSLOGP: list 167 denied udp xx.xx.xx.xx(137) (GigabitEthernet0/1.6 ab9c.2a62.aa8d) -> xxx.xxx.xxx.xxx(137), 1 packet
   -->
 
 <decoder name="cisco-ios-acl">
   <parent>cisco-ios</parent>
   <type>firewall</type>
-  <prematch>^%SEC-6-IPACCESSLOGP: </prematch>
-  <regex offset="after_prematch">^list \S+ (\w+) (\w+) </regex>
-  <regex>(\S+)\((\d+)\) -> (\S+)\((\d+)\),</regex>
+  <prematch>%SEC-6-IPACCESSLOGP: </prematch>
+  <regex offset="after_prematch">list \S+ (\w+) (\w+) </regex>
+  <regex>(\S+)\((\d+)\) \.*-> (\S+)\((\d+)\)</regex>
   <order>action, protocol, srcip, srcport, dstip, dstport</order>
 </decoder>
 

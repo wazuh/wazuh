@@ -1,7 +1,7 @@
 <!--
   -  Windows logs rules
   -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2019, Wazuh Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -16,14 +16,17 @@
         <if_sid>18101</if_sid>
         <id>1102</id>
         <description>The audit log was cleared</description>
+        <mitre>
+            <id>T1070</id>
+        </mitre>
         <group>log_clearing_auditlog,gpg13_10.1,gdpr_II_5.1.f,gdpr_IV_30.1.g,</group>
     </rule>
 
     <!--
     2017 Mar 28 09:46:17 WinEvtLog: System: INFORMATION(104): Microsoft-Windows-Eventlog: Alberto: WIN-P57C9KN929H: WIN-P57C9KN929H: The Internet Explorer log file was cleared.
     2018 Dec 05 08:22:48 WinEvtLog: System: INFORMATION(104): Microsoft-Windows-Eventlog: joesmith: ABCNET: Samuel.abcnet.org: The Microsoft-Windows-CAPI2/Operational log file was cleared.
-    2018 Dec 05 08:22:48 WinEvtLog: System: INFORMATION(104): Microsoft-Windows-Eventlog: joesmith: ABCNET: Samuel.abcnet.org: The Microsoft-Windows-IdCtrls/Operational log file was cleared.  
-    2018 Dec 05 08:22:48 WinEvtLog: System: INFORMATION(104): Microsoft-Windows-Eventlog: joesmith: ABCNET: Samuel.abcnet.org: The Microsoft-Windows-WebAuth/Operational log file was cleared.  
+    2018 Dec 05 08:22:48 WinEvtLog: System: INFORMATION(104): Microsoft-Windows-Eventlog: joesmith: ABCNET: Samuel.abcnet.org: The Microsoft-Windows-IdCtrls/Operational log file was cleared.
+    2018 Dec 05 08:22:48 WinEvtLog: System: INFORMATION(104): Microsoft-Windows-Eventlog: joesmith: ABCNET: Samuel.abcnet.org: The Microsoft-Windows-WebAuth/Operational log file was cleared.
     Should not fire on this example:
     2018 Nov 30 13:29:28 WinEvtLog: System: INFORMATION(104): Microsoft-Windows-ResourcePublication: LOCAL SERVICE: NT AUTHORITY: REBEKAH.abcnet.org: BeginPublication
     -->
@@ -32,6 +35,9 @@
         <id>^104$</id>
         <extra_data>Microsoft-Windows-Eventlog</extra_data>
         <description>A Windows log file was cleared</description>
+        <mitre>
+            <id>T1070</id>
+        </mitre>
         <group>log_clearing,gpg13_10.1,gdpr_II_5.1.f,</group>
     </rule>
 
@@ -42,6 +48,9 @@
         <if_sid>18101</if_sid>
         <id>^6005$</id>
         <description>The Event log service was started</description>
+        <mitre>
+            <id>T1050</id>
+        </mitre>
         <group>windows_log_service_started,gpg13_10.1,</group>
     </rule>
 

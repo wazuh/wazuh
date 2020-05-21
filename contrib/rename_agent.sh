@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Rename an OSSEC agent (must be run on both agent and server)
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 
 # Sanity checks
 

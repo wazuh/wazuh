@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -95,7 +95,7 @@ int OS_SetKeepalive(int socket);
  * @param intvl Interval between probes, in seconds.
  * @param cnt Number of probes sent before closing the connection.
  */
-void OS_SetKeepalive_Options(int socket, int idle, int intvl, int cnt);
+void OS_SetKeepalive_Options(__attribute__((unused)) int socket, int idle, int intvl, int cnt);
 
 /* Set the delivery timeout for a socket
  * Returns 0 on success, else -1

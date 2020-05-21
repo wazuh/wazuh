@@ -1,6 +1,6 @@
 /*
  * Wazuh Database Daemon
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * January 03, 2018.
  *
  * This program is free software; you can redistribute it
@@ -78,7 +78,8 @@ int main(int argc, char ** argv) {
 
     config.sock_queue_size = getDefine_Int("wazuh_db", "sock_queue_size", 1, 1024);
     config.worker_pool_size = getDefine_Int("wazuh_db", "worker_pool_size", 1, 32);
-    config.commit_time = getDefine_Int("wazuh_db", "commit_time", 10, 3600);
+    config.commit_time_min = getDefine_Int("wazuh_db", "commit_time_min", 1, 3600);
+    config.commit_time_max = getDefine_Int("wazuh_db", "commit_time_max", 1, 3600);
     config.open_db_limit = getDefine_Int("wazuh_db", "open_db_limit", 1, 4096);
     nofile = getDefine_Int("wazuh_db", "rlimit_nofile", 1024, 1048576);
 
@@ -96,7 +97,6 @@ int main(int argc, char ** argv) {
 
     // Initialize variables
 
-    //sock_queue = queue_init(config.sock_queue_size);
     open_dbs = OSHash_Create();
     if (!open_dbs) merror_exit("wazuh_db: OSHash_Create() failed");
 
@@ -128,7 +128,7 @@ int main(int argc, char ** argv) {
         gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
 
         if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-            merror_exit(USER_ERROR, USER, GROUPGLOBAL);
+            merror_exit(USER_ERROR, USER, GROUPGLOBAL, strerror(errno), errno);
         }
 
         if (Privsep_SetGroup(gid) < 0) {
@@ -209,8 +209,11 @@ int main(int argc, char ** argv) {
 
     wnotify_close(notify_queue);
     free(worker_pool);
+    pthread_join(thread_up, NULL);
     pthread_join(thread_gc, NULL);
     wdb_close_all();
+
+    OSHash_Free(open_dbs);
 
     // Reset template here too, remove queue/db/.template.db again
     // Without the prefix, because chrooted at that point
@@ -424,7 +427,6 @@ void * run_up(__attribute__((unused)) void * args) {
 
         *(name++) = '\0';
         wdb = wdb_open_agent2(atoi(entry));
-        mdebug2("Upgraded DB for agent '%s' in run_up", wdb->agent_id);
         wdb_leave(wdb);
         free(entry);
     }

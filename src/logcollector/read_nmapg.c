@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -146,12 +146,12 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
     port[16] = '\0';
     proto[16] = '\0';
 
-    while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
+    while (can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
         lines++;
         /* If need clear is set, we need to clear the line */
         if (need_clear) {
-            if ((q = strchr(str, '\n')) != NULL) {
+            if (q = strchr(str, '\n'), q != NULL) {
                 need_clear = 0;
             }
             continue;
