@@ -199,6 +199,20 @@ int __wrap_realtime_start(void) {
 }
 #endif
 
+int __wrap_os_random() {
+    return 12345;
+}
+
+#ifdef TEST_WINAGENT
+int __wrap_run_whodata_scan(void) {
+    return mock();
+}
+
+int __wrap_audit_restore(void) {
+    return mock();
+}
+#endif
+
 /* Setup */
 
 static int setup_group(void ** state) {
@@ -234,6 +248,7 @@ static int setup_group(void ** state) {
     return 0;
 }
 
+#ifndef TEST_WINAGENT
 static int setup_tmp_file(void **state) {
     fim_tmp_file *tmp_file = calloc(1, sizeof(fim_tmp_file));
     tmp_file->elements = 1;
@@ -242,23 +257,34 @@ static int setup_tmp_file(void **state) {
 
     return 0;
 }
+#endif
 
 /* teardown */
 
 static int teardown_group(void **state) {
-    (void) state;
+    #ifdef TEST_WINAGENT
+    if (syscheck.realtime) {
+        if (syscheck.realtime->dirtb) {
+            OSHash_Free(syscheck.realtime->dirtb);
+        }
+        free(syscheck.realtime);
+        syscheck.realtime = NULL;
+    }
+    #endif
 
     Free_Syscheck(&syscheck);
 
     return 0;
 }
 
+#ifndef TEST_WINAGENT
 static int teardown_tmp_file(void **state) {
     fim_tmp_file *tmp_file = *state;
     free(tmp_file);
 
     return 0;
 }
+#endif
 
 /* tests */
 
@@ -289,18 +315,18 @@ void test_fim_whodata_initialize(void **state)
 
         str_lowercase(expanded_dirs[i]);
         expect_string(__wrap_realtime_adddir, dir, expanded_dirs[i]);
-        expect_value(__wrap_realtime_adddir, whodata, 9);
+        expect_value(__wrap_realtime_adddir, whodata, 10);
         will_return(__wrap_realtime_adddir, 0);
     }
     #else
     expect_string(__wrap_realtime_adddir, dir, "/etc");
-    expect_value(__wrap_realtime_adddir, whodata, 1);
-    will_return(__wrap_realtime_adddir, 0);
-    expect_string(__wrap_realtime_adddir, dir, "/usr/bin");
     expect_value(__wrap_realtime_adddir, whodata, 2);
     will_return(__wrap_realtime_adddir, 0);
+    expect_string(__wrap_realtime_adddir, dir, "/usr/bin");
+    expect_value(__wrap_realtime_adddir, whodata, 5);
+    will_return(__wrap_realtime_adddir, 0);
     expect_string(__wrap_realtime_adddir, dir, "/usr/sbin");
-    expect_value(__wrap_realtime_adddir, whodata, 3);
+    expect_value(__wrap_realtime_adddir, whodata, 6);
     will_return(__wrap_realtime_adddir, 0);
     #endif
 
@@ -386,6 +412,47 @@ void test_fim_send_msg_retry_error(void **state) {
 }
 
 #ifdef TEST_WINAGENT
+
+void test_fim_whodata_initialize_fail_set_policies(void **state)
+{
+    int ret;
+    int i;
+    char *dirs[] = {
+        "%WINDIR%\\System32\\WindowsPowerShell\\v1.0",
+        NULL
+    };
+    char expanded_dirs[1][OS_SIZE_1024];
+
+    will_return(wrap_GetCurrentThread, (HANDLE)123456);
+
+    expect_value(wrap_SetThreadPriority, hThread, (HANDLE)123456);
+    expect_value(wrap_SetThreadPriority, nPriority, THREAD_PRIORITY_LOWEST);
+    will_return(wrap_SetThreadPriority, true);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '10'");
+
+    // Expand directories
+    for(i = 0; dirs[i]; i++) {
+        if(!ExpandEnvironmentStrings(dirs[i], expanded_dirs[i], OS_SIZE_1024))
+            fail();
+
+        str_lowercase(expanded_dirs[i]);
+        expect_string(__wrap_realtime_adddir, dir, expanded_dirs[i]);
+        expect_value(__wrap_realtime_adddir, whodata, 9);
+        will_return(__wrap_realtime_adddir, 0);
+    }
+
+    will_return(__wrap_run_whodata_scan, 1);
+    expect_string(__wrap__merror, formatted_msg,
+      "(6710): Failed to start the Whodata engine. Directories/files will be monitored in Realtime mode");
+
+    will_return(__wrap_audit_restore, NULL);
+
+    ret = fim_whodata_initialize();
+
+    assert_int_equal(ret, -1);
+}
+
 void test_set_priority_windows_thread_highest(void **state) {
     syscheck.process_priority = -10;
 
@@ -492,20 +559,20 @@ void test_set_priority_windows_thread_error(void **state) {
 void test_set_whodata_mode_changes(void **state) {
     int i;
     char *dirs[] = {
+        "%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
         "%WINDIR%\\System32\\drivers\\etc",
         "%WINDIR%\\System32\\wbem",
-        "%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
         NULL
     };
     char expanded_dirs[3][OS_SIZE_1024];
 
     // Mark directories to be added in realtime
-    syscheck.wdata.dirs_status[6].status |= WD_CHECK_REALTIME;
-    syscheck.wdata.dirs_status[6].status &= ~WD_CHECK_WHODATA;
+    syscheck.wdata.dirs_status[0].status |= WD_CHECK_REALTIME;
+    syscheck.wdata.dirs_status[0].status &= ~WD_CHECK_WHODATA;
     syscheck.wdata.dirs_status[7].status |= WD_CHECK_REALTIME;
     syscheck.wdata.dirs_status[7].status &= ~WD_CHECK_WHODATA;
-    syscheck.wdata.dirs_status[9].status |= WD_CHECK_REALTIME;
-    syscheck.wdata.dirs_status[9].status &= ~WD_CHECK_WHODATA;
+    syscheck.wdata.dirs_status[8].status |= WD_CHECK_REALTIME;
+    syscheck.wdata.dirs_status[8].status &= ~WD_CHECK_WHODATA;
 
     // Expand directories
     for(i = 0; dirs[i]; i++) {
@@ -522,9 +589,9 @@ void test_set_whodata_mode_changes(void **state) {
         }
     }
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6225): The 'c:\\windows\\system32\\drivers\\etc' directory starts to be monitored in real-time mode.");
-    expect_string(__wrap__merror, formatted_msg, "(6611): 'realtime_adddir' failed, the directory 'c:\\windows\\system32\\wbem'could't be added to real time mode.");
     expect_string(__wrap__mdebug1, formatted_msg, "(6225): The 'c:\\programdata\\microsoft\\windows\\start menu\\programs\\startup' directory starts to be monitored in real-time mode.");
+    expect_string(__wrap__merror, formatted_msg, "(6611): 'realtime_adddir' failed, the directory 'c:\\windows\\system32\\drivers\\etc'could't be added to real time mode.");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6225): The 'c:\\windows\\system32\\wbem' directory starts to be monitored in real-time mode.");
 
     set_whodata_mode_changes();
 }
@@ -553,9 +620,13 @@ void test_fim_whodata_initialize_eventchannel(void **state) {
 
         str_lowercase(expanded_dirs[i]);
         expect_string(__wrap_realtime_adddir, dir, expanded_dirs[i]);
-        expect_value(__wrap_realtime_adddir, whodata, 9);
+        expect_value(__wrap_realtime_adddir, whodata, 10);
         will_return(__wrap_realtime_adddir, 0);
     }
+
+    will_return(__wrap_run_whodata_scan, 0);
+
+    will_return(wrap_run_check_CreateThread, (HANDLE)123456);
 
     ret = fim_whodata_initialize();
 
@@ -689,6 +760,10 @@ void test_fim_link_update(void **state) {
     will_return(__wrap_fim_db_get_path_range, NULL);
     will_return(__wrap_fim_db_get_path_range, FIMDB_OK);
 
+    expect_string(__wrap_realtime_adddir, dir, "/folder/test");
+    expect_value(__wrap_realtime_adddir, whodata, 0);
+    will_return(__wrap_realtime_adddir, 0);
+
     expect_string(__wrap_fim_checker, path, link_path);
 
     fim_link_update(pos, link_path);
@@ -718,7 +793,7 @@ void test_fim_link_check_delete(void **state) {
     (void) state;
 
     int pos = 1;
-    char *link_path = "/usr/bin";
+    char *link_path = "/etc";
 
     expect_string(__wrap_lstat, filename, link_path);
     will_return(__wrap_lstat, 0);
@@ -739,12 +814,12 @@ void test_fim_link_check_delete_lstat_error(void **state) {
     (void) state;
 
     int pos = 2;
-    char *link_path = "/usr/sbin";
+    char *link_path = "/home";
 
     expect_string(__wrap_lstat, filename, link_path);
     will_return(__wrap_lstat, -1);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6222): Stat() function failed on: '/usr/sbin' due to [(0)-(Success)]");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6222): Stat() function failed on: '/home' due to [(0)-(Success)]");
 
     fim_link_check_delete(pos);
 
@@ -755,7 +830,7 @@ void test_fim_link_check_delete_noentry_error(void **state) {
     (void) state;
 
     int pos = 2;
-    char *link_path = "/usr/sbin";
+    char *link_path = "/home";
 
     expect_string(__wrap_lstat, filename, link_path);
     will_return(__wrap_lstat, -1);
@@ -772,7 +847,7 @@ void test_fim_link_check_delete_noentry_error(void **state) {
 void test_fim_delete_realtime_watches(void **state) {
     (void) state;
 
-    int pos = 1;
+    unsigned int pos = 1;
 
     will_return(__wrap_fim_configuration_directory, 0);
 
@@ -844,9 +919,9 @@ void test_fim_link_reload_broken_link_already_monitored(void **state) {
     (void) state;
 
     int pos = 4;
-    char *link_path = "/home";
+    char *link_path = "/usr/bin";
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6234): Directory '/home' already monitored, ignoring link '(null)'");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6234): Directory '/usr/bin' already monitored, ignoring link '(null)'");
 
     fim_link_reload_broken_link(link_path, pos);
 
@@ -858,10 +933,6 @@ void test_fim_link_reload_broken_link_reload_broken(void **state) {
 
     int pos = 5;
     char *link_path = "/test";
-
-    expect_string(__wrap_realtime_adddir, dir, link_path);
-    expect_value(__wrap_realtime_adddir, whodata, 0);
-    will_return(__wrap_realtime_adddir, 0);
 
     expect_string(__wrap_fim_checker, path, link_path);
 
@@ -916,6 +987,7 @@ int main(void) {
     const struct CMUnitTest eventchannel_tests[] = {
         cmocka_unit_test(test_set_whodata_mode_changes),
         cmocka_unit_test(test_fim_whodata_initialize_eventchannel),
+        cmocka_unit_test(test_fim_whodata_initialize_fail_set_policies),
     };
     return cmocka_run_group_tests(eventchannel_tests, setup_group, teardown_group);
     #endif
