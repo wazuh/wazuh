@@ -85,8 +85,8 @@
 #define VU_FUNCTION_TIME      "(5470): It took '%ld' seconds to '%s' vulnerabilities in agent '%.3d'"
 #define VU_AGENT_FINISH       "(5471): Finished vulnerability assessment for agent '%.3d'"
 #define VU_END_SCAN           "(5472): Vulnerability scan finished."
-#define VU_NO_SRC_VERSION     "(5480): Unable to get sources's '%s' version for agent '%.3d'."
-#define VU_NO_SRC_NAME        "(5481): Unable to get sources's '%s' name for agent '%.3d'."
+#define VU_NO_SRC_VERSION     "(5480): Unable to get the source '%s' version for agent '%.3d'"
+#define VU_NO_SRC_NAME        "(5481): Unable to get the source '%s' name for agent '%.3d'"
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
