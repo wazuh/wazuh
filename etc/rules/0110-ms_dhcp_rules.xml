@@ -62,14 +62,14 @@ ID,Date,Time,Description,IP Address,Host Name,MAC Address
     <mitre>
       <id>T1050</id>
     </mitre>
-    <group>service_start,pci_dss_10.2.6,gpg13_4.14,gpg13_10.1,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AU.5,</group>
+    <group>service_start,pci_dss_10.2.6,gpg13_4.14,gpg13_10.1,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AU.5,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="6302" level="3">
 	<if_sid>6300</if_sid>
 	<id>^01</id>
     <description>MS-DHCP: The log was stopped.</description>
-    <group>service_availability,pci_dss_10.2.6,gpg13_4.14,gpg13_10.1,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AU.5,</group>
+    <group>service_availability,pci_dss_10.2.6,gpg13_4.14,gpg13_10.1,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AU.5,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="6303" level="10">
@@ -79,7 +79,7 @@ ID,Date,Time,Description,IP Address,Host Name,MAC Address
     <mitre>
       <id>T1489</id>
     </mitre>
-    <group>system_error,pci_dss_10.2.6,gpg13_4.14,gpg13_10.1,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AU.5,</group>
+    <group>system_error,pci_dss_10.2.6,gpg13_4.14,gpg13_10.1,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AU.5,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="6304" level="0">
@@ -107,7 +107,7 @@ ID,Date,Time,Description,IP Address,Host Name,MAC Address
 	<if_sid>6300</if_sid>
 	<id>^13</id>
     <description>MS-DHCP: An IP address was found to be in use on the network.</description>
-    <group>dhcp_lease_action,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <group>dhcp_lease_action,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="6308" level="12">
@@ -117,14 +117,14 @@ ID,Date,Time,Description,IP Address,Host Name,MAC Address
     <mitre>
       <id>T1489</id>
     </mitre>
-    <group>service_availability,dhcp_lease_action,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <group>service_availability,dhcp_lease_action,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="6309" level="7">
 	<if_sid>6300</if_sid>
 	<id>^15</id>
     <description>MS-DHCP: A lease was denied.</description>
-    <group>dhcp_lease_action,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <group>dhcp_lease_action,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="6310" level="0">
@@ -167,7 +167,7 @@ ID,Date,Time,Description,IP Address,Host Name,MAC Address
 	<if_sid>6300</if_sid>
 	<id>^22</id>
     <description>MS-DHCP: A BOOTP request could not be satisfied because the scope's  address pool for BOOTP was exhausted.</description>
-    <group>dhcp_lease_action,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <group>dhcp_lease_action,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="6315" level="0">
@@ -202,14 +202,14 @@ ID,Date,Time,Description,IP Address,Host Name,MAC Address
 	<if_sid>6300</if_sid>
 	<id>^31</id>
     <description>MS-DHCP: DNS update failed.</description>
-    <group>dhcp_dns_maintenance,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <group>dhcp_dns_maintenance,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="6320" level="0">
 	<if_sid>6300</if_sid>
 	<id>^32</id>
     <description>MS-DHCP: DNS update successful.</description>
-    <group>dhcp_dns_maintenance,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <group>dhcp_dns_maintenance,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="6323" level="12">
@@ -361,7 +361,7 @@ Server 2008 IPv6 Event ID  Meaning
     <mitre>
       <id>T1489</id>
     </mitre>
-    <group>service_availability,pci_dss_10.1,pci_dss_10.2.6,gpg13_10.1,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.12,nist_800_53_AU.14,nist_800_53_AU.5,</group>
+    <group>service_availability,pci_dss_10.1,pci_dss_10.2.6,gpg13_10.1,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.12,nist_800_53_AU.14,nist_800_53_AU.5,tsc_CC6.1,tsc_CC6.2,tsc_CC6.3,tsc_CC7.2,tsc_CC7.3,tsc_CC6.8,</group>
   </rule>
 
 
@@ -436,7 +436,7 @@ Server 2008 IPv6 Event ID  Meaning
     <mitre>
       <id>T1035</id>
     </mitre>
-    <group>dhcp_ipv6,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <group>dhcp_ipv6,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="6374" level="3">
@@ -453,6 +453,6 @@ Server 2008 IPv6 Event ID  Meaning
     <mitre>
       <id>T1035</id>
     </mitre>
-    <group>dhcp_ipv6,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <group>dhcp_ipv6,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 </group>

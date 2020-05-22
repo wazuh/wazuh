@@ -1975,7 +1975,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
     will_return(__wrap_fim_db_get_count_entry_path, 50000);
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6227): Sending DB 100% full alert.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
@@ -2026,7 +2026,7 @@ static void test_fim_scan_no_realtime(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6227): Sending DB 100% full alert.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
 
     expect_function_call(__wrap_count_watches);
@@ -2637,7 +2637,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of files to be monitored: '50000'");
     will_return(__wrap_fim_db_get_count_entry_path, 50000);
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6227): Sending DB 100% full alert.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
@@ -2924,7 +2924,7 @@ static void test_fim_check_db_state_empty_to_full(void **state) {
 
     will_return(__wrap_fim_db_get_count_entry_path, 50000);
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6227): Sending DB 100% full alert.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
 
     assert_int_equal(_db_state, FIM_STATE_DB_EMPTY);
@@ -3038,7 +3038,7 @@ static void test_fim_check_db_state_normal_to_full(void **state) {
 
     will_return(__wrap_fim_db_get_count_entry_path, 50000);
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6227): Sending DB 100% full alert.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
 
     assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
@@ -3125,7 +3125,7 @@ static void test_fim_check_db_state_80_percentage_to_full(void **state) {
 
     will_return(__wrap_fim_db_get_count_entry_path, 50000);
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6227): Sending DB 100% full alert.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
 
     assert_int_equal(_db_state, FIM_STATE_DB_80_PERCENTAGE);
@@ -3182,7 +3182,7 @@ static void test_fim_check_db_state_90_percentage_to_full(void **state) {
 
     will_return(__wrap_fim_db_get_count_entry_path, 50000);
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6227): Sending DB 100% full alert.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
 
     assert_int_equal(_db_state, FIM_STATE_DB_90_PERCENTAGE);
