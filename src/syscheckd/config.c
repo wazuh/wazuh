@@ -69,6 +69,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.disk_quota_limit = 1024 * 1024; // 1 GB
     syscheck.file_size_enabled = true;
     syscheck.file_size_limit = 50 * 1024; // 50 MB
+    syscheck.diff_folder_size = 0;
 
     mdebug1(FIM_CONFIGURATION_FILE, cfgfile);
 
