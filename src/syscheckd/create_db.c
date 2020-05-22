@@ -62,6 +62,8 @@ void fim_scan() {
     minfo(FIM_FREQUENCY_STARTED);
     fim_send_scan_info(FIM_SCAN_START);
 
+    fim_diff_folder_size();
+
     w_mutex_lock(&syscheck.fim_scan_mutex);
 
     while (syscheck.dir[it] != NULL) {
@@ -1251,6 +1253,48 @@ void free_inode_data(fim_inode_data **data) {
     }
     os_free((*data)->paths);
     os_free(*data);
+}
+
+void fim_diff_folder_size(){
+    syscheck.diff_folder_size = fim_folder_size(DIFF_DIR_PATH);
+}
+
+off_t fim_folder_size(const char *path) {
+    struct dirent *dir;
+    DIR *d;
+    off_t folder_size = 0;
+    char *real_path;
+
+    d = opendir(path);
+
+    if (d) {
+        while ((dir = readdir(d)) != NULL) {
+            if (strcmp(dir->d_name, ".") == 0 || strcmp(dir->d_name, "..") == 0) {
+                continue;
+            }
+
+            os_malloc(strlen(path) + strlen(dir->d_name) + 2, real_path);
+
+            strcpy(real_path, path);
+            strcat(real_path, "/");
+            strcat(real_path, dir->d_name);
+
+            if (dir->d_type == DT_DIR) {
+                folder_size += dirSize(real_path);
+            }
+            else {
+                folder_size += FileSize(real_path);
+            }
+            
+            if (real_path) {
+                free(real_path);
+            }
+        }
+
+        closedir(d);
+    }
+
+    return folder_size;
 }
 
 // LCOV_EXCL_START

@@ -296,7 +296,7 @@ typedef struct _config {
     int file_size_enabled;          /* Enable diff file size limit */
     int file_size_limit;            /* Avoids generating a backup from a file bigger than this limit */
     int *diff_size_limit;           /* Apply the file size limit option in a specific directory */
-    int diff_folder_size;           /* Save size of queue/diff/local folder */
+    off_t diff_folder_size;         /* Save size of queue/diff/local folder */
 
     char **nodiff;                  /* list of files/dirs to never output diff */
     OSMatch **nodiff_regex;         /* regex of files/dirs to never output diff */

@@ -849,4 +849,19 @@ void fim_send_scan_info(fim_scan_event event);
  */
 void fim_check_db_state();
 
+/**
+ * @brief Checks the size of the queue/diff/local folder
+ * 
+ */
+void fim_diff_folder_size();
+
+/**
+ * @brief Calculate the size of a folder
+ * 
+ * @param path Path to the folder
+ * 
+ * @return Size of a folder
+ */
+off_t fim_folder_size(const char *path);
+
 #endif /* SYSCHECK_H */
