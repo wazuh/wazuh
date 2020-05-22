@@ -30,6 +30,61 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     /* Initialize sender */
     sender_init();
 
+    /* Going Daemon */
+    if (!run_foreground) {
+        nowDaemon();
+        goDaemon();
+    }
+    
+    /* Set group ID */
+    if (Privsep_SetGroup(gid) < 0) {
+        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
+    }
+
+    if (Privsep_SetUser(uid) < 0) {
+        merror_exit(SETUID_ERROR, user, errno, strerror(errno));
+    }
+
+    if(agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
+        // If autoenrollment is enabled, we will avoid exit if there is no valid key
+        OS_PassEmptyKeyfile();
+    } else {
+        /* Check auth keys */
+        if (!OS_CheckKeys()) {
+            merror_exit(AG_NOKEYS_EXIT);
+        }
+    }
+    
+    /* Check client keys */
+    OS_ReadKeys(&keys, 1, 0, 0);
+
+    /* Check if we need to auto-enroll */
+    if(agt->enrollment_cfg && agt->enrollment_cfg->enabled && keys.keysize == 0) {
+        int registration_status = -1;
+        int rc = 0;
+
+        if (agt->enrollment_cfg->target_cfg->manager_name) {
+            // Configured enrollment server
+            registration_status = w_enrollment_request_key(agt->enrollment_cfg, agt->enrollment_cfg->target_cfg->manager_name);
+        } 
+        
+        // Try to enroll to server list
+        while (agt->server[rc].rip && (registration_status != 0)) {
+            registration_status = w_enrollment_request_key(agt->enrollment_cfg, agt->server[rc].rip);
+            rc++;
+        }
+        
+
+        if(registration_status == 0) {
+            // Wait for key update on agent side
+            mdebug1("Sleeping %d seconds to allow manager key file updates", agt->enrollment_cfg->delay_after_enrollment);
+            sleep(agt->enrollment_cfg->delay_after_enrollment);
+            // Update keys to get obtained key
+            OS_UpdateKeys(&keys);
+        } else {
+            merror_exit(AG_ENROLL_FAIL);
+        }
+    }
     // Resolve hostnames
     rc = 0;
     while (rc < agt->rip_id) {
@@ -42,27 +97,12 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         rc++;
     }
 
-    /* Going Daemon */
-    if (!run_foreground) {
-        nowDaemon();
-        goDaemon();
-    }
-
     minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
 
     if (!getuname()) {
         merror(MEM_ERROR, errno, strerror(errno));
     } else
         minfo("Version detected -> %s", getuname());
-
-    /* Set group ID */
-    if (Privsep_SetGroup(gid) < 0) {
-        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
-    }
-
-    if (Privsep_SetUser(uid) < 0) {
-        merror_exit(SETUID_ERROR, user, errno, strerror(errno));
-    }
 
     /* Try to connect to server */
     os_setwait();

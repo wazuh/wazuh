@@ -162,47 +162,6 @@ int main(int argc, char **argv)
         merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }
 
-    if(agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
-        // If autoenrollment is enabled, we will avoid exit if there is no valid key
-        OS_PassEmptyKeyfile();
-    } else {
-        /* Check auth keys */
-        if (!OS_CheckKeys()) {
-            merror_exit(AG_NOKEYS_EXIT);
-        }
-    }
-    
-    /* Check client keys */
-    OS_ReadKeys(&keys, 1, 0, 0);
-
-    /* Check if we need to auto-enroll */
-    if(agt->enrollment_cfg && agt->enrollment_cfg->enabled && keys.keysize == 0) {
-        int registration_status = -1;
-        int rc = 0;
-
-        if (agt->enrollment_cfg->target_cfg->manager_name) {
-            // Configured enrollment server
-            registration_status = w_enrollment_request_key(agt->enrollment_cfg, agt->enrollment_cfg->target_cfg->manager_name);
-        } 
-        
-        // Try to enroll to server list
-        while (agt->server[rc].rip && (registration_status != 0)) {
-            registration_status = w_enrollment_request_key(agt->enrollment_cfg, agt->server[rc].rip);
-            rc++;
-        }
-        
-
-        if(registration_status == 0) {
-            // Wait for key update on agent side
-            mdebug1("Sleeping %d seconds to allow manager key file updates", agt->enrollment_cfg->delay_after_enrollment);
-            sleep(agt->enrollment_cfg->delay_after_enrollment);
-            // Update keys to get obtained key
-            OS_UpdateKeys(&keys);
-        } else {
-            merror_exit(AG_ENROLL_FAIL);
-        }
-    }
-
     /* Exit if test config */
     if (test_config) {
         exit(0);
