@@ -12,13 +12,15 @@ from wazuh.utils import process_array
 
 
 @expose_resources(actions=['lists:read'], resources=['list:path:{path}'])
-def get_lists(path=None, offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True, search_text=None,
-              complementary_search=False, search_in_fields=None, relative_dirname=None, filename=None):
+def get_lists(path=None, offset=0, limit=common.database_limit, select=None, sort_by=None, sort_ascending=True,
+              search_text=None, complementary_search=False, search_in_fields=None, relative_dirname=None,
+              filename=None):
     """Get CDB lists
 
     :param path: Relative path of list file to get (if it is not specified, all lists will be returned)
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
+    :param select: Select which fields to return (separated by comma)
     :param sort_by: Fields to sort the items by
     :param sort_ascending: Sort in ascending (true) or descending (false) order
     :param search_text: Text to search
@@ -32,6 +34,7 @@ def get_lists(path=None, offset=0, limit=common.database_limit, sort_by=None, so
                                       some_msg='Some lists could not be shown',
                                       all_msg='All specified lists were shown')
     lists = list()
+    required_fields = {'filename', 'relative_dirname'}
     for rel_p in path:
         if not any([relative_dirname is not None and os.path.dirname(rel_p) != relative_dirname,
                     filename is not None and os.path.split(rel_p)[1] not in filename]):
@@ -41,7 +44,8 @@ def get_lists(path=None, offset=0, limit=common.database_limit, sort_by=None, so
 
     data = process_array(lists, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit, allowed_sort_fields=['relative_dirname', 'filename'])
+                         offset=offset, limit=limit, select=select, allowed_sort_fields=['relative_dirname', 'filename'],
+                         required_fields=required_fields)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
