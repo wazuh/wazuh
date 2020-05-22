@@ -15,7 +15,7 @@ from wazuh.utils import process_array
 
 
 def get_decoders(names=None, status=None, filename=None, relative_dirname=None, parents=False, offset=0,
-                 limit=common.database_limit, sort_by=None, sort_ascending=True, search_text=None,
+                 limit=common.database_limit, select=None, sort_by=None, sort_ascending=True, search_text=None,
                  complementary_search=False, search_in_fields=None, q=''):
     """Gets a list of available decoders.
 
@@ -26,6 +26,7 @@ def get_decoders(names=None, status=None, filename=None, relative_dirname=None, 
     :param parents: Just parent decoders.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
+    :param select: Select which fields to return (separated by comma)
     :param sort_by: Fields to sort the items by
     :param sort_ascending: Sort in ascending (true) or descending (false) order
     :param search_text: Text to search
@@ -39,6 +40,7 @@ def get_decoders(names=None, status=None, filename=None, relative_dirname=None, 
                                       some_msg='Some decoders could not be shown',
                                       all_msg='All selected decoders were shown')
     all_decoders = list()
+    required_fields = {'filename', 'position'}
     if names is None:
         names = list()
 
@@ -73,7 +75,8 @@ def get_decoders(names=None, status=None, filename=None, relative_dirname=None, 
 
     data = process_array(decoders, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         allowed_sort_fields=Status.SORT_FIELDS.value, offset=offset, limit=limit, q=q)
+                         allowed_sort_fields=Status.SORT_FIELDS.value, offset=offset, select=select, limit=limit, q=q,
+                         required_fields=required_fields)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
