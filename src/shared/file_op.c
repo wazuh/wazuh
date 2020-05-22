@@ -466,6 +466,49 @@ off_t FileSize(const char * path) {
 }
 
 
+#ifndef WIN32
+
+float DirSize(const char *path) {
+    struct dirent *dir;
+    DIR *d;
+    float folder_size = 0;
+    char *new_path;
+
+    d = opendir(path);
+
+    if (d) {
+        while ((dir = readdir(d)) != NULL) {
+            // Ignore . and ..
+            if (strcmp(dir->d_name, ".") == 0 || strcmp(dir->d_name, "..") == 0) {
+                continue;
+            }
+
+            new_path = malloc(strlen(path) + strlen(dir->d_name) + 2);
+            strcpy(new_path, path);
+            strcat(new_path, "/");
+            strcat(new_path, dir->d_name);
+
+            // Recursion if the path points to a directory
+            if (dir->d_type == DT_DIR) {
+                folder_size += DirSize(new_path);
+            }
+            else {
+                folder_size += FileSize(new_path);
+            }
+
+            if (new_path) {
+                free(new_path);
+            }
+        }
+
+        closedir(d);
+    }
+
+    return folder_size;
+}
+
+#endif
+
 int CreatePID(const char *name, int pid)
 {
     char file[256];
@@ -2951,6 +2994,42 @@ DWORD FileSizeWin(const char * file) {
 
     return -1;
 }
+
+float DirSize(const char *path) {
+    WIN32_FIND_DATA fdFile;
+    HANDLE hFind = NULL;
+    float folder_size = 0.0;
+
+    char sPath[2048];
+
+    // Specify a file mask. *.* = We want everything!
+    sprintf(sPath, "%s\\*.*", path);
+
+    if ((hFind = FindFirstFile(sPath, &fdFile)) == INVALID_HANDLE_VALUE) {
+        merror(FILE_ERROR, path);
+        return 0;
+    }
+
+    do {
+        if (strcmp(fdFile.cFileName, ".") != 0 && strcmp(fdFile.cFileName, "..") != 0) {
+            // Build up our file path using the passed in
+            //  [path] and the file/foldername we just found:
+            sprintf(sPath, "%s\\%s", path, fdFile.cFileName);
+
+            if (fdFile.dwFileAttributes &FILE_ATTRIBUTE_DIRECTORY) {
+                folder_size += DirSize(sPath);
+            }
+            else {
+                folder_size += FileSizeWin(sPath);
+            }
+        }
+    } while (FindNextFile(hFind, &fdFile));
+
+    FindClose(hFind);
+
+    return folder_size;
+}
+
 #endif
 
 
