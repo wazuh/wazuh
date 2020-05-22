@@ -1,8 +1,0 @@
----
-# Added an extra resource (agent:id:001) to avoid duplicate policy.
-- actions:
-  - mitre:read
-  resources:
-  - "*:*:*"
-  - agent:id:001
-  effect: allow

@@ -3,13 +3,13 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import logging
-from wazuh.common import database_limit
 
 from aiohttp import web
 
 import wazuh.mitre as mitre
 from api.encoder import dumps, prettify
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
+from wazuh.common import database_limit
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
 logger = logging.getLogger('wazuh')
@@ -17,7 +17,7 @@ logger = logging.getLogger('wazuh')
 
 async def get_attack(request, pretty=False, wait_for_complete=False, attack_id=None, offset=0, limit=database_limit,
                      phase_name=None, platform_name=None, q=None, search=None, select=None, sort=None):
-    """Get information about all agents or a list of them
+    """Get information from MITRE ATT&CK database
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
@@ -32,7 +32,7 @@ async def get_attack(request, pretty=False, wait_for_complete=False, attack_id=N
     :param q: Query to filter by
     :return: Data
     """
-    f_kwargs = {'id': attack_id,
+    f_kwargs = {'id_': attack_id,
                 'phase_name': phase_name,
                 'platform_name': platform_name,
                 'select': select,

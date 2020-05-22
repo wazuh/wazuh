@@ -3194,9 +3194,8 @@ components:
         type: object
     attack_id:
       in: query
-      name: attack_id
+      name: id
       description: "MITRE attack ID."
-      required: false
       schema:
         type: string
         format: alphanumeric

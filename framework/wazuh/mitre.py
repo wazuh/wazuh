@@ -97,11 +97,11 @@ class WazuhDBQueryMitre(WazuhDBQuery):
 
 
 @expose_resources(actions=["mitre:read"], resources=["*:*:*"])
-def get_attack(id: str = None, phase_name: str = None, platform_name: str = None, select: dict = None, search: dict = None,
+def get_attack(id_: str = None, phase_name: str = None, platform_name: str = None, select: dict = None, search: dict = None,
                offset: int = 0, limit: int = None, sort: dict = None, q: str = None, ) -> Dict:
     """Get information from Mitre database.
 
-    :param id: Filters by attack ID
+    :param id_: Filters by attack ID
     :param phase_name: Filters by phase
     :param platform_name: Filters by platform
     :param search: Search if the string is contained in the db
@@ -121,8 +121,8 @@ def get_attack(id: str = None, phase_name: str = None, platform_name: str = None
     limit = min(limit, default_limit) if limit is not None else default_limit
 
     # Add regular field filters to q
-    if id:
-        q = f'{q};id={id}' if q else f'id={id}'
+    if id_:
+        q = f'{q};id={id_}' if q else f'id={id_}'
     if phase_name:
         q = f'{q};phase_name={phase_name}' if q else f'phase_name={phase_name}'
     if platform_name:

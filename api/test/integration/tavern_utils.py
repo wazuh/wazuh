@@ -12,17 +12,35 @@ def test_distinct_key(response):
     assert not any(response.json()["data"]["affected_items"].count(item) > 1 for item in response.json()["data"]["affected_items"])
 
 
-def test_select_key_affected_items(response, select_key):
+def test_select_key_affected_items(response, select_keys):
     """
     :param response: Request response
-    :param select_key: Parametrized key used for select param in request
-    :return: True if request response item key matches used select param
+    :param select_keys: Keys requested in select parameter.
+        Lists and nested fields accepted e.g: id,cpu.mhz,json
     """
-    if '.' in select_key:
-        assert list(response.json()["data"]["affected_items"][0])[0] == select_key.split('.')[0]
-        assert list(response.json()["data"]["affected_items"][0][select_key.split('.')[0]])[0] == select_key.split('.')[1]
-    else:
-        assert list(response.json()["data"]["affected_items"][0])[0] == select_key
+    main_keys = set()
+    nested_keys = dict()
+
+    for key in select_keys.split(','):
+        if '.' in key:
+            main_keys.update({key.split('.')[0]})
+            left_key, right_key = key.split('.')
+
+            if left_key in nested_keys:
+                nested_keys[left_key].update({right_key})
+            else:
+                nested_keys[left_key] = {right_key}
+        else:
+            main_keys.update({key})
+
+    for item in response.json()['data']['affected_items']:
+        set1 = main_keys.symmetric_difference(set(item.keys()))
+        assert set1 == set() or set1.intersection({'id', 'agent_id'}), \
+            f'Select keys are {main_keys}, but this one is different {set1}'
+
+        for nested_key in nested_keys.items():
+            set2 = nested_key[1].symmetric_difference(set(item[nested_key[0]].keys()))
+            assert set2 == set(), f'Nested select keys are {nested_key[1]}, but this one is different {set2}'
 
 
 def test_select_key_affected_items_with_agent_id(response, select_key):
@@ -93,7 +111,7 @@ def test_validate_update_latest_version(response):
 def test_count_elements(response, n_expected_items):
     """
     :param response: Request response
-    :param n_expected_items: Expected number of elements in affeted_items
+    :param n_expected_items: Expected number of elements in affected_items
     """
     assert len(response.json()['data']['affected_items']) == n_expected_items
 
@@ -115,22 +133,10 @@ def test_expected_value(response, key, expected_values):
 def test_mitre_sort(response, attack_id, order):
     """
     :param response: Request response
-    :param id: ID to compare.
+    :param attack_id: ID to compare.
     :param order: Values to be found inside response.
     """
     if order == 'desc':
         assert response.json()['data']['affected_items'][0]['id'] > attack_id
     else:
         assert response.json()['data']['affected_items'][0]['id'] < attack_id
-
-
-def test_mitre_select(response, select_keys):
-    """
-    :param response: Request response
-    :param select_keys: Keys requested in select parameter
-    """
-    select_keys = select_keys.split(',')
-
-    for item in response.json()['data']['affected_items']:
-        for sub_item in item:
-            assert sub_item in select_keys if sub_item != 'id' else True

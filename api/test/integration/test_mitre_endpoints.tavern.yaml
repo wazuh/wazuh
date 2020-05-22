@@ -98,7 +98,7 @@ stages:
       verify: False
       <<: *get_mitre
       params:
-        attack_id: "{returned_id}"
+        id: "{returned_id}"
     response:
       status_code: 200
       json:
@@ -235,7 +235,7 @@ stages:
     response:
       status_code: 200
       verify_response_with:
-        - function: tavern_utils:test_mitre_select
+        - function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
             select_keys: "id"
 
@@ -249,7 +249,7 @@ stages:
     response:
       status_code: 200
       verify_response_with:
-        - function: tavern_utils:test_mitre_select
+        - function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
             select_keys: "json"
 
@@ -264,7 +264,7 @@ stages:
     response:
       status_code: 200
       verify_response_with:
-        - function: tavern_utils:test_mitre_select
+        - function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
             select_keys: "json,phase_name"
 
