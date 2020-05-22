@@ -1662,7 +1662,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         merror(XML_VALUEERR, children[j]->element, children[j]->content);
                         return (OS_INVALID);
                     }
-                    
+
                     syscheck->file_limit = atoi(children[j]->content);
 
                     if (syscheck->file_limit > MAX_FILE_LIMIT) {

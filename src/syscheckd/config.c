@@ -22,6 +22,7 @@ static registry REGISTRY_EMPTY[] = { { NULL, 0, NULL } };
 int Read_Syscheck_Config(const char *cfgfile)
 {
     int modules = 0;
+    int it = 0;
     modules |= CSYSCHECK;
 
     syscheck.rootcheck      = 0;
@@ -85,6 +86,17 @@ int Read_Syscheck_Config(const char *cfgfile)
     modules |= CAGENT_CONFIG;
     ReadConfig(modules, AGENTCONFIG, &syscheck, NULL);
 #endif
+
+    // Check directories options to determine whether to start the whodata thread or not
+    if (syscheck.dir) {
+        for (it = 0; syscheck.dir[it]; it++) {
+            if (syscheck.opts[it] & WHODATA_ACTIVE) {
+                syscheck.enable_whodata = 1;
+
+                break;  // Exit loop with the first whodata directory
+            }
+        }
+    }
 
     switch (syscheck.disabled) {
     case SK_CONF_UNPARSED:

@@ -29,7 +29,7 @@ ID: 80200 - 80499
         <field name="aws.source">cloudtrail</field>
         <list field="aws.eventName" lookup="match_key">etc/lists/amazon/aws-eventnames</list>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName).</description>
-        <group>aws_cloudtrail,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+        <group>aws_cloudtrail,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -38,7 +38,7 @@ ID: 80200 - 80499
         <if_sid>80202</if_sid>
         <field name="aws.errorCode">\.+</field>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName). Error: $(aws.errorCode).</description>
-        <group>aws_cloudtrail,pci_dss_10.6.1,amazon-error,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+        <group>aws_cloudtrail,pci_dss_10.6.1,amazon-error,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -49,7 +49,7 @@ ID: 80200 - 80499
         <if_sid>80203</if_sid>
         <field name="aws.errorCode">AccessDenied</field>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName). Error: $(aws.errorCode).</description>
-        <group>aws_cloudtrail,pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+        <group>aws_cloudtrail,pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -58,7 +58,7 @@ ID: 80200 - 80499
         <if_sid>80202</if_sid>
         <field name="aws.eventName">DeleteObjects</field>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName).</description>
-        <group>aws_cloudtrail,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+        <group>aws_cloudtrail,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -68,7 +68,7 @@ ID: 80200 - 80499
         <mitre>
             <id>T1485</id>
         </mitre>
-        <group>aws_cloudtrail,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+        <group>aws_cloudtrail,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -80,7 +80,7 @@ ID: 80200 - 80499
         <mitre>
             <id>T1078</id>
         </mitre>
-        <group>aws_cloudtrail,authentication_success,pci_dss_10.2.5,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+        <group>aws_cloudtrail,authentication_success,pci_dss_10.2.5,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -88,7 +88,7 @@ ID: 80200 - 80499
         <if_sid>80253</if_sid>
         <field name="aws.responseElements.ConsoleLogin">Failure</field>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - User Login failed.</description>
-        <group>aws_cloudtrail,authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+        <group>aws_cloudtrail,authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -98,7 +98,7 @@ ID: 80200 - 80499
         <mitre>
             <id>T1110</id>
         </mitre>
-        <group>aws_cloudtrail,authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+        <group>aws_cloudtrail,authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
         <options>no_full_log</options>
     </rule>
 
