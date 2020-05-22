@@ -776,7 +776,7 @@
      <if_sid>2900</if_sid>
      <field name="dpkg_status">^status half-configured$</field>
      <description>Dpkg (Debian Package) half configured.</description>
-     <group>config_changed,pci_dss_10.6.1,pci_dss_10.2.7,gpg13_4.10,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,tsc_CC7.2,tsc_CC7.3,tsc_CC6.8tsc_CC8.1,</group>
+     <group>config_changed,pci_dss_10.6.1,pci_dss_10.2.7,gpg13_4.10,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,tsc_CC7.2,tsc_CC7.3,tsc_CC6.8,tsc_CC8.1,</group>
    </rule>
 </group>
 

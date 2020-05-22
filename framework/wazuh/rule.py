@@ -481,30 +481,30 @@ class Rule:
 
     @staticmethod
     def get_tsc(offset=0, limit=common.database_limit, sort=None, search=None):
-    """
-    Get all the TSC requirements used in the rules.
-    
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
-    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-    :param search: Looks for items with the specified string.
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-    """
-    return Rule._get_requirement('tsc', offset=offset, limit=limit, sort=sort, search=search)
+        """
+        Get all the TSC requirements used in the rules.
+
+        :param offset: First item to return.
+        :param limit: Maximum number of items to return.
+        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        :param search: Looks for items with the specified string.
+        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+        """
+        return Rule._get_requirement('tsc', offset=offset, limit=limit, sort=sort, search=search)
 
 
     @staticmethod
     def get_mitre(offset=0, limit=common.database_limit, sort=None, search=None):
-    """
-    Get all the Mitre requirements used in the rules.
+        """
+        Get all the Mitre requirements used in the rules.
 
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
-    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-    :param search: Looks for items with the specified string.
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-    """
-    return Rule._get_requirement('mitre', offset=offset, limit=limit, sort=sort, search=search)
+        :param offset: First item to return.
+        :param limit: Maximum number of items to return.
+        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        :param search: Looks for items with the specified string.
+        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+        """
+        return Rule._get_requirement('mitre', offset=offset, limit=limit, sort=sort, search=search)
 
 
     @staticmethod
