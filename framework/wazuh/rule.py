@@ -14,8 +14,9 @@ from wazuh.utils import process_array
 
 
 def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, gdpr=None, hipaa=None, nist_800_53=None,
-              relative_dirname=None, filename=None, level=None, offset=0, limit=common.database_limit, sort_by=None,
-              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None, q=''):
+              relative_dirname=None, filename=None, level=None, offset=0, limit=common.database_limit, select=None,
+              sort_by=None, sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None,
+              q=''):
     """Gets a list of rules.
 
     :param rule_ids: IDs of rules.
@@ -31,6 +32,7 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
     :param level: Filters the rules by level. level=2 or level=2-5.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
+    :param select: Select which fields to return (separated by comma)
     :param sort_by: Fields to sort the items by
     :param sort_ascending: Sort in ascending (true) or descending (false) order
     :param search_text: Text to search
@@ -43,6 +45,7 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
                                       some_msg='Some rules could not be shown',
                                       all_msg='All selected rules were shown')
     rules = list()
+    required_fields = {'id'}
     if rule_ids is None:
         rule_ids = list()
     levels = None
@@ -84,8 +87,10 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
         result.add_failed_item(id_=rule_id, error=WazuhError(1208))
 
     data = process_array(rules, search_text=search_text, search_in_fields=search_in_fields,
-                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         allowed_sort_fields=Status.SORT_FIELDS.value, offset=offset, limit=limit, q=q)
+                         complementary_search=complementary_search, select=select, sort_by=sort_by,
+                         sort_ascending=sort_ascending, allowed_sort_fields=Status.SORT_FIELDS.value, offset=offset,
+                         limit=limit, q=q, required_fields=required_fields)
+
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 

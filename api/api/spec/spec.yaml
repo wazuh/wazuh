@@ -1071,9 +1071,6 @@ components:
 
     RulesetFile:
       type: object
-      required:
-        - filename
-        - relative_dirname
       properties:
         filename:
           type: string
@@ -1085,8 +1082,6 @@ components:
 
     RulesetStatus:
       type: object
-      required:
-        - status
       properties:
         status:
           type: string
@@ -9384,6 +9379,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/query'
