@@ -31,7 +31,7 @@
         <field name="audit.type">DAEMON_RESUME|DAEMON_START</field>
         <field name="audit.res">failed</field>
         <description>Auditd: Start / Resume FAILED</description>
-        <group>audit_daemon,service_availability,pci_dss_10.6.1,gpg13_10.1,gpg13_4.14,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.6,</group>
+        <group>audit_daemon,service_availability,pci_dss_10.6.1,gpg13_10.1,gpg13_4.14,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <!--
@@ -42,7 +42,7 @@
         <field name="audit.type">DAEMON_END</field>
         <field name="audit.res">success</field>
         <description>Auditd: End</description>
-        <group>audit_daemon,service_availability,pci_dss_10.6.1,gpg13_10.1,gpg13_4.14,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.6,</group>
+        <group>audit_daemon,service_availability,pci_dss_10.6.1,gpg13_10.1,gpg13_4.14,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <!--
@@ -52,7 +52,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">DAEMON_ABORT</field>
         <description>Auditd: Abort</description>
-        <group>audit_daemon,service_availability,pci_dss_10.6.1,gpg13_10.1,gpg13_4.14,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.6,</group>
+        <group>audit_daemon,service_availability,pci_dss_10.6.1,gpg13_10.1,gpg13_4.14,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <!--
@@ -76,7 +76,7 @@
         <field name="audit.type">ANOM_PROMISCUOUS</field>
         <match>prom=256</match>
         <description>Auditd: device enables promiscuous mode</description>
-        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.6,</group>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.6,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <!--
@@ -86,7 +86,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">ANOM_ABEND</field>
         <description>Auditd: process ended abnormally</description>
-        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.6,</group>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.6,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <!--
@@ -100,7 +100,7 @@
             <id>T1203</id>
             <id>T1204</id>
         </mitre>
-        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.6,</group>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.6,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <!--
@@ -110,7 +110,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">ANOM_MK_EXEC</field>
         <description>Auditd: file is made executable</description>
-        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gpg13_4.6,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.6,</group>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gpg13_4.6,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.6,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <!--
@@ -124,7 +124,7 @@
             <id>T1203</id>
             <id>T1492</id>
         </mitre>
-        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.6,</group>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.6,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <!--
@@ -134,7 +134,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">ANOM_AMTU_FAIL</field>
         <description>Auditd: failure of the Abstract Machine Test Utility (AMTU) detected</description>
-        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.6,</group>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.6,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <!--
@@ -145,7 +145,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">ANOM_MAX_DAC|ANOM_MAX_MAC</field>
         <description>Auditd: maximum amount of Discretionary Access Control (DAC) or Mandatory Access Control (MAC) failures reached</description>
-        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.6,</group>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.6,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <!--
@@ -156,7 +156,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">ANOM_RBAC_FAIL|ANOM_RBAC_INTEGRITY_FAIL</field>
         <description>Auditd: Role-Based Access Control (RBAC) failure detected.</description>
-        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.6,</group>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.6,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <!--
@@ -169,7 +169,7 @@
         <mitre>
             <id>T1136</id>
         </mitre>
-        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gpg13_7.9,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.6,</group>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gpg13_7.9,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.6,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <!--
@@ -182,7 +182,7 @@
         <mitre>
             <id>T1531</id>
         </mitre>
-        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gpg13_7.9,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.6,</group>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gpg13_7.9,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.6,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <!--
@@ -192,7 +192,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">ANOM_MOD_ACCT</field>
         <description>Auditd: user-space account modification ended abnormally.</description>
-        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gpg13_7.9,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.6,</group>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gpg13_7.9,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.6,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <!--
@@ -205,7 +205,7 @@
         <mitre>
             <id>T1169</id>
         </mitre>
-        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gpg13_7.9,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.6,</group>
+        <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gpg13_7.9,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.6,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <!--
@@ -215,7 +215,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">ANOM_LOGIN_ACCT</field>
         <description>Auditd: account login attempt ended abnormally.</description>
-        <group>audit_anom,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,pci_dss_10.6.1,gpg13_7.9,gdpr_IV_35.7.d,gdpr_IV_32.2,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,nist_800_53_AU.6,</group>
+        <group>audit_anom,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,pci_dss_10.6.1,gpg13_7.9,gdpr_IV_35.7.d,gdpr_IV_32.2,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,nist_800_53_AU.6,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <!--
@@ -228,7 +228,7 @@
         <mitre>
           <id>T1110</id>
         </mitre>
-        <group>audit_anom,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.5,gdpr_IV_35.7.d,gdpr_IV_32.2,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+        <group>audit_anom,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.5,gdpr_IV_35.7.d,gdpr_IV_32.2,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <!--
@@ -238,7 +238,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">ANOM_LOGIN_LOCATION</field>
         <description>Auditd: login attempt from a forbidden location.</description>
-        <group>audit_anom,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,gpg13_7.5,gdpr_IV_35.7.d,gdpr_IV_32.2,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AU.6,</group>
+        <group>audit_anom,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,gpg13_7.5,gdpr_IV_35.7.d,gdpr_IV_32.2,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AU.6,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <!--
@@ -248,7 +248,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">ANOM_LOGIN_SESSIONS</field>
         <description>Auditd: login attempt reached the maximum amount of concurrent sessions.</description>
-        <group>audit_anom,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,gpg13_7.5,gdpr_IV_35.7.d,gdpr_IV_32.2,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AU.6,</group>
+        <group>audit_anom,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,gpg13_7.5,gdpr_IV_35.7.d,gdpr_IV_32.2,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AU.6,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <!--
@@ -258,7 +258,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">ANOM_LOGIN_TIME</field>
         <description>Auditd: login attempt is made at a time when it is prevented by.</description>
-        <group>audit_anom,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,gpg13_7.5,gdpr_IV_35.7.d,gdpr_IV_32.2,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AU.6,</group>
+        <group>audit_anom,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,gpg13_7.5,gdpr_IV_35.7.d,gdpr_IV_32.2,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AU.6,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
 
@@ -270,7 +270,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">AVC</field>
         <description>Auditd: SELinux permission check</description>
-        <group>audit_selinux,pci_dss_10.6.1,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.6,</group>
+        <group>audit_selinux,pci_dss_10.6.1,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <!--
@@ -280,7 +280,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">MAC_STATUS</field>
         <description>Auditd: SELinux mode (enforcing, permissive, off) is changed</description>
-        <group>audit_selinux,pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.6,</group>
+        <group>audit_selinux,pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <!--
@@ -291,7 +291,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">SELINUX_ERR|USER_SELINUX_ERR</field>
         <description>Auditd: SELinux error</description>
-        <group>audit_selinux,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.6,</group>
+        <group>audit_selinux,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
 
@@ -306,7 +306,7 @@
         <mitre>
             <id>T1212</id>
         </mitre>
-        <group>audit_anom,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_30.1.g,nist_800_53_SI.4,</group>
+        <group>audit_anom,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_30.1.g,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <!--
@@ -316,7 +316,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">CHGRP_ID</field>
         <description>Auditd: group ID changed</description>
-        <group>audit_anom,pci_dss_10.6.1,gpg13_7.9,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.6,</group>
+        <group>audit_anom,pci_dss_10.6.1,gpg13_7.9,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
     <!--
@@ -326,7 +326,7 @@
         <if_sid>80700</if_sid>
         <field name="audit.type">CHUSER_ID</field>
         <description>Auditd: user ID changed</description>
-        <group>audit_anom,pci_dss_10.6.1,gpg13_7.9,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.6,</group>
+        <group>audit_anom,pci_dss_10.6.1,gpg13_7.9,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
 
