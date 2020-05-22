@@ -93,22 +93,27 @@ def execute(command):
         return output_json['data']
 
 
-def process_array(array, search_text=None, complementary_search=False, search_in_fields=None, sort_by=None,
-                  sort_ascending=True, allowed_sort_fields=None, offset=0, limit=None, q=''):
+def process_array(array, search_text=None, complementary_search=False, search_in_fields=None, select=None, sort_by=None,
+                  sort_ascending=True, allowed_sort_fields=None, offset=0, limit=None, q='', required_fields=None):
     """ Process a Wazuh framework data array
 
     :param array: Array to process
     :param search_text: Text to search and search type
     :param complementary_search: Perform a complementary search
     :param search_in_fields: Fields to search in
+    :param select: Select fields to return
     :param sort_by: Fields to sort_by. Will sort the array directly if [''] is received
     :param sort_ascending: Sort order ascending or descending
     :param allowed_sort_fields: Allowed fields to sort_by
     :param offset: First element to return.
     :param limit: Maximum number of elements to return
     :param q: Query to filter by
+    :param required_fields: Required fields that must appear in the response
     :return: Dictionary: {'items': Processed array, 'totalItems': Number of items, before applying offset and limit)}
     """
+    if select:
+        array = select_array(array, select=select, required_fields=required_fields)
+
     if search_text:
         array = search_array(array, search_text=search_text, complementary_search=complementary_search,
                              search_in_fields=search_in_fields)
@@ -192,7 +197,7 @@ def sort_array(array, sort_by=None, sort_ascending=True, allowed_sort_fields=Non
         else:
             return sorted(array,
                           key=lambda o: tuple(
-                              getattr(o, a).lower() if type(getattr(o, a)) in (str,unicode) else getattr(o, a)
+                              getattr(o, a).lower() if type(getattr(o, a)) in (str, unicode) else getattr(o, a)
                               for a in sort_by),
                           reverse=not sort_ascending)
     else:
@@ -260,6 +265,71 @@ def search_array(array, search_text=None, complementary_search=False, search_in_
                 found.append(item)
 
     return found
+
+
+def select_array(array, select=None, required_fields=None):
+    """Get only those values from each element in the array that matches the select values.
+
+    Parameters
+    ----------
+    array : list
+        Array of elements. It contains all the results without any filter.
+    select : list of str, optional
+        List of select fields. These can be nested fields of n depth levels. Default `None`
+        Example: ['select1', 'select2.select21.select22', 'select3.select31']
+    required_fields : set, optional
+        Set of fields that must be in the response. These depends on the framework function.
+
+    Raises
+    ------
+    WazuhError(1724)
+        Raise this exception when at least one of the select fields is not valid.
+
+    Returns
+    -------
+    result_list : list
+        Filtered array of dicts with only the selected (and required) fields as keys.
+    """
+
+    def get_nested_fields(dikt, select_field):
+        # Make a list with the nested field separated. Ex: select.select1 -> ['select', 'select1']
+        nested_list = select_field.split('.')
+        # Check if this item (dikt) matches the nested select. Return an empty dict if it does not
+        for key in nested_list:
+            try:
+                dikt = dikt[key]
+            # Return an empty dict if the select cannot match
+            except KeyError:
+                return {}
+        # Rebuild the dict with only the nested fields
+        result = dict()
+        for key in reversed(nested_list):
+            result = {key: dikt} if key == nested_list[-1] else {key: result}
+        return result
+
+    if required_fields is None:
+        required_fields = set()
+    select = set(select)
+
+    result_list = list()
+    # Get the first depth level of each select field to check later on if one of them is missing
+    not_nested_select = {sel.split('.')[0] for sel in select}
+    for item in array:
+        selected_fields = dict()
+        # Build an entry with the filtered values
+        for sel in select:
+            selected_fields.update(get_nested_fields(item, sel))
+        if not not_nested_select.issubset(selected_fields.keys()):
+            continue
+        # Add required fields if the entry is not empty
+        if selected_fields:
+            selected_fields.update({req_field: item[req_field] for req_field in required_fields})
+        result_list.append(selected_fields)
+    # Purge all empty entries
+    result_list = list(filter(lambda x: x != {}, result_list))
+    if not result_list:
+        raise WazuhError(1724, "{}".format(', '.join(select)))
+    return result_list
 
 
 _filemode_table = (
@@ -591,7 +661,7 @@ def load_wazuh_xml(xml_path):
     data = re.sub(f"&(?!({'|'.join(default_entities + list(custom_entities))});)", "&amp;", data)
 
     entities = '<!DOCTYPE xmlfile [\n' + \
-               '\n'.join([f'<!ENTITY {name} "{value}">' for name, value in custom_entities.items()]) +\
+               '\n'.join([f'<!ENTITY {name} "{value}">' for name, value in custom_entities.items()]) + \
                '\n]>\n'
 
     return fromstring(entities + '<root_tag>' + data + '</root_tag>')
@@ -949,8 +1019,8 @@ class WazuhDBQuery(object):
             # if select is empty, it will be a subset of any set
             if not set_select_fields or not set_select_fields.issubset(set_fields_keys):
                 raise WazuhError(1724, "Allowed select fields: {0}. Fields {1}". \
-                                     format(', '.join(self.fields.keys()),
-                                            ', '.join(set_select_fields - set_fields_keys)))
+                                 format(', '.join(self.fields.keys()),
+                                        ', '.join(set_select_fields - set_fields_keys)))
 
             select_fields = set_select_fields
         else:
@@ -1190,4 +1260,3 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
                 'fields': set(self.filter_fields)
             }
         self.select = self.select & self.filter_fields['fields']
-
