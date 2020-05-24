@@ -333,7 +333,7 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
                     value = cJSON_Print(logJSON);
                 }
 
-                if (*value) {
+                if (value && *value != '\0') {
                     fillData(lf, key, value);
                 }
 
