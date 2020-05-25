@@ -886,7 +886,15 @@ else
 ifneq (,$(filter ${cpu_arch},i386 i686))
 CPYTHON := cpython_i386
 else
+ifneq (,$(filter ${cpu_arch},aarch64 arm64))
+CPYTHON := cpython_aarch64
+else
+ifneq (,$(filter ${cpu_arch},armv8l armv7l arm32 armhf))
+CPYTHON := cpython_arm32
+else
 CPYTHON := src_cpython
+endif
+endif
 endif
 endif
 endif
@@ -1500,12 +1508,12 @@ ifneq (,$(filter ${OPTIMIZE_CPYTHON},YES yes y Y 1))
 CPYTHON_FLAGS=--enable-optimizations
 endif
 
-wpython: install_dependencies install_framework
+wpython: install_dependencies install_framework install_mitre
 
 ifeq (${uname_S},Darwin)
-WLIBPYTHON=libpython3.7m.dylib
+WLIBPYTHON=libpython3.8.dylib
 else
-WLIBPYTHON=libpython3.7m.so.1.0
+WLIBPYTHON=libpython3.8.so.1.0
 endif
 
 build_python:
@@ -1519,7 +1527,7 @@ ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python.exe))
 	mkdir -p ${ROUTE_PATH}/../lib && cp ${WAZUHEXT_LIB} ${ROUTE_PATH}/../lib
 	cd ${EXTERNAL_CPYTHON} && ./configure --prefix="${WPYTHON_DIR}" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH} -lwazuhext -Xlinker -rpath -Xlinker @executable_path/../../../lib" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
 	install_name_tool -change ${WLIBPYTHON} @rpath/../lib/${WLIBPYTHON} external/cpython/${WLIBPYTHON}
-	install_name_tool -change ${WPYTHON_DIR}/lib/libpython3.7m.dylib @rpath/../lib/${WLIBPYTHON} -id @rpath/../lib/${WLIBPYTHON} external/cpython/${WLIBPYTHON}
+	install_name_tool -change ${WPYTHON_DIR}/lib/${WLIBPYTHON} @rpath/../lib/${WLIBPYTHON} -id @rpath/../lib/${WLIBPYTHON} external/cpython/${WLIBPYTHON}
 	rm -rf ${ROUTE_PATH}/../lib
 endif
 else
@@ -1539,14 +1547,15 @@ install_python:
 python_dependencies := requirements.txt
 
 install_dependencies: install_python
-	cd ../framework && ${WPYTHON_DIR}/bin/pip3 install -r ${python_dependencies} --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
-
+	LD_LIBRARY_PATH="${PREFIX}/lib" LDFLAGS="-L${PREFIX}/lib" ${WPYTHON_DIR}/bin/pip3 install -r ../framework/${python_dependencies}  --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
 
 install_framework: install_python
 	cd ../framework && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR} --wazuh-version=$(shell cat VERSION) --install-type=${TARGET}
 	chown -R root:${OSSEC_GROUP} ${WPYTHON_DIR}
 	chmod -R o=- ${WPYTHON_DIR}/*
 
+install_mitre: install_python
+	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${PREFIX}/var/db/mitre.db 
 
 ####################
 #### test ##########

@@ -53,6 +53,7 @@ typedef enum fdb_stmt {
 #define MAX_DIR_SIZE    64
 #define MAX_DIR_ENTRY   128
 #define SYSCHECK_WAIT   1
+#define MAX_FILE_LIMIT  2147483647
 
 /* Checking options */
 #define CHECK_SIZE          00000001
@@ -136,7 +137,10 @@ typedef struct whodata_evt {
     char *effective_name;  // Linux
     char *inode;  // Linux
     char *dev;  // Linux
+    char *parent_name; // Linux
+    char *parent_cwd;
     int ppid;  // Linux
+    char *cwd; // Linux
 #ifndef WIN32
     unsigned int process_id;
 #else
@@ -274,13 +278,15 @@ typedef struct _config {
     int time;                       /* frequency (secs) for syscheck to run */
     int queue;                      /* file descriptor of socket to write to queue */
     unsigned int restart_audit:1;   /* Allow Syscheck restart Auditd */
-    unsigned int enable_whodata:1;  /* At less one directory configured with whodata */
+    unsigned int enable_whodata:1;  /* At least one directory configured with whodata */
     unsigned int enable_synchronization:1;    /* Enable database synchronization */
 
     int *opts;                      /* attributes set in the <directories> tag element */
 
     char *scan_day;                 /* run syscheck on this day */
     char *scan_time;                /* run syscheck at this time */
+
+    unsigned int file_limit;        /* maximum number of files to monitor */
 
     char **ignore;                  /* list of files/dirs to ignore */
     OSMatch **ignore_regex;         /* regex of files/dirs to ignore */
@@ -328,6 +334,13 @@ typedef struct _config {
     int process_priority; // Adjusts the priority of the process (or threads in Windows)
     bool allow_remote_prefilter_cmd;
 } syscheck_config;
+
+/**
+ * @brief Organizes syscheck directories and related data according to their priority (whodata-realtime-scheduled) and in alphabetical order
+ *
+ * @param syscheck Syscheck configuration structure
+ */
+void organize_syscheck_dirs(syscheck_config *syscheck) __attribute__((nonnull(1)));
 
 /**
  * @brief Adds (or overwrite if exists) an entry to the syscheck configuration structure

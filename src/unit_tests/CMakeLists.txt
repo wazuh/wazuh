@@ -8,7 +8,7 @@ cmake_minimum_required(VERSION 3.10)
 
 PROJECT(UnitTests C)
 
-# message("${TARGET}")
+set(CMAKE_C_STANDARD 11)
 get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
 
 message(Source folder: ${SRC_FOLDER})
@@ -43,10 +43,6 @@ endif()
 if(NOT WAZUHEXT)
   message(FATAL_ERROR "libwazuhext not found! Aborting...")
 endif()
-
-
-add_subdirectory(syscheckd)
-add_subdirectory(shared)
 
 # Config files
 if(${TARGET} STREQUAL "winagent")

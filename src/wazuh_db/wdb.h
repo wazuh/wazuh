@@ -128,7 +128,7 @@ typedef enum wdb_stmt {
 typedef struct wdb_t {
     sqlite3 * db;
     sqlite3_stmt * stmt[WDB_STMT_SIZE];
-    char * agent_id;
+    char * id;
     unsigned int refcount;
     unsigned int transaction:1;
     time_t last;
@@ -169,6 +169,15 @@ extern OSHash * open_dbs;
 
 /* Open global database. Returns 0 on success or -1 on failure. */
 int wdb_open_global();
+
+/**
+ * @brief Open mitre database and store in DB poll.
+ *
+ * It is opened every time a query to Mitre database is done.
+ *
+ * @return wdb_t* Database Structure that store mitre database or NULL on failure.
+ */
+wdb_t * wdb_open_mitre();
 
 /* Close global database */
 void wdb_close_global();
@@ -506,7 +515,7 @@ int wdb_ciscat_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
 // Delete old information from the 'ciscat_results' table
 int wdb_ciscat_del(wdb_t * wdb, const char * scan_id);
 
-wdb_t * wdb_init(sqlite3 * db, const char * agent_id);
+wdb_t * wdb_init(sqlite3 * db, const char * id);
 
 void wdb_destroy(wdb_t * wdb);
 

@@ -158,6 +158,11 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             os_strdup(vu_feed_tag[FEED_BIONIC], upd->version);
             upd->dist_tag_ref = FEED_BIONIC;
             upd->dist_ext = vu_feed_ext[FEED_BIONIC];
+        } else if (!strcmp(version, "20") || strcasestr(version, vu_feed_tag[FEED_FOCAL])) {
+            os_index = CVE_FOCAL;
+            os_strdup(vu_feed_tag[FEED_FOCAL], upd->version);
+            upd->dist_tag_ref = FEED_FOCAL;
+            upd->dist_ext = vu_feed_ext[FEED_FOCAL];
         } else {
             merror("Invalid Ubuntu version '%s'.", version);
             retval = OS_INVALID;
@@ -329,6 +334,7 @@ int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2) {
     vuldet->flags.patch_scan = 1;
     vuldet->flags.permissive_patch_scan = 0;
     vuldet->flags.enabled = 1;
+    vuldet->flags.report_kernel_os_package = 1;
     vuldet->ignore_time = VU_DEF_IGNORE_TIME;
     vuldet->detection_interval = WM_VULNDETECTOR_DEFAULT_INTERVAL;
     vuldet->agents_software = NULL;
@@ -654,6 +660,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
             updates[os_index]->path = os_list->path;
             updates[os_index]->port = os_list->port;
             if (os_list->allow && wm_vuldet_add_allow_os(updates[os_index], os_list->allow, 0)) {
+                wm_vuldet_remove_os_feed(rem, 0);
                 return OS_INVALID;
             }
 
@@ -966,7 +973,7 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
     for (i = 0; node[i]; i++) {
         if (!strcmp(node[i]->element, XML_UPDATE_FROM_YEAR)) {
             if (multi_provider) {
-                int min_year = !strcmp(name, vu_feed_tag[FEED_REDHAT]) ? RED_HAT_REPO_MIN_YEAR : NVD_REPO_MIN_YEAR;
+                int min_year = strcasestr(name, vu_feed_tag[FEED_REDHAT]) ? RED_HAT_REPO_MIN_YEAR : NVD_REPO_MIN_YEAR;
                 if (!wm_vuldet_is_valid_year(node[i]->content, &options->update_since, min_year)) {
                     merror("Invalid content for '%s' option at module '%s'.", XML_UPDATE_FROM_YEAR, WM_VULNDETECTOR_CONTEXT.name);
                     return OS_INVALID;

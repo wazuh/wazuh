@@ -46,6 +46,14 @@ typedef enum fim_scan_event {
     FIM_SCAN_END
 } fim_scan_event;
 
+typedef enum fim_state_db {
+    FIM_STATE_DB_EMPTY,
+    FIM_STATE_DB_NORMAL,
+    FIM_STATE_DB_80_PERCENTAGE,
+    FIM_STATE_DB_90_PERCENTAGE,
+    FIM_STATE_DB_FULL
+} fim_state_db;
+
 typedef struct fim_element {
     struct stat statbuf;
     int index;
@@ -273,10 +281,11 @@ void check_deleted_files();
  * @param type Type of event: added, deleted or modified.
  * @param mode Event source.
  * @param w_evt Audit data structure.
+ * @param diff File diff if applicable.
  * @return File event JSON object.
  * @retval NULL No changes detected. Do not send an event.
  */
-cJSON *fim_json_event(char *file_name, fim_entry_data *old_data, fim_entry_data *new_data, int pos, unsigned int type, fim_event_mode mode, whodata_evt *w_evt);
+cJSON *fim_json_event(char *file_name, fim_entry_data *old_data, fim_entry_data *new_data, int pos, unsigned int type, fim_event_mode mode, whodata_evt *w_evt, const char *diff);
 
 /**
  * @brief Frees the memory of a FIM entry data structure
@@ -337,7 +346,7 @@ void free_syscheck_dirtb_data(char *data);
 
 /**
  * @brief Deletes subdirectories watches when a folder changes its name
- * 
+ *
  * @param dir Directory whose subdirectories need to delete their watches
  */
 
@@ -345,7 +354,7 @@ void delete_subdirectories_watches(char *dir);
 
 /**
  * @brief Count inotify watches
- * 
+ *
  * @return Number of inotify watches
  */
 unsigned int count_watches();
@@ -488,6 +497,15 @@ void *audit_healthcheck_thread(int *audit_sock);
  * @return A string with generated path
  */
 char *gen_audit_path(char *cwd, char *path0, char *path1);
+
+/**
+ * @brief Add cwd and exe of parent process
+ *
+ * @param ppid ID of parent process
+ * @param parent_name String where save the parent name (exe)
+ * @param parent_cwd String where save the parent working directory (cwd)
+ */
+void get_parent_process_info(char *ppid, char ** const parent_name, char ** const parent_cwd);
 
 /**
  * @brief Reloads audit rules to configured directories
@@ -824,5 +842,11 @@ cJSON * fim_scan_info_json(fim_scan_event event, long timestamp);
  * @param event Event type (start or end).
  */
 void fim_send_scan_info(fim_scan_event event);
+
+/**
+ * @brief Checks the DB state, sends a message alert if necessary
+ *
+ */
+void fim_check_db_state();
 
 #endif /* SYSCHECK_H */
