@@ -64,6 +64,8 @@ void fim_scan() {
 
     fim_diff_folder_size();
 
+    mdebug2(FIM_DIFF_FOLDER_SIZE, syscheck.diff_folder_size);
+
     w_mutex_lock(&syscheck.fim_scan_mutex);
 
     while (syscheck.dir[it] != NULL) {
