@@ -905,14 +905,20 @@ EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite
 EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
+VULN_DETECTOR_DIR := wazuh_modules/vulnerability_detector
+MSU_JSON_GZ := $(VULN_DETECTOR_DIR)/msu.json.gz
+
 .PHONY: deps
-deps: $(EXTERNAL_TAR)
+deps: $(EXTERNAL_TAR) $(MSU_JSON_GZ) $(MSU_JSON_GZ)
 
 external/%.tar.gz:
 	$(CURL) $@ $(RESOURCES_URL)/$(patsubst external/%,%,$@)
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	rm $(patsubst %.gz,%,$@)
+
+$(MSU_JSON_GZ):
+	$(CURL) $@ $(RESOURCES_URL)/vulnerability-detector/windows/$(patsubst $(VULN_DETECTOR_DIR)/%,%,$@)
 
 
 ####################
@@ -1555,7 +1561,7 @@ install_framework: install_python
 	chmod -R o=- ${WPYTHON_DIR}/*
 
 install_mitre: install_python
-	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${PREFIX}/var/db/mitre.db 
+	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${PREFIX}/var/db/mitre.db
 
 ####################
 #### test ##########
@@ -1754,7 +1760,7 @@ ifneq ($(wildcard external/cpython/*),)
 endif
 
 clean-deps:
-	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_CPYTHON)
+	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_CPYTHON) $(MSU_JSON_GZ)
 
 clean-internals:
 	rm -f $(BUILD_SERVER)
