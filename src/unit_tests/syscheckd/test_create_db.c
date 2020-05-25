@@ -643,9 +643,9 @@ static void test_fim_json_event_whodata(void **state) {
     cJSON *audit = cJSON_GetObjectItem(data, "audit");
     assert_non_null(audit);
     #ifdef TEST_WINAGENT
-    assert_int_equal(cJSON_GetArraySize(audit), 5);
+    assert_int_equal(cJSON_GetArraySize(audit), 4);
     #else
-    assert_int_equal(cJSON_GetArraySize(audit), 15);
+    assert_int_equal(cJSON_GetArraySize(audit), 14);
     #endif
     cJSON *diff = cJSON_GetObjectItem(data, "content_changes");
     assert_string_equal(cJSON_GetStringValue(diff), "diff");
@@ -954,13 +954,11 @@ static void test_fim_audit_json(void **state) {
 
     assert_non_null(fim_data->json);
     #ifdef TEST_WINAGENT
-    assert_int_equal(cJSON_GetArraySize(fim_data->json), 5);
+    assert_int_equal(cJSON_GetArraySize(fim_data->json), 4);
     #else
-    assert_int_equal(cJSON_GetArraySize(fim_data->json), 15);
+    assert_int_equal(cJSON_GetArraySize(fim_data->json), 14);
     #endif
 
-    cJSON *path = cJSON_GetObjectItem(fim_data->json, "path");
-    assert_string_equal(cJSON_GetStringValue(path), "./test/test.file");
     cJSON *user_id = cJSON_GetObjectItem(fim_data->json, "user_id");
     assert_string_equal(cJSON_GetStringValue(user_id), "100");
     cJSON *user_name = cJSON_GetObjectItem(fim_data->json, "user_name");
