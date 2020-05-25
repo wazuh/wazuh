@@ -52,3 +52,13 @@ wazuh_ui:
   reserved: true
   users:
   - "kibanaserver"
+
+wazuh_ui_user:
+  reserved: true
+  users:
+  - "wazuhuser"
+
+wazuh_ui_admin:
+  reserved: true
+  users:
+  - "wazuhadmin"
