@@ -54,9 +54,13 @@ wazuh_ui:
   - "kibanaserver"
 
 wazuh_ui_user:
-  reserved: true
+  reserved: false
+  hidden: false
+  backend_roles: []
+  hosts: []
   users:
-  - "wazuhuser"
+  - "wazuh_user"
+  and_backend_roles: []
 
 wazuh_ui_admin:
   reserved: true

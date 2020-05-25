@@ -84,6 +84,7 @@ wazuh_ui_user:
   index_permissions:
   - index_patterns:
     - "wazuh-*"
+    - ".kibana*"
     dls: ""
     fls: []
     masked_fields: []
@@ -91,3 +92,6 @@ wazuh_ui_user:
     - "read"
   tenant_permissions: []
   static: false
+_meta:
+  type: "roles"
+  config_version: 2

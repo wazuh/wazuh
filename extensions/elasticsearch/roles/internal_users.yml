@@ -55,12 +55,15 @@ snapshotrestore:
   - "snapshotrestore"
   description: "Demo snapshotrestore user"
 
-wazuhuser:
-  hash: "$2y$12$EYHliZXhSHJ4WFfkSZJ7H.7zzD7fpYGgRf7ER4cw9WgLAtaVC9YPK"
+wazuh_user:
+  hash: "$2y$12$BQixeoQdRubZdVf/7sq1suHwiVRnSst1.lPI2M0.GPZms4bq2D9vO"
   reserved: false
-  backend_roles:
+  hidden: false
+  backend_roles: []
+  attributes: {}
+  opendistro_security_roles:
   - "wazuh_ui_user"
-  description: "Wazuh user"
+  static: false
 
 wazuhadmin:
   hash: "$2y$12$dXnfI.By9rtjQEFhLNKCZOClenVYznwhpZeMDuLXor9rkogdGbK7C"
