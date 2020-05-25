@@ -6,7 +6,7 @@
 -->
 
 
-<group name="vipre">
+<group name="vipre,">
 
 <rule id="90499" level="3">
     <if_sid>60600</if_sid>

@@ -499,7 +499,7 @@
 
 
 <!-- Su messages -->
-<group name="syslog, su,">
+<group name="syslog,su,">
   <rule id="5300" level="0" noalert="1">
     <decoded_as>su</decoded_as>
     <description>Initial grouping for su messages.</description>
