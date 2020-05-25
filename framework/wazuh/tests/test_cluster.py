@@ -25,21 +25,21 @@ default_config = {'disabled': True, 'node_type': 'master', 'name': 'wazuh', 'nod
 
 @patch('wazuh.cluster.read_config', return_value=default_config)
 def test_read_config_wrapper(mock_read_config):
-    """Verify that context_cached decorator correctly saves and returns saved value when called again"""
+    """Verify that the read_config_wrapper returns the default configuration."""
     result = cluster.read_config_wrapper()
     assert result.affected_items == [default_config]
 
 
 @patch('wazuh.cluster.read_config', side_effect=WazuhError(1001))
 def test_read_config_wrapper_exception(mock_read_config):
-    """Verify that context_cached decorator correctly saves and returns saved value when called again"""
+    """Verify the exceptions raised in read_config_wrapper."""
     result = cluster.read_config_wrapper()
     assert list(result.failed_items.keys())[0] == WazuhError(1001)
 
 
 @patch('wazuh.cluster.read_config', return_value=default_config)
 def test_node_wrapper(mock_read_config):
-    """Verify that context_cached decorator correctly saves and returns saved value when called again"""
+    """Verify that the node_wrapper returns the default node information."""
     result = cluster.get_node_wrapper()
     assert result.affected_items == [{'cluster': default_config["name"],
                                       'node': default_config["node_name"],
@@ -48,13 +48,13 @@ def test_node_wrapper(mock_read_config):
 
 @patch('wazuh.cluster.get_node', side_effect=WazuhError(1001))
 def test_node_wrapper_exception(mock_get_node):
-    """Verify that context_cached decorator correctly saves and returns saved value when called again"""
+    """Verify the exceptions raised in get_node_wrapper."""
     result = cluster.get_node_wrapper()
     assert list(result.failed_items.keys())[0] == WazuhError(1001)
 
 
 def test_get_status_json():
-    """Verify that context_cached decorator correctly saves and returns saved value when called again"""
+    """Verify that get_status_json returns the default status information."""
     result = cluster.get_status_json()
     expected = {"enabled": "no" if default_config['disabled'] else "yes", "running": "no"}
     assert result == expected
@@ -63,6 +63,7 @@ def test_get_status_json():
 @pytest.mark.asyncio
 @patch('wazuh.core.cluster.local_client.LocalClient.start', side_effect=None)
 async def test_get_health_nodes(mock_unix_connection):
+    """Verify that get_health_nodes returns the health of all nodes."""
     async def async_mock(lc=None, filter_node=None):
         return {'nodes': {'manager': {'info': {'name': 'master'}}}}
 
@@ -76,6 +77,7 @@ async def test_get_health_nodes(mock_unix_connection):
 
 @pytest.mark.asyncio
 async def test_get_nodes_info():
+    """Verify that get_nodes_info returns the information of all nodes."""
     async def async_mock(lc=None, filter_node=None):
         return {'items': ['master', 'worker1'], 'totalItems': 2}
 

@@ -20,6 +20,7 @@ async def async_local_client(command, data, wait_for_complete):
 
 @pytest.mark.asyncio
 async def test_get_nodes():
+    """Verify that get_nodes function returns the cluster nodes list."""
     local_client = LocalClient()
     with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=async_local_client):
         expected_result = {'items': [{'name': 'master'}, {'name': 'worker1'}], 'totalItems': 2}
@@ -37,6 +38,7 @@ async def test_get_nodes():
 
 @pytest.mark.asyncio
 async def test_get_node():
+    """Verify that get_node function returns the current node name."""
     local_client = LocalClient()
     with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=async_local_client):
         expected_result = [{'items': [{'name': 'master'}]}, {'items': []}]
@@ -55,6 +57,7 @@ async def test_get_node():
 
 @pytest.mark.asyncio
 async def test_get_health():
+    """Verify that get_health function returns the current node health."""
     local_client = LocalClient()
     with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=async_local_client):
         expected_result = [{'items': [{'name': 'master'}]}, {'items': []}]
@@ -70,6 +73,7 @@ async def test_get_health():
 
 @pytest.mark.asyncio
 async def test_get_agents():
+    """Verify that get_agents function returns the health of the agents connected through the current node."""
     local_client = LocalClient()
     with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=async_local_client):
         expected_result = [{'items': [{'name': 'master'}]}, {'items': []}]
@@ -85,6 +89,7 @@ async def test_get_agents():
 
 @pytest.mark.asyncio
 async def test_get_system_nodes():
+    """Verify that get_system_nodes function returns the name of all cluster nodes."""
     with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=async_local_client):
         expected_result = [{'items': [{'name': 'master'}]}]
         for expected in expected_result:

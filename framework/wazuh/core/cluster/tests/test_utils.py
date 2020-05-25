@@ -30,6 +30,7 @@ default_cluster_config = {
 
 
 def test_read_cluster_config():
+    """Verify that read_cluster function returns, in this case, the default configuration."""
     config = utils.read_cluster_config()
     assert config == default_cluster_config
 
@@ -67,6 +68,8 @@ def test_read_cluster_config():
 
 
 def test_get_manager_status():
+    """Check that get_manager function returns the manager status,
+    for this test, the status can be stopped or failed."""
     status = utils.get_manager_status()
     for value in status.values():
         assert value == 'stopped'
@@ -79,11 +82,13 @@ def test_get_manager_status():
 
 
 def test_get_cluster_status():
+    """Check if cluster is enabled and if is running."""
     status = utils.get_cluster_status()
     assert {'enabled': 'no', 'running': 'no'} == status
 
 
 def test_manager_restart():
+    """Verify that manager_restart send to the manager the restart request."""
     with patch('wazuh.core.cluster.utils.open', side_effect=None):
         with patch('fcntl.lockf', side_effect=None):
             with pytest.raises(WazuhInternalError, match='.* 1901 .*'):
@@ -103,6 +108,7 @@ def test_manager_restart():
 
 
 def test_get_cluster_items():
+    """Verify the cluster files information."""
     with patch('os.path.abspath', side_effect=FileNotFoundError):
         with pytest.raises(WazuhException, match='.* 3005 .*'):
             utils.get_cluster_items()
@@ -151,6 +157,7 @@ def test_get_cluster_items():
 
 
 def test_ClusterFilter():
+    """Verify that ClusterFilter adds cluster related information into cluster logs"""
     cluster_filter = utils.ClusterFilter(tag='Cluster', subtag='config')
     record = utils.ClusterFilter(tag='Testing', subtag='config')
     record.update_tag(new_tag='Testing_tag')
@@ -160,6 +167,7 @@ def test_ClusterFilter():
 
 
 def test_ClusterLogger():
+    """Verify that ClusterLogger defines the logger used by wazuh-clusterd."""
     cluster_logger = utils.ClusterLogger(foreground_mode=False, log_path='remove.log', tag='Testing', debug_level=1)
     cluster_logger.setup_logger()
 
