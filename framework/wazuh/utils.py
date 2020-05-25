@@ -11,6 +11,7 @@ import re
 import shutil
 import stat
 import sys
+import time
 import typing
 from datetime import datetime, timedelta
 from itertools import groupby, chain
@@ -290,43 +291,41 @@ def select_array(array, select=None, required_fields=None):
     result_list : list
         Filtered array of dicts with only the selected (and required) fields as keys.
     """
-
     def get_nested_fields(dikt, select_field):
-        # Make a list with the nested field separated. Ex: select.select1 -> ['select', 'select1']
-        nested_list = select_field.split('.')
-        # Check if this item (dikt) matches the nested select. Return an empty dict if it does not
-        for key in nested_list:
+        split_select = select_field.split('.')
+        if len(split_select) == 1:
             try:
-                dikt = dikt[key]
-            # Return an empty dict if the select cannot match
-            except KeyError:
-                return {}
-        # Rebuild the dict with only the nested fields
-        result = dict()
-        for key in reversed(nested_list):
-            result = {key: dikt} if key == nested_list[-1] else {key: result}
-        return result
+                last_field = {select_field: dikt[select_field]}
+            except (KeyError, TypeError):
+                last_field = None
+            return last_field
+        else:
+            try:
+                next_element = get_nested_fields(dikt[split_select[0]], '.'.join(split_select[1:]))
+            except (KeyError, TypeError):
+                next_element = None
+            return {split_select[0]: next_element} if next_element else None
 
     if required_fields is None:
         required_fields = set()
     select = set(select)
 
     result_list = list()
-    # Get the first depth level of each select field to check later on if one of them is missing
-    not_nested_select = {sel.split('.')[0] for sel in select}
     for item in array:
         selected_fields = dict()
+        missing_select = False
         # Build an entry with the filtered values
         for sel in select:
-            selected_fields.update(get_nested_fields(item, sel))
-        if not not_nested_select.issubset(selected_fields.keys()):
-            continue
-        # Add required fields if the entry is not empty
-        if selected_fields:
+            candidate = get_nested_fields(item, sel)
+            if candidate:
+                selected_fields.update(candidate)
+            else:
+                missing_select = True
+                break
+        # Add required fields if the entry is not empty or missing one of the selects
+        if selected_fields and not missing_select:
             selected_fields.update({req_field: item[req_field] for req_field in required_fields})
-        result_list.append(selected_fields)
-    # Purge all empty entries
-    result_list = list(filter(lambda x: x != {}, result_list))
+            result_list.append(selected_fields)
     if not result_list:
         raise WazuhError(1724, "{}".format(', '.join(select)))
     return result_list
