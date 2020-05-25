@@ -369,16 +369,19 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag)
 
         /* Add entries - look for the last available */
         i = 0;
+        bool duplicated_entry = false;
         while (syscheck->registry && syscheck->registry[i].entry) {
             /* Duplicated entry */
             if (syscheck->registry[i].arch == arch && strcmp(syscheck->registry[i].entry, tmp_entry) == 0) {
                 mdebug2("Overwriting the registration entry: %s", syscheck->registry[i].entry);
                 dump_syscheck_entry(syscheck, tmp_entry, arch, 1, NULL, 0, clean_tag, NULL);
-                free_strarray(entry);
-                return (1);
+                free(entry[j]);
+                duplicated_entry = true;
+                continue;
             }
             i++;
         }
+        if (duplicated_entry) continue;
 
         /* Remove spaces from tag */
 
