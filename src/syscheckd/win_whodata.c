@@ -501,11 +501,32 @@ int restore_audit_policies() {
     return 0;
 }
 
+PEVT_VARIANT whodata_event_render(EVT_HANDLE event) {
+    PEVT_VARIANT buffer = NULL;
+    unsigned long used_size;
+    unsigned long property_count;
+
+    // Extract the necessary memory size
+    EvtRender(context, event, EvtRenderEventValues, 0, NULL, &used_size, &property_count);
+
+    os_calloc(used_size, sizeof(char), buffer);
+
+    if (!EvtRender(context, event, EvtRenderEventValues, used_size, buffer, &used_size, &property_count)) {
+        merror(FIM_ERROR_WHODATA_RENDER_EVENT, GetLastError());
+        os_free(buffer);
+    }
+
+    if (property_count != fields_number) {
+        merror(FIM_ERROR_WHODATA_RENDER_PARAM);
+        os_free(buffer);
+    }
+
+    return buffer;
+}
+
 unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attribute__((unused)) void *_void, EVT_HANDLE event) {
     unsigned int retval = 1;
     int result;
-    unsigned long p_count = 0;
-    unsigned long used_size;
     PEVT_VARIANT buffer = NULL;
     whodata_evt *w_evt;
     short event_id;
@@ -526,18 +547,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
         fim_element *item;
         char hash_id[21];
 
-        // Extract the necessary memory size
-        EvtRender(context, event, EvtRenderEventValues, 0, NULL, &used_size, &p_count);
-        // We may be taking more memory than we need to
-		buffer = (PEVT_VARIANT)malloc(used_size);
-
-        if (!EvtRender(context, event, EvtRenderEventValues, used_size, buffer, &used_size, &p_count)) {
-			merror(FIM_ERROR_WHODATA_RENDER_EVENT, GetLastError());
-            goto clean;
-		}
-
-        if (fields_number != p_count) {
-			merror(FIM_ERROR_WHODATA_RENDER_PARAM);
+        if (buffer = whodata_event_render(event), !buffer) {
             goto clean;
         }
 
