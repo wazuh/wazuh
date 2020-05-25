@@ -292,9 +292,9 @@ typedef struct _config {
     OSMatch **ignore_regex;         /* regex of files/dirs to ignore */
 
     int disk_quota_enabled;         /* Enable diff disk quota limit */
-    int disk_quota_limit;           /* Controls the increase of the size of the /var/ossec/queue/diff/local folder */
+    int disk_quota_limit;           /* Controls the increase of the size of the queue/diff/local folder (in KB) */
     int file_size_enabled;          /* Enable diff file size limit */
-    int file_size_limit;            /* Avoids generating a backup from a file bigger than this limit */
+    int file_size_limit;            /* Avoids generating a backup from a file bigger than this limit (in KB) */
     int *diff_size_limit;           /* Apply the file size limit option in a specific directory */
     float diff_folder_size;         /* Save size of queue/diff/local folder */
 

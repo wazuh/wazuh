@@ -101,7 +101,7 @@ off_t FileSize(const char * path);
  * 
  * @return Size of folder in bytes
  */
-float DirSize(const char *path)
+float DirSize(const char *path);
 
 
 /**

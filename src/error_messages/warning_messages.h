@@ -40,5 +40,6 @@
 #define FIM_INVALID_OPTION_SKIP                 "(6925): Invalid option '%s' for attribute '%s'. The paths '%s' not be monitored."
 #define FIM_WARN_WHODATA_ADD_RULE               "(6926): Unable to add audit rule for '%s'"
 #define FIM_DB_FULL_ALERT                       "(6927): Sending DB 100%% full alert."
+#define FIM_BIG_FILE_REPORT_CHANGES             "(6928): File '%s' is too big for configured maximum size to perform diff operation: '%d KB'"
 
 #endif /* WARN_MESSAGES_H */

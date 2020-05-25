@@ -345,9 +345,36 @@ static int seechanges_createpath(const char *filename)
     return (1);
 }
 
-/* Check if the file has changed */
-char *seechanges_addfile(const char *filename)
-{
+void seechanges_delete_compressed_file(char *path){
+    char compressed_file[PATH_MAX + 1];
+    float file_size = 0.0;
+
+    snprintf(
+        compressed_file,
+        PATH_MAX,
+        "%s/local/%s/%s.gz",
+        DIFF_DIR_PATH,
+        path + PATH_OFFSET,
+        DIFF_LAST_FILE
+    );
+
+#ifdef WIN32
+    file_size = FileSizeWin(compressed_file);
+#else
+    file_size = FileSize(compressed_file);
+#endif
+
+    if (remove(compressed_file) < 0) {
+        merror(UNLINK_ERROR, path, errno, strerror(errno));
+    }
+    else {
+        if (file_size != -1) {
+            syscheck.diff_folder_size -= file_size;
+        }
+    }
+}
+
+char *seechanges_addfile(const char *filename) {
     time_t old_date_of_change;
     time_t new_date_of_change;
     char old_location[PATH_MAX + 1];
@@ -358,6 +385,8 @@ char *seechanges_addfile(const char *filename)
     os_md5 md5sum_old;
     os_md5 md5sum_new;
     int status = -1;
+    float file_size = 0.0;
+    int it = 0;
 
     old_location[PATH_MAX] = '\0';
     tmp_location[PATH_MAX] = '\0';
@@ -391,6 +420,24 @@ char *seechanges_addfile(const char *filename)
         free(filename_strip);
     }
 #endif
+
+#ifdef WIN32
+    file_size = (float)FileSizeWin(filename_abs) / 1024;
+#else
+    file_size = (float)FileSize(filename_abs) / 1024;
+#endif
+
+    while (syscheck.dir[it] && strncmp(syscheck.dir[it], filename_abs, strlen(syscheck.dir[it])) != 0) {
+        it++;
+    }
+
+    if (syscheck.file_size_enabled) {
+        if (file_size > syscheck.diff_size_limit[it]) {
+            mwarn(FIM_BIG_FILE_REPORT_CHANGES, filename_abs, syscheck.diff_size_limit[it]);
+            seechanges_delete_compressed_file(filename_abs);
+            return NULL;
+        }
+    }
 
     snprintf(
         old_location,
