@@ -221,7 +221,7 @@ stages:
       verify_response_with:
         - function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
-            select_keys: "id"
+            select_key: "id"
       save:
         json:
           select_id_items: data.affected_items
@@ -238,7 +238,7 @@ stages:
       verify_response_with:
         - function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
-            select_keys: "json"
+            select_key: "json"
 
 
   # GET /mitre?select=json&select=phase_name
@@ -253,7 +253,7 @@ stages:
       verify_response_with:
         - function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
-            select_keys: "json,phase_name"
+            select_key: "json,phase_name"
 
 
   # GET /mitre?select=incorrect_field

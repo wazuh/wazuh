@@ -12,16 +12,16 @@ def test_distinct_key(response):
     assert not any(response.json()["data"]["affected_items"].count(item) > 1 for item in response.json()["data"]["affected_items"])
 
 
-def test_select_key_affected_items(response, select_keys):
+def test_select_key_affected_items(response, select_key):
     """
     :param response: Request response
-    :param select_keys: Keys requested in select parameter.
+    :param select_key: Keys requested in select parameter.
         Lists and nested fields accepted e.g: id,cpu.mhz,json
     """
     main_keys = set()
     nested_keys = dict()
 
-    for key in select_keys.split(','):
+    for key in select_key.split(','):
         if '.' in key:
             main_keys.update({key.split('.')[0]})
             left_key, right_key = key.split('.')
