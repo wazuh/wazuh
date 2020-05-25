@@ -108,7 +108,7 @@ def test_get_attack(mock_wdb, offset, limit):
         assert item_keys.issubset(json_keys)
 
 
-@pytest.mark.parametrize('id', [
+@pytest.mark.parametrize('id_', [
     ('T1015'),
     ('T1176'),
     ('T1087'),
@@ -117,9 +117,9 @@ def test_get_attack(mock_wdb, offset, limit):
 @patch.object(WazuhDBQueryMitre, '_final_query', fake_final_query)
 @patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
         sql_schema_file='schema_mitre_test.sql',))
-def test_get_attack_filter_attack(mock_wdb, id):
+def test_get_attack_filter_attack(mock_wdb, id_):
     """Test if data are retrieved properly from Mitre database."""
-    result = get_attack(id=id)
+    result = get_attack(id_=id_)
 
     # check result lenght
     assert len(result.affected_items) == 1
@@ -269,7 +269,7 @@ def test_get_attack_filter_multiple(mock_wdb, phase_name, platform_name):
                                          item['platform_name']]
 
 
-@pytest.mark.parametrize('id', [
+@pytest.mark.parametrize('id_', [
     None,
     'T1015',
     'T1176',
@@ -290,17 +290,17 @@ def test_get_attack_filter_multiple(mock_wdb, phase_name, platform_name):
 @patch.object(WazuhDBQueryMitre, '_final_query', fake_final_query)
 @patch('wazuh.utils.WazuhDBConnection', return_value=InitWDBSocketMock(
         sql_schema_file='schema_mitre_test.sql'))
-def test_get_attack_filter_select(mock_wdb, id, select):
+def test_get_attack_filter_select(mock_wdb, id_, select):
     """Test if data are retrieved properly from Mitre database."""
-    result = get_attack(id=id, select=select)
+    result = get_attack(id_=id_, select=select)
 
     # check result lenght
     assert len(result.affected_items) > 0
 
-    # Verify only selected fields (and id) are returned.
+    # Verify only selected fields (and id_) are returned.
     for item in result.affected_items:
-        if id:
-            assert id == item['id'], 'Expected id is not equal to the returned one.'
+        if id_:
+            assert id_ == item['id'], 'Expected id is not equal to the returned one.'
         for item_key in item.keys():
             assert item_key in select if item_key != 'id' else True, f'"{item_key}" was not in select ' \
                                                                                'param, but it was returned'
@@ -457,8 +457,11 @@ def test_check_total_items_multiple_filters(mock_wdb, platform_name, phase_name)
         sql_schema_file='schema_mitre_test.sql'))
 def test_sort_mitre(mock_wdb):
     """Test sort filter."""
-    result_asc = get_attack(sort={"fields": ["id"], "order": "asc"}, limit=1)
-    result_desc = get_attack(sort={"fields": ["id"], "order": "desc"}, limit=1)
+    result_asc = get_attack(sort={"fields": ["id"], "order": "asc"}, limit=10)
+    assert result_asc.affected_items[0]['id'] < result_asc.affected_items[1]['id']
+
+    result_desc = get_attack(sort={"fields": ["id"], "order": "desc"}, limit=10)
+    assert result_desc.affected_items[0]['id'] > result_desc.affected_items[1]['id']
 
     assert result_asc.affected_items[0]['id'] < result_desc.affected_items[0]['id']
 

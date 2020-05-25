@@ -198,22 +198,6 @@ stages:
             key: "platform_name"
             expected_values: "Linux"
 
-  # GET /mitre?limit=1&sort=-id
-  - name: Try to get MITRE attacks using sort parameter and limit parameter
-    request:
-      verify: False
-      <<: *get_mitre
-      params:
-        limit: 1
-        sort: "-id"
-    response:
-      status_code: 200
-      verify_response_with:
-        - function: tavern_utils:test_mitre_sort
-          extra_kwargs:
-            attack_id: "{returned_id}"
-            order: "desc"
-
   # GET /mitre?sort=incorrect_field
   - name: Try to get MITRE attacks using sort parameter with incorrect field
     request:
@@ -238,6 +222,9 @@ stages:
         - function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
             select_keys: "id"
+      save:
+        json:
+          select_id_items: data.affected_items
 
   # GET /mitre?select=json
   - name: Try to get MITRE attacks using select parameter
@@ -279,6 +266,20 @@ stages:
     response:
       status_code: 400
 
+  # GET /mitre?limit=1&sort=-id
+  - name: Try to get MITRE attacks using sort parameter and limit parameter
+    request:
+      verify: False
+      <<: *get_mitre
+      params:
+        select: "id"
+        sort: "-id"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            affected_items: "{select_id_items}"
 
   # GET /mitre?limit=50
   - name: Verify no more than 10 elements are shown when json is included

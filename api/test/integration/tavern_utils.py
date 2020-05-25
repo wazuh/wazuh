@@ -69,7 +69,7 @@ def test_sort_response(response, affected_items):
     affected_items = json.loads(affected_items)
     reverse_index = len(affected_items) - 1
     for index, item_response in enumerate(response.json()['data']['affected_items']):
-        assert item_response != affected_items[reverse_index - index]
+        assert item_response == affected_items[reverse_index - index]
 
 
 def test_validate_data_dict_field(response, fields_dict):
@@ -128,15 +128,3 @@ def test_expected_value(response, key, expected_values):
         response_set = set(item[key])
         assert bool(expected_values.intersection(response_set)), \
             f'Expected values {expected_values} not found in {item[key]}'
-
-
-def test_mitre_sort(response, attack_id, order):
-    """
-    :param response: Request response
-    :param attack_id: ID to compare.
-    :param order: Values to be found inside response.
-    """
-    if order == 'desc':
-        assert response.json()['data']['affected_items'][0]['id'] > attack_id
-    else:
-        assert response.json()['data']['affected_items'][0]['id'] < attack_id

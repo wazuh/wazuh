@@ -11,7 +11,7 @@ from wazuh.common import database_limit
 from wazuh.exception import WazuhException
 from wazuh.rbac.decorators import expose_resources
 from wazuh.results import AffectedItemsWazuhResult
-from wazuh.utils import WazuhDBBackend, WazuhDBQuery
+from wazuh.utils import WazuhDBBackend, WazuhDBQuery, sort_array
 
 mitre_fields = {'id': 'id', 'json': 'json', 'phase_name': 'phase_name', 'platform_name': 'platform_name'}
 from_fields = "attack LEFT JOIN has_phase ON attack.id = has_phase.attack_id" \
@@ -130,9 +130,12 @@ def get_attack(id_: str = None, phase_name: str = None, platform_name: str = Non
 
     # Execute query
     db_query = WazuhDBQueryMitre(offset=offset, limit=limit, query=q, sort=sort, search=search, select=select)
-
     data = db_query.run()
+
+    # Sort result array
+    if sort and 'json' not in sort['fields']:
+        data['items'] = sort_array(data['items'], sort_by=sort['fields'], sort_ascending=sort['order'] == 'asc')
+
     result.affected_items.extend(data['items'])
     result.total_affected_items = data['totalItems']
-
     return result
