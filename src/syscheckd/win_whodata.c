@@ -524,21 +524,125 @@ PEVT_VARIANT whodata_event_render(EVT_HANDLE event) {
     return buffer;
 }
 
+int whodata_event_parse(const PEVT_VARIANT raw_data, short *event_id, unsigned __int64 *handle_id, whodata_evt *event_data) {
+    // See event_fields[] definition for array members meaning
+    if (!raw_data || !event_id || !handle_id || !event_data) {
+        return -1;
+    }
+
+    // EventID
+    if (raw_data[0].Type != EvtVarTypeUInt16) {
+        merror(FIM_WHODATA_PARAMETER, raw_data[0].Type, "event_id");
+        return -1;
+    }
+    *event_id = raw_data[0].Int16Val;
+
+    // ObjectName
+    if (raw_data[2].Type != EvtVarTypeString) {
+        if (*event_id == 4658 || *event_id == 4660) {
+            event_data->path = NULL;
+        } else {
+            merror(FIM_WHODATA_PARAMETER, raw_data[2].Type, "path");
+            return -1;
+        }
+    }  else {
+        if (event_data->path = get_whodata_path(raw_data[2].XmlVal), !event_data->path) {
+            return -1;
+        }
+
+        // Replace in string path \device\harddiskvolumeX\ by drive letter
+        replace_device_path(&event_data->path);
+
+        str_lowercase(event_data->path);
+        if (whodata_path_filter(&event_data->path)) {
+            return -1;
+        }
+    }
+
+    // SubjectUserName
+    if (raw_data[1].Type != EvtVarTypeString) {
+        mwarn(FIM_WHODATA_PARAMETER, raw_data[1].Type, "user_name");
+        event_data->user_name = NULL;
+    } else {
+        event_data->user_name = convert_windows_string(raw_data[1].XmlVal);
+    }
+
+    // ProcessName
+    if (raw_data[3].Type != EvtVarTypeString) {
+        mwarn(FIM_WHODATA_PARAMETER, raw_data[3].Type, "process_name");
+        event_data->process_name = NULL;
+    } else {
+        event_data->process_name = convert_windows_string(raw_data[3].XmlVal);
+    }
+
+    // ProcessId
+    // In 32-bit Windows we find EvtVarTypeSizeT
+    if (raw_data[4].Type != EvtVarTypeHexInt64) {
+        if (raw_data[4].Type == EvtVarTypeSizeT) {
+            event_data->process_id = (unsigned __int64) raw_data[4].SizeTVal;
+        } else if (raw_data[4].Type == EvtVarTypeHexInt32) {
+            event_data->process_id = (unsigned __int64) raw_data[4].UInt32Val;
+        } else {
+            mwarn(FIM_WHODATA_PARAMETER, raw_data[4].Type, "process_id");
+            event_data->process_id = 0;
+        }
+    } else {
+        event_data->process_id = raw_data[4].UInt64Val;
+    }
+
+    // HandleId
+    // In 32-bit Windows we find EvtVarTypeSizeT or EvtVarTypeHexInt32
+    if (raw_data[5].Type != EvtVarTypeHexInt64) {
+        if (raw_data[5].Type == EvtVarTypeSizeT) {
+            *handle_id = (unsigned __int64) raw_data[5].SizeTVal;
+        } else if (raw_data[5].Type == EvtVarTypeHexInt32) {
+            *handle_id = (unsigned __int64) raw_data[5].UInt32Val;
+        } else {
+            merror(FIM_WHODATA_PARAMETER, raw_data[5].Type, "handle_id");
+            return -1;
+        }
+    } else {
+        *handle_id = raw_data[5].UInt64Val;
+    }
+
+    // AccessMask
+    if (raw_data[6].Type != EvtVarTypeHexInt32) {
+        if (*event_id == 4658 || *event_id == 4660) {
+            event_data->mask = 0;
+        } else {
+            merror(FIM_WHODATA_PARAMETER, raw_data[6].Type, "mask");
+            return -1;
+        }
+    } else {
+        event_data->mask = raw_data[6].UInt32Val;
+    }
+
+    // SubjectUserSid
+    if (raw_data[7].Type != EvtVarTypeSid) {
+        mwarn(FIM_WHODATA_PARAMETER, raw_data[7].Type, "user_id");
+        event_data->user_id = NULL;
+    } else if (!ConvertSidToStringSid(raw_data[7].SidVal, &event_data->user_id)) {
+        if (event_data->user_name) {
+            mdebug1(FIM_WHODATA_INVALID_UID, event_data->user_name);
+        } else {
+            mdebug1(FIM_WHODATA_INVALID_UNKNOWN_UID);
+        }
+        return -1;
+    }
+
+    return 0;
+}
+
 unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attribute__((unused)) void *_void, EVT_HANDLE event) {
     unsigned int retval = 1;
     int result;
     PEVT_VARIANT buffer = NULL;
     whodata_evt *w_evt;
+    whodata_evt event_data;
     short event_id;
-    char *user_name = NULL;
-    char *path = NULL;
-    char *process_name = NULL;
-    unsigned __int64 process_id;
     unsigned __int64 handle_id;
-    char *user_id = NULL;
     char is_directory;
     char ignore_remove_event;
-    unsigned int mask;
     int position;
     whodata_directory *w_dir;
     SYSTEMTIME system_time;
@@ -551,99 +655,10 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
             goto clean;
         }
 
-        if (buffer[0].Type != EvtVarTypeUInt16) {
-            merror(FIM_WHODATA_PARAMETER, buffer[0].Type, "event_id");
+        if (whodata_event_parse(buffer, &event_id, &handle_id, &event_data) != 0) {
             goto clean;
         }
-        event_id = buffer[0].Int16Val;
 
-        // Check types
-        if (buffer[2].Type != EvtVarTypeString) {
-            if (event_id == 4658 || event_id == 4660) {
-                path = NULL;
-            } else {
-                merror(FIM_WHODATA_PARAMETER, buffer[2].Type, "path");
-                goto clean;
-            }
-        }  else {
-            if (path = get_whodata_path(buffer[2].XmlVal), !path) {
-                goto clean;
-            }
-
-            // Replace in string path \device\harddiskvolumeX\ by drive letter
-            replace_device_path(&path);
-
-            str_lowercase(path);
-            if (whodata_path_filter(&path)) {
-                goto clean;
-            }
-        }
-
-
-        if (buffer[1].Type != EvtVarTypeString) {
-            mwarn(FIM_WHODATA_PARAMETER, buffer[1].Type, "user_name");
-            user_name = NULL;
-        } else {
-            user_name = convert_windows_string(buffer[1].XmlVal);
-        }
-
-        if (buffer[3].Type != EvtVarTypeString) {
-            mwarn(FIM_WHODATA_PARAMETER, buffer[3].Type, "process_name");
-            process_name = NULL;
-        } else {
-            process_name = convert_windows_string(buffer[3].XmlVal);
-        }
-
-        // In 32-bit Windows we find EvtVarTypeSizeT
-        if (buffer[4].Type != EvtVarTypeHexInt64) {
-            if (buffer[4].Type == EvtVarTypeSizeT) {
-                process_id = (unsigned __int64) buffer[4].SizeTVal;
-            } else if (buffer[4].Type == EvtVarTypeHexInt32) {
-                process_id = (unsigned __int64) buffer[4].UInt32Val;
-            } else {
-                mwarn(FIM_WHODATA_PARAMETER, buffer[4].Type, "process_id");
-                process_id = 0;
-            }
-        } else {
-            process_id = buffer[4].UInt64Val;
-        }
-
-        // In 32-bit Windows we find EvtVarTypeSizeT or EvtVarTypeHexInt32
-        if (buffer[5].Type != EvtVarTypeHexInt64) {
-            if (buffer[5].Type == EvtVarTypeSizeT) {
-                handle_id = (unsigned __int64) buffer[5].SizeTVal;
-            } else if (buffer[5].Type == EvtVarTypeHexInt32) {
-                handle_id = (unsigned __int64) buffer[5].UInt32Val;
-            } else {
-                merror(FIM_WHODATA_PARAMETER, buffer[5].Type, "handle_id");
-                goto clean;
-            }
-        } else {
-            handle_id = buffer[5].UInt64Val;
-        }
-
-        if (buffer[6].Type != EvtVarTypeHexInt32) {
-            if (event_id == 4658 || event_id == 4660) {
-                mask = 0;
-            } else {
-                merror(FIM_WHODATA_PARAMETER, buffer[6].Type, "mask");
-                goto clean;
-            }
-        } else {
-            mask = buffer[6].UInt32Val;
-        }
-
-        if (buffer[7].Type != EvtVarTypeSid) {
-            mwarn(FIM_WHODATA_PARAMETER, buffer[7].Type, "user_id");
-            user_id = NULL;
-        } else if (!ConvertSidToStringSid(buffer[7].SidVal, &user_id)) {
-            if (user_name) {
-                mdebug1(FIM_WHODATA_INVALID_UID, user_name);
-            } else {
-                mdebug1(FIM_WHODATA_INVALID_UNKNOWN_UID);
-            }
-            goto clean;
-        }
         snprintf(hash_id, 21, "%llu", handle_id);
 
 
@@ -654,34 +669,34 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 is_directory = 0;
                 ignore_remove_event = 0;
 
-                if (!path) {
+                if (!event_data.path) {
                     goto clean;
                 }
 
-                if (position = fim_configuration_directory(path, "file"), position < 0 &&
-                    !(mask & FILE_APPEND_DATA) && !(mask & FILE_WRITE_DATA)) {
+                if (position = fim_configuration_directory(event_data.path, "file"), position < 0 &&
+                    !(event_data.mask & FILE_APPEND_DATA) && !(event_data.mask & FILE_WRITE_DATA)) {
                     // Discard the file or directory if its monitoring has not been activated
-                    mdebug2(FIM_WHODATA_NOT_ACTIVE, path);
+                    mdebug2(FIM_WHODATA_NOT_ACTIVE, event_data.path);
                     goto clean;
                 }
 
                 // Ignore the file if belongs to a non-whodata directory
                 if (!(syscheck.wdata.dirs_status[position].status & WD_CHECK_WHODATA) &&
-                    !(mask & FILE_APPEND_DATA) && !(mask & FILE_WRITE_DATA)) {
-                    mdebug2(FIM_WHODATA_CANCELED, path);
+                    !(event_data.mask & FILE_APPEND_DATA) && !(event_data.mask & FILE_WRITE_DATA)) {
+                    mdebug2(FIM_WHODATA_CANCELED, event_data.path);
                     goto clean;
                 }
 
                 int device_type;
 
                 // If it is an existing directory, check_path_type returns 2
-                if (device_type = check_path_type(path), device_type == 2) {
+                if (device_type = check_path_type(event_data.path), device_type == 2) {
                     is_directory = 1;
                 } else if (device_type == 0) {
                     // If the device could not be found, it was monitored by Syscheck, has not recently been removed,
                     // and had never been entered in the hash table before, we can deduce that it is a removed directory
-                    if (mask & DELETE ||  mask & FILE_APPEND_DATA) {
-                        mdebug2(FIM_WHODATA_REMOVE_FOLDEREVENT, path);
+                    if (event_data.mask & DELETE ||  event_data.mask & FILE_APPEND_DATA) {
+                        mdebug2(FIM_WHODATA_REMOVE_FOLDEREVENT, event_data.path);
                         is_directory = 1;
                     } else {
                         // The file exists at this points. We will only notify its deletion if the event expressly indicates it
@@ -693,11 +708,11 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 }
 
                 os_calloc(1, sizeof(whodata_evt), w_evt);
-                w_evt->user_name = user_name;
-                w_evt->user_id = user_id;
+                w_evt->user_name = event_data.user_name;
+                w_evt->user_id = event_data.user_id;
                 if (!is_directory) {
-                    w_evt->path = path;
-                    path = NULL;
+                    w_evt->path = event_data.path;
+                    event_data.path = NULL;
                 } else {
                     // The directory path will be saved in 4663 event
                     w_evt->path = NULL;
@@ -706,8 +721,8 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 if (position > -1) {
                     w_evt->dir_position = position;
                 }
-                w_evt->process_name = process_name;
-                w_evt->process_id = process_id;
+                w_evt->process_name = event_data.process_name;
+                w_evt->process_id = event_data.process_id;
                 w_evt->mask = 0;
                 w_evt->scan_directory = is_directory;
                 w_evt->ignore_remove_event = ignore_remove_event;
@@ -716,9 +731,9 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 w_evt->wnode = whodata_list_add(strdup(hash_id));
 
 
-                user_name = NULL;
-                user_id = NULL;
-                process_name = NULL;
+                event_data.user_name = NULL;
+                event_data.user_id = NULL;
+                event_data.process_name = NULL;
             add_whodata_evt:
                 if (result = whodata_hash_add(syscheck.wdata.fd, hash_id, w_evt, "whodata"), result != 2) {
                     if (result == 1) {
@@ -740,15 +755,15 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
             // Write fd
             case 4663:
                 // Check if the mask is relevant
-                if (mask) {
+                if (event_data.mask) {
 
                     if (w_evt = OSHash_Get(syscheck.wdata.fd, hash_id), w_evt) {
-                        w_evt->mask |= mask;
+                        w_evt->mask |= event_data.mask;
 
                         // Check if it is a rename or copy event
                         if (w_evt->scan_directory) {
-                            if ((mask & FILE_WRITE_DATA) || (mask & FILE_APPEND_DATA)) {
-                                if (w_dir = OSHash_Get_ex(syscheck.wdata.directories, path), w_dir) {
+                            if ((event_data.mask & FILE_WRITE_DATA) || (event_data.mask & FILE_APPEND_DATA)) {
+                                if (w_dir = OSHash_Get_ex(syscheck.wdata.directories, event_data.path), w_dir) {
                                     // Get the event time
                                     if (buffer[8].Type != EvtVarTypeFileTime) {
                                         merror(FIM_WHODATA_PARAMETER, buffer[8].Type, "event_time");
@@ -761,15 +776,15 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                                     }
 
                                     if (!compare_timestamp(&w_dir->timestamp, &system_time)) {
-                                        mdebug2(FIM_WHODATA_DIRECTORY_SCANNED, path);
+                                        mdebug2(FIM_WHODATA_DIRECTORY_SCANNED, event_data.path);
                                         w_evt->scan_directory = 3;
                                         break;
                                     }
-                                    mdebug2(FIM_WHODATA_DIRECTORY_SCANNED, path);
+                                    mdebug2(FIM_WHODATA_DIRECTORY_SCANNED, event_data.path);
                                 } else {
                                     // Check if is a valid directory
-                                    if (position = fim_configuration_directory(path, "file"), position < 0) {
-                                        mdebug2(FIM_WHODATA_DIRECTORY_DISCARDED, path);
+                                    if (position = fim_configuration_directory(event_data.path, "file"), position < 0) {
+                                        mdebug2(FIM_WHODATA_DIRECTORY_DISCARDED, event_data.path);
                                         w_evt->scan_directory = 2;
                                         break;
                                     }
@@ -777,20 +792,20 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                                     memset(&w_dir->timestamp, 0, sizeof(SYSTEMTIME));
                                     w_dir->position = position;
 
-                                    if (result = whodata_hash_add(syscheck.wdata.directories, path, w_dir, "directories"), result != 2) {
+                                    if (result = whodata_hash_add(syscheck.wdata.directories, event_data.path, w_dir, "directories"), result != 2) {
                                         w_evt->scan_directory = 2;
                                         free(w_dir);
                                         break;
                                     } else {
-                                        mdebug2(FIM_WHODATA_CHECK_NEW_FILES, path);
+                                        mdebug2(FIM_WHODATA_CHECK_NEW_FILES, event_data.path);
                                     }
                                 }
-                                w_evt->path = path;
-                                path = NULL;
-                            } else if (mask & DELETE) {
+                                w_evt->path = event_data.path;
+                                event_data.path = NULL;
+                            } else if (event_data.mask & DELETE) {
                                 // The directory has been removed
-                                w_evt->path = path;
-                                path = NULL;
+                                w_evt->path = event_data.path;
+                                event_data.path = NULL;
                             }
                         }
                     }
@@ -862,15 +877,13 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
     }
     retval = 0;
 clean:
-    os_free(user_name);
-    free(path);
-    os_free(process_name);
-    if (user_id) {
-        LocalFree(user_id);
+    os_free(event_data.user_name);
+    os_free(event_data.path);
+    os_free(event_data.process_name);
+    if (event_data.user_id) {
+        LocalFree(event_data.user_id);
     }
-    if (buffer) {
-        free(buffer);
-    }
+    os_free(buffer);
     return retval;
 }
 
