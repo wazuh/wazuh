@@ -1446,21 +1446,19 @@ int audit_health_check(int audit_socket) {
         w_cond_wait(&audit_hc_started, &audit_hc_mutex);
     w_mutex_unlock(&audit_hc_mutex);
 
-    // Create a file
-    fp = fopen(AUDIT_HEALTHCHECK_FILE, "w");
+    // Generate open events until they get picked up
+    do {
+        fp = fopen(AUDIT_HEALTHCHECK_FILE, "w");
 
-    if(!fp) {
-        mdebug1(FIM_AUDIT_HEALTHCHECK_FILE);
-        goto exit_err;
-    }
-    fclose(fp);
+        if(!fp) {
+            mdebug1(FIM_AUDIT_HEALTHCHECK_FILE);
+            goto exit_err;
+        }
+        fclose(fp);
 
-    sleep(1);
-
-    while (!audit_health_check_creation && timer > 0) {
         sleep(1);
-        timer--;
-    }
+    } while (!audit_health_check_creation && --timer > 0);
+
     if (!audit_health_check_creation) {
         mdebug1("error: audit_health_check_creation");
         goto exit_err;

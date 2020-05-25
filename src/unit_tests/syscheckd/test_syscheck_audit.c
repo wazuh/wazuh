@@ -2280,11 +2280,11 @@ void test_audit_health_check_no_creation_event_detected(void **state)
     expect_function_call(__wrap_pthread_cond_wait);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap_fopen, filename, "/var/ossec/tmp/audit_hc");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
+    expect_string_count(__wrap_fopen, filename, "/var/ossec/tmp/audit_hc", 10);
+    expect_string_count(__wrap_fopen, mode, "w", 10);
+    will_return_count(__wrap_fopen, 1, 10);
 
-    will_return(__wrap_fclose, 0);
+    will_return_count(__wrap_fclose, 0, 10);
 
     expect_string(__wrap__mdebug1, formatted_msg, "error: audit_health_check_creation");
 
