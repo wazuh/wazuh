@@ -869,30 +869,24 @@ space +=
 VERSION = $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(patsubst v%,%,$(shell cat VERSION)))))
 RESOURCES_URL := https://packages.wazuh.com/deps/$(VERSION)
 CPYTHON := cpython
-ifneq (${PREFIX},/var/ossec)
-	CPYTHON := src_cpython
-else
+ifeq (${PREFIX},/var/ossec)
 	# Download the Python sources if we are building for any other OS.
-ifneq (${uname_S},Linux)
-CPYTHON := src_cpython
-else
+ifeq (${uname_S},Linux)
 cpu_arch := ${uname_P}
 ifneq (,$(filter ${cpu_arch},unknown Unknown))
 	cpu_arch := $(shell sh -c 'arch 2>/dev/null || echo not')
 endif
 ifneq (,$(filter ${cpu_arch},x86_64 amd64))
-CPYTHON := cpython_amd64
+PRECOMPILED_RES := linux/amd64
 else
 ifneq (,$(filter ${cpu_arch},i386 i686))
-CPYTHON := cpython_i386
+PRECOMPILED_RES := linux/i386
 else
 ifneq (,$(filter ${cpu_arch},aarch64 arm64))
-CPYTHON := cpython_aarch64
+PRECOMPILED_RES := linux/aarch64
 else
 ifneq (,$(filter ${cpu_arch},armv8l armv7l arm32 armhf))
-CPYTHON := cpython_arm32
-else
-CPYTHON := src_cpython
+PRECOMPILED_RES := linux/arm32
 endif
 endif
 endif
@@ -911,8 +905,18 @@ MSU_JSON_GZ := $(VULN_DETECTOR_DIR)/msu.json.gz
 .PHONY: deps
 deps: $(EXTERNAL_TAR) $(MSU_JSON_GZ) $(MSU_JSON_GZ)
 
+external/$(CPYTHON).tar.gz:
+ifneq (,$(PRECOMPILED_RES))
+	$(CURL) $@ $(RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external/%,%,$@)
+else
+	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
+endif
+	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
+	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
+	rm $(patsubst %.gz,%,$@)
+
 external/%.tar.gz:
-	$(CURL) $@ $(RESOURCES_URL)/$(patsubst external/%,%,$@)
+	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	rm $(patsubst %.gz,%,$@)
