@@ -21,7 +21,7 @@ wazuh_ui_admin:
   backend_roles: []
   hosts: []
   users:
-  - "wazuhadmin"
+  - "wazuh_admin"
   and_backend_roles: []
 wazuh_ui_user:
   reserved: true

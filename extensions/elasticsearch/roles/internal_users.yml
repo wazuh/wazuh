@@ -9,8 +9,8 @@ logstash:
   description: "Demo logstash user"
   opendistro_security_roles: []
   static: false
-wazuhadmin:
-  hash: "$2y$12$dXnfI.By9rtjQEFhLNKCZOClenVYznwhpZeMDuLXor9rkogdGbK7C"
+wazuh_admin:
+  hash: "$2y$12$d2awHiOYvZjI88VfsDON.u6buoBol0gYPJEgdG1ArKVE0OMxViFfu"
   reserved: true
   hidden: false
   backend_roles: []
