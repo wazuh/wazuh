@@ -11,7 +11,7 @@ import re
 from xml.dom.minidom import parseString
 from wazuh.exception import WazuhException
 from wazuh import common
-from wazuh.ossec_socket import OssecSocket
+from wazuh.wazuh_socket import OssecSocket
 from wazuh.utils import cut_array, load_wazuh_xml, safe_move
 import subprocess
 

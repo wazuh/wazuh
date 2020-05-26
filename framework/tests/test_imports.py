@@ -116,7 +116,7 @@ from wazuh.exception import WazuhException
 from wazuh.InputValidator import InputValidator
 from wazuh.manager import status
 from wazuh.ossec_queue import OssecQueue
-from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
+from wazuh.wazuh_socket import OssecSocket, OssecSocketJSON
 from wazuh.rule import Rule
 from wazuh.syscollector import _get_agent_items, get_item_agent
 from wazuh.utils import (WazuhDBQuery, WazuhDBQueryDistinct,
