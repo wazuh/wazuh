@@ -109,7 +109,6 @@ void test_Read_Syscheck_Config_success(void **state)
     // With the first 6 directories in other lines, the count should be 70 (71 should be NULL)
     for (int i = 0; i < 70; i++){
         assert_non_null(syscheck.dir[i]);
-        minfo("Dir%d: %s", i, syscheck.dir[i]);
     }
     assert_non_null(syscheck.dir[71]);
     assert_non_null(syscheck.opts);

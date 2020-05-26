@@ -40,7 +40,7 @@
 #define FIM_INVALID_OPTION_SKIP                 "(6925): Invalid option '%s' for attribute '%s'. The paths '%s' not be monitored."
 #define FIM_WARN_WHODATA_ADD_RULE               "(6926): Unable to add audit rule for '%s'"
 #define FIM_DB_FULL_ALERT                       "(6927): Sending DB 100%% full alert."
-#define FIM_WARN_MAX_DIR_REACH                  "(6930): Maximum number of directories to be monitored reached (%d) Excess are discarded."
-#define FIM_WARN_MAX_REG_REACH                  "(6931): Maximum number of registers to be monitored reached (%d) Excess are discarded."
+#define FIM_WARN_MAX_DIR_REACH                  "(6930): Maximum number of directories to be monitored in the same tag reached (%d) Excess are discarded: '%s'"
+#define FIM_WARN_MAX_REG_REACH                  "(6931): Maximum number of registries to be monitored in the same tag reached reached (%d) Excess are discarded: '%s'"
 
 #endif /* WARN_MESSAGES_H */
