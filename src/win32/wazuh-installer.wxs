@@ -23,7 +23,7 @@
         </Property>
         <Property Id="WAZUH_REGISTRATION_CERTIFICATE" Secure="yes">
         </Property>
-        <Property Id="WAZUH_REGISTRARTION_KEY" Secure="yes">
+        <Property Id="WAZUH_REGISTRATION_KEY" Secure="yes">
         </Property>
         <Property Id="WAZUH_AGENT_NAME" Secure="yes">
         </Property>
