@@ -470,39 +470,48 @@ off_t FileSize(const char * path) {
 
 float DirSize(const char *path) {
     struct dirent *dir;
-    DIR *d;
-    float folder_size = 0;
-    char *new_path;
+    DIR *directory;
+    float folder_size = 0.0;
+    float file_size = 0.0;
+    char *entry;
 
-    d = opendir(path);
+    if (directory = opendir(path), directory == NULL) {
+        mdebug2("Couln't open directory '%s'.", path);
+        return -1;
+    }
 
-    if (d) {
-        while ((dir = readdir(d)) != NULL) {
-            // Ignore . and ..
-            if (strcmp(dir->d_name, ".") == 0 || strcmp(dir->d_name, "..") == 0) {
-                continue;
-            }
-
-            new_path = malloc(strlen(path) + strlen(dir->d_name) + 2);
-            strcpy(new_path, path);
-            strcat(new_path, "/");
-            strcat(new_path, dir->d_name);
-
-            // Recursion if the path points to a directory
-            if (dir->d_type == DT_DIR) {
-                folder_size += DirSize(new_path);
-            }
-            else {
-                folder_size += FileSize(new_path);
-            }
-
-            if (new_path) {
-                free(new_path);
-            }
+    while ((dir = readdir(directory)) != NULL) {
+        // Ignore . and ..
+        if (strcmp(dir->d_name, ".") == 0 || strcmp(dir->d_name, "..") == 0) {
+            continue;
         }
 
-        closedir(d);
+        os_malloc(strlen(path) + strlen(dir->d_name) + 2, entry);
+        snprintf(entry, strlen(path) + 2 + strlen(dir->d_name), "%s/%s", path, dir->d_name);
+
+        // Recursion if the path points to a directory
+        switch (dir->d_type) {
+        case DT_DIR:
+            folder_size += DirSize(entry);
+            break;
+
+        case DT_REG:
+            if (file_size = FileSize(entry), file_size != -1) {
+                folder_size += file_size;
+            }
+
+            break;
+
+        default:
+            break;
+        }
+
+        if (entry) {
+            free(entry);
+        }
     }
+
+    closedir(directory);
 
     return folder_size;
 }
@@ -2999,6 +3008,7 @@ float DirSize(const char *path) {
     WIN32_FIND_DATA fdFile;
     HANDLE hFind = NULL;
     float folder_size = 0.0;
+    float file_size = 0.0;
 
     char sPath[2048];
 
@@ -3020,7 +3030,9 @@ float DirSize(const char *path) {
                 folder_size += DirSize(sPath);
             }
             else {
-                folder_size += FileSizeWin(sPath);
+                if (file_size = FileSizeWin(sPath), file_size != -1) {
+                    folder_size += file_size;
+                }
             }
         }
     } while (FindNextFile(hFind, &fdFile));
