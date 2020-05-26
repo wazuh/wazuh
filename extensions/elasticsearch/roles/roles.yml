@@ -10,14 +10,6 @@ wazuh_ui_admin:
     fls: []
     masked_fields: []
     allowed_actions:
-    - "indices_all"
-  - index_patterns:
-    - ".kibana"
-    - ".kibana*"
-    dls: ""
-    fls: []
-    masked_fields: []
-    allowed_actions:
     - "read"
     - "delete"
     - "manage"
