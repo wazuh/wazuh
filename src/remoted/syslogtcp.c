@@ -31,17 +31,40 @@ static int OS_IPNotAllowed(char *srcip)
     return (1);
 }
 
+/**
+ * @brief Function that sends a buffer to a queue.
+ * @param buffer String with the received contents from the TCP socket.
+ * @param buff_size Size of the buffer.
+ * @param srcip String with the IP of the queue where the message will be sent.
+ */
+void send_buffer(char *buffer, int *buff_size, char *srcip) {
+    int offset;
+    char *buffer_pt = strchr(buffer, '\n');
+
+    while(buffer_pt != NULL) {
+        // Get the position of '\n' in buffer
+        offset = ((int)(buffer_pt - buffer));
+        *buffer_pt = '\0';
+        // Send message to the queue
+        if (SendMSG(logr.m_queue, buffer, srcip, SYSLOG_MQ) < 0) {
+            merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+
+            if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
+                merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
+            }
+        }
+        // Re-calculate the used size of buffer and remove the message from the buffer
+        *buff_size = *buff_size - (offset + 1);
+        memcpy(buffer, buffer_pt + 1, *buff_size);
+        // Find the next '\n'
+        buffer_pt = strchr(buffer, '\n');
+    }
+}
 /* Handle each client */
 static void HandleClient(int client_socket, char *srcip)
 {
-    int sb_size = OS_MAXSTR;
-    int r_sz = 0;
-
+    int r_sz = 0, buff_size = 0;
     char buffer[OS_MAXSTR + 2];
-    char storage_buffer[OS_MAXSTR + 2];
-    char tmp_buffer[OS_MAXSTR + 2];
-
-    char *buffer_pt = NULL;
 
     /* Create PID file */
     if (CreatePID(ARGV0, getpid()) < 0) {
@@ -50,98 +73,23 @@ static void HandleClient(int client_socket, char *srcip)
 
     /* Initialize some variables */
     memset(buffer, '\0', OS_MAXSTR + 2);
-    memset(storage_buffer, '\0', OS_MAXSTR + 2);
-    memset(tmp_buffer, '\0', OS_MAXSTR + 2);
-
-
     while (1) {
         /* If an error occurred, or received 0 bytes, we need to return and close the socket */
-        r_sz = OS_RecvTCPBuffer(client_socket, buffer, OS_MAXSTR - 2);
+        r_sz = recv(client_socket, buffer + buff_size, (OS_MAXSTR - buff_size) - 2, 0);
         switch (r_sz) {
-        case -1:
-            merror(RECV_ERROR, strerror(errno), errno);
-            // Fallthrough
-        case 0:
-            close(client_socket);
-            DeletePID(ARGV0);
-            return;
-        default:
-            mdebug2("Received %d bytes from '%s'", r_sz, srcip);
-            break;
+            case -1:
+                merror(RECV_ERROR, strerror(errno), errno);
+                // Fallthrough
+            case 0:
+                close(client_socket);
+                DeletePID(ARGV0);
+                return;
+            default:
+                mdebug2("Received %d bytes from '%s'", r_sz, srcip);
+                break;
         }
-
-        /* We must have a new line at the end */
-        buffer_pt = strchr(buffer, '\n');
-        if (!buffer_pt) {
-            /* Buffer is full */
-            if ((sb_size - r_sz) <= 2) {
-                merror("Full buffer receiving from: '%s'", srcip);
-                sb_size = OS_MAXSTR;
-                storage_buffer[0] = '\0';
-                continue;
-            }
-
-            strncat(storage_buffer, buffer, sb_size);
-            sb_size -= r_sz;
-            continue;
-        }
-
-        /* See if we received more than just one message */
-        if (*(buffer_pt + 1) != '\0') {
-            *buffer_pt = '\0';
-            buffer_pt++;
-            strncpy(tmp_buffer, buffer_pt, OS_MAXSTR);
-        }
-
-        /* Store everything in the storage_buffer
-         * Check if buffer will be full
-         */
-        if ((sb_size - r_sz) <= 2) {
-            merror("Full buffer receiving from: '%s'.", srcip);
-            sb_size = OS_MAXSTR;
-            storage_buffer[0] = '\0';
-            tmp_buffer[0] = '\0';
-            continue;
-        }
-
-        strncat(storage_buffer, buffer, sb_size);
-
-        /* Remove carriage returns too */
-        buffer_pt = strchr(storage_buffer, '\r');
-        if (buffer_pt) {
-            *buffer_pt = '\0';
-        }
-
-        /* Remove syslog header */
-        if (storage_buffer[0] == '<') {
-            buffer_pt = strchr(storage_buffer + 1, '>');
-            if (buffer_pt) {
-                buffer_pt++;
-            } else {
-                buffer_pt = storage_buffer;
-            }
-        } else {
-            buffer_pt = storage_buffer;
-        }
-
-        /* Send to the queue */
-        if (SendMSG(logr.m_queue, buffer_pt, srcip, SYSLOG_MQ) < 0) {
-            merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-
-            if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
-                merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
-            }
-        }
-
-        /* Clean up the buffers */
-        if (tmp_buffer[0] != '\0') {
-            strncpy(storage_buffer, tmp_buffer, OS_MAXSTR);
-            sb_size = OS_MAXSTR - (strlen(storage_buffer) + 1);
-            tmp_buffer[0] = '\0';
-        } else {
-            storage_buffer[0] = '\0';
-            sb_size = OS_MAXSTR;
-        }
+        buff_size += r_sz;
+        send_buffer(buffer, &buff_size, srcip);
     }
 }
 
