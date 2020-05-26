@@ -63,6 +63,8 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
     original_rules = list(rules)
     no_existent_ids = rule_ids[:]
     for r in original_rules:
+        if r['id'] in no_existent_ids:
+            no_existent_ids.remove(r['id'])
         for key, value in parameters.items():
             if value:
                 if key == 'level' and (len(value) == 1 and int(value[0]) != r['level'] or len(value) == 2
@@ -71,8 +73,6 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
                         (key == 'filename' and r[key] not in filename) or \
                         (key == 'status' and r[key] not in value) or \
                         (not isinstance(value, list) and value not in r[key]):
-                    if r['id'] in no_existent_ids:
-                        no_existent_ids.remove(r['id'])
                     rules.remove(r)
                     break
 
