@@ -115,7 +115,7 @@ class WazuhAsyncSocket:
             self.loop = asyncio.get_running_loop()
             self.transport, self.protocol = await self.loop.create_connection(
                 lambda: WazuhAsyncProtocol(self.loop), sock=self.s)
-        except socket.error as e:
+        except (socket.error, FileNotFoundError) as e:
             raise WazuhException(1013, str(e))
         except (AttributeError, ValueError, OSError) as e:
             self.s.close()
@@ -220,12 +220,12 @@ daemons = {
     "authd": {"protocol": "TCP", "path": common.AUTHD_SOCKET, "header_format": "<I", "size": 4}}
 
 
-async def send_sync(daemon_name=None, message=None):
+async def send_sync(daemon_name, message=None):
     """Send a message to the specified daemon's socket and wait for its response.
 
     Parameters
     ----------
-    daemon_name : str, optional
+    daemon_name : str
         Name of the daemon to send the message.
     message : str, optional
         Message in JSON format to be sent to the daemon's socket.
