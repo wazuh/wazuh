@@ -65,21 +65,17 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
     for r in original_rules:
         for key, value in parameters.items():
             if value:
-                if key == 'level' and r in rules:
-                    if len(value) == 1 and int(value[0]) != r['level'] or len(value) == 2 and \
-                            not int(value[0]) <= r['level'] <= int(value[1]):
-                        rules.remove(r)
-                elif key == 'id':
-                    if r[key] not in value and r in rules:
-                        rules.remove(r)
-                    elif r[key] in no_existent_ids:
-                        no_existent_ids.remove(r[key])
-                elif key == 'filename' and r[key] not in filename and r in rules:
+                if key == 'level' and (len(value) == 1 and int(value[0]) != r['level'] or len(value) == 2
+                                       and not int(value[0]) <= r['level'] <= int(value[1])) or \
+                        (key == 'id' and r[key] not in value) or \
+                        (key == 'filename' and r[key] not in filename) or \
+                        (key == 'status' and r[key] not in value) or \
+                        (not isinstance(value, list) and value not in r[key]):
+                    if r['id'] in no_existent_ids:
+                        no_existent_ids.remove(r['id'])
                     rules.remove(r)
-                elif key == 'status' and r[key] not in value and r in rules:
-                    rules.remove(r)
-                elif not isinstance(value, list) and value not in r[key]:
-                    rules.remove(r)
+                    break
+
     for rule_id in no_existent_ids:
         result.add_failed_item(id_=rule_id, error=WazuhError(1208))
 
