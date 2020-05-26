@@ -346,26 +346,25 @@ static int seechanges_createpath(const char *filename)
 }
 
 void seechanges_delete_compressed_file(char *path){
-    char compressed_file[PATH_MAX + 1];
+    char containing_folder[PATH_MAX + 1];
     float file_size = 0.0;
 
     snprintf(
-        compressed_file,
+        containing_folder,
         PATH_MAX,
-        "%s/local/%s/%s.gz",
+        "%s/local/%s",
         DIFF_DIR_PATH,
-        path + PATH_OFFSET,
-        DIFF_LAST_FILE
+        path + PATH_OFFSET
     );
 
 #ifdef WIN32
-    file_size = FileSizeWin(compressed_file);
+    file_size = FileSizeWin(containing_folder);
 #else
-    file_size = FileSize(compressed_file);
+    file_size = FileSize(containing_folder);
 #endif
 
-    if (remove(compressed_file) < 0) {
-        merror(UNLINK_ERROR, path, errno, strerror(errno));
+    if (rmdir_ex(containing_folder) < 0) {
+        mdebug2(UNLINK_ERROR, containing_folder, errno, strerror(errno));
     }
     else {
         if (file_size != -1) {
@@ -433,7 +432,7 @@ char *seechanges_addfile(const char *filename) {
 
     if (syscheck.file_size_enabled) {
         if (file_size > syscheck.diff_size_limit[it]) {
-            mwarn(FIM_BIG_FILE_REPORT_CHANGES, filename_abs, syscheck.diff_size_limit[it]);
+            mwarn(FIM_BIG_FILE_REPORT_CHANGES, filename_abs);
             seechanges_delete_compressed_file(filename_abs);
             return NULL;
         }
