@@ -13,11 +13,11 @@ wazuhadmin:
   hash: "$2y$12$dXnfI.By9rtjQEFhLNKCZOClenVYznwhpZeMDuLXor9rkogdGbK7C"
   reserved: true
   hidden: false
-  backend_roles:
-  - "wazuh_ui_admin"
+  backend_roles: []
   attributes: {}
-  description: "Wazuh admin"
-  opendistro_security_roles: []
+  opendistro_security_roles:
+  - "wazuh_ui_admin"
+  - "kibana_user"
   static: false
 wazuh_user:
   hash: "$2y$12$BQixeoQdRubZdVf/7sq1suHwiVRnSst1.lPI2M0.GPZms4bq2D9vO"
