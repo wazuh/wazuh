@@ -218,9 +218,13 @@ def rbac_custom_config_generator(module: str, rbac_mode: str):
         RBAC Mode: Black (by default: all allowed), White (by default: all denied)
     """
     custom_rbac_path = os.path.join(current_path, 'env', 'configurations', 'tmp', 'manager', 'custom_rbac_schema.sql')
-    with open(os.path.join(current_path, 'env', 'configurations', 'rbac', module,
-                           f'{rbac_mode}_config.yaml')) as configuration_sentences:
-        list_custom_policy = yaml.safe_load(configuration_sentences.read())
+
+    try:
+        with open(os.path.join(current_path, 'env', 'configurations', 'rbac', module,
+                               f'{rbac_mode}_config.yaml')) as configuration_sentences:
+            list_custom_policy = yaml.safe_load(configuration_sentences.read())
+    except FileNotFoundError:
+        return
 
     sql_sentences = list()
     sql_sentences.append('PRAGMA foreign_keys=OFF;\n')

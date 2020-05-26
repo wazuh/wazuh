@@ -287,6 +287,14 @@ x-rbac-catalog:
         actions: ['manager:status']
         resources: ['*:*:*']
         effect: "deny"
+    'mitre:read':
+      description: "Get attacks information from MITRE database."
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['mitre:read']
+        resources: ['*:*:*']
+        effect: "allow"
     'decoder:read':
       description: "Read decoders files"
       resources:
@@ -3184,6 +3192,13 @@ components:
       required: False
       schema:
         type: object
+    attack_id:
+      in: query
+      name: id
+      description: "MITRE attack ID."
+      schema:
+        type: string
+        format: alphanumeric
     agent_id:
       in: path
       name: agent_id
@@ -3665,6 +3680,20 @@ components:
         type: integer
         format: int32
         minimum: 0
+    phase_name:
+      in: query
+      name: phase_name
+      description: "Show results filtered by phase."
+      schema:
+        type: string
+        format: alphanumeric
+    platform_name:
+      in: query
+      name: platform_name
+      description: "Show results filtered by platform."
+      schema:
+        type: string
+        format: alphanumeric
     pretty:
       in: query
       name: pretty
@@ -4738,6 +4767,8 @@ tags:
     description: "CDB lists management"
   - name: manager
     description: "Wazuh manager management"
+  - name: mitre
+    description: "Attacks information from MITRE database"
   - name: overview
     description: "Overwiew of Wazuh"
   - name: rootcheck
@@ -9102,6 +9133,83 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "Active configuration read successfully on specified node"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+
+  /mitre:
+    get:
+      tags:
+        - mitre
+      summary: "Get attacks information from MITRE database"
+      description: "Return the requested attacks from MITRE database"
+      operationId: api.controllers.mitre_controller.get_attack
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/mitre:read'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/attack_id'
+        - $ref: '#/components/parameters/phase_name'
+        - $ref: '#/components/parameters/platform_name'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/sort'
+      responses:
+        '200':
+          description: "List of attacks or error description"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  affected_items:
+                    json:
+                      x_mitre_data_sources:
+                        - "Packet capture"
+                        - "Process use of network"
+                      name: "Data Obfuscation"
+                      description: "Command and control (C2) communications are hidden (but not necessarily encrypted)..."
+                      id: "attack-pattern--ad255bfe-a9e6-4b52-a258-8d3462abe842"
+                      x_mitre_platforms:
+                        - "Linux"
+                        - "macOS"
+                        - "Windows"
+                      object_marking_refs":
+                        - "marking-definition--fa42a846-8d90-4e51-bc29-71d5b4802168"
+                      x_mitre_version: "1.0"
+                      type: "attack-pattern"
+                      x_mitre_detection: "Analyze network data for uncommon data flows (e.g., a client sending cious..."
+                      created_by_ref: "identity--c78cb6e5-0c4b-4611-8297-d1b8b55e40b5"
+                      x_mitre_network_requirements: true
+                      created: "2017-05-31T21:30:18.931Z"
+                      kill_chain_phases:
+                        - kill_chain_name: "mitre-attack"
+                        - phase_name: "Command and Control"
+                      external_references":
+                        - external_id: "T1001"
+                          source_name: "mitre-attack"
+                          url: "https://attack.mitre.org/techniques/T1001"
+                        - source_name: "University of Birmingham C2"
+                          description: "Gardiner, J.,  Cova, M., Nagaraja, S. (2014, February)..."
+                          url: "https://arxiv.org/ftp/arxiv/papers/1408/1408.1136.pdf"
+                      modified: "2019-07-17T18:54:32.478Z"
+                      phase_name:
+                        - "Command and Control"
+                      platform_name:
+                        - "Linux"
+                        - "Windows"
+                        - "macOS"
+                    id: "T1001"
+                  total_affected_items: 1
+                  failed_items: []
+                  total_failed_items: 0
+                message: "All selected MITRE information is shown"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':

@@ -87,6 +87,15 @@ default_policies:
         - decoder:file:*
       effect: allow
 
+  mitre_read:
+    description: Allow read MITRE database information.
+    policy:
+      actions:
+        - mitre:read
+      resources:
+        - '*:*:*'
+      effect: allow
+
   rules_read:
     description: Allow read all rule files in the system.
     policy:
