@@ -365,10 +365,6 @@ This API call expects a full valid XML file with the shared configuration tags/s
 ### PUT     /manager/files
 * New endpoint. Replaces file contents with the data contained in the API request.
 
-## Mitre
-### GET ​   /mitre
-* New endpoint. Retrieve attacks information from MITRE database.
-
 ## Overview
 ### GET     /overview/agents
 * New endpoint. Returns a dictionary with a full agents overview.
