@@ -11,7 +11,6 @@ import re
 import shutil
 import stat
 import sys
-import time
 import typing
 from datetime import datetime, timedelta
 from itertools import groupby, chain
