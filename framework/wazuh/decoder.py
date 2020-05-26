@@ -6,7 +6,7 @@ import os
 
 import wazuh.configuration as configuration
 from wazuh import common
-from wazuh.core.decoder import load_decoders_from_file, check_status, Status
+from wazuh.core.decoder import load_decoders_from_file, check_status, REQUIRED_FIELDS, SORT_FIELDS
 from wazuh.core.rule import format_rule_decoder_file
 from wazuh.exception import WazuhInternalError, WazuhError
 from wazuh.rbac.decorators import expose_resources
@@ -26,7 +26,7 @@ def get_decoders(names=None, status=None, filename=None, relative_dirname=None, 
     :param parents: Just parent decoders.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
-    :param select: Select which fields to return (separated by comma)
+    :param select: List of selected fields to return
     :param sort_by: Fields to sort the items by
     :param sort_ascending: Sort in ascending (true) or descending (false) order
     :param search_text: Text to search
@@ -40,7 +40,6 @@ def get_decoders(names=None, status=None, filename=None, relative_dirname=None, 
                                       some_msg='Some decoders could not be shown',
                                       all_msg='All selected decoders were shown')
     all_decoders = list()
-    required_fields = {'filename', 'position'}
     if names is None:
         names = list()
 
@@ -75,8 +74,8 @@ def get_decoders(names=None, status=None, filename=None, relative_dirname=None, 
 
     data = process_array(decoders, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         allowed_sort_fields=Status.SORT_FIELDS.value, offset=offset, select=select, limit=limit, q=q,
-                         required_fields=required_fields)
+                         allowed_sort_fields=SORT_FIELDS, offset=offset, select=select, limit=limit, q=q,
+                         required_fields=REQUIRED_FIELDS)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 

@@ -6,7 +6,8 @@ import os
 
 import wazuh.configuration as configuration
 from wazuh import common
-from wazuh.core.rule import check_status, load_rules_from_file, Status, format_rule_decoder_file, RULE_REQUIREMENTS
+from wazuh.core.rule import check_status, load_rules_from_file, format_rule_decoder_file, REQUIRED_FIELDS, \
+    RULE_REQUIREMENTS, SORT_FIELDS
 from wazuh.exception import WazuhError
 from wazuh.rbac.decorators import expose_resources
 from wazuh.results import AffectedItemsWazuhResult
@@ -32,7 +33,7 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
     :param level: Filters the rules by level. level=2 or level=2-5.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
-    :param select: Select which fields to return (separated by comma)
+    :param select: List of selected fields to return
     :param sort_by: Fields to sort the items by
     :param sort_ascending: Sort in ascending (true) or descending (false) order
     :param search_text: Text to search
@@ -45,7 +46,6 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
                                       some_msg='Some rules could not be shown',
                                       all_msg='All selected rules were shown')
     rules = list()
-    required_fields = {'id'}
     if rule_ids is None:
         rule_ids = list()
     levels = None
@@ -88,8 +88,8 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
 
     data = process_array(rules, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, select=select, sort_by=sort_by,
-                         sort_ascending=sort_ascending, allowed_sort_fields=Status.SORT_FIELDS.value, offset=offset,
-                         limit=limit, q=q, required_fields=required_fields)
+                         sort_ascending=sort_ascending, allowed_sort_fields=SORT_FIELDS, offset=offset,
+                         limit=limit, q=q, required_fields=REQUIRED_FIELDS)
 
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']

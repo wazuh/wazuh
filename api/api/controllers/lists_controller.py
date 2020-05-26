@@ -24,7 +24,7 @@ async def get_lists(request, pretty: bool = False, wait_for_complete: bool = Fal
     :param wait_for_complete: Disable timeout response.
     :param offset: First element to return in the collection.
     :param limit: Maximum number of elements to return.
-    :param select: Select which fields to return (separated by comma)
+    :param select: List of selected fields to return
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
     :param search: Looks for elements with the specified string.

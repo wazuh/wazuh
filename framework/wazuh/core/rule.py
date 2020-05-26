@@ -10,14 +10,15 @@ from wazuh import common
 from wazuh.exception import WazuhError
 from wazuh.utils import load_wazuh_xml
 
+REQUIRED_FIELDS = ['id']
 RULE_REQUIREMENTS = ['pci_dss', 'gdpr', 'hipaa', 'nist_800_53', 'gpg13']
+SORT_FIELDS = ['filename', 'relative_dirname', 'description', 'id', 'level', 'status']
 
 
 class Status(Enum):
     S_ENABLED = 'enabled'
     S_DISABLED = 'disabled'
     S_ALL = 'all'
-    SORT_FIELDS = ['filename', 'relative_dirname', 'description', 'id', 'level', 'status']
 
 
 def add_detail(detail, value, details):
