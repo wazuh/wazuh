@@ -265,7 +265,7 @@ def get_new_ruleset(source, url, branch_name=None):
         try:
             f_url = requests.get(url_ruleset)
         except requests.exceptions.RequestException as e:
-            exit(2, "\tDownload Error:{0}.\nExit.".format(e.reason))
+            exit(2, "\tDownload Error:{0}.\nExit.".format(e))
 
         if f_url.ok:
             with open(ruleset_zip, "wb") as f_local:

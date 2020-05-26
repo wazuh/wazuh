@@ -89,8 +89,7 @@ add_library(MODULESD_O STATIC ${modulesd_files})
 
 set_source_files_properties(
   ${modulesd_files}
-  ${syscollector_files}
-  PROPERTIES
+ss  PROPERTIES
   EXTERNAL_OBJECT true
   GENERATED true
   )
@@ -117,7 +116,7 @@ foreach(counter RANGE ${count})
     else ()
       add_executable(${test_name} ${test_name}.c)
     endif()
-    
+
 
     target_link_libraries(
         ${test_name}
