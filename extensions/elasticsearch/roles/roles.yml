@@ -92,6 +92,3 @@ wazuh_ui_user:
     - "read"
   tenant_permissions: []
   static: false
-_meta:
-  type: "roles"
-  config_version: 2
