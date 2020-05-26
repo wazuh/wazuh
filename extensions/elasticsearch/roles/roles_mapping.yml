@@ -1,68 +1,87 @@
 ---
-# In this file users, backendroles and hosts can be mapped to Open Distro Security roles.
-# Permissions for Opendistro roles are configured in roles.yml
-
-_meta:
-  type: "rolesmapping"
-  config_version: 2
-
-# Define your roles mapping here
-
-## Demo roles mapping
-
-all_access:
-  reserved: false
-  backend_roles:
-  - "admin"
-  description: "Maps admin to all_access"
-
-own_index:
-  reserved: false
-  users:
-  - "*"
-  description: "Allow full access to an index named like the username"
-
-logstash:
-  reserved: false
-  backend_roles:
-  - "logstash"
-
-kibana_user:
-  reserved: false
-  backend_roles:
-  - "kibanauser"
-  description: "Maps kibanauser to kibana_user"
-
-readall:
-  reserved: false
-  backend_roles:
-  - "readall"
-
 manage_snapshots:
   reserved: false
+  hidden: false
   backend_roles:
   - "snapshotrestore"
-
-kibana_server:
-  reserved: true
-  users:
-  - "kibanaserver"
-
-wazuh_ui:
-  reserved: true
-  users:
-  - "kibanaserver"
-
-wazuh_ui_user:
+  hosts: []
+  users: []
+  and_backend_roles: []
+logstash:
   reserved: false
+  hidden: false
+  backend_roles:
+  - "logstash"
+  hosts: []
+  users: []
+  and_backend_roles: []
+wazuh_ui_admin:
+  reserved: true
+  hidden: false
+  backend_roles: []
+  hosts: []
+  users:
+  - "wazuhadmin"
+  and_backend_roles: []
+wazuh_ui_user:
+  reserved: true
   hidden: false
   backend_roles: []
   hosts: []
   users:
   - "wazuh_user"
   and_backend_roles: []
-
-wazuh_ui_admin:
-  reserved: true
+own_index:
+  reserved: false
+  hidden: false
+  backend_roles: []
+  hosts: []
   users:
-  - "wazuhadmin"
+  - "*"
+  and_backend_roles: []
+  description: "Allow full access to an index named like the username"
+kibana_user:
+  reserved: false
+  hidden: false
+  backend_roles:
+  - "kibanauser"
+  hosts: []
+  users: []
+  and_backend_roles: []
+  description: "Maps kibanauser to kibana_user"
+_meta:
+  type: "rolesmapping"
+  config_version: 2
+wazuh_ui:
+  reserved: false
+  hidden: false
+  backend_roles: []
+  hosts: []
+  users:
+  - "kibanaserver"
+  and_backend_roles: []
+all_access:
+  reserved: false
+  hidden: false
+  backend_roles:
+  - "admin"
+  hosts: []
+  users: []
+  and_backend_roles: []
+  description: "Maps admin to all_access"
+readall:
+  reserved: false
+  hidden: false
+  backend_roles:
+  - "readall"
+  hosts: []
+  users: []
+  and_backend_roles: []
+kibana_server:
+  reserved: true
+  hidden: false
+  backend_roles: []
+  hosts: []
+  users:
+  - "kibanaserver"
+  and_backend_roles: []

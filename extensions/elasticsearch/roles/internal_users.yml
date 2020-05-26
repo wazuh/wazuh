@@ -1,30 +1,70 @@
 ---
-# This is the internal user database
-# The hash value is a bcrypt hash and can be generated with plugin/tools/hash.sh
-
+logstash:
+  hash: "$2a$12$u1ShR4l4uBS3Uv59Pa2y5.1uQuZBrZtmNfqB3iM/.jL0XoV9sghS2"
+  reserved: false
+  hidden: false
+  backend_roles:
+  - "logstash"
+  attributes: {}
+  description: "Demo logstash user"
+  opendistro_security_roles: []
+  static: false
+wazuhadmin:
+  hash: "$2y$12$dXnfI.By9rtjQEFhLNKCZOClenVYznwhpZeMDuLXor9rkogdGbK7C"
+  reserved: true
+  hidden: false
+  backend_roles:
+  - "wazuh_ui_admin"
+  attributes: {}
+  description: "Wazuh admin"
+  opendistro_security_roles: []
+  static: false
+wazuh_user:
+  hash: "$2y$12$BQixeoQdRubZdVf/7sq1suHwiVRnSst1.lPI2M0.GPZms4bq2D9vO"
+  reserved: true
+  hidden: false
+  backend_roles: []
+  attributes: {}
+  opendistro_security_roles:
+  - "wazuh_ui_user"
+  - "kibana_user"
+  static: false
+snapshotrestore:
+  hash: "$2y$12$DpwmetHKwgYnorbgdvORCenv4NAK8cPUg8AI6pxLCuWf/ALc0.v7W"
+  reserved: false
+  hidden: false
+  backend_roles:
+  - "snapshotrestore"
+  attributes: {}
+  description: "Demo snapshotrestore user"
+  opendistro_security_roles: []
+  static: false
 _meta:
   type: "internalusers"
   config_version: 2
-
-# Define your internal users here
-
-## Demo users
-
 admin:
   hash: "$2a$12$VcCDgh2NDk07JGN0rjGbM.Ad41qVR/YFJcgHp0UGns5JDymv..TOG"
   reserved: true
+  hidden: false
   backend_roles:
   - "admin"
+  attributes: {}
   description: "Demo admin user"
-
+  opendistro_security_roles: []
+  static: false
 kibanaserver:
   hash: "$2a$12$4AcgAt3xwOWadA5s5blL6ev39OXDNhmOesEoo33eZtrq2N0YrU3H."
   reserved: true
+  hidden: false
+  backend_roles: []
+  attributes: {}
   description: "Demo kibanaserver user"
-
+  opendistro_security_roles: []
+  static: false
 kibanaro:
   hash: "$2a$12$JJSXNfTowz7Uu5ttXfeYpeYE0arACvcwlPBStB1F.MI7f0U9Z4DGC"
   reserved: false
+  hidden: false
   backend_roles:
   - "kibanauser"
   - "readall"
@@ -33,41 +73,15 @@ kibanaro:
     attribute2: "value2"
     attribute3: "value3"
   description: "Demo kibanaro user"
-
-logstash:
-  hash: "$2a$12$u1ShR4l4uBS3Uv59Pa2y5.1uQuZBrZtmNfqB3iM/.jL0XoV9sghS2"
-  reserved: false
-  backend_roles:
-  - "logstash"
-  description: "Demo logstash user"
-
+  opendistro_security_roles: []
+  static: false
 readall:
   hash: "$2a$12$ae4ycwzwvLtZxwZ82RmiEunBbIPiAmGZduBAjKN0TXdwQFtCwARz2"
   reserved: false
+  hidden: false
   backend_roles:
   - "readall"
-  description: "Demo readall user"
-
-snapshotrestore:
-  hash: "$2y$12$DpwmetHKwgYnorbgdvORCenv4NAK8cPUg8AI6pxLCuWf/ALc0.v7W"
-  reserved: false
-  backend_roles:
-  - "snapshotrestore"
-  description: "Demo snapshotrestore user"
-
-wazuh_user:
-  hash: "$2y$12$BQixeoQdRubZdVf/7sq1suHwiVRnSst1.lPI2M0.GPZms4bq2D9vO"
-  reserved: false
-  hidden: false
-  backend_roles: []
   attributes: {}
-  opendistro_security_roles:
-  - "wazuh_ui_user"
+  description: "Demo readall user"
+  opendistro_security_roles: []
   static: false
-
-wazuhadmin:
-  hash: "$2y$12$dXnfI.By9rtjQEFhLNKCZOClenVYznwhpZeMDuLXor9rkogdGbK7C"
-  reserved: false
-  backend_roles:
-  - "wazuh_ui_admin"
-  description: "Wazuh admin"
