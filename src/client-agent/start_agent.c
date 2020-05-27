@@ -225,6 +225,8 @@ void start_agent(int is_startup)
                             sleep(agt->enrollment_cfg->delay_after_enrollment);
                             // Successfull enroll, read keys
                             OS_UpdateKeys(&keys);
+                            // Set the crypto method for the agent
+                            os_set_agent_crypto_method(&keys,agt->crypto_method);
                         }
                     }
                     if (!connect_server(agt->rip_id)) {
