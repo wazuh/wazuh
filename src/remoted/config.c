@@ -16,24 +16,11 @@
 #include "config/config.h"
 
 /* Global variables */
-int timeout;
 int pass_empty_keyfile;
-int sender_pool;
-int rto_sec;
-int rto_msec;
-int max_attempts;
-int request_pool;
-int request_timeout;
-int response_timeout;
-int INTERVAL;
-rlim_t nofile;
-int guess_agent_group;
+int timeout;
 int group_data_flush;
 unsigned receive_chunk;
 int buffer_relax;
-int tcp_keepidle;
-int tcp_keepintvl;
-int tcp_keepcnt;
 
 /* Read the config file (the remote access) */
 int RemotedConfig(const char *cfgfile, remoted *cfg)

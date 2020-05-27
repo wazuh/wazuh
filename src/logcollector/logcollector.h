@@ -138,7 +138,7 @@ typedef struct w_msg_queue_t{
 
 
 /* Hash table of queues */
-OSHash * msg_queues_table;
+extern OSHash * msg_queues_table;
 
 /* Message structure */
 typedef struct w_message_t {
@@ -158,7 +158,7 @@ typedef struct w_input_range_t{
     int end_j;
 } w_input_range_t;
 
-w_input_range_t *w_input_threads_range;
+extern w_input_range_t *w_input_threads_range;
 
 /* Init queue hash table */
 void w_msg_hash_queues_init();

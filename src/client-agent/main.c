@@ -17,7 +17,6 @@
 #define ARGV0 "ossec-agentd"
 #endif
 
-int agent_debug_level;
 
 /* Prototypes */
 static void help_agentd(void) __attribute((noreturn));
