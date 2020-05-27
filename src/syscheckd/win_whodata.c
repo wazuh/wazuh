@@ -135,12 +135,12 @@ int get_drive_names(wchar_t *volume_name, char *device);
 void replace_device_path(char **path);
 
 int set_winsacl(const char *dir, int position) {
-	DWORD result = 0;
-	PACL old_sacl = NULL, new_sacl = NULL;
-	PSECURITY_DESCRIPTOR security_descriptor = NULL;
+    DWORD result = 0;
+    PACL old_sacl = NULL, new_sacl = NULL;
+    PSECURITY_DESCRIPTOR security_descriptor = NULL;
     SYSTEM_AUDIT_ACE *ace = NULL;
     PVOID entry_access_it = NULL;
-	HANDLE hdle;
+    HANDLE hdle;
     unsigned int i;
     ACL_SIZE_INFORMATION old_sacl_info;
     unsigned long new_sacl_size;
@@ -149,22 +149,22 @@ int set_winsacl(const char *dir, int position) {
 
     mdebug2(FIM_SACL_CONFIGURE, dir);
 
-	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hdle)) {
-		merror(FIM_ERROR_SACL_OPENPROCESSTOKEN, GetLastError());
-		return 1;
-	}
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hdle)) {
+        merror(FIM_ERROR_SACL_OPENPROCESSTOKEN, GetLastError());
+        return 1;
+    }
 
-	if (set_privilege(hdle, priv, TRUE)) {
-		merror(FIM_ERROR_SACL_ELEVATE_PRIVILEGE, GetLastError());
-		goto end;
-	}
+    if (set_privilege(hdle, priv, TRUE)) {
+        merror(FIM_ERROR_SACL_ELEVATE_PRIVILEGE, GetLastError());
+        goto end;
+    }
 
     privilege_enabled = 1;
 
-	if (result = GetNamedSecurityInfo(dir, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, &old_sacl, &security_descriptor), result != ERROR_SUCCESS) {
-		merror(FIM_ERROR_SACL_GETSECURITYINFO, result);
+    if (result = GetNamedSecurityInfo(dir, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, &old_sacl, &security_descriptor), result != ERROR_SUCCESS) {
+        merror(FIM_ERROR_SACL_GETSECURITYINFO, result);
         goto end;
-	}
+    }
 
     ZeroMemory(&old_sacl_info, sizeof(ACL_SIZE_INFORMATION));
 
@@ -239,9 +239,9 @@ int set_winsacl(const char *dir, int position) {
 
     // Add the new ACE
     if (!AddAce(new_sacl, ACL_REVISION, 0, (LPVOID)ace, ace->Header.AceSize)) {
-		merror(FIM_ERROR_SACL_ACE_ADD, dir);
-		goto end;
-	}
+        merror(FIM_ERROR_SACL_ACE_ADD, dir);
+        goto end;
+    }
 
     // Set a new ACL for the security descriptor
     if (result = SetNamedSecurityInfo((char *) dir, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, new_sacl), result != ERROR_SUCCESS) {
@@ -249,7 +249,7 @@ int set_winsacl(const char *dir, int position) {
         goto end;
     }
 
-	retval = 0;
+    retval = 0;
 end:
     if (privilege_enabled) {
         // Disable the privilege
@@ -313,29 +313,29 @@ int is_valid_sacl(PACL sacl, int is_file) {
 }
 
 int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable) {
-	TOKEN_PRIVILEGES tp;
-	LUID pr_uid;
+    TOKEN_PRIVILEGES tp;
+    LUID pr_uid;
 
-	// Get the privilege UID
-	if (!LookupPrivilegeValue(NULL, privilege, &pr_uid)) {
-		merror(FIM_ERROR_SACL_FIND_PRIVILEGE, privilege, GetLastError());
-		return 1;
-	}
+    // Get the privilege UID
+    if (!LookupPrivilegeValue(NULL, privilege, &pr_uid)) {
+        merror(FIM_ERROR_SACL_FIND_PRIVILEGE, privilege, GetLastError());
+        return 1;
+    }
 
-	tp.PrivilegeCount = 1;
-	tp.Privileges[0].Luid = pr_uid;
+    tp.PrivilegeCount = 1;
+    tp.Privileges[0].Luid = pr_uid;
 
-	if (enable) {
-		tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-	} else {
-		tp.Privileges[0].Attributes = 0;
-	}
+    if (enable) {
+        tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+    } else {
+        tp.Privileges[0].Attributes = 0;
+    }
 
     // Set the privilege to the process
-	if (!AdjustTokenPrivileges(hdle, 0, &tp, sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, (PDWORD)NULL)) {
-		merror(FIM_ERROR_WHODATA_TOKENPRIVILEGES, GetLastError());
-		return 1;
-	}
+    if (!AdjustTokenPrivileges(hdle, 0, &tp, sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, (PDWORD)NULL)) {
+        merror(FIM_ERROR_WHODATA_TOKENPRIVILEGES, GetLastError());
+        return 1;
+    }
 
     if (enable) {
         mdebug2(FIM_ELEVATE_PRIVILEGE, privilege);
@@ -343,7 +343,7 @@ int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable) {
         mdebug2(FIM_REDUCE_PRIVILEGE, privilege);
     }
 
-	return 0;
+    return 0;
 }
 
 int run_whodata_scan() {
@@ -520,9 +520,8 @@ PEVT_VARIANT whodata_event_render(EVT_HANDLE event) {
     return buffer;
 }
 
-int whodata_event_parse(const PEVT_VARIANT raw_data, short *event_id, unsigned __int64 *handle_id, whodata_evt *event_data) {
-    // See event_fields[] definition for array members meaning
-    if (!raw_data || !event_id || !handle_id || !event_data) {
+int whodata_get_event_id(const PEVT_VARIANT raw_data, short *event_id) {
+    if (!raw_data || !event_id) {
         return -1;
     }
 
@@ -533,14 +532,56 @@ int whodata_event_parse(const PEVT_VARIANT raw_data, short *event_id, unsigned _
     }
     *event_id = raw_data[0].Int16Val;
 
-    // ObjectName
-    if (raw_data[2].Type != EvtVarTypeString) {
-        if (*event_id == 4658 || *event_id == 4660) {
-            event_data->path = NULL;
+    return 0;
+}
+
+int whodata_get_handle_id(const PEVT_VARIANT raw_data, unsigned __int64 *handle_id) {
+    if (!raw_data || !handle_id) {
+        return -1;
+    }
+
+    // HandleId
+    // In 32-bit Windows we find EvtVarTypeSizeT or EvtVarTypeHexInt32
+    if (raw_data[5].Type != EvtVarTypeHexInt64) {
+        if (raw_data[5].Type == EvtVarTypeSizeT) {
+            *handle_id = (unsigned __int64) raw_data[5].SizeTVal;
+        } else if (raw_data[5].Type == EvtVarTypeHexInt32) {
+            *handle_id = (unsigned __int64) raw_data[5].UInt32Val;
         } else {
-            merror(FIM_WHODATA_PARAMETER, raw_data[2].Type, "path");
+            merror(FIM_WHODATA_PARAMETER, raw_data[5].Type, "handle_id");
             return -1;
         }
+    } else {
+        *handle_id = raw_data[5].UInt64Val;
+    }
+    return 0;
+}
+
+int whodata_get_access_mask(const PEVT_VARIANT raw_data, unsigned long *mask) {
+    if (!raw_data || !mask) {
+        return -1;
+    }
+
+    // AccessMask
+    if (raw_data[6].Type != EvtVarTypeHexInt32) {
+        merror(FIM_WHODATA_PARAMETER, raw_data[6].Type, "mask");
+        return -1;
+    }
+    *mask = raw_data[6].UInt32Val;
+
+    return 0;
+}
+
+int whodata_event_parse(const PEVT_VARIANT raw_data, whodata_evt *event_data) {
+    // See event_fields[] definition for array members meaning
+    if (!raw_data || !event_data) {
+        return -1;
+    }
+
+    // ObjectName
+    if (raw_data[2].Type != EvtVarTypeString) {
+        merror(FIM_WHODATA_PARAMETER, raw_data[2].Type, "path");
+        return -1;
     }  else {
         if (event_data->path = get_whodata_path(raw_data[2].XmlVal), !event_data->path) {
             return -1;
@@ -586,33 +627,6 @@ int whodata_event_parse(const PEVT_VARIANT raw_data, short *event_id, unsigned _
         event_data->process_id = raw_data[4].UInt64Val;
     }
 
-    // HandleId
-    // In 32-bit Windows we find EvtVarTypeSizeT or EvtVarTypeHexInt32
-    if (raw_data[5].Type != EvtVarTypeHexInt64) {
-        if (raw_data[5].Type == EvtVarTypeSizeT) {
-            *handle_id = (unsigned __int64) raw_data[5].SizeTVal;
-        } else if (raw_data[5].Type == EvtVarTypeHexInt32) {
-            *handle_id = (unsigned __int64) raw_data[5].UInt32Val;
-        } else {
-            merror(FIM_WHODATA_PARAMETER, raw_data[5].Type, "handle_id");
-            return -1;
-        }
-    } else {
-        *handle_id = raw_data[5].UInt64Val;
-    }
-
-    // AccessMask
-    if (raw_data[6].Type != EvtVarTypeHexInt32) {
-        if (*event_id == 4658 || *event_id == 4660) {
-            event_data->mask = 0;
-        } else {
-            merror(FIM_WHODATA_PARAMETER, raw_data[6].Type, "mask");
-            return -1;
-        }
-    } else {
-        event_data->mask = raw_data[6].UInt32Val;
-    }
-
     // SubjectUserSid
     if (raw_data[7].Type != EvtVarTypeSid) {
         mwarn(FIM_WHODATA_PARAMETER, raw_data[7].Type, "user_id");
@@ -634,13 +648,13 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
     int result;
     PEVT_VARIANT buffer = NULL;
     whodata_evt *w_evt;
-    whodata_evt event_data;
     short event_id;
     unsigned __int64 handle_id;
     char is_directory;
     int position;
     whodata_directory *w_dir;
     SYSTEMTIME system_time;
+    unsigned long mask;
 
     if (action == EvtSubscribeActionDeliver) {
         fim_element *item;
@@ -650,12 +664,14 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
             goto clean;
         }
 
-        if (whodata_event_parse(buffer, &event_id, &handle_id, &event_data) != 0) {
+        if (whodata_get_event_id(buffer, &event_id)) {
             goto clean;
         }
 
+        if (whodata_get_handle_id(buffer, &handle_id)) {
+            goto clean;
+        }
         snprintf(hash_id, 21, "%llu", handle_id);
-
 
         switch(event_id) {
 
@@ -663,57 +679,49 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
             case 4656:
                 is_directory = 0;
 
-                if (!event_data.path) {
+                os_calloc(1, sizeof(whodata_evt), w_evt);
+                if (whodata_event_parse(buffer, w_evt) != 0) {
+                    free_whodata_event(w_evt);
                     goto clean;
                 }
 
-                if (position = fim_configuration_directory(event_data.path, "file"), position < 0 &&
-                    !(event_data.mask & FILE_APPEND_DATA) && !(event_data.mask & FILE_WRITE_DATA)) {
+                if (!w_evt->path) {
+                    free_whodata_event(w_evt);
+                    goto clean;
+                }
+
+                if (position = fim_configuration_directory(w_evt->path, "file"), position < 0 &&
+                    !(w_evt->mask & FILE_APPEND_DATA) && !(w_evt->mask & FILE_WRITE_DATA)) {
                     // Discard the file or directory if its monitoring has not been activated
-                    mdebug2(FIM_WHODATA_NOT_ACTIVE, event_data.path);
+                    mdebug2(FIM_WHODATA_NOT_ACTIVE, w_evt->path);
+                    free_whodata_event(w_evt);
                     goto clean;
                 }
 
                 // Ignore the file if belongs to a non-whodata directory
                 if (!(syscheck.wdata.dirs_status[position].status & WD_CHECK_WHODATA) &&
-                    !(event_data.mask & FILE_APPEND_DATA) && !(event_data.mask & FILE_WRITE_DATA)) {
-                    mdebug2(FIM_WHODATA_CANCELED, event_data.path);
+                    !(w_evt->mask & FILE_APPEND_DATA) && !(w_evt->mask & FILE_WRITE_DATA)) {
+                    mdebug2(FIM_WHODATA_CANCELED, w_evt->path);
+                    free_whodata_event(w_evt);
                     goto clean;
                 }
 
                 int device_type;
 
                 // If it is an existing directory, check_path_type returns 2
-                if (device_type = check_path_type(event_data.path), device_type == 2) {
+                if (device_type = check_path_type(w_evt->path), device_type == 2) {
                     is_directory = 1;
                 } else if (device_type == 0) {
                     // If the device could not be found, it was monitored by Syscheck, has not recently been removed,
                     // and had never been entered in the hash table before, we can deduce that it is a removed directory
-                    if (event_data.mask & DELETE ||  event_data.mask & FILE_APPEND_DATA) {
-                        mdebug2(FIM_WHODATA_REMOVE_FOLDEREVENT, event_data.path);
+                    if (w_evt->mask & DELETE ||  w_evt->mask & FILE_APPEND_DATA) {
+                        mdebug2(FIM_WHODATA_REMOVE_FOLDEREVENT, w_evt->path);
                         is_directory = 1;
                     }
                 }
 
-                os_calloc(1, sizeof(whodata_evt), w_evt);
-                w_evt->user_name = event_data.user_name;
-                w_evt->user_id = event_data.user_id;
-                if (!is_directory) {
-                    w_evt->path = event_data.path;
-                    event_data.path = NULL;
-                } else {
-                    // The directory path will be saved in 4663 event
-                    w_evt->path = NULL;
-                }
-
-                w_evt->process_name = event_data.process_name;
-                w_evt->process_id = event_data.process_id;
                 w_evt->mask = 0;
                 w_evt->scan_directory = is_directory;
-
-                event_data.user_name = NULL;
-                event_data.user_id = NULL;
-                event_data.process_name = NULL;
             add_whodata_evt:
                 if (result = whodata_hash_add(syscheck.wdata.fd, hash_id, w_evt, "whodata"), result != 2) {
                     if (result == 1) {
@@ -735,58 +743,58 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
             // Write fd
             case 4663:
                 // Check if the mask is relevant
-                if (event_data.mask) {
+                if (whodata_get_access_mask(buffer, &mask)) {
+                    goto clean;
+                }
 
-                    if (w_evt = OSHash_Get(syscheck.wdata.fd, hash_id), w_evt) {
-                        w_evt->mask |= event_data.mask;
+                if (!mask) {
+                    goto clean;
+                }
 
-                        // Check if it is a rename or copy event
-                        if (w_evt->scan_directory) {
-                            if ((event_data.mask & FILE_WRITE_DATA) || (event_data.mask & FILE_APPEND_DATA)) {
-                                if (w_dir = OSHash_Get_ex(syscheck.wdata.directories, event_data.path), w_dir) {
-                                    // Get the event time
-                                    if (buffer[8].Type != EvtVarTypeFileTime) {
-                                        merror(FIM_WHODATA_PARAMETER, buffer[8].Type, "event_time");
-                                        w_evt->scan_directory = 2;
-                                        goto clean;
-                                    }
-                                    if (!get_file_time(buffer[8].FileTimeVal, &system_time)) {
-                                        merror(FIM_ERROR_WHODATA_HANDLER_EVENT, handle_id);
-                                        goto clean;
-                                    }
+                if (w_evt = OSHash_Get(syscheck.wdata.fd, hash_id), !w_evt) {
+                    goto clean;
+                }
+                w_evt->mask |= mask;
 
-                                    if (!compare_timestamp(&w_dir->timestamp, &system_time)) {
-                                        mdebug2(FIM_WHODATA_DIRECTORY_SCANNED, event_data.path);
-                                        w_evt->scan_directory = 3;
-                                        break;
-                                    }
-                                    mdebug2(FIM_WHODATA_DIRECTORY_SCANNED, event_data.path);
-                                } else {
-                                    // Check if is a valid directory
-                                    if (position = fim_configuration_directory(event_data.path, "file"), position < 0) {
-                                        mdebug2(FIM_WHODATA_DIRECTORY_DISCARDED, event_data.path);
-                                        w_evt->scan_directory = 2;
-                                        break;
-                                    }
-                                    os_calloc(1, sizeof(whodata_directory), w_dir);
-                                    memset(&w_dir->timestamp, 0, sizeof(SYSTEMTIME));
+                // Check if it is a rename or copy event
+                if (w_evt->scan_directory == 0 || (w_evt->mask & (FILE_WRITE_DATA | FILE_APPEND_DATA)) == 0) {
+                    goto clean;
+                }
 
-                                    if (result = whodata_hash_add(syscheck.wdata.directories, event_data.path, w_dir, "directories"), result != 2) {
-                                        w_evt->scan_directory = 2;
-                                        free(w_dir);
-                                        break;
-                                    } else {
-                                        mdebug2(FIM_WHODATA_CHECK_NEW_FILES, event_data.path);
-                                    }
-                                }
-                                w_evt->path = event_data.path;
-                                event_data.path = NULL;
-                            } else if (event_data.mask & DELETE) {
-                                // The directory has been removed
-                                w_evt->path = event_data.path;
-                                event_data.path = NULL;
-                            }
-                        }
+                if (w_dir = OSHash_Get_ex(syscheck.wdata.directories, w_evt->path), w_dir) {
+                    // Get the event time
+                    if (buffer[8].Type != EvtVarTypeFileTime) {
+                        merror(FIM_WHODATA_PARAMETER, buffer[8].Type, "event_time");
+                        w_evt->scan_directory = 2;
+                        goto clean;
+                    }
+                    if (!get_file_time(buffer[8].FileTimeVal, &system_time)) {
+                        merror(FIM_ERROR_WHODATA_HANDLER_EVENT, handle_id);
+                        goto clean;
+                    }
+
+                    if (!compare_timestamp(&w_dir->timestamp, &system_time)) {
+                        mdebug2(FIM_WHODATA_DIRECTORY_SCANNED, w_evt->path);
+                        w_evt->scan_directory = 3;
+                        break;
+                    }
+                    mdebug2(FIM_WHODATA_DIRECTORY_SCANNED, w_evt->path);
+                } else {
+                    // Check if is a valid directory
+                    if (position = fim_configuration_directory(w_evt->path, "file"), position < 0) {
+                        mdebug2(FIM_WHODATA_DIRECTORY_DISCARDED, w_evt->path);
+                        w_evt->scan_directory = 2;
+                        break;
+                    }
+                    os_calloc(1, sizeof(whodata_directory), w_dir);
+                    memset(&w_dir->timestamp, 0, sizeof(SYSTEMTIME));
+
+                    if (result = whodata_hash_add(syscheck.wdata.directories, w_evt->path, w_dir, "directories"), result != 2) {
+                        w_evt->scan_directory = 2;
+                        free(w_dir);
+                        break;
+                    } else {
+                        mdebug2(FIM_WHODATA_CHECK_NEW_FILES, w_evt->path);
                     }
                 }
             break;
@@ -802,12 +810,13 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
 
                         fim_whodata_event(w_evt);
 
-                    } else if (w_evt->scan_directory == 1) {
+                    } else if (w_evt->scan_directory == 1 &&
+                                (w_evt->mask & (DELETE | FILE_APPEND_DATA | FILE_WRITE_DATA))) {
                         // Directory scan has been aborted if scan_directory is 2
                         if (w_evt->mask & DELETE) {
                             fim_whodata_event(w_evt);
 
-                        } else if ((w_evt->mask & FILE_WRITE_DATA) && w_evt->path && (w_dir = OSHash_Get(syscheck.wdata.directories, w_evt->path))) {
+                        } else if ((w_evt->mask & FILE_WRITE_DATA) && (w_dir = OSHash_Get(syscheck.wdata.directories, w_evt->path))) {
                             // Check that a new file has been added
                             GetSystemTime(&w_dir->timestamp);
                             fim_whodata_event(w_evt);
@@ -840,12 +849,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
     }
     retval = 0;
 clean:
-    os_free(event_data.user_name);
-    os_free(event_data.path);
-    os_free(event_data.process_name);
-    if (event_data.user_id) {
-        LocalFree(event_data.user_id);
-    }
     os_free(buffer);
     return retval;
 }
@@ -1041,8 +1044,6 @@ void set_subscription_query(wchar_t *query) {
                                             ") " \
                                         "or " \
                                             "System/EventID = 4658 " \
-                                        "or " \
-                                            "System/EventID = 4660 " \
                                         ") " \
                                     "]",
             AUDIT_SUCCESS, // Only successful events
