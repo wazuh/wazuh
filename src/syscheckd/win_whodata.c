@@ -125,13 +125,8 @@ void whodata_adapt_path(char **path);
 int whodata_check_arch();
 
 // Whodata list operations
-whodata_event_node *whodata_list_add(char *id);
-void whodata_clist_remove(whodata_event_node *node);
-void whodata_list_set_values();
-void whodata_list_remove_multiple(size_t quantity);
 int get_file_time(unsigned long long file_time_val, SYSTEMTIME *system_time);
 int compare_timestamp(SYSTEMTIME *t1, SYSTEMTIME *t2);
-void free_win_whodata_evt(whodata_evt *evt);
 char *get_whodata_path(const short unsigned int *win_path);
 
 // Get volumes and paths of Windows system
@@ -514,6 +509,7 @@ PEVT_VARIANT whodata_event_render(EVT_HANDLE event) {
     if (!EvtRender(context, event, EvtRenderEventValues, used_size, buffer, &used_size, &property_count)) {
         merror(FIM_ERROR_WHODATA_RENDER_EVENT, GetLastError());
         os_free(buffer);
+        return buffer;
     }
 
     if (property_count != fields_number) {
@@ -642,7 +638,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
     short event_id;
     unsigned __int64 handle_id;
     char is_directory;
-    char ignore_remove_event;
     int position;
     whodata_directory *w_dir;
     SYSTEMTIME system_time;
@@ -667,7 +662,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
             // Open fd
             case 4656:
                 is_directory = 0;
-                ignore_remove_event = 0;
 
                 if (!event_data.path) {
                     goto clean;
@@ -698,13 +692,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     if (event_data.mask & DELETE ||  event_data.mask & FILE_APPEND_DATA) {
                         mdebug2(FIM_WHODATA_REMOVE_FOLDEREVENT, event_data.path);
                         is_directory = 1;
-                    } else {
-                        // The file exists at this points. We will only notify its deletion if the event expressly indicates it
-                        ignore_remove_event = 1;
                     }
-                } else {
-                    // The file exists at this points. We will only notify its deletion if the event expressly indicates it
-                    ignore_remove_event = 1;
                 }
 
                 os_calloc(1, sizeof(whodata_evt), w_evt);
@@ -718,18 +706,10 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     w_evt->path = NULL;
                 }
 
-                if (position > -1) {
-                    w_evt->dir_position = position;
-                }
                 w_evt->process_name = event_data.process_name;
                 w_evt->process_id = event_data.process_id;
                 w_evt->mask = 0;
                 w_evt->scan_directory = is_directory;
-                w_evt->ignore_remove_event = ignore_remove_event;
-                w_evt->deleted = 0;
-                w_evt->ppid = -1;
-                w_evt->wnode = whodata_list_add(strdup(hash_id));
-
 
                 event_data.user_name = NULL;
                 event_data.user_id = NULL;
@@ -740,13 +720,13 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                         mdebug1(FIM_WHODATA_HANDLE_UPDATE, hash_id);
                         whodata_evt *w_evtdup;
                         if (w_evtdup = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evtdup) {
-                            free_win_whodata_evt(w_evtdup);
+                            free_whodata_event(w_evtdup);
                             goto add_whodata_evt;
                         } else {
                             merror(FIM_ERROR_WHODATA_HANDLER_REMOVE, hash_id);
                         }
                     }
-                    free_win_whodata_evt(w_evt);
+                    free_whodata_event(w_evt);
                     retval = 1;
                     goto clean;
                 }
@@ -790,7 +770,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                                     }
                                     os_calloc(1, sizeof(whodata_directory), w_dir);
                                     memset(&w_dir->timestamp, 0, sizeof(SYSTEMTIME));
-                                    w_dir->position = position;
 
                                     if (result = whodata_hash_add(syscheck.wdata.directories, event_data.path, w_dir, "directories"), result != 2) {
                                         w_evt->scan_directory = 2;
@@ -812,14 +791,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 }
             break;
 
-            // Deleted file
-            case 4660:
-                if (w_evt = OSHash_Get(syscheck.wdata.fd, hash_id), w_evt) {
-                    // The file has been deleted
-                    w_evt->deleted = 1;
-                }
-            break;
-
             // Close fd
             case 4658:
                 os_calloc(1, sizeof(fim_element), item);
@@ -828,14 +799,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 if (w_evt = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evt && w_evt->path) {
 
                     if (!w_evt->scan_directory) {
-
-                        if (w_evt->deleted) {
-                            // Check if the file has been deleted
-                            w_evt->ignore_remove_event = 0;
-                        } else if (w_evt->mask & DELETE) {
-                            // The file has been moved or renamed
-                            w_evt->ignore_remove_event = 0;
-                        }
 
                         fim_whodata_event(w_evt);
 
@@ -865,7 +828,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     }
                 }
 
-                free_win_whodata_evt(w_evt);
+                free_whodata_event(w_evt);
                 os_free(item);
             break;
 
@@ -898,10 +861,7 @@ int whodata_audit_start() {
         return 1;
     }
 
-    OSHash_SetFreeDataPointer(syscheck.wdata.fd, (void (*)(void *))free_win_whodata_evt);
-
-    memset(&syscheck.w_clist, 0, sizeof(whodata_event_list));
-    whodata_list_set_values();
+    OSHash_SetFreeDataPointer(syscheck.wdata.fd, (void (*)(void *))free_whodata_event);
 
     minfo(FIM_WHODATA_VOLUMES);
     get_volume_names();
@@ -992,81 +952,6 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
     }
 
     return 0;
-}
-
-whodata_event_node *whodata_list_add(char *id) {
-    whodata_event_node *node = NULL;
-    if (syscheck.w_clist.current_size < syscheck.w_clist.max_size) {
-        if (!syscheck.w_clist.alerted && syscheck.w_clist.alert_threshold < syscheck.w_clist.current_size) {
-            syscheck.w_clist.alerted = 1;
-            mwarn(FIM_WARN_WHODATA_EVENT_OVERFLOW, syscheck.w_clist.alert_threshold);
-        }
-    } else {
-        mdebug1(FIM_WHODATA_FULLQUEUE, syscheck.w_clist.max_remove);
-        whodata_list_remove_multiple(syscheck.w_clist.max_remove);
-    }
-    os_calloc(sizeof(whodata_event_node), 1, node);
-    if (syscheck.w_clist.last) {
-        node->prev = syscheck.w_clist.last;
-        syscheck.w_clist.last->next = node;
-        syscheck.w_clist.last = node;
-    } else {
-        syscheck.w_clist.last = syscheck.w_clist.first = node;
-    }
-    node->id = id;
-    syscheck.w_clist.current_size++;
-
-    return node;
-}
-
-void whodata_list_remove_multiple(size_t quantity) {
-    size_t i;
-    whodata_evt *w_evt;
-    for (i = 0; i < quantity && syscheck.w_clist.first; i++) {
-        if (w_evt = OSHash_Delete_ex(syscheck.wdata.fd, syscheck.w_clist.first->id), w_evt) {
-            free_whodata_event(w_evt);
-        }
-        whodata_clist_remove(syscheck.w_clist.first);
-    }
-    mdebug1(FIM_WHODATA_EVENT_DELETED, i);
-}
-
-void whodata_clist_remove(whodata_event_node *node) {
-    if (!node->next && !node->prev) { // Single node
-        syscheck.w_clist.first = syscheck.w_clist.last = NULL;
-    } else { // Multiple nodes
-        if (node->next) {
-            node->next->prev = node->prev;
-            if (!node->prev) {
-                syscheck.w_clist.first = node->next;
-            }
-        }
-
-        if (node->prev) {
-            node->prev->next = node->next;
-            if (!node->next) {
-                syscheck.w_clist.last = node->prev;
-            }
-        }
-    }
-
-    free(node->id);
-    free(node);
-
-    syscheck.w_clist.current_size--;
-
-    if (syscheck.w_clist.alerted && syscheck.w_clist.alert_threshold > syscheck.w_clist.current_size) {
-        syscheck.w_clist.alerted = 0;
-    }
-}
-
-void whodata_list_set_values() {
-    // Cached events list
-    syscheck.w_clist.max_size = WCLIST_MAX_SIZE;
-    syscheck.w_clist.max_remove = syscheck.w_clist.max_size * WLIST_REMOVE_MAX * 0.01;
-    syscheck.w_clist.alert_threshold = syscheck.w_clist.max_size * WLIST_ALERT_THRESHOLD * 0.01;
-    mdebug1(FIM_WHODATA_EVENTQUEUE_VALUES
-    syscheck.w_clist.max_size, syscheck.w_clist.max_remove, syscheck.w_clist.alert_threshold);
 }
 
 int set_policies() {
@@ -1211,12 +1096,6 @@ int compare_timestamp(SYSTEMTIME *t1, SYSTEMTIME *t2) {
     return 1;
 }
 
-void free_win_whodata_evt(whodata_evt *evt) {
-    if (evt) {
-        whodata_clist_remove(evt->wnode);
-        free_whodata_event(evt);
-    }
-}
 
 int check_object_sacl(char *obj, int is_file) {
     HANDLE hdle = NULL;
