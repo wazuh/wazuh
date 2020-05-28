@@ -102,7 +102,7 @@ default_policies:
       actions:
         - rules:read
       resources:
-        - rules:file:*
+        - rule:file:*
       effect: allow
 
   cluster_all:
