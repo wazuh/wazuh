@@ -217,12 +217,8 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
     __memclear(id, name, ip, key, KEYSIZE + 1);
     memset(buffer, '\0', OS_BUFFER_SIZE + 1);
 
-    if (!fp) {
-        return;
-    }
-
     /* Read each line. Lines are divided as "id name ip key" */
-    while (fgets(buffer, OS_BUFFER_SIZE, fp) != NULL) {
+    while (fp && fgets(buffer, OS_BUFFER_SIZE, fp) != NULL) {
         char *tmp_str;
         char *valid_str;
 
@@ -314,8 +310,10 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
     }
 
     /* Close key file */
-    fclose(fp);
-    fp = NULL;
+    if (fp) {
+        fclose(fp);
+        fp = NULL;
+    }
 
     /* Clear one last time before leaving */
     __memclear(id, name, ip, key, KEYSIZE + 1);
