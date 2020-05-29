@@ -1385,3 +1385,50 @@ def test_filter_array_by_query(q, return_length):
         assert (item_keys == set(input_array[0].keys()))
 
     assert (len(result) == return_length)
+
+
+@pytest.mark.parametrize('select, required_fields, expected_result', [
+    (['single_select', 'nested1.nested12.nested121'], {'required'}, {'required': None,
+                                                                   'single_select': None,
+                                                                   'nested1': {
+                                                                       'nested12': {
+                                                                           'nested121': None
+                                                                       }
+                                                                   }}),
+    (['single_select', 'noexists'], None, None),
+    (['required.noexists1.noexists2'], None, None)
+])
+def test_select_array(select, required_fields, expected_result):
+    array = [
+        {
+            'required': None,
+            'single_select': None,
+            'nested1': {
+                'nested12': {
+                    'nested121': None
+                }
+            },
+            'nested2': {
+                'nested21': None
+            }
+        },
+        {
+            'required': None,
+            'single_select': None,
+            'nested1': {
+                'nested12': {
+                    'nested121': None
+                }
+            },
+            'whatever': {
+                'whatever1': None
+            }
+        },
+    ]
+
+    try:
+        result = select_array(array, select=select, required_fields=required_fields)
+        for element in result:
+            assert element == expected_result
+    except WazuhError as e:
+        assert e.code == 1724
