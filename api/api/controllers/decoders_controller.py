@@ -16,8 +16,8 @@ logger = logging.getLogger('wazuh')
 
 
 async def get_decoders(request, decoder_names: list = None, pretty: bool = False, wait_for_complete: bool = False,
-                       offset: int = 0, limit: int = None, sort: str = None, search: str = None, q: str = None,
-                       filename: str = None, relative_dirname: str = None, status: str = None):
+                       offset: int = 0, limit: int = None, select: list = None, sort: str = None, search: str = None,
+                       q: str = None, filename: str = None, relative_dirname: str = None, status: str = None):
     """Get all decoders
 
     Returns information about all decoders included in ossec.conf. This information include decoder's route,
@@ -28,6 +28,7 @@ async def get_decoders(request, decoder_names: list = None, pretty: bool = False
     :param wait_for_complete: Disable timeout response
     :param offset: First element to return in the collection
     :param limit: Maximum number of elements to return
+    :param select: List of selected fields to return
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
     :param search: Looks for elements with the specified string
@@ -40,6 +41,7 @@ async def get_decoders(request, decoder_names: list = None, pretty: bool = False
     f_kwargs = {'names': decoder_names,
                 'offset': offset,
                 'limit': limit,
+                'select': select,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['filename', 'position'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
@@ -130,7 +132,7 @@ async def get_download_file(request, pretty: bool = False, wait_for_complete: bo
 
 
 async def get_decoders_parents(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
-                               limit: int = None, sort: str = None, search: str = None):
+                               limit: int = None, select : list = None, sort: str = None, search: str = None):
     """Get decoders by parents
 
     Returns information about all parent decoders. A parent decoder is a decoder used as base of other decoders
@@ -139,6 +141,7 @@ async def get_decoders_parents(request, pretty: bool = False, wait_for_complete:
     :param wait_for_complete: Disable timeout response
     :param offset: First element to return in the collection
     :param limit: Maximum number of elements to return
+    :param select: List of selected fields to return
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
     :param search: Looks for elements with the specified string
@@ -146,6 +149,7 @@ async def get_decoders_parents(request, pretty: bool = False, wait_for_complete:
     """
     f_kwargs = {'offset': offset,
                 'limit': limit,
+                'select': select,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['filename', 'position'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,

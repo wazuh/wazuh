@@ -270,7 +270,7 @@ class WazuhException(Exception):
                'remediation': 'Characters supported  a-z, A-Z, 0-9, ., _ and -. Max length is 255'
                },
         1723: 'Hash algorithm not available',
-        1724: {'message': 'Not a valid select field ',
+        1724: {'message': 'Not a valid select field',
                'remediation': 'Please, use only allowed select fields'
                },
         1725: {'message': 'Error registering a new agent',
