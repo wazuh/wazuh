@@ -390,7 +390,6 @@ unsigned long int get_time_to_hour(const char * hour, const unsigned int num_day
         free(parts[i]);
 
     free(parts);
-    first_time = 1;
     return (unsigned long int)diff;
 }
 
