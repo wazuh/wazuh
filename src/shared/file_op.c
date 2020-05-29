@@ -1169,7 +1169,7 @@ int checkVista()
     OSVERSIONINFOEX osvi = { .dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX) };
     BOOL bOsVersionInfoEx;
 
-    if (!(bOsVersionInfoEx = GetVersionEx ((OSVERSIONINFO *) &osvi))) {
+    if (bOsVersionInfoEx = GetVersionEx ((OSVERSIONINFO *) &osvi), !bOsVersionInfoEx) {
         osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
         if (!GetVersionEx((OSVERSIONINFO *)&osvi)) {
             merror("Cannot get Windows version number.");
@@ -1407,7 +1407,7 @@ const char *getuname()
 
     /* See http://msdn.microsoft.com/en-us/library/windows/desktop/ms724429%28v=vs.85%29.aspx */
     OSVERSIONINFOEX osvi;
-    SYSTEM_INFO si;
+    SYSTEM_INFO si = {0};
     PGNSI pGNSI;
     PGPI pGPI;
     BOOL bOsVersionInfoEx;
@@ -1609,6 +1609,8 @@ const char *getuname()
                             "GetNativeSystemInfo");
                 if (NULL != pGNSI) {
                     pGNSI(&si);
+                } else {
+                    mwarn("It was not possible to retrieve GetNativeSystemInfo from kernek32.dll");
                 }
 
                 if ( GetSystemMetrics(89) )

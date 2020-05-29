@@ -665,7 +665,7 @@ void test_set_winsacl_no_need_to_configure_acl(void **state) {
 
         // Set the ACL and ACE data
         ace.Header.AceFlags = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG;
-        ace.Mask = FILE_WRITE_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES | DELETE;
+        ace.Mask = FILE_WRITE_DATA | FILE_APPEND_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES | DELETE;
 
         expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
@@ -1284,7 +1284,7 @@ void test_set_winsacl_fail_to_copy_sid(void **state) {
     assert_int_equal(ace.Header.AceType, SYSTEM_AUDIT_ACE_TYPE);
     assert_int_equal(ace.Header.AceFlags, CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG);
     assert_int_equal(ace.Header.AceSize, 9);
-    assert_int_equal(ace.Mask, DELETE | FILE_WRITE_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES);
+    assert_int_equal(ace.Mask, DELETE | FILE_WRITE_DATA | FILE_APPEND_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES);
 }
 
 void test_set_winsacl_fail_to_add_ace(void **state) {
@@ -1386,7 +1386,7 @@ void test_set_winsacl_fail_to_add_ace(void **state) {
     assert_int_equal(ace.Header.AceType, SYSTEM_AUDIT_ACE_TYPE);
     assert_int_equal(ace.Header.AceFlags, CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG);
     assert_int_equal(ace.Header.AceSize, 9);
-    assert_int_equal(ace.Mask, DELETE | FILE_WRITE_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES);
+    assert_int_equal(ace.Mask, DELETE | FILE_WRITE_DATA | FILE_APPEND_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES);
 }
 
 void test_set_winsacl_fail_to_set_security_info(void **state) {
@@ -1497,7 +1497,7 @@ void test_set_winsacl_fail_to_set_security_info(void **state) {
     assert_int_equal(ace.Header.AceType, SYSTEM_AUDIT_ACE_TYPE);
     assert_int_equal(ace.Header.AceFlags, CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG);
     assert_int_equal(ace.Header.AceSize, 9);
-    assert_int_equal(ace.Mask, DELETE | FILE_WRITE_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES);
+    assert_int_equal(ace.Mask, DELETE | FILE_WRITE_DATA | FILE_APPEND_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES);
 }
 
 void test_set_winsacl_success(void **state) {
@@ -1606,7 +1606,7 @@ void test_set_winsacl_success(void **state) {
     assert_int_equal(ace.Header.AceType, SYSTEM_AUDIT_ACE_TYPE);
     assert_int_equal(ace.Header.AceFlags, CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG);
     assert_int_equal(ace.Header.AceSize, 9);
-    assert_int_equal(ace.Mask, DELETE | FILE_WRITE_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES);
+    assert_int_equal(ace.Mask, DELETE | FILE_WRITE_DATA | FILE_APPEND_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES);
 }
 
 /**************************************************************************/
@@ -3154,7 +3154,7 @@ void test_is_valid_sacl_valid(void **state) {
     // Set the ACL and ACE data
     new_sacl.AceCount=1;
     ace.Header.AceFlags = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG;
-    ace.Mask = FILE_WRITE_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES | DELETE;
+    ace.Mask = FILE_WRITE_DATA | WRITE_DAC | FILE_APPEND_DATA | FILE_WRITE_ATTRIBUTES | DELETE;
 
     expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
     expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
@@ -4501,7 +4501,7 @@ void test_whodata_callback_event_4656_not_active(void **state){
     buffer[3].XmlVal = L"PROCESS_NAME";
     buffer[4].UInt64Val = 4;
     buffer[5].UInt64Val = 1234567890123456789;
-    buffer[6].UInt32Val = 6;
+    buffer[6].UInt32Val = DELETE;
     expect_value(wrap_win_whodata_EvtRender, Context, context);
     expect_value(wrap_win_whodata_EvtRender, Fragment, event);
     expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
@@ -4576,7 +4576,7 @@ void test_whodata_callback_event_4656_canceled(void **state){
     buffer[3].XmlVal = L"PROCESS_NAME";
     buffer[4].UInt64Val = 4;
     buffer[5].UInt64Val = 1234567890123456789;
-    buffer[6].UInt32Val = 6;
+    buffer[6].UInt32Val = DELETE;
     expect_value(wrap_win_whodata_EvtRender, Context, context);
     expect_value(wrap_win_whodata_EvtRender, Fragment, event);
     expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
@@ -5352,13 +5352,84 @@ void test_whodata_callback_event_4658_trigger_directory_scan(void **state) {
 
     expect_function_call(__wrap_fim_whodata_event);
 
+    expect_value(__wrap_free_whodata_event, w_evt, w_evt);
+
+    int ret = whodata_callback(action, NULL, event);
+    assert_int_equal(ret, 0);
+}
+
+void test_whodata_callback_event_4658_rename_dir(void **state) {
+
+    EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
+    EVT_HANDLE event;
+    const int NUM_EVENTS = 10;
+    const int SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
+    EVT_VARIANT buffer[NUM_EVENTS];
+    whodata_evt *w_evt = *state;
+    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+    everyone_sid = NULL;
+
+    if(w_evt->path = strdup("C:\\a\\path"), !w_evt->path)
+        fail();
+
+    w_evt->scan_directory = (char)1;
+    w_evt->mask = FILE_APPEND_DATA;
+
+    /* EvtRender first call */
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, 0); // BufferSize
+    will_return(wrap_win_whodata_EvtRender, NULL); // Buffer
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS); // BufferUsed
+    will_return(wrap_win_whodata_EvtRender, 0); // PropertyCount
+    will_return(wrap_win_whodata_EvtRender, 0);
+
+    /* EvtRender second call */
+    memset(buffer, 0, SIZE_EVENTS);
+    buffer[0].Type = EvtVarTypeUInt16; // Correct buffer type
+    buffer[0].Int16Val = (INT16)4658;
+    buffer[1].Type = EvtVarTypeString;
+    buffer[1].XmlVal = L"USERNAME";
+    buffer[2].Type = EvtVarTypeUInt16;
+    buffer[2].Int16Val = (INT16)0;
+    buffer[3].Type = EvtVarTypeString;
+    buffer[3].XmlVal = L"PROCESS_NAME";
+    buffer[4].Type = EvtVarTypeHexInt64;
+    buffer[4].UInt64Val = 4;
+    buffer[5].Type = EvtVarTypeHexInt64;
+    buffer[5].UInt64Val = 1234567890123456789;
+    buffer[6].Type = EvtVarTypeHexInt32;
+    buffer[6].UInt32Val = 6;
+    buffer[7].Type = EvtVarTypeNull;
+    expect_value(wrap_win_whodata_EvtRender, Context, context);
+    expect_value(wrap_win_whodata_EvtRender, Fragment, event);
+    expect_value(wrap_win_whodata_EvtRender, Flags, EvtRenderEventValues);
+    expect_value(wrap_win_whodata_EvtRender, BufferSize, SIZE_EVENTS); // BufferSize
+    will_return(wrap_win_whodata_EvtRender, buffer); // Buffer
+    will_return(wrap_win_whodata_EvtRender, SIZE_EVENTS);// BufferUsed
+    will_return(wrap_win_whodata_EvtRender, 9); // PropertyCount
+    will_return(wrap_win_whodata_EvtRender, 1);
+
+    expect_memory(__wrap_convert_windows_string, string, L"USERNAME", wcslen(L"USERNAME"));
+    will_return(__wrap_convert_windows_string, strdup("USERNAME"));
+
+    expect_memory(__wrap_convert_windows_string, string, L"PROCESS_NAME", wcslen(L"PROCESS_NAME"));
+    will_return(__wrap_convert_windows_string, strdup("PROCESS_NAME"));
+
+    expect_string(__wrap__mwarn, formatted_msg, "(6681): Invalid parameter type (0) for 'user_id'.");
+
+    expect_value(__wrap_OSHash_Delete_ex, self, syscheck.wdata.fd);
+    expect_string(__wrap_OSHash_Delete_ex, key, "1234567890123456789");
+    will_return(__wrap_OSHash_Delete_ex, w_evt);
+
     expect_function_call(__wrap_fim_configuration_directory);
     expect_string(__wrap_fim_configuration_directory, path, "C:\\a\\path");
     expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 0);
 
     expect_function_call(__wrap_fim_checker);
-    expect_value(__wrap_fim_checker, w_evt, NULL);
+    expect_value(__wrap_fim_checker, w_evt, w_evt);
     expect_value(__wrap_fim_checker, report, 1);
 
     expect_value(__wrap_free_whodata_event, w_evt, w_evt);
@@ -6530,7 +6601,7 @@ void test_check_object_sacl_valid_sacl(void **state) {
 
         // Set the ACL and ACE data
         ace.Header.AceFlags = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG;
-        ace.Mask = FILE_WRITE_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES | DELETE;
+        ace.Mask = FILE_WRITE_DATA | FILE_APPEND_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES | DELETE;
 
         expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
@@ -6992,7 +7063,8 @@ void test_run_whodata_scan_no_audit_policies(void **state) {
     expect_string(__wrap__merror, formatted_msg,
          "(6660): 'tmp\\backup-policies' could not be removed: 'No such file or directory' (2).");
 }
-    expect_string(__wrap__mwarn, formatted_msg,
+
+    expect_string(__wrap__merror, formatted_msg,
          "(6916): Local audit policies could not be configured.");
 
     ret = run_whodata_scan();
@@ -7033,20 +7105,12 @@ void test_run_whodata_scan_no_auto_audit_policies(void **state) {
     expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
     will_return(__wrap_wm_exec, 1);
     will_return(__wrap_wm_exec, 0);
+
+    expect_string(__wrap__merror, formatted_msg,
+        "(6915): Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode.");
 }
 
-    expect_string(__wrap__mwarn, formatted_msg,
-        "(6915): Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode.");
-
-    DWORD fields_number = 9;
-
-    expect_value(wrap_win_whodata_EvtCreateRenderContext, ValuePathsCount, fields_number);
-    expect_value(wrap_win_whodata_EvtCreateRenderContext, ValuePaths, event_fields);
-    expect_value(wrap_win_whodata_EvtCreateRenderContext, Flags, EvtRenderContextValues);
-    will_return(wrap_win_whodata_EvtCreateRenderContext, NULL);
-
-    will_return(wrap_win_whodata_GetLastError, (unsigned int) 5);
-    expect_string(__wrap__merror, formatted_msg, "(6645): Error creating the whodata context. Error 5.");
+    expect_string(__wrap__merror, formatted_msg, "(6916): Local audit policies could not be configured.");
 
     ret = run_whodata_scan();
     assert_int_equal(ret, 1);
@@ -7079,17 +7143,48 @@ void test_run_whodata_scan_error_event_channel(void **state) {
 /* Inside set_policies */
 {
     expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
-    will_return(__wrap_IsFile, 0);
-    expect_string(__wrap_remove, filename, "tmp\\backup-policies");
-    will_return(__wrap_remove, 0);
+    will_return(__wrap_IsFile, 1);
 
     expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
-    will_return(__wrap_wm_exec, 1);
     will_return(__wrap_wm_exec, 0);
-}
+    will_return(__wrap_wm_exec, 0);
 
-    expect_string(__wrap__mwarn, formatted_msg,
-        "(6915): Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode.");
+    expect_string(__wrap_fopen, _Filename, "tmp\\backup-policies");
+    expect_string(__wrap_fopen, _Mode, "r");
+    will_return(__wrap_fopen, (FILE*)1234);
+
+    expect_string(__wrap_fopen, _Filename, "tmp\\new-policies");
+    expect_string(__wrap_fopen, _Mode, "w");
+    will_return(__wrap_fopen, (FILE*)2345);
+
+    expect_value(wrap_win_whodata_fgets, __stream, (FILE*)1234);
+    will_return(wrap_win_whodata_fgets, "some policies");
+
+    expect_value(wrap_win_whodata_fprintf, __stream, 2345);
+    expect_string(wrap_win_whodata_fprintf, formatted_msg, "some policies");
+    will_return(wrap_win_whodata_fprintf, 0);
+
+    expect_value(wrap_win_whodata_fgets, __stream, (FILE*)1234);
+    will_return(wrap_win_whodata_fgets, NULL);
+
+    expect_value(wrap_win_whodata_fprintf, __stream, 2345);
+    expect_string(wrap_win_whodata_fprintf, formatted_msg, ",System,File System,{0CCE921D-69AE-11D9-BED3-505054503030},,,1\n");
+    will_return(wrap_win_whodata_fprintf, 0);
+
+    expect_value(wrap_win_whodata_fprintf, __stream, 2345);
+    expect_string(wrap_win_whodata_fprintf, formatted_msg, ",System,Handle Manipulation,{0CCE9223-69AE-11D9-BED3-505054503030},,,1\n");
+    will_return(wrap_win_whodata_fprintf, 0);
+
+    expect_value(__wrap_fclose, _File, (FILE*)2345);
+    will_return(__wrap_fclose, 0);
+
+    expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\new-policies\"");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_value(__wrap_fclose, _File, (FILE*)1234);
+    will_return(__wrap_fclose, 0);
+}
 
     DWORD fields_number = 9;
     EVT_HANDLE event;
@@ -7149,17 +7244,48 @@ void test_run_whodata_scan_success(void **state) {
 /* Inside set_policies */
 {
     expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
-    will_return(__wrap_IsFile, 0);
-    expect_string(__wrap_remove, filename, "tmp\\backup-policies");
-    will_return(__wrap_remove, 0);
+    will_return(__wrap_IsFile, 1);
 
     expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
-    will_return(__wrap_wm_exec, 1);
     will_return(__wrap_wm_exec, 0);
-}
+    will_return(__wrap_wm_exec, 0);
 
-    expect_string(__wrap__mwarn, formatted_msg,
-        "(6915): Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode.");
+    expect_string(__wrap_fopen, _Filename, "tmp\\backup-policies");
+    expect_string(__wrap_fopen, _Mode, "r");
+    will_return(__wrap_fopen, (FILE*)1234);
+
+    expect_string(__wrap_fopen, _Filename, "tmp\\new-policies");
+    expect_string(__wrap_fopen, _Mode, "w");
+    will_return(__wrap_fopen, (FILE*)2345);
+
+    expect_value(wrap_win_whodata_fgets, __stream, (FILE*)1234);
+    will_return(wrap_win_whodata_fgets, "some policies");
+
+    expect_value(wrap_win_whodata_fprintf, __stream, 2345);
+    expect_string(wrap_win_whodata_fprintf, formatted_msg, "some policies");
+    will_return(wrap_win_whodata_fprintf, 0);
+
+    expect_value(wrap_win_whodata_fgets, __stream, (FILE*)1234);
+    will_return(wrap_win_whodata_fgets, NULL);
+
+    expect_value(wrap_win_whodata_fprintf, __stream, 2345);
+    expect_string(wrap_win_whodata_fprintf, formatted_msg, ",System,File System,{0CCE921D-69AE-11D9-BED3-505054503030},,,1\n");
+    will_return(wrap_win_whodata_fprintf, 0);
+
+    expect_value(wrap_win_whodata_fprintf, __stream, 2345);
+    expect_string(wrap_win_whodata_fprintf, formatted_msg, ",System,Handle Manipulation,{0CCE9223-69AE-11D9-BED3-505054503030},,,1\n");
+    will_return(wrap_win_whodata_fprintf, 0);
+
+    expect_value(__wrap_fclose, _File, (FILE*)2345);
+    will_return(__wrap_fclose, 0);
+
+    expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\new-policies\"");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_value(__wrap_fclose, _File, (FILE*)1234);
+    will_return(__wrap_fclose, 0);
+}
 
     DWORD fields_number = 9;
     EVT_HANDLE event;
@@ -7283,6 +7409,9 @@ void test_set_policies_fail_getting_policies(void **state) {
     will_return(__wrap_wm_exec, 1);
     will_return(__wrap_wm_exec, 0);
 
+    expect_string(__wrap__merror, formatted_msg,
+    "(6915): Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode.");
+
     ret = set_policies();
 
     assert_int_equal(ret, 2);
@@ -7383,6 +7512,8 @@ void test_set_policies_unable_to_restore_policies(void **state) {
     expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\new-policies\"");
     will_return(__wrap_wm_exec, 1);
     will_return(__wrap_wm_exec, 0);
+    expect_string(__wrap__merror, formatted_msg,
+        "(6915): Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode.");
 
     expect_value(__wrap_fclose, _File, (FILE*)1234);
     will_return(__wrap_fclose, 0);
@@ -7905,7 +8036,7 @@ void test_state_checker_file_with_valid_sacl(void **state) {
 
             // Set the ACL and ACE data
             ace.Header.AceFlags = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG;
-            ace.Mask = FILE_WRITE_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES | DELETE;
+            ace.Mask = FILE_WRITE_DATA | FILE_APPEND_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES | DELETE;
 
             expect_memory(wrap_win_whodata_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
             expect_value(wrap_win_whodata_AllocateAndInitializeSid, nSubAuthorityCount, 1);
@@ -7991,14 +8122,14 @@ void test_state_checker_dir_readded_error(void **state) {
     }
 
     expect_string(__wrap__merror, formatted_msg,
-        "(6619): Unable to add directory to whodata real time monitoring: 'C:\\a\\path'.");
+        "(6619): Unable to add directory to whodata real time monitoring: 'C:\\a\\path'. It will be monitored in Realtime");
 
     ret = state_checker(input);
 
     assert_int_equal(ret, 0);
     assert_int_equal(syscheck.wdata.dirs_status[0].object_type, WD_STATUS_FILE_TYPE);
     assert_null(syscheck.wdata.dirs_status[0].status & WD_STATUS_EXISTS);
-    assert_non_null(syscheck.opts[0] & WHODATA_ACTIVE);
+    assert_non_null(syscheck.opts[0] & REALTIME_ACTIVE);
 }
 
 void test_state_checker_dir_readded_succesful(void **state) {
@@ -8368,6 +8499,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_whodata_callback_event_4658_file_moved_or_renamed, setup_win_whodata_evt, teardown_win_whodata_evt),
         cmocka_unit_test_setup_teardown(test_whodata_callback_event_4658_file_not_modified, setup_win_whodata_evt, teardown_win_whodata_evt),
         cmocka_unit_test_setup_teardown(test_whodata_callback_event_4658_trigger_directory_scan, setup_win_whodata_evt, teardown_win_whodata_evt),
+        cmocka_unit_test_setup_teardown(test_whodata_callback_event_4658_rename_dir, setup_win_whodata_evt, teardown_win_whodata_evt),
         cmocka_unit_test_setup_teardown(test_whodata_callback_event_4658_new_file_added, setup_win_whodata_evt, teardown_win_whodata_evt),
         cmocka_unit_test_setup_teardown(test_whodata_callback_event_4658_no_new_files, setup_win_whodata_evt, teardown_win_whodata_evt),
         cmocka_unit_test_setup_teardown(test_whodata_callback_event_4658_scan_aborted, setup_win_whodata_evt, teardown_win_whodata_evt),

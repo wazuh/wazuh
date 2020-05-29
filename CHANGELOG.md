@@ -1,6 +1,16 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.13]
+
+### Added
+
+- Vulnerability Detector improvements. ([#5097](https://github.com/wazuh/wazuh/pull/5097))
+  - Include the NVD as feed for Linux agents in Vulnerability Detector.
+  - Improve the Vulnerability Detector engine to correlate alerts between different feeds.
+  - Add Vulnerability Detector module unit testing for Unix source code.
+- New option for the JSON decoder to choose the treatment of Array structures. ([#4836](https://github.com/wazuh/wazuh/pull/4836))
+
 ## [v3.12.3] - 2020-04-30
 
 ### Changed

@@ -52,6 +52,9 @@
         <description>VirusTotal: Alert - $(virustotal.source.file) - $(virustotal.positives) engines detected this file</description>
         <group>gdpr_IV_35.7.d,</group>
         <options>no_full_log</options>
+        <mitre>
+            <id>T1203</id>
+        </mitre>
     </rule>
 
 </group>

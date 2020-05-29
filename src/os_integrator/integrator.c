@@ -385,7 +385,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             if(temp_file_created == 1)
             {
                 int dbg_lvl = isDebug();
-                snprintf(exec_full_cmd, 4095, "%s %s %s %s %s", integrator_config[s]->path, exec_tmp_file, integrator_config[s]->apikey == NULL?"":integrator_config[s]->apikey, integrator_config[s]->hookurl==NULL?"":integrator_config[s]->hookurl, dbg_lvl <= 0 ? "" : "debug");
+                snprintf(exec_full_cmd, 4095, "%s %s %s %s %s", integrator_config[s]->path, exec_tmp_file, integrator_config[s]->apikey == NULL ? "" : integrator_config[s]->apikey, integrator_config[s]->hookurl == NULL ? "" : integrator_config[s]->hookurl, dbg_lvl <= 0 ? "" : "debug");
                 if (dbg_lvl <= 0) strcat(exec_full_cmd, " > /dev/null 2>&1");
 
                 mdebug1("Running: %s", exec_full_cmd);
@@ -394,32 +394,31 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
 
                 if(cmd) {
                     wfd_t * wfd = wpopenv(integrator_config[s]->path, cmd, W_BIND_STDOUT | W_BIND_STDERR | W_CHECK_WRITE);
-
                     if(wfd){
                         char buffer[4096];
                         while (fgets(buffer, sizeof(buffer), wfd->file)) {
                             mdebug2("integratord: %s", buffer);
                         }
-
                         int wp_closefd = wpclose(wfd);
-                        int wstatus = WEXITSTATUS(wp_closefd);
-
-                        if (wstatus == 127) {
-                            // 127 means error in exec
-                            merror("Couldn't execute command (%s). Check file and permissions.", exec_full_cmd);
-                            integrator_config[s]->enabled = 0;
-                        } else if(wstatus != 0){
-                            merror("Unable to run integration for %s -> %s",  integrator_config[s]->name, integrator_config[s]->path);
-                            merror("While running %s -> %s. Output: %s ",  integrator_config[s]->name, integrator_config[s]->path,buffer);
-                            integrator_config[s]->enabled = 0;
+                        if ( WIFEXITED(wp_closefd) ) {
+                            int wstatus = WEXITSTATUS(wp_closefd);
+                            if (wstatus == 127) {
+                                // 127 means error in exec
+                                merror("Couldn't execute command (%s). Check file and permissions.", exec_full_cmd);
+                            } else if(wstatus != 0){
+                                merror("Unable to run integration for %s -> %s",  integrator_config[s]->name, integrator_config[s]->path);
+                                merror("While running %s -> %s. Output: %s ",  integrator_config[s]->name, integrator_config[s]->path, buffer);
+                                merror("Exit status was: %d", wstatus);
+                            } else {
+                                mdebug1("Command ran successfully");
+                            }
                         } else {
-                            mdebug1("Command ran successfully");
+                            merror("Command (%s) execution exited abnormally.", exec_full_cmd);
                         }
+                        
                     } else {
                         merror("Could not launch command %s (%d)", strerror(errno), errno);
-                        integrator_config[s]->enabled = 0;
                     }
-
                     free_strarray(cmd);
                 }
             }
