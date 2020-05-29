@@ -49,30 +49,6 @@ void __wrap__mwarn(const char * file, int line, const char * func, const char *m
     return;
 }
 
-int __wrap_check_day_to_scan(int day, const char *hour) {
-    check_expected(day);
-    check_expected(hour);
-    return mock();
-}
-
-int __wrap_get_time_to_hour(const char * hour) {
-    check_expected(hour);
-    return mock();
-}
-
-int __wrap_get_time_to_day(int wday, const char * hour) {
-    check_expected(wday);
-    check_expected(hour);
-    return mock();
-}
-
-int __wrap_get_time_to_month_day(int month_day, const char* hour, int num_of_months) {
-    check_expected(month_day);
-    check_expected(hour);
-    check_expected(num_of_months);
-    return mock();
-}
-
 time_t __wrap_time(time_t *_time){
     if(!current_time){
         current_time = __real_time(NULL);
@@ -374,12 +350,8 @@ void test_get_next_time_day_configuration(void **state) {
     scan_config->month_interval = true;
     scan_config->interval = 2; //Each 2 months
     scan_config->scan_time = strdup("00:00");
-    expect_value(__wrap_get_time_to_month_day, month_day, 1);
-    expect_string(__wrap_get_time_to_month_day, hour, "00:00");
-    expect_value(__wrap_get_time_to_month_day, num_of_months, 2);
-    will_return(__wrap_get_time_to_month_day, 5);
     time_t ret = _get_next_time(scan_config, "TEST_MODULE", 0);
-    assert_int_equal((int)ret, 5);
+    assert_int_equal((int)ret, get_time_to_month_day(1, "00:00", 2));
 }
 
 
@@ -387,20 +359,15 @@ void test_get_next_time_wday_configuration(void **state) {
     sched_scan_config *scan_config = (sched_scan_config *)  *state;
     scan_config->scan_wday = 2;
     scan_config->scan_time = strdup("00:00");
-    expect_value(__wrap_get_time_to_day, wday, 2);
-    expect_string(__wrap_get_time_to_day, hour, "00:00");
-    will_return(__wrap_get_time_to_day, 15);
     time_t ret = _get_next_time(scan_config, "TEST_MODULE", 0);
-    assert_int_equal((int) ret, 15);
+    assert_int_equal((int) ret, get_time_to_day(2, "00:00", 1, true));
 }
 
 void test_get_next_time_daytime_configuration(void **state) {
     sched_scan_config *scan_config = (sched_scan_config *)  *state;
     scan_config->scan_time = strdup("05:00");
-    expect_string(__wrap_get_time_to_hour, hour, "05:00");
-    will_return(__wrap_get_time_to_hour, 8);
     time_t ret = _get_next_time(scan_config, "TEST_MODULE", 0);
-    assert_int_equal((int) ret, 8);
+    assert_int_equal((int) ret, get_time_to_hour("05:00", 1, true));
 }
 
 void test_get_next_time_interval_configuration(void **state) {
