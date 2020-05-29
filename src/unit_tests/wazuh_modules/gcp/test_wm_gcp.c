@@ -1458,65 +1458,6 @@ static void test_wm_gcp_main_pull_on_start(void **state) {
     assert_null(ret);
 }
 
-static void test_wm_gcp_main_wait_before_pull(void **state) {
-    wm_gcp *gcp_config = *state;
-    void *ret;
-
-    gcp_config->enabled = 1;
-    gcp_config->pull_on_start = 0;
-
-    snprintf(gcp_config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
-    snprintf(gcp_config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
-    snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
-
-    gcp_config->max_messages = 10;
-    gcp_config->logging = 0;    // disabled
-
-    expect_string(__wrap__mtinfo, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtinfo, formatted_msg, "Module started.");
-
-    expect_value(__wrap_sched_scan_get_time_until_next_scan, config, &gcp_config->scan_config);
-    expect_string(__wrap_sched_scan_get_time_until_next_scan, MODULE_TAG, WM_GCP_LOGTAG);
-    expect_value(__wrap_sched_scan_get_time_until_next_scan, run_on_start, 0);
-    will_return(__wrap_sched_scan_get_time_until_next_scan, 10);
-
-    expect_string(__wrap__mtdebug2, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sleeping until: 1970/01/01 00:00:00"); // time is 0 since next_scheduled_scan_time is not being set
-
-    expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "Starting fetching of logs.");
-
-    expect_string(__wrap__mtdebug2, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "Create argument list");
-
-    expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10");
-
-    expect_string(__wrap_wm_exec, command,
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10");
-    expect_value(__wrap_wm_exec, secs, 0);
-    expect_value(__wrap_wm_exec, add_path, NULL);
-
-    will_return(__wrap_wm_exec, strdup("Test output"));
-    will_return(__wrap_wm_exec, 0);
-    will_return(__wrap_wm_exec, 0);
-
-    expect_string(__wrap__mtinfo, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtinfo, formatted_msg, "Logging disabled.");
-
-    expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "Fetching logs finished.");
-
-    will_return(__wrap_FOREVER, 0);
-
-    ret = wm_gcp_main(gcp_config);
-
-    assert_null(ret);
-}
-
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* wm_gcp_run */
@@ -1560,7 +1501,6 @@ int main(void) {
         /* wm_gcp_main */
         cmocka_unit_test(test_wm_gcp_main_disabled),
         cmocka_unit_test(test_wm_gcp_main_pull_on_start),
-        cmocka_unit_test(test_wm_gcp_main_wait_before_pull),
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
