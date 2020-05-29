@@ -1,8 +1,6 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-
-
 import os
 from secrets import token_urlsafe
 from shutil import chown
@@ -10,12 +8,12 @@ from time import time
 
 from jose import JWTError, jwt
 from werkzeug.exceptions import Unauthorized
-from api import configuration
 
+from api import configuration
 from api.api_exception import APIException
 from api.constants import SECURITY_PATH
-from wazuh.rbac import preprocessor
 from wazuh.rbac.orm import AuthenticationManager
+from wazuh.rbac.orm import TokenManager
 
 
 def check_user(user, password, required_scopes=None):
@@ -35,7 +33,6 @@ def check_user(user, password, required_scopes=None):
 
 # Set JWT settings
 JWT_ISSUER = 'wazuh'
-JWT_LIFETIME_SECONDS = configuration.api_conf['auth_token_exp_timeout']
 JWT_ALGORITHM = 'HS256'
 
 # Generate secret file to keep safe or load existing secret
@@ -58,6 +55,22 @@ except IOError as e:
     raise APIException(2002)
 
 
+def change_secret():
+    """Generate new JWT secret"""
+    new_secret = token_urlsafe(512)
+    with open(_secret_file_path, mode='w') as jwt_secret:
+        jwt_secret.write(new_secret)
+
+    global JWT_SECRET
+    JWT_SECRET = new_secret
+
+
+def get_token_blacklist():
+    """Get all token rules"""
+    with TokenManager() as tm:
+        return tm.get_all_rules()
+
+
 def generate_token(user_id=None, rbac_policies=None):
     """Generates an encoded jwt token. This method should be called once a user is properly logged on.
 
@@ -70,10 +83,9 @@ def generate_token(user_id=None, rbac_policies=None):
     payload = {
         "iss": JWT_ISSUER,
         "iat": int(timestamp),
-        "exp": int(timestamp + JWT_LIFETIME_SECONDS),
+        "exp": int(timestamp + configuration.api_conf['auth_token_exp_timeout']),
         "sub": str(user_id),
-        "rbac_policies": rbac_policies,
-        "valid": validation.key
+        "rbac_policies": rbac_policies
     }
 
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
@@ -87,10 +99,12 @@ def decode_token(token):
     """
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        if payload['valid'] != validation.key:
-            raise Unauthorized
-        else:
-            return payload
+        user = payload['sub']
+        with TokenManager() as tm:
+            rules = tm.get_all_rules()
+            if user in rules.keys() and rules[user] >= payload['iat']:
+                raise Unauthorized
+        return payload
     except JWTError as e:
         raise Unauthorized from e
 
@@ -109,19 +123,3 @@ def get_permissions(header):
     permissions = payload['rbac_policies']
 
     return permissions
-
-
-class TokenValidation:
-    def __init__(self, n=int(time())):
-        self._key = n
-
-    @property
-    def key(self):
-        return self._key
-
-    @key.setter
-    def key(self, value):
-        self._key = value
-
-
-validation = TokenValidation()

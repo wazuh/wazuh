@@ -101,6 +101,17 @@
             "description": "centralize API configuration"
         },
 
+        "/api/configuration/security": {
+            "permissions": "0o660",
+            "source": "master",
+            "files": ["rbac.db"],
+            "recursive": false,
+            "restart": false,
+            "remove_subdirs_if_empty": false,
+            "extra_valid": false,
+            "description": "centralize RBAC database"
+        },
+
         "excluded_files": [
             "ar.conf",
             "ossec.conf"

@@ -16,8 +16,8 @@ from typing import Dict
 
 import yaml
 from xml.dom.minidom import parseString
-from api import configuration
 
+from api import configuration
 from wazuh import common, WazuhInternalError, WazuhError
 from wazuh.core.cluster.utils import get_manager_status
 from wazuh.results import WazuhResult
@@ -33,7 +33,8 @@ def status():
 
 
 def get_ossec_log_fields(log):
-    regex_category = re.compile(r"^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+)(?:\[.*)?:\s(DEBUG|INFO|CRITICAL|ERROR|WARNING):(.*)$")
+    regex_category = re.compile(
+        r"^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+)(?:\[.*)?:\s(DEBUG|INFO|CRITICAL|ERROR|WARNING):(.*)$")
 
     match = re.search(regex_category, log)
 
@@ -227,9 +228,13 @@ def update_api_conf(new_config, node_type):
     node_type : str
         Type of node (master, worker)
     """
+    need_revoke = False
     if new_config:
         for key in new_config:
             if key in configuration.api_conf:
+                if (key == 'rbac' or key == 'auth_token_exp_timeout') and \
+                        configuration.api_conf[key] != new_config[key]:
+                    need_revoke = True
                 if isinstance(configuration.api_conf[key], dict) and isinstance(new_config[key], dict):
                     configuration.api_conf[key].update(new_config[key])
                 else:
@@ -243,3 +248,5 @@ def update_api_conf(new_config, node_type):
                 raise WazuhInternalError(1005)
     else:
         raise WazuhError(1105)
+
+    return need_revoke

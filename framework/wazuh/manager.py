@@ -11,6 +11,7 @@ from os import remove
 from os.path import exists, join
 
 from api import configuration as api_conf
+from api.controllers.security_controller import revoke_all_tokens
 from wazuh import Wazuh
 from wazuh import common
 from wazuh import configuration
@@ -307,7 +308,8 @@ def update_api_config(updated_config=None):
     result = AffectedItemsWazuhResult(**_update_config_default_result_kwargs)
 
     try:
-        update_api_conf(updated_config, get_node().get('type'))
+        if update_api_conf(updated_config, get_node().get('type')):
+            revoke_all_tokens(request={'token_info': {'rbac_policies': {'security:revoke': {'*:*:*': 'allow'}}}})
         result.affected_items.append(node_id)
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)

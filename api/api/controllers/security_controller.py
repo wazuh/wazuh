@@ -33,7 +33,7 @@ async def login_user(request, user, auth_context=None):
 
     dapi = DistributedAPI(f=preprocessor.get_permissions,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
+                          request_type='local_any',
                           is_async=False,
                           logger=logger
                           )
@@ -571,8 +571,9 @@ async def revoke_all_tokens(request):
 
     dapi = DistributedAPI(f=security.revoke_tokens,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
+                          request_type='distributed_master',
                           is_async=False,
+                          broadcasting=True,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )

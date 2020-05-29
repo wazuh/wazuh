@@ -8,9 +8,9 @@ import re
 from datetime import datetime
 from enum import IntEnum
 from shutil import chown
+from time import time
 
 import yaml
-from api.constants import SECURITY_PATH
 from sqlalchemy import create_engine, UniqueConstraint, Column, DateTime, String, Integer, ForeignKey, Boolean
 from sqlalchemy.dialects.sqlite import TEXT
 from sqlalchemy.exc import IntegrityError, InvalidRequestError
@@ -18,6 +18,9 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, backref
 from sqlalchemy.orm.exc import UnmappedInstanceError
 from werkzeug.security import check_password_hash, generate_password_hash
+
+from api.configuration import api_conf
+from api.constants import SECURITY_PATH
 
 # Start a session and set the default security elements
 _auth_db_file = os.path.join(SECURITY_PATH, 'rbac.db')
@@ -59,8 +62,11 @@ class SecurityError(IntEnum):
     ADMIN_RESOURCES = -4
     # The role does not exist in the database
     USER_NOT_EXIST = -5
+    # The token-rule does not exist in the database
+    TOKEN_RULE_NOT_EXIST = -6
 
 
+# Declare relational tables
 class RolesPolicies(_Base):
     """
     Relational table between Roles and Policies, in this table are stored the relationship between the both entities
@@ -97,7 +103,7 @@ class UserRoles(_Base):
 
     # Schema, Many-To-Many relationship
     id = Column('id', Integer, primary_key=True)
-    user_id = Column('user_id', Integer, ForeignKey("users.username", ondelete='CASCADE'))
+    user_id = Column('user_id', String(32), ForeignKey("users.username", ondelete='CASCADE'))
     role_id = Column('role_id', Integer, ForeignKey("roles.id", ondelete='CASCADE'))
     level = Column('level', Integer, default=0)
     created_at = Column('created_at', DateTime, default=datetime.utcnow())
@@ -105,7 +111,38 @@ class UserRoles(_Base):
                       )
 
 
-# Declare tables
+# Declare basic tables
+class TokenBlacklist(_Base):
+    """
+    Table between Usernames and Policies, in this table are stored the relationship between the both entities
+    The information stored from Roles and Policies are:
+        username: Affected username
+        iat_invalid_until: The tokens that has an iat prior to this timestamp will be invalidated
+        is_valid_until: Deadline for the rule's validity. To ensure that we can delete this rule,
+        the deadline will be the time of token creation plus the time of token validity.
+        This way, when we delete this rule, the token will be invalid by time.
+    """
+    __tablename__ = "token_blacklist"
+
+    username = Column('username', String(32), primary_key=True)
+    iat_invalid_until = Column('iat_invalid_until', Integer)
+    is_valid_until = Column('is_valid_until', Integer)
+    __table_args__ = (UniqueConstraint('username', name='user_rule'),)
+
+    def __init__(self, username):
+        self.username = username
+        self.iat_invalid_until = int(time())
+        self.is_valid_until = self.iat_invalid_until + api_conf['auth_token_exp_timeout']
+
+    def to_dict(self):
+        """Return the information of one policy and the roles that have assigned
+
+        :return: Dict with the information
+        """
+        return {'username': self.username, 'iat_invalid_until': self.iat_invalid_until,
+                'is_valid_until': self.is_valid_until}
+
+
 class User(_Base):
     __tablename__ = 'users'
 
@@ -256,6 +293,140 @@ class Policies(_Base):
         return {'id': self.id, 'name': self.name, 'policy': json.loads(self.policy), 'roles': roles}
 
 
+class TokenManager:
+    """
+    This class is the manager of Token blacklist, this class provided
+    all the methods needed for thetoken blacklist administration.
+    """
+
+    def is_token_valid(self, username: str, token_iat_time: int):
+        """Check if specified token is valid
+
+        Parameters
+        ----------
+        username : str
+            Current token's username
+        token_iat_time : int
+            Token's issue timestamp
+
+        Returns
+        -------
+        True if is valid, False if not
+        """
+        try:
+            rule = self.session.query(TokenBlacklist).filter_by(username=username).first()
+            return not rule or (token_iat_time > rule.iat_invalid_until)
+        except IntegrityError:
+            return True
+
+    def get_all_rules(self):
+        """Return a dictionary where keys are usernames and the value of each them is iat_invalid_until
+
+        Returns
+        -------
+        dict
+        """
+        try:
+            rules = map(TokenBlacklist.to_dict, self.session.query(TokenBlacklist).all())
+            format_rules = dict()
+            for rule in list(rules):
+                format_rules[rule['username']] = rule['iat_invalid_until']
+            return format_rules
+        except IntegrityError:
+            return SecurityError.TOKEN_RULE_NOT_EXIST
+
+    def add_user_rules(self, users: set):
+        """Add new rules for users-token. Both, iat_invalid_until and is_valid_until are generated automatically
+
+        Parameters
+        ----------
+        users : set
+            Set with the affected users
+
+        Returns
+        -------
+        True if the success, SecurityError.ALREADY_EXIST if failed
+        """
+        try:
+            self.delete_all_expires_rules()
+            for username in users:
+                self.delete_rule(username=username)
+                self.session.add(TokenBlacklist(username=username))
+                self.session.commit()
+            return True
+        except IntegrityError:
+            self.session.rollback()
+            return SecurityError.ALREADY_EXIST
+
+    def delete_rule(self, username: str):
+        """Remove the rule for the specified user
+
+        Parameters
+        ----------
+        username : str
+            Desired username
+
+        Returns
+        -------
+        True if success, SecurityError.TOKEN_RULE_NOT_EXIST if failed
+        """
+        try:
+            self.session.query(TokenBlacklist).filter_by(username=username).delete()
+            self.session.commit()
+            return True
+        except IntegrityError:
+            self.session.rollback()
+            return SecurityError.TOKEN_RULE_NOT_EXIST
+
+    def delete_all_expires_rules(self):
+        """Delete all expires rules in the system
+
+        Returns
+        -------
+        List of removed user's rules
+        """
+        try:
+            list_user = list()
+            current_time = int(time())
+            tokens_in_blacklist = self.session.query(TokenBlacklist).all()
+            for user_token in tokens_in_blacklist:
+                token_rule = self.session.query(TokenBlacklist).filter_by(username=user_token.username)
+                if token_rule.first() and current_time > token_rule.first().is_valid_until:
+                    token_rule.delete()
+                    self.session.commit()
+                    list_user.append(int(user_token.username))
+            return list_user
+        except IntegrityError:
+            self.session.rollback()
+            return False
+
+    def delete_all_rules(self):
+        """Delete all existent rules in the system
+
+        Returns
+        -------
+        List of removed user's rules
+        """
+        try:
+            list_user = list()
+            tokens_in_blacklist = self.session.query(TokenBlacklist).all()
+            for user_token in tokens_in_blacklist:
+                list_user.append(int(user_token.username))
+                self.session.query(TokenBlacklist).filter_by(username=user_token.username).delete()
+                self.session.commit()
+            return list_user
+        except IntegrityError:
+            self.session.rollback()
+            return False
+
+    def __enter__(self):
+        self.session = _Session()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.session.close()
+
+
 class AuthenticationManager:
     """Class for dealing with authentication stuff without worrying about database.
     It manages users and token generation.
@@ -308,7 +479,7 @@ class AuthenticationManager:
 
         try:
             if self.session.query(User).filter_by(username=username).first():
-            # If the user has one or more roles associated with it, the associations will be eliminated.
+                # If the user has one or more roles associated with it, the associations will be eliminated.
                 with UserRolesManager() as urm:
                     urm.remove_all_roles_in_user(username=username)
                 self.session.delete(self.session.query(User).filter_by(username=username).first())
