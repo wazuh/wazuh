@@ -111,60 +111,20 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
     int overwrite = -1;
     int j;
 
-    for (j = 0; syscheck->dir && syscheck->dir[j]; j++) {
-        /* Duplicate entry */
-        if (strcmp(syscheck->dir[j], entry) == 0) {
-            mdebug2("Overwriting the file entry %s", entry);
-            overwrite = j;
-        }
-    }
-
-    /* If overwrite < 0, syscheck entry is added at the end */
-    if(overwrite != -1) {
-        pl = overwrite;
-    }
-
-    if (reg == 1) {
-#ifdef WIN32
-        if (syscheck->registry == NULL) {
-            os_calloc(2, sizeof(registry), syscheck->registry);
-            syscheck->registry[pl + 1].entry = NULL;
-            syscheck->registry[pl].tag = NULL;
-            syscheck->registry[pl + 1].tag = NULL;
-            syscheck->registry[pl].arch = vals;
-            os_strdup(entry, syscheck->registry[pl].entry);
-        } else if (overwrite < 0) {
-            bool duplicated_registry = false;
-            while (syscheck->registry[pl].entry != NULL) {
-                /* Duplicated entry */
-                if (strcmp(syscheck->registry[pl].entry, entry) == 0 && vals == syscheck->registry[pl].arch) {
-                    duplicated_registry = true;
-                    mdebug2("Duplicated registration entry: %s", syscheck->registry[pl].entry);
-                    break;
-                }
-                pl++;
+    if (!reg) {
+        for (j = 0; syscheck->dir && syscheck->dir[j]; j++) {
+            /* Duplicate entry */
+            if (strcmp(syscheck->dir[j], entry) == 0) {
+                mdebug2("Overwriting the file entry %s", entry);
+                overwrite = j;
             }
-            if (!duplicated_registry){
-                os_realloc(syscheck->registry, (pl + 2) * sizeof(registry),
-                        syscheck->registry);
-                syscheck->registry[pl + 1].entry = NULL;
-                syscheck->registry[pl].tag = NULL;
-                syscheck->registry[pl + 1].tag = NULL;
-                syscheck->registry[pl].arch = vals;
-                os_strdup(entry, syscheck->registry[pl].entry);
-            }
-        } else {
-            os_free(syscheck->registry[pl].tag);
-            syscheck->registry[pl].arch = vals;
         }
 
-        if (tag) {
-            os_strdup(tag, syscheck->registry[pl].tag);
+        /* If overwrite < 0, syscheck entry is added at the end */
+        if(overwrite != -1) {
+            pl = overwrite;
         }
-
-#endif
-    }
-    else {
+        
         if (syscheck->dir == NULL) {
             os_calloc(2, sizeof(char *), syscheck->dir);
             os_calloc(strlen(entry) + 2, sizeof(char), syscheck->dir[0]);
@@ -270,6 +230,45 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
             os_strdup(tag, syscheck->tag[pl]);
         }
     }
+#ifdef WIN32
+    else {
+        if (syscheck->registry == NULL) {
+            os_calloc(2, sizeof(registry), syscheck->registry);
+            syscheck->registry[pl + 1].entry = NULL;
+            syscheck->registry[pl].tag = NULL;
+            syscheck->registry[pl + 1].tag = NULL;
+            syscheck->registry[pl].arch = vals;
+            os_strdup(entry, syscheck->registry[pl].entry);
+        } else if (overwrite < 0) {
+            bool duplicated_registry = false;
+            while (syscheck->registry[pl].entry != NULL) {
+                /* Duplicated entry */
+                if (strcmp(syscheck->registry[pl].entry, entry) == 0 && vals == syscheck->registry[pl].arch) {
+                    duplicated_registry = true;
+                    mdebug2("Duplicated registration entry: %s", syscheck->registry[pl].entry);
+                    break;
+                }
+                pl++;
+            }
+            if (!duplicated_registry){
+                os_realloc(syscheck->registry, (pl + 2) * sizeof(registry),
+                        syscheck->registry);
+                syscheck->registry[pl + 1].entry = NULL;
+                syscheck->registry[pl].tag = NULL;
+                syscheck->registry[pl + 1].tag = NULL;
+                syscheck->registry[pl].arch = vals;
+                os_strdup(entry, syscheck->registry[pl].entry);
+            }
+        } else {
+            os_free(syscheck->registry[pl].tag);
+            syscheck->registry[pl].arch = vals;
+        }
+
+        if (tag) {
+            os_strdup(tag, syscheck->registry[pl].tag);
+        }
+    }
+#endif
 }
 
 #ifdef WIN32
