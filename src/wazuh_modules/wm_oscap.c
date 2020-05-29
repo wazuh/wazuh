@@ -45,13 +45,15 @@ void* wm_oscap_main(wm_oscap *oscap) {
     // Check configuration and show debug information
     wm_oscap_setup(oscap);
     char * timestamp = NULL;
+    int current_daylight = -1;
+    int future_daylight = -1;
     mtinfo(WM_OSCAP_LOGTAG, "Module started.");
 
     // Main loop
 
     do {
         const time_t time_sleep = sched_scan_get_time_until_next_scan(&(oscap->scan_config), WM_OSCAP_LOGTAG, oscap->flags.scan_on_start);
-        
+
         if (oscap->state.next_time == 0) {
             oscap->state.next_time = oscap->scan_config.time_start + time_sleep;
         }
@@ -60,11 +62,13 @@ void* wm_oscap_main(wm_oscap *oscap) {
             mterror(WM_OSCAP_LOGTAG, "Couldn't save running state.");
 
         if (time_sleep) {
-            const int next_scan_time = sched_get_next_scan_time(oscap->scan_config);
+            int next_scan_time = sched_get_next_scan_time(oscap->scan_config);
+            check_daylight(current_daylight, &future_daylight, &next_scan_time);
             timestamp = w_get_timestamp(next_scan_time);
             mtdebug2(WM_OSCAP_LOGTAG, "Sleeping until: %s", timestamp);
             os_free(timestamp);
             w_sleep_until(next_scan_time);
+            current_daylight = future_daylight;
         }
 
         mtinfo(WM_OSCAP_LOGTAG, "Starting evaluation.");

@@ -64,6 +64,14 @@ int sched_scan_read(sched_scan_config *scan_config, xml_node **nodes, const char
  * */
 time_t sched_scan_get_time_until_next_scan(sched_scan_config *config, const char *MODULE_TAG, const int run_on_start);
 
+/**
+ * @brief Function to check the change of daylight to add or subtract an hour
+ * 
+ * @param next_scan_time next scan time to check the daylight
+ * @param current_daylight current daylight
+ */
+void check_daylight(int current_daylight, int * future_daylight, int * next_scan_time);
+
 void sched_scan_dump(const sched_scan_config* scan_config, cJSON *cjson_object);
 int is_sched_tag(const char* tag);
 #endif /* SCHED_SCAN_H */
