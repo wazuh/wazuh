@@ -37,7 +37,7 @@ void wm_gcp_run(const wm_gcp *data) {
     test_gcp_date_storage[test_gcp_date_counter++] = *date;
     if(test_gcp_date_counter >= TEST_MAX_DATES){
         // Break infinite loop
-        disable_forever_loop();
+        will_return(__wrap_FOREVER, 0);
     }
 }
 
@@ -79,7 +79,7 @@ static int teardown_module(){
 }
 
 static int setup_test_executions(void **state) {
-    enable_forever_loop();
+    will_return(__wrap_FOREVER, 1);
     test_gcp_date_counter = 0;
     return 0;
 }

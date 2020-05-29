@@ -13,8 +13,6 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-#include "./run_check.h"
-
 struct state_t state;
 
 WINBOOL wrap_SetThreadPriority (HANDLE hThread, int nPriority) {

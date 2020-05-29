@@ -27,7 +27,7 @@ int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const 
     test_azure_date_storage[test_azure_date_counter++] = *date;
     if(test_azure_date_counter >= TEST_MAX_DATES){
         // Break infinite loop
-        disable_forever_loop();
+        will_return(__wrap_FOREVER, 0);
     }
     *exitcode = 0;
     return 0;
@@ -89,7 +89,7 @@ static int teardown_module(){
 }
 
 static int setup_test_executions(void **state) {
-    enable_forever_loop();
+    will_return(__wrap_FOREVER, 1);
     test_azure_date_counter = 0;
     return 0;
 }

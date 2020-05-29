@@ -29,7 +29,7 @@ void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
     test_aws_date_storage[test_aws_date_counter++] = *date;
     if(test_aws_date_counter >= TEST_MAX_DATES) {
         // Break infinite loop
-        disable_forever_loop();
+        will_return(__wrap_FOREVER, 0);
     }
 }
 /****************************************************************/
@@ -74,7 +74,7 @@ static int teardown_module(){
 }
 
 static int setup_test_executions(void **state) {
-    enable_forever_loop();
+    will_return(__wrap_FOREVER, 1);
     wm_max_eps = 1;
     test_aws_date_counter = 0;
     return 0;

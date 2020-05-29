@@ -221,7 +221,7 @@ if(${TARGET} STREQUAL "winagent")
                                            -Wl,--wrap=OSHash_Delete_ex,--wrap=_mterror,--wrap=check_path_type,--wrap=_minfo \
                                            -Wl,--wrap=OSHash_Create,--wrap=OSHash_SetFreeDataPointer,--wrap=fim_whodata_event \
                                            -Wl,--wrap=fim_configuration_directory,--wrap=fim_checker,--wrap=OSHash_Get \
-                                           -Wl,--wrap=convert_windows_string,--wrap=OSHash_Get_ex")
+                                           -Wl,--wrap=convert_windows_string,--wrap=OSHash_Get_ex,--wrap=FOREVER")
 endif()
 
 # Compiling tests

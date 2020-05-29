@@ -44,6 +44,9 @@ if(NOT WAZUHEXT)
   message(FATAL_ERROR "libwazuhext not found! Aborting...")
 endif()
 
+add_subdirectory(syscheckd)
+add_subdirectory(shared)
+
 # Config files
 if(${TARGET} STREQUAL "winagent")
   configure_file("test_syscheck_win.conf" "syscheckd/test_syscheck.conf" NEWLINE_STYLE WIN32)

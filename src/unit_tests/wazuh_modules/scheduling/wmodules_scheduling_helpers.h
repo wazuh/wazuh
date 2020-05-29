@@ -17,9 +17,6 @@ typedef struct test_structure {
 const XML_NODE string_to_xml_node(const char * string, OS_XML *_lxml);
 sched_scan_config init_config_from_string(const char* string);
 
-void disable_forever_loop();
-void enable_forever_loop();
-
 /* Sets current simulation time */
 void set_current_time(time_t _time);
 

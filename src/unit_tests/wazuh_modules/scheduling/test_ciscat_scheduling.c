@@ -28,7 +28,7 @@ int __wrap_os_random() {
     test_ciscat_date_storage[test_ciscat_date_counter++] = *date;
     if(test_ciscat_date_counter >= TEST_MAX_DATES){
         // Break infinite loop
-        disable_forever_loop();
+        will_return(__wrap_FOREVER, 0);
     }
     return 0;
 }
@@ -83,7 +83,7 @@ static int teardown_module(){
 }
 
 static int setup_test_executions() {
-    enable_forever_loop();
+    will_return(__wrap_FOREVER, 1);
     test_ciscat_date_counter = 0;
     return 0;
 }
