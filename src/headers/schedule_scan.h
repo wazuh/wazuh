@@ -72,6 +72,46 @@ time_t sched_scan_get_time_until_next_scan(sched_scan_config *config, const char
  */
 void check_daylight(int current_daylight, int * future_daylight, int * next_scan_time);
 
+/**
+ * @brief Get time in seconds to the specified hour in hh:mm
+ * 
+ * @param hourtime of the day hh:mm format
+ * @param num_weeks number of days interval
+ * @param first_time if it the next time we need to obtain or we respect the interval number of days
+ * @return amount of time in seconds
+*/
+unsigned long int get_time_to_hour(const char * hour, const unsigned int num_days, bool first_time);
+
+/**
+ * @brief Get time to reach a particular day of the week and hour
+ * 
+ * @param wday day of the weak
+ * @param hour time of the day hh:mm format
+ * @param num_weeks number of weeks interval
+ * @param first_time if it the next day we need to obtain or we respect the interval number of days
+ * @return amount of time in seconds
+ * */
+unsigned long int get_time_to_day(int wday, const char * hour, const unsigned int num_weeks, bool first_time);
+
+/**
+ * @brief Get time to reach a particular day of the month and hour
+ * 
+ * @param month_day day of the month
+ * @param hour time of the day hh:mm format
+ * @param num_of_months in case we want to check every certain number of months
+ * @return amount of time in seconds
+ * */
+unsigned long int get_time_to_month_day(int month_day, const char* hour, int num_of_months);
+
+/**
+ * @brief Function to look for the correct day of the month to run a wodle
+ * 
+ * @param day day of the month
+ * @param hour time of the day hh:mm format
+ * @return 0 if we are in the day of the scan, -1 otherwise
+ * */
+int check_day_to_scan(int day, const char *hour);
+
 void sched_scan_dump(const sched_scan_config* scan_config, cJSON *cjson_object);
 int is_sched_tag(const char* tag);
 #endif /* SCHED_SCAN_H */
