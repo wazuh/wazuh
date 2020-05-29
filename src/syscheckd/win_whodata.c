@@ -722,23 +722,33 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
 
                 w_evt->mask = 0;
                 w_evt->scan_directory = is_directory;
-            add_whodata_evt:
-                if (result = whodata_hash_add(syscheck.wdata.fd, hash_id, w_evt, "whodata"), result != 2) {
-                    if (result == 1) {
-                        mdebug1(FIM_WHODATA_HANDLE_UPDATE, hash_id);
-                        whodata_evt *w_evtdup;
-                        if (w_evtdup = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evtdup) {
-                            free_whodata_event(w_evtdup);
-                            goto add_whodata_evt;
-                        } else {
-                            merror(FIM_ERROR_WHODATA_HANDLER_REMOVE, hash_id);
-                        }
-                    }
+
+                if (result = whodata_hash_add(syscheck.wdata.fd, hash_id, w_evt, "whodata"), result == 0) {
                     free_whodata_event(w_evt);
-                    retval = 1;
                     goto clean;
                 }
-            break;
+
+                // Duplicate event handle, attempt to replace it
+                if (result == 1) {
+                    whodata_evt *w_evtdup;
+
+                    mdebug1(FIM_WHODATA_HANDLE_UPDATE, hash_id);
+                    if (w_evtdup = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), !w_evtdup) {
+                        merror(FIM_ERROR_WHODATA_HANDLER_REMOVE, hash_id);
+                        free_whodata_event(w_evt);
+                        goto clean;
+                    }
+                    free_whodata_event(w_evtdup);
+
+                    if (result = whodata_hash_add(syscheck.wdata.fd, hash_id, w_evt, "whodata"), result != 2) {
+                        if(result == 1){
+                            merror(FIM_ERROR_WHODATA_EVENTADD, "whodata", hash_id);
+                        }
+                        free_whodata_event(w_evt);
+                        goto clean;
+                    }
+                }
+                break;
 
             // Write fd
             case 4663:
@@ -843,7 +853,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
 
             default:
                 merror(FIM_ERROR_WHODATA_EVENTID);
-                retval = 1;
                 goto clean;
         }
     }
