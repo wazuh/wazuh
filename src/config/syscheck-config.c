@@ -1194,6 +1194,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             if (!syscheck->file_limit_enabled) {
                 syscheck->file_limit = 0;
             }
+
+            OS_ClearNode(children);
         }
 
         /* Get if xml_scan_on_start */
