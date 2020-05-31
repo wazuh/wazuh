@@ -40,7 +40,7 @@ bool DBSyncImplementation::InsertBulkData(uint64_t handle, const char* json_raw)
     auto json { nlohmann::json::parse(json_raw)};
     auto it = GetDatabaseContext(handle);
     if (m_dbsync_list.end() != it) {
-      ret_val = (*it)->GetDatabase()->BulkInsert(json[0]);
+      ret_val = (*it)->GetDatabase()->BulkInsert(json[0]["table"], json[0]["data"]);
     }
   } catch (const nlohmann::json::parse_error& e) {
     std::cout << "message: " << e.what() << std::endl

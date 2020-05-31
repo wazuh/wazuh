@@ -12,7 +12,7 @@ int main(int argc, char* argv[])
     if (0 != handle)
     {
       do {
-        if(insert_bulk(handle, insert_sql.c_str())) {
+        if(insert(handle, nullptr)) {
           std::cout << "true" << std::endl;
         } else {
           std::cout << "false" << std::endl;
