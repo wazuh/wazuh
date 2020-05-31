@@ -4,45 +4,7 @@
 #include <tuple>
 #include <iostream>
 
-
-enum class ColumnOptions {
-  /// Default/no options.
-  DEFAULT = 0,
-
-  /// Treat this column as a primary key.
-  INDEX = 1,
-
-  /// This column MUST be included in the query predicate.
-  REQUIRED = 2,
-
-  /*
-   * @brief This column is used to generate additional information.
-   *
-   * If this column is included in the query predicate, the table will generate
-   * additional information. Consider the browser_plugins or shell history
-   * tables: by default they list the plugins or history relative to the user
-   * running the query. However, if the calling query specifies a UID explicitly
-   * in the predicate, the meaning of the table changes and results for that
-   * user are returned instead.
-   */
-  ADDITIONAL = 4,
-
-  /*
-   * @brief This column can be used to optimize the query.
-   *
-   * If this column is included in the query predicate, the table will generate
-   * optimized information. Consider the system_controls table, a default filter
-   * without a query predicate lists all of the keys. When a specific domain is
-   * included in the predicate then the table will only issue syscalls/lookups
-   * for that domain, greatly optimizing the time and utilization.
-   *
-   * This optimization does not mean the column is an index.
-   */
-  OPTIMIZED = 8,
-
-  /// This column should be hidden from '*'' selects.
-  HIDDEN = 16,
-};
+constexpr auto kTempTableSubFix {"_TEMP"};
 
 enum ColumnType {
   UNKNOWN_TYPE = 0,
@@ -74,25 +36,55 @@ using ColumnData = std::tuple<int32_t, std::string, ColumnType, bool>;
 using TableColumns =
     std::vector<ColumnData>;
 
+enum GenericTupleIndex {
+  GEN_TYPE = 0,
+  GEN_STRING,
+  GEN_INTEGER,
+  GEN_BIGINT,
+  GEN_UNSIGNED_BIGINT,
+  GEN_DOUBLE
+}; 
+
+using TableField = 
+    std::tuple<uint8_t, std::string, int32_t, int64_t, uint64_t, double_t>;
+
+using Row = std::map<std::string, TableField>;
 class SQLiteDB : public Database {
 public:
   SQLiteDB(const std::string& path, const std::string& table_statement_creation);
   ~SQLiteDB();
   
   virtual bool Execute(const std::string& query) override;
-  virtual bool Select(const std::string& query, std::vector<std::string>& result) override;
-  virtual bool BulkInsert(const nlohmann::json& data) override;
+  virtual bool Select(const std::string& query, nlohmann::json& result) override;
+  virtual bool BulkInsert(const std::string& table, const nlohmann::json& data) override;
+  virtual bool RefreshTablaData(const nlohmann::json& data, nlohmann::json& delta) override;
 
 private:
-  bool Open(const std::string& path);
   bool Initialize(const std::string& path, const std::string& table_statement_creation);
-  bool CleanOldDB(const std::string& path);
+  bool CleanDB(const std::string& path);
   
   size_t LoadTableData(const std::string& table);
   bool LoadFieldData(const std::string& table);
   std::string BuildInsertBulkDataSqlQuery(const std::string& table);
+  std::string BuildDeleteBulkDataSqlQuery(const std::string& table, const std::vector<std::string>& primary_key_list);
   ColumnType ColumnTypeName(const std::string& type);
   int32_t BindJsonData(sqlite3_stmt* stmt, const ColumnData& cd, const nlohmann::json::value_type& value_type);
+
+  bool CreateCopyTempTable(const std::string& table);
+  bool GetTableCreateQuery(const std::string& table, std::string& result_query);
+  bool GetPrimaryKeysFromTable(const std::string& table, std::vector<std::string>& primary_key_list);
+  bool GetRowsToBeDeleted(const std::string& table, const std::vector<std::string>& primary_key_list, std::vector<Row>& rows_to_remove);
+  bool RemoveNotExistsRows(const std::string& table, const std::vector<std::string>& primary_key_list);
+  bool DeleteRows(const std::string& table, const std::vector<std::string>& primary_key_list, const std::vector<Row>& rows_to_remove);
+  bool InsertNewRows(const std::string& table, const std::vector<std::string>& primary_key_list);
+  int32_t GetTableData(sqlite3_stmt* stmt, const int32_t index, const ColumnData& cd, std::map<std::string, TableField>& row);
+  int32_t BindFieldData(sqlite3_stmt* stmt, const int32_t index, const TableField& field_data);
+
+  std::string BuildLeftOnlyQuery(const std::string& t1,const std::string& t2,const std::vector<std::string>& primary_key_list, const bool return_only_pk_fields = false);
+  bool GetLeftOnly(const std::string& t1,const std::string& t2, const std::vector<std::string>& primary_key_list, std::vector<Row>& return_rows);
+  bool GetPKListLeftOnly(const std::string& t1, const std::string& t2, const std::vector<std::string>& primary_key_list, std::vector<Row>& return_rows);
+  bool BulkInsert(const std::string& table, const std::vector<Row>& data);
+
 
   SQLiteDB(const SQLiteDB&) = delete;
   SQLiteDB& operator=(const SQLiteDB&) = delete;

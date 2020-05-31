@@ -10,7 +10,9 @@ set(CMAKE_BUILD_TYPE RelWithDebInfo)
 include_directories(${CMAKE_SOURCE_DIR}/include/)
 include_directories(${EXTERNAL_LIB}/sqlite/)
 include_directories(${EXTERNAL_LIB}/nlohmann/)
+include_directories(${EXTERNAL_LIB}/cJSON/)
 link_directories(${EXTERNAL_LIB}/sqlite/)
+link_directories(${EXTERNAL_LIB}/cJSON/)
 
 file(GLOB DBSYNC_SRC
     "${CMAKE_SOURCE_DIR}/src/*.cpp")
@@ -20,4 +22,4 @@ add_library(dbsync SHARED
 
 target_link_libraries(dbsync sqlite3)
 
-add_subdirectory(example)
+add_subdirectory(example cjson)
