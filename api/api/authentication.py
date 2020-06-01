@@ -34,24 +34,28 @@ def check_user(user, password, required_scopes=None):
 # Set JWT settings
 JWT_ISSUER = 'wazuh'
 JWT_ALGORITHM = 'HS256'
+_secret_file_path = os.path.join(SECURITY_PATH, 'jwt_secret')
+
 
 # Generate secret file to keep safe or load existing secret
-_secret_file_path = os.path.join(SECURITY_PATH, 'jwt_secret')
-try:
-    if not os.path.exists(_secret_file_path):
-        JWT_SECRET = token_urlsafe(512)
-        with open(_secret_file_path, mode='x') as secret_file:
-            secret_file.write(JWT_SECRET)
-        try:
-            chown(_secret_file_path, 'ossec', 'ossec')
-        except PermissionError:
-            pass
-        os.chmod(_secret_file_path, 0o640)
-    else:
-        with open(_secret_file_path, mode='r') as secret_file:
-            JWT_SECRET = secret_file.readline()
-except IOError as e:
-    raise APIException(2002)
+def generate_secret():
+    try:
+        if not os.path.exists(_secret_file_path):
+            jwt_secret = token_urlsafe(512)
+            with open(_secret_file_path, mode='x') as secret_file:
+                secret_file.write(jwt_secret)
+            try:
+                chown(_secret_file_path, 'ossec', 'ossec')
+            except PermissionError:
+                pass
+            os.chmod(_secret_file_path, 0o640)
+        else:
+            with open(_secret_file_path, mode='r') as secret_file:
+                jwt_secret = secret_file.readline()
+    except IOError:
+        raise APIException(2002)
+
+    return jwt_secret
 
 
 def change_secret():
@@ -59,9 +63,6 @@ def change_secret():
     new_secret = token_urlsafe(512)
     with open(_secret_file_path, mode='w') as jwt_secret:
         jwt_secret.write(new_secret)
-
-    global JWT_SECRET
-    JWT_SECRET = new_secret
 
 
 def get_token_blacklist():
@@ -87,7 +88,7 @@ def generate_token(user_id=None, rbac_policies=None):
         "rbac_policies": rbac_policies
     }
 
-    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    return jwt.encode(payload, generate_secret(), algorithm=JWT_ALGORITHM)
 
 
 def decode_token(token):
@@ -97,7 +98,7 @@ def decode_token(token):
     :return: dict payload ot the token
     """
     try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(token, generate_secret(), algorithms=[JWT_ALGORITHM])
         user = payload['sub']
         with TokenManager() as tm:
             rules = tm.get_all_rules()
