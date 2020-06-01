@@ -12,12 +12,11 @@ int main(int argc, char* argv[])
     if (0 != handle)
     {
       do {
-        if(insert(handle, nullptr)) {
+        if(insert_data(handle, nullptr)) {
           std::cout << "true" << std::endl;
         } else {
           std::cout << "false" << std::endl;
         }
-        
       }while(getc(stdin) != 'q');
       teardown();
     }

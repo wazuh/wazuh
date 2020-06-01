@@ -311,7 +311,7 @@ bool SQLiteDB::GetTableCreateQuery(const std::string& table, std::string& result
 bool SQLiteDB::RemoveNotExistsRows(const std::string& table, const std::vector<std::string>& primary_key_list) {
   auto ret_val {true  };
   std::vector<Row> row_keys_value;
-  if (GetRowsToBeDeleted(table, primary_key_list, row_keys_value)) {
+  if (GetLeftOnly(table+kTempTableSubFix,table, primary_key_list, row_keys_value)) {
      if (!DeleteRows(table, primary_key_list, row_keys_value)) {
        ret_val = false;
      }

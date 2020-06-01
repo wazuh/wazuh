@@ -56,7 +56,7 @@ extern "C" {
  *
  * @return return 0 if the operations is success, otherwise an error code will vary depending on the operating system.
  */
-  EXPORTED int insert(
+  EXPORTED int insert_data(
     const unsigned long long handle,
     const cJSON* json_insert);
 

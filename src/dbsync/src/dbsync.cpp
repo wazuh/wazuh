@@ -21,12 +21,12 @@ unsigned long long initialize(
   return ret_val;
 }
 
-bool insert_bulk(
+int insert_data(
   const unsigned long long handle,
-  const char* json_raw) {
+  const cJSON* json_raw) {
   auto ret_val { false };
   if (nullptr != json_raw) {
-    ret_val = DBSyncImplementation::getInstance().InsertBulkData(handle, json_raw);
+    ret_val = DBSyncImplementation::getInstance().InsertBulkData(handle, cJSON_Print(json_raw));
   }
   return ret_val;
 }
