@@ -35,10 +35,6 @@ void wm_gcp_run(const wm_gcp *data) {
     time_t current_time = time(NULL);
     struct tm *date = localtime(&current_time);
     test_gcp_date_storage[test_gcp_date_counter++] = *date;
-    if(test_gcp_date_counter >= TEST_MAX_DATES){
-        // Break infinite loop
-        will_return(__wrap_FOREVER, 0);
-    }
 }
 
 static void wmodule_cleanup(wmodule *module){
@@ -79,7 +75,6 @@ static int teardown_module(){
 }
 
 static int setup_test_executions(void **state) {
-    will_return(__wrap_FOREVER, 1);
     test_gcp_date_counter = 0;
     return 0;
 }
@@ -118,6 +113,8 @@ void test_interval_execution(void **state) {
     module_data->scan_config.scan_wday = -1;
     module_data->scan_config.interval = 60; // 1min
     module_data->scan_config.month_interval = false;
+    will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
+    will_return(__wrap_FOREVER, 0);
     gcp_module->context->start(module_data);
     check_time_interval( &module_data->scan_config, &test_gcp_date_storage[0], TEST_MAX_DATES);   
 }
@@ -131,6 +128,8 @@ void test_day_of_month(void **state){
     module_data->scan_config.scan_time = strdup("00:00");
     module_data->scan_config.interval = 1; // 1 month
     module_data->scan_config.month_interval = true;
+    will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
+    will_return(__wrap_FOREVER, 0);
     gcp_module->context->start(module_data);
     check_day_of_month( &module_data->scan_config, &test_gcp_date_storage[0], TEST_MAX_DATES);  
 }
@@ -144,6 +143,8 @@ void test_day_of_week(void **state){
     module_data->scan_config.scan_time = strdup("00:00");
     module_data->scan_config.interval = 604800;  // 1 week
     module_data->scan_config.month_interval = false;
+    will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
+    will_return(__wrap_FOREVER, 0);
     gcp_module->context->start(module_data);
     check_day_of_week( &module_data->scan_config, &test_gcp_date_storage[0], TEST_MAX_DATES);    
 }
@@ -157,6 +158,8 @@ void test_time_of_day(void **state){
     module_data->scan_config.scan_time = strdup("05:25");
     module_data->scan_config.interval = WM_DEF_INTERVAL;  // 1 day
     module_data->scan_config.month_interval = false;
+    will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
+    will_return(__wrap_FOREVER, 0);
     gcp_module->context->start(module_data);
     check_time_of_day( &module_data->scan_config, &test_gcp_date_storage[0], TEST_MAX_DATES);
 }

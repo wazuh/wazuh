@@ -25,10 +25,6 @@ int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const 
     time_t current_time = time(NULL);
     struct tm *date = localtime(&current_time);
     test_azure_date_storage[test_azure_date_counter++] = *date;
-    if(test_azure_date_counter >= TEST_MAX_DATES){
-        // Break infinite loop
-        will_return(__wrap_FOREVER, 0);
-    }
     *exitcode = 0;
     return 0;
 }
@@ -89,7 +85,6 @@ static int teardown_module(){
 }
 
 static int setup_test_executions(void **state) {
-    will_return(__wrap_FOREVER, 1);
     test_azure_date_counter = 0;
     return 0;
 }
@@ -127,6 +122,8 @@ void test_interval_execution(void **state) {
     module_data->scan_config.scan_wday = -1;
     module_data->scan_config.interval = 1200; // 20min
     module_data->scan_config.month_interval = false;
+    will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
+    will_return(__wrap_FOREVER, 0);
     azure_module->context->start(module_data);
     check_time_interval( &module_data->scan_config, &test_azure_date_storage[0], TEST_MAX_DATES);
 }
@@ -140,6 +137,8 @@ void test_day_of_month(void **state) {
     module_data->scan_config.scan_time = strdup("00:00");
     module_data->scan_config.interval = 1; // 1 month
     module_data->scan_config.month_interval = true;
+    will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
+    will_return(__wrap_FOREVER, 0);
     azure_module->context->start(module_data);
     check_day_of_month( &module_data->scan_config, &test_azure_date_storage[0], TEST_MAX_DATES);
 }
@@ -153,6 +152,8 @@ void test_day_of_week(void **state) {
     module_data->scan_config.scan_time = strdup("00:00");
     module_data->scan_config.interval = 604800;  // 1 week
     module_data->scan_config.month_interval = false;
+    will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
+    will_return(__wrap_FOREVER, 0);
     azure_module->context->start(module_data);
     check_day_of_week( &module_data->scan_config, &test_azure_date_storage[0], TEST_MAX_DATES);
 }
@@ -166,6 +167,8 @@ void test_time_of_day(void **state) {
     module_data->scan_config.scan_time = strdup("00:00");
     module_data->scan_config.interval = WM_DEF_INTERVAL;  // 1 day
     module_data->scan_config.month_interval = false;
+    will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
+    will_return(__wrap_FOREVER, 0);
     azure_module->context->start(module_data);
     check_time_of_day( &module_data->scan_config, &test_azure_date_storage[0], TEST_MAX_DATES);
 }

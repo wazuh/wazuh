@@ -1767,7 +1767,7 @@ endif
 clean-deps:
 	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_CPYTHON) $(MSU_JSON_GZ)
 
-clean-internals:
+clean-internals: clean-unit-tests
 	rm -f $(BUILD_SERVER)
 	rm -f $(BUILD_AGENT)
 	rm -f $(BUILD_LIBS)
@@ -1799,8 +1799,11 @@ clean-internals:
 	rm -f ${wdb_o}
 	rm -f ${SELINUX_MODULE}
 	rm -f ${SELINUX_POLICY}
+	
+clean-unit-tests:
 	rm -f ${wrappers_syscheck_o}
 	rm -f ${wrappers_shared_o}
+	rm -f ${wrappers_common_o}
 
 clean-framework:
 	${MAKE} -C ../framework clean

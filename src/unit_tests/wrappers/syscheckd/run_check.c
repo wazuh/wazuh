@@ -41,5 +41,5 @@ HANDLE wrap_run_check_CreateThread(
     __UNUSED_PARAM(DWORD                   dwCreationFlags),
     __UNUSED_PARAM(LPDWORD                 lpThreadId)
 ) {
-    return mock();
+    return mock_type(HANDLE);
 }
