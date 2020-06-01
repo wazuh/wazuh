@@ -42,9 +42,8 @@ try:
         JWT_SECRET = token_urlsafe(512)
         with open(_secret_file_path, mode='x') as secret_file:
             secret_file.write(JWT_SECRET)
-        # Only if executing as root
         try:
-            chown(_secret_file_path, 'root', 'ossec')
+            chown(_secret_file_path, 'ossec', 'ossec')
         except PermissionError:
             pass
         os.chmod(_secret_file_path, 0o640)
