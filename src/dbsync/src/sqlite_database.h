@@ -34,7 +34,7 @@ enum TableHeader {
 }; 
 using ColumnData = 
     std::tuple<int32_t, std::string, ColumnType, bool>;
-    
+
 using TableColumns =
     std::vector<ColumnData>;
 
@@ -48,7 +48,7 @@ enum GenericTupleIndex {
 }; 
 
 using TableField = 
-    std::tuple<uint8_t, std::string, int32_t, int64_t, uint64_t, double_t>;
+    std::tuple<int32_t, std::string, int32_t, int64_t, uint64_t, double_t>;
 
 using Row = std::map<std::string, TableField>;
 class SQLiteDB : public Database {
@@ -76,8 +76,8 @@ private:
   bool GetTableCreateQuery(const std::string& table, std::string& result_query);
   bool GetPrimaryKeysFromTable(const std::string& table, std::vector<std::string>& primary_key_list);
 
-  bool RemoveNotExistsRows(const std::string& table, const std::vector<std::string>& primary_key_list);
-  bool InsertNewRows(const std::string& table, const std::vector<std::string>& primary_key_list);
+  bool RemoveNotExistsRows(const std::string& table, const std::vector<std::string>& primary_key_list, nlohmann::json& delta);
+  bool InsertNewRows(const std::string& table, const std::vector<std::string>& primary_key_list, nlohmann::json& delta);
 
   bool DeleteRows(const std::string& table, const std::vector<std::string>& primary_key_list, const std::vector<Row>& rows_to_remove); 
   int32_t GetTableData(sqlite3_stmt* stmt, const int32_t index, const ColumnData& cd, std::map<std::string, TableField>& row);

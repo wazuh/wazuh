@@ -242,10 +242,10 @@ bool SQLiteDB::RefreshTablaData(const nlohmann::json& data, nlohmann::json& delt
     if (BulkInsert(table + kTempTableSubFix, data[0]["data"])) {
       std::vector<std::string> primary_key_list;
       if (GetPrimaryKeysFromTable(table, primary_key_list)) {
-        if (!RemoveNotExistsRows(table, primary_key_list)) {
+        if (!RemoveNotExistsRows(table, primary_key_list, delta)) {
           std::cout << "Error during the delete rows update "<< __LINE__ << " - " << __FILE__ << std::endl;
         }
-        if (!InsertNewRows(table, primary_key_list)) {
+        if (!InsertNewRows(table, primary_key_list, delta)) {
           std::cout << "Error during the insert rows update "<< __LINE__ << " - " << __FILE__ << std::endl;
         }
       }
@@ -308,13 +308,34 @@ bool SQLiteDB::GetTableCreateQuery(const std::string& table, std::string& result
   return ret_val;
 }
 
-bool SQLiteDB::RemoveNotExistsRows(const std::string& table, const std::vector<std::string>& primary_key_list) {
+bool SQLiteDB::RemoveNotExistsRows(const std::string& table, const std::vector<std::string>& primary_key_list, nlohmann::json& delta) {
   auto ret_val {true  };
   std::vector<Row> row_keys_value;
   if (GetLeftOnly(table+kTempTableSubFix,table, primary_key_list, row_keys_value)) {
-     if (!DeleteRows(table, primary_key_list, row_keys_value)) {
-       ret_val = false;
-     }
+    if (DeleteRows(table, primary_key_list, row_keys_value)) {
+      for (const auto& row : row_keys_value){
+        nlohmann::json object { nlohmann::json::object() };
+        for (const auto& value : row) {
+          const auto row_type { std::get<GenericTupleIndex::GEN_TYPE>(value.second) };
+          if (ColumnType::BIGINT_TYPE == row_type) {
+            object.push_back(std::get<ColumnType::BIGINT_TYPE>(value.second));
+          } else if (ColumnType::UNSIGNED_BIGINT_TYPE == row_type) {
+            object.push_back(std::get<ColumnType::UNSIGNED_BIGINT_TYPE>(value.second));
+          } else if (ColumnType::INTEGER_TYPE == row_type) {
+            object.push_back(std::get<ColumnType::INTEGER_TYPE>(value.second));
+          } else if (ColumnType::TEXT_TYPE == row_type) {
+            object.push_back(std::get<ColumnType::TEXT_TYPE>(value.second));
+          } else if (ColumnType::DOUBLE_TYPE == row_type) {
+            object.push_back(std::get<ColumnType::DOUBLE_TYPE>(value.second));
+          } else if (ColumnType::BLOB_TYPE == row_type) {
+            std::cout << "not implemented "<< __LINE__ << " - " << __FILE__ << std::endl;
+          }
+        }
+        delta["deleted"].push_back(std::move(object));
+      }
+    } else {
+      ret_val = false;
+    }
   }
   return ret_val;
 }
@@ -572,13 +593,35 @@ std::string SQLiteDB::BuildLeftOnlyQuery(
 } 
 
 
-bool SQLiteDB::InsertNewRows(const std::string& table, const std::vector<std::string>& primary_key_list) {
+bool SQLiteDB::InsertNewRows(const std::string& table, const std::vector<std::string>& primary_key_list, nlohmann::json& delta) {
   auto ret_val { true };
   std::vector<Row> row_values;
   if (GetLeftOnly(table,table+kTempTableSubFix, primary_key_list, row_values)) {
-     if (!BulkInsert(table, row_values)) {
-       ret_val = false;
-     }
+     if (BulkInsert(table, row_values)) {
+       for (const auto& row : row_values){
+        nlohmann::json object { nlohmann::json::object() };
+        for (const auto& value : row) {
+          const auto row_type { std::get<GenericTupleIndex::GEN_TYPE>(value.second) };
+          if (ColumnType::BIGINT_TYPE == row_type) {
+            object.push_back(std::get<ColumnType::BIGINT_TYPE>(value.second));
+          } else if (ColumnType::UNSIGNED_BIGINT_TYPE == row_type) {
+            object.push_back(std::get<ColumnType::UNSIGNED_BIGINT_TYPE>(value.second));
+          } else if (ColumnType::INTEGER_TYPE == row_type) {
+            object.push_back(std::get<ColumnType::INTEGER_TYPE>(value.second));
+          } else if (ColumnType::TEXT_TYPE == row_type) {
+            object.push_back(std::get<ColumnType::TEXT_TYPE>(value.second));
+          } else if (ColumnType::DOUBLE_TYPE == row_type) {
+            object.push_back(std::get<ColumnType::DOUBLE_TYPE>(value.second));
+          } else if (ColumnType::BLOB_TYPE == row_type) {
+            std::cout << "not implemented "<< __LINE__ << " - " << __FILE__ << std::endl;
+          }
+        }
+        delta["inserted"].push_back(std::move(object));
+      }
+    } 
+    else {
+      ret_val = false;
+    }
   }
   return ret_val;
 }
