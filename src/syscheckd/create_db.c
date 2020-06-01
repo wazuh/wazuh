@@ -218,8 +218,8 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
     if (w_evt && w_evt->scan_directory == 1) {
         if (w_update_sacl(path)) {
             mdebug1(FIM_SCAL_NOREFRESH, path);
-            }
         }
+    }
 #endif
 
     if (HasFilesystem(path, syscheck.skip_fs)) {

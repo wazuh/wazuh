@@ -504,7 +504,8 @@ PEVT_VARIANT whodata_event_render(EVT_HANDLE event) {
     // Extract the necessary memory size
     EvtRender(context, event, EvtRenderEventValues, 0, NULL, &used_size, &property_count);
 
-    os_calloc(used_size, sizeof(char), buffer);
+    os_malloc(used_size, buffer);
+    memset(buffer, 0, used_size);
 
     if (!EvtRender(context, event, EvtRenderEventValues, used_size, buffer, &used_size, &property_count)) {
         merror(FIM_ERROR_WHODATA_RENDER_EVENT, GetLastError());
