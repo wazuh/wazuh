@@ -154,7 +154,7 @@ int connect_server(int initial_id)
 void start_agent(int is_startup)
 {
     size_t msg_length;
-    int  g_attempts = 1;
+    int delay = 1;
     ssize_t recv_b = 0;
 
     char *tmp_msg;
@@ -218,12 +218,12 @@ void start_agent(int is_startup)
         if (agt->server[agt->rip_id + 1].rip) {
             agt->rip_id++;
             minfo("Trying next server ip in the line: '%s'.", agt->server[agt->rip_id].rip);
-            g_attempts += 5;
-            sleep(g_attempts < agt->notify_time ? g_attempts : agt->notify_time);
+            delay += 5;
+            sleep(delay < agt->notify_time ? delay : agt->notify_time);
         } else {
             agt->rip_id = 0;
-            g_attempts += (5 * 3);
-            sleep(g_attempts < agt->notify_time ? g_attempts : agt->notify_time);
+            delay += (5 * 3);
+            sleep(delay < agt->notify_time ? delay : agt->notify_time);
         }
     }
 
