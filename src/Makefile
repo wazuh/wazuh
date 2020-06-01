@@ -100,6 +100,7 @@ ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 endif
 ifeq (${CHECK_ARCHLINUX},YES)
 		ARCH_FLAGS+=-lnghttp2 -lbrotlidec -lpsl
+		OSSEC_LDFLAGS+=-lnghttp2 -lbrotlidec -lpsl
 endif
 else
 ifeq (${uname_S},AIX)
