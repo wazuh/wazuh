@@ -214,7 +214,7 @@ void start_agent(int is_startup)
             }
         }
 
-        /* If thre is a next server, try it */
+        /* If there is a next server, try it */
         if (agt->server[agt->rip_id + 1].rip) {
             agt->rip_id++;
             minfo("Trying next server ip in the line: '%s'.", agt->server[agt->rip_id].rip);
@@ -247,7 +247,7 @@ static ssize_t receive_message_udp(const char *msg, char *buffer, unsigned int m
     mwarn(AG_WAIT_SERVER, agt->server[agt->rip_id].rip);
     sleep(1);
 
-    while (attempts < 5){
+    while (attempts <= 5){
         /* Receive response */
         recv_b = recv(agt->sock, buffer, max_lenght, MSG_DONTWAIT);
         
@@ -256,7 +256,6 @@ static ssize_t receive_message_udp(const char *msg, char *buffer, unsigned int m
             case OS_SOCKTERR:
                 merror("Corrupt payload (exceeding size) received.");
                 break;
-            case -1:
             default:
                 #ifdef WIN32
                     mdebug1("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
@@ -300,50 +299,45 @@ static ssize_t receive_message_tcp(const char *msg, char *buffer, unsigned int m
     int attempts = 0;
     bool enrollment_attemp = false;
     
-    while ((attempts < 5) && (recv_b <= 0)) {
-        switch (wnet_select(agt->sock, timeout)) {
-            case -1:
-                merror(SELECT_ERROR, errno, strerror(errno));
-                break;
+    while ((attempts <= 5) && (recv_b <= 0)) {
+        int sock = wnet_select(agt->sock, timeout);
+        if (sock < 0) {
+            merror(SELECT_ERROR, errno, strerror(errno));
+        } else if( sock > 0) {
+            recv_b = OS_RecvSecureTCP(agt->sock, buffer, max_lenght);
 
-            case 0:
-                // Timeout
-                break;
-
-            default:
-                recv_b = OS_RecvSecureTCP(agt->sock, buffer, max_lenght);
-                break;
+            switch (recv_b) {
+                case OS_SOCKTERR:
+                    merror("Corrupt payload (exceeding size) received.");
+                    break;
+                case 0:
+                    // Peer performed orderly shutdown (connection refused by manager)
+                    if (agt->enrollment_cfg && agt->enrollment_cfg->enabled && !enrollment_attemp) {
+                        if (try_enroll_to_server(agt->server[agt->rip_id].rip) == 0) {
+                            if (connect_server(agt->rip_id)) {
+                                send_msg(msg, -1);
+                            }
+                        }
+                        enrollment_attemp = true; // Only attemp enrolling once
+                    }
+                    break;
+                case -1:
+                    #ifdef WIN32
+                        mdebug1("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
+                    #else
+                        mdebug1("Connection socket: %s (%d)", strerror(errno), errno);
+                    #endif
+                    // Connection timeout, try to reconnect
+                    if (connect_server(agt->rip_id)) {
+                        send_msg(msg, -1);
+                    }
+                    break;
+            }
         }
-       
+        
         attempts++;
 
-        switch (recv_b) {
-            case OS_SOCKTERR:
-                merror("Corrupt payload (exceeding size) received.");
-                break;
-            case 0:
-                // Peer performed orderly shutdown (connection refused by manager)
-                if (agt->enrollment_cfg && agt->enrollment_cfg->enabled && !enrollment_attemp) {
-                    if (try_enroll_to_server(agt->server[agt->rip_id].rip) == 0) {
-                        if (connect_server(agt->rip_id)) {
-                            send_msg(msg, -1);
-                        }
-                    }
-                    enrollment_attemp = true; // Only attemp enrolling once
-                }
-                break;
-            case -1:
-                #ifdef WIN32
-                    mdebug1("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
-                #else
-                    mdebug1("Connection socket: %s (%d)", strerror(errno), errno);
-                #endif
-                // Connection timeout, try to reconnect
-                if (connect_server(agt->rip_id)) {
-                    send_msg(msg, -1);
-                }
-                break;
-        }
+        
     }
     return recv_b > 0 ? recv_b : 0;
 }
