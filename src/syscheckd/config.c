@@ -40,6 +40,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.nodiff_regex   = NULL;
     syscheck.scan_day       = NULL;
     syscheck.scan_time      = NULL;
+    syscheck.file_limit_enabled = true;
     syscheck.file_limit     = 100000;
     syscheck.dir            = NULL;
     syscheck.opts           = NULL;
@@ -175,7 +176,12 @@ cJSON *getSyscheckConfig(void) {
     if (syscheck.scan_on_start) cJSON_AddStringToObject(syscfg,"scan_on_start","yes"); else cJSON_AddStringToObject(syscfg,"scan_on_start","no");
     if (syscheck.scan_day) cJSON_AddStringToObject(syscfg,"scan_day",syscheck.scan_day);
     if (syscheck.scan_time) cJSON_AddStringToObject(syscfg,"scan_time",syscheck.scan_time);
-    cJSON_AddNumberToObject(syscfg,"file_limit",syscheck.file_limit);
+
+    cJSON * file_limit = cJSON_CreateObject();
+    cJSON_AddStringToObject(file_limit, "enabled", syscheck.file_limit_enabled ? "yes" : "no");
+    cJSON_AddNumberToObject(file_limit, "entries", syscheck.file_limit);
+    cJSON_AddItemToObject(syscfg, "file_limit", file_limit);
+
     if (syscheck.dir) {
         cJSON *dirs = cJSON_CreateArray();
         for (i=0;syscheck.dir[i];i++) {

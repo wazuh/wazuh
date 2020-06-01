@@ -287,6 +287,7 @@ typedef struct _config {
     char *scan_time;                /* run syscheck at this time */
 
     unsigned int file_limit;        /* maximum number of files to monitor */
+    unsigned int file_limit_enabled;    /* Enable file_limit option */
 
     char **ignore;                  /* list of files/dirs to ignore */
     OSMatch **ignore_regex;         /* regex of files/dirs to ignore */

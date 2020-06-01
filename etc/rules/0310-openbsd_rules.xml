@@ -250,7 +250,7 @@
 
 </group>
 
-<group name="local,syslog,openbsd,doas">
+<group name="local,syslog,openbsd,doas,">
 
   <rule id="51550" level="0">
     <decoded_as>doas</decoded_as>

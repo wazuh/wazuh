@@ -224,6 +224,9 @@ static pthread_mutex_t hourly_firewall_mutex = PTHREAD_MUTEX_INITIALIZER;
 /* Do diff mutex */
 static pthread_mutex_t do_diff_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+/* Accumulate mutex */
+static pthread_mutex_t accumulate_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 /* Reported variables */
 static int reported_syscheck = 0;
 static int reported_syscollector = 0;
@@ -710,7 +713,7 @@ int main_analysisd(int argc, char **argv)
 
     // Start com request thread
     w_create_thread(asyscom_main, NULL);
-    
+
     /* Load Mitre JSON File and Mitre hash table */
     mitre_load(NULL);
 
@@ -2356,7 +2359,9 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
 
         /* Run accumulator */
         if ( lf->decoder_info->accumulate == 1 ) {
+            w_mutex_lock(&accumulate_mutex);
             lf = Accumulate(lf);
+            w_mutex_unlock(&accumulate_mutex);
         }
 
         /* Firewall event */

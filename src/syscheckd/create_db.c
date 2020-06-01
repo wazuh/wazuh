@@ -92,7 +92,7 @@ void fim_scan() {
 
     check_deleted_files();
 
-    if (syscheck.file_limit) {
+    if (syscheck.file_limit_enabled) {
         w_mutex_lock(&syscheck.fim_entry_mutex);
         nodes_count = fim_db_get_count_entry_path(syscheck.database);
         w_mutex_unlock(&syscheck.fim_entry_mutex);
@@ -132,12 +132,11 @@ void fim_scan() {
             fim_db_set_all_unscanned(syscheck.database);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
         }
-
     }
 
     gettime(&end);
 
-    if (syscheck.file_limit != 0) {
+    if (syscheck.file_limit_enabled) {
         mdebug2(FIM_FILE_LIMIT_VALUE, syscheck.file_limit);
         fim_check_db_state();
     }
