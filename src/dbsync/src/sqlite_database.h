@@ -32,7 +32,9 @@ enum TableHeader {
   TYPE,
   PK
 }; 
-using ColumnData = std::tuple<int32_t, std::string, ColumnType, bool>;
+using ColumnData = 
+    std::tuple<int32_t, std::string, ColumnType, bool>;
+    
 using TableColumns =
     std::vector<ColumnData>;
 
@@ -73,10 +75,11 @@ private:
   bool CreateCopyTempTable(const std::string& table);
   bool GetTableCreateQuery(const std::string& table, std::string& result_query);
   bool GetPrimaryKeysFromTable(const std::string& table, std::vector<std::string>& primary_key_list);
-  bool GetRowsToBeDeleted(const std::string& table, const std::vector<std::string>& primary_key_list, std::vector<Row>& rows_to_remove);
+
   bool RemoveNotExistsRows(const std::string& table, const std::vector<std::string>& primary_key_list);
-  bool DeleteRows(const std::string& table, const std::vector<std::string>& primary_key_list, const std::vector<Row>& rows_to_remove);
   bool InsertNewRows(const std::string& table, const std::vector<std::string>& primary_key_list);
+
+  bool DeleteRows(const std::string& table, const std::vector<std::string>& primary_key_list, const std::vector<Row>& rows_to_remove); 
   int32_t GetTableData(sqlite3_stmt* stmt, const int32_t index, const ColumnData& cd, std::map<std::string, TableField>& row);
   int32_t BindFieldData(sqlite3_stmt* stmt, const int32_t index, const TableField& field_data);
 

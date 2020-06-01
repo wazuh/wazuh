@@ -20,6 +20,6 @@ file(GLOB DBSYNC_SRC
 add_library(dbsync SHARED 
     "${DBSYNC_SRC}" )
 
-target_link_libraries(dbsync sqlite3)
+target_link_libraries(dbsync sqlite3 cjson)
 
-add_subdirectory(example cjson)
+add_subdirectory(example)
