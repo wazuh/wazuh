@@ -16,7 +16,7 @@ struct MemoryStruct {
   size_t size;
 };
 
-int wurl_get(const char * url, const char * dest, const char * header, const char *data){
+int wurl_get(const char * url, const char * dest, const char * header, const char *data, const long timeout){
     CURL *curl;
     FILE *fp;
     CURLcode res;
@@ -44,6 +44,10 @@ int wurl_get(const char * url, const char * dest, const char * header, const cha
 
         if (data) {
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
+        }
+
+        if (timeout) {
+            curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
         }
 
         // Enable SSL check if url is HTTPS
@@ -85,7 +89,7 @@ int w_download_status(int status,const char *url,const char *dest){
 }
 
 // Request download
-int wurl_request(const char * url, const char * dest, const char *header, const char *data) {
+int wurl_request(const char * url, const char * dest, const char *header, const char *data, const long timeout) {
     const char * COMMAND = "download";
     char response[64];
     char * _url;
@@ -120,9 +124,9 @@ int wurl_request(const char * url, const char * dest, const char *header, const 
 
     zrequest = strlen(_url) + strlen(parsed_dest) + strlen(COMMAND) +
                (parsed_header ? strlen(parsed_header) : 0) +
-               (parsed_data ? strlen(parsed_data) : 0) + 6;
+               (parsed_data ? strlen(parsed_data) : 0) + sizeof(long) + 6;
     os_malloc(zrequest, srequest);
-    snprintf(srequest, zrequest, "%s %s|%s|%s|%s|", COMMAND, _url, parsed_dest, parsed_header ? parsed_header : "", parsed_data ? parsed_data : "");
+    snprintf(srequest, zrequest, "%s %s|%s|%s|%s|%ld|", COMMAND, _url, parsed_dest, parsed_header ? parsed_header : "", parsed_data ? parsed_data : "", timeout ? timeout : 0);
     os_free(parsed_dest);
     os_free(parsed_header);
     os_free(parsed_data);
@@ -160,11 +164,11 @@ int wurl_request(const char * url, const char * dest, const char *header, const 
         if (!strcmp(response, "ok")) {
             retval = 0;
         } else if (!strcmp(response, "err connecting to url")) {
-            mdebug1(WURL_DOWNLOAD_FILE_ERROR, dest, _url);
             retval = OS_CONNERR;
         } else if (!strcmp(response, "err writing file")) {
-            mdebug1(WURL_WRITE_FILE_ERROR, dest);
             retval = OS_FILERR;
+        } else if (!strcmp(response, "err timeout")) {
+            retval = OS_TIMEOUT;
         } else {
             mdebug1("Couldn't download from '%s': %s", _url, response);
         }
@@ -182,13 +186,13 @@ end:
 }
 
 // Request a uncompressed download (.gz)
-int wurl_request_gz(const char * url, const char * dest, const char * header, const char * data) {
+int wurl_request_gz(const char * url, const char * dest, const char * header, const char * data, const long timeout) {
     char compressed_file[OS_SIZE_6144 + 1];
     int retval = OS_INVALID;
 
     snprintf(compressed_file, OS_SIZE_6144, "tmp/req-%u", os_random());
 
-    if (wurl_request(url, compressed_file, header, data)) {
+    if (wurl_request(url, compressed_file, header, data, timeout)) {
         return retval;
     } else {
         if (w_uncompress_gzfile(compressed_file, dest)) {
