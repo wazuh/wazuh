@@ -154,8 +154,12 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attr
     char *diff_str;
     char path[PATH_MAX + 1];
     char buf[OS_MAXSTR + 1];
+    char tmp_location[PATH_MAX + 1];
     char compressed_file[PATH_MAX + 1];
+    char compressed_tmp[PATH_MAX + 1];
+    char localtmp_path[PATH_MAX + 1];
     char filename_abs[PATH_MAX];
+    float tmp_diff_size = syscheck.diff_folder_size;
 
     path[PATH_MAX] = '\0';
     if (abspath(filename, filename_abs, sizeof(filename_abs)) == NULL) {
@@ -177,6 +181,73 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attr
         free(filename_strip);
     }
 #endif
+
+    snprintf(
+        tmp_location,
+        PATH_MAX,
+        "%s/localtmp/%s/%s",
+        DIFF_DIR_PATH,
+        filename_abs + PATH_OFFSET,
+        DIFF_LAST_FILE
+    );
+
+    snprintf(
+        compressed_file,
+        PATH_MAX,
+        "%s/local/%s/%s.gz",
+        DIFF_DIR_PATH,
+        filename_abs + PATH_OFFSET,
+        DIFF_LAST_FILE
+    );
+
+    snprintf(
+        compressed_tmp,
+        PATH_MAX,
+        "%s/localtmp/%s/%s.gz",
+        DIFF_DIR_PATH,
+        filename_abs + PATH_OFFSET,
+        DIFF_LAST_FILE
+    );
+
+    snprintf(
+        localtmp_path,
+        PATH_MAX,
+        "%s/localtmp",
+        DIFF_DIR_PATH
+    );
+
+#ifdef WIN32
+    tmp_diff_size -= (FileSizeWin(compressed_file) / 1024);
+#else
+    tmp_diff_size -= (FileSize(compressed_file) / 1024);
+#endif
+
+    if (!seechanges_createpath(tmp_location)) {
+        mdebug2("Could not create '%s' folder", tmp_location);
+    }
+
+    if (w_compress_gzfile(filename, compressed_tmp) != 0) {
+        mwarn(FIM_WARN_GENDIFF_SNAPSHOT, filename);
+    }
+    else if (syscheck.disk_quota_enabled) {
+#ifdef WIN32
+        tmp_diff_size += (FileSizeWin(compressed_tmp) / 1024);
+#else
+        tmp_diff_size += (FileSize(compressed_tmp) / 1024);
+#endif
+
+        if (tmp_diff_size > syscheck.disk_quota_limit) {
+            minfo(FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
+
+            seechanges_delete_compressed_file(filename);
+
+            if (rmdir_ex(localtmp_path) < 0) {
+                mdebug2(UNLINK_ERROR, localtmp_path, errno, strerror(errno));
+            }
+
+            return NULL;
+        }
+    }
 
     snprintf(path, PATH_MAX, "%s/local/%s/diff.%d",
              DIFF_DIR_PATH, filename_abs + PATH_OFFSET, (int)alert_diff_time);
@@ -238,17 +309,12 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attr
     os_strdup(buf, diff_str);
 #endif
 
-    snprintf(
-        compressed_file,
-        PATH_MAX,
-        "%s/local/%s/%s.gz",
-        DIFF_DIR_PATH,
-        filename_abs + PATH_OFFSET,
-        DIFF_LAST_FILE
-    );
-
-    if (w_compress_gzfile(filename, compressed_file) != 0) {
-        mwarn(FIM_WARN_GENDIFF_SNAPSHOT, filename);
+    if (rename_ex(compressed_tmp, compressed_file) != 0) {
+        return NULL;
+    }
+    
+    if (rmdir_ex(localtmp_path) < 0) {
+        mdebug2(UNLINK_ERROR, localtmp_path, errno, strerror(errno));
     }
 
     return diff_str;
@@ -345,7 +411,7 @@ static int seechanges_createpath(const char *filename)
     return (1);
 }
 
-void seechanges_delete_compressed_file(char *path){
+void seechanges_delete_compressed_file(const char *path){
     char containing_folder[PATH_MAX + 1];
     float file_size = 0.0;
 
@@ -381,10 +447,15 @@ char *seechanges_addfile(const char *filename) {
     char diff_location[PATH_MAX + 1];
     char diff_cmd[PATH_MAX + OS_SIZE_1024];
     char compressed_file[PATH_MAX + 1];
+    char containing_folder[PATH_MAX + 1];
+    char compressed_tmp[PATH_MAX + 1];
+    char localtmp_path[PATH_MAX + 1];
+    char localtmp_location[PATH_MAX + 1];
     os_md5 md5sum_old;
     os_md5 md5sum_new;
     int status = -1;
     float file_size = 0.0;
+    float compressed_new_size = 0.0;
     int it = 0;
 
     old_location[PATH_MAX] = '\0';
@@ -432,7 +503,7 @@ char *seechanges_addfile(const char *filename) {
 
     if (syscheck.file_size_enabled) {
         if (file_size > syscheck.diff_size_limit[it]) {
-            mwarn(FIM_BIG_FILE_REPORT_CHANGES, filename_abs);
+            minfo(FIM_BIG_FILE_REPORT_CHANGES, filename_abs);
             seechanges_delete_compressed_file(filename_abs);
             return NULL;
         }
@@ -446,6 +517,23 @@ char *seechanges_addfile(const char *filename) {
         filename_abs + PATH_OFFSET,
         DIFF_LAST_FILE
     );
+    
+    snprintf(
+        localtmp_location,
+        PATH_MAX,
+        "%s/localtmp/%s/%s",
+        DIFF_DIR_PATH,
+        filename_abs + PATH_OFFSET,
+        DIFF_LAST_FILE
+    );
+
+    snprintf(
+        containing_folder,
+        PATH_MAX,
+        "%s/local/%s",
+        DIFF_DIR_PATH,
+        filename_abs + PATH_OFFSET
+    );
 
     snprintf(
         compressed_file,
@@ -456,12 +544,67 @@ char *seechanges_addfile(const char *filename) {
         DIFF_LAST_FILE
     );
 
-    /* If the file is not there, create compressed file*/
+    snprintf(
+        compressed_tmp,
+        PATH_MAX,
+        "%s/localtmp/%s/%s.gz",
+        DIFF_DIR_PATH,
+        filename_abs + PATH_OFFSET,
+        DIFF_LAST_FILE
+    );
+
+    snprintf(
+        localtmp_path,
+        PATH_MAX,
+        "%s/localtmp",
+        DIFF_DIR_PATH
+    );
+
+    /* If the file is not there, create compressed file */
     if (w_uncompress_gzfile(compressed_file, old_location) != 0) {
         seechanges_createpath(old_location);
-        if (w_compress_gzfile(filename, compressed_file) != 0) {
+        seechanges_createpath(localtmp_location);
+
+        if (w_compress_gzfile(filename, compressed_tmp) != 0) {
             mwarn(FIM_WARN_GENDIFF_SNAPSHOT, filename);
         }
+        else if (syscheck.disk_quota_enabled) {
+#ifdef WIN32
+            compressed_new_size = FileSizeWin(compressed_tmp) / 1024;
+#else
+            compressed_new_size = FileSize(compressed_tmp) / 1024;
+#endif
+            /**
+             * Check if adding the new file doesn't exceed the disk quota limit. Update the diff_folder_size
+             * value if it's not exceeded and move the temporary file to the correct location.
+             * It shouldn't perform any diff operation if the file causes the diff folder to exceed the disk
+             * quota limit.
+             */
+            if (syscheck.diff_folder_size + compressed_new_size <= syscheck.disk_quota_limit) {
+                syscheck.diff_folder_size += compressed_new_size;
+
+                if (rename_ex(compressed_tmp, compressed_file) != 0) {
+                    return NULL;
+                }
+            }
+            else {
+                minfo(FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
+
+                if (rmdir_ex(containing_folder) < 0) {
+                    mdebug2(UNLINK_ERROR, containing_folder, errno, strerror(errno));
+                }
+            }
+        }
+        else {
+            if (rename_ex(compressed_tmp, compressed_file) != 0) {
+                return NULL;
+            }
+        }
+
+        if (rmdir_ex(localtmp_path) < 0) {
+            mdebug2(UNLINK_ERROR, localtmp_path, errno, strerror(errno));
+        }
+
         return (NULL);
     }
 

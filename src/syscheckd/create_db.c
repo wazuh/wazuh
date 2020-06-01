@@ -202,7 +202,7 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
         }
 
         if (item->configuration & CHECK_SEECHANGES) {
-            delete_target_file(path);
+            delete_target_file(syscheck, path);
         }
 
         w_mutex_lock(&syscheck.fim_entry_mutex);

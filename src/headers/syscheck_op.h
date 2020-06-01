@@ -236,10 +236,11 @@ int remove_empty_folders(const char *path);
 /**
  * @brief Delete path file and all empty folders above
  *
+ * @param syscheck Syscheck configuration
  * @param path The path from which to delete
  * @return 0 on success, -1 on failure
  */
-int delete_target_file(const char *path);
+int delete_target_file(syscheck_config syscheck, const char *path);
 
 /**
  * @brief Frees from memory a sk_sum_t structure

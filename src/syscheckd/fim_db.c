@@ -1207,9 +1207,8 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
         json_event = fim_json_event(entry->path, NULL, entry->data, pos,
                                                 FIM_DELETE, mode, whodata_event, NULL);
 
-        if (!strcmp(FIM_ENTRY_TYPE[entry->data->entry_type], "file") &&
-            syscheck.opts[pos] & CHECK_SEECHANGES) {
-            delete_target_file(entry->path);
+        if (!strcmp(FIM_ENTRY_TYPE[entry->data->entry_type], "file") && syscheck.opts[pos] & CHECK_SEECHANGES) {
+            delete_target_file(syscheck, entry->path);
         }
 
         if (json_event) {

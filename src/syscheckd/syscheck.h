@@ -368,6 +368,13 @@ unsigned int count_watches();
 char *seechanges_addfile(const char *filename) __attribute__((nonnull));
 
 /**
+ * @brief Delete stored compressed file for "path"
+ * 
+ * @param path Path to the file which compressed version needs to be deleted
+ */
+void seechanges_delete_compressed_file(const char *path);
+
+/**
  * @brief Frees the memory of a Whodata event structure
  *
  * @param [out] w_evt
