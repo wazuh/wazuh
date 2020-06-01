@@ -33,20 +33,20 @@ static int OS_IPNotAllowed(char *srcip)
 
 /**
  * @brief Function that sends a buffer to a queue.
- * @param buffer String with the received contents from the TCP socket.
- * @param buff_size Size of the buffer.
+ * @param socket_buffer sockbuffer_t structure that contains the data from the socket.
  * @param srcip String with the IP of the queue where the message will be sent.
  */
-void send_buffer(char *buffer, int *buff_size, char *srcip) {
+void send_buffer(sockbuffer_t *socket_buffer, char *srcip) {
+    char *data_pt = socket_buffer->data;
     int offset;
-    char *buffer_pt = strchr(buffer, '\n');
+    char *buffer_pt = strchr(data_pt, '\n');
 
     while(buffer_pt != NULL) {
         // Get the position of '\n' in buffer
-        offset = ((int)(buffer_pt - buffer));
+        offset = ((int)(buffer_pt - data_pt));
         *buffer_pt = '\0';
         // Send message to the queue
-        if (SendMSG(logr.m_queue, buffer, srcip, SYSLOG_MQ) < 0) {
+        if (SendMSG(logr.m_queue, data_pt, srcip, SYSLOG_MQ) < 0) {
             merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
             if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
@@ -54,28 +54,34 @@ void send_buffer(char *buffer, int *buff_size, char *srcip) {
             }
         }
         // Re-calculate the used size of buffer and remove the message from the buffer
-        *buff_size = *buff_size - (offset + 1);
-        memcpy(buffer, buffer_pt + 1, *buff_size);
+        socket_buffer->data_len = socket_buffer->data_len - (offset + 1);
+        data_pt += (offset + 1);
         // Find the next '\n'
-        buffer_pt = strchr(buffer, '\n');
+        buffer_pt = strchr(data_pt, '\n');
     }
+    memcpy(socket_buffer->data, data_pt, socket_buffer->data_len);
+
 }
+
 /* Handle each client */
 static void HandleClient(int client_socket, char *srcip)
 {
-    int r_sz = 0, buff_size = 0;
-    char buffer[OS_MAXSTR + 2];
+    int r_sz = 0;
+    sockbuffer_t socket_buff;
+
+    os_calloc(OS_MAXSTR + 2, sizeof(char), socket_buff.data);
+    socket_buff.data_len = 0;
 
     /* Create PID file */
     if (CreatePID(ARGV0, getpid()) < 0) {
         merror_exit(PID_ERROR);
     }
-
-    /* Initialize some variables */
-    memset(buffer, '\0', OS_MAXSTR + 2);
     while (1) {
         /* If an error occurred, or received 0 bytes, we need to return and close the socket */
-        r_sz = recv(client_socket, buffer + buff_size, (OS_MAXSTR - buff_size) - 2, 0);
+        r_sz = recv(client_socket, socket_buff.data + socket_buff.data_len, OS_MAXSTR - socket_buff.data_len, 0);
+        socket_buff.data_len += r_sz;
+
+        socket_buff.data[socket_buff.data_len] = '\0';
         switch (r_sz) {
             case -1:
                 merror(RECV_ERROR, strerror(errno), errno);
@@ -83,13 +89,13 @@ static void HandleClient(int client_socket, char *srcip)
             case 0:
                 close(client_socket);
                 DeletePID(ARGV0);
+                os_free(socket_buff.data);
                 return;
             default:
                 mdebug2("Received %d bytes from '%s'", r_sz, srcip);
                 break;
         }
-        buff_size += r_sz;
-        send_buffer(buffer, &buff_size, srcip);
+        send_buffer(&socket_buff, srcip);
     }
 }
 
