@@ -380,6 +380,61 @@ void test_get_next_time_interval_configuration(void **state) {
     assert_int_equal((int) ret, 3600);
 }
 
+void test_check_daylight_first_time(void **state) {
+    (void) state;
+    int current_daylight = -1;
+    int future_daylight = 0;
+    int next_scan_time = 0;
+
+    check_daylight(current_daylight, &future_daylight, &next_scan_time);
+    assert_int_equal(future_daylight, 0);
+    assert_int_equal(next_scan_time, 0);
+}
+
+void test_check_daylight_same_daylight_zero(void **state) {
+    (void) state;
+    int current_daylight = 0;
+    int future_daylight = 0;
+    int next_scan_time = 0;
+
+    check_daylight(current_daylight, &future_daylight, &next_scan_time);
+    assert_int_equal(future_daylight, 0);
+    assert_int_equal(next_scan_time, 0);
+}
+
+void test_check_daylight_same_daylight_one(void **state) {
+    (void) state;
+    int current_daylight = 1;
+    int future_daylight = 1;
+    int next_scan_time = 1591015612;
+
+    check_daylight(current_daylight, &future_daylight, &next_scan_time);
+    assert_int_equal(future_daylight, 1);
+    assert_int_equal(next_scan_time, 1591015612);
+}
+
+void test_check_daylight_different_daylight_one_zero(void **state) {
+    (void) state;
+    int current_daylight = 1;
+    int future_daylight = 0;
+    int next_scan_time = 0;
+
+    check_daylight(current_daylight, &future_daylight, &next_scan_time);
+    assert_int_equal(future_daylight, 0);
+    assert_int_equal(next_scan_time, 0+3600);
+}
+
+void test_check_daylight_different_daylight_zero_one(void **state) {
+    (void) state;
+    int current_daylight = 0;
+    int future_daylight = 1;
+    int next_scan_time = 1591015612;
+
+    check_daylight(current_daylight, &future_daylight, &next_scan_time);
+    assert_int_equal(future_daylight, 1);
+    assert_int_equal(next_scan_time, 1591015612-3600);
+}
+
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -407,7 +462,13 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_get_next_time_day_configuration, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
         cmocka_unit_test_setup_teardown(test_get_next_time_wday_configuration, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
         cmocka_unit_test_setup_teardown(test_get_next_time_daytime_configuration, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
-        cmocka_unit_test_setup_teardown(test_get_next_time_interval_configuration, test_sched_scan_validate_setup, test_sched_scan_validate_teardown)
+        cmocka_unit_test_setup_teardown(test_get_next_time_interval_configuration, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
+        /* check_daylight function tests */
+        cmocka_unit_test(test_check_daylight_first_time),
+        cmocka_unit_test(test_check_daylight_same_daylight_zero),
+        cmocka_unit_test(test_check_daylight_same_daylight_one),
+        cmocka_unit_test(test_check_daylight_different_daylight_one_zero),
+        cmocka_unit_test(test_check_daylight_different_daylight_zero_one)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
