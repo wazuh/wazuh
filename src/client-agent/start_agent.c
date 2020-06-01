@@ -350,6 +350,8 @@ int try_enroll_to_server(const char * server_rip) {
         sleep(agt->enrollment_cfg->delay_after_enrollment);
         // Successfull enroll, read keys
         OS_UpdateKeys(&keys);
+        // Set the crypto method for the agent
+        os_set_agent_crypto_method(&keys,agt->crypto_method);
     }
     return enroll_result;
 }
