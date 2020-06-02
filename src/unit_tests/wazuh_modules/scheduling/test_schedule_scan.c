@@ -554,6 +554,58 @@ void test_get_time_to_day_different_after_wday(void **state) {
     assert_int_equal(diff_test, 60+3600*24*(7-(1-wday)));
 }
 
+void test_get_time_to_month_day_same_month_day_positive_diff(void **state) {
+    /* Date: Mon 120/06/01 15:00:00 */
+    (void) state;
+    int mday = 1;
+    const char * hour = "15:01"; 
+    const unsigned int num_months = 1;
+    unsigned long diff_test;
+
+    diff_test = get_time_to_month_day(mday, hour, num_months);
+
+    assert_int_equal(diff_test, 60);
+}
+
+void test_get_time_to_month_day_same_month(void **state) {
+    /* Date: Mon 120/06/01 15:00:00 */
+    (void) state;
+    int mday = 2;
+    const char * hour = "15:01"; 
+    const unsigned int num_months = 1;
+    unsigned long diff_test;
+
+    diff_test = get_time_to_month_day(mday, hour, num_months);
+
+    assert_int_equal(diff_test, 60+3600*24);
+}
+
+void test_get_time_to_month_day_high_num_months(void **state) {
+    /* Date: Mon 120/06/01 15:00:00 */
+    (void) state;
+    int mday = 1;
+    const char * hour = "14:59"; 
+    const unsigned int num_months = 13;
+    unsigned long diff_test;
+
+    diff_test = get_time_to_month_day(mday, hour, num_months);
+
+    assert_int_equal(diff_test, 3600*24*395-60);
+}
+
+void test_get_time_to_month_day_num_months(void **state) {
+    /* Date: Mon 120/06/01 15:00:00 */
+    (void) state;
+    int mday = 1;
+    const char * hour = "14:59"; 
+    const unsigned int num_months = 8;
+    unsigned long diff_test;
+
+    diff_test = get_time_to_month_day(mday, hour, num_months);
+
+    assert_int_equal(diff_test, 3600*24*245-60);
+}
+
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -597,7 +649,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_get_time_to_day_same_wday_negative_diff_first_time, test_get_time_setup, test_get_time_teardown),
         cmocka_unit_test_setup_teardown(test_get_time_to_day_same_wday_negative_diff_num_weeks, test_get_time_setup, test_get_time_teardown),
         cmocka_unit_test_setup_teardown(test_get_time_to_day_different_before_wday, test_get_time_setup, test_get_time_teardown),
-        cmocka_unit_test_setup_teardown(test_get_time_to_day_different_after_wday, test_get_time_setup, test_get_time_teardown)
+        cmocka_unit_test_setup_teardown(test_get_time_to_day_different_after_wday, test_get_time_setup, test_get_time_teardown),
+        /* get_time_to_month_day function tests */
+        cmocka_unit_test_setup_teardown(test_get_time_to_month_day_same_month_day_positive_diff, test_get_time_setup, test_get_time_teardown),
+        cmocka_unit_test_setup_teardown(test_get_time_to_month_day_same_month, test_get_time_setup, test_get_time_teardown),
+        cmocka_unit_test_setup_teardown(test_get_time_to_month_day_high_num_months, test_get_time_setup, test_get_time_teardown),
+        cmocka_unit_test_setup_teardown(test_get_time_to_month_day_num_months, test_get_time_setup, test_get_time_teardown)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
