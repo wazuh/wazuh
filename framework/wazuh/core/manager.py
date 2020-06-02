@@ -217,15 +217,13 @@ def replace_in_comments(original_content, to_be_replaced, replacement):
     return original_content
 
 
-def update_api_conf(new_config, node_type):
+def update_api_conf(new_config):
     """Update dict and subdicts without overriding unspecified keys and write it in the API.yaml file.
 
     Parameters
     ----------
     new_config : dict
         Dictionary with the new configuration.
-    node_type : str
-        Type of node (master, worker)
     """
     if new_config:
         for key in new_config:
@@ -235,11 +233,10 @@ def update_api_conf(new_config, node_type):
                 else:
                     configuration.api_conf[key] = new_config[key]
 
-        if node_type == 'master':
-            try:
-                with open(common.api_config_path, 'w+') as f:
-                    yaml.dump(configuration.api_conf, f)
-            except IOError:
-                raise WazuhInternalError(1005)
+        try:
+            with open(common.api_config_path, 'w+') as f:
+                yaml.dump(configuration.api_conf, f)
+        except IOError:
+            raise WazuhInternalError(1005)
     else:
         raise WazuhError(1105)

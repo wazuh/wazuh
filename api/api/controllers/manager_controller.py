@@ -382,11 +382,10 @@ async def put_api_config(request, pretty=False, wait_for_complete=False):
 
     dapi = DistributedAPI(f=manager.update_api_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
+                          request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          broadcasting=True,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
@@ -407,11 +406,10 @@ async def delete_api_config(request, pretty=False, wait_for_complete=False):
 
     dapi = DistributedAPI(f=manager.update_api_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
+                          request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          broadcasting=True,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())

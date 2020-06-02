@@ -286,7 +286,8 @@ _update_config_default_result_kwargs = {
 }
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:update_api_config"], resources=['*:*:*'],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:update_api_config"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
                   post_proc_kwargs={'default_result_kwargs': _update_config_default_result_kwargs})
 def update_api_config(updated_config=None):
     """Update or restore current API configuration.
@@ -307,7 +308,7 @@ def update_api_config(updated_config=None):
     result = AffectedItemsWazuhResult(**_update_config_default_result_kwargs)
 
     try:
-        update_api_conf(updated_config, get_node().get('type'))
+        update_api_conf(updated_config)
         result.affected_items.append(node_id)
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)

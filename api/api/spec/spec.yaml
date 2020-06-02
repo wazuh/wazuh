@@ -6908,21 +6908,19 @@ paths:
     put:
       tags:
         - cluster
-      summary: Update API configuration.
-      description: Updates API configuration with the data contained in the API request.
+      summary: Update the API configuration of all nodes.
+      description: Updates the API configuration of all the nodes with the data contained in the API request.
       operationId: api.controllers.cluster_controller.put_api_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:update_api_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-
       requestBody:
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/APIconfiguration'
-
       responses:
         '200':
           description: 'Confirmation message'
@@ -6947,8 +6945,8 @@ paths:
     delete:
       tags:
         - cluster
-      summary: Restore default API configuration.
-      description: Replaces API configuration with the original one.
+      summary: Restore default API configuration of all nodes.
+      description: Replaces the API configuration of all the nodes with the original one.
       operationId: api.controllers.cluster_controller.delete_api_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:update_api_config'
@@ -8926,7 +8924,7 @@ paths:
     get:
       tags:
         - manager
-      summary: Get API configuration.
+      summary: Get API configuration for this node.
       description: Returns the API configuration in JSON format.
       operationId: api.controllers.manager_controller.get_api_config
       x-rbac-actions:
@@ -8960,8 +8958,8 @@ paths:
     put:
       tags:
         - manager
-      summary: Update API configuration.
-      description: Updates API configuration with the data contained in the API request.
+      summary: Update API configuration for this node.
+      description: Updates the API configuration for this node with the data contained in the API request.
       operationId: api.controllers.manager_controller.put_api_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/manager:update_api_config'
@@ -8998,8 +8996,8 @@ paths:
     delete:
       tags:
         - manager
-      summary: Restore default API configuration.
-      description: Replaces API configuration with the original one.
+      summary: Restore default API configuration for this node.
+      description: Replaces the API configuration for this node with the original one.
       operationId: api.controllers.manager_controller.delete_api_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/manager:update_api_config'

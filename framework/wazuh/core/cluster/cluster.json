@@ -90,17 +90,6 @@
             "description": "agents group configuration"
         },
 
-        "/api/configuration/": {
-            "permissions": "0o660",
-            "source": "master",
-            "files": ["api.yaml"],
-            "recursive": false,
-            "restart": false,
-            "remove_subdirs_if_empty": false,
-            "extra_valid": false,
-            "description": "centralize API configuration"
-        },
-
         "excluded_files": [
             "ar.conf",
             "ossec.conf"
