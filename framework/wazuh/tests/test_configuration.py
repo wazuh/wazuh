@@ -82,7 +82,7 @@ def test_read_option():
         assert configuration._read_option('labels', data)[0] == 'label'
         assert configuration._read_option('test', data) == ('label', {'name': 'first', 'item': 'test'})
 
-    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/options2.conf')) as f:
+    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/synchronization.conf')) as f:
         data = fromstring(f.read())
         assert configuration._read_option('open-scap', data)[0] == 'synchronization'
         assert configuration._read_option('syscheck', data)[0] == 'synchronization'
@@ -308,7 +308,9 @@ def test_upload_group_file(mock_safe_move, mock_open):
         with patch('wazuh.configuration.subprocess.check_output', return_value=True):
             with patch('wazuh.utils.chown', side_effect=None):
                 with patch('wazuh.utils.chmod', side_effect=None):
-                    assert configuration.upload_group_file('default', "<agent_config>new_config</agent_config>", 'agent.conf') == 'Agent configuration was updated successfully'
+                    assert configuration.upload_group_file('default',
+                                                           "<agent_config>new_config</agent_config>", 'agent.conf') == \
+                                                           'Agent configuration was updated successfully'
 
     with patch('wazuh.common.shared_path', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         with pytest.raises(WazuhError, match=".* 1111 .*"):
