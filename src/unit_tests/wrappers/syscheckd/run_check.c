@@ -13,8 +13,6 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-#include "./run_check.h"
-
 struct state_t state;
 
 WINBOOL wrap_SetThreadPriority (HANDLE hThread, int nPriority) {
@@ -43,5 +41,5 @@ HANDLE wrap_run_check_CreateThread(
     __UNUSED_PARAM(DWORD                   dwCreationFlags),
     __UNUSED_PARAM(LPDWORD                 lpThreadId)
 ) {
-    return mock();
+    return mock_type(HANDLE);
 }

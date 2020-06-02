@@ -126,10 +126,6 @@ void __wrap__mterror(const char *tag, const char * file, int line, const char * 
     check_expected(formatted_msg);
 }
 
-int __wrap_FOREVER() {
-    return mock();
-}
-
 /* setup/teardown */
 static int setup_group(void **state) {
     wm_gcp *gcp_config = calloc(1, sizeof(wm_gcp));
