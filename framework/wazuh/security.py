@@ -138,7 +138,7 @@ def update_user(username=None, password=None):
         else:
             result.affected_items.append(auth.get_user(username[0]))
             result.total_affected_items += 1
-            invalid_users_tokens(user=username)
+            invalid_users_tokens(user=username[0])
 
     return result
 
