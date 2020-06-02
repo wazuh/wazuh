@@ -87,7 +87,7 @@ private:
   bool GetLeftOnly(const std::string& t1,const std::string& t2, const std::vector<std::string>& primary_key_list, std::vector<Row>& return_rows);
   bool GetPKListLeftOnly(const std::string& t1, const std::string& t2, const std::vector<std::string>& primary_key_list, std::vector<Row>& return_rows);
   bool BulkInsert(const std::string& table, const std::vector<Row>& data);
-
+  int DeleteTempTable(const std::string& table);
 
   SQLiteDB(const SQLiteDB&) = delete;
   SQLiteDB& operator=(const SQLiteDB&) = delete;

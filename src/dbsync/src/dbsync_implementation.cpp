@@ -37,10 +37,33 @@ bool DBSyncImplementation::InsertBulkData(uint64_t handle, const char* json_raw)
   auto ret_val { false };   
   std::lock_guard<std::mutex> lock(m_mutex); 
   try {
-    auto json { nlohmann::json::parse(json_raw)};
-    auto it = GetDatabaseContext(handle);
+    const auto json { nlohmann::json::parse(json_raw)};
+    const auto it = GetDatabaseContext(handle);
     if (m_dbsync_list.end() != it) {
       ret_val = (*it)->GetDatabase()->BulkInsert(json[0]["table"], json[0]["data"]);
+    }
+  } catch (const nlohmann::json::parse_error& e) {
+    std::cout << "message: " << e.what() << std::endl
+              << "exception id: " << e.id << std::endl
+              << "byte position of error: " << e.byte << std::endl;
+  } catch (const nlohmann::json::type_error& e) {
+    std::cout << "message: " << e.what() << std::endl
+              << "exception id: " << e.id << std::endl
+              << "byte position of error: " << e.create << std::endl;
+  }
+  return ret_val;
+}
+
+bool DBSyncImplementation::UpdateSnapshotData(uint64_t handle, const char* json_snapshot, std::string& result) {
+  auto ret_val { false };   
+  std::lock_guard<std::mutex> lock(m_mutex); 
+  try {
+    auto json { nlohmann::json::parse(json_snapshot)};
+    auto it = GetDatabaseContext(handle);
+    if (m_dbsync_list.end() != it) {
+      nlohmann::json json_result;
+      ret_val = (*it)->GetDatabase()->RefreshTablaData(json[0], json_result);
+      result = std::move(json_result.dump());
     }
   } catch (const nlohmann::json::parse_error& e) {
     std::cout << "message: " << e.what() << std::endl

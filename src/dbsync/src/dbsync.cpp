@@ -31,6 +31,20 @@ int insert_data(
   return ret_val;
 }
 
+int update_with_snapshot(
+    const unsigned long long handle,
+    const cJSON* json_snapshot,
+    cJSON** json_return_modifications)
+{
+  auto ret_val { false };
+  if (nullptr != json_snapshot) {
+    std::string result;
+    ret_val = DBSyncImplementation::getInstance().UpdateSnapshotData(handle, cJSON_Print(json_snapshot), result);
+    *json_return_modifications = cJSON_Parse(result.c_str());
+  }
+  return ret_val;
+}
+
 void teardown(void) {
   if(!DBSyncImplementation::getInstance().Release()) {
     std::cout << "Error when release DBSyncImplementation" << std::endl;
