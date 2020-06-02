@@ -1,6 +1,10 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+import asyncio
+import concurrent.futures
+import json
+import logging
 import os
 from secrets import token_urlsafe
 from shutil import chown
@@ -12,23 +16,44 @@ from werkzeug.exceptions import Unauthorized
 from api import configuration
 from api.api_exception import APIException
 from api.constants import SECURITY_PATH
+from api.util import raise_if_exc
+from wazuh.core.cluster import local_client
+from wazuh.core.cluster.common import WazuhJSONEncoder
+from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.rbac.orm import AuthenticationManager
 from wazuh.rbac.orm import TokenManager
+
+pool = concurrent.futures.ThreadPoolExecutor()
+
+
+def check_user_master(user, password):
+    with AuthenticationManager() as auth_:
+        if auth_.check_user(user, password):
+            return {'result': 'success'}
 
 
 def check_user(user, password, required_scopes=None):
     """Convenience method to use in openapi specification
-
     :param user: string Unique username
     :param password: string user password
     :param required_scopes:
     :return:
     """
-    with AuthenticationManager() as auth_:
-        if auth_.check_user(user, password):
-            return {'sub': user,
-                    'active': True
-                    }
+    lc = local_client.LocalClient()
+    input_json = {'f': check_user_master,
+                  'f_kwargs': {'user': user, 'password': password},
+                  'from_cluster': False,
+                  'wait_for_complete': True
+                  }
+
+    result = json.loads(pool.submit(asyncio.run, lc.execute(command=b'dapi',
+                                                            data=json.dumps(input_json, cls=WazuhJSONEncoder).encode(),
+                                                            wait_for_complete=False)).result())
+
+    if '__wazuh_exception__' not in result.keys():
+        return {'sub': user,
+                'active': True
+                }
 
 
 # Set JWT settings
@@ -91,6 +116,13 @@ def generate_token(user_id=None, rbac_policies=None):
     return jwt.encode(payload, generate_secret(), algorithm=JWT_ALGORITHM)
 
 
+def check_token(username, token_iat_time):
+    with TokenManager() as tm:
+        result = tm.is_token_valid(username=username, token_iat_time=token_iat_time)
+
+    return {'valid': result}
+
+
 def decode_token(token):
     """Decodes a jwt formatted token. Raise an Unauthorized exception in case validation fails.
 
@@ -99,11 +131,18 @@ def decode_token(token):
     """
     try:
         payload = jwt.decode(token, generate_secret(), algorithms=[JWT_ALGORITHM])
-        user = payload['sub']
-        with TokenManager() as tm:
-            rules = tm.get_all_rules()
-            if user in rules.keys() and rules[user] >= payload['iat']:
-                raise Unauthorized
+        dapi = DistributedAPI(f=check_token,
+                              f_kwargs={'username': payload['sub'], 'token_iat_time': payload['iat']},
+                              request_type='local_master',
+                              is_async=False,
+                              wait_for_complete=True,
+                              logger=logging.getLogger('wazuh')
+                              )
+        data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
+
+        if not data.to_dict()['result']['valid']:
+            raise Unauthorized
+
         return payload
     except JWTError as e:
         raise Unauthorized from e

@@ -1137,8 +1137,7 @@ class UserRolesManager:
             if username not in admin_usernames:
                 roles = self.session.query(User).filter_by(username=username).first().roles
                 for role in roles:
-                    if role.id not in admin_role_ids:
-                        self.remove_role_in_user(username=username, role_id=role.id)
+                    self.remove_role_in_user(username=username, role_id=role.id)
                 return True
         except (IntegrityError, TypeError):
             self.session.rollback()
