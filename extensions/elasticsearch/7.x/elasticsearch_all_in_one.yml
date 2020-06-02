@@ -2,18 +2,19 @@ network.host: 127.0.0.1
 node.name: node-1
 cluster.initial_master_nodes: node-1
 
-opendistro_security.ssl.transport.pemcert_filepath: esnode.pem
-opendistro_security.ssl.transport.pemkey_filepath: esnode-key.pem
-opendistro_security.ssl.transport.pemtrustedcas_filepath: root-ca.pem
+opendistro_security.ssl.transport.pemcert_filepath: /etc/elasticsearch/certs/elasticsearch.pem
+opendistro_security.ssl.transport.pemkey_filepath: /etc/elasticsearch/certs/elasticsearch.key
+opendistro_security.ssl.transport.pemtrustedcas_filepath: /etc/elasticsearch/certs/root-ca.pem
 opendistro_security.ssl.transport.enforce_hostname_verification: false
+opendistro_security.ssl.transport.resolve_hostname: false
 opendistro_security.ssl.http.enabled: true
-opendistro_security.ssl.http.pemcert_filepath: esnode.pem
-opendistro_security.ssl.http.pemkey_filepath: esnode-key.pem
-opendistro_security.ssl.http.pemtrustedcas_filepath: root-ca.pem
-opendistro_security.allow_unsafe_democertificates: true
-opendistro_security.allow_default_init_securityindex: true
+opendistro_security.ssl.http.pemcert_filepath: /etc/elasticsearch/certs/elasticsearch_http.pem
+opendistro_security.ssl.http.pemkey_filepath: /etc/elasticsearch/certs/elasticsearch_http.key
+opendistro_security.ssl.http.pemtrustedcas_filepath: /etc/elasticsearch/certs/root-ca.pem
+opendistro_security.nodes_dn:
+- CN=node-1,OU=Docu,O=Wazuh,L=California,C=ES
 opendistro_security.authcz.admin_dn:
-  - CN=kirk,OU=client,O=client,L=test, C=de
+- CN=admin,OU=Docu,O=Wazuh,L=California,C=ES
 
 opendistro_security.audit.type: internal_elasticsearch
 opendistro_security.enable_snapshot_restore_privilege: true
