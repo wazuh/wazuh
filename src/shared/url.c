@@ -134,7 +134,7 @@ int wurl_request(const char * url, const char * dest, const char *header, const 
 
     zrequest = strlen(_url) + strlen(parsed_dest) + strlen(COMMAND) +
                (parsed_header ? strlen(parsed_header) : 0) +
-               (parsed_data ? strlen(parsed_data) : 0) + sizeof(long) + 6;
+               (parsed_data ? strlen(parsed_data) : 0) + sizeof(long) + 7;
     os_malloc(zrequest, srequest);
     snprintf(srequest, zrequest, "%s %s|%s|%s|%s|%ld|", COMMAND, _url, parsed_dest, parsed_header ? parsed_header : "", parsed_data ? parsed_data : "", timeout ? timeout : 0);
     os_free(parsed_dest);
