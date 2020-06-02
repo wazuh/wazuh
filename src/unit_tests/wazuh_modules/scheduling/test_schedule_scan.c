@@ -102,6 +102,16 @@ static int test_sched_scan_validate_teardown(void **state) {
     return 0;
 }
 
+static int test_get_time_setup(void **state) {
+    current_time = 1591016400;
+    return 0;
+}
+
+static int test_get_time_teardown(void **state) {
+    current_time = 0;
+    return 0;
+}
+
 /*********************************/
 /*       TESTS                   */
 /*********************************/
@@ -435,6 +445,42 @@ void test_check_daylight_different_daylight_zero_one(void **state) {
     assert_int_equal(next_scan_time, 1591015612-3600);
 }
 
+void test_get_time_to_hour_no_negative_diff(void **state) {
+    (void) state;
+    const char * hour = "15:01";
+    const unsigned int num_days = 1;
+    bool first_time = true;
+    unsigned long diff_test;
+
+    diff_test = get_time_to_hour(hour, num_days, first_time);
+
+    assert_int_equal(diff_test, 60);
+}
+
+void test_get_time_to_hour_first_time(void **state) {
+    (void) state;
+    const char * hour = "14:59";
+    const unsigned int num_days = 1;
+    bool first_time = true;
+    unsigned long diff_test;
+
+    diff_test = get_time_to_hour(hour, num_days, first_time);
+
+    assert_int_equal(diff_test, 3600*24-60);
+}
+
+void test_get_time_to_hour_num_days(void **state) {
+    (void) state;
+    const char * hour = "14:59";
+    const unsigned int num_days = 3;
+    bool first_time = false;
+    unsigned long diff_test;
+
+    diff_test = get_time_to_hour(hour, num_days, first_time);
+
+    assert_int_equal(diff_test, num_days*3600*24-60);
+}
+
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -468,7 +514,11 @@ int main(void) {
         cmocka_unit_test(test_check_daylight_same_daylight_zero),
         cmocka_unit_test(test_check_daylight_same_daylight_one),
         cmocka_unit_test(test_check_daylight_different_daylight_one_zero),
-        cmocka_unit_test(test_check_daylight_different_daylight_zero_one)
+        cmocka_unit_test(test_check_daylight_different_daylight_zero_one),
+        /* get_time_to_hour function tests */
+        cmocka_unit_test_setup_teardown(test_get_time_to_hour_no_negative_diff, test_get_time_setup, test_get_time_teardown),
+        cmocka_unit_test_setup_teardown(test_get_time_to_hour_first_time, test_get_time_setup, test_get_time_teardown),
+        cmocka_unit_test_setup_teardown(test_get_time_to_hour_num_days, test_get_time_setup, test_get_time_teardown)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
