@@ -130,14 +130,10 @@ int __wrap_abspath(const char *path, char *buffer, size_t size) {
     return mock();
 }
 
-FILE *__real_fopen(const char * __filename, const char * __modes);
-FILE *__wrap_fopen(const char * __filename, const char * __modes) {
-    if (test_mode) {
-        check_expected(__filename);
-        check_expected(__modes);
-        return mock_type(FILE *);
-    }
-    return __real_fopen(__filename, __modes);
+FILE *__wrap_wfopen(const char * __filename, const char * __modes) {
+    check_expected(__filename);
+    check_expected(__modes);
+    return mock_type(FILE *);
 }
 
 size_t __real_fread(void *ptr, size_t size, size_t n, FILE *stream);
@@ -575,12 +571,12 @@ void test_gen_diff_alert(void **state) {
     will_return(__wrap_abspath, 1);
 
     #ifndef TEST_WINAGENT
-    expect_string(__wrap_fopen, __filename, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
+    expect_string(__wrap_wfopen, __filename, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
     #else
-    expect_string(__wrap_fopen, __filename, "queue/diff/local/c\\folder\\test.file/diff.12345");
+    expect_string(__wrap_wfopen, __filename, "queue/diff/local/c\\folder\\test.file/diff.12345");
     #endif
-    expect_string(__wrap_fopen, __modes, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     #ifndef TEST_WINAGENT
     will_return(__wrap_fread, "test diff");
@@ -630,12 +626,12 @@ void test_gen_diff_alert_big_size(void **state) {
     will_return(__wrap_abspath, 1);
 
     #ifndef TEST_WINAGENT
-    expect_string(__wrap_fopen, __filename, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
+    expect_string(__wrap_wfopen, __filename, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
     #else
-    expect_string(__wrap_fopen, __filename, "queue/diff/local/c\\folder\\test.file/diff.12345");
+    expect_string(__wrap_wfopen, __filename, "queue/diff/local/c\\folder\\test.file/diff.12345");
     #endif
-    expect_string(__wrap_fopen, __modes, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     #ifndef TEST_WINAGENT
     will_return(__wrap_fread, "this is a really big diff\n");
@@ -702,12 +698,12 @@ void test_gen_diff_alert_fopen_error(void **state) {
     will_return(__wrap_abspath, 1);
 
     #ifndef TEST_WINAGENT
-    expect_string(__wrap_fopen, __filename, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
+    expect_string(__wrap_wfopen, __filename, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
     #else
-    expect_string(__wrap_fopen, __filename, "queue/diff/local/c\\folder\\test.file/diff.12345");
+    expect_string(__wrap_wfopen, __filename, "queue/diff/local/c\\folder\\test.file/diff.12345");
     #endif
-    expect_string(__wrap_fopen, __modes, "rb");
-    will_return(__wrap_fopen, 0);
+    expect_string(__wrap_wfopen, __modes, "rb");
+    will_return(__wrap_wfopen, 0);
 
     #ifndef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg, "(6665): Unable to generate diff alert (fopen)'/var/ossec/queue/diff/local/folder/test.file/diff.12345'.");
@@ -732,12 +728,12 @@ void test_gen_diff_alert_fread_error(void **state) {
     will_return(__wrap_abspath, 1);
 
     #ifndef TEST_WINAGENT
-    expect_string(__wrap_fopen, __filename, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
+    expect_string(__wrap_wfopen, __filename, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
     #else
-    expect_string(__wrap_fopen, __filename, "queue/diff/local/c\\folder\\test.file/diff.12345");
+    expect_string(__wrap_wfopen, __filename, "queue/diff/local/c\\folder\\test.file/diff.12345");
     #endif
-    expect_string(__wrap_fopen, __modes, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, "test diff");
     will_return(__wrap_fread, 0);
@@ -763,12 +759,12 @@ void test_gen_diff_alert_compress_error(void **state) {
     will_return(__wrap_abspath, 1);
 
     #ifndef TEST_WINAGENT
-    expect_string(__wrap_fopen, __filename, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
+    expect_string(__wrap_wfopen, __filename, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
     #else
-    expect_string(__wrap_fopen, __filename, "queue/diff/local/c\\folder\\test.file/diff.12345");
+    expect_string(__wrap_wfopen, __filename, "queue/diff/local/c\\folder\\test.file/diff.12345");
     #endif
-    expect_string(__wrap_fopen, __modes, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     #ifndef TEST_WINAGENT
     will_return(__wrap_fread, "test diff");
@@ -818,13 +814,13 @@ void test_seechanges_dupfile(void **state) {
     const char * old_file = "/folder/test.old";
     const char * new_file = "/folder/test.new";
 
-    expect_string(__wrap_fopen, __filename, old_file);
-    expect_string(__wrap_fopen, __modes, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __filename, old_file);
+    expect_string(__wrap_wfopen, __modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
-    expect_string(__wrap_fopen, __filename, new_file);
-    expect_string(__wrap_fopen, __modes, "wb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __filename, new_file);
+    expect_string(__wrap_wfopen, __modes, "wb");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, "test dup file");
     will_return(__wrap_fread, 13);
@@ -848,9 +844,9 @@ void test_seechanges_dupfile_fopen_error1(void **state) {
     const char * old_file = "/folder/test.old";
     const char * new_file = "/folder/test.new";
 
-    expect_string(__wrap_fopen, __filename, old_file);
-    expect_string(__wrap_fopen, __modes, "rb");
-    will_return(__wrap_fopen, 0);
+    expect_string(__wrap_wfopen, __filename, old_file);
+    expect_string(__wrap_wfopen, __modes, "rb");
+    will_return(__wrap_wfopen, 0);
 
     int ret = seechanges_dupfile(old_file, new_file);
 
@@ -863,13 +859,13 @@ void test_seechanges_dupfile_fopen_error2(void **state) {
     const char * old_file = "/folder/test.old";
     const char * new_file = "/folder/test.new";
 
-    expect_string(__wrap_fopen, __filename, old_file);
-    expect_string(__wrap_fopen, __modes, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __filename, old_file);
+    expect_string(__wrap_wfopen, __modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
-    expect_string(__wrap_fopen, __filename, new_file);
-    expect_string(__wrap_fopen, __modes, "wb");
-    will_return(__wrap_fopen, 0);
+    expect_string(__wrap_wfopen, __filename, new_file);
+    expect_string(__wrap_wfopen, __modes, "wb");
+    will_return(__wrap_wfopen, 0);
 
     will_return(__wrap_fclose, 1);
 
@@ -884,13 +880,13 @@ void test_seechanges_dupfile_fwrite_error(void **state) {
     const char * old_file = "/folder/test.old";
     const char * new_file = "/folder/test.new";
 
-    expect_string(__wrap_fopen, __filename, old_file);
-    expect_string(__wrap_fopen, __modes, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __filename, old_file);
+    expect_string(__wrap_wfopen, __modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
-    expect_string(__wrap_fopen, __filename, new_file);
-    expect_string(__wrap_fopen, __modes, "wb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __filename, new_file);
+    expect_string(__wrap_wfopen, __modes, "wb");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, "test dup file");
     will_return(__wrap_fread, 13);
@@ -1030,12 +1026,12 @@ void test_seechanges_addfile(void **state) {
     will_return(__wrap_rename, 1);
 
     // seechanges_dupfile()
-    expect_string(__wrap_fopen, __filename, file_name);
-    expect_string(__wrap_fopen, __modes, "rb");
-    will_return(__wrap_fopen, 1);
-    expect_string(__wrap_fopen, __filename, last_entry);
-    expect_string(__wrap_fopen, __modes, "wb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __filename, file_name);
+    expect_string(__wrap_wfopen, __modes, "rb");
+    will_return(__wrap_wfopen, 1);
+    expect_string(__wrap_wfopen, __filename, last_entry);
+    expect_string(__wrap_wfopen, __modes, "wb");
+    will_return(__wrap_wfopen, 1);
     will_return(__wrap_fread, "test");
     will_return(__wrap_fread, 13);
     will_return(__wrap_fwrite, 13);
@@ -1054,9 +1050,9 @@ void test_seechanges_addfile(void **state) {
     will_return(__wrap_stat, 0);
     #endif
 
-    expect_string(__wrap_fopen, __filename, diff_file);
-    expect_string(__wrap_fopen, __modes, "wb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __filename, diff_file);
+    expect_string(__wrap_wfopen, __modes, "wb");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fwrite, 1);
 
@@ -1065,9 +1061,9 @@ void test_seechanges_addfile(void **state) {
     // gen_diff_alert()
     expect_string(__wrap_abspath, path, file_name);
     will_return(__wrap_abspath, 1);
-    expect_string(__wrap_fopen, __filename, diff_file);
-    expect_string(__wrap_fopen, __modes, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __filename, diff_file);
+    expect_string(__wrap_wfopen, __modes, "rb");
+    will_return(__wrap_wfopen, 1);
     #ifndef TEST_WINAGENT
     will_return(__wrap_fread, "test diff");
     will_return(__wrap_fread, 9);
@@ -1147,12 +1143,12 @@ void test_seechanges_addfile_run_diff(void **state) {
     will_return(__wrap_rename, 1);
 
     // seechanges_dupfile()
-    expect_string(__wrap_fopen, __filename, file_name);
-    expect_string(__wrap_fopen, __modes, "rb");
-    will_return(__wrap_fopen, 1);
-    expect_string(__wrap_fopen, __filename, last_entry);
-    expect_string(__wrap_fopen, __modes, "wb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __filename, file_name);
+    expect_string(__wrap_wfopen, __modes, "rb");
+    will_return(__wrap_wfopen, 1);
+    expect_string(__wrap_wfopen, __filename, last_entry);
+    expect_string(__wrap_wfopen, __modes, "wb");
+    will_return(__wrap_wfopen, 1);
     will_return(__wrap_fread, "test");
     will_return(__wrap_fread, 13);
     will_return(__wrap_fwrite, 13);
@@ -1183,9 +1179,9 @@ void test_seechanges_addfile_run_diff(void **state) {
     // gen_diff_alert()
     expect_string(__wrap_abspath, path, file_name);
     will_return(__wrap_abspath, 1);
-    expect_string(__wrap_fopen, __filename, diff_file);
-    expect_string(__wrap_fopen, __modes, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __filename, diff_file);
+    expect_string(__wrap_wfopen, __modes, "rb");
+    will_return(__wrap_wfopen, 1);
     #ifndef TEST_WINAGENT
     will_return(__wrap_fread, "test diff");
     will_return(__wrap_fread, 9);
@@ -1518,9 +1514,9 @@ void test_seechanges_addfile_dupfile_error(void **state) {
     will_return(__wrap_rename, 1);
 
     // seechanges_dupfile()
-    expect_string(__wrap_fopen, __filename, file_name);
-    expect_string(__wrap_fopen, __modes, "rb");
-    will_return(__wrap_fopen, 0);
+    expect_string(__wrap_wfopen, __filename, file_name);
+    expect_string(__wrap_wfopen, __modes, "rb");
+    will_return(__wrap_wfopen, 0);
 
     snprintf(error_msg, OS_SIZE_128, FIM_ERROR_GENDIFF_CREATE_SNAPSHOT, file_name);
     expect_string(__wrap__merror, formatted_msg, error_msg);
@@ -1576,12 +1572,12 @@ void test_seechanges_addfile_fopen_error(void **state) {
     will_return(__wrap_rename, 1);
 
     // seechanges_dupfile()
-    expect_string(__wrap_fopen, __filename, file_name);
-    expect_string(__wrap_fopen, __modes, "rb");
-    will_return(__wrap_fopen, 1);
-    expect_string(__wrap_fopen, __filename, last_entry);
-    expect_string(__wrap_fopen, __modes, "wb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __filename, file_name);
+    expect_string(__wrap_wfopen, __modes, "rb");
+    will_return(__wrap_wfopen, 1);
+    expect_string(__wrap_wfopen, __filename, last_entry);
+    expect_string(__wrap_wfopen, __modes, "wb");
+    will_return(__wrap_wfopen, 1);
     will_return(__wrap_fread, "test");
     will_return(__wrap_fread, 13);
     will_return(__wrap_fwrite, 13);
@@ -1600,9 +1596,9 @@ void test_seechanges_addfile_fopen_error(void **state) {
     will_return(__wrap_stat, 0);
     #endif
 
-    expect_string(__wrap_fopen, __filename, diff_file);
-    expect_string(__wrap_fopen, __modes, "wb");
-    will_return(__wrap_fopen, 0);
+    expect_string(__wrap_wfopen, __filename, diff_file);
+    expect_string(__wrap_wfopen, __modes, "wb");
+    will_return(__wrap_wfopen, 0);
 
     snprintf(error_msg, OS_SIZE_128, FIM_ERROR_GENDIFF_OPEN_FILE, diff_file);
     expect_string(__wrap__merror, formatted_msg, error_msg);
@@ -1669,12 +1665,12 @@ void test_seechanges_addfile_fwrite_error(void **state) {
     will_return(__wrap_rename, 1);
 
     // seechanges_dupfile()
-    expect_string(__wrap_fopen, __filename, file_name);
-    expect_string(__wrap_fopen, __modes, "rb");
-    will_return(__wrap_fopen, 1);
-    expect_string(__wrap_fopen, __filename, last_entry);
-    expect_string(__wrap_fopen, __modes, "wb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __filename, file_name);
+    expect_string(__wrap_wfopen, __modes, "rb");
+    will_return(__wrap_wfopen, 1);
+    expect_string(__wrap_wfopen, __filename, last_entry);
+    expect_string(__wrap_wfopen, __modes, "wb");
+    will_return(__wrap_wfopen, 1);
     will_return(__wrap_fread, "test");
     will_return(__wrap_fread, 13);
     will_return(__wrap_fwrite, 13);
@@ -1693,9 +1689,9 @@ void test_seechanges_addfile_fwrite_error(void **state) {
     will_return(__wrap_stat, 0);
     #endif
 
-    expect_string(__wrap_fopen, __filename, diff_file);
-    expect_string(__wrap_fopen, __modes, "wb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __filename, diff_file);
+    expect_string(__wrap_wfopen, __modes, "wb");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fwrite, 0);
 
@@ -1707,9 +1703,9 @@ void test_seechanges_addfile_fwrite_error(void **state) {
     // gen_diff_alert()
     expect_string(__wrap_abspath, path, file_name);
     will_return(__wrap_abspath, 1);
-    expect_string(__wrap_fopen, __filename, diff_file);
-    expect_string(__wrap_fopen, __modes, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __filename, diff_file);
+    expect_string(__wrap_wfopen, __modes, "rb");
+    will_return(__wrap_wfopen, 1);
     #ifndef TEST_WINAGENT
     will_return(__wrap_fread, "test diff");
     will_return(__wrap_fread, 9);
@@ -1785,12 +1781,12 @@ void test_seechanges_addfile_run_diff_system_error(void **state) {
     will_return(__wrap_rename, 1);
 
     // seechanges_dupfile()
-    expect_string(__wrap_fopen, __filename, file_name);
-    expect_string(__wrap_fopen, __modes, "rb");
-    will_return(__wrap_fopen, 1);
-    expect_string(__wrap_fopen, __filename, last_entry);
-    expect_string(__wrap_fopen, __modes, "wb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __filename, file_name);
+    expect_string(__wrap_wfopen, __modes, "rb");
+    will_return(__wrap_wfopen, 1);
+    expect_string(__wrap_wfopen, __filename, last_entry);
+    expect_string(__wrap_wfopen, __modes, "wb");
+    will_return(__wrap_wfopen, 1);
     will_return(__wrap_fread, "test");
     will_return(__wrap_fread, 13);
     will_return(__wrap_fwrite, 13);
