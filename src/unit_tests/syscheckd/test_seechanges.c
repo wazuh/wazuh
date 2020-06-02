@@ -1000,7 +1000,7 @@ void test_seechanges_addfile(void **state) {
     char diff_file[OS_SIZE_128];
 
     snprintf(last_entry, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz, OS_SIZE_128, "%s.gz", last_entry);
+    snprintf(last_entry_gz, OS_SIZE_128, "%.124s.gz", last_entry);
     snprintf(state_file, OS_SIZE_128, "%s%s/%s/state.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
     snprintf(diff_file, OS_SIZE_128, "%s%s/%s/diff.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
 
@@ -1117,7 +1117,7 @@ void test_seechanges_addfile_run_diff(void **state) {
     char diff_file[OS_SIZE_128];
 
     snprintf(last_entry, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz, OS_SIZE_128, "%s.gz", last_entry);
+    snprintf(last_entry_gz, OS_SIZE_128, "%.124s.gz", last_entry);
     snprintf(state_file, OS_SIZE_128, "%s%s/%s/state.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
     snprintf(diff_file, OS_SIZE_128, "%s%s/%s/diff.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
 
@@ -1245,7 +1245,7 @@ void test_seechanges_addfile_create_gz_file(void **state) {
     char warn_msg[OS_SIZE_128];
 
     snprintf(last_entry, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz, OS_SIZE_128, "%s.gz", last_entry);
+    snprintf(last_entry_gz, OS_SIZE_128, "%.124s.gz", last_entry);
     snprintf(state_file, OS_SIZE_128, "%s%s/%s/state.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
     snprintf(diff_file, OS_SIZE_128, "%s%s/%s/diff.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
 
@@ -1294,7 +1294,7 @@ void test_seechanges_addfile_same_md5(void **state) {
     char diff_file[OS_SIZE_128];
 
     snprintf(last_entry, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz, OS_SIZE_128, "%s.gz", last_entry);
+    snprintf(last_entry_gz, OS_SIZE_128, "%.124s.gz", last_entry);
     snprintf(state_file, OS_SIZE_128, "%s%s/%s/state.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
     snprintf(diff_file, OS_SIZE_128, "%s%s/%s/diff.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
 
@@ -1359,7 +1359,7 @@ void test_seechanges_addfile_md5_error1(void **state) {
     char last_entry_gz[OS_SIZE_128];
 
     snprintf(last_entry, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz, OS_SIZE_128, "%s.gz", last_entry);
+    snprintf(last_entry_gz, OS_SIZE_128, "%.124s.gz", last_entry);
 
     expect_string(__wrap_abspath, path, file_name);
     will_return(__wrap_abspath, 1);
@@ -1395,7 +1395,7 @@ void test_seechanges_addfile_md5_error2(void **state) {
     char last_entry_gz[OS_SIZE_128];
 
     snprintf(last_entry, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz, OS_SIZE_128, "%s.gz", last_entry);
+    snprintf(last_entry_gz, OS_SIZE_128, "%.124s.gz", last_entry);
 
     expect_string(__wrap_abspath, path, file_name);
     will_return(__wrap_abspath, 1);
@@ -1438,7 +1438,7 @@ void test_seechanges_addfile_rename_error(void **state) {
     char error_msg[OS_SIZE_256];
 
     snprintf(last_entry, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz, OS_SIZE_128, "%s.gz", last_entry);
+    snprintf(last_entry_gz, OS_SIZE_128, "%.124s.gz", last_entry);
     snprintf(state_file, OS_SIZE_128, "%s%s/%s/state.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
 
     expect_string(__wrap_abspath, path, file_name);
@@ -1489,7 +1489,7 @@ void test_seechanges_addfile_dupfile_error(void **state) {
     char error_msg[OS_SIZE_128];
 
     snprintf(last_entry, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz, OS_SIZE_128, "%s.gz", last_entry);
+    snprintf(last_entry_gz, OS_SIZE_128, "%.124s.gz", last_entry);
     snprintf(state_file, OS_SIZE_128, "%s%s/%s/state.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
 
     expect_string(__wrap_abspath, path, file_name);
@@ -1546,7 +1546,7 @@ void test_seechanges_addfile_fopen_error(void **state) {
     char error_msg[OS_SIZE_128];
 
     snprintf(last_entry, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz, OS_SIZE_128, "%s.gz", last_entry);
+    snprintf(last_entry_gz, OS_SIZE_128, "%.124s.gz", last_entry);
     snprintf(state_file, OS_SIZE_128, "%s%s/%s/state.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
     snprintf(diff_file, OS_SIZE_128, "%s%s/%s/diff.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
 
@@ -1639,7 +1639,7 @@ void test_seechanges_addfile_fwrite_error(void **state) {
     char error_msg[OS_SIZE_128];
 
     snprintf(last_entry, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz, OS_SIZE_128, "%s.gz", last_entry);
+    snprintf(last_entry_gz, OS_SIZE_128, "%.124s.gz", last_entry);
     snprintf(state_file, OS_SIZE_128, "%s%s/%s/state.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
     snprintf(diff_file, OS_SIZE_128, "%s%s/%s/diff.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
 
@@ -1756,7 +1756,7 @@ void test_seechanges_addfile_run_diff_system_error(void **state) {
     char error_msg[OS_SIZE_256];
 
     snprintf(last_entry, OS_SIZE_128, "%s%s/%s/last-entry", default_path, diff_folder, file_name_abs + PATH_OFFSET);
-    snprintf(last_entry_gz, OS_SIZE_128, "%s.gz", last_entry);
+    snprintf(last_entry_gz, OS_SIZE_128, "%.124s.gz", last_entry);
     snprintf(state_file, OS_SIZE_128, "%s%s/%s/state.1", default_path, diff_folder, file_name_abs + PATH_OFFSET);
 
     expect_string(__wrap_abspath, path, file_name);
