@@ -1003,6 +1003,10 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
         } else if (!strcmp(node[i]->element, XML_TIMEOUT)) {
             char * end;
             options->timeout = strtol(node[i]->content, &end, 10);
+            if (options->timeout < 0) {
+                merror("Invalid content for '%s' option at module '%s'", XML_TIMEOUT, WM_VULNDETECTOR_CONTEXT.name);
+                options->timeout = WM_VULNDETECTOR_DEFAULT_TIMEOUT;
+            }
         } else if (!strcmp(node[i]->element, XML_PATH)) {
             if (multi_provider) {
                 os_free(options->multi_path);

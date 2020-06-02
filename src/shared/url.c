@@ -60,13 +60,23 @@ int wurl_get(const char * url, const char * dest, const char * header, const cha
         curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
         res = curl_easy_perform(curl);
 
-        if(res){
-            mdebug1("CURL ERROR %s",errbuf);
+        switch(res) {
+        case CURLE_OK:
+            break;
+        case CURLE_OPERATION_TIMEDOUT:
+            mdebug1("CURL ERROR: %s", errbuf);
+            curl_easy_cleanup(curl);
+            fclose(fp);
+            unlink(dest);
+            return OS_TIMEOUT;
+        default:
+            mdebug1("CURL ERROR: %s",errbuf);
             curl_easy_cleanup(curl);
             fclose(fp);
             unlink(dest);
             return OS_CONNERR;
         }
+
         curl_easy_cleanup(curl);
         fclose(fp);
     }
