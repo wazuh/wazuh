@@ -33,7 +33,7 @@ admin_usernames = ['wazuh', 'wazuh-wui']
 
 # IDs reserved for administrator roles and policies, these can not be modified or deleted
 admin_role_ids = [1, 2, 3, 4, 5, 6, 7]
-admin_policy_ids = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+admin_policy_ids = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 
 
 def json_validator(data):
