@@ -130,6 +130,8 @@ size_t SQLiteDB::LoadTableData(const std::string& table) {
     if (LoadFieldData(table)) {
       fields_quantity = m_table_fields[table].size();
     }
+  } else {
+    fields_quantity = m_table_fields[table].size();
   }
 
   return fields_quantity;    
@@ -239,7 +241,7 @@ bool SQLiteDB::RefreshTablaData(const nlohmann::json& data, nlohmann::json& delt
   auto ret_val {false};
   const std::string table { data["table"].is_string() ? data["table"].get<std::string>() : "" };
   if (CreateCopyTempTable(table)) {
-    if (BulkInsert(table + kTempTableSubFix, data[0]["data"])) {
+    if (BulkInsert(table + kTempTableSubFix, data["data"])) {
       std::vector<std::string> primary_key_list;
       if (GetPrimaryKeysFromTable(table, primary_key_list)) {
         if (!RemoveNotExistsRows(table, primary_key_list, delta)) {
@@ -249,7 +251,9 @@ bool SQLiteDB::RefreshTablaData(const nlohmann::json& data, nlohmann::json& delt
           std::cout << "Error during the insert rows update "<< __LINE__ << " - " << __FILE__ << std::endl;
         }
       }
+      ret_val = true;
     }
+    DeleteTempTable(table);
   }
   return ret_val;
 }
@@ -276,12 +280,24 @@ bool SQLiteDB::CreateCopyTempTable(const std::string& table) {
   return ret_val;
 }
 
+int SQLiteDB::DeleteTempTable(const std::string& table) { 
+  
+  char* errorMessage { nullptr };
+  const std::string query { "DROP TABLE " + table + kTempTableSubFix + ";" };
+  auto ret_val { sqlite3_exec(m_db, query.c_str(), NULL, NULL, &errorMessage) };
+  if(SQLITE_OK != ret_val) {
+      fprintf(stderr, "SQL error: %s\n", errorMessage);
+      sqlite3_free(errorMessage);
+  }
+  return ret_val;
+}
+
 bool SQLiteDB::GetTableCreateQuery(const std::string& table, std::string& result_query)
 {
   auto ret_val { false };
   sqlite3_stmt* stmt{ nullptr };
   const std::string q {"select sql from sqlite_master where type='table' AND name=?;"}; 
-  
+
   if (!table.empty()) {
     auto rc = sqlite3_prepare_v2(m_db,
                                   q.c_str(),
@@ -295,12 +311,13 @@ bool SQLiteDB::GetTableCreateQuery(const std::string& table, std::string& result
                             table.length(), 
                             SQLITE_TRANSIENT);
       if (rc == SQLITE_OK) {
-       if (SQLITE_DONE == sqlite3_step(stmt)) {
-            ret_val = true;
+       if (SQLITE_ROW == sqlite3_step(stmt)) {
+          result_query.append(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)));
+          result_query.append(";");
+          ret_val = true;
         }
       }
       sqlite3_finalize(stmt);
-      ret_val = true;
     } else {
       sqlite3_errmsg(m_db);
     }
@@ -311,22 +328,22 @@ bool SQLiteDB::GetTableCreateQuery(const std::string& table, std::string& result
 bool SQLiteDB::RemoveNotExistsRows(const std::string& table, const std::vector<std::string>& primary_key_list, nlohmann::json& delta) {
   auto ret_val {true  };
   std::vector<Row> row_keys_value;
-  if (GetLeftOnly(table+kTempTableSubFix,table, primary_key_list, row_keys_value)) {
+  if (GetPKListLeftOnly(table, table+kTempTableSubFix, primary_key_list, row_keys_value)) {
     if (DeleteRows(table, primary_key_list, row_keys_value)) {
       for (const auto& row : row_keys_value){
-        nlohmann::json object { nlohmann::json::object() };
+        nlohmann::json object;
         for (const auto& value : row) {
           const auto row_type { std::get<GenericTupleIndex::GEN_TYPE>(value.second) };
           if (ColumnType::BIGINT_TYPE == row_type) {
-            object.push_back(std::get<ColumnType::BIGINT_TYPE>(value.second));
+            object[value.first] = std::get<ColumnType::BIGINT_TYPE>(value.second);
           } else if (ColumnType::UNSIGNED_BIGINT_TYPE == row_type) {
-            object.push_back(std::get<ColumnType::UNSIGNED_BIGINT_TYPE>(value.second));
+            object[value.first] = std::get<ColumnType::UNSIGNED_BIGINT_TYPE>(value.second);
           } else if (ColumnType::INTEGER_TYPE == row_type) {
-            object.push_back(std::get<ColumnType::INTEGER_TYPE>(value.second));
+            object[value.first] = std::get<ColumnType::INTEGER_TYPE>(value.second);
           } else if (ColumnType::TEXT_TYPE == row_type) {
-            object.push_back(std::get<ColumnType::TEXT_TYPE>(value.second));
+            object[value.first] = std::get<ColumnType::TEXT_TYPE>(value.second);
           } else if (ColumnType::DOUBLE_TYPE == row_type) {
-            object.push_back(std::get<ColumnType::DOUBLE_TYPE>(value.second));
+            object[value.first] = std::get<ColumnType::DOUBLE_TYPE>(value.second);
           } else if (ColumnType::BLOB_TYPE == row_type) {
             std::cout << "not implemented "<< __LINE__ << " - " << __FILE__ << std::endl;
           }
@@ -357,9 +374,9 @@ int32_t SQLiteDB::GetTableData(sqlite3_stmt* stmt, const int32_t index, const Co
   int32_t rc { SQLITE_OK };
  
   if (ColumnType::BIGINT_TYPE == type) {
-    row[field_name] = std::make_tuple(type,std::string(),0,0,sqlite3_column_int64(stmt, index),0);
+    row[field_name] = std::make_tuple(type,std::string(),0,sqlite3_column_int64(stmt, index),0,0);
   } else if (ColumnType::UNSIGNED_BIGINT_TYPE == type) {
-    row[field_name] = std::make_tuple(type,std::string(),0,sqlite3_column_int64(stmt, index),0,0);                        
+    row[field_name] = std::make_tuple(type,std::string(),0,0,sqlite3_column_int64(stmt, index),0);                        
   } else if (ColumnType::INTEGER_TYPE == type) {
     row[field_name] = std::make_tuple(type,std::string(),sqlite3_column_int(stmt, index),0,0,0); 
   } else if (ColumnType::TEXT_TYPE == type) {
@@ -385,7 +402,7 @@ bool SQLiteDB::GetLeftOnly(
   auto ret_val { false };
   
   const std::string query { BuildLeftOnlyQuery(t1, t2, primary_key_list) };
-  
+
   if (!t1.empty() && !query.empty()) {
     auto rc = sqlite3_prepare_v2(m_db,
                                   query.c_str(),
@@ -397,7 +414,7 @@ bool SQLiteDB::GetLeftOnly(
       while (SQLITE_ROW == sqlite3_step(stmt)) {
         Row register_fields;
         for(const auto& field : table_fields) {
-          GetTableData(stmt, std::get<TableHeader::CID>(field)+1, field, register_fields);
+          GetTableData(stmt, std::get<TableHeader::CID>(field), field, register_fields);
         }
         return_rows.push_back(std::move(register_fields));
       }
@@ -422,7 +439,7 @@ bool SQLiteDB::GetPKListLeftOnly(
   auto ret_val { false };
   
   const std::string query { BuildLeftOnlyQuery(t1, t2, primary_key_list, true) };
-  
+
   if (!t1.empty() && !query.empty()) {
     auto rc = sqlite3_prepare_v2(m_db,
                                   query.c_str(),
@@ -596,22 +613,22 @@ std::string SQLiteDB::BuildLeftOnlyQuery(
 bool SQLiteDB::InsertNewRows(const std::string& table, const std::vector<std::string>& primary_key_list, nlohmann::json& delta) {
   auto ret_val { true };
   std::vector<Row> row_values;
-  if (GetLeftOnly(table,table+kTempTableSubFix, primary_key_list, row_values)) {
+  if (GetLeftOnly(table+kTempTableSubFix, table, primary_key_list, row_values)) {
      if (BulkInsert(table, row_values)) {
        for (const auto& row : row_values){
-        nlohmann::json object { nlohmann::json::object() };
+        nlohmann::json object;
         for (const auto& value : row) {
           const auto row_type { std::get<GenericTupleIndex::GEN_TYPE>(value.second) };
           if (ColumnType::BIGINT_TYPE == row_type) {
-            object.push_back(std::get<ColumnType::BIGINT_TYPE>(value.second));
+            object[value.first] = std::get<ColumnType::BIGINT_TYPE>(value.second);
           } else if (ColumnType::UNSIGNED_BIGINT_TYPE == row_type) {
-            object.push_back(std::get<ColumnType::UNSIGNED_BIGINT_TYPE>(value.second));
+            object[value.first] = std::get<ColumnType::UNSIGNED_BIGINT_TYPE>(value.second);
           } else if (ColumnType::INTEGER_TYPE == row_type) {
-            object.push_back(std::get<ColumnType::INTEGER_TYPE>(value.second));
+            object[value.first] = std::get<ColumnType::INTEGER_TYPE>(value.second);
           } else if (ColumnType::TEXT_TYPE == row_type) {
-            object.push_back(std::get<ColumnType::TEXT_TYPE>(value.second));
+            object[value.first] = std::get<ColumnType::TEXT_TYPE>(value.second);
           } else if (ColumnType::DOUBLE_TYPE == row_type) {
-            object.push_back(std::get<ColumnType::DOUBLE_TYPE>(value.second));
+            object[value.first] = std::get<ColumnType::DOUBLE_TYPE>(value.second);
           } else if (ColumnType::BLOB_TYPE == row_type) {
             std::cout << "not implemented "<< __LINE__ << " - " << __FILE__ << std::endl;
           }
@@ -642,7 +659,10 @@ bool SQLiteDB::BulkInsert(const std::string& table, const std::vector<Row>& data
       if( rc == SQLITE_OK ) {
         for (const auto& row : data){
           for (const auto& value : m_table_fields[table]) {
-            rc = BindFieldData(stmt, std::get<TableHeader::CID>(value) + 1, row.at(std::get<TableHeader::NAME>(value)) );
+            auto it { row.find(std::get<TableHeader::NAME>(value))};
+            if (row.end() != it){
+              rc = BindFieldData(stmt, std::get<TableHeader::CID>(value) + 1, (*it).second );
+            }
           }
 
           if (SQLITE_DONE != sqlite3_step(stmt)) {
@@ -653,7 +673,6 @@ bool SQLiteDB::BulkInsert(const std::string& table, const std::vector<Row>& data
         }
 
         ret_val = SQLITE_OK == sqlite3_exec(m_db, "COMMIT TRANSACTION", NULL, NULL, &errorMessage);
-
         sqlite3_finalize(stmt);
       }else{
           fprintf(stderr, "SQL error: %s\n", errorMessage);

@@ -15,6 +15,7 @@ public:
     return instance;
   }
   bool InsertBulkData(uint64_t handle, const char* json_raw);
+  bool UpdateSnapshotData(uint64_t handle, const char* json_snapshot, std::string& result);
   uint64_t Initialize(const HostType host_type, const DatabaseType db_type, const std::string& path, const std::string& sql_statement);
   bool Release();
 private:
