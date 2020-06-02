@@ -446,6 +446,7 @@ void test_check_daylight_different_daylight_zero_one(void **state) {
 }
 
 void test_get_time_to_hour_no_negative_diff(void **state) {
+    /* Date: Mon 120/06/01 15:00:00 */
     (void) state;
     const char * hour = "15:01";
     const unsigned int num_days = 1;
@@ -458,6 +459,7 @@ void test_get_time_to_hour_no_negative_diff(void **state) {
 }
 
 void test_get_time_to_hour_first_time(void **state) {
+    /* Date: Mon 120/06/01 15:00:00 */
     (void) state;
     const char * hour = "14:59";
     const unsigned int num_days = 1;
@@ -470,6 +472,7 @@ void test_get_time_to_hour_first_time(void **state) {
 }
 
 void test_get_time_to_hour_num_days(void **state) {
+    /* Date: Mon 120/06/01 15:00:00 */
     (void) state;
     const char * hour = "14:59";
     const unsigned int num_days = 3;
@@ -479,6 +482,76 @@ void test_get_time_to_hour_num_days(void **state) {
     diff_test = get_time_to_hour(hour, num_days, first_time);
 
     assert_int_equal(diff_test, num_days*3600*24-60);
+}
+
+void test_get_time_to_day_same_wday_positive_diff(void **state) {
+    /* Date: Mon 120/06/01 15:00:00 */
+    (void) state;
+    int wday = 1; // Correct day: Monday
+    const char * hour = "15:01"; 
+    const unsigned int num_weeks = 1;
+    bool first_time = true;
+    unsigned long diff_test;
+
+    diff_test = get_time_to_day(wday, hour, num_weeks, first_time);
+
+    assert_int_equal(diff_test, 60);
+}
+
+void test_get_time_to_day_same_wday_negative_diff_first_time(void **state) {
+    /* Date: Mon 120/06/01 15:00:00 */
+    (void) state;
+    int wday = 1; // Correct day: Monday
+    const char * hour = "14:59";
+    const unsigned int num_weeks = 1;
+    bool first_time = true;
+    unsigned long diff_test;
+
+    diff_test = get_time_to_day(wday, hour, num_weeks, first_time);
+
+    assert_int_equal(diff_test, 3600*24*7-60);
+}
+
+void test_get_time_to_day_same_wday_negative_diff_num_weeks(void **state) {
+    /* Date: Mon 120/06/01 15:00:00 */
+    (void) state;
+    int wday = 1; // Correct day: Monday
+    const char * hour = "14:59";
+    const unsigned int num_weeks = 3;
+    bool first_time = false;
+    unsigned long diff_test;
+
+    diff_test = get_time_to_day(wday, hour, num_weeks, first_time);
+
+    assert_int_equal(diff_test, num_weeks*3600*24*7-60);
+}
+
+void test_get_time_to_day_different_before_wday(void **state) {
+    /* Date: Mon 120/06/01 15:00:00 */
+    (void) state;
+    int wday = 3; // The next scan is in the following Wednesday
+    const char * hour = "15:01";
+    const unsigned int num_weeks = 1;
+    bool first_time = true;
+    unsigned long diff_test;
+
+    diff_test = get_time_to_day(wday, hour, num_weeks, first_time);
+
+    assert_int_equal(diff_test, 60+3600*24*(wday-1));
+}
+
+void test_get_time_to_day_different_after_wday(void **state) {
+    /* Date: Mon 120/06/01 15:00:00 */
+    (void) state;
+    int wday = 0; // The next scan is in the following Sunday (next week)
+    const char * hour = "15:01";
+    const unsigned int num_weeks = 1;
+    bool first_time = true;
+    unsigned long diff_test;
+
+    diff_test = get_time_to_day(wday, hour, num_weeks, first_time);
+
+    assert_int_equal(diff_test, 60+3600*24*(7-(1-wday)));
 }
 
 
@@ -518,7 +591,13 @@ int main(void) {
         /* get_time_to_hour function tests */
         cmocka_unit_test_setup_teardown(test_get_time_to_hour_no_negative_diff, test_get_time_setup, test_get_time_teardown),
         cmocka_unit_test_setup_teardown(test_get_time_to_hour_first_time, test_get_time_setup, test_get_time_teardown),
-        cmocka_unit_test_setup_teardown(test_get_time_to_hour_num_days, test_get_time_setup, test_get_time_teardown)
+        cmocka_unit_test_setup_teardown(test_get_time_to_hour_num_days, test_get_time_setup, test_get_time_teardown),
+        /* get_time_to_day function tests */
+        cmocka_unit_test_setup_teardown(test_get_time_to_day_same_wday_positive_diff, test_get_time_setup, test_get_time_teardown),
+        cmocka_unit_test_setup_teardown(test_get_time_to_day_same_wday_negative_diff_first_time, test_get_time_setup, test_get_time_teardown),
+        cmocka_unit_test_setup_teardown(test_get_time_to_day_same_wday_negative_diff_num_weeks, test_get_time_setup, test_get_time_teardown),
+        cmocka_unit_test_setup_teardown(test_get_time_to_day_different_before_wday, test_get_time_setup, test_get_time_teardown),
+        cmocka_unit_test_setup_teardown(test_get_time_to_day_different_after_wday, test_get_time_setup, test_get_time_teardown)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
