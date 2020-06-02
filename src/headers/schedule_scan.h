@@ -103,15 +103,6 @@ unsigned long int get_time_to_day(int wday, const char * hour, const unsigned in
  * */
 unsigned long int get_time_to_month_day(int month_day, const char* hour, int num_of_months);
 
-/**
- * @brief Function to look for the correct day of the month to run a wodle
- * 
- * @param day day of the month
- * @param hour time of the day hh:mm format
- * @return 0 if we are in the day of the scan, -1 otherwise
- * */
-int check_day_to_scan(int day, const char *hour);
-
 void sched_scan_dump(const sched_scan_config* scan_config, cJSON *cjson_object);
 int is_sched_tag(const char* tag);
 #endif /* SCHED_SCAN_H */
