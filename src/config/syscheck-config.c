@@ -192,9 +192,9 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
 
             os_calloc(2, sizeof(int), syscheck->diff_size_limit);
 
-            // If diff_size has not been set in read_attr, assign the global value
+            // If diff_size has not been set in read_attr, assign -1 to modify it later with the global value
             if (diff_size == -1) {
-                syscheck->diff_size_limit[0] = syscheck->file_size_limit;
+                syscheck->diff_size_limit[0] = -1;
             }
             else {
                 syscheck->diff_size_limit[0] = diff_size;
@@ -242,7 +242,7 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
             os_realloc(syscheck->diff_size_limit, (pl + 2) * sizeof(int), syscheck->diff_size_limit);
 
             if (diff_size == -1) {
-                syscheck->diff_size_limit[pl] = syscheck->file_size_limit;
+                syscheck->diff_size_limit[pl] = -1;
             }
             else {
                 syscheck->diff_size_limit[pl] = diff_size;
@@ -272,7 +272,7 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
             syscheck->opts[pl] = vals;
 
             if (diff_size == -1) {
-                syscheck->diff_size_limit[pl] = syscheck->file_size_limit;
+                syscheck->diff_size_limit[pl] = -1;
             }
             else {
                 syscheck->diff_size_limit[pl] = diff_size;

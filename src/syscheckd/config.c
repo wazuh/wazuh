@@ -99,6 +99,14 @@ int Read_Syscheck_Config(const char *cfgfile)
         }
     }
 
+    if (syscheck.diff_size_limit) {
+        for (it = 0; syscheck.diff_size_limit[it]; it++) {
+            if (syscheck.diff_size_limit[it] == -1) {
+                syscheck.diff_size_limit[it] = syscheck.file_size_limit;
+            }
+        }
+    }
+
     switch (syscheck.disabled) {
     case SK_CONF_UNPARSED:
         syscheck.disabled = 1;

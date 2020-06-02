@@ -235,6 +235,6 @@
 #define FIM_FILE_LIMIT_UNLIMITED            "(6343): No limit set to maximum number of files to be monitored"
 #define FIM_INOTIFY_WATCH_DELETED           "(6344): Inotify watch deleted for '%s'"
 #define FIM_NUM_WATCHES                     "(6345): Folders monitored with real-time engine: %u"
-#define FIM_DIFF_FOLDER_SIZE                "(6356): Size of /var/ossec/queue/diff/local folder: %.5f KB"
+#define FIM_DIFF_FOLDER_SIZE                "(6356): Size of /var/ossec/queue/diff/local folder: %.5f KB."
 
 #endif /* DEBUG_MESSAGES_H */
