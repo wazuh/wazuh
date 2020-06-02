@@ -122,7 +122,7 @@ void wm_download_dispatch(char * buffer) {
     char * next;
     char * buffer_cpy;
     char * timeout_ptr = NULL;
-    long timeout;
+    long timeout = 0;
 
     // Copy the command buffer for error messages
 
