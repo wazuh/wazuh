@@ -390,6 +390,44 @@ void test_get_next_time_interval_configuration(void **state) {
     assert_int_equal((int) ret, 3600);
 }
 
+void test_sched_scan_dump_day(void **state) {
+    sched_scan_config *scan_config = (sched_scan_config *)  *state;
+    cJSON * object = cJSON_CreateObject();
+    char * object_str = NULL;
+
+    scan_config->scan_day = 3;
+    scan_config->scan_time = "08:00";
+    scan_config->interval = WM_DEF_INTERVAL;
+    sched_scan_dump(scan_config, object);
+    object_str = cJSON_PrintUnformatted(object);
+
+    assert_string_equal(object_str, "{\"interval\":86400,\"day\":3,\"time\":\"08:00\"}");
+
+    cJSON_Delete(object);
+    os_free(object_str);
+    os_free(scan_config);
+}
+
+void test_sched_scan_dump_wday(void **state) {
+    sched_scan_config *scan_config = (sched_scan_config *)  *state;
+    char * object_str = NULL;
+    cJSON * wday;
+    int i;
+
+    char * week_days[] = {"sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"};
+
+    for (i = 0; i < 7; i++) {
+        cJSON * object = cJSON_CreateObject();
+        scan_config->scan_wday = i;
+        sched_scan_dump(scan_config, object);
+        wday = cJSON_GetObjectItem(object, "wday");
+        assert_string_equal(week_days[i], wday->valuestring);
+        cJSON_Delete(object);
+    }
+
+    os_free(scan_config);
+}
+
 void test_check_daylight_first_time(void **state) {
     (void) state;
     int current_daylight = -1;
@@ -612,6 +650,7 @@ int main(void) {
         cmocka_unit_test(test_tag_successfull),
         cmocka_unit_test(test_tag_failure),
         cmocka_unit_test(test_sched_scan_init),
+        /* sched_scan_read function tests */
         cmocka_unit_test_setup_teardown(test_sched_scan_read_correct_day, test_scan_read_setup, test_scan_read_teardown),
         cmocka_unit_test_setup_teardown(test_sched_scan_read_wrong_day, test_scan_read_setup, test_scan_read_teardown),
         cmocka_unit_test_setup_teardown(test_sched_scan_read_not_number, test_scan_read_setup, test_scan_read_teardown),
@@ -626,14 +665,19 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_sched_scan_read_correct_interval_minute, test_scan_read_setup, test_scan_read_teardown),
         cmocka_unit_test_setup_teardown(test_sched_scan_read_correct_interval_second, test_scan_read_setup, test_scan_read_teardown),
         cmocka_unit_test_setup_teardown(test_sched_scan_read_wrong_interval, test_scan_read_setup, test_scan_read_teardown),
+        /* _sched_scan_validate_parameters function tests */
         cmocka_unit_test_setup_teardown(test_sched_scan_validate_incompatible_wday, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
         cmocka_unit_test_setup_teardown(test_sched_scan_validate_day_not_month_interval, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
         cmocka_unit_test_setup_teardown(test_sched_scan_validate_wday_not_week_interval, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
         cmocka_unit_test_setup_teardown(test_sched_scan_validate_time_not_day_interval, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
+        /* _get_next_time function tests */
         cmocka_unit_test_setup_teardown(test_get_next_time_day_configuration, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
         cmocka_unit_test_setup_teardown(test_get_next_time_wday_configuration, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
         cmocka_unit_test_setup_teardown(test_get_next_time_daytime_configuration, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
         cmocka_unit_test_setup_teardown(test_get_next_time_interval_configuration, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
+        /* sched_scan_dump function tests */
+        cmocka_unit_test_setup(test_sched_scan_dump_day, test_sched_scan_validate_setup),
+        cmocka_unit_test_setup(test_sched_scan_dump_wday, test_sched_scan_validate_setup),
         /* check_daylight function tests */
         cmocka_unit_test(test_check_daylight_first_time),
         cmocka_unit_test(test_check_daylight_same_daylight_zero),
