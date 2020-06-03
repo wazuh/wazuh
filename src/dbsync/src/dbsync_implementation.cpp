@@ -33,7 +33,7 @@ bool DBSyncImplementation::Release() {
   return ret_val;
 }
 
-bool DBSyncImplementation::InsertBulkData(uint64_t handle, const char* json_raw) {
+bool DBSyncImplementation::InsertBulkData(const uint64_t handle, const char* json_raw) {
   auto ret_val { false };   
   std::lock_guard<std::mutex> lock(m_mutex); 
   try {
@@ -54,12 +54,12 @@ bool DBSyncImplementation::InsertBulkData(uint64_t handle, const char* json_raw)
   return ret_val;
 }
 
-bool DBSyncImplementation::UpdateSnapshotData(uint64_t handle, const char* json_snapshot, std::string& result) {
+bool DBSyncImplementation::UpdateSnapshotData(const uint64_t handle, const char* json_snapshot, std::string& result) {
   auto ret_val { false };   
   std::lock_guard<std::mutex> lock(m_mutex); 
   try {
-    auto json { nlohmann::json::parse(json_snapshot)};
-    auto it = GetDatabaseContext(handle);
+    const auto json { nlohmann::json::parse(json_snapshot)};
+    const auto it = GetDatabaseContext(handle);
     if (m_dbsync_list.end() != it) {
       nlohmann::json json_result;
       ret_val = (*it)->GetDatabase()->RefreshTablaData(json[0], json_result);

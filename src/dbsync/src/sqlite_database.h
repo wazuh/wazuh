@@ -80,7 +80,7 @@ private:
   bool InsertNewRows(const std::string& table, const std::vector<std::string>& primary_key_list, nlohmann::json& delta);
 
   bool DeleteRows(const std::string& table, const std::vector<std::string>& primary_key_list, const std::vector<Row>& rows_to_remove); 
-  int32_t GetTableData(sqlite3_stmt* stmt, const int32_t index, const ColumnData& cd, std::map<std::string, TableField>& row);
+  int32_t GetTableData(sqlite3_stmt* stmt, const int32_t index, const ColumnType& type, const std::string& field_name, Row& row);
   int32_t BindFieldData(sqlite3_stmt* stmt, const int32_t index, const TableField& field_data);
 
   std::string BuildLeftOnlyQuery(const std::string& t1,const std::string& t2,const std::vector<std::string>& primary_key_list, const bool return_only_pk_fields = false);
@@ -88,6 +88,14 @@ private:
   bool GetPKListLeftOnly(const std::string& t1, const std::string& t2, const std::vector<std::string>& primary_key_list, std::vector<Row>& return_rows);
   bool BulkInsert(const std::string& table, const std::vector<Row>& data);
   int DeleteTempTable(const std::string& table);
+
+  int GetModifiedTableRows(const std::string& t1,const std::string& t2,const std::vector<std::string>& primary_key_list, std::vector<Row>& return_rows);
+  std::string BuildModifiedRowsQuery(const std::string& t1,const std::string& t2, const std::vector<std::string>& primary_key_list);
+  int ChangeModifiedRows(const std::string& table, const std::vector<std::string>& primary_key_list, nlohmann::json& delta);
+  std::string BuildUpdateDataSqlQuery(const std::string& table, const std::vector<std::string>& primary_key_list);
+
+  bool PreparedTransactionExecute(const std::string& sql, const std::function<int32_t(sqlite3_stmt*)>& bind_f);
+  bool TransactionExecute(const std::function<int32_t()>& bind_f);
 
   SQLiteDB(const SQLiteDB&) = delete;
   SQLiteDB& operator=(const SQLiteDB&) = delete;
