@@ -263,11 +263,14 @@ unsigned long int get_time_to_hour(const char * hour, const unsigned int num_day
 
     if (diff <= 0) {
         if (first_time) {
-            diff += (24*60*60);
+            t_target.tm_mday += 1;
         } else {
-            diff += num_days*(24*60*60);
+            t_target.tm_mday += num_days;
         }
     }
+
+    target_time = mktime(&t_target);
+    diff = difftime(target_time, curr_time);
 
     for (i=0; parts[i]; i++)
         free(parts[i]);
@@ -306,13 +309,13 @@ unsigned long int get_time_to_day(int wday, const char * hour, const unsigned in
     if (wday == tm_result.tm_wday) {    // We are in the desired day
 
         if (diff <= 0) {
-            diff += first_time ? (7*24*60*60) : num_weeks*(7*24*60*60);   // Seconds of a week
+            t_target.tm_mday += first_time ? 7 : num_weeks*7;   // Seconds of a week
         }
 
     } else if (wday > tm_result.tm_wday) {  // We are looking for a future day
 
         while (wday > tm_result.tm_wday) {
-            diff += (24*60*60);
+            t_target.tm_mday += 1;
             tm_result.tm_wday++;
         }
 
@@ -320,9 +323,12 @@ unsigned long int get_time_to_day(int wday, const char * hour, const unsigned in
 
         ret = 7 - (tm_result.tm_wday - wday);
         for (i = 0; i < ret; i++) {
-            diff += (24*60*60);
+            t_target.tm_mday += 1;
         }
     }
+
+    target_time = mktime(&t_target);
+    diff = difftime(target_time, curr_time);
 
     free(parts[0]);
     free(parts[1]);
