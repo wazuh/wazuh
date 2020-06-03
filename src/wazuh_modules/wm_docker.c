@@ -50,7 +50,7 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
 
         if (time_sleep) {
             int next_scan_time = sched_get_next_scan_time(docker_conf->scan_config);
-            check_daylight(current_daylight, &future_daylight, &next_scan_time);
+            check_daylight(current_daylight, &future_daylight, &next_scan_time, NULL);
             timestamp = w_get_timestamp(next_scan_time);
             mtdebug2(WM_DOCKER_LOGTAG, "Sleeping until: %s", timestamp);
             os_free(timestamp);

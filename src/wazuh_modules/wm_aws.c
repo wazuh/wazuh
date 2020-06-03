@@ -68,7 +68,7 @@ void* wm_aws_main(wm_aws *aws_config) {
 
         if (time_sleep) {
             int next_scan_time = sched_get_next_scan_time(aws_config->scan_config);
-            check_daylight(current_daylight, &future_daylight, &next_scan_time);
+            check_daylight(current_daylight, &future_daylight, &next_scan_time, NULL);
             timestamp = w_get_timestamp(next_scan_time);
             mtdebug2(WM_AWS_LOGTAG, "Sleeping until: %s", timestamp);
             os_free(timestamp);

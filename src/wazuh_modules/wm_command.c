@@ -176,7 +176,7 @@ void * wm_command_main(wm_command_t * command) {
 
         if (time_sleep) {
             int next_scan_time = sched_get_next_scan_time(command->scan_config);
-            check_daylight(current_daylight, &future_daylight, &next_scan_time);
+            check_daylight(current_daylight, &future_daylight, &next_scan_time, NULL);
             timestamp = w_get_timestamp(next_scan_time);
             mtdebug2(WM_COMMAND_LOGTAG, "Sleeping until: %s", timestamp);
             os_free(timestamp);

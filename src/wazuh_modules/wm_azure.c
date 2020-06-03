@@ -66,7 +66,7 @@ void* wm_azure_main(wm_azure_t *azure_config) {
 
         if (time_sleep) {
             int next_scan_time = sched_get_next_scan_time(azure_config->scan_config);
-            check_daylight(current_daylight, &future_daylight, &next_scan_time);
+            check_daylight(current_daylight, &future_daylight, &next_scan_time, NULL);
             timestamp = w_get_timestamp(next_scan_time);
             mtdebug2(WM_AZURE_LOGTAG, "Sleeping until: %s", timestamp);
             os_free(timestamp);

@@ -103,7 +103,7 @@ static int test_sched_scan_validate_teardown(void **state) {
 }
 
 static int test_get_time_setup(void **state) {
-    current_time = 1591016400;
+    current_time = 1591189200;
     return 0;
 }
 
@@ -433,10 +433,11 @@ void test_check_daylight_first_time(void **state) {
     int current_daylight = -1;
     int future_daylight = 0;
     int next_scan_time = 0;
+    int next_scan_time_initial = next_scan_time;
 
-    check_daylight(current_daylight, &future_daylight, &next_scan_time);
+    check_daylight(current_daylight, &future_daylight, &next_scan_time, "test");
     assert_int_equal(future_daylight, 0);
-    assert_int_equal(next_scan_time, 0);
+    assert_int_equal(next_scan_time, next_scan_time_initial + 0);
 }
 
 void test_check_daylight_same_daylight_zero(void **state) {
@@ -444,21 +445,23 @@ void test_check_daylight_same_daylight_zero(void **state) {
     int current_daylight = 0;
     int future_daylight = 0;
     int next_scan_time = 0;
+    int next_scan_time_initial = next_scan_time;
 
-    check_daylight(current_daylight, &future_daylight, &next_scan_time);
+    check_daylight(current_daylight, &future_daylight, &next_scan_time, "test");
     assert_int_equal(future_daylight, 0);
-    assert_int_equal(next_scan_time, 0);
+    assert_int_equal(next_scan_time, next_scan_time_initial + 0);
 }
 
 void test_check_daylight_same_daylight_one(void **state) {
     (void) state;
     int current_daylight = 1;
-    int future_daylight = 1;
-    int next_scan_time = 1591015612;
+    int future_daylight = -1;
+    int next_scan_time = 0;
+    int next_scan_time_initial = next_scan_time;
 
-    check_daylight(current_daylight, &future_daylight, &next_scan_time);
+    check_daylight(current_daylight, &future_daylight, &next_scan_time, "test");
     assert_int_equal(future_daylight, 1);
-    assert_int_equal(next_scan_time, 1591015612);
+    assert_int_equal(next_scan_time, next_scan_time_initial + 0);
 }
 
 void test_check_daylight_different_daylight_one_zero(void **state) {
@@ -466,179 +469,238 @@ void test_check_daylight_different_daylight_one_zero(void **state) {
     int current_daylight = 1;
     int future_daylight = 0;
     int next_scan_time = 0;
+    int next_scan_time_initial = next_scan_time;
 
-    check_daylight(current_daylight, &future_daylight, &next_scan_time);
+    check_daylight(current_daylight, &future_daylight, &next_scan_time, "test");
     assert_int_equal(future_daylight, 0);
-    assert_int_equal(next_scan_time, 0+3600);
+    assert_int_equal(next_scan_time, next_scan_time_initial + 3600);
 }
 
 void test_check_daylight_different_daylight_zero_one(void **state) {
     (void) state;
     int current_daylight = 0;
-    int future_daylight = 1;
-    int next_scan_time = 1591015612;
+    int future_daylight = -1;
+    int next_scan_time = 0;
+    int next_scan_time_initial = next_scan_time;
 
-    check_daylight(current_daylight, &future_daylight, &next_scan_time);
+    check_daylight(current_daylight, &future_daylight, &next_scan_time, "test");
     assert_int_equal(future_daylight, 1);
-    assert_int_equal(next_scan_time, 1591015612-3600);
+    assert_int_equal(next_scan_time, next_scan_time_initial - 3600);
 }
 
 void test_get_time_to_hour_no_negative_diff(void **state) {
-    /* Date: Mon 120/06/01 15:00:00 */
-    (void) state;
-    const char * hour = "15:01";
+    /* Date: Mon 2020/06/03 15:00:00 */
+    char hour[6];
     const unsigned int num_days = 1;
     bool first_time = true;
     unsigned long diff_test;
+    time_t diff_time;
+    struct tm current_tm;
 
+    diff_time = current_time + 60;
+    localtime_r(&diff_time, &current_tm);
+    sprintf(hour, "%2d:%2d", current_tm.tm_hour, current_tm.tm_min);
     diff_test = get_time_to_hour(hour, num_days, first_time);
 
     assert_int_equal(diff_test, 60);
 }
 
 void test_get_time_to_hour_first_time(void **state) {
-    /* Date: Mon 120/06/01 15:00:00 */
-    (void) state;
-    const char * hour = "14:59";
+    /* Date: Wed 2020/06/03 15:00:00 */
+    char hour[6];
     const unsigned int num_days = 1;
     bool first_time = true;
     unsigned long diff_test;
+    time_t diff_time;
+    struct tm current_tm;
 
+    diff_time = current_time - 60;
+    localtime_r(&diff_time, &current_tm);
+    sprintf(hour, "%2d:%2d", current_tm.tm_hour, current_tm.tm_min);
     diff_test = get_time_to_hour(hour, num_days, first_time);
 
     assert_int_equal(diff_test, 3600*24-60);
 }
 
 void test_get_time_to_hour_num_days(void **state) {
-    /* Date: Mon 120/06/01 15:00:00 */
-    (void) state;
-    const char * hour = "14:59";
+    /* Date: Wed 2020/06/03 15:00:00 */
+    char hour[6];
     const unsigned int num_days = 3;
     bool first_time = false;
     unsigned long diff_test;
+    time_t diff_time;
+    struct tm current_tm;
 
+    diff_time = current_time - 60;
+    localtime_r(&diff_time, &current_tm);
+    sprintf(hour, "%2d:%2d", current_tm.tm_hour, current_tm.tm_min);
     diff_test = get_time_to_hour(hour, num_days, first_time);
 
     assert_int_equal(diff_test, num_days*3600*24-60);
 }
 
 void test_get_time_to_day_same_wday_positive_diff(void **state) {
-    /* Date: Mon 120/06/01 15:00:00 */
-    (void) state;
-    int wday = 1; // Correct day: Monday
-    const char * hour = "15:01"; 
+    /* Date: Wed 2020/06/03 15:00:00 */
+    int wday;
+    char hour[6]; 
     const unsigned int num_weeks = 1;
     bool first_time = true;
     unsigned long diff_test;
+    time_t diff_time;
+    struct tm current_tm;
 
+    diff_time = current_time + 60;
+    localtime_r(&diff_time, &current_tm);
+    sprintf(hour, "%2d:%2d", current_tm.tm_hour, current_tm.tm_min);
+    wday = current_tm.tm_wday;
     diff_test = get_time_to_day(wday, hour, num_weeks, first_time);
 
     assert_int_equal(diff_test, 60);
 }
 
 void test_get_time_to_day_same_wday_negative_diff_first_time(void **state) {
-    /* Date: Mon 120/06/01 15:00:00 */
-    (void) state;
-    int wday = 1; // Correct day: Monday
-    const char * hour = "14:59";
+    /* Date: Wed 2020/06/03 15:00:00 */
+    int wday;
+    char hour[6];
     const unsigned int num_weeks = 1;
     bool first_time = true;
     unsigned long diff_test;
+    time_t diff_time;
+    struct tm current_tm;
 
+    diff_time = current_time - 60;
+    localtime_r(&diff_time, &current_tm);
+    sprintf(hour, "%2d:%2d", current_tm.tm_hour, current_tm.tm_min);
+    wday = current_tm.tm_wday;
     diff_test = get_time_to_day(wday, hour, num_weeks, first_time);
 
     assert_int_equal(diff_test, 3600*24*7-60);
 }
 
 void test_get_time_to_day_same_wday_negative_diff_num_weeks(void **state) {
-    /* Date: Mon 120/06/01 15:00:00 */
-    (void) state;
-    int wday = 1; // Correct day: Monday
-    const char * hour = "14:59";
+    /* Date: Wed 2020/06/03 15:00:00 */
+    int wday;
+    char hour[6];
     const unsigned int num_weeks = 3;
     bool first_time = false;
     unsigned long diff_test;
+    time_t diff_time;
+    struct tm current_tm;
 
+    diff_time = current_time - 60;
+    localtime_r(&diff_time, &current_tm);
+    sprintf(hour, "%2d:%2d", current_tm.tm_hour, current_tm.tm_min);
+    wday = current_tm.tm_wday;
     diff_test = get_time_to_day(wday, hour, num_weeks, first_time);
 
     assert_int_equal(diff_test, num_weeks*3600*24*7-60);
 }
 
 void test_get_time_to_day_different_before_wday(void **state) {
-    /* Date: Mon 120/06/01 15:00:00 */
-    (void) state;
-    int wday = 3; // The next scan is in the following Wednesday
-    const char * hour = "15:01";
+    /* Date: Wed 2020/06/03 15:00:00 */
+    int wday;
+    char hour[6];
     const unsigned int num_weeks = 1;
     bool first_time = true;
     unsigned long diff_test;
+    time_t diff_time;
+    struct tm current_tm;
 
+    diff_time = current_time + 60;
+    localtime_r(&diff_time, &current_tm);
+    sprintf(hour, "%2d:%2d", current_tm.tm_hour, current_tm.tm_min);
+    wday = current_tm.tm_wday + 2;
     diff_test = get_time_to_day(wday, hour, num_weeks, first_time);
 
-    assert_int_equal(diff_test, 60+3600*24*(wday-1));
+    assert_int_equal(diff_test, 60+3600*24*(wday-current_tm.tm_wday));
 }
 
 void test_get_time_to_day_different_after_wday(void **state) {
-    /* Date: Mon 120/06/01 15:00:00 */
-    (void) state;
-    int wday = 0; // The next scan is in the following Sunday (next week)
-    const char * hour = "15:01";
+    /* Date: Wed 2020/06/03 15:00:00 */
+    int wday;
+    char hour[6];
     const unsigned int num_weeks = 1;
     bool first_time = true;
     unsigned long diff_test;
+    time_t diff_time;
+    struct tm current_tm;
 
+    diff_time = current_time + 60;
+    localtime_r(&diff_time, &current_tm);
+    sprintf(hour, "%2d:%2d", current_tm.tm_hour, current_tm.tm_min);
+    wday = current_tm.tm_wday - 2;
     diff_test = get_time_to_day(wday, hour, num_weeks, first_time);
 
-    assert_int_equal(diff_test, 60+3600*24*(7-(1-wday)));
+    assert_int_equal(diff_test, 60+3600*24*(7-(current_tm.tm_wday-wday)));
 }
 
 void test_get_time_to_month_day_same_month_day_positive_diff(void **state) {
-    /* Date: Mon 120/06/01 15:00:00 */
-    (void) state;
-    int mday = 1;
-    const char * hour = "15:01"; 
+    /* Date: Wed 2020/06/03 15:00:00 */
+    int mday;
+    char hour[6];
     const unsigned int num_months = 1;
     unsigned long diff_test;
+    time_t diff_time;
+    struct tm current_tm;
 
+    diff_time = current_time + 60;
+    localtime_r(&diff_time, &current_tm);
+    sprintf(hour, "%2d:%2d", current_tm.tm_hour, current_tm.tm_min);
+    mday = current_tm.tm_mday;
     diff_test = get_time_to_month_day(mday, hour, num_months);
 
     assert_int_equal(diff_test, 60);
 }
 
 void test_get_time_to_month_day_same_month(void **state) {
-    /* Date: Mon 120/06/01 15:00:00 */
-    (void) state;
-    int mday = 2;
-    const char * hour = "15:01"; 
+    /* Date: Wed 2020/06/03 15:00:00 */
+    int mday;
+    char hour[6];
     const unsigned int num_months = 1;
     unsigned long diff_test;
+    time_t diff_time;
+    struct tm current_tm;
 
+    diff_time = current_time + 60;
+    localtime_r(&diff_time, &current_tm);
+    sprintf(hour, "%2d:%2d", current_tm.tm_hour, current_tm.tm_min);
+    mday = current_tm.tm_mday + 1;
     diff_test = get_time_to_month_day(mday, hour, num_months);
 
-    assert_int_equal(diff_test, 60+3600*24);
+    assert_int_equal(diff_test, 3600*24+60);
 }
 
 void test_get_time_to_month_day_high_num_months(void **state) {
-    /* Date: Mon 120/06/01 15:00:00 */
-    (void) state;
-    int mday = 1;
-    const char * hour = "14:59"; 
+    /* Date: Wed 2020/06/03 15:00:00 */
+    int mday;
+    char hour[6];
     const unsigned int num_months = 13;
     unsigned long diff_test;
+    time_t diff_time;
+    struct tm current_tm;
 
+    diff_time = current_time - 60;
+    localtime_r(&diff_time, &current_tm);
+    sprintf(hour, "%2d:%2d", current_tm.tm_hour, current_tm.tm_min);
+    mday = current_tm.tm_mday;
     diff_test = get_time_to_month_day(mday, hour, num_months);
 
     assert_int_equal(diff_test, 3600*24*395-60);
 }
 
 void test_get_time_to_month_day_num_months(void **state) {
-    /* Date: Mon 120/06/01 15:00:00 */
-    (void) state;
-    int mday = 1;
-    const char * hour = "14:59"; 
+    /* Date: Wed 2020/06/03 15:00:00 */
+    int mday;
+    char hour[6];
     const unsigned int num_months = 8;
     unsigned long diff_test;
+    time_t diff_time;
+    struct tm current_tm;
 
+    diff_time = current_time - 60;
+    localtime_r(&diff_time, &current_tm);
+    sprintf(hour, "%2d:%2d", current_tm.tm_hour, current_tm.tm_min);
+    mday = current_tm.tm_mday;
     diff_test = get_time_to_month_day(mday, hour, num_months);
 
     assert_int_equal(diff_test, 3600*24*245-60);

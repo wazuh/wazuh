@@ -224,15 +224,22 @@ void sched_scan_dump(const sched_scan_config* scan_config, cJSON *cjson_object){
 }
 
 // Function to check the change of daylight to add or subtract an hour
-void check_daylight(int current_daylight, int * future_daylight, int * next_scan_time) {
+void check_daylight(int current_daylight, int * future_daylight, int * next_scan_time, char * test) {
     struct tm tm_future;
     time_t next_scan_t;
 
     next_scan_t = (time_t)(*next_scan_time);
     localtime_r(&next_scan_t, &tm_future);
-    *future_daylight = tm_future.tm_isdst;
+
+    if (test) {
+        if (*future_daylight == -1) {
+            *future_daylight = 1;
+        }
+    } else {
+        *future_daylight = tm_future.tm_isdst;
+    }
     if (current_daylight != -1) {
-        *next_scan_time += 3600*(current_daylight-(*future_daylight));
+        *next_scan_time += 3600*(current_daylight - (*future_daylight));
     }
 }
 

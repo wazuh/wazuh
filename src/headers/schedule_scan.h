@@ -70,7 +70,7 @@ time_t sched_scan_get_time_until_next_scan(sched_scan_config *config, const char
  * @param next_scan_time next scan time to check the daylight
  * @param current_daylight current daylight
  */
-void check_daylight(int current_daylight, int * future_daylight, int * next_scan_time);
+void check_daylight(int current_daylight, int * future_daylight, int * next_scan_time, char * test);
 
 /**
  * @brief Get time in seconds to the specified hour in hh:mm
