@@ -12,6 +12,9 @@
 #include "agentd.h"
 #include "os_net/os_net.h"
 
+#define ENROLLMENT_RETRY_TIME_MAX   60
+#define ENROLLMENT_RETRY_TIME_DELTA 5
+
 int timeout;    //timeout in seconds waiting for a server reply
 
 static ssize_t receive_message_udp(const char *msg, char *buffer, unsigned int max_lenght);
@@ -263,8 +266,8 @@ static void w_agentd_keys_init (void) {
 
             //Sleep between retries
             if (registration_status != 0) {
-                if (delay_sleep < 60) {
-                    delay_sleep += 5;
+                if (delay_sleep < ENROLLMENT_RETRY_TIME_MAX) {
+                    delay_sleep += ENROLLMENT_RETRY_TIME_DELTA;
                 }
                 mdebug1("Sleeping %d seconds before trying to enroll again", delay_sleep);
                 sleep(delay_sleep);
