@@ -411,7 +411,7 @@ class TokenManager:
             list_user = list()
             tokens_in_blacklist = self.session.query(TokenBlacklist).all()
             for user_token in tokens_in_blacklist:
-                list_user.append(int(user_token.username))
+                list_user.append(user_token.username)
                 self.session.query(TokenBlacklist).filter_by(username=user_token.username).delete()
                 self.session.commit()
             return list_user

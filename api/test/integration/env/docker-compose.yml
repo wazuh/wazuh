@@ -27,6 +27,8 @@ services:
         manager_type: worker
     image: wazuh-worker
     hostname: wazuh-worker1
+    ports:
+      - "55001:55000"
     entrypoint:
       - /scripts/entrypoint.sh
       - wazuh-master
@@ -42,6 +44,8 @@ services:
         manager_type: worker
     image: wazuh-worker
     hostname: wazuh-worker2
+    ports:
+      - "55002:55000"
     entrypoint:
       - /scripts/entrypoint.sh
       - wazuh-master
