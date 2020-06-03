@@ -51,19 +51,19 @@ class DistributedAPI:
         wait_for_complete : bool, optional
             True to disable timeout, false otherwise. Default `False`
         from_cluster : bool, optional
-            Default `False`
+            Default `False`, specify if the request goes from cluster or not
         is_async : bool, optional
-            Default `False`
+            Default `False`, specify if the request is asynchronous or not
         broadcasting : bool, optional
-            Default `False`
+            Default `False`, True if the request need to be executed in all managers
         basic_services : tuple, optional
-            Default `None`
+            Default `None`, services that must be started for correct behaviour
         local_client_arg: str, optional
-            Default `None`
+            Default `None`, LocalClient additional arguments
         rbac_permissions : dict, optional
-            Default `None`
+            Default `None`, RBAC user's permissions
         nodes : list, optional
-            Default `None`
+            Default `None`, list of system nodes
         cluster_required : bool, optional
             True when the cluster must be enabled. False otherwise. Default `False`
         current_user : str

@@ -63,7 +63,7 @@ custom_incomplete_configuration = {
 
 def test_read_empty_configuration():
     """
-    Tests reading an empty cluster configuration
+    Test reading an empty cluster configuration
     """
     with patch('wazuh.core.cluster.utils.get_ossec_conf') as m:
         m.side_effect = WazuhException(1106)

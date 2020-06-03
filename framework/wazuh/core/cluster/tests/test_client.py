@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import sys
 from unittest.mock import patch, MagicMock
 
@@ -13,8 +14,10 @@ with patch('wazuh.common.getgrnam'):
 
                 from wazuh.core.cluster import client
 
+logger_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'client.log')
+logging.basicConfig(filename=logger_path, level=logging.INFO)
+logger = logging.getLogger('client')
 
-logger = logging.getLogger('wazuh')
 loop = asyncio.get_event_loop()
 
 
@@ -31,4 +34,8 @@ async def test_AbstractClientManager():
                                             logger=logger, manager=abstract_client_manager,
                                             cluster_items={'node': 'master-node'})
 
-    result = await abstract_client_manager.start()
+    await abstract_client_manager.start()
+    with open(logger_path, mode='r') as f:
+        assert "ERROR:wazuh:Could not connect to master: [Errno -3] Temporary failure in name resolution. Trying again in 10 seconds." in f.read()
+
+    os.remove(logger_path)
