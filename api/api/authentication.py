@@ -1,9 +1,9 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import asyncio
 import concurrent.futures
-import json
 import logging
 import os
 from secrets import token_urlsafe
@@ -17,8 +17,6 @@ from api import configuration
 from api.api_exception import APIException
 from api.constants import SECURITY_PATH
 from api.util import raise_if_exc
-from wazuh.core.cluster import local_client
-from wazuh.core.cluster.common import WazuhJSONEncoder
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.rbac.orm import AuthenticationManager
 from wazuh.rbac.orm import TokenManager
@@ -27,30 +25,51 @@ pool = concurrent.futures.ThreadPoolExecutor()
 
 
 def check_user_master(user, password):
+    """This function must be executed in master node.
+
+    Parameters
+    ----------
+    user : str
+        Unique username
+    password : str
+        User password
+
+    Returns
+    -------
+    Dict with the result of the query
+    """
     with AuthenticationManager() as auth_:
         if auth_.check_user(user, password):
-            return {'result': 'success'}
+            return {'result': True}
+
+    return {'result': False}
 
 
 def check_user(user, password, required_scopes=None):
-    """Convenience method to use in openapi specification
-    :param user: string Unique username
-    :param password: string user password
-    :param required_scopes:
-    :return:
+    """Convenience method to use in OpenAPI specification
+
+    Parameters
+    ----------
+    user : str
+        Unique username
+    password : str
+        User password
+    required_scopes
+
+    Returns
+    -------
+    Dict with the username and his status
     """
-    lc = local_client.LocalClient()
-    input_json = {'f': check_user_master,
-                  'f_kwargs': {'user': user, 'password': password},
-                  'from_cluster': False,
-                  'wait_for_complete': True
-                  }
+    dapi = DistributedAPI(f=check_user_master,
+                          f_kwargs={'user': user, 'password': password},
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=True,
+                          logger=logging.getLogger('wazuh')
+                          )
+    data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
 
-    result = json.loads(pool.submit(asyncio.run, lc.execute(command=b'dapi',
-                                                            data=json.dumps(input_json, cls=WazuhJSONEncoder).encode(),
-                                                            wait_for_complete=False)).result())
-
-    if '__wazuh_exception__' not in result.keys():
+    if data['result']:
         return {'sub': user,
                 'active': True
                 }
@@ -62,8 +81,8 @@ JWT_ALGORITHM = 'HS256'
 _secret_file_path = os.path.join(SECURITY_PATH, 'jwt_secret')
 
 
-# Generate secret file to keep safe or load existing secret
 def generate_secret():
+    """Generate secret file to keep safe or load existing secret."""
     try:
         if not os.path.exists(_secret_file_path):
             jwt_secret = token_urlsafe(512)
@@ -84,25 +103,31 @@ def generate_secret():
 
 
 def change_secret():
-    """Generate new JWT secret"""
+    """Generate new JWT secret."""
     new_secret = token_urlsafe(512)
     with open(_secret_file_path, mode='w') as jwt_secret:
         jwt_secret.write(new_secret)
 
 
 def get_token_blacklist():
-    """Get all token rules"""
+    """Get all token rules."""
     with TokenManager() as tm:
         return tm.get_all_rules()
 
 
 def generate_token(user_id=None, rbac_policies=None):
-    """Generates an encoded jwt token. This method should be called once a user is properly logged on.
+    """Generate an encoded jwt token. This method should be called once a user is properly logged on.
 
-    :param user_id: Unique username
-    :param auth_context: Authorization context of the current user
-    :param rbac_policies: Permissions for the user
-    :return: string jwt formatted string
+    Parameters
+    ----------
+    user_id : str
+        Unique username
+    rbac_policies : dict
+        Permissions for the user
+
+    Returns
+    -------
+    JWT encode token
     """
     timestamp = int(time())
     payload = {
@@ -117,17 +142,35 @@ def generate_token(user_id=None, rbac_policies=None):
 
 
 def check_token(username, token_iat_time):
+    """Check the validity of a token with the current time and the generation time of the token.
+
+    Parameters
+    ----------
+    username : str
+        Unique username
+    token_iat_time : int
+        issued at of the current token
+    Returns
+    -------
+    Dict with the result
+    """
     with TokenManager() as tm:
-        result = tm.is_token_valid(username=username, token_iat_time=token_iat_time)
+        result = tm.is_token_valid(username=username, token_iat_time=int(token_iat_time))
 
     return {'valid': result}
 
 
 def decode_token(token):
-    """Decodes a jwt formatted token. Raise an Unauthorized exception in case validation fails.
+    """Decode a jwt formatted token. Raise an Unauthorized exception in case validation fails.
 
-    :param token: string jwt formatted token
-    :return: dict payload ot the token
+    Parameters
+    ----------
+    token : str
+        JWT formatted token
+
+    Returns
+    -------
+    Dict payload ot the token
     """
     try:
         payload = jwt.decode(token, generate_secret(), algorithms=[JWT_ALGORITHM])
@@ -149,16 +192,20 @@ def decode_token(token):
 
 
 def get_permissions(header):
-    """Extracts RBAC info from JWT token in request header
+    """Extract RBAC info from JWT token in request header.
 
-    :param header: Connexion request header
-    :return: RBAC mode (white or black list) and user permissions
+    Parameters
+    ----------
+    header : str
+        Connexion request header
+
+    Returns
+    -------
+    RBAC mode (white or black list) and user permissions
     """
     # We strip "Bearer " from the Authorization header of the request to get the token
     jwt_token = header[7:]
-
     payload = decode_token(jwt_token)
-
     permissions = payload['rbac_policies']
 
     return permissions
