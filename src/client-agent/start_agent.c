@@ -235,16 +235,21 @@ void start_agent(int is_startup)
     return;
 }
 
+/**
+ * Initialize keys structure, counter, agent info and crypto method.
+ * Keys are read from client.keys. If no valid entry is found, a new key is requested to server,
+ * execution is blocked until a valid key is received. 
+ * */
 static void w_agentd_keys_init (void) {
     /* Check client keys */
-    OS_ReadKeys(&keys, 1, 0, 0);
-    int delay_sleep = 0;
+    OS_ReadKeys(&keys, 1, 0, 0);    
 
     /* Check if we need to auto-enroll */
     if(agt->enrollment_cfg && agt->enrollment_cfg->enabled && keys.keysize == 0) {
         int registration_status = -1;
         while (registration_status != 0) {
             int rc = 0;
+            int delay_sleep = 0;
             if (agt->enrollment_cfg->target_cfg->manager_name) {
                 // Configured enrollment server
                 registration_status = try_enroll_to_server(agt->enrollment_cfg->target_cfg->manager_name);
@@ -261,6 +266,7 @@ static void w_agentd_keys_init (void) {
                 if (delay_sleep < 60) {
                     delay_sleep += 5;
                 }
+                mdebug1("Sleeping %d seconds before trying to enroll again", delay_sleep);
                 sleep(delay_sleep);
             }
         }        
