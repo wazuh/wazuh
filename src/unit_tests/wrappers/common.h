@@ -20,6 +20,11 @@ int __wrap_FOREVER();
 
 time_t wrap_time (time_t *t);
 
+#ifdef WIN32
 extern time_t time_mock_value;
+
+#define time(x) wrap_time(x)
+#endif
+
 #endif /* COMMON_H */
 

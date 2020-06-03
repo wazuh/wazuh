@@ -17,7 +17,6 @@
 
 #define fprintf wrap_fprintf
 #define Sleep wrap_fim_db_Sleep
-#define time(x) wrap_time(x)
 #endif
 
 #define static

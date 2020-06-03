@@ -33,9 +33,6 @@ extern void mock_assert(const int result, const char* const expression,
 #define assert(expression) \
     mock_assert((int)(expression), #expression, __FILE__, __LINE__);
 
-#ifdef WIN32
-#define time(x)     wrap_time(x)
-#endif
 #endif
 
 static long fim_sync_cur_id;
