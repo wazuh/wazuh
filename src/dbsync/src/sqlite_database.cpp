@@ -43,6 +43,7 @@ bool SQLiteDB::Initialize(
   if (CleanDB(path)) {
     if (SQLITE_OK == sqlite3_open_v2(path.c_str(), &m_db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL)) {
       sqlite3_exec(m_db, "PRAGMA temp_store = memory;", 0,0, nullptr);
+      sqlite3_exec(m_db, "PRAGMA synchronous = OFF", 0, 0, nullptr);
 
       const char* tail = nullptr;
       for (auto sql = table_statement_creation.c_str(); sql && *sql; sql = tail) {
@@ -247,9 +248,13 @@ bool SQLiteDB::RefreshTablaData(const nlohmann::json& data, nlohmann::json& delt
         if (!RemoveNotExistsRows(table, primary_key_list, delta)) {
           std::cout << "Error during the delete rows update "<< __LINE__ << " - " << __FILE__ << std::endl;
         }
+        if (!ChangeModifiedRows(table, primary_key_list, delta)) {
+          std::cout << "Error during the change of modified rows" << __LINE__ << " - " << __FILE__ << std::endl;
+        }
         if (!InsertNewRows(table, primary_key_list, delta)) {
           std::cout << "Error during the insert rows update "<< __LINE__ << " - " << __FILE__ << std::endl;
         }
+        
       }
       ret_val = true;
     }
@@ -367,10 +372,8 @@ bool SQLiteDB::GetPrimaryKeysFromTable(const std::string& table, std::vector<std
     return m_table_fields.find(table) != m_table_fields.end();
 }
 
-int32_t SQLiteDB::GetTableData(sqlite3_stmt* stmt, const int32_t index, const ColumnData& cd, Row& row) {
-  const auto type = std::get<TableHeader::TYPE>(cd);
-  const auto field_name = std::get<TableHeader::NAME>(cd);
-
+int32_t SQLiteDB::GetTableData(sqlite3_stmt* stmt, const int32_t index, const ColumnType& type, const std::string& field_name, Row& row) {
+ 
   int32_t rc { SQLITE_OK };
  
   if (ColumnType::BIGINT_TYPE == type) {
@@ -414,7 +417,12 @@ bool SQLiteDB::GetLeftOnly(
       while (SQLITE_ROW == sqlite3_step(stmt)) {
         Row register_fields;
         for(const auto& field : table_fields) {
-          GetTableData(stmt, std::get<TableHeader::CID>(field), field, register_fields);
+          GetTableData(
+            stmt, 
+            std::get<TableHeader::CID>(field), 
+            std::get<TableHeader::TYPE>(field),
+            std::get<TableHeader::NAME>(field), 
+            register_fields);
         }
         return_rows.push_back(std::move(register_fields));
       }
@@ -460,7 +468,12 @@ bool SQLiteDB::GetPKListLeftOnly(
           });
 
           if (table_fields.end() != it) { 
-            GetTableData(stmt, index, (*it), register_fields);
+            GetTableData(
+            stmt, 
+            index, 
+            std::get<TableHeader::TYPE>(*it),
+            std::get<TableHeader::NAME>(*it), 
+            register_fields);
           }
           ++index;
         }
@@ -681,4 +694,241 @@ bool SQLiteDB::BulkInsert(const std::string& table, const std::vector<Row>& data
     }
     
     return ret_val;
+}
+
+int SQLiteDB::ChangeModifiedRows(const std::string& table, const std::vector<std::string>& primary_key_list, nlohmann::json& delta) {
+  auto ret_val {true  };
+  std::vector<Row> row_keys_value;
+  if (GetModifiedTableRows(table, table+kTempTableSubFix, primary_key_list, row_keys_value)) {
+    if (PreparedTransactionExecute( 
+      BuildUpdateDataSqlQuery(table, primary_key_list), 
+      [&](sqlite3_stmt* stmt){
+        auto rc { SQLITE_DONE };
+        for (const auto& rows : row_keys_value) {
+          for (const auto& field : rows) {
+
+            if (0 != field.first.substr(0,3).compare("PK_"))
+            {
+              auto index_pk { 2l };
+  
+              for (const auto& pk : primary_key_list) {
+                BindFieldData(stmt, index_pk, rows.at("PK_"+pk));
+                ++index_pk;
+              }
+
+              BindFieldData(stmt, 1, field.second);
+
+              if (rc = sqlite3_step(stmt), SQLITE_DONE != rc) {
+                std::cout << "Commit Error" << std::endl;
+                sqlite3_reset(stmt);
+                break;
+              }
+              sqlite3_reset(stmt);
+            }
+            
+          }
+        }
+        return rc;
+      })) {
+
+      for (const auto& row : row_keys_value){
+        nlohmann::json object;
+        for (const auto& value : row) {
+          const auto row_type { std::get<GenericTupleIndex::GEN_TYPE>(value.second) };
+          if (ColumnType::BIGINT_TYPE == row_type) {
+            object[value.first] = std::get<ColumnType::BIGINT_TYPE>(value.second);
+          } else if (ColumnType::UNSIGNED_BIGINT_TYPE == row_type) {
+            object[value.first] = std::get<ColumnType::UNSIGNED_BIGINT_TYPE>(value.second);
+          } else if (ColumnType::INTEGER_TYPE == row_type) {
+            object[value.first] = std::get<ColumnType::INTEGER_TYPE>(value.second);
+          } else if (ColumnType::TEXT_TYPE == row_type) {
+            object[value.first] = std::get<ColumnType::TEXT_TYPE>(value.second);
+          } else if (ColumnType::DOUBLE_TYPE == row_type) {
+            object[value.first] = std::get<ColumnType::DOUBLE_TYPE>(value.second);
+          } else if (ColumnType::BLOB_TYPE == row_type) {
+            std::cout << "not implemented "<< __LINE__ << " - " << __FILE__ << std::endl;
+          }
+        }
+        delta["modified"].push_back(std::move(object));
+      }
+    } else {
+      ret_val = false;
+    }
+  }
+  return ret_val;
+}
+
+std::string SQLiteDB::BuildUpdateDataSqlQuery(const std::string& table, const std::vector<std::string>& primary_key_list) {
+    std::string sql = "UPDATE ";
+    sql.append(table);
+    sql.append(" SET cmdline =?");
+    sql.append(" WHERE ");
+
+    if (0 != primary_key_list.size()) {
+      for (const auto& value : primary_key_list) {
+        sql.append(value);
+        sql.append("=? AND ");
+      }
+      sql = sql.substr(0, sql.size()-5);
+      sql.append(";");
+    } else {
+      sql.clear();
+    }
+    return sql;
+}
+
+int SQLiteDB::GetModifiedTableRows(
+  const std::string& t1, 
+  const std::string& t2, 
+  const std::vector<std::string>& primary_key_list, 
+  std::vector<Row>& return_rows) {
+
+  sqlite3_stmt* stmt{ nullptr };
+  auto ret_val { false };
+  
+  const std::string query { BuildModifiedRowsQuery(t1, t2, primary_key_list) };
+
+  if (!t1.empty() && !query.empty()) {
+    auto rc = sqlite3_prepare_v2(m_db,
+                                  query.c_str(),
+                                  -1,
+                                  &stmt,
+                                  nullptr);
+    if (rc == SQLITE_OK) {
+      while (SQLITE_ROW == sqlite3_step(stmt)) {
+        const auto table_fields { m_table_fields[t1] };
+        Row register_fields;
+        int32_t index {0l};
+        for(const auto& pk_value : primary_key_list) {
+          const auto it = std::find_if(table_fields.begin(), table_fields.end(), [&pk_value] (const ColumnData& cd) {
+            return std::get<TableHeader::NAME>(cd).compare(pk_value) == 0;
+          });
+          if (table_fields.end() != it) {
+            GetTableData(
+                        stmt, 
+                        index, 
+                        std::get<TableHeader::TYPE>(*it),
+                        "PK_" + std::get<TableHeader::NAME>(*it), 
+                        register_fields);
+          }
+          
+          ++index;
+        }
+        for(const auto& field : table_fields) {
+          if (register_fields.end() == register_fields.find(std::get<TableHeader::NAME>(field))){
+            if (SQLITE_NULL != sqlite3_column_type(stmt, index)) {
+              GetTableData(stmt, index, std::get<TableHeader::TYPE>(field), std::get<TableHeader::NAME>(field), register_fields);
+            }
+          }
+          
+          ++index;
+        }
+        return_rows.push_back(std::move(register_fields));
+      }
+
+      sqlite3_finalize(stmt);
+      ret_val = true;
+    } else {
+      sqlite3_errmsg(m_db);
+    }
+  } 
+
+  return ret_val;
+}
+
+std::string SQLiteDB::BuildModifiedRowsQuery(
+  const std::string& t1,
+  const std::string& t2,
+  const std::vector<std::string>& primary_key_list) {
+
+  std::string return_fields_list;
+  std::string on_match_list;
+  std::string null_filter_list;
+  
+  for (const auto& value : primary_key_list) {
+    return_fields_list.append("t1."+value+",");
+    on_match_list.append("t1." + value + "=t2." + value + " AND ");
+  }
+
+  for (const auto& value : m_table_fields[t1]) {
+    const auto field_name {std::get<TableHeader::NAME>(value)};
+    return_fields_list.append("CASE WHEN t1.");
+    return_fields_list.append(field_name);
+    return_fields_list.append("<>t2.");
+    return_fields_list.append(field_name);
+    return_fields_list.append(" THEN t1.");
+    return_fields_list.append(field_name);
+    return_fields_list.append(" ELSE NULL END AS DIF_");
+    return_fields_list.append(field_name);
+    return_fields_list.append(",");
+  }
+
+  return_fields_list = return_fields_list.substr(0, return_fields_list.size()-1);
+  on_match_list = on_match_list.substr(0, on_match_list.size()-5);
+  std::string ret_val {"SELECT "};
+  ret_val.append(return_fields_list);
+  ret_val.append(" FROM (select *,'");
+  ret_val.append(t1);
+  ret_val.append("' as val from ");
+  ret_val.append(t1);
+  ret_val.append(" UNION ALL select *,'");
+  ret_val.append(t2);
+  ret_val.append("' as val from ");
+  ret_val.append(t2);
+  ret_val.append(") t1 INNER JOIN ");
+  ret_val.append(t1);
+  ret_val.append(" t2 ON ");
+  ret_val.append(on_match_list);
+  ret_val.append(" WHERE t1.val = '");
+  ret_val.append(t2);
+  ret_val.append("';");
+  
+  return ret_val;
+} 
+
+
+bool SQLiteDB::PreparedTransactionExecute(
+  const std::string& sql, 
+  const std::function<int32_t(sqlite3_stmt*)>& bind_f) {
+
+    auto ret_val{ false };
+    char* errorMessage;
+
+    if(!sql.empty()) {
+      sqlite3_exec(m_db, "BEGIN TRANSACTION", NULL, NULL, &errorMessage);
+
+      sqlite3_stmt* stmt{ nullptr };
+      auto rc { sqlite3_prepare_v2(m_db, sql.c_str(), -1, &stmt, nullptr) };
+
+      if( rc == SQLITE_OK ) {
+        rc = bind_f(stmt);
+        
+        sqlite3_finalize(stmt);
+        ret_val = SQLITE_OK == sqlite3_exec(m_db, "COMMIT TRANSACTION", NULL, NULL, &errorMessage);
+        
+      }else{
+          fprintf(stderr, "SQL error: %s\n", errorMessage);
+          sqlite3_free(errorMessage);
+      }
+    }
+    
+    return ret_val;
+}
+
+bool SQLiteDB::TransactionExecute(
+  const std::function<int32_t()>& bind_f) {
+
+  auto ret_val{ false };
+  char* errorMessage;
+
+  sqlite3_exec(m_db, "BEGIN TRANSACTION", NULL, NULL, &errorMessage);
+  bind_f();
+  ret_val = SQLITE_OK == sqlite3_exec(m_db, "COMMIT TRANSACTION", NULL, NULL, &errorMessage);
+    
+  if (SQLITE_OK != ret_val){
+      fprintf(stderr, "SQL error: %s\n", errorMessage);
+      sqlite3_free(errorMessage);
+  }
+    
+  return ret_val;
 }
