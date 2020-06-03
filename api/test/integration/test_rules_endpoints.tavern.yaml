@@ -1425,7 +1425,7 @@ stages:
           failed_items:
             - error:
                 code: 1208
-                message: The rule doesn't exist or you don't have permission to see it
+                message: The rule does not exist or you do not have permission to see it
                 remediation: !anystr
               id:
                 - 9
@@ -1524,7 +1524,7 @@ stages:
           failed_items:
             - error:
                 code: 1208
-                message: The rule doesn't exist or you don't have permission to see it
+                message: The rule does not exist or you do not have permission to see it
                 remediation: !anystr
               id:
                 - 9999999999

@@ -2827,7 +2827,7 @@ stages:
            - error:
                code: 1710
                message: The group does not exist
-               remediation: Please, `GET /agents/groups` to find all available groups
+               remediation: Please, use `GET /agents/groups` to find all available groups
              id:
                - wrong_group
        message: No groups files are shown

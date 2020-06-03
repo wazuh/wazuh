@@ -38,7 +38,7 @@ class WazuhException(Exception):
                'remediation': 'Please, restart Wazuh to restore sockets'},
         1014: {'message': 'Error communicating with socket',
                'remediation': 'Please, restart Wazuh to restore sockets'},
-        1015: 'Error agent version is null. Was the agent ever connected?',
+        1015: 'Agent version is null. Was the agent ever connected?',
         1016: {'message': 'Error moving file',
                'remediation': 'Please, ensure you have the required file permissions in Wazuh directories'},
         1017: 'Some Wazuh daemons are not ready yet in node "{node_name}" ({not_ready_daemons})',
@@ -106,13 +106,13 @@ class WazuhException(Exception):
                'remediation': 'Please indicate one of the following values:'
                },
         1206: {'message': 'Duplicated rule ID',
-               'remediation': 'Please check your configuration, two or more rules have the same ID, visit [official documentation]https://documentation.wazuh.com/3.x/user-manual/ruleset/custom.html '
+               'remediation': 'Please check your configuration, two or more rules have the same ID, visit [official documentation](https://documentation.wazuh.com/3.x/user-manual/ruleset/custom.html)'
                               ' to get more information about how to configure the rules'
                },
         1207: {'message': 'Error reading rule files, wrong permissions',
                'remediation': 'Please, check your permissions over the file'
                },
-        1208: {'message': 'The rule doesn\'t exist or you don\'t have permission to see it',
+        1208: {'message': 'The rule does not exist or you do not have permission to see it',
                'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/3.x/user-manual/reference/ossec-conf/index.html)'
                               ' to get more information about how to configure the rules'
                },
@@ -160,7 +160,7 @@ class WazuhException(Exception):
 
         # Decoders: 1500 - 1599
         1500: {'message': 'Error reading decoders from ossec.conf',
-               'remediation': 'Please, visit https://documentation.wazuh.com/current/user-manual/ruleset/custom.html'
+               'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/current/user-manual/ruleset/custom.html)'
                               'to get more information on adding or modifying existing decoders'
                },
         1501: {'message': 'Error reading decoders file'
@@ -171,7 +171,7 @@ class WazuhException(Exception):
         1503: {'message': 'Decoders file not found',
                'remediation': 'Please, use GET /decoders/files to list all available decoders'
                },
-        1504: {'message': 'The decoder doesn\'t exist or you don\'t have permission to see it',
+        1504: {'message': 'The decoder does not exist or you do not have permission to see it',
                'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/3.x/user-manual/reference/ossec-conf/index.html)'
                               ' to get more information about the decoders'
                },
@@ -207,9 +207,9 @@ class WazuhException(Exception):
                'remediation': 'Please, use `GET /agents?select=id,name` to find all available agents'
                },
         1702: {'message': 'Unable to restart agent(s)',
-               'remediation': 'Please make sure the agent exists. it is active and it is not the manager(Agent 000)'
+               'remediation': 'Please make sure the agent exists, it is active and it is not the manager (agent 000)'
                },
-        1703: {'message': 'Action not available for Manager (Agent 000)',
+        1703: {'message': 'Action not available for Manager (agent 000)',
                'remediation': 'Please, use `GET /agents?select=id,name` to find all available agents and make sure you select an agent other than 000'
                },
         1704: 'Unable to load requested info from agent db',
@@ -226,10 +226,10 @@ class WazuhException(Exception):
                'remediation': 'Please choose another ID'
                },
         1709: {'message': 'Too short key size',
-               'remediation': 'The necessary size for the key is (<64)'
+               'remediation': 'The necessary size for the key is 64 characters'
                },
         1710: {'message': 'The group does not exist',
-               'remediation': 'Please, `GET /agents/groups` to find all available groups'
+               'remediation': 'Please, use `GET /agents/groups` to find all available groups'
                },
         1711: {'message': 'The group already exists',
                'remediation': 'Please, use another group ID'
@@ -295,7 +295,7 @@ class WazuhException(Exception):
                'remediation': "Please check the agent's status [official documentation](https://documentation.wazuh.com/3.x/user-manual/agents/restful-api/remove.html)"
                },
         1732: {'message': 'No agents selected',
-               'remediation': 'Please select an agent or the operation cannot be performed'
+               'remediation': 'Please select an agent to perform the operation.'
                },
         1733: 'Bad formatted version. Version must follow this pattern: vX.Y.Z .',
         1734: {'message': 'Error removing agent from group',
@@ -317,7 +317,7 @@ class WazuhException(Exception):
                'remediation': 'Please check that the agent and the group are correctly created [official documentation](https://documentation.wazuh.com/3.x/user-manual/agents/command-line/register.html)'
                },
         1740: {'message': 'Action only available for active agents',
-               'remediation': 'Please activate the agent to be able to synchronize'
+               'remediation': 'Please activate the agent to synchronize it'
                },
         1741: 'Could not remove multigroup',
         1742: 'Error running XML syntax validator',
@@ -327,7 +327,7 @@ class WazuhException(Exception):
         1746: {'message': "Could not parse current client.keys file"},
         1747: {'message': "Could not remove agent group assigment from database"},
         1748: {'message': "Could not remove agent files"},
-        1749: {'message': "Downgrading an agent requires the force flag.",
+        1749: {'message': "Downgrading an agent requires the [force] flag.",
                'remediation': "Use force=1 parameter to force the downgrade"
                },
         1750: {'message': 'Could not send restart command, active-response is disabled in the agent',
@@ -391,7 +391,7 @@ class WazuhException(Exception):
         2001: {'message': 'Incompatible version of SQLite'},
         2002: {'message': 'Maximum attempts exceeded for sqlite3 execute'},
         2003: {'message': 'Error in wazuhdb request',
-               'remediation': 'Make sure the your request is correct'},
+               'remediation': 'Make sure the request is correct'},
         2004: {'message': 'Database query not valid'},
         2005: {'message': 'Could not connect to wdb socket'},
         2006: {'message': 'Received JSON from Wazuh DB is not correctly formatted'},
@@ -413,7 +413,7 @@ class WazuhException(Exception):
         3008: 'Received invalid agent status',
         3009: {'message': 'Error executing distributed API request',
                'remediation': ''},
-        3010: 'Received the status/group of an unexisting agent',
+        3010: 'Received the status/group of a non-existent agent',
         3011: 'Agent info file received in a worker node',
         3012: 'Cluster is not running',
         3013: {'message': 'Cluster is disabled in `WAZUH_HOME/etc/ossec.conf`',
@@ -461,17 +461,17 @@ class WazuhException(Exception):
         4000: {'message': "Permission denied",
                'remediation': "Please, make sure you have permissions to execute the current request. "
                               "For more information on how to set up permissions, please visit XXXX"},
-        4001: {'message': 'The body of the request is empty, you must specify that you want to modify',
+        4001: {'message': 'The body of the request is empty, you must specify what you want to modify',
                'remediation': "The fields available for update are: name(str), rule(str), policies(list(dict))"},
         4002: {'message': 'The specified role does not exist',
                'remediation': 'Please, create the specified role with the endpoint POST /security/roles'},
         4003: {'message': 'The specified rule is invalid',
-               'remediation': "The rule must have a json format"},
+               'remediation': "The rule must be in json format."},
         4004: {'message': 'The specified name is invalid'},
         4005: {'message': 'The specified name or rule already exist'},
         4006: {'message': 'The specified policy is invalid',
-               'remediation': 'The policy must have a json format and it\'s keys must be "access", "resources", '
-                              'and "effect". The actions and resources must be splitted by ":". Example: agent:id:001'},
+               'remediation': 'The policy must be in json format and its keys must be "access", "resources" and'
+                              ' "effect". The actions and resources must be splitted by ":". Example: agent:id:001'},
         4007: {'message': 'The specified policy does not exist',
                'remediation': 'Please, create the specified policy with the endpoint POST /security/policies'},
         4008: {'message': 'The specified resource is required for a correct Wazuh\'s functionality'},
@@ -480,8 +480,7 @@ class WazuhException(Exception):
                'remediation': 'Please, create the specified role-policy relation with the endpoint '
                               'POST /security/roles/{role_id}/policies/{policy_id}'},
         4011: {'message': 'The specified role-policy link already exist'},
-        4012: {'message': 'The specified actions or resources '
-                          'are invalid',
+        4012: {'message': 'The specified actions or resources are invalid',
                'remediation': 'The actions and resources must be splitted by ":". Example: agent:id:001'},
         4013: {'message': 'The specified name already exists'},
         4014: {'message': 'Parameter {param} is required',
@@ -492,8 +491,8 @@ class WazuhException(Exception):
         4016: {'message': 'The specified user-role does not exist',
                'remediation': 'Please, create the specified user-role relation with the endpoint '
                               'POST /security/user/{username}/roles/{role_id}'},
-        4017: {'message': 'The specified user-role link already exist'},
-        4018: {'message': 'Level can not be a negative number'},
+        4017: {'message': 'The specified user-role link already exists'},
+        4018: {'message': 'Level cannot be a negative number'},
         4019: {'message': 'Invalid resource specified',
                'remediation': 'Please, check the current RBAC resources, for more information please visit XXXX'},
         4020: {'message': 'Invalid endpoint specified',
@@ -508,11 +507,11 @@ class WazuhException(Exception):
                               'to do this you can use the `GET /security/users/{username}` call'},
         5001: {'message': 'The user does not exist',
                'remediation': 'The user can be created with the endpoint POST /security/users'},
-        5002: {'message': 'There is no users in the system'},
+        5002: {'message': 'There are no users in the system'},
         5003: {'message': 'The user could not be modified',
                'remediation': 'There is already a user with these properties'},
         5004: {'message': 'The user could not be removed or updated',
-               'remediation': 'Administrator users can not be removed or updated'},
+               'remediation': 'Administrator users cannot be removed or updated'},
         5005: {'message': 'Invalid body',
                'remediation':
                    'Please check our official documentation to see more details '
@@ -520,8 +519,8 @@ class WazuhException(Exception):
         5006: {'message': 'Operation not allowed, the user does not have permissions to perform this action.',
                'remediation': 'No user, except administrator users, can change the data of a different user.'},
         5007: {'message': 'Insecure password provided.',
-               'remediation': 'The password for users must have a minimum length of 8 characters and must have at '
-                              'least one uppercase and lowercase letter, a number and a symbol.'}
+               'remediation': 'The password for users must be at least 8 characters long and must have at least '
+                              'one upper and lower case letter, a number and a symbol. '}
 
         # > 9000: Authd
     }
