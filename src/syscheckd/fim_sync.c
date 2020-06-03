@@ -22,6 +22,7 @@
 #include "fim_db.h"
 
 #ifdef UNIT_TESTING
+#include "unit_tests/wrappers/common.h"
 /* Remove static qualifier when unit testing */
 #define static
 
@@ -31,6 +32,10 @@ extern void mock_assert(const int result, const char* const expression,
 #undef assert
 #define assert(expression) \
     mock_assert((int)(expression), #expression, __FILE__, __LINE__);
+
+#ifdef WIN32
+#define time(x)     wrap_time(x)
+#endif
 #endif
 
 static long fim_sync_cur_id;

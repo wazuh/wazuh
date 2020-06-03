@@ -14,6 +14,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
+time_t time_mock_value;
 
 int FOREVER() {
     return 1;
@@ -24,3 +25,6 @@ int __wrap_FOREVER() {
     return mock();
 }
 
+time_t wrap_time (__attribute__((unused)) time_t *t) {
+    return time_mock_value;
+}

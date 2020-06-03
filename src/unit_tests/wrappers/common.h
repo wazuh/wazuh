@@ -12,10 +12,14 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include <time.h>
+
 int FOREVER();
 
 int __wrap_FOREVER();
 
+time_t wrap_time (time_t *t);
 
+extern time_t time_mock_value;
 #endif /* COMMON_H */
 

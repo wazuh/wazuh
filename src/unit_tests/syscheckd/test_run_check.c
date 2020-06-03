@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../wrappers/common.h"
 #include "../syscheckd/syscheck.h"
 #include "../wrappers/syscheckd/run_check.h"
 #include "../syscheckd/fim_db.h"
@@ -148,9 +149,11 @@ int __wrap_audit_set_db_consistency() {
     return 1;
 }
 
+#ifndef TEST_WINAGENT
 int __wrap_time() {
     return 1;
 }
+#endif
 
 int __wrap_lstat(const char *filename, struct stat *buf) {
     check_expected(filename);
@@ -244,6 +247,10 @@ static int setup_group(void ** state) {
     }
 
     OSHash_Add_ex(syscheck.realtime->dirtb, "key", strdup("data"));
+
+    #ifdef TEST_WINAGENT
+    time_mock_value = 1;
+    #endif
 
     return 0;
 }

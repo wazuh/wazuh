@@ -44,6 +44,7 @@
 #undef  sleep
 #define sleep               wrap_Sleep
 #define CreateThread        wrap_run_check_CreateThread
+#define time(x)             wrap_time(x)
 #endif
 #else
 #define STATIC static
