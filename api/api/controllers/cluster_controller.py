@@ -80,7 +80,7 @@ async def get_cluster_nodes(request, pretty=False, wait_for_complete=False, offs
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           local_client_arg='lc',
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes,
                           cluster_required=True
                           )
@@ -110,7 +110,7 @@ async def get_healthcheck(request, pretty=False, wait_for_complete=False, list_n
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           local_client_arg='lc',
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes,
                           cluster_required=True
                           )
@@ -179,7 +179,7 @@ async def get_status_node(request, node_id, pretty=False, wait_for_complete=Fals
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes,
                           cluster_required=True
                           )
@@ -206,7 +206,7 @@ async def get_info_node(request, node_id, pretty=False, wait_for_complete=False)
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes,
                           cluster_required=True
                           )
@@ -235,7 +235,7 @@ async def get_configuration_node(request, node_id, pretty=False, wait_for_comple
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes,
                           cluster_required=True
                           )
@@ -269,7 +269,7 @@ async def get_stats_node(request, node_id, pretty=False, wait_for_complete=False
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes,
                           cluster_required=True
                           )
@@ -297,7 +297,7 @@ async def get_stats_hourly_node(request, node_id, pretty=False, wait_for_complet
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes,
                           cluster_required=True
                           )
@@ -326,7 +326,7 @@ async def get_stats_weekly_node(request, node_id, pretty=False, wait_for_complet
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes,
                           cluster_required=True
                           )
@@ -353,7 +353,7 @@ async def get_stats_analysisd_node(request, node_id, pretty=False, wait_for_comp
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes,
                           cluster_required=True
                           )
@@ -380,7 +380,7 @@ async def get_stats_remoted_node(request, node_id, pretty=False, wait_for_comple
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes,
                           cluster_required=True
                           )
@@ -424,7 +424,7 @@ async def get_log_node(request, node_id, pretty=False, wait_for_complete=False, 
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes,
                           cluster_required=True
                           )
@@ -449,7 +449,7 @@ async def get_log_summary_node(request, node_id, pretty=False, wait_for_complete
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes,
                           cluster_required=True
                           )
@@ -476,7 +476,7 @@ async def get_files_node(request, node_id, path, pretty=False, wait_for_complete
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes,
                           cluster_required=True
                           )
@@ -516,7 +516,7 @@ async def put_files_node(request, body, node_id, path, overwrite=False, pretty=F
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes,
                           cluster_required=True
                           )
@@ -543,7 +543,7 @@ async def delete_files_node(request, node_id, path, pretty=False, wait_for_compl
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes,
                           cluster_required=True
                           )
@@ -641,7 +641,7 @@ async def put_restart(request, pretty=False, wait_for_complete=False, list_nodes
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           broadcasting=list_nodes == '*',
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes,
                           cluster_required=True
                           )
@@ -668,7 +668,7 @@ async def get_conf_validation(request, pretty=False, wait_for_complete=False, li
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           broadcasting=list_nodes == '*',
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes,
                           cluster_required=True
                           )
@@ -697,7 +697,7 @@ async def get_node_config(request, node_id, component, wait_for_complete=False, 
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=get_permissions(connexion.request.headers['Authorization']),
+                          rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes,
                           cluster_required=True
                           )

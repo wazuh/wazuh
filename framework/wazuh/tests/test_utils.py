@@ -125,12 +125,12 @@ def test_execute(mock_output):
 
 
 @pytest.mark.parametrize('error_effect, expected_exception', [
-    (CalledProcessError(returncode=1000, cmd='Unspected error', output='{"data":"Some data", "message":"Error", '
+    (CalledProcessError(returncode=1000, cmd='Unexpected error', output='{"data":"Some data", "message":"Error", '
                                                                        '"error":1000}'), 1000),
     (Exception, 1002),
-    (CalledProcessError(returncode=1, cmd='Unspected error', output={}), 1003),
-    (CalledProcessError(returncode=1, cmd='Unspected error', output='{"error":10000}'), 1004),
-    (CalledProcessError(returncode=1, cmd='Unspected error', output='{"data":"Some data", "message":"Error"}'), 1004)
+    (CalledProcessError(returncode=1, cmd='Unexpected error', output={}), 1003),
+    (CalledProcessError(returncode=1, cmd='Unexpected error', output='{"error":1000}'), 1004),
+    (CalledProcessError(returncode=1, cmd='Unexpected error', output='{"data":"Some data", "message":"Error"}'), 1004)
 ])
 def test_execute_ko(error_effect, expected_exception):
     """Test execute function for all exceptions.
