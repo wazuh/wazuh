@@ -15,7 +15,7 @@ class AccessLogger(AbstractAccessLogger):
     def log(self, request, response, time):
         self.logger.info(f'{request.get("user", "unknown_user")} '
                          f'{request.remote} '
-                         f'"{request.method} {request.path} '
+                         f'"{request.method} {request.path}" '
                          f'done in {time*1000}ms: {response.status}')
 
 
