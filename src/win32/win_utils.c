@@ -154,39 +154,6 @@ int local_start()
     /* Initialize sender */
     sender_init();
 
-    /* Read keys */
-    minfo(ENC_READ);
-
-    OS_ReadKeys(&keys, 1, 0, 0);
-
-    /* Check if we need to auto-enroll */
-    if(agt->enrollment_cfg && agt->enrollment_cfg->enabled && keys.keysize == 0) {
-        int registration_status = -1;
-        int rc = 0;
-
-        if (agt->enrollment_cfg->target_cfg->manager_name) {
-            // Configured enrollment server
-            registration_status = try_enroll_to_server(agt->enrollment_cfg->target_cfg->manager_name);
-        } 
-        
-        // Try to enroll to server list
-        while (agt->server[rc].rip && (registration_status != 0)) {
-            registration_status = try_enroll_to_server(agt->server[rc].rip);
-            rc++;
-        }
-        
-
-        if(registration_status != 0) {
-            merror_exit(AG_ENROLL_FAIL);
-        }
-    }
-
-    OS_StartCounter(&keys);
-    os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id, agt->profile);
-
-    /*Set the crypto method for the agent */
-    os_set_agent_crypto_method(&keys, agt->crypto_method);
-
     /* Initialize random numbers */
     srandom(time(0));
     os_random();

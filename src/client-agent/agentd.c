@@ -54,31 +54,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
             merror_exit(AG_NOKEYS_EXIT);
         }
     }
-    
-    /* Check client keys */
-    OS_ReadKeys(&keys, 1, 0, 0);
-
-    /* Check if we need to auto-enroll */
-    if(agt->enrollment_cfg && agt->enrollment_cfg->enabled && keys.keysize == 0) {
-        int registration_status = -1;
-        int rc = 0;
-
-        if (agt->enrollment_cfg->target_cfg->manager_name) {
-            // Configured enrollment server
-            registration_status = try_enroll_to_server(agt->enrollment_cfg->target_cfg->manager_name);
-        } 
         
-        // Try to enroll to server list
-        while (agt->server[rc].rip && (registration_status != 0)) {
-            registration_status = try_enroll_to_server(agt->server[rc].rip);
-            rc++;
-        }
-        
-
-        if(registration_status != 0) {
-            merror_exit(AG_ENROLL_FAIL);
-        }
-    }
     // Resolve hostnames
     rc = 0;
     while (rc < agt->rip_id) {
@@ -120,28 +96,6 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     /* Create PID file */
     if (CreatePID(ARGV0, getpid()) < 0) {
         merror_exit(PID_ERROR);
-    }
-
-    /* Read private keys  */
-    minfo(ENC_READ);
-
-    OS_StartCounter(&keys);
-
-    os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id,
-                        agt->profile);
-
-    /*Set the crypto method for the agent */
-    os_set_agent_crypto_method(&keys,agt->crypto_method);
-
-    switch (agt->crypto_method) {
-        case W_METH_AES:
-            minfo("Using AES as encryption method.");
-            break;
-        case W_METH_BLOWFISH:
-            minfo("Using Blowfish as encryption method.");
-            break;
-        default:
-            merror("Invalid encryption method.");
     }
 
     /* Start up message */
