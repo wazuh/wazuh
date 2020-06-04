@@ -730,6 +730,7 @@ async def revoke_all_tokens(request):
                           request_type='distributed_master',
                           is_async=False,
                           broadcasting=True,
+                          wait_for_complete=True,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )

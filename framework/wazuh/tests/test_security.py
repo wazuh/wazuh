@@ -60,7 +60,7 @@ def db_setup():
                     from wazuh import security
                     from wazuh.results import WazuhResult
     try:
-        create_memory_db('schema_security_test.sql', security.orm._Session())
+        create_memory_db('schema_security_test.sql', orm._Session())
     except OperationalError:
         pass
 
@@ -137,3 +137,48 @@ def test_revoke_tokens(db_setup):
     security, WazuhResult = db_setup
     result = security.revoke_tokens()
     assert isinstance(result, WazuhResult)
+
+
+@pytest.mark.parametrize('role_list, expected_users', [
+    ([8, 9], {'wazuh', 'administrator', 'wazuh-wui', 'ossec'}),
+    ([10], {'rbac'}),
+    ([10, 11, 12], {'normal', 'rbac', 'ossec'})
+])
+def test__check_relationships(db_setup, role_list, expected_users):
+    """Check that the relationship between role and user is correct according to
+    `schema_security_test.sql`.
+
+    Parameters
+    ----------
+    role_list : list
+        List of role IDs.
+    expected_users : set
+        Expected users.
+    """
+    security, WazuhResult = db_setup
+    assert security._check_relationships(roles=[{'id': role_id} for role_id in role_list]) == expected_users
+
+
+@pytest.mark.parametrize('role_list, user_list, expected_users', [
+    ([12], None, {'normal', 'rbac', 'ossec'}),
+    ([10, 11], ['administrator'], {'normal', 'rbac', 'administrator'}),
+    ([], ['wazuh', 'wazuh-wui'], {'wazuh', 'wazuh-wui'})
+])
+def test_invalid_users_tokens(db_setup, role_list, user_list, expected_users):
+    """Check that the argument passed to `TokenManager.add_user_rules` formed by `roles` and
+    `users` is correct.
+
+    Parameters
+    ----------
+    role_list : list
+        List of role IDs.
+    user_list : list
+        List of users.
+    expected_users : set
+        Expected users.
+    """
+    with patch('wazuh.security.TokenManager.add_user_rules') as TM_mock:
+        security, WazuhResult = db_setup
+        security.invalid_users_tokens(roles=[{'id': role_id} for role_id in role_list], users=user_list)
+        related_users = TM_mock.call_args.kwargs['users']
+        assert set(related_users) == expected_users

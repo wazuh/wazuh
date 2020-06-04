@@ -26,39 +26,39 @@ INSERT INTO roles VALUES(12,'normalUser','{"MATCH": {"definition": "normalRule"}
 INSERT INTO roles VALUES(13,'ossec','{"MATCH": {"definition": "ossecRule"}}','2019-12-10 12:50:25.378200');
 
 /* Testing */
-INSERT INTO policies VALUES(11,'wazuhPolicy','{"actions": ["*:*"], "resources": ["*:*"], "effect": "allow"}','2019-12-10 12:46:53.514184');
-INSERT INTO policies VALUES(12,'wazuh-wuiPolicy','{"actions": ["agent:create"], "effect": "allow", "resources": ["agent:id:001", "agent:id:002", "agent:id:003"]}','2019-12-10 12:54:06.790926');
-INSERT INTO policies VALUES(13,'technicalPolicy','{"actions": ["agent:create"], "effect": "allow", "resources": ["*:*:*"]}','2019-12-10 12:54:32.751662');
-INSERT INTO policies VALUES(14,'administratorPolicy','{"actions": ["agent:update", "agent:delete"], "effect": "allow", "resources": ["agent:id:*"]}','2019-12-10 12:54:48.643254');
-INSERT INTO policies VALUES(15,'normalPolicy','{"actions": ["agent:update", "agent:delete"], "effect": "deny", "resources": ["agent:id:*"]}','2019-12-10 12:55:03.620567');
-INSERT INTO policies VALUES(16,'ossecPolicy','{"actions": ["role:read"], "effect": "allow", "resources": ["role:id:*"]}','2019-12-10 12:55:18.204798');
-INSERT INTO policies VALUES(17,'policy1','{"actions": ["role:read"], "effect": "deny", "resources": ["role:id:*"]}','2019-12-10 12:56:52.704419');
-INSERT INTO policies VALUES(18,'policy2','{"actions": ["role:read"], "effect": "allow", "resources": ["role:id:1"]}','2019-12-10 12:57:10.575688');
-INSERT INTO policies VALUES(19,'policy3','{"actions": ["policy:read"], "effect": "allow", "resources": ["policy:id:1"]}','2019-12-10 12:57:26.105046');
-INSERT INTO policies VALUES(20,'policy4','{"actions": ["policy:delete"], "effect": "deny", "resources": ["policy:id:*"]}','2019-12-10 12:57:40.203363');
+INSERT INTO policies VALUES(12,'wazuhPolicy','{"actions": ["*:*"], "resources": ["*:*"], "effect": "allow"}','2019-12-10 12:46:53.514184');
+INSERT INTO policies VALUES(13,'wazuh-wuiPolicy','{"actions": ["agent:create"], "effect": "allow", "resources": ["agent:id:001", "agent:id:002", "agent:id:003"]}','2019-12-10 12:54:06.790926');
+INSERT INTO policies VALUES(14,'technicalPolicy','{"actions": ["agent:create"], "effect": "allow", "resources": ["*:*:*"]}','2019-12-10 12:54:32.751662');
+INSERT INTO policies VALUES(15,'administratorPolicy','{"actions": ["agent:update", "agent:delete"], "effect": "allow", "resources": ["agent:id:*"]}','2019-12-10 12:54:48.643254');
+INSERT INTO policies VALUES(16,'normalPolicy','{"actions": ["agent:update", "agent:delete"], "effect": "deny", "resources": ["agent:id:*"]}','2019-12-10 12:55:03.620567');
+INSERT INTO policies VALUES(17,'ossecPolicy','{"actions": ["role:read"], "effect": "allow", "resources": ["role:id:*"]}','2019-12-10 12:55:18.204798');
+INSERT INTO policies VALUES(18,'policy1','{"actions": ["role:read"], "effect": "deny", "resources": ["role:id:*"]}','2019-12-10 12:56:52.704419');
+INSERT INTO policies VALUES(19,'policy2','{"actions": ["role:read"], "effect": "allow", "resources": ["role:id:1"]}','2019-12-10 12:57:10.575688');
+INSERT INTO policies VALUES(20,'policy3','{"actions": ["policy:read"], "effect": "allow", "resources": ["policy:id:1"]}','2019-12-10 12:57:26.105046');
+INSERT INTO policies VALUES(21,'policy4','{"actions": ["policy:delete"], "effect": "deny", "resources": ["policy:id:*"]}','2019-12-10 12:57:40.203363');
 
 /* Testing */
-INSERT INTO roles_policies VALUES(17,8,11,0,'2019-12-10 12:46:53.227083');
-INSERT INTO roles_policies VALUES(18,9,11,0,'2019-12-10 12:46:53.227083');
-INSERT INTO roles_policies VALUES(19,10,12,0,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(20,10,11,1,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(21,10,18,2,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(22,10,15,3,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(23,11,15,0,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(24,11,14,1,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(25,12,12,0,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(26,12,13,1,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(27,12,20,2,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(28,13,12,0,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(29,13,18,1,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(30,13,17,2,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(31,13,20,3,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(32,13,15,4,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(33,13,19,5,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(34,13,11,6,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(35,13,16,7,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(36,13,13,8,'2019-12-10 12:47:07.032311');
-INSERT INTO roles_policies VALUES(37,13,14,9,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(19,8,12,0,'2019-12-10 12:46:53.227083');
+INSERT INTO roles_policies VALUES(20,9,12,0,'2019-12-10 12:46:53.227083');
+INSERT INTO roles_policies VALUES(21,10,13,0,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(22,10,12,1,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(23,10,19,2,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(24,10,16,3,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(25,11,16,0,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(26,11,15,1,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(27,12,13,0,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(28,12,14,1,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(29,12,21,2,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(30,13,13,0,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(31,13,19,1,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(32,13,18,2,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(33,13,21,3,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(34,13,16,4,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(35,13,20,5,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(36,13,12,6,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(37,13,17,7,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(38,13,14,8,'2019-12-10 12:47:07.032311');
+INSERT INTO roles_policies VALUES(39,13,15,9,'2019-12-10 12:47:07.032311');
 
 /* Testing */
 INSERT INTO user_roles VALUES(3,'wazuh',8,1,'2020-03-25 10:22:38.704654');
