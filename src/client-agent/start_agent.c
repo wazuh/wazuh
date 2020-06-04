@@ -250,9 +250,9 @@ static void w_agentd_keys_init (void) {
         /* Check if we can auto-enroll */
         if (agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
             int registration_status = -1;
+            int delay_sleep = 0;
             while (registration_status != 0) {
-                int rc = 0;
-                int delay_sleep = 0;
+                int rc = 0;                
                 if (agt->enrollment_cfg->target_cfg->manager_name) {
                     // Configured enrollment server
                     registration_status = try_enroll_to_server(agt->enrollment_cfg->target_cfg->manager_name);
