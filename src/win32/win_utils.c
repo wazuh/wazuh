@@ -117,6 +117,9 @@ int local_start()
             merror_exit(AG_NOKEYS_EXIT);
         }
     }
+    /* Read keys */
+    minfo(ENC_READ);
+    OS_ReadKeys(&keys, 1, 0, 0);
 
     /* If there is no file to monitor, create a clean entry
      * for the mark messages.
@@ -171,13 +174,6 @@ int local_start()
 
     /* Socket connection */
     agt->sock = -1;
-    
-    /* Check if server is connected */
-    os_setwait();
-    start_agent(1);
-    os_delwait();
-    update_status(GA_STATUS_ACTIVE);
-
 
     /* Start mutex */
     mdebug1("Creating thread mutex.");
@@ -216,6 +212,12 @@ int local_start()
                         (LPDWORD)&threadID);
     }
 
+    /* Check if server is connected */
+    os_setwait();
+    start_agent(1);
+    os_delwait();
+    update_status(GA_STATUS_ACTIVE);
+    
     req_init();
 
     /* Start receiver thread */

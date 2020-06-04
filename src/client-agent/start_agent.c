@@ -240,43 +240,45 @@ void start_agent(int is_startup)
 
 /**
  * Initialize keys structure, counter, agent info and crypto method.
- * Keys are read from client.keys. If no valid entry is found, a new key is requested to server,
- * execution is blocked until a valid key is received. 
+ * Keys are read from client.keys. If no valid entry is found:
+ *  -If autoenrollment is enabled, a new key is requested to server and execution is blocked until a valid key is received. 
+ *  -If autoenrollment is disabled, dameon is stoped
  * */
 static void w_agentd_keys_init (void) {
-    /* Check client keys */
-    OS_ReadKeys(&keys, 1, 0, 0);    
-
-    /* Check if we need to auto-enroll */
-    if(agt->enrollment_cfg && agt->enrollment_cfg->enabled && keys.keysize == 0) {
-        int registration_status = -1;
-        while (registration_status != 0) {
-            int rc = 0;
-            int delay_sleep = 0;
-            if (agt->enrollment_cfg->target_cfg->manager_name) {
-                // Configured enrollment server
-                registration_status = try_enroll_to_server(agt->enrollment_cfg->target_cfg->manager_name);
-            } 
-            
-            // Try to enroll to server list
-            while (agt->server[rc].rip && (registration_status != 0)) {
-                registration_status = try_enroll_to_server(agt->server[rc].rip);
-                rc++;
-            }
-
-            //Sleep between retries
-            if (registration_status != 0) {
-                if (delay_sleep < ENROLLMENT_RETRY_TIME_MAX) {
-                    delay_sleep += ENROLLMENT_RETRY_TIME_DELTA;
+    
+    if (keys.keysize == 0) {
+        /* Check if we can auto-enroll */
+        if (agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
+            int registration_status = -1;
+            while (registration_status != 0) {
+                int rc = 0;
+                int delay_sleep = 0;
+                if (agt->enrollment_cfg->target_cfg->manager_name) {
+                    // Configured enrollment server
+                    registration_status = try_enroll_to_server(agt->enrollment_cfg->target_cfg->manager_name);
+                } 
+                
+                // Try to enroll to server list
+                while (agt->server[rc].rip && (registration_status != 0)) {
+                    registration_status = try_enroll_to_server(agt->server[rc].rip);
+                    rc++;
                 }
-                mdebug1("Sleeping %d seconds before trying to enroll again", delay_sleep);
-                sleep(delay_sleep);
-            }
-        }        
-    }
 
-    /* Read private keys  */
-    minfo(ENC_READ);
+                //Sleep between retries
+                if (registration_status != 0) {
+                    if (delay_sleep < ENROLLMENT_RETRY_TIME_MAX) {
+                        delay_sleep += ENROLLMENT_RETRY_TIME_DELTA;
+                    }
+                    mdebug1("Sleeping %d seconds before trying to enroll again", delay_sleep);
+                    sleep(delay_sleep);
+                }
+            }        
+        }
+        /* If autoenrollment is disabled, stop daemon*/
+        else {
+            merror_exit(AG_NOKEYS_EXIT);
+        }
+    }
 
     OS_StartCounter(&keys);
 

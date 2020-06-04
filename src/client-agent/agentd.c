@@ -54,7 +54,10 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
             merror_exit(AG_NOKEYS_EXIT);
         }
     }
-        
+    /* Read private keys  */
+    minfo(ENC_READ);    
+    OS_ReadKeys(&keys, 1, 0, 0); 
+
     // Resolve hostnames
     rc = 0;
     while (rc < agt->rip_id) {
@@ -104,9 +107,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     os_random();
 
     /* Ignore SIGPIPE, it will be detected on recv */
-    signal(SIGPIPE, SIG_IGN);
-
-    start_agent(1);
+    signal(SIGPIPE, SIG_IGN);    
 
     /* Launch rotation thread */
 
@@ -147,6 +148,8 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
             agt->execdq = -1;
         }
     }
+    
+    start_agent(1);
 
     os_delwait();
     update_status(GA_STATUS_ACTIVE);
