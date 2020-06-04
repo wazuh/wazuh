@@ -22,24 +22,24 @@ extern void mock_assert(const int result, const char* const expression,
 #include "unit_tests/wrappers/shared/syscheck_op.h"
 
 #undef  CreateFile
-#define CreateFile      wrap_syscheck_op_CreateFile
-#define CloseHandle     wrap_syscheck_op_CloseHandle
-#define GetLastError    wrap_syscheck_op_GetLastError
+#define CreateFile      wrap_CreateFile
+#define CloseHandle     wrap_CloseHandle
+#define GetLastError    wrap_GetLastError
 #undef  FormatMessage
-#define FormatMessage   wrap_syscheck_op_FormatMessage
-#define LocalFree       wrap_syscheck_op_LocalFree
-#define GetSecurityInfo wrap_syscheck_op_GetSecurityInfo
+#define FormatMessage   wrap_FormatMessage
+#define LocalFree       wrap_LocalFree
+#define GetSecurityInfo wrap_GetSecurityInfo
 #undef  ConvertSidToStringSid
-#define ConvertSidToStringSid   wrap_syscheck_op_ConvertSidToStringSid
+#define ConvertSidToStringSid   wrap_ConvertSidToStringSid
 #undef  LookupAccountSid
-#define LookupAccountSid        wrap_syscheck_op_LookupAccountSid
-#define IsValidSid              wrap_syscheck_op_IsValidSid
+#define LookupAccountSid        wrap_LookupAccountSid
+#define IsValidSid              wrap_IsValidSid
 #undef  GetFileSecurity
-#define GetFileSecurity             wrap_syscheck_op_GetFileSecurity
-#define GetSecurityDescriptorDacl   wrap_syscheck_op_GetSecurityDescriptorDacl
-#define GetAclInformation           wrap_syscheck_op_GetAclInformation
-#define GetAce                      wrap_syscheck_op_GetAce
-#define GetFileAttributesA          wrap_syscheck_op_GetFileAttributesA
+#define GetFileSecurity             wrap_GetFileSecurity
+#define GetSecurityDescriptorDacl   wrap_GetSecurityDescriptorDacl
+#define GetAclInformation           wrap_GetAclInformation
+#define GetAce                      wrap_GetAce
+#define GetFileAttributesA          wrap_GetFileAttributesA
 #endif
 #endif
 

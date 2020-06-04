@@ -36,9 +36,3 @@ int wrap_fprintf(FILE * __restrict__ _File,const char * __restrict__ _Format,...
     }
     return ret;
 }
-
-#ifdef WIN32
-VOID wrap_fim_db_Sleep (__UNUSED_PARAM(DWORD dwMilliseconds)) {
-    function_called();
-}
-#endif
