@@ -17,6 +17,7 @@ from wazuh import security
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhError
 from wazuh.rbac import preprocessor
+from wazuh.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh')
 auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
@@ -733,7 +734,15 @@ async def revoke_all_tokens(request):
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    if len(data.affected_items) == 0:
-        data = {'detail': data.message}
+    status = 200
+    if type(data) == AffectedItemsWazuhResult and len(data.affected_items) == 0:
+        status = 400
+        data = {
+            'title': 'Unauthorized',
+            'type': 'about:blank',
+            'detail': data.message,
+            'code': 4000,
+            'status': 400
+        }
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=status, dumps=dumps)
