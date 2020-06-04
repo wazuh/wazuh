@@ -232,12 +232,14 @@ void start_agent(int is_startup)
 
 
 /**
- * Holds the message reception logic for udp
+ * @brief Holds the message reception logic for udp
+ * 
  * @param msg message to be sent
  * @param buffer pointer to buffer where the information will be stored
  * @param max_length size of buffer
- * @return message_size on success
- *         0 when all retries failed
+ * @return Integer value indicating the status code.
+ * @retval message_size on success
+ * @retval 0 when all retries failed
  * */
 static ssize_t receive_message_udp(const char *msg, char *buffer, unsigned int max_lenght) {
     int attempts = 0;
@@ -287,12 +289,14 @@ static ssize_t receive_message_udp(const char *msg, char *buffer, unsigned int m
 }
 
 /**
- * Holds the message reception logic for tcp
+ * @brief Holds the message reception logic for tcp
+ * 
  * @param msg message to be sent
  * @param buffer pointer to buffer where the information will be stored
  * @param max_length size of buffer
- * @return 1 on success
- *         0 when all retries failed
+ * @return Integer value indicating the status code.
+ * @retval message_size on success
+ * @retval 0 when all retries failed
  * */
 static ssize_t receive_message_tcp(const char *msg, char *buffer, unsigned int max_lenght) {
     ssize_t recv_b = 0;
