@@ -506,12 +506,14 @@ static int teardown_struct_dirent(void **state) {
 }
 
 static int setup_file_limit(void **state) {
+    syscheck.file_limit_enabled = false;
     syscheck.file_limit = 0;
 
     return 0;
 }
 
 static int teardown_file_limit(void **state) {
+    syscheck.file_limit_enabled = true;
     syscheck.file_limit = 50000;
 
     return 0;

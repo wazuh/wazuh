@@ -230,7 +230,9 @@ void start_daemon()
 #endif
 
     // Launch Whodata real-time thread
-    fim_whodata_initialize();
+    if(syscheck.enable_whodata) {
+        fim_whodata_initialize();
+    }
 
     // Before entering in daemon mode itself
     prev_time_sk = time(0);
