@@ -190,6 +190,20 @@ cJSON *getSyscheckConfig(void) {
     cJSON_AddNumberToObject(file_limit, "entries", syscheck.file_limit);
     cJSON_AddItemToObject(syscfg, "file_limit", file_limit);
 
+    cJSON *diff = cJSON_CreateObject();
+    
+    cJSON *disk_quota = cJSON_CreateObject();
+    cJSON_AddStringToObject(disk_quota, "enabled", syscheck.disk_quota_enabled ? "yes" : "no");
+    cJSON_AddNumberToObject(disk_quota, "limit", syscheck.disk_quota_limit);
+    cJSON_AddItemToObject(diff, "disk_quota", disk_quota);
+
+    cJSON *file_size = cJSON_CreateObject();
+    cJSON_AddStringToObject(file_size, "enabled", syscheck.file_size_enabled ? "yes" : "no");
+    cJSON_AddNumberToObject(file_size, "limit", syscheck.file_size_limit);
+    cJSON_AddItemToObject(diff, "file_size", file_size);
+
+    cJSON_AddItemToObject(syscfg, "diff", diff);
+
     if (syscheck.dir) {
         cJSON *dirs = cJSON_CreateArray();
         for (i=0;syscheck.dir[i];i++) {
