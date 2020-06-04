@@ -361,7 +361,7 @@ stages:
         <<: *error
 
 ---
-test_name: CLEANER DELETE /security/{roles/policies}
+test_name: CLEANER DELETE /security/{roles}
 
 stages:
 
@@ -375,6 +375,11 @@ stages:
       method: DELETE
     response:
       status_code: 200
+
+---
+test_name: CLEANER DELETE /security/{policies}
+
+stages:
 
   - name: Try to delete all policies
     request:

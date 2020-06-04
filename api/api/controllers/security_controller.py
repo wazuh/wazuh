@@ -733,5 +733,7 @@ async def revoke_all_tokens(request):
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
+    if len(data.affected_items) == 0:
+        data = {'detail': data.message}
 
     return web.json_response(data=data, status=200, dumps=dumps)

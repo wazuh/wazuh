@@ -340,8 +340,7 @@ async def async_list_handler(result: asyncio.coroutine, **kwargs):
 
 
 def list_handler(result: AffectedItemsWazuhResult, original: dict = None, allowed: dict = None, target: dict = None,
-                 add_denied: bool = False,
-                 **post_proc_kwargs):
+                 add_denied: bool = False, **post_proc_kwargs):
     """ Post processor for framework list responses with affected items and optional denied items
 
     :param result: Dict with affected_items, failed_items and str_priority
@@ -402,7 +401,8 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
                         raise Exception
                     if target_param != '*':  # No resourceless and not static
                         if target_param in original_kwargs and original_kwargs[target_param] is not None:
-                            kwargs[target_param] = list(filter(lambda x: x in allow[res_id], original_kwargs[target_param]))
+                            kwargs[target_param] = list(filter(lambda x: x in allow[res_id],
+                                                               original_kwargs[target_param]))
                         else:
                             kwargs[target_param] = list(allow[res_id])
                     elif len(allow[res_id]) == 0:

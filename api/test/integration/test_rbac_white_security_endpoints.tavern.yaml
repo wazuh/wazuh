@@ -1033,7 +1033,7 @@ stages:
       json:
         data:
           affected_items:
-            - id: 108
+            - id: 109
               name: newUserPolicy
               policy:
                 actions:

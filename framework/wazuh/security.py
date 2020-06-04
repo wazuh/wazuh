@@ -595,7 +595,9 @@ def remove_role_policy(role_id, policy_ids):
     return result
 
 
-@expose_resources(actions=['security:revoke'], resources=['*:*:*'])
+@expose_resources(actions=['security:revoke'], resources=['*:*:*'],
+                  post_proc_kwargs={'default_result_kwargs': {
+                      'none_msg': 'Permission denied in all manager nodes: Resource type: *:*'}})
 def revoke_tokens():
     """ Revoke all tokens """
     change_secret()
