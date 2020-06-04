@@ -2,23 +2,9 @@
 #include <time.h> 
 
 static time_t current_time = 0;
-static int FOREVER_LOOP = 1;
 extern time_t __real_time(time_t *_time);
 /**************** Mocked functions *************/
 /**     Mocked functions       **/
-
-//Function that defines the ending of the module main loop
-int __wrap_FOREVER(){
-    return FOREVER_LOOP;
-}
-
-void disable_forever_loop(){
-    FOREVER_LOOP = 0;
-}
-
-void enable_forever_loop(){
-    FOREVER_LOOP = 1;
-}
 
 time_t __wrap_time(time_t *_time){
     if(!current_time){
