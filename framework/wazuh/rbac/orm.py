@@ -394,7 +394,7 @@ class TokenManager:
                 if token_rule.first() and current_time > token_rule.first().is_valid_until:
                     token_rule.delete()
                     self.session.commit()
-                    list_user.append(int(user_token.username))
+                    list_user.append(user_token.username)
             return list_user
         except IntegrityError:
             self.session.rollback()
@@ -648,10 +648,11 @@ class RolesManager:
         :return: True -> Success | False -> Failure
         """
         try:
-            if self.get_role(role_name) is not None and self.get_role(role_name).id not in admin_role_ids:
-                role_id = self.session.query(Roles).filter_by(name=role_name).role_id
+            if self.get_role(role_name) is not None and self.get_role(role_name)['id'] not in admin_role_ids:
+                role_id = self.session.query(Roles).filter_by(name=role_name).first().id
                 if role_id:
                     self.delete_role(role_id=role_id)
+                    return True
             return False
         except (IntegrityError, AttributeError):
             self.session.rollback()
@@ -830,10 +831,11 @@ class PoliciesManager:
         """
         try:
             if self.get_policy(policy_name) is not None and \
-                    self.get_policy(name=policy_name).id not in admin_policy_ids:
-                policy_id = self.session.query(Policies).filter_by(name=policy_name).policy_id
+                    self.get_policy(name=policy_name)['id'] not in admin_policy_ids:
+                policy_id = self.session.query(Policies).filter_by(name=policy_name).first().id
                 if policy_id:
                     self.delete_policy(policy_id=policy_id)
+                    return True
             return False
         except (IntegrityError, AttributeError):
             self.session.rollback()
