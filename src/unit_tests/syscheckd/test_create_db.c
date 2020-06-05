@@ -362,21 +362,23 @@ static int setup_group(void **state) {
     // Setup mock whodata event
     fim_data->w_evt->user_id = strdup("100");
     fim_data->w_evt->user_name = strdup("test");
-    fim_data->w_evt->group_id = strdup("1000");
-    fim_data->w_evt->group_name = "testing";
     fim_data->w_evt->process_name = strdup("test_proc");
     fim_data->w_evt->path = strdup("./test/test.file");
+    #ifndef TEST_WINAGENT
+    fim_data->w_evt->group_id = strdup("1000");
+    fim_data->w_evt->group_name = "testing";
     fim_data->w_evt->audit_uid = strdup("99");
     fim_data->w_evt->audit_name = strdup("audit_user");
     fim_data->w_evt->effective_uid = strdup("999");
     fim_data->w_evt->effective_name = strdup("effective_user");
     fim_data->w_evt->inode = strdup("606060");
     fim_data->w_evt->dev = strdup("12345678");
-    fim_data->w_evt->ppid = 1000;
-    fim_data->w_evt->process_id = 1001;
-    fim_data->w_evt->cwd = strdup("process_cwd");
-    fim_data->w_evt->parent_cwd = strdup("parent_cwd");
     fim_data->w_evt->parent_name = strdup("parent_name");
+    fim_data->w_evt->parent_cwd = strdup("parent_cwd");
+    fim_data->w_evt->ppid = 1000;
+    fim_data->w_evt->cwd = strdup("process_cwd");
+    #endif
+    fim_data->w_evt->process_id = 1001;
 
     // Setup mock old fim_entry
     fim_data->old_data->size = 1500;
