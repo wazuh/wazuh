@@ -20,7 +20,9 @@
 #if defined(TEST_SERVER) || defined(TEST_AGENT)
 extern volatile int audit_health_check_deletion;
 
+#ifndef TEST_WINAGENT
 int test_mode = 0;
+#endif
 
 /* redefinitons/wrapping */
 

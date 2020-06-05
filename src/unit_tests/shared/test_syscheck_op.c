@@ -12,13 +12,9 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-
 #include "../headers/syscheck_op.h"
 #include "../analysisd/eventinfo.h"
 
-#ifdef TEST_WINAGENT
-#include "unit_tests/wrappers/shared/syscheck_op.h"
-#endif
 
 /* Auxiliar structs */
 

@@ -16,7 +16,6 @@
 
 #include "../wrappers/common.h"
 #include "../syscheckd/syscheck.h"
-#include "../wrappers/syscheckd/run_check.h"
 #include "../syscheckd/fim_db.h"
 
 #ifdef TEST_WINAGENT
@@ -127,8 +126,7 @@ void __wrap__merror_exit(const char * file, int line, const char * func, const c
 
 #ifndef TEST_WINAGENT
 unsigned int __wrap_sleep(unsigned int seconds) {
-    state.sleep_seconds += seconds;
-    return mock();
+    check_expected(seconds);
 }
 #endif
 
@@ -633,7 +631,7 @@ void test_fim_whodata_initialize_eventchannel(void **state) {
 
     will_return(__wrap_run_whodata_scan, 0);
 
-    will_return(wrap_run_check_CreateThread, (HANDLE)123456);
+    will_return(wrap_CreateThread, (HANDLE)123456);
 
     ret = fim_whodata_initialize();
 
@@ -647,8 +645,6 @@ void test_fim_send_sync_msg_10_eps(void ** _state) {
 
     // We must not sleep the first 9 times
 
-    state.sleep_seconds = 0;
-
     for (int i = 1; i < syscheck.sync_max_eps; i++) {
         expect_string(__wrap__mdebug2, msg, FIM_DBSYNC_SEND);
         expect_string(__wrap_SendMSG, message, "");
@@ -657,11 +653,12 @@ void test_fim_send_sync_msg_10_eps(void ** _state) {
         will_return(__wrap_SendMSG, 0);
 
         fim_send_sync_msg("");
-        assert_int_equal(state.sleep_seconds, 0);
     }
 
     #ifndef TEST_WINAGENT
-    will_return(__wrap_sleep, 1);
+    expect_value(__wrap_sleep, seconds, 1);
+    #else
+    expect_value(wrap_Sleep, dwMilliseconds, 1);
     #endif
 
     // After 10 times, sleep one second
@@ -672,7 +669,6 @@ void test_fim_send_sync_msg_10_eps(void ** _state) {
     will_return(__wrap_SendMSG, 0);
 
     fim_send_sync_msg("");
-    assert_int_equal(state.sleep_seconds, 1);
 }
 
 void test_fim_send_sync_msg_0_eps(void ** _state) {
@@ -686,10 +682,7 @@ void test_fim_send_sync_msg_0_eps(void ** _state) {
     expect_value(__wrap_SendMSG, loc, DBSYNC_MQ);
     will_return(__wrap_SendMSG, 0);
 
-    state.sleep_seconds = 0;
-
     fim_send_sync_msg("");
-    assert_int_equal(state.sleep_seconds, 0);
 }
 
 void test_send_syscheck_msg_10_eps(void ** _state) {
@@ -697,8 +690,6 @@ void test_send_syscheck_msg_10_eps(void ** _state) {
     syscheck.max_eps = 10;
 
     // We must not sleep the first 9 times
-
-    state.sleep_seconds = 0;
 
     for (int i = 1; i < syscheck.max_eps; i++) {
         expect_string(__wrap__mdebug2, msg, FIM_SEND);
@@ -708,11 +699,12 @@ void test_send_syscheck_msg_10_eps(void ** _state) {
         will_return(__wrap_SendMSG, 0);
 
         send_syscheck_msg("");
-        assert_int_equal(state.sleep_seconds, 0);
     }
 
     #ifndef TEST_WINAGENT
-    will_return(__wrap_sleep, 1);
+    expect_value(__wrap_sleep, seconds, 1);
+    #else
+    expect_value(wrap_Sleep, dwMilliseconds, 1);
     #endif
 
     // After 10 times, sleep one second
@@ -723,7 +715,6 @@ void test_send_syscheck_msg_10_eps(void ** _state) {
     will_return(__wrap_SendMSG, 0);
 
     send_syscheck_msg("");
-    assert_int_equal(state.sleep_seconds, 1);
 }
 
 void test_send_syscheck_msg_0_eps(void ** _state) {
@@ -737,10 +728,7 @@ void test_send_syscheck_msg_0_eps(void ** _state) {
     expect_value(__wrap_SendMSG, loc, SYSCHECK_MQ);
     will_return(__wrap_SendMSG, 0);
 
-    state.sleep_seconds = 0;
-
     send_syscheck_msg("");
-    assert_int_equal(state.sleep_seconds, 0);
 }
 
 void test_fim_send_scan_info(void **state) {

@@ -14,6 +14,17 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-VOID wrap_fim_db_Sleep (__UNUSED_PARAM(DWORD dwMilliseconds)) {
-    function_called();
+VOID wrap_Sleep (DWORD dwMilliseconds) {
+    check_expected(dwMilliseconds);
+}
+
+HANDLE wrap_CreateEvent (LPSECURITY_ATTRIBUTES lpEventAttributes,
+                         WINBOOL bManualReset,
+                         WINBOOL bInitialState,
+                         LPCSTR lpName) {
+    check_expected(lpEventAttributes);
+    check_expected(bManualReset);
+    check_expected(bInitialState);
+    check_expected(lpName);
+    return mock_type(HANDLE);
 }

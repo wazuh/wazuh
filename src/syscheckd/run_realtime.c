@@ -22,19 +22,19 @@ volatile int audit_db_consistency_flag;
 #include "syscheck_op.h"
 
 #ifdef UNIT_TESTING
-#include "unit_tests/wrappers/syscheckd/run_realtime.h"
+#include "unit_tests/wrappers/windows/fileapi_wrappers.h"
+#include "unit_tests/wrappers/windows/handleapi_wrappers.h"
+#include "unit_tests/wrappers/windows/synchapi_wrappers.h"
+#include "unit_tests/wrappers/windows/winbase_wrappers.h"
 
 #undef CreateEvent
-#define CreateEvent wrap_run_realtime_CreateEvent
+#define CreateEvent wrap_CreateEvent
 
 #undef CreateFile
-#define CreateFile wrap_run_realtime_CreateFile
+#define CreateFile wrap_CreateFile
 
-#undef sleep
-#define sleep wrap_run_realtime_Sleep
-
-#define ReadDirectoryChangesW wrap_run_realtime_ReadDirectoryChangesW
-#define CloseHandle wrap_run_realtime_CloseHandle
+#define ReadDirectoryChangesW wrap_ReadDirectoryChangesW
+#define CloseHandle wrap_CloseHandle
 #endif
 
 #ifdef INOTIFY_ENABLED

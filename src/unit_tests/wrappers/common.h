@@ -13,10 +13,17 @@
 #define COMMON_H
 
 #include <time.h>
+#include <stdio.h>
+
+extern int test_mode;
 
 int FOREVER();
 
 int __wrap_FOREVER();
+
+int wrap_fprintf (FILE *__stream, const char *__format, ...);
+
+char * wrap_fgets (char * __s, int __n, FILE * __stream);
 
 time_t wrap_time (time_t *t);
 

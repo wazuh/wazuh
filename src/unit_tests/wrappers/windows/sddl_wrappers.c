@@ -14,7 +14,8 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-WINBOOL wrap_ConvertSidToStringSid(__UNUSED_PARAM(PSID Sid),LPSTR *StringSid) {
+WINBOOL wrap_ConvertSidToStringSid(__UNUSED_PARAM(PSID Sid),
+                                   LPSTR *StringSid) {
     *StringSid = mock_type(LPSTR);
     return mock();
 }

@@ -9,11 +9,16 @@
  */
 
 
-#ifndef ACLAPI_H
-#define ACLAPI_H
+#ifndef SYNCHAPI_H
+#define SYNCHAPI_H
 
 #include <windows.h>
 
-VOID wrap_fim_db_Sleep (DWORD dwMilliseconds);
+VOID wrap_Sleep (DWORD dwMilliseconds);
+
+HANDLE wrap_CreateEvent (LPSECURITY_ATTRIBUTES lpEventAttributes,
+                         WINBOOL bManualReset,
+                         WINBOOL bInitialState,
+                         LPCSTR lpName);
 
 #endif

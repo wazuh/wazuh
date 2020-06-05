@@ -32,56 +32,67 @@
 #define WHODATA_DIR_REMOVE_INTERVAL 2
 
 #ifdef UNIT_TESTING
-#include "unit_tests/wrappers/syscheckd/win_whodata.h"
+#include "unit_tests/wrappers/windows/aclapi_wrappers.h"
+#include "unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
+#include "unit_tests/wrappers/windows/handleapi_wrappers.h"
+#include "unit_tests/wrappers/windows/heapapi_wrappers.h"
+#include "unit_tests/wrappers/windows/sddl_wrappers.h"
+#include "unit_tests/wrappers/windows/securitybaseapi_wrappers.h"
+#include "unit_tests/wrappers/windows/synchapi_wrappers.h"
+#include "unit_tests/wrappers/windows/sysinfoapi_wrappers.h"
+#include "unit_tests/wrappers/windows/timezoneapi_wrappers.h"
+#include "unit_tests/wrappers/windows/winbase_wrappers.h"
+#include "unit_tests/wrappers/windows/winevt_wrappers.h"
+#include "unit_tests/wrappers/windows/winreg_wrappers.h"
 
 // Remove static qualifier when unit testing
 #define STATIC
 
 #undef OpenProcessToken
-#define OpenProcessToken wrap_win_whodata_OpenProcessToken
+#define OpenProcessToken wrap_OpenProcessToken
 #undef GetLastError
-#define GetLastError wrap_win_whodata_GetLastError
+#define GetLastError wrap_GetLastError
 #undef LookupPrivilegeValue
-#define LookupPrivilegeValue wrap_win_whodata_LookupPrivilegeValue
+#define LookupPrivilegeValue wrap_LookupPrivilegeValue
 #undef CloseHandle
-#define CloseHandle wrap_win_whodata_CloseHandle
-#define AdjustTokenPrivileges wrap_win_whodata_AdjustTokenPrivileges
+#define CloseHandle wrap_CloseHandle
+#define AdjustTokenPrivileges wrap_AdjustTokenPrivileges
 #undef GetNamedSecurityInfo
-#define GetNamedSecurityInfo wrap_win_whodata_GetNamedSecurityInfo
-#define AllocateAndInitializeSid wrap_win_whodata_AllocateAndInitializeSid
-#define GetAclInformation wrap_win_whodata_GetAclInformation
+#define GetNamedSecurityInfo wrap_GetNamedSecurityInfo
+#define AllocateAndInitializeSid wrap_AllocateAndInitializeSid
+#define GetAclInformation wrap_GetAclInformation
 #undef win_alloc
-#define win_alloc wrap_win_whodata_win_alloc
-#define InitializeAcl wrap_win_whodata_InitializeAcl
-#define LocalFree wrap_win_whodata_LocalFree
-#define CopySid wrap_win_whodata_CopySid
-#define GetAce wrap_win_whodata_GetAce
-#define AddAce wrap_win_whodata_AddAce
+#define win_alloc wrap_win_alloc
+#define InitializeAcl wrap_InitializeAcl
+#define LocalFree wrap_LocalFree
+#define CopySid wrap_CopySid
+#define GetAce wrap_GetAce
+#define AddAce wrap_AddAce
 #undef SetNamedSecurityInfo
-#define SetNamedSecurityInfo wrap_win_whodata_SetNamedSecurityInfo
+#define SetNamedSecurityInfo wrap_SetNamedSecurityInfo
 #undef RegOpenKeyEx
-#define RegOpenKeyEx wrap_win_whodata_RegOpenKeyEx
+#define RegOpenKeyEx wrap_RegOpenKeyEx
 #undef RegQueryValueEx
-#define RegQueryValueEx wrap_win_whodata_RegQueryValueEx
-#define WideCharToMultiByte wrap_win_whodata_WideCharToMultiByte
-#define GetVolumePathNamesForVolumeNameW wrap_win_whodata_GetVolumePathNamesForVolumeNameW
-#define FindFirstVolumeW wrap_win_whodata_FindFirstVolumeW
-#define FindVolumeClose wrap_win_whodata_FindVolumeClose
-#define QueryDosDeviceW wrap_win_whodata_QueryDosDeviceW
-#define FindNextVolumeW wrap_win_whodata_FindNextVolumeW
-#define FindVolumeClose wrap_win_whodata_FindVolumeClose
-#define EqualSid wrap_win_whodata_EqualSid
-#define FileTimeToSystemTime wrap_win_whodata_FileTimeToSystemTime
-#define DeleteAce wrap_win_whodata_DeleteAce
-#define fprintf wrap_win_whodata_fprintf
-#define fgets wrap_win_whodata_fgets
-#define EvtRender wrap_win_whodata_EvtRender
-#define Sleep wrap_win_whodata_Sleep
-#define GetSystemTime wrap_win_whodata_GetSystemTime
-#define EvtCreateRenderContext wrap_win_whodata_EvtCreateRenderContext
-#define EvtSubscribe wrap_win_whodata_EvtSubscribe
+#define RegQueryValueEx wrap_RegQueryValueEx
+#define WideCharToMultiByte wrap_WideCharToMultiByte
+#define GetVolumePathNamesForVolumeNameW wrap_GetVolumePathNamesForVolumeNameW
+#define FindFirstVolumeW wrap_FindFirstVolumeW
+#define FindVolumeClose wrap_FindVolumeClose
+#define QueryDosDeviceW wrap_QueryDosDeviceW
+#define FindNextVolumeW wrap_FindNextVolumeW
+#define FindVolumeClose wrap_FindVolumeClose
+#define EqualSid wrap_EqualSid
+#define FileTimeToSystemTime wrap_FileTimeToSystemTime
+#define DeleteAce wrap_DeleteAce
+#define fprintf wrap_fprintf
+#define fgets wrap_fgets
+#define EvtRender wrap_EvtRender
+#define Sleep wrap_Sleep
+#define GetSystemTime wrap_GetSystemTime
+#define EvtCreateRenderContext wrap_EvtCreateRenderContext
+#define EvtSubscribe wrap_EvtSubscribe
 #undef  ConvertSidToStringSid
-#define ConvertSidToStringSid wrap_win_whodata_ConvertSidToStringSid
+#define ConvertSidToStringSid wrap_ConvertSidToStringSid
 #else
 #define STATIC static
 #endif
