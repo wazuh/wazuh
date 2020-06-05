@@ -52,7 +52,8 @@ void* wm_oscap_main(wm_oscap *oscap) {
     // Main loop
 
     do {
-        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(oscap->scan_config), WM_OSCAP_LOGTAG, oscap->flags.scan_on_start);
+        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(oscap->scan_config), WM_OSCAP_LOGTAG, oscap->flags.scan_on_start,
+                                                                      current_daylight, &future_daylight);
 
         if (oscap->state.next_time == 0) {
             oscap->state.next_time = oscap->scan_config.time_start + time_sleep;
@@ -63,7 +64,6 @@ void* wm_oscap_main(wm_oscap *oscap) {
 
         if (time_sleep) {
             int next_scan_time = sched_get_next_scan_time(oscap->scan_config);
-            check_daylight(current_daylight, &future_daylight, &next_scan_time, NULL);
             timestamp = w_get_timestamp(next_scan_time);
             mtdebug2(WM_OSCAP_LOGTAG, "Sleeping until: %s", timestamp);
             os_free(timestamp);

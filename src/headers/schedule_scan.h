@@ -62,15 +62,18 @@ int sched_scan_read(sched_scan_config *scan_config, xml_node **nodes, const char
  *   stores in config->next_scheduled_scan_time the absolute time where next event 
  *   should occur
  * */
-time_t sched_scan_get_time_until_next_scan(sched_scan_config *config, const char *MODULE_TAG, const int run_on_start);
+time_t sched_scan_get_time_until_next_scan(sched_scan_config *config, const char *MODULE_TAG, const int run_on_start,
+                                           int current_daylight, int * future_daylight);
 
 /**
  * @brief Function to check the change of daylight to add or subtract an hour
  * 
- * @param next_scan_time next scan time to check the daylight
  * @param current_daylight current daylight
+ * @param future_daylight daylight in the next time scan
+ * @param next_scan_time next scan time to check the daylight
+ * @param test option to test the function and it has to be true
  */
-void check_daylight(int current_daylight, int * future_daylight, int * next_scan_time, char * test);
+void check_daylight(int current_daylight, int * future_daylight, time_t * next_scan_time, bool test);
 
 /**
  * @brief Get time in seconds to the specified hour in hh:mm

@@ -299,11 +299,11 @@ static int wm_sca_start(wm_sca_t * data) {
     int future_daylight = -1;
 
     do {
-        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(data->scan_config), WM_GCP_LOGTAG, data->scan_on_start);
+        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(data->scan_config), WM_GCP_LOGTAG, data->scan_on_start,
+                                                                      current_daylight, &future_daylight);
 
         if (time_sleep) {
             int next_scan_time = sched_get_next_scan_time(data->scan_config);
-            check_daylight(current_daylight, &future_daylight, &next_scan_time, NULL);
             timestamp = w_get_timestamp(next_scan_time);
             mtdebug2(WM_SCA_LOGTAG, "Sleeping until: %s", timestamp);
             os_free(timestamp);

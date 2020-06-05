@@ -57,7 +57,8 @@ void* wm_aws_main(wm_aws *aws_config) {
 
     do {
 
-        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(aws_config->scan_config), WM_AWS_LOGTAG, aws_config->run_on_start);
+        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(aws_config->scan_config), WM_AWS_LOGTAG, aws_config->run_on_start,
+                                                                      current_daylight, &future_daylight);
 
         if (aws_config->state.next_time == 0) {
             aws_config->state.next_time = aws_config->scan_config.time_start + time_sleep;
@@ -68,7 +69,6 @@ void* wm_aws_main(wm_aws *aws_config) {
 
         if (time_sleep) {
             int next_scan_time = sched_get_next_scan_time(aws_config->scan_config);
-            check_daylight(current_daylight, &future_daylight, &next_scan_time, NULL);
             timestamp = w_get_timestamp(next_scan_time);
             mtdebug2(WM_AWS_LOGTAG, "Sleeping until: %s", timestamp);
             os_free(timestamp);

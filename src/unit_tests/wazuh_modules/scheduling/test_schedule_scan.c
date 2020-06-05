@@ -432,10 +432,10 @@ void test_check_daylight_first_time(void **state) {
     (void) state;
     int current_daylight = -1;
     int future_daylight = 0;
-    int next_scan_time = 0;
-    int next_scan_time_initial = next_scan_time;
+    time_t next_scan_time = 0;
+    time_t next_scan_time_initial = next_scan_time;
 
-    check_daylight(current_daylight, &future_daylight, &next_scan_time, "test");
+    check_daylight(current_daylight, &future_daylight, &next_scan_time, true);
     assert_int_equal(future_daylight, 0);
     assert_int_equal(next_scan_time, next_scan_time_initial + 0);
 }
@@ -444,10 +444,10 @@ void test_check_daylight_same_daylight_zero(void **state) {
     (void) state;
     int current_daylight = 0;
     int future_daylight = 0;
-    int next_scan_time = 0;
-    int next_scan_time_initial = next_scan_time;
+    time_t next_scan_time = 0;
+    time_t next_scan_time_initial = next_scan_time;
 
-    check_daylight(current_daylight, &future_daylight, &next_scan_time, "test");
+    check_daylight(current_daylight, &future_daylight, &next_scan_time, true);
     assert_int_equal(future_daylight, 0);
     assert_int_equal(next_scan_time, next_scan_time_initial + 0);
 }
@@ -456,10 +456,10 @@ void test_check_daylight_same_daylight_one(void **state) {
     (void) state;
     int current_daylight = 1;
     int future_daylight = -1;
-    int next_scan_time = 0;
-    int next_scan_time_initial = next_scan_time;
+    time_t next_scan_time = 0;
+    time_t next_scan_time_initial = next_scan_time;
 
-    check_daylight(current_daylight, &future_daylight, &next_scan_time, "test");
+    check_daylight(current_daylight, &future_daylight, &next_scan_time, true);
     assert_int_equal(future_daylight, 1);
     assert_int_equal(next_scan_time, next_scan_time_initial + 0);
 }
@@ -468,10 +468,10 @@ void test_check_daylight_different_daylight_one_zero(void **state) {
     (void) state;
     int current_daylight = 1;
     int future_daylight = 0;
-    int next_scan_time = 0;
-    int next_scan_time_initial = next_scan_time;
+    time_t next_scan_time = 0;
+    time_t next_scan_time_initial = next_scan_time;
 
-    check_daylight(current_daylight, &future_daylight, &next_scan_time, "test");
+    check_daylight(current_daylight, &future_daylight, &next_scan_time, true);
     assert_int_equal(future_daylight, 0);
     assert_int_equal(next_scan_time, next_scan_time_initial + 3600);
 }
@@ -480,10 +480,10 @@ void test_check_daylight_different_daylight_zero_one(void **state) {
     (void) state;
     int current_daylight = 0;
     int future_daylight = -1;
-    int next_scan_time = 0;
-    int next_scan_time_initial = next_scan_time;
+    time_t next_scan_time = 0;
+    time_t next_scan_time_initial = next_scan_time;
 
-    check_daylight(current_daylight, &future_daylight, &next_scan_time, "test");
+    check_daylight(current_daylight, &future_daylight, &next_scan_time, true);
     assert_int_equal(future_daylight, 1);
     assert_int_equal(next_scan_time, next_scan_time_initial - 3600);
 }

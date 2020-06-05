@@ -58,7 +58,8 @@ void* wm_azure_main(wm_azure_t *azure_config) {
     // Main loop
 
     do {
-        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(azure_config->scan_config), WM_AZURE_LOGTAG, azure_config->flags.run_on_start);
+        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(azure_config->scan_config), WM_AZURE_LOGTAG, azure_config->flags.run_on_start,
+                                                                      current_daylight, &future_daylight);
 
         if(azure_config->state.next_time == 0) {
             azure_config->state.next_time = azure_config->scan_config.time_start + time_sleep;
@@ -66,7 +67,6 @@ void* wm_azure_main(wm_azure_t *azure_config) {
 
         if (time_sleep) {
             int next_scan_time = sched_get_next_scan_time(azure_config->scan_config);
-            check_daylight(current_daylight, &future_daylight, &next_scan_time, NULL);
             timestamp = w_get_timestamp(next_scan_time);
             mtdebug2(WM_AZURE_LOGTAG, "Sleeping until: %s", timestamp);
             os_free(timestamp);

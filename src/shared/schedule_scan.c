@@ -108,9 +108,14 @@ int sched_scan_read(sched_scan_config *scan_config, xml_node **nodes, const char
     return _sched_scan_validate_parameters(scan_config);
 }
 
-time_t sched_scan_get_time_until_next_scan(sched_scan_config *config, const char *MODULE_TAG,  const int run_on_start) {
-    const time_t next_time = _get_next_time(config, MODULE_TAG, run_on_start); 
-    config->next_scheduled_scan_time = time(NULL) + next_time;
+time_t sched_scan_get_time_until_next_scan(sched_scan_config *config, const char *MODULE_TAG,  const int run_on_start, 
+                                           int current_daylight, int * future_daylight) {
+    time_t next_scan_time;
+
+    time_t next_time = _get_next_time(config, MODULE_TAG, run_on_start);
+    next_scan_time = time(NULL) + next_time;
+    check_daylight(current_daylight, future_daylight, &next_scan_time, false);
+    config->next_scheduled_scan_time = next_scan_time;
     return next_time;
 }
 
@@ -224,12 +229,10 @@ void sched_scan_dump(const sched_scan_config* scan_config, cJSON *cjson_object){
 }
 
 // Function to check the change of daylight to add or subtract an hour
-void check_daylight(int current_daylight, int * future_daylight, int * next_scan_time, char * test) {
+void check_daylight(int current_daylight, int * future_daylight, time_t * next_scan_time, bool test) {
     struct tm tm_future;
-    time_t next_scan_t;
 
-    next_scan_t = (time_t)(*next_scan_time);
-    localtime_r(&next_scan_t, &tm_future);
+    localtime_r(next_scan_time, &tm_future);
 
     if (test) {
         if (*future_daylight == -1) {

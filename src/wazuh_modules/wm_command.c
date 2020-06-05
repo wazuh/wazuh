@@ -168,7 +168,8 @@ void * wm_command_main(wm_command_t * command) {
 #endif
 
     do {
-        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(command->scan_config), WM_COMMAND_LOGTAG, command->run_on_start);
+        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(command->scan_config), WM_COMMAND_LOGTAG, command->run_on_start,
+                                                                      current_daylight, &future_daylight);
 
         if(command->state.next_time == 0) {
             command->state.next_time = command->scan_config.time_start + time_sleep;
@@ -176,7 +177,6 @@ void * wm_command_main(wm_command_t * command) {
 
         if (time_sleep) {
             int next_scan_time = sched_get_next_scan_time(command->scan_config);
-            check_daylight(current_daylight, &future_daylight, &next_scan_time, NULL);
             timestamp = w_get_timestamp(next_scan_time);
             mtdebug2(WM_COMMAND_LOGTAG, "Sleeping until: %s", timestamp);
             os_free(timestamp);
