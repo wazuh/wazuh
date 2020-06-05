@@ -18,8 +18,6 @@
 #include "../config/syscheck-config.h"
 
 #ifdef TEST_WINAGENT
-#include "../wrappers/syscheckd/run_realtime.h"
-
 // This struct should always reflect the one defined in run_realtime.c
 typedef struct _win32rtfim {
     HANDLE h;
@@ -434,11 +432,11 @@ void test_realtime_start_success(void **state) {
     #if defined(TEST_SERVER) || defined(TEST_AGENT)
     will_return(__wrap_inotify_init, 0);
     #else
-    expect_value(wrap_run_realtime_CreateEvent, lpEventAttributes, NULL);
-    expect_value(wrap_run_realtime_CreateEvent, bManualReset, TRUE);
-    expect_value(wrap_run_realtime_CreateEvent, bInitialState, FALSE);
-    expect_value(wrap_run_realtime_CreateEvent, lpName, NULL);
-    will_return(wrap_run_realtime_CreateEvent, (HANDLE)123456);
+    expect_value(wrap_CreateEvent, lpEventAttributes, NULL);
+    expect_value(wrap_CreateEvent, bManualReset, TRUE);
+    expect_value(wrap_CreateEvent, bInitialState, FALSE);
+    expect_value(wrap_CreateEvent, lpName, NULL);
+    will_return(wrap_CreateEvent, (HANDLE)123456);
     #endif
 
     ret = realtime_start();
@@ -1009,7 +1007,7 @@ void test_realtime_win32read_success(void **state) {
     win32rtfim rtlocal;
     int ret;
 
-    will_return(wrap_run_realtime_ReadDirectoryChangesW, 1);
+    will_return(wrap_ReadDirectoryChangesW, 1);
 
     ret = realtime_win32read(&rtlocal);
 
@@ -1022,7 +1020,7 @@ void test_realtime_win32read_unable_to_read_directory(void **state) {
 
     rtlocal.dir = "C:\\a\\path";
 
-    will_return(wrap_run_realtime_ReadDirectoryChangesW, 0);
+    will_return(wrap_ReadDirectoryChangesW, 0);
 
     ret = realtime_win32read(&rtlocal);
 
@@ -1208,8 +1206,8 @@ void test_realtime_adddir_handle_error(void **state) {
 
     will_return(__wrap_OSHash_Get_ex, 0);
 
-    expect_string(wrap_run_realtime_CreateFile, lpFileName, "C:\\a\\path");
-    will_return(wrap_run_realtime_CreateFile, INVALID_HANDLE_VALUE);
+    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
+    will_return(wrap_CreateFile, INVALID_HANDLE_VALUE);
 
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6290): Unable to add directory to real time monitoring: 'C:\\a\\path'");
@@ -1228,10 +1226,10 @@ void test_realtime_adddir_out_of_memory_error(void **state) {
 
     will_return(__wrap_OSHash_Get_ex, 0);
 
-    expect_string(wrap_run_realtime_CreateFile, lpFileName, "C:\\a\\path");
-    will_return(wrap_run_realtime_CreateFile, (HANDLE)123456);
+    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
+    will_return(wrap_CreateFile, (HANDLE)123456);
 
-    will_return(wrap_run_realtime_ReadDirectoryChangesW, 1);
+    will_return(wrap_ReadDirectoryChangesW, 1);
 
     will_return(__wrap_OSHash_Add_ex, NULL);
     expect_string(__wrap__merror_exit, formatted_msg, FIM_CRITICAL_ERROR_OUT_MEM);
@@ -1253,10 +1251,10 @@ void test_realtime_adddir_success(void **state) {
 
     will_return(__wrap_OSHash_Get_ex, 0);
 
-    expect_string(wrap_run_realtime_CreateFile, lpFileName, "C:\\a\\path");
-    will_return(wrap_run_realtime_CreateFile, (HANDLE)123456);
+    expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
+    will_return(wrap_CreateFile, (HANDLE)123456);
 
-    will_return(wrap_run_realtime_ReadDirectoryChangesW, 1);
+    will_return(wrap_ReadDirectoryChangesW, 1);
     will_return(__wrap_OSHash_Add_ex, 1);
 
     expect_string(__wrap__mdebug1, formatted_msg,
@@ -1297,7 +1295,7 @@ void test_RTCallBack_no_bytes_returned(void **state) {
     expect_string(__wrap__mwarn, formatted_msg, FIM_WARN_REALTIME_OVERFLOW);
 
     // Inside realtime_win32read
-    will_return(wrap_run_realtime_ReadDirectoryChangesW, 1);
+    will_return(wrap_ReadDirectoryChangesW, 1);
 
     RTCallBack(ERROR_SUCCESS, 0, &ov);
 }
@@ -1331,7 +1329,7 @@ void test_RTCallBack_acquired_changes_null_dir(void **state) {
     will_return(__wrap_fim_configuration_directory, -1);
 
     // Inside realtime_win32read
-    will_return(wrap_run_realtime_ReadDirectoryChangesW, 1);
+    will_return(wrap_ReadDirectoryChangesW, 1);
 
     RTCallBack(ERROR_SUCCESS, 1, &ov);
 }
@@ -1367,7 +1365,7 @@ void test_RTCallBack_acquired_changes(void **state) {
     expect_string(__wrap_fim_realtime_event, file, "c:\\a\\path\\file.test");
 
     // Inside realtime_win32read
-    will_return(wrap_run_realtime_ReadDirectoryChangesW, 1);
+    will_return(wrap_ReadDirectoryChangesW, 1);
 
     RTCallBack(ERROR_SUCCESS, 1, &ov);
 }

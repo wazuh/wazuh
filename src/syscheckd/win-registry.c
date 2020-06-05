@@ -18,7 +18,7 @@
 #include <openssl/evp.h>
 
 #ifdef UNIT_TESTING
-#include "unit_tests/wrappers/syscheckd/win-registry.h"
+#include "unit_tests/wrappers/windows/winreg_wrappers.h"
 
 #undef RegQueryInfoKey
 #define RegQueryInfoKey wrap_RegQueryInfoKey

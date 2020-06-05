@@ -164,7 +164,14 @@ void test_os_winreg_querykey_success_subkey_p_key(void **state) {
     will_return(wrap_RegEnumKeyEx, ERROR_SUCCESS);
 
     // Shutdown os_winreg_open_key
-    will_return(wrap_RegOpenKeyEx, -1);
+    // Inside RegOpenKeyEx
+    expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
+    expect_string(wrap_RegOpenKeyEx, lpSubKey,
+        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+    expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
+    expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ);
+    will_return(wrap_RegOpenKeyEx, NULL);
+    will_return(wrap_RegOpenKeyEx, ERROR_ACCESS_DENIED);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6920): Unable to open registry key: 'command\\SUBKEY_NAME' arch: '[x32]'.");
     os_winreg_querykey(oshkey, subkey, fullname, pos);
@@ -502,7 +509,14 @@ void test_os_winreg_check_valid_subtree(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
     // If os_winreg check tries to call os_winreg_open_key then subtree is valid
-    will_return(wrap_RegOpenKeyEx, -1);
+    // Inside RegOpenKeyEx
+    expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
+    expect_string(wrap_RegOpenKeyEx, lpSubKey,
+        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+    expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
+    expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ);
+    will_return(wrap_RegOpenKeyEx, NULL);
+    will_return(wrap_RegOpenKeyEx, ERROR_ACCESS_DENIED);
     char debug_msg2[OS_MAXSTR];
     snprintf(debug_msg2, OS_MAXSTR, "(6920): Unable to open registry key: 'Software\\Classes\\batfile' arch: '%s'.", syscheck.registry[0].arch == ARCH_64BIT ? "[x64]" : "[x32]");
     expect_string(__wrap__mdebug1, formatted_msg, debug_msg2);
@@ -513,7 +527,14 @@ void test_os_winreg_check_valid_subtree(void **state) {
 /**************************************************************************/
 /*************************os_winreg_open()*******************************/
 void test_os_winreg_open_fail(void **state) {
-    will_return(wrap_RegOpenKeyEx, -1);
+    // Inside RegOpenKeyEx
+    expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
+    expect_string(wrap_RegOpenKeyEx, lpSubKey,
+        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+    expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
+    expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ);
+    will_return(wrap_RegOpenKeyEx, NULL);
+    will_return(wrap_RegOpenKeyEx, ERROR_ACCESS_DENIED);
     char debug_msg2[OS_MAXSTR];
     snprintf(debug_msg2, OS_MAXSTR, "(6920): Unable to open registry key: 'Software\\Classes\\batfile' arch: '%s'.", syscheck.registry[0].arch == ARCH_64BIT ? "[x64]" : "[x32]");
     expect_string(__wrap__mdebug1, formatted_msg, debug_msg2);
@@ -521,7 +542,14 @@ void test_os_winreg_open_fail(void **state) {
 }
 
 void test_os_winreg_open_success(void **state) {
-    will_return(wrap_RegOpenKeyEx, 0);
+    // Inside RegOpenKeyEx
+    expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
+    expect_string(wrap_RegOpenKeyEx, lpSubKey,
+        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+    expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
+    expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ);
+    will_return(wrap_RegOpenKeyEx, NULL);
+    will_return(wrap_RegOpenKeyEx, ERROR_SUCCESS);
     // Promptly exit from os_winreg_querykey
     will_return_count(wrap_RegQueryInfoKey, NULL, 5);
     will_return(wrap_RegQueryInfoKey,-1);

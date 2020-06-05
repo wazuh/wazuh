@@ -1,3 +1,4 @@
+
 /*
  * Copyright (C) 2015-2020, Wazuh Inc.
  *
@@ -6,13 +7,11 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#ifndef UNIT_TEST_WRAPPERS_FIM_DB
-#define UNIT_TEST_WRAPPERS_FIM_DB
+#ifndef SYSINFOAPI_H
+#define SYSINFOAPI_H
 
-#include <stdio.h>
+#include <windows.h>
 
-int wrap_fprintf(FILE * __restrict__ _File,const char * __restrict__ _Format,...);
-
-extern int test_mode;
+VOID wrap_GetSystemTime (LPSYSTEMTIME lpSystemTime);
 
 #endif

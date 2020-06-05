@@ -32,7 +32,10 @@
 #include "fim_db.h"
 
 #ifdef UNIT_TESTING
-#include "unit_tests/wrappers/syscheckd/run_check.h"
+#include "unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
+#include "unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
+#include "unit_tests/wrappers/windows/synchapi_wrappers.h"
+
 // Remove static qualifier when unit testing
 #define STATIC
 
@@ -43,7 +46,7 @@
 #define GetLastError        wrap_GetLastError
 #undef  sleep
 #define sleep               wrap_Sleep
-#define CreateThread        wrap_run_check_CreateThread
+#define CreateThread        wrap_CreateThread
 #endif
 #else
 #define STATIC static

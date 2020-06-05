@@ -16,6 +16,5 @@
 
 WINBOOL wrap_CloseHandle (HANDLE hObject) {
     check_expected(hObject);
-
     return mock();
 }

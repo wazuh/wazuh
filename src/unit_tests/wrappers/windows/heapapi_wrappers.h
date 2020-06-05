@@ -1,19 +1,17 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
- * Copyright (C) 2009 Trend Micro Inc.
- * All rights reserved.
+
+/*
+ * Copyright (C) 2015-2020, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
- * Foundation
+ * Foundation.
  */
-
-
-#ifndef SDDL_H
-#define SDDL_H
+#ifndef HEAPAPI_H
+#define HEAPAPI_H
 
 #include <windows.h>
 
-WINBOOL wrap_ConvertSidToStringSid(PSID Sid, LPSTR *StringSid);
+LPVOID wrap_win_alloc(SIZE_T size);
 
 #endif

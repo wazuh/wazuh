@@ -77,7 +77,11 @@ int __wrap_isChroot() {
 }
 #endif
 
+#ifndef WIN32
 int test_mode = 0;
+#else
+extern int test_mode;
+#endif
 
 /* redefinitons/wrapping */
 

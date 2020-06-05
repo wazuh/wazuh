@@ -15,6 +15,30 @@
 #include <windows.h>
 #include <accctrl.h>
 
-DWORD wrap_GetSecurityInfo (HANDLE handle, SE_OBJECT_TYPE ObjectType, SECURITY_INFORMATION SecurityInfo, PSID *ppsidOwner, PSID *ppsidGroup, PACL *ppDacl, PACL *ppSacl, PSECURITY_DESCRIPTOR *ppSecurityDescriptor);
+DWORD wrap_GetSecurityInfo (HANDLE handle, 
+                            SE_OBJECT_TYPE ObjectType,
+                            SECURITY_INFORMATION SecurityInfo, 
+                            PSID *ppsidOwner, 
+                            PSID *ppsidGroup, 
+                            PACL *ppDacl, 
+                            PACL *ppSacl, 
+                            PSECURITY_DESCRIPTOR *ppSecurityDescriptor);
+
+DWORD wrap_GetNamedSecurityInfo(LPCSTR pObjectName,
+                                SE_OBJECT_TYPE ObjectType,
+                                SECURITY_INFORMATION SecurityInfo,
+                                PSID *ppsidOwner,
+                                PSID *ppsidGroup,
+                                PACL *ppDacl,
+                                PACL *ppSacl,
+                                PSECURITY_DESCRIPTOR *ppSecurityDescriptor);
+
+DWORD wrap_SetNamedSecurityInfo(LPSTR pObjectName,
+                                SE_OBJECT_TYPE ObjectType,
+                                SECURITY_INFORMATION SecurityInfo,
+                                PSID psidOwner,
+                                PSID psidGroup,
+                                PACL pDacl,
+                                PACL pSacl);
 
 #endif
