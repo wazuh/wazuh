@@ -33,6 +33,7 @@ typedef struct provider_options {
     int port;
     time_t update_interval;
     int update_since;
+    long timeout;
 } provider_options;
 
 static int wm_vuldet_get_interval(char *source, time_t *interval);
@@ -71,6 +72,7 @@ static const char *XML_ALLOW = "allow";
 static const char *XML_UPDATE_FROM_YEAR = "update_from_year";
 static const char *XML_PROVIDER = "provider";
 static const char *XML_REPLACED_OS = "replaced_os";
+static const char *XML_TIMEOUT = "download_timeout";
 
 static const char *XML_START = "start";
 static const char *XML_END = "end";
@@ -504,6 +506,8 @@ static int wm_vuldet_read_deprecated_multifeed_tag(xml_node *node, update_node *
             updates[os_index]->interval = interval;
             updates[os_index]->attempted = 0;
             updates[os_index]->old_config = 1;
+            // Deprecated config don't support new option download_timeout
+            updates[os_index]->timeout = 300;
         }
     }
 
@@ -538,6 +542,8 @@ static int wm_vuldet_read_deprecated_feed_tag(const OS_XML *xml, xml_node *node,
     }
 
     updates[os_index]->old_config = 1;
+    // Deprecated config don't support new option download_timeout
+    updates[os_index]->timeout = 300;
 
     if (chld_node = OS_GetElementsbyNode(xml, node), !chld_node) {
         merror(XML_INVELEM, node->element);
@@ -656,6 +662,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
                 updates[os_index]->interval = p_options.update_interval;
             }
 
+            updates[os_index]->timeout = p_options.timeout;
             updates[os_index]->url = os_list->url;
             updates[os_index]->path = os_list->path;
             updates[os_index]->port = os_list->port;
@@ -664,12 +671,13 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
                 return OS_INVALID;
             }
 
-            mdebug1("Added %s (%s) feed. Interval: %lus | Path: '%s' | Url: '%s'.",
+            mdebug1("Added %s (%s) feed. Interval: %lus | Path: '%s' | Url: '%s' | Timeout: %lds",
                         pr_name,
                         os_list->version,
                         updates[os_index]->interval,
                         updates[os_index]->path ? updates[os_index]->path : "none",
-                        updates[os_index]->url ? updates[os_index]->url : "none");
+                        updates[os_index]->url ? updates[os_index]->url : "none",
+                        updates[os_index]->timeout);
             flags->update = 1;
 
             os_list = os_list->next;
@@ -693,6 +701,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
         updates[os_index]->multi_url_start = p_options.multi_url_start;
         updates[os_index]->multi_url_end = p_options.multi_url_end;
         updates[os_index]->port = p_options.port;
+        updates[os_index]->timeout = p_options.timeout;
 
         if (p_options.multi_allowed_os_name) {
             if (wm_vuldet_add_multi_allow_os(updates[os_index], p_options.multi_allowed_os_name, p_options.multi_allowed_os_ver)) {
@@ -707,12 +716,13 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
             wm_vuldet_release_update_node(updates, CVE_MSU);
         }
 
-        mdebug1("Added %s feed. Interval: %lus | Multi path: '%s' | Multi url: '%s' | Update since: %d.",
+        mdebug1("Added %s feed. Interval: %lus | Multi path: '%s' | Multi url: '%s' | Update since: %d | Timeout: %lds",
             pr_name,
             updates[os_index]->interval,
             updates[os_index]->multi_path ? updates[os_index]->multi_path : "none",
             updates[os_index]->multi_url ? updates[os_index]->multi_url : "none",
-            updates[os_index]->update_from_year);
+            updates[os_index]->update_from_year,
+            updates[os_index]->timeout);
         flags->update = 1;
     }
 
@@ -970,6 +980,10 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
     int elements;
 
     memset(options, '\0', sizeof(provider_options));
+
+    // Set default download timeout
+    options->timeout = WM_VULNDETECTOR_DEFAULT_TIMEOUT;
+
     for (i = 0; node[i]; i++) {
         if (!strcmp(node[i]->element, XML_UPDATE_FROM_YEAR)) {
             if (multi_provider) {
@@ -985,6 +999,13 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
             if (wm_vuldet_get_interval(node[i]->content, &options->update_interval)) {
                 merror("Invalid content for '%s' option at module '%s'.", XML_UPDATE_INTERVAL, WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
+            }
+        } else if (!strcmp(node[i]->element, XML_TIMEOUT)) {
+            char * end;
+            options->timeout = strtol(node[i]->content, &end, 10);
+            if (options->timeout < 0) {
+                merror("Invalid content for '%s' option at module '%s'", XML_TIMEOUT, WM_VULNDETECTOR_CONTEXT.name);
+                options->timeout = WM_VULNDETECTOR_DEFAULT_TIMEOUT;
             }
         } else if (!strcmp(node[i]->element, XML_PATH)) {
             if (multi_provider) {
@@ -1085,6 +1106,7 @@ void wm_vuldet_init_provider_options(provider_options *options) {
     options->port = 0;
     options->update_interval = 0;
     options->update_since = 0;
+    options->timeout = 0;
 }
 
 void wm_vuldet_clear_provider_options(provider_options options) {

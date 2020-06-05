@@ -132,7 +132,7 @@ int write_state() {
         "\n"
         "# Number of messages (events + control messages) sent to the manager\n"
         "msg_sent='%u'\n"
-        , __local_name, agt->notify_time, agt->notify_time, status, last_keepalive, last_ack, agent_state.msg_count, agent_state.msg_sent);
+        , __local_name, agt->notify_time, agt->max_time_reconnect_try, status, last_keepalive, last_ack, agent_state.msg_count, agent_state.msg_sent);
 
     fclose(fp);
 
