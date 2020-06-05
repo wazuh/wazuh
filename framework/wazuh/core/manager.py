@@ -217,6 +217,11 @@ def replace_in_comments(original_content, to_be_replaced, replacement):
     return original_content
 
 
+def get_api_conf():
+    """Returns current API configuration."""
+    return configuration.api_conf
+
+
 def update_api_conf(new_config):
     """Update dict and subdicts without overriding unspecified keys and write it in the API.yaml file.
 

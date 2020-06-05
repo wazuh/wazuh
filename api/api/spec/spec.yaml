@@ -171,7 +171,7 @@ x-rbac-catalog:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
         actions: ['cluster:read_api_config']
-        resources: ['*:*:*']
+        resources: ['node:id:worker1', 'node:id:worker3']
         effect: "allow"
     'cluster:update_api_config':
       description: "Modify Wazuh's cluster API configuration"
@@ -179,7 +179,7 @@ x-rbac-catalog:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
         actions: ['cluster:update_api_config']
-        resources: ['*:*:*']
+        resources: ['node:id:worker1', 'node:id:worker3']
         effect: "allow"
     'cluster:read_file':
       description: "Read Wazuh's cluster files"
@@ -6865,6 +6865,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_nodes'
       responses:
         '200':
           description: Current API configuration
@@ -6874,32 +6875,68 @@ paths:
                 type: object
                 additionalProperties: true
               example:
-                host: 0.0.0.0
-                port: 55000
-                behind_proxy_server: false
-                auth_token_exp_timeout: 36000
-                rbac:
-                  mode: white
-                https:
-                  enabled: true
-                  key: "/var/ossec/api/configuration/ssl/server.key"
-                  cert: "/var/ossec/api/configuration/ssl/server.crt"
-                  use_ca: false
-                  ca: "/var/ossec/api/configuration/ssl/ca.crt"
-                logs:
-                  path: /var/ossec/logs/api.log
-                  level: info
-                cors:
-                  enabled: false
-                  source_route: "*"
-                  allow_headers: "*"
-                  allow_credentials: false
-                cache:
-                  enabled: true
-                  time: 0.75
-                use_only_authd: false
-                drop_privileges: true
-                experimental_features: false
+                data:
+                  affected_items:
+                    - node_name: "master_node"
+                      node_api_config:
+                        host: 0.0.0.0
+                        port: 55000
+                        behind_proxy_server: false
+                        auth_token_exp_timeout: 36000
+                        rbac:
+                          mode: white
+                        https:
+                          enabled: true
+                          key: "/var/ossec/api/configuration/ssl/server.key"
+                          cert: "/var/ossec/api/configuration/ssl/server.crt"
+                          use_ca: false
+                          ca: "/var/ossec/api/configuration/ssl/ca.crt"
+                        logs:
+                          path: /var/ossec/logs/api.log
+                          level: info
+                        cors:
+                          enabled: false
+                          source_route: "*"
+                          allow_headers: "*"
+                          allow_credentials: false
+                        cache:
+                          enabled: true
+                          time: 0.75
+                        use_only_authd: false
+                        drop_privileges: true
+                        experimental_features: false
+                    - node_name: "worker1"
+                      node_api_config:
+                        host: 0.0.0.0
+                        port: 55000
+                        behind_proxy_server: false
+                        auth_token_exp_timeout: 36000
+                        rbac:
+                          mode: white
+                        https:
+                          enabled: true
+                          key: "/var/ossec/api/configuration/ssl/server.key"
+                          cert: "/var/ossec/api/configuration/ssl/server.crt"
+                          use_ca: false
+                          ca: "/var/ossec/api/configuration/ssl/ca.crt"
+                        logs:
+                          path: /var/ossec/logs/api.log
+                          level: info
+                        cors:
+                          enabled: false
+                          source_route: "*"
+                          allow_headers: "*"
+                          allow_credentials: false
+                        cache:
+                          enabled: true
+                          time: 0.75
+                        use_only_authd: false
+                        drop_privileges: true
+                        experimental_features: false
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: []
+                message: "API configuration read successfully"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6908,7 +6945,7 @@ paths:
     put:
       tags:
         - cluster
-      summary: Update the API configuration of all nodes.
+      summary: "Update the API configuration of a list of nodes (or all of them)"
       description: Updates the API configuration of all the nodes with the data contained in the API request.
       operationId: api.controllers.cluster_controller.put_api_config
       x-rbac-actions:
@@ -6916,6 +6953,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_nodes'
       requestBody:
         content:
           application/json:
@@ -6953,6 +6991,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_nodes'
       responses:
         '200':
           description: 'Confirmation message'
@@ -6968,7 +7007,7 @@ paths:
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
-                message: API configuration successfully updated. Some settings may require restarting the API to be applied.
+                message: "API configuration successfully updated. Some settings may require restarting the API to be applied."
 
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -8940,16 +8979,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                host: 0.0.0.0
-                port: 55000
-                behind_proxy_server: false
-                auth_token_exp_timeout: 36000
-                rbac:
-                  mode: white
-                logs:
-                  path: /var/ossec/logs/api.log
-                  level: info
-                experimental_features: false
+                data:
+                  affected_items:
+                    - node_name: 'manager'
+                      node_api_config:
+                        host: 0.0.0.0
+                        port: 55000
+                        behind_proxy_server: false
+                        auth_token_exp_timeout: 36000
+                        rbac:
+                          mode: white
+                        logs:
+                          path: /var/ossec/logs/api.log
+                          level: info
+                        experimental_features: false
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: []
+                message: "API configuration read successfully"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
