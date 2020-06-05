@@ -655,7 +655,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
     int position;
     whodata_directory *w_dir;
     SYSTEMTIME system_time;
-    unsigned long mask;
+    unsigned long mask = 0;
 
     if (action == EvtSubscribeActionDeliver) {
         fim_element *item;
@@ -691,8 +691,12 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     goto clean;
                 }
 
+                if (whodata_get_access_mask(buffer, &mask)) {
+                    free_whodata_event(w_evt);
+                    goto clean;
+                }
                 if (position = fim_configuration_directory(w_evt->path, "file"), position < 0 &&
-                    !(w_evt->mask & FILE_APPEND_DATA) && !(w_evt->mask & FILE_WRITE_DATA)) {
+                    !(mask & (FILE_APPEND_DATA | FILE_WRITE_DATA))) {
                     // Discard the file or directory if its monitoring has not been activated
                     mdebug2(FIM_WHODATA_NOT_ACTIVE, w_evt->path);
                     free_whodata_event(w_evt);
@@ -700,8 +704,8 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 }
 
                 // Ignore the file if belongs to a non-whodata directory
-                if (!(syscheck.wdata.dirs_status[position].status & WD_CHECK_WHODATA) &&
-                    !(w_evt->mask & FILE_APPEND_DATA) && !(w_evt->mask & FILE_WRITE_DATA)) {
+                if (!(position >= 0 ? syscheck.wdata.dirs_status[position].status & WD_CHECK_WHODATA : 0) &&
+                    !(mask & (FILE_APPEND_DATA | FILE_WRITE_DATA))) {
                     mdebug2(FIM_WHODATA_CANCELED, w_evt->path);
                     free_whodata_event(w_evt);
                     goto clean;
@@ -715,13 +719,13 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 } else if (device_type == 0) {
                     // If the device could not be found, it was monitored by Syscheck, has not recently been removed,
                     // and had never been entered in the hash table before, we can deduce that it is a removed directory
-                    if (w_evt->mask & DELETE ||  w_evt->mask & FILE_APPEND_DATA) {
+                    if (mask & DELETE || mask & FILE_APPEND_DATA) {
                         mdebug2(FIM_WHODATA_REMOVE_FOLDEREVENT, w_evt->path);
                         is_directory = 1;
                     }
                 }
 
-                w_evt->mask = 0;
+                w_evt->mask = 0;    // This event's mask is not relevant for future events, don't save it
                 w_evt->scan_directory = is_directory;
 
                 if (result = whodata_hash_add(syscheck.wdata.fd, hash_id, w_evt, "whodata"), result == 0) {
@@ -743,13 +747,13 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
 
                     if (result = whodata_hash_add(syscheck.wdata.fd, hash_id, w_evt, "whodata"), result != 2) {
                         if(result == 1){
-                            merror(FIM_ERROR_WHODATA_EVENTADD, "whodata", hash_id);
+                            merror(FIM_ERROR_WHODATA_EVENTADD, "whodata", hash_id); // LCOV_EXCL_LINE
                         }
                         free_whodata_event(w_evt);
                         goto clean;
                     }
                 }
-                break;
+            break;
 
             // Write fd
             case 4663:
@@ -821,8 +825,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
 
                         fim_whodata_event(w_evt);
 
-                    } else if (w_evt->scan_directory == 1 &&
-                                (w_evt->mask & (DELETE | FILE_APPEND_DATA | FILE_WRITE_DATA))) {
+                    } else if (w_evt->scan_directory == 1) {
                         // Directory scan has been aborted if scan_directory is 2
                         if (w_evt->mask & DELETE) {
                             fim_whodata_event(w_evt);
