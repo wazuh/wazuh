@@ -65,23 +65,17 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
 
         if (agt->enrollment_cfg->target_cfg->manager_name) {
             // Configured enrollment server
-            registration_status = w_enrollment_request_key(agt->enrollment_cfg, agt->enrollment_cfg->target_cfg->manager_name);
+            registration_status = try_enroll_to_server(agt->enrollment_cfg->target_cfg->manager_name);
         } 
         
         // Try to enroll to server list
         while (agt->server[rc].rip && (registration_status != 0)) {
-            registration_status = w_enrollment_request_key(agt->enrollment_cfg, agt->server[rc].rip);
+            registration_status = try_enroll_to_server(agt->server[rc].rip);
             rc++;
         }
         
 
-        if(registration_status == 0) {
-            // Wait for key update on agent side
-            mdebug1("Sleeping %d seconds to allow manager key file updates", agt->enrollment_cfg->delay_after_enrollment);
-            sleep(agt->enrollment_cfg->delay_after_enrollment);
-            // Update keys to get obtained key
-            OS_UpdateKeys(&keys);
-        } else {
+        if(registration_status != 0) {
             merror_exit(AG_ENROLL_FAIL);
         }
     }
@@ -158,6 +152,8 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     /* Ignore SIGPIPE, it will be detected on recv */
     signal(SIGPIPE, SIG_IGN);
 
+    start_agent(1);
+
     /* Launch rotation thread */
 
     rotate_log = getDefine_Int("monitord", "rotate_log", 0, 1);
@@ -184,11 +180,6 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
 
     w_create_thread(state_main, NULL);
 
-    /* Try to connect to the server */
-    if (!connect_server(0)) {
-        merror_exit(UNABLE_CONN);
-    }
-
     /* Set max fd for select */
     if (agt->sock > maxfd) {
         maxfd = agt->sock;
@@ -202,8 +193,6 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
             agt->execdq = -1;
         }
     }
-
-    start_agent(1);
 
     os_delwait();
     update_status(GA_STATUS_ACTIVE);
