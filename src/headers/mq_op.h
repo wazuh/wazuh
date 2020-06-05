@@ -31,19 +31,20 @@
 #define CISCAT_MQ        'e'
 #define WIN_EVT_MQ       'f'
 
-#define MAX_OPENQ_ATTEMPS 15
+#define MAX_OPENQ_ATTEMPS 0
 
 extern int sock_fail_time;
 /**
  *  Starts a Message Queue.
  *  @param key path where the message queue will be created
  *  @param type WRITE||READ
+ *  @param n_attempts Number of attempts to connect to the queue (0 to attempt until a successful conection).
  *  @return
  *  UNIX -> OS_INVALID if queue failed to start
  *  UNIX -> int(rc) file descriptor of initialized queue
  *  WIN32 -> 0
  */
-int StartMQ(const char *key, short int type) __attribute__((nonnull));
+int StartMQ(const char *key, short int type, short int n_attempts) __attribute__((nonnull));
 
 /**
  * Sends a message string through a message queue
@@ -59,8 +60,6 @@ int StartMQ(const char *key, short int type) __attribute__((nonnull));
  */
 
 int SendMSG(int queue, const char *message, const char *locmsg, char loc) __attribute__((nonnull));
-
-int StartMQWithRetry(const char *path, short int type, short int retry_times);
 
 /**
  * Sends a message to a socket. If the socket has not been created yet it will be created based on

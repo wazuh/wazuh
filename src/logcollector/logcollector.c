@@ -1824,7 +1824,7 @@ void * w_output_thread(void * args){
                 #endif
 
                 // Retry to connect infinitely.
-                logr_queue = StartMQWithRetry(DEFAULTQPATH, WRITE, 0);
+                logr_queue = StartMQ(DEFAULTQPATH, WRITE, MAX_OPENQ_ATTEMPS);
 
                 minfo("Successfully reconnected to '%s'", DEFAULTQPATH);
 
