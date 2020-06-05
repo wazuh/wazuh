@@ -134,9 +134,10 @@ def test_rbac_catalog(db_setup, security_function, params, expected_result):
 
 def test_revoke_tokens(db_setup):
     """Checks that the return value of revoke_tokens is a WazuhResult."""
-    security, WazuhResult = db_setup
-    result = security.revoke_tokens()
-    assert isinstance(result, WazuhResult)
+    with patch('wazuh.security.change_secret', side_effect=None):
+        security, WazuhResult = db_setup
+        result = security.revoke_tokens()
+        assert isinstance(result, WazuhResult)
 
 
 @pytest.mark.parametrize('role_list, expected_users', [
