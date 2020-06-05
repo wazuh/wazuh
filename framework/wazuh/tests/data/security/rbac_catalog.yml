@@ -455,6 +455,9 @@ get_rbac_actions:
           resources:
             - "*:*:*"
           effect: "allow"
+        related_endpoints:
+          - PUT /manager/api/config
+          - DELETE /manager/api/config
       rules:read:
         description: Read rules files
         resources:
