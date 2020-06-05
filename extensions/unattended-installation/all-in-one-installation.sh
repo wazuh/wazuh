@@ -58,7 +58,7 @@ cd /etc/elasticsearch/certs
 wget https://releases.floragunn.com/search-guard-tlstool/1.7/search-guard-tlstool-1.7.zip
 unzip search-guard-tlstool-1.7.zip -d searchguard
 curl -so /etc/elasticsearch/certs/searchguard/search-guard.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/searchguard/search-guard-aio.yml
-chmod + x searchguard/tools/sgtlstool.sh
+chmod +x searchguard/tools/sgtlstool.sh
 ./searchguard/tools/sgtlstool.sh -c ./searchguard/search-guard.yml -ca -crt -t /etc/elasticsearch/certs/
 rm /etc/elasticsearch/certs/client-certificates.readme /etc/elasticsearch/certs/elasticsearch_elasticsearch_config_snippet.yml search-guard-tlstool-1.7.zip -f
 
