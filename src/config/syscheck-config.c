@@ -748,22 +748,20 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         len_tmp = strlen(tmp_dir);
 
         /* If it's an environment variable, expand it */
-        if (tmp_dir[0] == '%' && tmp_dir[len_tmp-1] == '%') {
-            if(env_variable = get_paths_from_env_variable(tmp_dir), env_variable){
+        if(env_variable = get_paths_from_env_variable(tmp_dir), env_variable){
 
-                for(int i = 0; env_variable[i]; i++) {
-                    if(strcmp(env_variable[i], "")) {
+            for(int i = 0; env_variable[i]; i++) {
+                if(strcmp(env_variable[i], "")) {
 
-                        if (retvalF = GetFullPathName(env_variable[i], PATH_MAX, real_path, NULL), retvalF == 0) {
-                            retvalF = GetLastError();
-                            mwarn("Couldn't get full path name '%s' (%d):'%s'\n", env_variable[i], retvalF, win_strerror(retvalF));
-                            continue;
-                        }
-                        str_lowercase(env_variable[i]);
-                        dump_syscheck_entry(syscheck, env_variable[i], opts, 0, restrictfile, recursion_limit, clean_tag, NULL);
+                    if (retvalF = GetFullPathName(env_variable[i], PATH_MAX, real_path, NULL), retvalF == 0) {
+                        retvalF = GetLastError();
+                        mwarn("Couldn't get full path name '%s' (%d):'%s'\n", env_variable[i], retvalF, win_strerror(retvalF));
+                        continue;
                     }
-                    os_free(env_variable[i]);
+                    str_lowercase(env_variable[i]);
+                    dump_syscheck_entry(syscheck, env_variable[i], opts, 0, restrictfile, recursion_limit, clean_tag, NULL);
                 }
+                os_free(env_variable[i]);
             }
 
             os_free(env_variable);
