@@ -1,17 +1,17 @@
 #pragma once
-#include "sqlite_database.h"
+#include "sqlite_dbengine.h"
 #include "typedef.h"
 #include <iostream>
 
-class FactoryDatabase {
+class FactoryDbEngine {
 public:
-    static std::unique_ptr<Database> Create( 
-        const DatabaseType db_type, 
+    static std::unique_ptr<DbEngine> Create( 
+        const DbEngineType db_type, 
         const std::string& path, 
         const std::string& sql_statement) {
 
     if (SQLITE3 == db_type) {
-      return std::make_unique<SQLiteDB>(path, sql_statement);
+      return std::make_unique<SQLiteDBEngine>(path, sql_statement);
     }
     throw std::runtime_error("Unspecified type during factory instantiation");
   }

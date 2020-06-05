@@ -6,7 +6,7 @@ extern "C" {
 
 unsigned long long initialize(
     const HostType host_type, 
-    const DatabaseType db_type,
+    const DbEngineType db_type,
     const char* path, 
     const char* sql_statement) {
 
@@ -41,6 +41,18 @@ int update_with_snapshot(
     std::string result;
     ret_val = DBSyncImplementation::getInstance().UpdateSnapshotData(handle, cJSON_Print(json_snapshot), result);
     *json_return_modifications = cJSON_Parse(result.c_str());
+  }
+  return ret_val;
+}
+
+int update_with_snapshot_cb(
+    const unsigned long long handle,
+    const cJSON* json_snapshot,
+    void* callback)
+{
+  auto ret_val { 0l };
+  if (nullptr != json_snapshot) {
+    ret_val = DBSyncImplementation::getInstance().UpdateSnapshotData(handle, cJSON_Print(json_snapshot), callback);
   }
   return ret_val;
 }
