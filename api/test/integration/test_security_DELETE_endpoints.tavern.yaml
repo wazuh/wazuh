@@ -382,6 +382,7 @@ test_name: CLEANER DELETE /security/{policies}
 stages:
 
   - name: Try to delete all policies
+    delay_before: 10
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
@@ -397,6 +398,7 @@ test_name: DELETE /security/users
 stages:
 
   - name: Delete a non-existent user
+    delay_before: 10
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
