@@ -1,3 +1,4 @@
+#!/bin/bash
 ## Check if system is based on YUM or APT
 
 if [ -n "$(command -v yum)" ] 
