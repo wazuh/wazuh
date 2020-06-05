@@ -61,7 +61,7 @@ int connect_server(int initial_id)
                 resolveHostname(&agt->server[rc].rip, 5);
 
                 tmp_str = strchr(agt->server[rc].rip, '/');
-                if(tmp_str) {
+                if (tmp_str) {
                     tmp_str++;
                 }
             } else {
@@ -301,12 +301,14 @@ static void w_agentd_keys_init (void) {
 }
 
 /**
- * Holds the message reception logic for udp
+ * @brief Holds the message reception logic for udp
+ * 
  * @param msg message to be sent
  * @param buffer pointer to buffer where the information will be stored
  * @param max_length size of buffer
- * @return message_size on success
- *         0 when all retries failed
+ * @return Integer value indicating the status code.
+ * @retval message_size on success
+ * @retval 0 when all retries failed
  * */
 static ssize_t receive_message_udp(const char *msg, char *buffer, unsigned int max_lenght) {
     int attempts = 0;
@@ -356,12 +358,14 @@ static ssize_t receive_message_udp(const char *msg, char *buffer, unsigned int m
 }
 
 /**
- * Holds the message reception logic for tcp
+ * @brief Holds the message reception logic for tcp
+ * 
  * @param msg message to be sent
  * @param buffer pointer to buffer where the information will be stored
  * @param max_length size of buffer
- * @return 1 on success
- *         0 when all retries failed
+ * @return Integer value indicating the status code.
+ * @retval message_size on success
+ * @retval 0 when all retries failed
  * */
 static ssize_t receive_message_tcp(const char *msg, char *buffer, unsigned int max_lenght) {
     ssize_t recv_b = 0;
@@ -372,7 +376,7 @@ static ssize_t receive_message_tcp(const char *msg, char *buffer, unsigned int m
         int sock = wnet_select(agt->sock, timeout);
         if (sock < 0) {
             merror(SELECT_ERROR, errno, strerror(errno));
-        } else if( sock > 0) {
+        } else if (sock > 0) {
             recv_b = OS_RecvSecureTCP(agt->sock, buffer, max_lenght);
 
             switch (recv_b) {
