@@ -239,7 +239,7 @@ void start_agent(int is_startup)
 }
 
 /**
- * Initialize keys structure, counter, agent info and crypto method.
+ * @brief Initialize keys structure, counter, agent info and crypto method.
  * Keys are read from client.keys. If no valid entry is found:
  *  -If autoenrollment is enabled, a new key is requested to server and execution is blocked until a valid key is received. 
  *  -If autoenrollment is disabled, dameon is stoped
