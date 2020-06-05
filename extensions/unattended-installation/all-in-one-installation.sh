@@ -13,13 +13,13 @@ fi
 ## Prerequisites
 if [ $sys_type == "YUM" ] 
 then
-    yum install java-11-openjdk-devel curl unzip wget libcap -y
+    yum install java-11-openjdk-devel unzip wget libcap -y
 elif [ $sys_type == "APT" ] 
 then
     echo 'deb http://deb.debian.org/debian stretch-backports main' > /etc/apt/sources.list.d/backports.list
     add-apt-repository ppa:openjdk-r/ppa -y
     apt update
-    apt install openjdk-11-jdk curl apt-transport-https unzip wget libcap2-bin -y
+    apt install openjdk-11-jdk apt-transport-https unzip wget libcap2-bin -y
 fi
 
 ## Wazuh manager and API
