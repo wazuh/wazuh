@@ -14,6 +14,8 @@ uname_P := $(shell sh -c 'uname -p 2>/dev/null || echo not')
 uname_R := $(shell sh -c 'uname -r 2>/dev/null || echo not')
 HAS_CHECKMODULE = $(shell command -v checkmodule > /dev/null && echo YES)
 HAS_SEMODULE_PACKAGE = $(shell command -v semodule_package > /dev/null && echo YES)
+CHECK_ARCHLINUX := $(shell sh -c 'grep "Arch Linux" /etc/os-release > /dev/null && echo YES || echo not')
+ARCH_FLAGS =
 
 ROUTE_PATH := $(shell pwd)
 EXTERNAL_JSON=external/cJSON/
@@ -95,6 +97,10 @@ ifeq (${uname_S},Linux)
 		USE_AUDIT=yes
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 		OSSEC_CFLAGS+=-I$(EXTERNAL_AUDIT)lib
+endif
+ifeq (${CHECK_ARCHLINUX},YES)
+		ARCH_FLAGS+=-lnghttp2 -lbrotlidec -lpsl
+		OSSEC_LDFLAGS+=-lnghttp2 -lbrotlidec -lpsl
 endif
 else
 ifeq (${uname_S},AIX)
@@ -1554,7 +1560,7 @@ ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python.exe))
 endif
 else
 ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python))
-	export WPATH_LIB="'\$$\$$ORIGIN/../../../lib'" && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && export LD_LIBRARY_PATH=${ROUTE_PATH} && cd ${EXTERNAL_CPYTHON} && ./configure --prefix="${WPYTHON_DIR}" --libdir="${WPYTHON_DIR}/lib" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH} -lwazuhext -Wl,-rpath,'\$$\$$ORIGIN/../../../lib',--disable-new-dtags" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
+	export WPATH_LIB="'\$$\$$ORIGIN/../../../lib'" && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && export LD_LIBRARY_PATH=${ROUTE_PATH} && cd ${EXTERNAL_CPYTHON} && ./configure --prefix="${WPYTHON_DIR}" --libdir="${WPYTHON_DIR}/lib" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="${ARCH_FLAGS} -L${ROUTE_PATH} -lwazuhext -Wl,-rpath,'\$$\$$ORIGIN/../../../lib',--disable-new-dtags" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
 endif
 endif
 
