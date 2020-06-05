@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "cJSON.h"
+
 typedef enum {
     MANAGER = 0,
     AGENT = 1
@@ -15,4 +17,20 @@ typedef enum {
 
 typedef enum {
     SQLITE3 = 0
-}DatabaseType;
+}DbEngineType;
+
+typedef enum {
+    MODIFIED = 0,
+    DELETED = 1,
+    INSERTED = 2
+}ReturnTypeCallback;
+
+
+/**
+ * \brief Callback function for results
+ *
+ * This callback is called for each result obtained, after evaluating changes between two snapshots.
+ * \param result_type Enumeration value indicating what action was taken.
+ * \param result_json Json which describe the change.
+ */
+typedef void((*result_callback)(ReturnTypeCallback result_type, cJSON* result_json));

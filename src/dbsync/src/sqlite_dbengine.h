@@ -1,5 +1,5 @@
 #pragma once
-#include "database.h"
+#include "dbengine.h"
 #include <sqlite3.h>
 #include <tuple>
 #include <iostream>
@@ -51,15 +51,22 @@ using TableField =
     std::tuple<int32_t, std::string, int32_t, int64_t, uint64_t, double_t>;
 
 using Row = std::map<std::string, TableField>;
-class SQLiteDB : public Database {
+
+
+enum ResponseType {
+  RT_JSON = 0,
+  RT_CALLBACK
+}; 
+
+class SQLiteDBEngine : public DbEngine {
 public:
-  SQLiteDB(const std::string& path, const std::string& table_statement_creation);
-  ~SQLiteDB();
+  SQLiteDBEngine(const std::string& path, const std::string& table_statement_creation);
+  ~SQLiteDBEngine();
   
   virtual bool Execute(const std::string& query) override;
   virtual bool Select(const std::string& query, nlohmann::json& result) override;
   virtual bool BulkInsert(const std::string& table, const nlohmann::json& data) override;
-  virtual bool RefreshTablaData(const nlohmann::json& data, nlohmann::json& delta) override;
+  virtual bool RefreshTablaData(const nlohmann::json& data, const std::tuple<nlohmann::json&, void *> delta) override;
 
 private:
   bool Initialize(const std::string& path, const std::string& table_statement_creation);
@@ -76,8 +83,8 @@ private:
   bool GetTableCreateQuery(const std::string& table, std::string& result_query);
   bool GetPrimaryKeysFromTable(const std::string& table, std::vector<std::string>& primary_key_list);
 
-  bool RemoveNotExistsRows(const std::string& table, const std::vector<std::string>& primary_key_list, nlohmann::json& delta);
-  bool InsertNewRows(const std::string& table, const std::vector<std::string>& primary_key_list, nlohmann::json& delta);
+  bool RemoveNotExistsRows(const std::string& table, const std::vector<std::string>& primary_key_list, const std::tuple<nlohmann::json&, void *> delta);
+  bool InsertNewRows(const std::string& table, const std::vector<std::string>& primary_key_list, const std::tuple<nlohmann::json&, void *> delta);
 
   bool DeleteRows(const std::string& table, const std::vector<std::string>& primary_key_list, const std::vector<Row>& rows_to_remove); 
   int32_t GetTableData(sqlite3_stmt* stmt, const int32_t index, const ColumnType& type, const std::string& field_name, Row& row);
@@ -89,16 +96,18 @@ private:
   bool BulkInsert(const std::string& table, const std::vector<Row>& data);
   int DeleteTempTable(const std::string& table);
 
-  int GetModifiedTableRows(const std::string& t1,const std::string& t2,const std::vector<std::string>& primary_key_list, std::vector<Row>& return_rows);
   std::string BuildModifiedRowsQuery(const std::string& t1,const std::string& t2, const std::vector<std::string>& primary_key_list);
-  int ChangeModifiedRows(const std::string& table, const std::vector<std::string>& primary_key_list, nlohmann::json& delta);
-  std::string BuildUpdateDataSqlQuery(const std::string& table, const std::vector<std::string>& primary_key_list);
+  int ChangeModifiedRows(const std::string& table, const std::vector<std::string>& primary_key_list, const std::tuple<nlohmann::json&, void *> delta);
+  std::string BuildUpdateDataSqlQuery(const std::string& table, const std::vector<std::string>& primary_key_list, const Row& row, const std::pair<const std::__cxx11::string, TableField> &field);
 
-  bool PreparedTransactionExecute(const std::string& sql, const std::function<int32_t(sqlite3_stmt*)>& bind_f);
-  bool TransactionExecute(const std::function<int32_t()>& bind_f);
+  int32_t PreparedTransactionExecute(const std::string& sql, const std::function<int32_t(sqlite3_stmt*)>& bind_f);
+  int32_t TransactionExecute(const std::function<int32_t()>& bind_f);
 
-  SQLiteDB(const SQLiteDB&) = delete;
-  SQLiteDB& operator=(const SQLiteDB&) = delete;
+  bool GetFieldValueFromTuple(const std::pair<const std::__cxx11::string, TableField> &value, std::string& result_value, const bool quotation_marks = false);
+  bool GetFieldValueFromTuple(const std::pair<const std::__cxx11::string, TableField> &value, nlohmann::json& object);
+
+  SQLiteDBEngine(const SQLiteDBEngine&) = delete;
+  SQLiteDBEngine& operator=(const SQLiteDBEngine&) = delete;
 
   std::map<std::string, TableColumns> m_table_fields;
   sqlite3* m_db;

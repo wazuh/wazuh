@@ -22,7 +22,6 @@
 #endif
 
 #include "typedef.h"
-#include "cJSON.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,7 +43,7 @@ extern "C" {
  */
   EXPORTED unsigned long long initialize(
     const HostType host_type, 
-    const DatabaseType db_type,
+    const DbEngineType db_type,
     const char* path, 
     const char* sql_statement);
 
@@ -73,6 +72,20 @@ extern "C" {
     const unsigned long long handle,
     const cJSON* json_snapshot,
     cJSON** json_return_modifications);
+
+/**
+ * @brief Update data table, based on json_raw_snapshot bulk data based on json string.
+ *
+ * @param handle Handle assigned and returned in the initialize method.
+ * @param json_raw_snapshot JSON with snapshot values.
+ * @param callback function callback to return individually result.
+ *
+ * @return return 0 if the operations is success, otherwise an error code will vary depending on the operating system.
+ */
+  EXPORTED int update_with_snapshot_cb(
+    const unsigned long long handle,
+    const cJSON* json_snapshot,
+    void* callback);
 
 /**
  * @brief Select data from table.
