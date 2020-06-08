@@ -50,6 +50,8 @@ default_policies:
         - security:update
         - security:delete
         - security:revoke
+        - security:read_config
+        - security:update_config
       resources:
         - role:id:*
         - policy:id:*

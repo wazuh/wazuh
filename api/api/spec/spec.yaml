@@ -171,7 +171,7 @@ x-rbac-catalog:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
         actions: ['cluster:read_api_config']
-        resources: ['*:*:*']
+        resources: ['node:id:worker1', 'node:id:worker3']
         effect: "allow"
     'cluster:update_api_config':
       description: "Modify Wazuh's cluster API configuration"
@@ -179,7 +179,7 @@ x-rbac-catalog:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
         actions: ['cluster:update_api_config']
-        resources: ['*:*:*']
+        resources: ['node:id:worker1', 'node:id:worker3']
         effect: "allow"
     'cluster:read_file':
       description: "Read Wazuh's cluster files"
@@ -373,6 +373,22 @@ x-rbac-catalog:
         actions: ['security:update']
         resources: ['policy:id:*', 'role:id:administrator', 'user:id:python',]
         effect: "deny"
+    'security:read_config':
+      description: "Read current RBAC configuration"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['security:read_config']
+        resources: ['*:*:*']
+        effect: "allow"
+    'security:update_config':
+      description: "Update current RBAC configuration"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['security:update_config']
+        resources: ['*:*:*']
+        effect: "allow"
     'syscheck:read':
       description: "Read information from syscheck's database"
       resources:
@@ -2224,20 +2240,6 @@ components:
           description: Set this option to "yes" in case the API is running behind a proxy server.
           type: boolean
           default: false
-        auth_token_exp_timeout:
-          description: Time in seconds until the token expires.
-          type: integer
-          format: int32
-          minimum: 30
-          example: 36000
-        rbac:
-          type: object
-          additionalProperties: false
-          properties:
-            mode:
-              description: RBAC mode (white/black).
-              type: string
-              enum: [white, black]
         logs:
           type: object
           additionalProperties: false
@@ -2393,6 +2395,24 @@ components:
               description: "PCI DSS checks the rule is checking"
               items:
                 type: string
+
+    RBACconfiguration:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        auth_token_exp_timeout:
+          description: "Time in seconds until the token expires"
+          type: integer
+          format: int32
+          minimum: 30
+          example: 36000
+        mode:
+          description: "RBAC mode (white/black)"
+          type: string
+          additionalProperties: false
+          enum: [white, black]
+          example: white
 
     # SCA models
     SCAChecks:
@@ -6857,14 +6877,15 @@ paths:
     get:
       tags:
         - cluster
-      summary: Get API configuration.
-      description: Returns the API configuration in JSON format.
+      summary: "Get the API configuration of a list of nodes (or all of them)"
+      description: "Returns the API configuration of all the selected nodes in JSON format."
       operationId: api.controllers.cluster_controller.get_api_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read_api_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_nodes'
       responses:
         '200':
           description: Current API configuration
@@ -6874,32 +6895,68 @@ paths:
                 type: object
                 additionalProperties: true
               example:
-                host: 0.0.0.0
-                port: 55000
-                behind_proxy_server: false
-                auth_token_exp_timeout: 36000
-                rbac:
-                  mode: white
-                https:
-                  enabled: true
-                  key: "/var/ossec/api/configuration/ssl/server.key"
-                  cert: "/var/ossec/api/configuration/ssl/server.crt"
-                  use_ca: false
-                  ca: "/var/ossec/api/configuration/ssl/ca.crt"
-                logs:
-                  path: /var/ossec/logs/api.log
-                  level: info
-                cors:
-                  enabled: false
-                  source_route: "*"
-                  allow_headers: "*"
-                  allow_credentials: false
-                cache:
-                  enabled: true
-                  time: 0.75
-                use_only_authd: false
-                drop_privileges: true
-                experimental_features: false
+                data:
+                  affected_items:
+                    - node_name: "master_node"
+                      node_api_config:
+                        host: 0.0.0.0
+                        port: 55000
+                        behind_proxy_server: false
+                        auth_token_exp_timeout: 36000
+                        rbac:
+                          mode: white
+                        https:
+                          enabled: true
+                          key: "/var/ossec/api/configuration/ssl/server.key"
+                          cert: "/var/ossec/api/configuration/ssl/server.crt"
+                          use_ca: false
+                          ca: "/var/ossec/api/configuration/ssl/ca.crt"
+                        logs:
+                          path: /var/ossec/logs/api.log
+                          level: info
+                        cors:
+                          enabled: false
+                          source_route: "*"
+                          allow_headers: "*"
+                          allow_credentials: false
+                        cache:
+                          enabled: true
+                          time: 0.75
+                        use_only_authd: false
+                        drop_privileges: true
+                        experimental_features: false
+                    - node_name: "worker1"
+                      node_api_config:
+                        host: 0.0.0.0
+                        port: 55000
+                        behind_proxy_server: false
+                        auth_token_exp_timeout: 36000
+                        rbac:
+                          mode: white
+                        https:
+                          enabled: true
+                          key: "/var/ossec/api/configuration/ssl/server.key"
+                          cert: "/var/ossec/api/configuration/ssl/server.crt"
+                          use_ca: false
+                          ca: "/var/ossec/api/configuration/ssl/ca.crt"
+                        logs:
+                          path: /var/ossec/logs/api.log
+                          level: info
+                        cors:
+                          enabled: false
+                          source_route: "*"
+                          allow_headers: "*"
+                          allow_credentials: false
+                        cache:
+                          enabled: true
+                          time: 0.75
+                        use_only_authd: false
+                        drop_privileges: true
+                        experimental_features: false
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: []
+                message: "API configuration read successfully"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6908,21 +6965,20 @@ paths:
     put:
       tags:
         - cluster
-      summary: Update API configuration.
-      description: Updates API configuration with the data contained in the API request.
+      summary: "Update the API configuration of a list of nodes (or all of them)"
+      description: "Updates the API configuration of all the selected nodes with the data contained in the API request."
       operationId: api.controllers.cluster_controller.put_api_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:update_api_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-
+        - $ref: '#/components/parameters/list_nodes'
       requestBody:
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/APIconfiguration'
-
       responses:
         '200':
           description: 'Confirmation message'
@@ -6947,14 +7003,15 @@ paths:
     delete:
       tags:
         - cluster
-      summary: Restore default API configuration.
-      description: Replaces API configuration with the original one.
+      summary: "Restore the API configuration of a list of nodes (or all of them)"
+      description: "Replaces the API configuration of all the selected nodes with the original one."
       operationId: api.controllers.cluster_controller.delete_api_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:update_api_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_nodes'
       responses:
         '200':
           description: 'Confirmation message'
@@ -6970,7 +7027,7 @@ paths:
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
-                message: API configuration successfully updated. Some settings may require restarting the API to be applied.
+                message: "API configuration successfully updated. Some settings may require restarting the API to be applied."
 
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -8926,7 +8983,7 @@ paths:
     get:
       tags:
         - manager
-      summary: Get API configuration.
+      summary: Get API configuration for this node.
       description: Returns the API configuration in JSON format.
       operationId: api.controllers.manager_controller.get_api_config
       x-rbac-actions:
@@ -8942,16 +8999,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                host: 0.0.0.0
-                port: 55000
-                behind_proxy_server: false
-                auth_token_exp_timeout: 36000
-                rbac:
-                  mode: white
-                logs:
-                  path: /var/ossec/logs/api.log
-                  level: info
-                experimental_features: false
+                data:
+                  affected_items:
+                    - node_name: 'manager'
+                      node_api_config:
+                        host: 0.0.0.0
+                        port: 55000
+                        behind_proxy_server: false
+                        auth_token_exp_timeout: 36000
+                        rbac:
+                          mode: white
+                        logs:
+                          path: /var/ossec/logs/api.log
+                          level: info
+                        experimental_features: false
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: []
+                message: "API configuration read successfully"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8960,8 +9025,8 @@ paths:
     put:
       tags:
         - manager
-      summary: Update API configuration.
-      description: Updates API configuration with the data contained in the API request.
+      summary: Update API configuration for this node.
+      description: Updates the API configuration for this node with the data contained in the API request.
       operationId: api.controllers.manager_controller.put_api_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/manager:update_api_config'
@@ -8998,8 +9063,8 @@ paths:
     delete:
       tags:
         - manager
-      summary: Restore default API configuration.
-      description: Replaces API configuration with the original one.
+      summary: Restore default API configuration for this node.
+      description: Replaces the API configuration for this node with the original one.
       operationId: api.controllers.manager_controller.delete_api_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/manager:update_api_config'
@@ -12897,6 +12962,76 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+
+  /security/config:
+    get:
+      tags:
+        - security
+      summary: "Get current RBAC configuration"
+      description: "Returns the RBAC configuration in JSON format"
+      operationId: api.controllers.security_controller.get_rbac_config
+      x-rbac-actions:
+        - $ref: "#/x-rbac-catalog/actions/security:read_config"
+      parameters:
+        - $ref: "#/components/parameters/pretty"
+        - $ref: "#/components/parameters/wait_for_complete"
+      responses:
+        "200":
+          description: "Current RBAC configuration"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+              example:
+                auth_token_exp_timeout: 36000
+                mode: white
+        "400":
+          $ref: "#/components/responses/ResponseError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedResponse"
+
+    put:
+      tags:
+        - security
+      summary: "Update RBAC configuration"
+      description: "Updates the RBAC configuration with the data contained in the API request"
+      operationId: api.controllers.security_controller.put_rbac_config
+      x-rbac-actions:
+        - $ref: "#/x-rbac-catalog/actions/security:update_config"
+      parameters:
+        - $ref: "#/components/parameters/pretty"
+        - $ref: "#/components/parameters/wait_for_complete"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RBACconfiguration"
+      responses:
+        "200":
+          description: "Configuration successfully updated"
+        "400":
+          $ref: "#/components/responses/ResponseError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedResponse"
+
+    delete:
+      tags:
+        - security
+      summary: "Restore default RBAC configuration"
+      description: "Replaces the RBAC configuration with the original one"
+      operationId: api.controllers.security_controller.delete_rbac_config
+      x-rbac-actions:
+        - $ref: "#/x-rbac-catalog/actions/security:update_config"
+      parameters:
+        - $ref: "#/components/parameters/pretty"
+        - $ref: "#/components/parameters/wait_for_complete"
+      responses:
+        "200":
+          description: "Configuration successfully restored"
+        "400":
+          $ref: "#/components/responses/ResponseError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedResponse"
 
 externalDocs:
   description: "Find more about Wazuh API usage"

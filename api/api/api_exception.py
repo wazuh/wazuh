@@ -27,9 +27,7 @@ class APIException(Exception):
             2002: 'Error migrating configuration from old API version. '
                   'Default configuration will be applied',
             2003: 'Error loading SSL/TLS certificates',
-            2004: 'API configuration file '
-                  f'(WAZUH_PATH/{RELATIVE_CONFIG_FILE_PATH}) '
-                  'could not be loaded',
+            2004: 'Configuration file could not be loaded',
             2005: 'Body request is not a valid JSON',
             2006: 'Error parsing body request to UTF-8',
             2007: 'Body is empty',
