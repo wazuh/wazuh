@@ -470,6 +470,7 @@ off_t FileSize(const char * path) {
 
 float DirSize(const char *path) {
     struct dirent *dir;
+    struct stat buf;
     DIR *directory;
     float folder_size = 0.0;
     float file_size = 0.0;
@@ -489,13 +490,17 @@ float DirSize(const char *path) {
         os_malloc(strlen(path) + strlen(dir->d_name) + 2, entry);
         snprintf(entry, strlen(path) + 2 + strlen(dir->d_name), "%s/%s", path, dir->d_name);
 
+        if (stat(entry, &buf) == -1) {
+            return 0;
+        }
+
         // Recursion if the path points to a directory
-        switch (dir->d_type) {
-        case DT_DIR:
+        switch (buf.st_mode & S_IFMT) {
+        case S_IFDIR:
             folder_size += DirSize(entry);
             break;
 
-        case DT_REG:
+        case S_IFREG:
             if (file_size = FileSize(entry), file_size != -1) {
                 folder_size += file_size;
             }
