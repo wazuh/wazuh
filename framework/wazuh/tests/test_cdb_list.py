@@ -12,6 +12,7 @@ with patch('wazuh.common.ossec_uid'):
         from wazuh import WazuhException
         from wazuh.cdb_list import get_lists, get_path_lists, get_list_from_file
 
+
 class TestCDBList(TestCase):
 
     def test_get_lists(self):
@@ -72,9 +73,9 @@ class TestCDBList(TestCase):
         self.assertEqual(cm.exception.code, 1406)
 
         result = get_path_lists(limit=1)
-        self.assertEqual(result['totalItems'], 1)
+        self.assertEqual(len(result['items']), 1)
         result = get_path_lists(limit=3)
-        self.assertEqual(result['totalItems'], 3)
+        self.assertEqual(len(result['items']), 3)
 
     def test_get_path_lists_offset(self):
         result_a = get_path_lists(offset=0)
@@ -97,6 +98,7 @@ class TestCDBList(TestCase):
         result_a = get_path_lists(sort={'fields': ['name'], 'order': 'asc'})
         result_b = get_path_lists(sort={'fields': ['name'], 'order': 'desc'})
         self.assertNotEqual(result_a, result_b)
+
 
 @pytest.mark.parametrize('error_type, expected_exception', [
     (IOError, 1006),
