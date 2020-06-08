@@ -34,6 +34,7 @@ void sched_scan_init(sched_scan_config *scan_config){
     scan_config->month_interval = false;
     scan_config->time_start = 0;
     scan_config->next_scheduled_scan_time = 0;
+    scan_config->daylight = -1;
 }
 
 /**
@@ -108,13 +109,12 @@ int sched_scan_read(sched_scan_config *scan_config, xml_node **nodes, const char
     return _sched_scan_validate_parameters(scan_config);
 }
 
-time_t sched_scan_get_time_until_next_scan(sched_scan_config *config, const char *MODULE_TAG,  const int run_on_start, 
-                                           int current_daylight, int * future_daylight) {
+time_t sched_scan_get_time_until_next_scan(sched_scan_config *config, const char *MODULE_TAG,  const int run_on_start) {
     time_t next_scan_time;
 
     time_t next_time = _get_next_time(config, MODULE_TAG, run_on_start);
     next_scan_time = time(NULL) + next_time;
-    check_daylight(current_daylight, future_daylight, &next_scan_time, false);
+    check_daylight(config, &next_scan_time, false);
     config->next_scheduled_scan_time = next_scan_time;
     return next_time;
 }
@@ -229,21 +229,21 @@ void sched_scan_dump(const sched_scan_config* scan_config, cJSON *cjson_object){
 }
 
 // Function to check the change of daylight to add or subtract an hour
-void check_daylight(int current_daylight, int * future_daylight, time_t * next_scan_time, bool test) {
+void check_daylight(sched_scan_config *config, time_t * next_scan_time, bool test) {
     struct tm tm_future;
+    int future_daylight;
 
     localtime_r(next_scan_time, &tm_future);
 
     if (test) {
-        if (*future_daylight == -1) {
-            *future_daylight = 1;
-        }
+        future_daylight = 1;
     } else {
-        *future_daylight = tm_future.tm_isdst;
+        future_daylight = tm_future.tm_isdst;
     }
-    if (current_daylight != -1) {
-        *next_scan_time += 3600*(current_daylight - (*future_daylight));
+    if (config->daylight != -1) {
+        *next_scan_time += 3600*(config->daylight - future_daylight);
     }
+    config->daylight = future_daylight;
 }
 
 // Get time in seconds to the specified hour in hh:mm

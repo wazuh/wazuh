@@ -46,8 +46,6 @@ void* wm_aws_main(wm_aws *aws_config) {
     wm_aws_service *cur_service;
     char *log_info;
     char * timestamp = NULL;
-    int current_daylight = -1;
-    int future_daylight = -1;
 
 
     wm_aws_setup(aws_config);
@@ -57,8 +55,7 @@ void* wm_aws_main(wm_aws *aws_config) {
 
     do {
 
-        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(aws_config->scan_config), WM_AWS_LOGTAG, aws_config->run_on_start,
-                                                                      current_daylight, &future_daylight);
+        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(aws_config->scan_config), WM_AWS_LOGTAG, aws_config->run_on_start);
 
         if (aws_config->state.next_time == 0) {
             aws_config->state.next_time = aws_config->scan_config.time_start + time_sleep;
@@ -68,12 +65,11 @@ void* wm_aws_main(wm_aws *aws_config) {
             mterror(WM_AWS_LOGTAG, "Couldn't save running state.");
 
         if (time_sleep) {
-            int next_scan_time = sched_get_next_scan_time(aws_config->scan_config);
+            const int next_scan_time = sched_get_next_scan_time(aws_config->scan_config);
             timestamp = w_get_timestamp(next_scan_time);
             mtdebug2(WM_AWS_LOGTAG, "Sleeping until: %s", timestamp);
             os_free(timestamp);
             w_sleep_until(next_scan_time);
-            current_daylight = future_daylight;
         }
         mtinfo(WM_AWS_LOGTAG, "Starting fetching of logs.");
 

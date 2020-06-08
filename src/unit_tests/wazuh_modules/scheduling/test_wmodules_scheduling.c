@@ -44,18 +44,17 @@ static int test_teardown(void **state) {
  * */
 static void test_interval_mode(void **state){  
     state_structure *test = *state;
-    int future_daylight;
     const char *string =
         "<interval>5m</interval>"
     ;
     test->nodes = string_to_xml_node(string, &test->lxml);
     sched_scan_read(&test->scan_config, test->nodes, "");
-    time_t next_time = sched_scan_get_time_until_next_scan(&test->scan_config, "TEST_INTERVAL_MODE", 0, -1, &future_daylight);
+    time_t next_time = sched_scan_get_time_until_next_scan(&test->scan_config, "TEST_INTERVAL_MODE", 0);
     // First time
     assert_int_equal((int) next_time, TEST_INTERVAL);
     // Sleep 5 secs
     w_time_delay(1000 * TEST_INTERVAL);
-    next_time = sched_scan_get_time_until_next_scan(&test->scan_config, "TEST_INTERVAL_MODE", 0, -1, &future_daylight);
+    next_time = sched_scan_get_time_until_next_scan(&test->scan_config, "TEST_INTERVAL_MODE", 0);
     assert_int_equal((int) next_time, TEST_INTERVAL);
 }
 
@@ -65,7 +64,6 @@ static void test_interval_mode(void **state){
  * */
 static void test_day_of_the_month_mode(void **state){
     state_structure *test = *state;
-    int future_daylight;
     // Set day of the month
     test->scan_config.month_interval = true;
     test->scan_config.interval = 1;
@@ -74,7 +72,7 @@ static void test_day_of_the_month_mode(void **state){
     for(int i = 0; i < (sizeof(TEST_DAY_MONTHS)/ sizeof(int)); i++){
         test->scan_config.scan_day = TEST_DAY_MONTHS[i];
 
-        time_t time_sleep = sched_scan_get_time_until_next_scan(&test->scan_config, "TEST_DAY_MONTH_MODE", 0, -1, &future_daylight);
+        time_t time_sleep = sched_scan_get_time_until_next_scan(&test->scan_config, "TEST_DAY_MONTH_MODE", 0);
         time_t next_time = time(NULL) + time_sleep;
 
         struct tm *date = localtime(&next_time);
@@ -88,7 +86,6 @@ static void test_day_of_the_month_mode(void **state){
  * */
 static void test_day_of_the_month_consecutive(void **state){
     state_structure *test = *state;
-    int future_daylight;
     const char *string =
         "<day>20</day>\n"
         "<time>0:00</time>"
@@ -98,7 +95,7 @@ static void test_day_of_the_month_consecutive(void **state){
     // Set to 2 months
     test->scan_config.interval = 2;
 
-    time_t time_sleep = sched_scan_get_time_until_next_scan(&test->scan_config, "TEST_DAY_MONTH_MODE", 0, -1, &future_daylight);
+    time_t time_sleep = sched_scan_get_time_until_next_scan(&test->scan_config, "TEST_DAY_MONTH_MODE", 0);
     // Sleep past execution moment by 1 hour
     w_time_delay(time_sleep * 1000);
 
@@ -107,7 +104,7 @@ static void test_day_of_the_month_consecutive(void **state){
     // Assert execution time is the expected month day
     assert_int_equal(first_date.tm_mday,  test->scan_config.scan_day);
 
-    time_sleep = sched_scan_get_time_until_next_scan(&test->scan_config, "TEST_DAY_MONTH_MODE", 0, -1, &future_daylight);
+    time_sleep = sched_scan_get_time_until_next_scan(&test->scan_config, "TEST_DAY_MONTH_MODE", 0);
     time_t second_time = time(NULL) + time_sleep;
 
     struct tm second_date = *(localtime(&second_time));
@@ -122,7 +119,6 @@ static void test_day_of_the_month_consecutive(void **state){
  * */
 static void test_day_of_the_week(void **state){
     state_structure *test = *state;
-    int future_daylight;
     const char *string =
         "<wday>tuesday</wday>\n"
         "<time>0:00</time>\n"
@@ -131,7 +127,7 @@ static void test_day_of_the_week(void **state){
     test->nodes = string_to_xml_node(string, &test->lxml);
     sched_scan_read(&test->scan_config, test->nodes, "");
     
-    time_t time_sleep = sched_scan_get_time_until_next_scan(&test->scan_config, "TEST_WDAY_MODE", 0, -1, &future_daylight);
+    time_t time_sleep = sched_scan_get_time_until_next_scan(&test->scan_config, "TEST_WDAY_MODE", 0);
     // Sleep past execution moment by 1 hour
     w_time_delay((time_sleep + 3600) * 1000);
 
@@ -140,7 +136,7 @@ static void test_day_of_the_week(void **state){
 
     assert_int_equal(first_date.tm_wday,  test->scan_config.scan_wday);
 
-    time_sleep = sched_scan_get_time_until_next_scan(&test->scan_config, "TEST_WDAY_MODE", 0, -1, &future_daylight);
+    time_sleep = sched_scan_get_time_until_next_scan(&test->scan_config, "TEST_WDAY_MODE", 0);
     time_t second_time = time(NULL) + time_sleep;
 
     struct tm second_date = *(localtime(&second_time));
@@ -153,13 +149,12 @@ static void test_day_of_the_week(void **state){
  * */
 static void test_time_of_day(void **state){
     state_structure *test = *state;
-    int future_daylight;
     const char *string =
         "<time>5:18</time>"
     ;
     test->nodes = string_to_xml_node(string, &test->lxml);
     sched_scan_read(&test->scan_config, test->nodes, "");
-    time_t time_sleep = sched_scan_get_time_until_next_scan(&test->scan_config, "TEST_WDAY_MODE", 0, -1, &future_daylight);
+    time_t time_sleep = sched_scan_get_time_until_next_scan(&test->scan_config, "TEST_WDAY_MODE", 0);
     w_time_delay(time_sleep * 1000);
 
     time_t current_time = time(NULL);
@@ -193,7 +188,6 @@ static void test_parse_xml_and_dump(void **state){
  * */
 static void test_day_of_month_wrap_year(void **state) {
     state_structure *test = *state;
-    int future_daylight;
     test->scan_config.month_interval = true;
     test->scan_config.interval = 2;
     test->scan_config.scan_day = 5;
@@ -206,7 +200,7 @@ static void test_day_of_month_wrap_year(void **state) {
     // Set simulation time
     set_current_time(mktime(&tm));
 
-    time_t time_sleep = sched_scan_get_time_until_next_scan(&test->scan_config, "TEST_DAY_MONTH_MODE", 0, -1, &future_daylight);
+    time_t time_sleep = sched_scan_get_time_until_next_scan(&test->scan_config, "TEST_DAY_MONTH_MODE", 0);
     w_time_delay(time_sleep * 1000);
 
     time_t first_time = time(NULL) ;
@@ -219,7 +213,6 @@ static void test_day_of_month_wrap_year(void **state) {
 
 static void test_day_of_month_very_long_time(void **state) {
     state_structure *test = *state;
-    int future_daylight;
     test->scan_config.month_interval = true;
     test->scan_config.interval = 25; // 25 months interval
     test->scan_config.scan_day = 1;
@@ -232,7 +225,7 @@ static void test_day_of_month_very_long_time(void **state) {
     // Set simulation time
     set_current_time(mktime(&tm));
 
-    time_t time_sleep = sched_scan_get_time_until_next_scan(&test->scan_config, "TEST_DAY_MONTH_MODE", 0, -1, &future_daylight);
+    time_t time_sleep = sched_scan_get_time_until_next_scan(&test->scan_config, "TEST_DAY_MONTH_MODE", 0);
     w_time_delay(time_sleep * 1000);
 
     time_t first_time = time(NULL) ;

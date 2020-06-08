@@ -38,24 +38,20 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
     char * command = WM_DOCKER_SCRIPT_PATH;
     char * timestamp = NULL;
     int attempts = 0;
-    int current_daylight = -1;
-    int future_daylight = -1;
 
     wm_docker_setup(docker_conf);
     mtinfo(WM_DOCKER_LOGTAG, "Module docker-listener started.");
 
     // Main 
     do {
-        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(docker_conf->scan_config), WM_DOCKER_LOGTAG, docker_conf->flags.run_on_start,
-                                                                      current_daylight, &future_daylight);
+        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(docker_conf->scan_config), WM_DOCKER_LOGTAG, docker_conf->flags.run_on_start);
 
         if (time_sleep) {
-            int next_scan_time = sched_get_next_scan_time(docker_conf->scan_config);
+            const int next_scan_time = sched_get_next_scan_time(docker_conf->scan_config);
             timestamp = w_get_timestamp(next_scan_time);
             mtdebug2(WM_DOCKER_LOGTAG, "Sleeping until: %s", timestamp);
             os_free(timestamp);
             w_sleep_until(next_scan_time);
-            current_daylight = future_daylight;
         }
         mtinfo(WM_DOCKER_LOGTAG, "Starting to listening Docker events.");
 

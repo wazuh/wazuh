@@ -36,8 +36,6 @@ void * wm_command_main(wm_command_t * command) {
     char *full_path;
     char **argv;
     char * timestamp = NULL;
-    int current_daylight = -1;
-    int future_daylight = -1;
 
     if (!command->enabled) {
         mtwarn(WM_COMMAND_LOGTAG, "Module command:%s is disabled. Exiting.", command->tag);
@@ -168,20 +166,18 @@ void * wm_command_main(wm_command_t * command) {
 #endif
 
     do {
-        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(command->scan_config), WM_COMMAND_LOGTAG, command->run_on_start,
-                                                                      current_daylight, &future_daylight);
+        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(command->scan_config), WM_COMMAND_LOGTAG, command->run_on_start);
 
         if(command->state.next_time == 0) {
             command->state.next_time = command->scan_config.time_start + time_sleep;
         }
 
         if (time_sleep) {
-            int next_scan_time = sched_get_next_scan_time(command->scan_config);
+            const int next_scan_time = sched_get_next_scan_time(command->scan_config);
             timestamp = w_get_timestamp(next_scan_time);
             mtdebug2(WM_COMMAND_LOGTAG, "Sleeping until: %s", timestamp);
             os_free(timestamp);
             w_sleep_until(next_scan_time);
-            current_daylight = future_daylight;
         }
 
         mtinfo(WM_COMMAND_LOGTAG, "Starting command '%s'.", command->tag);

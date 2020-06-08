@@ -41,8 +41,6 @@ const wm_context WM_GCP_CONTEXT = {
 // Module main function. It won't return
 void* wm_gcp_main(wm_gcp *data) {
     char * timestamp = NULL;
-    int current_daylight = -1;
-    int future_daylight = -1;
     // If module is disabled, exit
     if (data->enabled) {
         mtinfo(WM_GCP_LOGTAG, "Module started.");
@@ -52,16 +50,14 @@ void* wm_gcp_main(wm_gcp *data) {
     }
 
     do {
-        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(data->scan_config), WM_GCP_LOGTAG, data->pull_on_start,
-                                                                      current_daylight, &future_daylight);
+        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(data->scan_config), WM_GCP_LOGTAG, data->pull_on_start);
 
         if (time_sleep) {
-            int next_scan_time = sched_get_next_scan_time(data->scan_config);
+            const int next_scan_time = sched_get_next_scan_time(data->scan_config);
             timestamp = w_get_timestamp(next_scan_time);
             mtdebug2(WM_GCP_LOGTAG, "Sleeping until: %s", timestamp);
             os_free(timestamp);
             w_sleep_until(next_scan_time);
-            current_daylight = future_daylight;
         }
         mtdebug1(WM_GCP_LOGTAG, "Starting fetching of logs.");
 

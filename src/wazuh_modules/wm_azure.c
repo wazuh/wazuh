@@ -47,8 +47,6 @@ void* wm_azure_main(wm_azure_t *azure_config) {
     wm_azure_storage_t *curr_storage = NULL;
     char msg[OS_SIZE_6144];
     char * timestamp = NULL;
-    int current_daylight = -1;
-    int future_daylight = -1;
 
     wm_azure_setup(azure_config);
     mtinfo(WM_AZURE_LOGTAG, "Module started.");
@@ -58,20 +56,18 @@ void* wm_azure_main(wm_azure_t *azure_config) {
     // Main loop
 
     do {
-        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(azure_config->scan_config), WM_AZURE_LOGTAG, azure_config->flags.run_on_start,
-                                                                      current_daylight, &future_daylight);
+        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(azure_config->scan_config), WM_AZURE_LOGTAG, azure_config->flags.run_on_start);
 
         if(azure_config->state.next_time == 0) {
             azure_config->state.next_time = azure_config->scan_config.time_start + time_sleep;
         }
 
         if (time_sleep) {
-            int next_scan_time = sched_get_next_scan_time(azure_config->scan_config);
+            const int next_scan_time = sched_get_next_scan_time(azure_config->scan_config);
             timestamp = w_get_timestamp(next_scan_time);
             mtdebug2(WM_AZURE_LOGTAG, "Sleeping until: %s", timestamp);
             os_free(timestamp);
             w_sleep_until(next_scan_time);
-            current_daylight = future_daylight;
         }
         mtinfo(WM_AZURE_LOGTAG, "Starting fetching of logs.");
 

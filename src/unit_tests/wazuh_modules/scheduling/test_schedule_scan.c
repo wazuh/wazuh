@@ -430,61 +430,56 @@ void test_sched_scan_dump_wday(void **state) {
 
 void test_check_daylight_first_time(void **state) {
     (void) state;
-    int current_daylight = -1;
-    int future_daylight = 0;
     time_t next_scan_time = 0;
     time_t next_scan_time_initial = next_scan_time;
+    sched_scan_config *scan_config = (sched_scan_config *)  *state;
+    scan_config->daylight = -1;
 
-    check_daylight(current_daylight, &future_daylight, &next_scan_time, true);
-    assert_int_equal(future_daylight, 0);
+    check_daylight(scan_config, &next_scan_time, false);
     assert_int_equal(next_scan_time, next_scan_time_initial + 0);
 }
 
 void test_check_daylight_same_daylight_zero(void **state) {
     (void) state;
-    int current_daylight = 0;
-    int future_daylight = 0;
     time_t next_scan_time = 0;
     time_t next_scan_time_initial = next_scan_time;
+    sched_scan_config *scan_config = (sched_scan_config *)  *state;
+    scan_config->daylight = 0;
 
-    check_daylight(current_daylight, &future_daylight, &next_scan_time, true);
-    assert_int_equal(future_daylight, 0);
+    check_daylight(scan_config, &next_scan_time, false);
     assert_int_equal(next_scan_time, next_scan_time_initial + 0);
 }
 
 void test_check_daylight_same_daylight_one(void **state) {
     (void) state;
-    int current_daylight = 1;
-    int future_daylight = -1;
     time_t next_scan_time = 0;
     time_t next_scan_time_initial = next_scan_time;
+    sched_scan_config *scan_config = (sched_scan_config *)  *state;
+    scan_config->daylight = 1;
 
-    check_daylight(current_daylight, &future_daylight, &next_scan_time, true);
-    assert_int_equal(future_daylight, 1);
+    check_daylight(scan_config, &next_scan_time, true);
     assert_int_equal(next_scan_time, next_scan_time_initial + 0);
 }
 
 void test_check_daylight_different_daylight_one_zero(void **state) {
     (void) state;
-    int current_daylight = 1;
-    int future_daylight = 0;
     time_t next_scan_time = 0;
     time_t next_scan_time_initial = next_scan_time;
+    sched_scan_config *scan_config = (sched_scan_config *)  *state;
+    scan_config->daylight = 1;
 
-    check_daylight(current_daylight, &future_daylight, &next_scan_time, true);
-    assert_int_equal(future_daylight, 0);
+    check_daylight(scan_config, &next_scan_time, false);
     assert_int_equal(next_scan_time, next_scan_time_initial + 3600);
 }
 
 void test_check_daylight_different_daylight_zero_one(void **state) {
     (void) state;
-    int current_daylight = 0;
-    int future_daylight = -1;
     time_t next_scan_time = 0;
     time_t next_scan_time_initial = next_scan_time;
+    sched_scan_config *scan_config = (sched_scan_config *)  *state;
+    scan_config->daylight = 0;
 
-    check_daylight(current_daylight, &future_daylight, &next_scan_time, true);
-    assert_int_equal(future_daylight, 1);
+    check_daylight(scan_config, &next_scan_time, true);
     assert_int_equal(next_scan_time, next_scan_time_initial - 3600);
 }
 
@@ -741,11 +736,11 @@ int main(void) {
         cmocka_unit_test_setup(test_sched_scan_dump_day, test_sched_scan_validate_setup),
         cmocka_unit_test_setup(test_sched_scan_dump_wday, test_sched_scan_validate_setup),
         /* check_daylight function tests */
-        cmocka_unit_test(test_check_daylight_first_time),
-        cmocka_unit_test(test_check_daylight_same_daylight_zero),
-        cmocka_unit_test(test_check_daylight_same_daylight_one),
-        cmocka_unit_test(test_check_daylight_different_daylight_one_zero),
-        cmocka_unit_test(test_check_daylight_different_daylight_zero_one),
+        cmocka_unit_test_setup_teardown(test_check_daylight_first_time, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
+        cmocka_unit_test_setup_teardown(test_check_daylight_same_daylight_zero, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
+        cmocka_unit_test_setup_teardown(test_check_daylight_same_daylight_one, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
+        cmocka_unit_test_setup_teardown(test_check_daylight_different_daylight_one_zero, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
+        cmocka_unit_test_setup_teardown(test_check_daylight_different_daylight_zero_one, test_sched_scan_validate_setup, test_sched_scan_validate_teardown),
         /* get_time_to_hour function tests */
         cmocka_unit_test_setup_teardown(test_get_time_to_hour_no_negative_diff, test_get_time_setup, test_get_time_teardown),
         cmocka_unit_test_setup_teardown(test_get_time_to_hour_first_time, test_get_time_setup, test_get_time_teardown),
