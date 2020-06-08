@@ -593,7 +593,7 @@ async def delete_api_config(request, pretty=False, wait_for_complete=False, list
     :param wait_for_complete: Disable timeout response
     :param list_nodes: List of node ids
     """
-    default_config = {key: configuration.default_configuration[key] for key in manager.allowed_api_fields}
+    default_config = {key: configuration.default_api_configuration[key] for key in manager.allowed_api_fields}
 
     f_kwargs = {"updated_config": default_config, 'node_list': list_nodes}
 

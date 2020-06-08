@@ -7,9 +7,10 @@ from copy import deepcopy
 from functools import lru_cache
 from time import time
 
+from api import configuration
 from api.authentication import validation
 from wazuh import common
-from wazuh.core.security import load_spec
+from wazuh.core.security import load_spec, update_rbac_conf
 from wazuh.exception import WazuhError
 from wazuh.rbac import orm
 from wazuh.rbac.decorators import expose_resources
@@ -626,3 +627,35 @@ def get_rbac_actions(endpoint: str = None):
                 pass
 
     return WazuhResult(data)
+
+
+@expose_resources(actions=['security:read_config'], resources=['*:*:*'])
+def get_rbac_config():
+    """Returns current RBAC configuration."""
+    return configuration.rbac_conf
+
+
+@expose_resources(actions=['security:update_config'], resources=['*:*:*'])
+def update_rbac_config(updated_config=None):
+    """Update or restore current API configuration.
+
+    Update the shared configuration object "api_conf"  wih
+    "updated_config" and then overwrite the content of api.yaml.
+
+    Parameters
+    ----------
+    updated_config : dict
+        Dictionary with the new configuration.
+
+    Returns
+    -------
+    result : str
+        Confirmation/Error message.
+    """
+    try:
+        update_rbac_conf(updated_config)
+        result = 'Configuration successfully updated'
+    except WazuhError as e:
+        result = f'Configuration could not be updated. Error: {e}'
+
+    return result

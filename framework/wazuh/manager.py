@@ -23,8 +23,7 @@ from wazuh.rbac.decorators import expose_resources
 from wazuh.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.utils import previous_month, tail, process_array
 
-allowed_api_fields = {'behind_proxy_server', 'rbac', 'logs', 'cache', 'cors', 'use_only_authd', 'experimental_features',
-                      'auth_token_exp_timeout'}
+allowed_api_fields = {'behind_proxy_server', 'logs', 'cache', 'cors', 'use_only_authd', 'experimental_features'}
 execq_lockfile = join(common.ossec_path, "var", "run", ".api_execq_lock")
 cluster_enabled = not read_cluster_config()['disabled']
 node_id = get_node().get('node') if cluster_enabled else 'manager'

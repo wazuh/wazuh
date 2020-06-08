@@ -399,7 +399,7 @@ async def delete_api_config(request, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    default_config = {key: configuration.default_configuration[key] for key in manager.allowed_api_fields}
+    default_config = {key: configuration.default_api_configuration[key] for key in manager.allowed_api_fields}
 
     f_kwargs = {"updated_config": default_config}
 

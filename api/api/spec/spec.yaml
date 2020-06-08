@@ -373,6 +373,22 @@ x-rbac-catalog:
         actions: ['security:update']
         resources: ['policy:id:*', 'role:id:administrator', 'user:id:python',]
         effect: "deny"
+    'security:read_config':
+      description: "Read current RBAC configuration"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['security:read_config']
+        resources: ['*:*:*']
+        effect: "allow"
+    'security:update_config':
+      description: "Update current RBAC configuration"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['security:update_config']
+        resources: ['*:*:*']
+        effect: "allow"
     'syscheck:read':
       description: "Read information from syscheck's database"
       resources:
@@ -2224,20 +2240,6 @@ components:
           description: Set this option to "yes" in case the API is running behind a proxy server.
           type: boolean
           default: false
-        auth_token_exp_timeout:
-          description: Time in seconds until the token expires.
-          type: integer
-          format: int32
-          minimum: 30
-          example: 36000
-        rbac:
-          type: object
-          additionalProperties: false
-          properties:
-            mode:
-              description: RBAC mode (white/black).
-              type: string
-              enum: [white, black]
         logs:
           type: object
           additionalProperties: false
@@ -2393,6 +2395,24 @@ components:
               description: "PCI DSS checks the rule is checking"
               items:
                 type: string
+
+    RBACconfiguration:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        auth_token_exp_timeout:
+          description: "Time in seconds until the token expires"
+          type: integer
+          format: int32
+          minimum: 30
+          example: 36000
+        mode:
+          description: "RBAC mode (white/black)"
+          type: string
+          additionalProperties: false
+          enum: [white, black]
+          example: white
 
     # SCA models
     SCAChecks:
@@ -6857,8 +6877,8 @@ paths:
     get:
       tags:
         - cluster
-      summary: Get API configuration.
-      description: Returns the API configuration in JSON format.
+      summary: "Get the API configuration of a list of nodes (or all of them)"
+      description: "Returns the API configuration of all the selected nodes in JSON format."
       operationId: api.controllers.cluster_controller.get_api_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read_api_config'
@@ -6946,7 +6966,7 @@ paths:
       tags:
         - cluster
       summary: "Update the API configuration of a list of nodes (or all of them)"
-      description: Updates the API configuration of all the nodes with the data contained in the API request.
+      description: "Updates the API configuration of all the selected nodes with the data contained in the API request."
       operationId: api.controllers.cluster_controller.put_api_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:update_api_config'
@@ -6983,8 +7003,8 @@ paths:
     delete:
       tags:
         - cluster
-      summary: Restore default API configuration of all nodes.
-      description: Replaces the API configuration of all the nodes with the original one.
+      summary: "Restore the API configuration of a list of nodes (or all of them)"
+      description: "Replaces the API configuration of all the selected nodes with the original one."
       operationId: api.controllers.cluster_controller.delete_api_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:update_api_config'
@@ -12946,6 +12966,76 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+
+  /security/config:
+    get:
+      tags:
+        - security
+      summary: "Get current RBAC configuration"
+      description: "Returns the RBAC configuration in JSON format"
+      operationId: api.controllers.security_controller.get_rbac_config
+      x-rbac-actions:
+        - $ref: "#/x-rbac-catalog/actions/security:read_config"
+      parameters:
+        - $ref: "#/components/parameters/pretty"
+        - $ref: "#/components/parameters/wait_for_complete"
+      responses:
+        "200":
+          description: "Current RBAC configuration"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+              example:
+                auth_token_exp_timeout: 36000
+                mode: white
+        "400":
+          $ref: "#/components/responses/ResponseError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedResponse"
+
+    put:
+      tags:
+        - security
+      summary: "Update RBAC configuration"
+      description: "Updates the RBAC configuration with the data contained in the API request"
+      operationId: api.controllers.security_controller.put_rbac_config
+      x-rbac-actions:
+        - $ref: "#/x-rbac-catalog/actions/security:update_config"
+      parameters:
+        - $ref: "#/components/parameters/pretty"
+        - $ref: "#/components/parameters/wait_for_complete"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RBACconfiguration"
+      responses:
+        "200":
+          description: "Configuration successfully updated"
+        "400":
+          $ref: "#/components/responses/ResponseError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedResponse"
+
+    delete:
+      tags:
+        - security
+      summary: "Restore default RBAC configuration"
+      description: "Replaces the RBAC configuration with the original one"
+      operationId: api.controllers.security_controller.delete_rbac_config
+      x-rbac-actions:
+        - $ref: "#/x-rbac-catalog/actions/security:update_config"
+      parameters:
+        - $ref: "#/components/parameters/pretty"
+        - $ref: "#/components/parameters/wait_for_complete"
+      responses:
+        "200":
+          description: "Configuration successfully restored"
+        "400":
+          $ref: "#/components/responses/ResponseError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedResponse"
 
 externalDocs:
   description: "Find more about Wazuh API usage"
