@@ -1,11 +1,9 @@
 # Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-
 import copy
 import datetime
 import os
-import uuid
 from typing import Dict, List, Tuple
 
 import yaml
@@ -15,17 +13,15 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
-from api.constants import RBAC_CONFIG_PATH
 
 from api.api_exception import APIException
+from api.constants import RBAC_CONFIG_PATH
 from wazuh import common
-
 
 default_rbac_configuration = {
     "auth_token_exp_timeout": 36000,
     "mode": "black"
 }
-
 
 default_api_configuration = {
     "host": "0.0.0.0",

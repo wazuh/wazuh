@@ -13,7 +13,7 @@ from time import time
 from jose import JWTError, jwt
 from werkzeug.exceptions import Unauthorized
 
-from api import configuration
+from api.configuration import read_yaml_config, default_rbac_configuration, RBAC_CONFIG_PATH
 from api.api_exception import APIException
 from api.constants import SECURITY_PATH
 from api.util import raise_if_exc
@@ -115,6 +115,11 @@ def get_token_blacklist():
         return tm.get_all_rules()
 
 
+def get_security_conf():
+    config = read_yaml_config(config_file=RBAC_CONFIG_PATH, default_conf=default_rbac_configuration)
+    return {'config': (config['auth_token_exp_timeout'], config['mode'])}
+
+
 def generate_token(user_id=None, rbac_policies=None):
     """Generate an encoded jwt token. This method should be called once a user is properly logged on.
 
@@ -129,11 +134,19 @@ def generate_token(user_id=None, rbac_policies=None):
     -------
     JWT encode token
     """
+    dapi = DistributedAPI(f=get_security_conf,
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=True,
+                          logger=logging.getLogger('wazuh')
+                          )
+    token_exp, rbac_mode = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())['config']
     timestamp = int(time())
+    rbac_policies['rbac_mode'] = rbac_mode
     payload = {
         "iss": JWT_ISSUER,
         "iat": int(timestamp),
-        "exp": int(timestamp + configuration.rbac_conf['auth_token_exp_timeout']),
+        "exp": int(timestamp + token_exp),
         "sub": str(user_id),
         "rbac_policies": rbac_policies
     }
@@ -186,6 +199,16 @@ def decode_token(token):
         if not data.to_dict()['result']['valid']:
             raise Unauthorized
 
+        dapi = DistributedAPI(f=get_security_conf,
+                              request_type='local_master',
+                              is_async=False,
+                              wait_for_complete=True,
+                              logger=logging.getLogger('wazuh')
+                              )
+        current_rbac_mode = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())['config'][1]
+        if payload['rbac_policies']['rbac_mode'] != current_rbac_mode:
+            raise Unauthorized
+
         return payload
     except JWTError as e:
         raise Unauthorized from e
@@ -208,4 +231,4 @@ def get_permissions(header):
     payload = decode_token(jwt_token)
     permissions = payload['rbac_policies']
 
-    return permissions
+    return permissions, payload['mode']

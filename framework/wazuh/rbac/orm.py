@@ -19,7 +19,7 @@ from sqlalchemy.orm import sessionmaker, relationship, backref
 from sqlalchemy.orm.exc import UnmappedInstanceError
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from api.configuration import api_conf
+from api.configuration import rbac_conf
 from api.constants import SECURITY_PATH
 
 # Start a session and set the default security elements
@@ -132,7 +132,7 @@ class TokenBlacklist(_Base):
     def __init__(self, username):
         self.username = username
         self.iat_invalid_until = int(time())
-        self.is_valid_until = self.iat_invalid_until + api_conf['auth_token_exp_timeout']
+        self.is_valid_until = self.iat_invalid_until + rbac_conf['auth_token_exp_timeout']
 
     def to_dict(self):
         """Return the information of one policy and the roles that have assigned
