@@ -1862,9 +1862,7 @@ stages:
                 host: !anystr
                 port: !anyint
                 behind_proxy_server: !anybool
-                auth_token_exp_timeout: !anyint
-                rbac:
-                  mode: !anystr
+
                 https:
                   enabled: !anybool
                   key: !anystr
@@ -1928,9 +1926,6 @@ stages:
       method: PUT
       json:
         behind_proxy_server: false
-        auth_token_exp_timeout: 3000
-        rbac:
-          mode: "black"
         logs:
           level: "debug"
         cache:
@@ -1981,9 +1976,6 @@ stages:
                 host: !anystr
                 port: !anyint
                 behind_proxy_server: false
-                auth_token_exp_timeout: 3000
-                rbac:
-                  mode: "black"
                 https:
                   enabled: !anybool
                   key: !anystr
@@ -2044,9 +2036,6 @@ stages:
             - node_name: !anystr
               node_api_config:
                 <<: *api_response
-                auth_token_exp_timeout: 36000
-                rbac:
-                  mode: !anystr
                 logs:
                   level: "info"
                   path: !anystr

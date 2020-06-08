@@ -2554,9 +2554,6 @@ stages:
                 host: !anystr
                 port: !anyint
                 behind_proxy_server: !anybool
-                auth_token_exp_timeout: !anyint
-                rbac:
-                  mode: !anystr
                 https:
                   enabled: !anybool
                   key: !anystr
