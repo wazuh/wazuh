@@ -51,7 +51,7 @@ void* wm_oscap_main(wm_oscap *oscap) {
 
     do {
         const time_t time_sleep = sched_scan_get_time_until_next_scan(&(oscap->scan_config), WM_OSCAP_LOGTAG, oscap->flags.scan_on_start);
-        
+
         if (oscap->state.next_time == 0) {
             oscap->state.next_time = oscap->scan_config.time_start + time_sleep;
         }

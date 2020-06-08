@@ -61,7 +61,7 @@ void* wm_azure_main(wm_azure_t *azure_config) {
         if(azure_config->state.next_time == 0) {
             azure_config->state.next_time = azure_config->scan_config.time_start + time_sleep;
         }
-        
+
         if (time_sleep) {
             const int next_scan_time = sched_get_next_scan_time(azure_config->scan_config);
             timestamp = w_get_timestamp(next_scan_time);
