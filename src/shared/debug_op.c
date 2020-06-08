@@ -72,8 +72,6 @@ static void _log(int level, const char *tag, const char * file, int line, const 
         file = filename + 1;
     }
 
-    w_mutex_lock(&logging_mutex);
-
     if (flags.log_json) {
 
 #ifndef WIN32
@@ -126,13 +124,15 @@ static void _log(int level, const char *tag, const char * file, int line, const 
             cJSON_AddStringToObject(json_log, "description", jsonstr);
 
             output = cJSON_PrintUnformatted(json_log);
-
+            
+            w_mutex_lock(&logging_mutex);
             (void)fprintf(fp, "%s", output);
             (void)fprintf(fp, "\n");
+            fflush(fp);
+            w_mutex_unlock(&logging_mutex);
 
             cJSON_Delete(json_log);
             free(output);
-            fflush(fp);
             fclose(fp);
         }
     }
@@ -173,6 +173,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 
         /* Maybe log to syslog if the log file is not available */
         if (fp) {
+            w_mutex_lock(&logging_mutex);
             (void)fprintf(fp, "%s ", timestamp);
 
             if (dbg_flag > 0) {
@@ -184,8 +185,9 @@ static void _log(int level, const char *tag, const char * file, int line, const 
             (void)fprintf(fp, "%s: ", strlevel[level]);
             (void)vfprintf(fp, msg, args);
             (void)fprintf(fp, "\n");
-
             fflush(fp);
+            w_mutex_unlock(&logging_mutex);
+
             fclose(fp);
         }
     }
@@ -209,7 +211,6 @@ static void _log(int level, const char *tag, const char * file, int line, const 
         (void)fprintf(stderr, "\n");
 #endif
     }
-    w_mutex_unlock(&logging_mutex);
 
     free(timestamp);
     /* args must be ended here */
