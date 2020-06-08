@@ -179,8 +179,7 @@ int is_nodiff(const char *filename){
 }
 
 /* Generate diffs alerts */
-static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attribute__((unused)) int status)
-{
+static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attribute__((unused)) int status) {
     size_t n = 0;
     FILE *fp;
     char *diff_str;
@@ -342,6 +341,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attr
 #endif
 
     if (rename_ex(compressed_tmp, compressed_file) != 0) {
+        os_free(diff_str);
         return NULL;
     }
 
@@ -444,7 +444,7 @@ static int seechanges_createpath(const char *filename)
 
 char *seechanges_get_diff_path(char *path) {
     char *full_path;
-    os_malloc(sizeof(char) * (strlen(DIFF_DIR_PATH) + strlen(PATH_SEP) + strlen(path) + 6), full_path);
+    os_malloc(sizeof(char) * (strlen(DIFF_DIR_PATH) + strlen(path) + 8), full_path);
     snprintf(full_path, PATH_MAX, "%s%clocal", DIFF_DIR_PATH, PATH_SEP);
 
 #ifdef WIN32

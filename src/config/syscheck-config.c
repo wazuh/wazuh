@@ -822,9 +822,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                             goto out_free;
                         }
 
-                        diff_size_data_unit = 'K';
-
-                        tmp_diff_size = atoi(value);
+                        tmp_diff_size = atoi(value);    // In KB
                     }
                     else {
                         mwarn(FIM_INVALID_OPTION_SKIP, value, *attrs, dirs);
@@ -832,8 +830,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     }
 
                     if (tmp_diff_size < 1) {
-                        diff_size_data_unit = 'K';
-                        tmp_diff_size = 1; // 1 KB is the minimum
+                        tmp_diff_size = 1;      // 1 KB is the minimum
                     }
 
                     os_free(value);
@@ -1274,9 +1271,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                                 return;
                             }
 
-                            disk_quota_data_unit = 'K';
-
-                            syscheck->disk_quota_limit = atoi(children[j]->content);
+                            syscheck->disk_quota_limit = atoi(children[j]->content);    // In KB
                         }
                         else {
                             merror(XML_VALUEERR, children[j]->element, children[j]->content);
@@ -1285,8 +1280,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                         }
 
                         if (syscheck->disk_quota_limit < 1) {
-                            disk_quota_data_unit = 'K';
-                            syscheck->disk_quota_limit = 1; // 1 KB is the minimum
+                            syscheck->disk_quota_limit = 1;     // 1 KB is the minimum
                         }
                     }
                     else {
@@ -1367,7 +1361,6 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                             }
                             else if (isdigit(children[j]->content[len_str_limit - 2])) {
                                 merror(XML_VALUEERR, children[j]->element, children[j]->content);
-                                os_free(limit_value_str);
                                 OS_ClearNode(children);
                                 return;
                             }
@@ -1379,9 +1372,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                                 return;
                             }
 
-                            file_size_data_unit = 'K';
-
-                            syscheck->file_size_limit = atoi(children[j]->content);
+                            syscheck->file_size_limit = atoi(children[j]->content);     // In KB
                         }
                         else {
                             merror(XML_VALUEERR, children[j]->element, children[j]->content);
@@ -1390,8 +1381,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                         }
 
                         if (syscheck->file_size_limit < 1) {
-                            file_size_data_unit = 'K';
-                            syscheck->file_size_limit = 1; // 1 KB is the minimum
+                            syscheck->file_size_limit = 1;      // 1 KB is the minimum
                         }
                     }
                     else {
