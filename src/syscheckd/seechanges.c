@@ -443,7 +443,8 @@ static int seechanges_createpath(const char *filename)
 }
 
 char *seechanges_get_diff_path(char *path) {
-    char full_path[PATH_MAX] = "\0";
+    char *full_path;
+    os_malloc(sizeof(char) * (strlen(DIFF_DIR_PATH) + strlen(PATH_SEP) + strlen(path) + 6), full_path);
     snprintf(full_path, PATH_MAX, "%s%clocal", DIFF_DIR_PATH, PATH_SEP);
 
 #ifdef WIN32

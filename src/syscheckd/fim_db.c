@@ -1208,12 +1208,14 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
 
         if (!strcmp(FIM_ENTRY_TYPE[entry->data->entry_type], "file") && syscheck.opts[pos] & CHECK_SEECHANGES) {
             if (syscheck.disk_quota_enabled) {
-                char full_path[PATH_MAX] = "\0";
+                char *full_path;
                 full_path = seechanges_get_diff_path(entry->path);
 
                 if (full_path != NULL && IsDir(full_path) == 0) {
                     syscheck.diff_folder_size -= (DirSize(full_path) / 1024);   // Update diff_folder_size
                 }
+
+                os_free(full_path);
             }
 
             delete_target_file(entry->path);

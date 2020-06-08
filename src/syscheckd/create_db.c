@@ -202,12 +202,14 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
 
         if (item->configuration & CHECK_SEECHANGES) {
             if (syscheck.disk_quota_enabled) {
-                char full_path[PATH_MAX] = "\0";
+                char *full_path;
                 full_path = seechanges_get_diff_path(path);
 
                 if (full_path != NULL && IsDir(full_path) == 0) {
                     syscheck.diff_folder_size -= (DirSize(full_path) / 1024);   // Update diff_folder_size
                 }
+
+                os_free(full_path);
             }
 
             delete_target_file(path);
@@ -1272,7 +1274,9 @@ void fim_diff_folder_size(){
 
     snprintf(diff_local, strlen(DIFF_DIR_PATH) + strlen("/local") + 1, "%s/local", DIFF_DIR_PATH);
 
-    syscheck.diff_folder_size = DirSize(diff_local) / 1024;
+    if (IsDir(diff_local) == 0) {
+        syscheck.diff_folder_size = DirSize(diff_local) / 1024;
+    }
 
     os_free(diff_local);
 }
