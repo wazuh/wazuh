@@ -72,8 +72,10 @@ STATIC void fim_link_reload_broken_link(char *path, int index);
 STATIC void fim_delete_realtime_watches(int pos);
 #endif
 
+#if defined(WIN32) || defined(INOTIFY_ENABLED)
 // Global variables
 static int _base_line = 0;
+#endif
 
 // Send a message
 STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
