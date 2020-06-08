@@ -12,10 +12,14 @@
 #include "agentd.h"
 #include "os_net/os_net.h"
 
+#define ENROLLMENT_RETRY_TIME_MAX   60
+#define ENROLLMENT_RETRY_TIME_DELTA 5
+
 int timeout;    //timeout in seconds waiting for a server reply
 
 static ssize_t receive_message_udp(const char *msg, char *buffer, unsigned int max_lenght);
 static ssize_t receive_message_tcp(const char *msg, char *buffer, unsigned int max_lenght);
+static void w_agentd_keys_init (void);
 
 /* Attempt to connect to all configured servers */
 int connect_server(int initial_id)
@@ -169,6 +173,10 @@ void start_agent(int is_startup)
     memset(fmsg, '\0', OS_MAXSTR + 1);
     snprintf(msg, OS_MAXSTR, "%s%s", CONTROL_HEADER, HC_STARTUP);
 
+    if (is_startup) {
+        w_agentd_keys_init();
+    }
+
     #ifdef ONEWAY_ENABLED
         return;
     #endif
@@ -230,6 +238,67 @@ void start_agent(int is_startup)
     return;
 }
 
+/**
+ * @brief Initialize keys structure, counter, agent info and crypto method.
+ * Keys are read from client.keys. If no valid entry is found:
+ *  -If autoenrollment is enabled, a new key is requested to server and execution is blocked until a valid key is received. 
+ *  -If autoenrollment is disabled, dameon is stoped
+ * */
+static void w_agentd_keys_init (void) {
+    
+    if (keys.keysize == 0) {
+        /* Check if we can auto-enroll */
+        if (agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
+            int registration_status = -1;
+            int delay_sleep = 0;
+            while (registration_status != 0) {
+                int rc = 0;                
+                if (agt->enrollment_cfg->target_cfg->manager_name) {
+                    // Configured enrollment server
+                    registration_status = try_enroll_to_server(agt->enrollment_cfg->target_cfg->manager_name);
+                } 
+                
+                // Try to enroll to server list
+                while (agt->server[rc].rip && (registration_status != 0)) {
+                    registration_status = try_enroll_to_server(agt->server[rc].rip);
+                    rc++;
+                }
+
+                //Sleep between retries
+                if (registration_status != 0) {
+                    if (delay_sleep < ENROLLMENT_RETRY_TIME_MAX) {
+                        delay_sleep += ENROLLMENT_RETRY_TIME_DELTA;
+                    }
+                    mdebug1("Sleeping %d seconds before trying to enroll again", delay_sleep);
+                    sleep(delay_sleep);
+                }
+            }        
+        }
+        /* If autoenrollment is disabled, stop daemon*/
+        else {
+            merror_exit(AG_NOKEYS_EXIT);
+        }
+    }
+
+    OS_StartCounter(&keys);
+
+    os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id,
+                        agt->profile);
+
+    /*Set the crypto method for the agent */
+    os_set_agent_crypto_method(&keys,agt->crypto_method);
+
+    switch (agt->crypto_method) {
+        case W_METH_AES:
+            minfo("Using AES as encryption method.");
+            break;
+        case W_METH_BLOWFISH:
+            minfo("Using Blowfish as encryption method.");
+            break;
+        default:
+            merror("Invalid encryption method.");
+    }
+}
 
 /**
  * @brief Holds the message reception logic for udp
