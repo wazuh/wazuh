@@ -130,3 +130,15 @@ void time_sub(struct timespec * a, const struct timespec * b) {
 double time_diff(const struct timespec * a, const struct timespec * b) {
     return b->tv_sec - a->tv_sec + (b->tv_nsec - a->tv_nsec) / 1e9;
 }
+
+// Function to check if a year is a leap year or not.
+
+bool is_leap_year(int year) {
+    bool result = false;
+
+    if ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0) {
+        result = true;
+    }
+
+    return result;
+}
