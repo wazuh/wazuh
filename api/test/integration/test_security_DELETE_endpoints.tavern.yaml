@@ -533,3 +533,47 @@ stages:
           total_affected_items: 4
           total_failed_items: 0
         message: Users deleted correctly
+
+---
+test_name: DELETE /security/config
+
+stages:
+
+  # PUT /security/config
+  - name: Change RBAC configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        auth_token_exp_timeout: 3000
+    response:
+      status_code: 200
+
+  # DELETE /security/roles
+  - name: Restore default configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+    response:
+      status_code: 200
+
+  - name: Get RBAC configuration to check if DELETE method worked correctly
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_response_is_different
+          extra_kwargs:
+            response_value: auth_token_exp_timeout
+            unexpected_value: 3000

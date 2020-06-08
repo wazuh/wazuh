@@ -133,7 +133,7 @@ def generate_token(user_id=None, rbac_policies=None):
     payload = {
         "iss": JWT_ISSUER,
         "iat": int(timestamp),
-        "exp": int(timestamp + configuration.api_conf['auth_token_exp_timeout']),
+        "exp": int(timestamp + configuration.rbac_conf['auth_token_exp_timeout']),
         "sub": str(user_id),
         "rbac_policies": rbac_policies
     }

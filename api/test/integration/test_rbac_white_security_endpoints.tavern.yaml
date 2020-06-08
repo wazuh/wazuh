@@ -473,6 +473,41 @@ stages:
         <<: *permission_denied
 
 ---
+test_name: GET RBAC CONFIG
+
+stages:
+
+  - name: Get current RBAC config (allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      json:
+        auth_token_exp_timeout: !anyint
+        mode: !anystr
+
+---
+test_name: UPDATE RBAC CONFIG
+
+stages:
+
+  - name: Update default RBAC config (deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        auth_token_exp_timeout: 3000
+    response:
+      status_code: 200
+
+---
 test_name: UPDATE USERS RBAC
 
 stages:

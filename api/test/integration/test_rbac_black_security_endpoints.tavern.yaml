@@ -264,6 +264,42 @@ stages:
         message: Some policies could not be shown
 
 ---
+test_name: GET RBAC CONFIG
+
+stages:
+
+  - name: Get current RBAC config (deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 400
+      json:
+        <<: *permission_denied
+
+---
+test_name: UPDATE RBAC CONFIG
+
+stages:
+
+  - name: Update default RBAC config (deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        auth_token_exp_timeout: 3000
+    response:
+      status_code: 400
+      json:
+        <<: *permission_denied
+
+---
 test_name: UPDATE USERS RBAC
 
 stages:
