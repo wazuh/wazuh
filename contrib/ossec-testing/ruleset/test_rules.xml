@@ -202,16 +202,16 @@
   <description>Same status works</description>
 </rule>
 
-<!-- Trigger alerts which depend on same_systemname. -->
-<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_systemname 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Trigger alerts which depend on same_system_name. -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_system_name 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999233" level="3">
-  <match>Test same_systemname</match>
-  <description>Testing same_systemname</description>
+  <match>Test same_system_name</match>
+  <description>Testing same_system_name</description>
 </rule>
 
 <rule id="999234" level="7" frequency="4" timeframe="300">
   <if_matched_sid>999233</if_matched_sid>
-  <same_systemname />
+  <same_system_name />
   <description>Same system_name works</description>
 </rule>
 
@@ -371,16 +371,16 @@
   <description>Different status works</description>
 </rule>
 
-<!-- Trigger alerts which depend on different_systemname. -->
-<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_systemname 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Trigger alerts which depend on different_system_name. -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_system_name 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999259" level="3">
-  <match>Test different_systemname</match>
-  <description>Testing different_systemname</description>
+  <match>Test different_system_name</match>
+  <description>Testing different_system_name</description>
 </rule>
 
 <rule id="999260" level="7" frequency="4" timeframe="300">
   <if_matched_sid>999259</if_matched_sid>
-  <different_systemname />
+  <different_system_name />
   <description>Different system_name works</description>
 </rule>
 
