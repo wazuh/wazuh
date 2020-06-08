@@ -64,7 +64,7 @@ void fim_scan() {
 
     fim_diff_folder_size();
 
-    mdebug2(FIM_DIFF_FOLDER_SIZE, syscheck.diff_folder_size);
+    mdebug2(FIM_DIFF_FOLDER_SIZE, DIFF_DIR_PATH, syscheck.diff_folder_size);
 
     w_mutex_lock(&syscheck.fim_scan_mutex);
 
@@ -201,7 +201,16 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
         }
 
         if (item->configuration & CHECK_SEECHANGES) {
-            delete_target_file(syscheck, path);
+            if (syscheck.disk_quota_enabled) {
+                char full_path[PATH_MAX] = "\0";
+                full_path = seechanges_get_diff_path(path);
+
+                if (full_path != NULL && IsDir(full_path) == 0) {
+                    syscheck.diff_folder_size -= (DirSize(full_path) / 1024);   // Update diff_folder_size
+                }
+            }
+
+            delete_target_file(path);
         }
 
         w_mutex_lock(&syscheck.fim_entry_mutex);

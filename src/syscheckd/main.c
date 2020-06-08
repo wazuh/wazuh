@@ -207,7 +207,7 @@ int main(int argc, char **argv)
 
             if (syscheck.tag && syscheck.tag[r] != NULL)
                 mdebug1(FIM_TAG_ADDED, syscheck.tag[r], syscheck.dir[r]);
-            
+
             // Print diff file size limit
             if (syscheck.file_size_enabled) {
                 minfo(FIM_DIFF_FILE_SIZE_LIMIT, syscheck.diff_size_limit[r], syscheck.dir[r]);

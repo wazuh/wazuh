@@ -172,11 +172,24 @@ int Start_win32_Syscheck()
         r = 0;
         while (syscheck.dir[r] != NULL) {
             char optstr[ 1024 ];
+
             minfo(FIM_MONITORING_DIRECTORY, syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
+
             if (syscheck.tag && syscheck.tag[r] != NULL) {
                 mdebug1(FIM_TAG_ADDED, syscheck.tag[r], syscheck.dir[r]);
             }
+
+            // Print diff file size limit
+            if (syscheck.file_size_enabled) {
+                minfo(FIM_DIFF_FILE_SIZE_LIMIT, syscheck.diff_size_limit[r], syscheck.dir[r]);
+            }
+
             r++;
+        }
+
+        // Print maximum disk quota to be used by the queue\diff\local folder
+        if (syscheck.disk_quota_enabled) {
+            minfo(FIM_DISK_QUOTA_LIMIT, syscheck.disk_quota_limit);
         }
 
         /* Print ignores. */

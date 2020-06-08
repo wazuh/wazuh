@@ -191,7 +191,7 @@ cJSON *getSyscheckConfig(void) {
     cJSON_AddItemToObject(syscfg, "file_limit", file_limit);
 
     cJSON *diff = cJSON_CreateObject();
-    
+
     cJSON *disk_quota = cJSON_CreateObject();
     cJSON_AddStringToObject(disk_quota, "enabled", syscheck.disk_quota_enabled ? "yes" : "no");
     cJSON_AddNumberToObject(disk_quota, "limit", syscheck.disk_quota_limit);

@@ -369,10 +369,30 @@ char *seechanges_addfile(const char *filename) __attribute__((nonnull));
 
 /**
  * @brief Delete stored compressed file for "path"
- * 
+ *
  * @param path Path to the file which compressed version needs to be deleted
  */
 void seechanges_delete_compressed_file(const char *path);
+
+/**
+ * @brief Get queue/diff/local path from file path
+ *
+ * @param path Path to the file
+ * @return Path to the queue/diff/local folder
+ */
+char *seechanges_get_diff_path(char *path);
+
+#ifndef WIN32
+
+/**
+ * @brief Check if the filename is symlink to a directory
+ *
+ * @param filename Path to file
+ * @return TRUE if filename is a symlink to a directory, FALSE otherwise
+ */
+int symlink_to_dir(const char *filename);
+
+#endif
 
 /**
  * @brief Frees the memory of a Whodata event structure
@@ -858,17 +878,8 @@ void fim_check_db_state();
 
 /**
  * @brief Checks the size of the queue/diff/local folder
- * 
+ *
  */
 void fim_diff_folder_size();
-
-/**
- * @brief Calculate the size of a folder
- * 
- * @param path Path to the folder
- * 
- * @return Size of a folder
- */
-off_t fim_folder_size(const char *path);
 
 #endif /* SYSCHECK_H */

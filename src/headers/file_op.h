@@ -96,9 +96,9 @@ off_t FileSize(const char * path);
 
 /**
  * @brief Get the size of a folder.
- * 
+ *
  * @param path Folder path
- * 
+ *
  * @return Size of folder in bytes
  */
 float DirSize(const char *path);

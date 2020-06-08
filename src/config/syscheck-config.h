@@ -352,19 +352,19 @@ void organize_syscheck_dirs(syscheck_config *syscheck) __attribute__((nonnull(1)
 
 /**
  * @brief Converts the value written in the configuration to a determined data unit
- * 
+ *
  * @param value Configured value for file size or disk quota
  * @param data_unit Configured data unit
- * 
+ *
  * @return Value converted to the corresponding data unit
  */
 int adjust_value_to_data_unit(const int value, const char data_unit);
 
 /**
  * @brief Read diff configuration
- * 
+ *
  * Read disk_quota, file_size and nodiff options
- * 
+ *
  * @param xml XML structure containing Wazuh's configuration
  * @param syscheck Syscheck configuration structure
  * @param node XML node to continue reading the configuration file

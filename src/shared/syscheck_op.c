@@ -43,7 +43,7 @@ extern void mock_assert(const int result, const char* const expression,
 #endif
 #endif
 
-int delete_target_file(syscheck_config syscheck, const char *path) {
+int delete_target_file(const char *path) {
     char full_path[PATH_MAX] = "\0";
     snprintf(full_path, PATH_MAX, "%s%clocal", DIFF_DIR_PATH, PATH_SEP);
 
@@ -61,16 +61,8 @@ int delete_target_file(syscheck_config syscheck, const char *path) {
 
     strncat(full_path, drive, 2);
     strncat(full_path, (windows_path + 1), PATH_MAX - strlen(full_path) - 1);
-
-    if (syscheck.disk_quota_enabled) {
-        syscheck.diff_folder_size -= (FileSizeWin(full_path) / 1024);   // Update diff_folder_size
-    }
 #else
     strncat(full_path, path, PATH_MAX - strlen(full_path) - 1);
-
-    if (syscheck.disk_quota_enabled) {
-        syscheck.diff_folder_size -= (FileSize(full_path) / 1024);
-    }
 #endif
 
     if(rmdir_ex(full_path) == 0){

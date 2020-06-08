@@ -22,10 +22,41 @@
 #endif
 
 /* Prototypes */
-static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attribute__((unused)) int status) __attribute__((nonnull));
+/**
+ * @brief Generate diffs alerts
+ *
+ * @param filename Path to file
+ * @param alert_diff_time Time of diff alert
+ * @param status Status of the output from the diff command
+ * @return Diff string
+ */
+static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attribute__((unused)) int status)
+                            __attribute__((nonnull));
+
+/**
+ * @brief Duplicate file
+ *
+ * @param old File to read from
+ * @param current File to write to
+ * @return 0 on error, 1 on success
+ */
 static int seechanges_dupfile(const char *old, const char *current) __attribute__((nonnull));
+
+/**
+ * @brief Create path for compressed file
+ *
+ * @param filename Path to the file that needs the new path
+ * @return 0 on error, 1 on success
+ */
 static int seechanges_createpath(const char *filename) __attribute__((nonnull));
+
 #ifdef WIN32
+/**
+ * @brief Adapt fc command output in Windows
+ *
+ * @param command_output fc command output
+ * @return Adapted output
+ */
 static char *adapt_win_fc_output(char *command_output);
 #endif
 
@@ -110,7 +141,7 @@ int is_text(magic_t cookie, const void *buf, size_t len)
 #endif
 
 #ifndef WIN32
-/* Return TRUE if the filename is symlink to an directory */
+
 int symlink_to_dir (const char *filename) {
     struct stat buf;
     int x;
@@ -123,6 +154,7 @@ int symlink_to_dir (const char *filename) {
         return (FALSE);
     }
 }
+
 #endif
 
 int is_nodiff(const char *filename){
@@ -242,7 +274,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attr
             seechanges_delete_compressed_file(filename);
 
             if (rmdir_ex(localtmp_path) < 0) {
-                mdebug2(UNLINK_ERROR, localtmp_path, errno, strerror(errno));
+                mdebug2(RMDIR_ERROR, localtmp_path, errno, strerror(errno));
             }
 
             return NULL;
@@ -312,16 +344,15 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attr
     if (rename_ex(compressed_tmp, compressed_file) != 0) {
         return NULL;
     }
-    
+
     if (rmdir_ex(localtmp_path) < 0) {
-        mdebug2(UNLINK_ERROR, localtmp_path, errno, strerror(errno));
+        mdebug2(RMDIR_ERROR, localtmp_path, errno, strerror(errno));
     }
 
     return diff_str;
 }
 
-static int seechanges_dupfile(const char *old, const char *current)
-{
+static int seechanges_dupfile(const char *old, const char *current) {
     size_t n;
     FILE *fpr;
     FILE *fpw;
@@ -411,6 +442,31 @@ static int seechanges_createpath(const char *filename)
     return (1);
 }
 
+char *seechanges_get_diff_path(char *path) {
+    char full_path[PATH_MAX] = "\0";
+    snprintf(full_path, PATH_MAX, "%s%clocal", DIFF_DIR_PATH, PATH_SEP);
+
+#ifdef WIN32
+    char drive[3];
+    drive[0] = PATH_SEP;
+    drive[1] = path[0];
+
+    char *windows_path = strchr(path, ':');
+
+    if (windows_path == NULL) {
+        mdebug1("Incorrect path. This does not contain ':' ");
+        return NULL;
+    }
+
+    strncat(full_path, drive, 2);
+    strncat(full_path, (windows_path + 1), PATH_MAX - strlen(full_path) - 1);
+#else
+    strncat(full_path, path, PATH_MAX - strlen(full_path) - 1);
+#endif
+
+    return full_path;
+}
+
 void seechanges_delete_compressed_file(const char *path){
     char containing_folder[PATH_MAX + 1];
     float file_size = 0.0;
@@ -424,13 +480,21 @@ void seechanges_delete_compressed_file(const char *path){
     );
 
 #ifdef WIN32
-    file_size = FileSizeWin(containing_folder);
-#else
-    file_size = FileSize(containing_folder);
+    char abs_path[PATH_MAX + 1];
+
+    abspath(containing_folder, abs_path, sizeof(abs_path));
+
+    snprintf(containing_folder, PATH_MAX, "%s", abs_path);
 #endif
 
+    if (IsDir(containing_folder) == -1) {
+        return;     // The folder does not exist
+    }
+
+    file_size = DirSize(containing_folder) / 1024;
+
     if (rmdir_ex(containing_folder) < 0) {
-        mdebug2(UNLINK_ERROR, containing_folder, errno, strerror(errno));
+        mdebug2(RMDIR_ERROR, containing_folder, errno, strerror(errno));
     }
     else {
         if (file_size != -1) {
@@ -448,9 +512,13 @@ char *seechanges_addfile(const char *filename) {
     char diff_cmd[PATH_MAX + OS_SIZE_1024];
     char compressed_file[PATH_MAX + 1];
     char containing_folder[PATH_MAX + 1];
+    char containing_tmp_folder[PATH_MAX + 1];
     char compressed_tmp[PATH_MAX + 1];
     char localtmp_path[PATH_MAX + 1];
     char localtmp_location[PATH_MAX + 1];
+#ifdef WIN32
+    char abs_path[PATH_MAX + 1];
+#endif
     os_md5 md5sum_old;
     os_md5 md5sum_new;
     int status = -1;
@@ -477,6 +545,16 @@ char *seechanges_addfile(const char *filename) {
     }
 
 #ifdef WIN32
+    file_size = (float)FileSizeWin(filename_abs) / 1024;
+#else
+    file_size = (float)FileSize(filename_abs) / 1024;
+#endif
+
+    while (syscheck.dir[it] && strncmp(syscheck.dir[it], filename_abs, strlen(syscheck.dir[it])) != 0) {
+        it++;
+    }
+
+#ifdef WIN32
     {
         char * filename_strip = os_strip_char(filename_abs, ':');
 
@@ -490,16 +568,6 @@ char *seechanges_addfile(const char *filename) {
         free(filename_strip);
     }
 #endif
-
-#ifdef WIN32
-    file_size = (float)FileSizeWin(filename_abs) / 1024;
-#else
-    file_size = (float)FileSize(filename_abs) / 1024;
-#endif
-
-    while (syscheck.dir[it] && strncmp(syscheck.dir[it], filename_abs, strlen(syscheck.dir[it])) != 0) {
-        it++;
-    }
 
     if (syscheck.file_size_enabled) {
         if (file_size > syscheck.diff_size_limit[it]) {
@@ -517,7 +585,7 @@ char *seechanges_addfile(const char *filename) {
         filename_abs + PATH_OFFSET,
         DIFF_LAST_FILE
     );
-    
+
     snprintf(
         localtmp_location,
         PATH_MAX,
@@ -531,6 +599,14 @@ char *seechanges_addfile(const char *filename) {
         containing_folder,
         PATH_MAX,
         "%s/local/%s",
+        DIFF_DIR_PATH,
+        filename_abs + PATH_OFFSET
+    );
+
+    snprintf(
+        containing_tmp_folder,
+        PATH_MAX,
+        "%s/localtmp/%s",
         DIFF_DIR_PATH,
         filename_abs + PATH_OFFSET
     );
@@ -570,9 +646,11 @@ char *seechanges_addfile(const char *filename) {
         }
         else if (syscheck.disk_quota_enabled) {
 #ifdef WIN32
-            compressed_new_size = FileSizeWin(compressed_tmp) / 1024;
+            abspath(containing_tmp_folder, abs_path, sizeof(abs_path));
+            snprintf(containing_tmp_folder, PATH_MAX, "%s", abs_path);
+            compressed_new_size = DirSize(containing_tmp_folder) / 1024;
 #else
-            compressed_new_size = FileSize(compressed_tmp) / 1024;
+            compressed_new_size = DirSize(containing_tmp_folder) / 1024;
 #endif
             /**
              * Check if adding the new file doesn't exceed the disk quota limit. Update the diff_folder_size
@@ -590,8 +668,13 @@ char *seechanges_addfile(const char *filename) {
             else {
                 minfo(FIM_DISK_QUOTA_LIMIT_REACHED, DIFF_DIR_PATH);
 
+#ifdef WIN32
+                abspath(containing_folder, abs_path, sizeof(abs_path));
+                snprintf(containing_folder, PATH_MAX, "%s", abs_path);
+#endif
+
                 if (rmdir_ex(containing_folder) < 0) {
-                    mdebug2(UNLINK_ERROR, containing_folder, errno, strerror(errno));
+                    mdebug2(RMDIR_ERROR, containing_folder, errno, strerror(errno));
                 }
             }
         }
@@ -601,8 +684,13 @@ char *seechanges_addfile(const char *filename) {
             }
         }
 
+#ifdef WIN32
+        abspath(localtmp_path, abs_path, sizeof(abs_path));
+        snprintf(localtmp_path, PATH_MAX, "%s", abs_path);
+#endif
+
         if (rmdir_ex(localtmp_path) < 0) {
-            mdebug2(UNLINK_ERROR, localtmp_path, errno, strerror(errno));
+            mdebug2(RMDIR_ERROR, localtmp_path, errno, strerror(errno));
         }
 
         return (NULL);
