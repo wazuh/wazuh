@@ -235,7 +235,7 @@ void os_logging_config(){
   char ** parts = NULL;
   int i;
 
-  pid = (int)getpid(); 
+  pid = (int)getpid();
   flags.read = 1;
 
   if (OS_ReadXML(chroot_flag ? OSSECCONF : DEFAULTCPATH, &xml) < 0){
