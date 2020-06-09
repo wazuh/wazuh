@@ -23,7 +23,6 @@ static int pid;
 static struct{
   unsigned int log_plain:1;
   unsigned int log_json:1;
-  unsigned int read:1;
   unsigned int initialized:1;
 } flags;
 
@@ -68,9 +67,6 @@ static void _log(int level, const char *tag, const char * file, int line, const 
     if (!flags.initialized) {
         w_logging_init();
         mdebug1("Logging module auto-initialized");  
-    }
-    if (!flags.read) {
-      os_logging_config();
     }
 
     if (filename = strrchr(file, '/'), filename) {
@@ -225,6 +221,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 
 void w_logging_init(){
     w_mutex_init(&logging_mutex, NULL);
+    os_logging_config();
     flags.initialized = 1;
 }
 
@@ -236,7 +233,6 @@ void os_logging_config(){
   int i;
 
   pid = (int)getpid();
-  flags.read = 1;
 
   if (OS_ReadXML(chroot_flag ? OSSECCONF : DEFAULTCPATH, &xml) < 0){
     flags.log_plain = 1;

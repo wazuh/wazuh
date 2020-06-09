@@ -46,9 +46,6 @@ int main(int argc, char **argv)
     char myfinalpath[OS_MAXSTR + 1];
     char myfile[OS_MAXSTR + 1];
 
-    /* Initialize logging module*/
-    w_logging_init();
-
     /* Set the name */
     OS_SetName(ARGV0);
 
