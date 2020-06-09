@@ -52,6 +52,7 @@ static int teardown_group(void **state) {
 
 /* tests */
 
+#ifdef __linux__
 static int delete_os_info(void **state)
 {
     os_info *data = *state;
@@ -59,7 +60,6 @@ static int delete_os_info(void **state)
     return 0;
 }
 
-#ifdef __linux__
     // Linux Only
     void test_get_unix_version_Ubuntu1904(void **state)
     {

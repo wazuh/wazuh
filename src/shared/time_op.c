@@ -97,6 +97,22 @@ char *w_get_timestamp(time_t time) {
     return timestamp;
 }
 
+
+void w_sleep_until(const time_t abs_time) {
+    while( time(NULL) < abs_time ) {
+        w_time_delay(1000);
+    }
+}
+
+void w_time_delay(unsigned long int ms) {
+#ifdef WIN32
+    Sleep(ms);
+#else
+    struct timeval timeout = { ms / 1000, (ms % 1000) * 1000};
+    select(0, NULL, NULL, NULL, &timeout);
+#endif
+}
+
 // Compute time substraction "a - b"
 
 void time_sub(struct timespec * a, const struct timespec * b) {
@@ -113,4 +129,16 @@ void time_sub(struct timespec * a, const struct timespec * b) {
 
 double time_diff(const struct timespec * a, const struct timespec * b) {
     return b->tv_sec - a->tv_sec + (b->tv_nsec - a->tv_nsec) / 1e9;
+}
+
+// Function to check if a year is a leap year or not.
+
+bool is_leap_year(int year) {
+    bool result = false;
+
+    if ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0) {
+        result = true;
+    }
+
+    return result;
 }

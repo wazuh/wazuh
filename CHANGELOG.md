@@ -1,7 +1,34 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.12.2]
+## [v3.13]
+
+### Added
+
+- Vulnerability Detector improvements. ([#5097](https://github.com/wazuh/wazuh/pull/5097))
+  - Include the NVD as feed for Linux agents in Vulnerability Detector.
+  - Improve the Vulnerability Detector engine to correlate alerts between different feeds.
+  - Add Vulnerability Detector module unit testing for Unix source code.
+- New option for the JSON decoder to choose the treatment of Array structures. ([#4836](https://github.com/wazuh/wazuh/pull/4836))
+
+## [v3.12.3] - 2020-04-30
+
+### Changed
+
+- Disable WAL in databases handled by Wazuh DB to save disk space. ([#4949](https://github.com/wazuh/wazuh/pull/4949))
+
+### Fixed
+
+- Fixed a bug in Remoted that could prevent agents from connecting in UDP mode. ([#4897](https://github.com/wazuh/wazuh/pull/4897))
+- Fixed a bug in the shared library that caused daemons to not find the ossec group. ([#4873](https://github.com/wazuh/wazuh/pull/4873))
+- Prevent Syscollector from falling into an infinite loop when failed to collect the Windows hotfixes. ([#4878](https://github.com/wazuh/wazuh/pull/4878))
+- Fixed a memory leak in the system scan by Rootcheck on Windows. ([#4948](https://github.com/wazuh/wazuh/pull/4948))
+- Fixed a bug in Logcollector that caused the out_format option not to apply for the agent target. ([#4942](https://github.com/wazuh/wazuh/pull/4942))
+- Fixed a bug that caused FIM to not handle large inode numbers correctly. ([#4914](https://github.com/wazuh/wazuh/pull/4914))
+- Fixed a bug that made ossec-dbd crash due to a bad mutex initialization. ([#4552](https://github.com/wazuh/wazuh/pull/4552))
+
+
+## [v3.12.2] - 2020-04-09
 
 ### Fixed
 

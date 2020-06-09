@@ -207,6 +207,12 @@ extern const char *__local_name;
 #define isAgent 0
 #endif
 
+#ifndef UNIT_TESTING
+#define FOREVER() 1
+#else
+#include "unit_tests/wrappers/common.h"
+#endif
+
 #include "debug_op.h"
 #include "wait_op.h"
 #include "agent_op.h"
@@ -258,7 +264,9 @@ extern const char *__local_name;
 #include "cluster_utils.h"
 #include "auth_client.h"
 #include "os_utils.h"
+#include "schedule_scan.h"
 #include "bzip2_op.h"
 #include "enrollment_op.h"
+
 
 #endif /* SHARED_H */

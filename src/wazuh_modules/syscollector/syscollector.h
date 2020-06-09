@@ -66,7 +66,7 @@
 #define TAG_SIZE        1009
 #define TAG_VENDOR      1011
 #define TAG_GROUP       1016
-#define TAG_SOURCE      1018
+#define TAG_SOURCE      1044
 #define TAG_ARCH        1022
 
 #define WM_SYS_DEF_INTERVAL 3600            // Default cycle interval (1 hour)

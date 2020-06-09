@@ -31,6 +31,8 @@ extern void mock_assert(const int result, const char* const expression,
 // Global variables
 static int _base_line = 0;
 
+static fim_state_db _db_state = FIM_STATE_DB_EMPTY;
+
 static const char *FIM_EVENT_TYPE[] = {
     "added",
     "deleted",
@@ -39,7 +41,7 @@ static const char *FIM_EVENT_TYPE[] = {
 
 static const char *FIM_EVENT_MODE[] = {
     "scheduled",
-    "real-time",
+    "realtime",
     "whodata"
 };
 
@@ -53,7 +55,7 @@ void fim_scan() {
     struct timespec start;
     struct timespec end;
     clock_t cputime_start;
-
+    unsigned int nodes_count;
 
     cputime_start = clock();
     gettime(&start);
@@ -84,13 +86,68 @@ void fim_scan() {
         os_winreg_check();
 #endif
 
+    check_deleted_files();
+
+    if (syscheck.file_limit_enabled) {
+        w_mutex_lock(&syscheck.fim_entry_mutex);
+        nodes_count = fim_db_get_count_entry_path(syscheck.database);
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+        if (nodes_count < syscheck.file_limit) {
+            it = 0;
+
+            w_mutex_lock(&syscheck.fim_scan_mutex);
+
+            while ((syscheck.dir[it] != NULL) && (nodes_count < syscheck.file_limit)) {
+                struct fim_element *item;
+                os_calloc(1, sizeof(fim_element), item);
+                item->mode = FIM_SCHEDULED;
+                item->index = it;
+                fim_checker(syscheck.dir[it], item, NULL, 0);
+                it++;
+                os_free(item);
+
+                w_mutex_lock(&syscheck.fim_entry_mutex);
+                nodes_count = fim_db_get_count_entry_path(syscheck.database);
+                w_mutex_unlock(&syscheck.fim_entry_mutex);
+            }
+
+            w_mutex_unlock(&syscheck.fim_scan_mutex);
+
+#ifdef WIN32
+            if (nodes_count < syscheck.file_limit) {
+                os_winreg_check();
+
+                w_mutex_lock(&syscheck.fim_entry_mutex);
+                fim_db_get_count_entry_path(syscheck.database);
+                w_mutex_unlock(&syscheck.fim_entry_mutex);
+            }
+#endif
+
+            w_mutex_lock(&syscheck.fim_entry_mutex);
+            fim_db_set_all_unscanned(syscheck.database);
+            w_mutex_unlock(&syscheck.fim_entry_mutex);
+        }
+    }
+
     gettime(&end);
+
+    if (syscheck.file_limit_enabled) {
+        mdebug2(FIM_FILE_LIMIT_VALUE, syscheck.file_limit);
+        fim_check_db_state();
+    }
+    else {
+        mdebug2(FIM_FILE_LIMIT_UNLIMITED);
+    }
 
     if (_base_line == 0) {
         _base_line = 1;
     }
-
-    check_deleted_files();
+    else {
+        // In the first scan, the fim inicialization is different between Linux and Windows.
+        // Realtime watches are set after the first scan in Windows.
+        mdebug2(FIM_NUM_WATCHES, count_watches());
+    }
 
     minfo(FIM_FREQUENCY_ENDED);
     fim_send_scan_info(FIM_SCAN_END);
@@ -258,6 +315,8 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
     cJSON *json_event = NULL;
     char *json_formated;
     int alert_type;
+    int result;
+    char *diff = NULL;
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
@@ -276,30 +335,28 @@ int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
         alert_type = FIM_MODIFICATION;
     }
 
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
-    json_event = fim_json_event(file, saved ? saved->data : NULL, new, item->index, alert_type, item->mode, w_evt);
-    w_mutex_lock(&syscheck.fim_entry_mutex);
+    if (item->configuration & CHECK_SEECHANGES) {
+        diff = seechanges_addfile(file);
+    }
+
+    json_event = fim_json_event(file, saved ? saved->data : NULL, new, item->index, alert_type, item->mode, w_evt, diff);
+
+    os_free(diff);
 
     if (json_event) {
-        if (fim_db_insert(syscheck.database, file, new) == -1) {
+        if (result = fim_db_insert(syscheck.database, file, new, alert_type), result < 0) {
             free_entry_data(new);
             free_entry(saved);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
             cJSON_Delete(json_event);
 
-            return OS_INVALID;
+            return (result == FIMDB_FULL) ? 0 : OS_INVALID;
         }
     }
 
     fim_db_set_scanned(syscheck.database, file);
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-    if (!_base_line && item->configuration & CHECK_SEECHANGES) {
-        // The first backup is created. It should return NULL.
-        char *file_changed = seechanges_addfile(file);
-        os_free(file_changed);
-    }
 
     if (json_event && _base_line && report) {
         json_formated = cJSON_PrintUnformatted(json_event);
@@ -348,7 +405,31 @@ void fim_whodata_event(whodata_evt * w_evt) {
     }
     // Otherwise, it could be a file deleted or a directory moved (or renamed).
     else {
-        fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt);
+        #ifdef WIN32
+            fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt);
+        #else
+            char** paths = NULL;
+            char *evt_path;
+            const unsigned long int inode = strtoul(w_evt->inode,NULL,10);
+            const unsigned long int dev = strtoul(w_evt->dev,NULL,10);
+
+            w_mutex_lock(&syscheck.fim_entry_mutex);
+            paths = fim_db_get_paths_from_inode(syscheck.database, inode, dev);
+            w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+            fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt);
+
+            if(paths) {
+                evt_path = w_evt->path;
+                for(int i = 0; paths[i]; i++) {
+                    w_evt->path = paths[i];
+                    fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt);
+                    os_free(paths[i]);
+                }
+                os_free(paths);
+                w_evt->path = evt_path;
+            }
+        #endif
     }
 }
 
@@ -418,14 +499,15 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
 
     if ((saved && data && saved->data && strcmp(saved->data->hash_sha1, data->hash_sha1) != 0)
         || alert_type == FIM_ADD) {
-        if (fim_db_insert(syscheck.database, key, data) == -1) {
+        if (result = fim_db_insert(syscheck.database, key, data, alert_type), result < 0) {
             free_entry(saved);
             w_mutex_unlock(&syscheck.fim_entry_mutex);
-            return OS_INVALID;
+
+            return (result == FIMDB_FULL) ? 0 : OS_INVALID;
         }
         w_mutex_unlock(&syscheck.fim_entry_mutex);
         json_event = fim_json_event(key, saved ? saved->data : NULL, data, pos,
-                                    alert_type, 0, NULL);
+                                    alert_type, 0, NULL, NULL);
     } else {
         fim_db_set_scanned(syscheck.database, key);
         result = 0;
@@ -443,6 +525,95 @@ int fim_registry_event(char *key, fim_entry_data *data, int pos) {
     return result;
 }
 #endif
+
+// Checks the DB state, sends a message alert if necessary
+void fim_check_db_state() {
+    unsigned int nodes_count = 0;
+    cJSON *json_event = NULL;
+    char *json_plain = NULL;
+    char alert_msg[OS_SIZE_256] = {'\0'};
+
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+    nodes_count = fim_db_get_count_entry_path(syscheck.database);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    switch (_db_state) {
+    case FIM_STATE_DB_FULL:
+        if (nodes_count >= syscheck.file_limit) {
+            return;
+        }
+        break;
+    case FIM_STATE_DB_90_PERCENTAGE:
+        if ((nodes_count < syscheck.file_limit) && (nodes_count >= syscheck.file_limit * 0.9)) {
+            return;
+        }
+        break;
+    case FIM_STATE_DB_80_PERCENTAGE:
+        if ((nodes_count < syscheck.file_limit * 0.9) && (nodes_count >= syscheck.file_limit * 0.8)) {
+            return;
+        }
+        break;
+    case FIM_STATE_DB_NORMAL:
+        if (nodes_count == 0) {
+            _db_state = FIM_STATE_DB_EMPTY;
+            return;
+        }
+        else if (nodes_count < syscheck.file_limit * 0.8) {
+            return;
+        }
+        break;
+    case FIM_STATE_DB_EMPTY:
+        if (nodes_count == 0) {
+            return;
+        }
+        else if (nodes_count < syscheck.file_limit * 0.8) {
+            _db_state = FIM_STATE_DB_NORMAL;
+            return;
+        }
+        break;
+    default: // LCOV_EXCL_LINE
+        break; // LCOV_EXCL_LINE
+    }
+
+    json_event = cJSON_CreateObject();
+    cJSON_AddNumberToObject(json_event, "file_limit", syscheck.file_limit);
+    cJSON_AddNumberToObject(json_event, "file_count", nodes_count);
+
+    if (nodes_count >= syscheck.file_limit) {
+        _db_state = FIM_STATE_DB_FULL;
+        mwarn(FIM_DB_FULL_ALERT);
+        cJSON_AddStringToObject(json_event, "alert_type", "full");
+    }
+    else if (nodes_count >= syscheck.file_limit * 0.9) {
+        _db_state = FIM_STATE_DB_90_PERCENTAGE;
+        minfo(FIM_DB_90_PERCENTAGE_ALERT);
+        cJSON_AddStringToObject(json_event, "alert_type", "90_percentage");
+    }
+    else if (nodes_count >= syscheck.file_limit * 0.8) {
+        _db_state = FIM_STATE_DB_80_PERCENTAGE;
+        minfo(FIM_DB_80_PERCENTAGE_ALERT);
+        cJSON_AddStringToObject(json_event, "alert_type", "80_percentage");
+    }
+    else if (nodes_count > 0) {
+        _db_state = FIM_STATE_DB_NORMAL;
+        minfo(FIM_DB_NORMAL_ALERT);
+        cJSON_AddStringToObject(json_event, "alert_type", "normal");
+    }
+    else {
+        _db_state = FIM_STATE_DB_EMPTY;
+        minfo(FIM_DB_NORMAL_ALERT);
+        cJSON_AddStringToObject(json_event, "alert_type", "normal");
+    }
+
+    json_plain = cJSON_PrintUnformatted(json_event);
+
+    snprintf(alert_msg, OS_SIZE_256, "wazuh: FIM DB: %s", json_plain);
+
+    send_log_msg(alert_msg);
+
+    os_free(json_plain);
+    cJSON_Delete(json_event);
+}
 
 // Returns the position of the path into directories array
 int fim_configuration_directory(const char *path, const char *entry) {
@@ -716,7 +887,7 @@ void check_deleted_files() {
 }
 
 
-cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, int pos, unsigned int type, fim_event_mode mode, whodata_evt * w_evt) {
+cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, int pos, unsigned int type, fim_event_mode mode, whodata_evt * w_evt, const char *diff) {
     cJSON * changed_attributes = NULL;
 
     if (old_data != NULL) {
@@ -780,13 +951,8 @@ cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_da
 
         tags = syscheck.tag[pos];
 
-        if (syscheck.opts[pos] & CHECK_SEECHANGES && type != 1) {
-            char * diff = seechanges_addfile(file_name);
-
-            if (diff != NULL) {
-                cJSON_AddStringToObject(data, "content_changes", diff);
-                os_free(diff);
-            }
+        if (diff != NULL) {
+            cJSON_AddStringToObject(data, "content_changes", diff);
         }
     }
 #ifdef WIN32
@@ -960,12 +1126,15 @@ cJSON * fim_audit_json(const whodata_evt * w_evt) {
     cJSON_AddStringToObject(fim_audit, "process_name", w_evt->process_name);
     cJSON_AddNumberToObject(fim_audit, "process_id", w_evt->process_id);
 #ifndef WIN32
+    cJSON_AddStringToObject(fim_audit, "cwd", w_evt->cwd);
     cJSON_AddStringToObject(fim_audit, "group_id", w_evt->group_id);
     cJSON_AddStringToObject(fim_audit, "group_name", w_evt->group_name);
     cJSON_AddStringToObject(fim_audit, "audit_uid", w_evt->audit_uid);
     cJSON_AddStringToObject(fim_audit, "audit_name", w_evt->audit_name);
     cJSON_AddStringToObject(fim_audit, "effective_uid", w_evt->effective_uid);
     cJSON_AddStringToObject(fim_audit, "effective_name", w_evt->effective_name);
+    cJSON_AddStringToObject(fim_audit, "parent_name", w_evt->parent_name);
+    cJSON_AddStringToObject(fim_audit, "parent_cwd", w_evt->parent_cwd);
     cJSON_AddNumberToObject(fim_audit, "ppid", w_evt->ppid);
 #endif
 
@@ -1107,12 +1276,14 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
 // Sleep during rt_delay milliseconds
 
 void fim_rt_delay() {
+    if (syscheck.rt_delay){
 #ifdef WIN32
-    Sleep(syscheck.rt_delay);
+        Sleep(syscheck.rt_delay);
 #else
-    struct timeval timeout = {0, syscheck.rt_delay * 1000};
-    select(0, NULL, NULL, NULL, &timeout);
+        struct timeval timeout = {0, syscheck.rt_delay * 1000};
+        select(0, NULL, NULL, NULL, &timeout);
 #endif
+    }
 }
 
 // LCOV_EXCL_STOP
