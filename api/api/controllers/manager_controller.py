@@ -347,7 +347,6 @@ async def delete_files(request, pretty=False, wait_for_complete=False, path=None
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-
 async def get_api_config(request, pretty=False, wait_for_complete=False):
     """Get active API configuration in manager or local_node.
 

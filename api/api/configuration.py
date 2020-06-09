@@ -13,14 +13,15 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
+from api.constants import SECURITY_CONFIG_PATH
 
 from api.api_exception import APIException
-from api.constants import RBAC_CONFIG_PATH
 from wazuh import common
 
-default_rbac_configuration = {
+
+default_security_configuration = {
     "auth_token_exp_timeout": 36000,
-    "mode": "black"
+    "rbac_mode": "black"
 }
 
 default_api_configuration = {
@@ -207,4 +208,4 @@ def read_yaml_config(config_file=common.api_config_path, default_conf=None) -> D
 
 # Configuration - global object
 api_conf = read_yaml_config()
-rbac_conf = read_yaml_config(config_file=RBAC_CONFIG_PATH, default_conf=default_rbac_configuration)
+security_conf = read_yaml_config(config_file=SECURITY_CONFIG_PATH, default_conf=default_security_configuration)

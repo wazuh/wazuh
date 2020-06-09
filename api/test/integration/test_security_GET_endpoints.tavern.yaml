@@ -1026,7 +1026,7 @@ test_name: GET /security/config
 
 stages:
 
-  - name: Get current RBAC configuration
+  - name: Get current security configuration
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
@@ -1037,4 +1037,4 @@ stages:
       status_code: 200
       json:
         auth_token_exp_timeout: !anyint
-        mode: !anystr
+        rbac_mode: !anystr

@@ -546,6 +546,7 @@ async def get_api_config(request, pretty=False, wait_for_complete=False, list_no
     """
     f_kwargs = {'node_list': list_nodes}
 
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=manager.get_api_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -554,6 +555,7 @@ async def get_api_config(request, pretty=False, wait_for_complete=False, list_no
                           logger=logger,
                           broadcasting=list_nodes == '*',
                           rbac_permissions=request['token_info']['rbac_policies'],
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -572,6 +574,7 @@ async def put_api_config(request, pretty=False, wait_for_complete=False, list_no
     except JSONDecodeError as e:
         raise_if_exc(APIError(code=2005, details=e.msg))
 
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=manager.update_api_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -579,7 +582,8 @@ async def put_api_config(request, pretty=False, wait_for_complete=False, list_no
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           broadcasting=list_nodes == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -597,6 +601,7 @@ async def delete_api_config(request, pretty=False, wait_for_complete=False, list
 
     f_kwargs = {"updated_config": default_config, 'node_list': list_nodes}
 
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=manager.update_api_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -604,7 +609,8 @@ async def delete_api_config(request, pretty=False, wait_for_complete=False, list
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           broadcasting=list_nodes == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 

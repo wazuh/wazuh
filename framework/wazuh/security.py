@@ -9,7 +9,7 @@ from functools import lru_cache
 from api import configuration
 from api.authentication import change_secret
 from wazuh import common
-from wazuh.core.security import load_spec, update_rbac_conf
+from wazuh.core.security import load_spec, update_security_conf
 from wazuh.exception import WazuhError
 from wazuh.rbac.decorators import expose_resources
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager, \
@@ -690,17 +690,17 @@ def get_rbac_actions(endpoint: str = None):
 
 
 @expose_resources(actions=['security:read_config'], resources=['*:*:*'])
-def get_rbac_config():
-    """Returns current RBAC configuration."""
-    return configuration.rbac_conf
+def get_security_config():
+    """Returns current security configuration."""
+    return configuration.security_conf
 
 
 @expose_resources(actions=['security:update_config'], resources=['*:*:*'])
-def update_rbac_config(updated_config=None):
-    """Update or restore current API configuration.
+def update_security_config(updated_config=None):
+    """Update or restore current security configuration.
 
-    Update the shared configuration object "api_conf"  wih
-    "updated_config" and then overwrite the content of api.yaml.
+    Update the shared configuration object "security_conf" with
+    "updated_config" and then overwrite the content of security.yaml.
 
     Parameters
     ----------
@@ -713,7 +713,7 @@ def update_rbac_config(updated_config=None):
         Confirmation/Error message.
     """
     try:
-        update_rbac_conf(updated_config)
+        update_security_conf(updated_config)
         result = 'Configuration successfully updated'
     except WazuhError as e:
         result = f'Configuration could not be updated. Error: {e}'
