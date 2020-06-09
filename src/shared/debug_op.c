@@ -63,9 +63,10 @@ static void _log(int level, const char *tag, const char * file, int line, const 
     /* Duplicate args */
     va_copy(args2, args);
     va_copy(args3, args);
-    
+
     if (!flags.initialized) {
-        w_logging_init();      
+        w_logging_init();
+        mdebug1("Logging module auto-initilized");  
     }
 
     if (filename = strrchr(file, '/'), filename) {
