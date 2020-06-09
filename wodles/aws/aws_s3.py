@@ -248,7 +248,7 @@ class WazuhIntegration:
                                             region_name=conn_args.get('region_name')
                                             )
                 client = sts_session.client(service_name=service_name)
-            elif service_name == 'cloudwatch':
+            elif service_name == 'cloudwatchlogs':
                 client = boto3.client('logs', region_name=region,
                                       aws_access_key_id=access_key, aws_secret_access_key=secret_key)
             else:
@@ -2029,7 +2029,7 @@ class AWSService(WazuhIntegration):
     """
 
     def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
-                 service_name, only_logs_after, region, log_group_list):
+                 service_name, only_logs_after, region, aws_log_groups, remove_log_streams):
         # DB name
         self.db_name = 'aws_services'
         # table name
@@ -2132,14 +2132,16 @@ class AWSInspector(AWSService):
     """
 
     def __init__(self, reparse, access_key, secret_key, aws_profile,
-                 iam_role_arn, only_logs_after, region, log_groups):
+                 iam_role_arn, only_logs_after, region, aws_log_groups,
+                 remove_log_streams):
 
         self.service_name = 'inspector'
         self.inspector_region = region
 
         AWSService.__init__(self, access_key=access_key, secret_key=secret_key,
                             aws_profile=aws_profile, iam_role_arn=iam_role_arn, only_logs_after=only_logs_after,
-                            service_name=self.service_name, region=region)
+                            service_name=self.service_name, region=region, aws_log_groups=aws_log_groups,
+                            remove_log_streams=remove_log_streams)
 
         # max DB records for region
         self.retain_db_records = 5
@@ -2219,7 +2221,8 @@ class AWSCloudWatchLogs(AWSService):
     """
 
     def __init__(self, reparse, access_key, secret_key, aws_profile,
-                 iam_role_arn, only_logs_after, region, log_groups):
+                 iam_role_arn, only_logs_after, region, aws_log_groups,
+                 remove_log_streams):
 
         self.sql_create_cloudwatch_table = """
                             CREATE TABLE
@@ -2274,16 +2277,18 @@ class AWSCloudWatchLogs(AWSService):
                                     aws_log_stream='{aws_log_stream}'
                                 LIMIT 1;"""
 
-        self.service_name = 'cloudwatch'
+        self.service_name = 'cloudwatchlogs'
 
         AWSService.__init__(self, access_key=access_key, secret_key=secret_key,
                             aws_profile=aws_profile, iam_role_arn=iam_role_arn, only_logs_after=only_logs_after,
-                            service_name=self.service_name, region=region)
+                            service_name=self.service_name, region=region, aws_log_groups=aws_log_groups,
+                            remove_log_streams=remove_log_streams)
 
         self.db_table_name = 'cloudwatch_logs'
 
-        self.log_group_list = [group for group in log_groups.split(",") if group != ""] if log_groups else []
+        self.log_group_list = [group for group in aws_log_groups.split(",") if group != ""] if aws_log_groups else []
         self.cloudwatch_region = region
+        self.remove_log_streams = remove_log_streams
 
     def get_alerts(self):
         self.init_db(self.sql_create_cloudwatch_table.format(table_name=self.db_table_name))
@@ -2308,6 +2313,9 @@ class AWSCloudWatchLogs(AWSService):
                         next_token = response['nextForwardToken']
                         debug('+++ Next token is now "{}"'.format(next_token), 1)
                     self.save_next_token(log_group=log_group, log_stream=log_stream, token=next_token)
+                    if self.remove_log_streams:
+                        debug('Removing logstream "{}" from log group "{}"'.format(log_group, log_stream), 1)
+                        self.client.delete_log_stream(logGroupName=log_group, logStreamName=log_stream)
         finally:
             self.close_database()
 
@@ -2464,7 +2472,9 @@ def get_script_arguments():
     parser.add_argument('-o', '--reparse', action='store_true', dest='reparse',
                         help='Parse the log file, even if its been parsed before', default=False)
     parser.add_argument('-t', '--type', dest='type', type=str, help='Bucket type.', default='cloudtrail')
-    parser.add_argument('-g', '--log_groups', dest='log_groups', help='Name of the log group to be parsed', default='')
+    parser.add_argument('-g', '--aws_log_groups', dest='aws_log_groups', help='Name of the log group to be parsed', default='')
+    parser.add_argument('-P', '--remove-log-streams', action='store_true', dest='deleteLogStreams',
+                        help='Remove processed log streams from the log group', default=False)
 
     return parser.parse_args()
 
@@ -2519,7 +2529,7 @@ def main(argv):
         elif options.service:
             if options.service.lower() == 'inspector':
                 service_type = AWSInspector
-            elif options.service.lower() == 'cloudwatch':
+            elif options.service.lower() == 'cloudwatchlogs':
                 service_type = AWSCloudWatchLogs
             else:
                 raise Exception("Invalid type of service")
@@ -2534,7 +2544,8 @@ def main(argv):
                 service = service_type(reparse=options.reparse, access_key=options.access_key,
                                        secret_key=options.secret_key, aws_profile=options.aws_profile,
                                        iam_role_arn=options.iam_role_arn, only_logs_after=options.only_logs_after,
-                                       region=region, log_groups=options.log_groups)
+                                       region=region, aws_log_groups=options.aws_log_groups,
+                                       remove_log_streams=options.deleteLogStreams)
                 service.get_alerts()
 
     except Exception as err:
