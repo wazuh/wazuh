@@ -20,7 +20,7 @@ static int chroot_flag = 0;
 static int daemon_flag = 0;
 static int pid;
 
-struct{
+static struct{
   unsigned int log_plain:1;
   unsigned int log_json:1;
   unsigned int initialized:1;
