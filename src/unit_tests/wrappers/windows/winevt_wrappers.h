@@ -13,6 +13,10 @@
 #include <windows.h>
 #include <winevt.h>
 
+#define EvtRender wrap_EvtRender
+#define EvtCreateRenderContext wrap_EvtCreateRenderContext
+#define EvtSubscribe wrap_EvtSubscribe
+
 BOOL wrap_EvtRender(EVT_HANDLE Context,
                     EVT_HANDLE Fragment,
                     DWORD      Flags,

@@ -12,6 +12,19 @@
 
 #include <windows.h>
 
+#undef RegQueryInfoKey
+#define RegQueryInfoKey wrap_RegQueryInfoKey
+#undef RegEnumKeyEx
+#define RegEnumKeyEx wrap_RegEnumKeyEx
+#undef RegOpenKeyEx
+#define RegOpenKeyEx wrap_RegOpenKeyEx
+#undef RegEnumValue
+#define RegEnumValue wrap_RegEnumValue
+#undef RegCloseKey
+#define RegCloseKey wrap_RegCloseKey
+#undef RegQueryValueEx
+#define RegQueryValueEx wrap_RegQueryValueEx
+
 LONG wrap_RegQueryInfoKey(HKEY hKey,
                           LPSTR lpClass,
                           LPDWORD lpcchClass,

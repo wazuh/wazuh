@@ -14,6 +14,9 @@
 
 #include <windows.h>
 
+#undef CloseHandle
+#define CloseHandle wrap_CloseHandle
+
 WINBOOL wrap_CloseHandle (HANDLE hObject);
 
 #endif

@@ -24,6 +24,10 @@ HANDLE wrap_GetCurrentThread (VOID) {
     return mock_type(HANDLE);
 }
 
+HANDLE wrap_GetCurrentProcess (VOID) {
+    return mock_type(HANDLE);
+}
+
 HANDLE wrap_CreateThread(__UNUSED_PARAM(LPSECURITY_ATTRIBUTES lpThreadAttributes),
                          __UNUSED_PARAM(SIZE_T dwStackSize),
                          __UNUSED_PARAM(LPTHREAD_START_ROUTINE lpStartAddress),

@@ -14,6 +14,15 @@
 
 #include <windows.h>
 
+#define FindFirstVolumeW wrap_FindFirstVolumeW
+#define GetVolumePathNamesForVolumeNameW wrap_GetVolumePathNamesForVolumeNameW
+#define FindVolumeClose wrap_FindVolumeClose
+#define QueryDosDeviceW wrap_QueryDosDeviceW
+#define FindNextVolumeW wrap_FindNextVolumeW
+#undef  CreateFile
+#define CreateFile      wrap_CreateFile
+#define GetFileAttributesA          wrap_GetFileAttributesA
+
 HANDLE wrap_CreateFile (LPCSTR lpFileName, 
                         DWORD dwDesiredAccess,
                         DWORD dwShareMode,

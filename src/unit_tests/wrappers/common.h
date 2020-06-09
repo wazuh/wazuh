@@ -15,8 +15,6 @@
 #include <time.h>
 #include <stdio.h>
 
-extern int test_mode;
-
 int FOREVER();
 
 int __wrap_FOREVER();
@@ -29,8 +27,10 @@ time_t wrap_time (time_t *t);
 
 #ifdef WIN32
 extern time_t time_mock_value;
+extern int test_mode;
 
 #define time(x) wrap_time(x)
+#define fprintf wrap_fprintf
 #endif
 
 #endif /* COMMON_H */

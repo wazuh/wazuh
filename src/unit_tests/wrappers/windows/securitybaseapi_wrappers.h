@@ -14,6 +14,18 @@
 
 #include <windows.h>
 
+#define AdjustTokenPrivileges wrap_AdjustTokenPrivileges
+#define AllocateAndInitializeSid wrap_AllocateAndInitializeSid
+#define GetAclInformation wrap_GetAclInformation
+#define InitializeAcl wrap_InitializeAcl
+#define CopySid wrap_CopySid
+#define GetAce wrap_GetAce
+#define AddAce wrap_AddAce
+#define EqualSid wrap_EqualSid
+#define DeleteAce wrap_DeleteAce
+#define IsValidSid wrap_IsValidSid
+#define GetSecurityDescriptorDacl   wrap_GetSecurityDescriptorDacl
+
 WINBOOL wrap_IsValidSid (PSID pSid);
 
 WINBOOL wrap_GetSecurityDescriptorDacl (PSECURITY_DESCRIPTOR pSecurityDescriptor, 

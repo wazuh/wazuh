@@ -14,6 +14,9 @@
 
 #include <windows.h>
 
+#undef GetLastError
+#define GetLastError wrap_GetLastError
+
 DWORD wrap_GetLastError (VOID);
 
 #endif

@@ -12,6 +12,8 @@
 
 #include <windows.h>
 
+#define WideCharToMultiByte wrap_WideCharToMultiByte
+
 int wrap_WideCharToMultiByte(UINT CodePage,
                              DWORD dwFlags,
                              LPCWCH lpWideCharStr,

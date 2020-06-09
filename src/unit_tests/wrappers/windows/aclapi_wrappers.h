@@ -15,6 +15,12 @@
 #include <windows.h>
 #include <accctrl.h>
 
+#undef GetNamedSecurityInfo
+#define GetNamedSecurityInfo wrap_GetNamedSecurityInfo
+#undef SetNamedSecurityInfo
+#define SetNamedSecurityInfo wrap_SetNamedSecurityInfo
+#define GetSecurityInfo wrap_GetSecurityInfo
+
 DWORD wrap_GetSecurityInfo (HANDLE handle, 
                             SE_OBJECT_TYPE ObjectType,
                             SECURITY_INFORMATION SecurityInfo, 

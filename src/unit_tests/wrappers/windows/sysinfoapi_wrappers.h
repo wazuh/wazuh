@@ -12,6 +12,8 @@
 
 #include <windows.h>
 
+#define GetSystemTime wrap_GetSystemTime
+
 VOID wrap_GetSystemTime (LPSYSTEMTIME lpSystemTime);
 
 #endif
