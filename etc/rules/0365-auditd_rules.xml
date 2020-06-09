@@ -97,7 +97,6 @@
         <field name="audit.type">ANOM_EXEC</field>
         <description>Auditd: execution of a file ended abnormally</description>
         <mitre>
-            <id>T1203</id>
             <id>T1204</id>
         </mitre>
         <group>audit_anom,pci_dss_11.4,pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.6,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
