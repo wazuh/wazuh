@@ -128,3 +128,11 @@ def test_expected_value(response, key, expected_values):
         response_set = set(item[key])
         assert bool(expected_values.intersection(response_set)), \
             f'Expected values {expected_values} not found in {item[key]}'
+
+
+def test_response_is_different(response, response_value, unexpected_value):
+    """
+    :param response_value: Value to compare
+    :param unexpected_value: Response value should be different to this.
+    """
+    assert response_value != unexpected_value, f"{response_value} and {unexpected_value} shouldn't be the same"

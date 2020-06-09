@@ -63,6 +63,8 @@
 
 - actions:
   - security:create
+  - security:read_config
+  - security:update_config
   resources:
   - "*:*:*"
   effect: allow

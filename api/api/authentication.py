@@ -10,11 +10,10 @@ from time import time
 
 from jose import JWTError, jwt
 from werkzeug.exceptions import Unauthorized
-from api import configuration
 
+from api import configuration
 from api.api_exception import APIException
 from api.constants import SECURITY_PATH
-from wazuh.rbac import preprocessor
 from wazuh.rbac.orm import AuthenticationManager
 
 
@@ -35,7 +34,7 @@ def check_user(user, password, required_scopes=None):
 
 # Set JWT settings
 JWT_ISSUER = 'wazuh'
-JWT_LIFETIME_SECONDS = configuration.api_conf['auth_token_exp_timeout']
+JWT_LIFETIME_SECONDS = configuration.security_conf['auth_token_exp_timeout']
 JWT_ALGORITHM = 'HS256'
 
 # Generate secret file to keep safe or load existing secret
