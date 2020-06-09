@@ -4738,10 +4738,12 @@ void test_whodata_callback_4656_fail_to_add_event_to_hashmap(void **state) {
         { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
         { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
         { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
+        { .Int32Val=0x10000,            .Count=1, .Type=EvtVarTypeHexInt32 },
         { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
     };
     unsigned long result;
+
+    syscheck.wdata.dirs_status[9].status |= WD_CHECK_WHODATA;
 
     successful_whodata_event_render(event, raw_data);
 
@@ -4772,7 +4774,7 @@ void test_whodata_callback_4656_fail_to_add_event_to_hashmap(void **state) {
     expect_function_call(__wrap_fim_configuration_directory);
     expect_string(__wrap_fim_configuration_directory, path, "c:\\a\\path");
     expect_string(__wrap_fim_configuration_directory, entry, "file");
-    will_return(__wrap_fim_configuration_directory, 1);
+    will_return(__wrap_fim_configuration_directory, 9);
 
     expect_string(__wrap_check_path_type, dir, "c:\\a\\path");
     will_return(__wrap_check_path_type, 0);
