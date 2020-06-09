@@ -9013,7 +9013,7 @@ paths:
                           path: /var/ossec/logs/api.log
                           level: info
                         experimental_features: false
-                  total_affected_items: 2
+                  total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
                 message: "API configuration read successfully"
@@ -9049,9 +9049,7 @@ paths:
                 data:
                   affected_items:
                     - master-node
-                    - worker1
-                    - worker2
-                  total_affected_items: 3
+                  total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
                 message: API configuration successfully updated. Some settings may require restarting the API to be applied.
@@ -9083,9 +9081,7 @@ paths:
                 data:
                   affected_items:
                     - master-node
-                    - worker1
-                    - worker2
-                  total_affected_items: 3
+                  total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
                 message: API configuration successfully updated. Some settings may require restarting the API to be applied.
