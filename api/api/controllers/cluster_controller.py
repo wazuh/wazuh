@@ -570,7 +570,8 @@ async def get_api_config(request, pretty=False, wait_for_complete=False, list_no
                           logger=logger,
                           broadcasting=list_nodes == '*',
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes
+                          nodes=nodes,
+                          cluster_required=True
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -598,7 +599,8 @@ async def put_api_config(request, pretty=False, wait_for_complete=False, list_no
                           logger=logger,
                           broadcasting=list_nodes == '*',
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes
+                          nodes=nodes,
+                          cluster_required=True
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -625,7 +627,8 @@ async def delete_api_config(request, pretty=False, wait_for_complete=False, list
                           logger=logger,
                           broadcasting=list_nodes == '*',
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes
+                          nodes=nodes,
+                          cluster_required=True
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
