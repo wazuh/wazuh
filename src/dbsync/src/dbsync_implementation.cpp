@@ -33,68 +33,76 @@ bool DBSyncImplementation::Release() {
   return ret_val;
 }
 
-bool DBSyncImplementation::InsertBulkData(const uint64_t handle, const char* json_raw) {
-  auto ret_val { false };   
+int32_t DBSyncImplementation::InsertBulkData(
+  const uint64_t handle, 
+  const char* json_raw) {
+
+  auto ret_val { -1 };   
   std::lock_guard<std::mutex> lock(m_mutex); 
   try {
     const auto json { nlohmann::json::parse(json_raw)};
     const auto it = GetDbEngineContext(handle);
     if (m_dbsync_list.end() != it) {
-      ret_val = (*it)->GetDbEngine()->BulkInsert(json[0]["table"], json[0]["data"]);
+      ret_val = true == (*it)->GetDbEngine()->BulkInsert(json[0]["table"], json[0]["data"]) ? 0 : -1;
     }
-  } catch (const nlohmann::json::parse_error& e) {
+  } catch (const nlohmann::json::exception& e) {
     std::cout << "message: " << e.what() << std::endl
-              << "exception id: " << e.id << std::endl
-              << "byte position of error: " << e.byte << std::endl;
-  } catch (const nlohmann::json::type_error& e) {
-    std::cout << "message: " << e.what() << std::endl
-              << "exception id: " << e.id << std::endl
-              << "byte position of error: " << e.create << std::endl;
+              << "exception id: " << e.id << std::endl;
+    ret_val = e.id;
+  } catch (const SQLite::exception& e) {
+    std::cout << "message: " << e.what() << std::endl;
+    ret_val = e.id;
   }
   return ret_val;
 }
 
-bool DBSyncImplementation::UpdateSnapshotData(const uint64_t handle, const char* json_snapshot, std::string& result) {
-  auto ret_val { false };   
+int32_t DBSyncImplementation::UpdateSnapshotData(
+  const uint64_t handle, 
+  const char* json_snapshot, 
+  std::string& result) {
+
+  auto ret_val { 1 };   
   std::lock_guard<std::mutex> lock(m_mutex); 
   try {
     const auto json { nlohmann::json::parse(json_snapshot)};
     const auto it = GetDbEngineContext(handle);
     if (m_dbsync_list.end() != it) {
       nlohmann::json json_result;
-      ret_val = (*it)->GetDbEngine()->RefreshTablaData(json[0], std::make_tuple(std::ref(json_result), nullptr));
+      ret_val = (*it)->GetDbEngine()->RefreshTablaData(json[0], std::make_tuple(std::ref(json_result), nullptr)) ? 0 : 1;
       result = std::move(json_result.dump());
     }
-  } catch (const nlohmann::json::parse_error& e) {
+  } catch (const nlohmann::json::exception& e) {
     std::cout << "message: " << e.what() << std::endl
-              << "exception id: " << e.id << std::endl
-              << "byte position of error: " << e.byte << std::endl;
-  } catch (const nlohmann::json::type_error& e) {
-    std::cout << "message: " << e.what() << std::endl
-              << "exception id: " << e.id << std::endl
-              << "byte position of error: " << e.create << std::endl;
+              << "exception id: " << e.id << std::endl;
+    ret_val = e.id;
+  } catch (const SQLite::exception& e) {
+    std::cout << "message: " << e.what() << std::endl;
+    ret_val = e.id;
   }
   return ret_val;
 }
 
-bool DBSyncImplementation::UpdateSnapshotData(const uint64_t handle, const char* json_snapshot, void* callback) {
-  auto ret_val { false };   
+int32_t DBSyncImplementation::UpdateSnapshotData(
+  const uint64_t handle, 
+  const char* json_snapshot, 
+  void* callback) {
+    
+  auto ret_val { 1 };   
   std::lock_guard<std::mutex> lock(m_mutex); 
   try {
     const auto json { nlohmann::json::parse(json_snapshot)};
     const auto it = GetDbEngineContext(handle);
     if (m_dbsync_list.end() != it) {
       nlohmann::json fake;
-      ret_val = (*it)->GetDbEngine()->RefreshTablaData(json[0], std::make_tuple(std::ref(fake), callback));
+      ret_val = (*it)->GetDbEngine()->RefreshTablaData(json[0], std::make_tuple(std::ref(fake), callback)) ? 0 : 1;
     }
-  } catch (const nlohmann::json::parse_error& e) {
+  } catch (const nlohmann::json::exception& e) {
     std::cout << "message: " << e.what() << std::endl
-              << "exception id: " << e.id << std::endl
-              << "byte position of error: " << e.byte << std::endl;
-  } catch (const nlohmann::json::type_error& e) {
-    std::cout << "message: " << e.what() << std::endl
-              << "exception id: " << e.id << std::endl
-              << "byte position of error: " << e.create << std::endl;
+              << "exception id: " << e.id << std::endl;
+    ret_val = e.id;
+  } catch (const SQLite::exception& e) {
+    std::cout << "message: " << e.what() << std::endl;
+    ret_val = e.id;
   }
   return ret_val;
 }

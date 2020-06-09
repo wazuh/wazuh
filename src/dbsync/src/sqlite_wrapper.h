@@ -6,6 +6,25 @@
 #include <memory>
 namespace SQLite {
 
+class exception : public std::exception
+{
+  public:
+    __attribute__((__returns_nonnull__))
+    const char* what() const noexcept override
+    {
+        return m.what();
+    }
+
+    const int id;
+
+    __attribute__((__nonnull__(3)))
+    exception(int id_, const char* what_arg) : id(id_), m(what_arg) {}
+
+  private:
+    /// an exception object as storage for error messages
+    std::runtime_error m;
+};
+
 class Connection : public IConnection
 {
 public:
@@ -59,7 +78,7 @@ public:
     virtual ~Statement();
     Statement(std::shared_ptr<IConnection>& connection, const std::string& query);
 
-    bool Step();
+    int32_t Step() override;
     bool Reset() override;
 
     bool Bind(const int32_t index, const int32_t value) override;
@@ -68,11 +87,11 @@ public:
     bool Bind(const int32_t index, const std::string value) override;
     bool Bind(const int32_t index, const double value) override;
 
-    IColumn GetColumn(const int32_t index) override;
+    std::unique_ptr<IColumn> GetColumn(const int32_t index) override;
 
 private:
     sqlite3_stmt* m_stmt;
-
+    std::shared_ptr<IConnection> m_connection;
 };
 }
 

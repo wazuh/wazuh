@@ -27,11 +27,11 @@ int main()
     auto handle { initialize(HostType::AGENT, DbEngineType::SQLITE3, "temp.db", sql.c_str()) };
     if (0 != handle)
     {
-      if(insert_data(handle, json_insert)) {
+      if(0 == insert_data(handle, json_insert)) { 
         do {
           auto t_start {std::chrono::high_resolution_clock::now()};
           //if(update_with_snapshot_cb(handle, json_update, (void *)&callback)) {
-          if(update_with_snapshot(handle, json_update, &json_result)) {  
+          if(0 == update_with_snapshot(handle, json_update, &json_result)) {   
             auto t_end {std::chrono::high_resolution_clock::now()};
             std::cout << "duration: "<<std::chrono::duration_cast<std::chrono::microseconds>(t_end-t_start).count()<<std::endl;
             char* result_print = cJSON_Print(json_result);

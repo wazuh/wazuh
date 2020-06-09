@@ -24,7 +24,7 @@ unsigned long long initialize(
 int insert_data(
   const unsigned long long handle,
   const cJSON* json_raw) {
-  auto ret_val { false };
+  auto ret_val { 1l };
   if (nullptr != json_raw) {
     ret_val = DBSyncImplementation::getInstance().InsertBulkData(handle, cJSON_Print(json_raw));
   }

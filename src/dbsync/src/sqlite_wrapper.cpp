@@ -7,7 +7,7 @@ using namespace SQLite;
 
 Connection::Connection(const std::string& path) : m_db_instance(nullptr) {
    if (SQLITE_OK != sqlite3_open_v2(path.c_str(), &m_db_instance, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL)) {
-      throw std::runtime_error("Unspecified type during initialization of SQLite.");
+      throw SQLite::exception(600, "Unspecified type during initialization of SQLite.");
    }
 }
 
@@ -50,7 +50,7 @@ Transaction::Transaction(std::shared_ptr<IConnection>& connection) : m_connectio
   m_started = false;
   m_commited = false;
   m_rollbacked = false;
-  
+
   if (m_connection->Execute("BEGIN TRANSACTION")) {
     m_started = true;
   }
@@ -80,9 +80,9 @@ bool Transaction::Rollback() {
 }
 
 
-Statement::Statement(std::shared_ptr<IConnection>& connection, const std::string& query){
+Statement::Statement(std::shared_ptr<IConnection>& connection, const std::string& query) : m_connection(connection){
   if(SQLITE_OK != sqlite3_prepare_v2(connection->GetDBInstance(), query.c_str(), -1, &m_stmt, nullptr)) {
-    throw std::runtime_error("cannot instance SQLite stmt.");
+    throw SQLite::exception(601, "cannot instance SQLite stmt.");
   }
 }
 
@@ -90,8 +90,12 @@ Statement::~Statement() {
   sqlite3_finalize(m_stmt);
 }
 
-bool Statement::Step() {
-  return SQLITE_ROW == sqlite3_step(m_stmt);
+int32_t Statement::Step() {
+  const auto ret_val { sqlite3_step(m_stmt) };
+  if (SQLITE_ROW != ret_val && SQLITE_DONE != ret_val) {
+    throw SQLite::exception(602, sqlite3_errmsg(m_connection->GetDBInstance()));
+  }
+  return ret_val;
 }
 bool Statement::Reset()  {
   return SQLITE_OK == sqlite3_reset(m_stmt);
@@ -116,20 +120,17 @@ bool Statement::Bind(const int32_t index, const double value)  {
   return SQLITE_OK == sqlite3_bind_double(m_stmt, index, value);
 }
 
-IColumn Statement::GetColumn(const int32_t index)  {
-  return SQLite::Column(m_stmt, index);
+std::unique_ptr<IColumn> Statement::GetColumn(const int32_t index)  {
+  return std::make_unique<SQLite::Column>(m_stmt, index);
 }
 
-
-
 Column::Column(sqlite3_stmt* stmt, const int32_t index) : m_stmt(stmt), m_index(index){
-  
 }
 
 bool Column::IsNullValue(){
   return SQLITE_NULL == sqlite3_column_type(m_stmt, m_index);
 }
-int32_t Column::Int(){
+int32_t Column::Int(){;
   return sqlite3_column_int(m_stmt, m_index);
 }
 uint64_t Column::UInt64(){
