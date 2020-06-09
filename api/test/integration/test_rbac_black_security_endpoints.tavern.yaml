@@ -264,11 +264,11 @@ stages:
         message: Some policies could not be shown
 
 ---
-test_name: GET RBAC CONFIG
+test_name: GET SECURITY CONFIG
 
 stages:
 
-  - name: Get current RBAC config (deny)
+  - name: Get current security config (deny)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
@@ -281,11 +281,11 @@ stages:
         <<: *permission_denied
 
 ---
-test_name: UPDATE RBAC CONFIG
+test_name: UPDATE SECURITY CONFIG
 
 stages:
 
-  - name: Update default RBAC config (deny)
+  - name: Update default security config (deny)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"

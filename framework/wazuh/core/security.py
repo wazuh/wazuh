@@ -8,7 +8,7 @@ from functools import lru_cache
 import yaml
 
 from api import __path__ as api_path
-from api.constants import RBAC_CONFIG_PATH
+from api.constants import SECURITY_CONFIG_PATH
 from wazuh import WazuhInternalError, WazuhError
 from api import configuration
 
@@ -19,7 +19,7 @@ def load_spec():
         return yaml.safe_load(stream)
 
 
-def update_rbac_conf(new_config):
+def update_security_conf(new_config):
     """Update dict and write it in the configuration file.
 
     Parameters
@@ -27,12 +27,12 @@ def update_rbac_conf(new_config):
     new_config : dict
         Dictionary with the new configuration.
     """
-    configuration.rbac_conf.update(new_config)
+    configuration.security_conf.update(new_config)
 
     if new_config:
         try:
-            with open(RBAC_CONFIG_PATH, 'w+') as f:
-                yaml.dump(configuration.rbac_conf, f)
+            with open(SECURITY_CONFIG_PATH, 'w+') as f:
+                yaml.dump(configuration.security_conf, f)
         except IOError:
             raise WazuhInternalError(1005)
     else:

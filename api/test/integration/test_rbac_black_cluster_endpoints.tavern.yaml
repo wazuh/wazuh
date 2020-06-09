@@ -699,7 +699,8 @@ stages:
       status_code: 200
       json:
         data:
-          affected_items: !anylist
+          affected_items:
+            - node_name: worker1
           failed_items:
             - error:
                 code: 4000

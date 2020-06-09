@@ -274,9 +274,9 @@ def delete_file(path):
 
 
 _get_config_default_result_kwargs = {
-    'all_msg': 'API configuration read successfully',
+    'all_msg': f"API configuration read successfully{' in all specified nodes' if node_id != 'manager' else '' }",
     'some_msg': 'Not all API configurations could be read',
-    'none_msg': 'Could not read API configuration',
+    'none_msg': f"Could not read API configuration{' in any node' if node_id != 'manager' else ''}",
     'sort_casting': ['str']
 }
 
@@ -306,9 +306,10 @@ def get_api_config():
 
 
 _update_config_default_result_kwargs = {
-    'all_msg': f"API configuration successfully updated. Some settings may require restarting the API to be applied.",
+    'all_msg': f"API configuration successfully updated{' in all specified nodes' if node_id != 'manager' else '' }. "
+               f"Some settings may require restarting the API to be applied",
     'some_msg': 'Not all API configuration could be updated',
-    'none_msg': "API configuration could not be updated.",
+    'none_msg': f"API configuration could not be updated{' in any node' if node_id != 'manager' else ''}",
     'sort_casting': ['str']
 }
 
