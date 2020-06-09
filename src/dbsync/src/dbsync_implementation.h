@@ -14,9 +14,9 @@ public:
     static DBSyncImplementation instance;
     return instance;
   }
-  bool InsertBulkData(const uint64_t handle, const char* json_raw);
-  bool UpdateSnapshotData(const uint64_t handle, const char* json_snapshot, std::string& result);
-  bool UpdateSnapshotData(const uint64_t handle, const char* json_snapshot, void* callback);
+  int32_t InsertBulkData(const uint64_t handle, const char* json_raw);
+  int32_t UpdateSnapshotData(const uint64_t handle, const char* json_snapshot, std::string& result);
+  int32_t UpdateSnapshotData(const uint64_t handle, const char* json_snapshot, void* callback);
   uint64_t Initialize(const HostType host_type, const DbEngineType db_type, const std::string& path, const std::string& sql_statement);
   bool Release();
 private:
