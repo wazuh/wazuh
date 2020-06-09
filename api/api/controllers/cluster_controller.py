@@ -552,72 +552,80 @@ async def delete_files_node(request, node_id, path, pretty=False, wait_for_compl
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_api_config(request, pretty=False, wait_for_complete=False):
+async def get_api_config(request, pretty=False, wait_for_complete=False, list_nodes='*'):
     """Get active API configuration in manager or local_node.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :param list_nodes: List of node ids
     """
-    f_kwargs = {}
+    f_kwargs = {'node_list': list_nodes}
 
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=manager.get_api_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
+                          request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
+                          broadcasting=list_nodes == '*',
                           rbac_permissions=request['token_info']['rbac_policies'],
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_api_config(request, pretty=False, wait_for_complete=False):
+async def put_api_config(request, pretty=False, wait_for_complete=False, list_nodes='*'):
     """Update current API configuration with the given one.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :param list_nodes: List of node ids
     """
     try:
-        f_kwargs = {"updated_config": await request.json()}
+        f_kwargs = {"updated_config": await request.json(), 'node_list': list_nodes}
     except JSONDecodeError as e:
         raise_if_exc(APIError(code=2005, details=e.msg))
 
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=manager.update_api_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          broadcasting=True,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          broadcasting=list_nodes == '*',
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def delete_api_config(request, pretty=False, wait_for_complete=False):
+async def delete_api_config(request, pretty=False, wait_for_complete=False, list_nodes='*'):
     """Restore default API configuration.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :param list_nodes: List of node ids
     """
-    allowed_fields = {'behind_proxy_server', 'rbac', 'logs', 'cache', 'cors', 'use_only_authd', 'experimental_features',
-                      'auth_token_exp_timeout'}
-    default_config = {key: configuration.default_configuration[key] for key in allowed_fields}
+    default_config = {key: configuration.default_api_configuration[key] for key in manager.allowed_api_fields}
 
-    f_kwargs = {"updated_config": default_config}
+    f_kwargs = {"updated_config": default_config, 'node_list': list_nodes}
 
+    nodes = await get_system_nodes()
     dapi = DistributedAPI(f=manager.update_api_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          broadcasting=True,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          broadcasting=list_nodes == '*',
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
 

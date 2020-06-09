@@ -1020,3 +1020,21 @@ stages:
       json:
         agent:id:
           description: Reference agents via agent ID (i.e. agent:id:001)
+
+---
+test_name: GET /security/config
+
+stages:
+
+  - name: Get current security configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      json:
+        auth_token_exp_timeout: !anyint
+        rbac_mode: !anystr

@@ -17,6 +17,7 @@ from wazuh import security
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhError
 from wazuh.rbac import preprocessor
+from api.configuration import default_security_configuration
 
 logger = logging.getLogger('wazuh')
 auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
@@ -579,3 +580,77 @@ async def revoke_all_tokens(request):
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=dumps)
+
+
+async def get_security_config(request, pretty=False, wait_for_complete=False):
+    """Get active security configuration.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+
+    Returns
+    -------
+    dict
+        Security configuration
+    """
+    f_kwargs = {}
+
+    dapi = DistributedAPI(f=security.get_security_config,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def put_security_config(request, pretty=False, wait_for_complete=False):
+    """Update current security configuration with the given one.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    """
+    try:
+        f_kwargs = {"updated_config": await request.json()}
+    except JSONDecodeError as e:
+        raise_if_exc(APIError(code=2005, details=e.msg))
+
+    dapi = DistributedAPI(f=security.update_security_config,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def delete_security_config(request, pretty=False, wait_for_complete=False):
+    """Restore default security configuration.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    """
+    try:
+        f_kwargs = {"updated_config": default_security_configuration}
+    except JSONDecodeError as e:
+        raise_if_exc(APIError(code=2005, details=e.msg))
+
+    dapi = DistributedAPI(f=security.update_security_config,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)

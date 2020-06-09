@@ -18,7 +18,7 @@ from wazuh.exception import WazuhError
 from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager
 from wazuh.results import AffectedItemsWazuhResult
 
-mode = configuration.api_conf['rbac']['mode']
+mode = configuration.security_conf['rbac_mode']
 
 
 def switch_mode(m):

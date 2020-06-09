@@ -498,6 +498,7 @@ class WazuhException(Exception):
                'remediation': 'Please, check the current RBAC resources, for more information please visit XXXX'},
         4020: {'message': 'Invalid endpoint specified',
                'remediation': 'Valid endpoints are: '},
+        4021: 'Error reading security configuration',
         4500: {'message': 'The specified resources are invalid',
                'remediation': 'Please, make sure permissions are properly defined, '
                               'for more information on setting up permissions please visit XXXX'},
