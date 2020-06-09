@@ -176,7 +176,7 @@ class DistributedAPI:
 
         def run_local():
             self.logger.debug("Starting to execute request locally")
-            common.rbac_mode.set(self.rbac_permissions.pop('rbac_mode', configuration.rbac_conf['mode']))
+            common.rbac_mode.set(self.rbac_permissions.pop('rbac_mode', configuration.security_conf['rbac_mode']))
             common.rbac.set(self.rbac_permissions)
             common.broadcast.set(self.broadcasting)
             common.cluster_nodes.set(self.nodes)
@@ -428,7 +428,7 @@ class DistributedAPI:
             return {node_id: [] for node_id in requested_nodes}
 
         elif 'group_id' in self.f_kwargs:
-            common.rbac_mode.set(self.rbac_permissions.pop('rbac_mode', configuration.rbac_conf['mode']))
+            common.rbac_mode.set(self.rbac_permissions.pop('rbac_mode', configuration.security_conf['rbac_mode']))
             common.rbac.set(self.rbac_permissions)
             agents = agent.get_agents_in_group(group_list=[self.f_kwargs['group_id']], select=select_node,
                                                sort={'fields': ['node_name'], 'order': 'desc'}).affected_items

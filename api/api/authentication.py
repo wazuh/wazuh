@@ -13,7 +13,7 @@ from time import time
 from jose import JWTError, jwt
 from werkzeug.exceptions import Unauthorized
 
-from api.configuration import read_yaml_config, default_rbac_configuration, RBAC_CONFIG_PATH
+from api.configuration import read_yaml_config, default_security_configuration, SECURITY_CONFIG_PATH
 from api.api_exception import APIException
 from api.constants import SECURITY_PATH
 from api.util import raise_if_exc
@@ -116,8 +116,8 @@ def get_token_blacklist():
 
 
 def get_security_conf():
-    config = read_yaml_config(config_file=RBAC_CONFIG_PATH, default_conf=default_rbac_configuration)
-    return {'config': (config['auth_token_exp_timeout'], config['mode'])}
+    config = read_yaml_config(config_file=SECURITY_CONFIG_PATH, default_conf=default_security_configuration)
+    return {'config': (config['auth_token_exp_timeout'], config['rbac_mode'])}
 
 
 def generate_token(user_id=None, rbac_policies=None):
@@ -231,4 +231,4 @@ def get_permissions(header):
     payload = decode_token(jwt_token)
     permissions = payload['rbac_policies']
 
-    return permissions, payload['mode']
+    return permissions, payload['rbac_mode']
