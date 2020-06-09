@@ -13,13 +13,13 @@ fi
 ## Prerequisites
 if [ $sys_type == "YUM" ] 
 then
-    yum install java-11-openjdk-devel unzip wget libcap -y
+    yum install java-11-openjdk-devel unzip wget curl libcap -y
 elif [ $sys_type == "APT" ] 
 then
     echo 'deb http://deb.debian.org/debian stretch-backports main' > /etc/apt/sources.list.d/backports.list
     add-apt-repository ppa:openjdk-r/ppa -y
     apt update
-    apt install openjdk-11-jdk apt-transport-https unzip wget libcap2-bin -y
+    apt install openjdk-11-jdk apt-transport-https curl unzip wget libcap2-bin -y
 fi
 
 ## Wazuh manager and API
@@ -27,9 +27,9 @@ if [ $sys_type == "YUM" ]
 then
     rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH
     echo -e '[wazuh_trash]\ngpgcheck=1\ngpgkey=https://s3-us-west-1.amazonaws.com/packages-dev.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://s3-us-west-1.amazonaws.com/packages-dev.wazuh.com/trash/yum/\nprotect=1' | tee /etc/yum.repos.d/wazuh_pre.repo
-    yum install wazuh-manager -y; 
+    yum install wazuh-manager -y 
     curl -sL https://rpm.nodesource.com/setup_10.x | bash -
-    yum install nodejs wazuh-api -y;
+    yum install nodejs wazuh-api -y
 elif [ $sys_type == "APT" ] 
 then
     curl -s https://s3-us-west-1.amazonaws.com/packages-dev.wazuh.com/key/GPG-KEY-WAZUH | apt-key add -
