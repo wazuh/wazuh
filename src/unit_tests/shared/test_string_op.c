@@ -13,8 +13,6 @@
 #include <cmocka.h>
 #include <stdio.h>
 
-#include "../wazuh_modules/wmodules.h"
-#include "../wazuh_modules/vulnerability_detector/wm_vuln_detector.h"
 #include "../headers/shared.h"
 
 char * w_tolower_str(const char *string);

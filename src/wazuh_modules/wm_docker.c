@@ -45,7 +45,7 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
     // Main 
     do {
         const time_t time_sleep = sched_scan_get_time_until_next_scan(&(docker_conf->scan_config), WM_DOCKER_LOGTAG, docker_conf->flags.run_on_start);
-        
+
         if (time_sleep) {
             const int next_scan_time = sched_get_next_scan_time(docker_conf->scan_config);
             timestamp = w_get_timestamp(next_scan_time);

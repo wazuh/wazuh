@@ -13,6 +13,8 @@
 #include <cmocka.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "../wrappers/common.h"
 #include "../syscheckd/fim_db.h"
 #include "../config/syscheck-config.h"
 
@@ -88,6 +90,7 @@ int __wrap_remove(const char *filename) {
     return mock();
 }
 
+#ifndef TEST_WINAGENT
 extern unsigned long __real_time();
 unsigned long __wrap_time() {
     if (test_mode) {
@@ -95,6 +98,7 @@ unsigned long __wrap_time() {
     }
     return __real_time();
 }
+#endif
 
 extern int __real_getpid();
 int __wrap_getpid() {
@@ -499,6 +503,10 @@ static int setup_group(void **state) {
     syscheck.database_store = 0;    // disk
     w_mutex_init(&syscheck.fim_entry_mutex, NULL);
     test_mode = 1;
+
+    #ifdef TEST_WINAGENT
+    time_mock_value = 192837465;
+    #endif
     return 0;
 }
 
