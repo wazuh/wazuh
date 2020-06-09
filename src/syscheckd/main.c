@@ -216,9 +216,16 @@ int main(int argc, char **argv)
             r++;
         }
 
+        if (!syscheck.file_size_enabled) {
+            minfo(FIM_FILE_SIZE_LIMIT_DISABLED);
+        }
+
         // Print maximum disk quota to be used by the queue/diff/local folder
         if (syscheck.disk_quota_enabled) {
             minfo(FIM_DISK_QUOTA_LIMIT, syscheck.disk_quota_limit);
+        }
+        else {
+            minfo(FIM_DISK_QUOTA_LIMIT_DISABLED);
         }
 
         /* Print ignores. */
