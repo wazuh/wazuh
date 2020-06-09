@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../wrappers/common.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 
@@ -79,8 +80,6 @@ int __wrap_isChroot() {
 
 #ifndef WIN32
 int test_mode = 0;
-#else
-extern int test_mode;
 #endif
 
 /* redefinitons/wrapping */

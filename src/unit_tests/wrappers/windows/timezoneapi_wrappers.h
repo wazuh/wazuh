@@ -12,6 +12,8 @@
 
 #include <windows.h>
 
+#define FileTimeToSystemTime wrap_FileTimeToSystemTime
+
 WINBOOL wrap_FileTimeToSystemTime(CONST FILETIME *lpFileTime,
                                   LPSYSTEMTIME lpSystemTime);
 

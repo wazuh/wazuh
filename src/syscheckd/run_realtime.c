@@ -26,15 +26,6 @@ volatile int audit_db_consistency_flag;
 #include "unit_tests/wrappers/windows/handleapi_wrappers.h"
 #include "unit_tests/wrappers/windows/synchapi_wrappers.h"
 #include "unit_tests/wrappers/windows/winbase_wrappers.h"
-
-#undef CreateEvent
-#define CreateEvent wrap_CreateEvent
-
-#undef CreateFile
-#define CreateFile wrap_CreateFile
-
-#define ReadDirectoryChangesW wrap_ReadDirectoryChangesW
-#define CloseHandle wrap_CloseHandle
 #endif
 
 #ifdef INOTIFY_ENABLED

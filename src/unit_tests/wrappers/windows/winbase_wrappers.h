@@ -14,6 +14,17 @@
 
 #include <windows.h>
 
+#undef LookupPrivilegeValue
+#define LookupPrivilegeValue wrap_LookupPrivilegeValue
+#define LocalFree wrap_LocalFree
+#undef  FormatMessage
+#define FormatMessage wrap_FormatMessage
+#undef  LookupAccountSid
+#define LookupAccountSid wrap_LookupAccountSid
+#undef  GetFileSecurity
+#define GetFileSecurity wrap_GetFileSecurity
+#define ReadDirectoryChangesW wrap_ReadDirectoryChangesW
+
 DWORD wrap_FormatMessage (DWORD dwFlags,
                           LPCVOID lpSource,
                           DWORD dwMessageId,

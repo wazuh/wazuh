@@ -14,6 +14,12 @@
 
 #include <windows.h>
 
+#undef  sleep
+#define sleep               wrap_Sleep
+#define Sleep wrap_Sleep
+#undef CreateEvent
+#define CreateEvent wrap_CreateEvent
+
 VOID wrap_Sleep (DWORD dwMilliseconds);
 
 HANDLE wrap_CreateEvent (LPSECURITY_ATTRIBUTES lpEventAttributes,

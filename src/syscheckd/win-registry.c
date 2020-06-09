@@ -19,17 +19,6 @@
 
 #ifdef UNIT_TESTING
 #include "unit_tests/wrappers/windows/winreg_wrappers.h"
-
-#undef RegQueryInfoKey
-#define RegQueryInfoKey wrap_RegQueryInfoKey
-#undef RegEnumKeyEx
-#define RegEnumKeyEx wrap_RegEnumKeyEx
-#undef RegOpenKeyEx
-#define RegOpenKeyEx wrap_RegOpenKeyEx
-#undef RegEnumValue
-#define RegEnumValue wrap_RegEnumValue
-#undef RegCloseKey
-#define RegCloseKey wrap_RegCloseKey
 #endif
 
 /* Default values */

@@ -18,6 +18,7 @@
 #include <sddl.h>
 #include <winevt.h>
 
+#include "../wrappers/common.h"
 #include "syscheckd/syscheck.h"
 
 
@@ -60,7 +61,6 @@ extern EVT_HANDLE context;
 extern const wchar_t* event_fields[];
 static int unit_testing = 0;
 static int OSHash_Add_ex_check_data = 1;
-extern int test_mode;
 /**************************************************************************/
 /*************************WRAPS - FIXTURES*********************************/
 int test_group_setup(void **state) {
@@ -562,6 +562,7 @@ void test_set_winsacl_failed_opening(void **state) {
     snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, syscheck.dir[0]);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 0);
@@ -577,6 +578,7 @@ void test_set_winsacl_failed_privileges(void **state) {
     snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, syscheck.dir[0]);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -601,6 +603,7 @@ void test_set_winsacl_failed_security_descriptor(void **state) {
     snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, syscheck.dir[0]);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -648,6 +651,7 @@ void test_set_winsacl_no_need_to_configure_acl(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6266): The SACL of 'C:\\a\\path' will be configured.");
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -721,6 +725,7 @@ void test_set_winsacl_unable_to_get_acl_info(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6266): The SACL of 'C:\\a\\path' will be configured.");
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -795,6 +800,7 @@ void test_set_winsacl_fail_to_alloc_new_sacl(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6266): The SACL of 'C:\\a\\path' will be configured.");
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -872,6 +878,7 @@ void test_set_winsacl_fail_to_initialize_new_sacl(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6266): The SACL of 'C:\\a\\path' will be configured.");
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -955,6 +962,7 @@ void test_set_winsacl_fail_getting_ace_from_old_sacl(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6266): The SACL of 'C:\\a\\path' will be configured.");
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -1041,6 +1049,7 @@ void test_set_winsacl_fail_adding_old_ace_into_new_sacl(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6266): The SACL of 'C:\\a\\path' will be configured.");
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -1130,6 +1139,7 @@ void test_set_winsacl_fail_to_alloc_new_ace(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6266): The SACL of 'C:\\a\\path' will be configured.");
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -1225,6 +1235,7 @@ void test_set_winsacl_fail_to_copy_sid(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6266): The SACL of 'C:\\a\\path' will be configured.");
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -1323,6 +1334,7 @@ void test_set_winsacl_fail_to_add_ace(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6266): The SACL of 'C:\\a\\path' will be configured.");
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -1426,6 +1438,7 @@ void test_set_winsacl_fail_to_set_security_info(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6266): The SACL of 'C:\\a\\path' will be configured.");
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -1538,6 +1551,7 @@ void test_set_winsacl_success(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6266): The SACL of 'C:\\a\\path' will be configured.");
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -1739,6 +1753,7 @@ void test_w_update_sacl_OpenProcessToken_error(void **state) {
     expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
     will_return(wrap_AllocateAndInitializeSid, 1);
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE) NULL);
     will_return(wrap_OpenProcessToken, 0);
@@ -1763,6 +1778,7 @@ void test_w_update_sacl_add_privilege_error(void **state) {
     expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
     will_return(wrap_AllocateAndInitializeSid, 1);
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE) 123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -1801,6 +1817,7 @@ void test_w_update_sacl_GetNamedSecurityInfo_error(void **state) {
     expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
     will_return(wrap_AllocateAndInitializeSid, 1);
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE) 123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -1860,6 +1877,7 @@ void test_w_update_sacl_GetAclInformation_error(void **state) {
     expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
     will_return(wrap_AllocateAndInitializeSid, 1);
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE) 123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -1923,6 +1941,7 @@ void test_w_update_sacl_alloc_new_sacl_error(void **state) {
     expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
     will_return(wrap_AllocateAndInitializeSid, 1);
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE) 123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -1989,6 +2008,7 @@ void test_w_update_sacl_InitializeAcl_error(void **state) {
     expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
     will_return(wrap_AllocateAndInitializeSid, 1);
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE) 123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -2063,6 +2083,7 @@ void test_w_update_sacl_alloc_ace_error(void **state) {
     expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
     will_return(wrap_AllocateAndInitializeSid, 1);
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE) 123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -2141,6 +2162,7 @@ void test_w_update_sacl_CopySid_error(void **state) {
     expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
     will_return(wrap_AllocateAndInitializeSid, 1);
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE) 123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -2224,6 +2246,7 @@ void test_w_update_sacl_old_sacl_GetAce_error(void **state) {
     expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
     will_return(wrap_AllocateAndInitializeSid, 1);
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE) 123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -2308,6 +2331,7 @@ void test_w_update_sacl_old_sacl_AddAce_error(void **state) {
     expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
     will_return(wrap_AllocateAndInitializeSid, 1);
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE) 123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -2395,6 +2419,7 @@ void test_w_update_sacl_new_sacl_AddAce_error(void **state) {
     expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
     will_return(wrap_AllocateAndInitializeSid, 1);
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE) 123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -2487,6 +2512,7 @@ void test_w_update_sacl_SetNamedSecurityInfo_error(void **state) {
     expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
     will_return(wrap_AllocateAndInitializeSid, 1);
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE) 123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -2586,6 +2612,7 @@ void test_w_update_sacl_remove_privilege_error(void **state) {
     expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
     will_return(wrap_AllocateAndInitializeSid, 1);
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE) 123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -2697,6 +2724,7 @@ void test_w_update_sacl_success(void **state) {
     expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
     will_return(wrap_AllocateAndInitializeSid, 1);
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE) 123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -3526,8 +3554,9 @@ void test_whodata_hash_add_success(void **state) {
 }
 /*****************************restore_sacls********************************/
 void test_restore_sacls_openprocesstoken_failed(void **state){
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
-    will_return(wrap_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 0);
 
     will_return(wrap_GetLastError, (unsigned int) 500);
@@ -3537,15 +3566,16 @@ void test_restore_sacls_openprocesstoken_failed(void **state){
 
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
-    expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)4321);
     will_return(wrap_CloseHandle, 0);
 
     restore_sacls();
 }
 
 void test_restore_sacls_set_privilege_failed(void **state){
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
-    will_return(wrap_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
 
     // set_privilege
@@ -3559,7 +3589,7 @@ void test_restore_sacls_set_privilege_failed(void **state){
 
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
-    expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)4321);
     will_return(wrap_CloseHandle, 0);
     restore_sacls();
 }
@@ -3586,6 +3616,7 @@ int teardown_restore_sacls(void **state) {
 }
 
 void test_restore_sacls_securityNameInfo_failed(void **state){
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE) 123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -3625,13 +3656,14 @@ void test_restore_sacls_securityNameInfo_failed(void **state){
 
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
-    expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)4321);
     will_return(wrap_CloseHandle, 0);
 
     restore_sacls();
 }
 
 void test_restore_sacls_deleteAce_failed(void **state){
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE) 123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -3676,13 +3708,14 @@ void test_restore_sacls_deleteAce_failed(void **state){
 
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
-    expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)4321);
     will_return(wrap_CloseHandle, 0);
 
     restore_sacls();
 }
 
 void test_restore_sacls_SetNamedSecurityInfo_failed(void **state){
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE) 123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -3736,13 +3769,14 @@ void test_restore_sacls_SetNamedSecurityInfo_failed(void **state){
 
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
-    expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)4321);
     will_return(wrap_CloseHandle, 0);
 
     restore_sacls();
 }
 
 void test_restore_sacls_success(void **state){
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE) 123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -3799,7 +3833,7 @@ void test_restore_sacls_success(void **state){
 
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
-    expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)4321);
     will_return(wrap_CloseHandle, 0);
 
     restore_sacls();
@@ -3875,6 +3909,7 @@ void test_restore_audit_policies_success(void **state) {
 void test_audit_restore(void **state) {
     // restore_sacls
     {
+        will_return(wrap_GetCurrentProcess, (HANDLE)4321);
         expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
         will_return(wrap_OpenProcessToken, (HANDLE) 123456);
         will_return(wrap_OpenProcessToken, 1);
@@ -3930,9 +3965,9 @@ void test_audit_restore(void **state) {
         }
 
         expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
-    will_return(wrap_CloseHandle, 0);
-        expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
-    will_return(wrap_CloseHandle, 0);
+        will_return(wrap_CloseHandle, 0);
+        expect_value(wrap_CloseHandle, hObject, (HANDLE)4321);
+        will_return(wrap_CloseHandle, 0);
     }
 
     // restore_audit_policies
@@ -6468,6 +6503,7 @@ void test_whodata_callback_event_4663_dir_removed(void **state){
 void test_check_object_sacl_open_process_error(void **state) {
     int ret;
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE)NULL);
     will_return(wrap_OpenProcessToken, 0);
@@ -6484,6 +6520,7 @@ void test_check_object_sacl_open_process_error(void **state) {
 void test_check_object_sacl_unable_to_set_privilege(void **state) {
     int ret;
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -6515,6 +6552,7 @@ void test_check_object_sacl_unable_to_set_privilege(void **state) {
 void test_check_object_sacl_unable_to_retrieve_security_info(void **state) {
     int ret;
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -6565,6 +6603,7 @@ void test_check_object_sacl_invalid_sacl(void **state) {
     ACL acl;
     int ret;
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -6627,6 +6666,7 @@ void test_check_object_sacl_valid_sacl(void **state) {
     ACL acl;
     int ret;
 
+    will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
@@ -7954,6 +7994,7 @@ void test_state_checker_file_with_invalid_sacl(void **state) {
 
     // Inside check_object_sacl
     {
+        will_return(wrap_GetCurrentProcess, (HANDLE)4321);
         expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
         will_return(wrap_OpenProcessToken, (HANDLE)123456);
         will_return(wrap_OpenProcessToken, 1);
@@ -8064,6 +8105,7 @@ void test_state_checker_file_with_valid_sacl(void **state) {
 
     // Inside check_object_sacl
     {
+        will_return(wrap_GetCurrentProcess, (HANDLE)4321);
         expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
         will_return(wrap_OpenProcessToken, (HANDLE)123456);
         will_return(wrap_OpenProcessToken, 1);
@@ -8176,6 +8218,7 @@ void test_state_checker_dir_readded_error(void **state) {
         snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, syscheck.dir[0]);
         expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
+        will_return(wrap_GetCurrentProcess, (HANDLE)4321);
         expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
         will_return(wrap_OpenProcessToken, (HANDLE)123456);
         will_return(wrap_OpenProcessToken, 0);
@@ -8244,6 +8287,7 @@ void test_state_checker_dir_readded_succesful(void **state) {
 
         expect_string(__wrap__mdebug2, formatted_msg, "(6266): The SACL of 'C:\\a\\path' will be configured.");
 
+        will_return(wrap_GetCurrentProcess, (HANDLE)4321);
         expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
         will_return(wrap_OpenProcessToken, (HANDLE)123456);
         will_return(wrap_OpenProcessToken, 1);

@@ -37,15 +37,14 @@ int wrap_fprintf(FILE *__stream, const char *__format, ...) {
     int ret;
     char formatted_msg[OS_MAXSTR];
     va_list args;
-    printf("%s", __stream);
 
-    va_start(args, _Format);
+    va_start(args, __format);
     if (test_mode) {
-        vsnprintf(formatted_msg, OS_MAXSTR, _Format, args);
+        vsnprintf(formatted_msg, OS_MAXSTR, __format, args);
         check_expected(__stream);
         check_expected(formatted_msg);
     } else {
-        ret = fprintf(__stream, _Format, args);
+        ret = fprintf(__stream, __format, args);
     }
 
     va_end(args);

@@ -562,6 +562,7 @@ static int test_fim_tmp_file_setup_disk(void **state) {
     }
     test_data->tmp_file = calloc(1, sizeof(fim_tmp_file));
     test_data->tmp_file->path = strdup("/tmp/file");
+    test_data->tmp_file->fd = calloc(1, sizeof(FILE*));
     *state = test_data;
     return 0;
 }
@@ -569,6 +570,7 @@ static int test_fim_tmp_file_setup_disk(void **state) {
 static int test_fim_tmp_file_teardown_disk(void **state) {
     test_fim_db_insert_data *test_data = *state;
     free(test_data->tmp_file->path);
+    free(test_data->tmp_file->fd);
     free(test_data->tmp_file);
     return test_fim_db_teardown((void**)&test_data);
 }
@@ -913,7 +915,7 @@ void test_fim_db_clean_file_not_removed(void **state) {
     #else
     for(i = 1; i <= FIMDB_RM_MAX_LOOP; i++) {
         expect_function_call(__wrap__mdebug2);
-        expect_value(wrap_Sleep, dwMilliseconds, 60000);
+        expect_value(wrap_Sleep, dwMilliseconds, FIMDB_RM_DEFAULT_TIME * i);
     }
     #endif
 
@@ -2460,7 +2462,7 @@ void test_fim_db_callback_save_path_null(void **state) {
 
 void test_fim_db_callback_save_path_disk(void **state) {
     test_fim_db_insert_data *test_data = *state;
-    test_mode = 1;
+    test_data->tmp_file->fd = (FILE*)2345;
 
     will_return(__wrap_wstr_escape_json, "/test/path");
 
@@ -2468,19 +2470,18 @@ void test_fim_db_callback_save_path_disk(void **state) {
     expect_string(__wrap_fprintf, formatted_msg, "/test/path\n");
     will_return(__wrap_fprintf, 11);
     #else
-    expect_value(wrap_fprintf, __stream, "/tmp/file");
+    expect_value(wrap_fprintf, __stream, 2345);
     expect_string(wrap_fprintf, formatted_msg, "/test/path\n");
     will_return(wrap_fprintf, 11);
     #endif
 
     fim_db_callback_save_path(test_data->fim_sql, test_data->entry, syscheck.database_store, test_data->tmp_file);
-    test_mode = 0;
     assert_int_equal(test_data->tmp_file->elements, 1);
 }
 
 void test_fim_db_callback_save_path_disk_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
-    test_mode = 1;
+    test_data->tmp_file->fd = (FILE*)2345;
 
     will_return(__wrap_wstr_escape_json, "/test/path");
 
@@ -2488,7 +2489,7 @@ void test_fim_db_callback_save_path_disk_error(void **state) {
     expect_string(__wrap_fprintf, formatted_msg, "/test/path\n");
     will_return(__wrap_fprintf, 0);
     #else
-    expect_value(wrap_fprintf, __stream, "/tmp/file");
+    expect_value(wrap_fprintf, __stream, 2345);
     expect_string(wrap_fprintf, formatted_msg, "/test/path\n");
     will_return(wrap_fprintf, 0);
 
@@ -2498,7 +2499,6 @@ void test_fim_db_callback_save_path_disk_error(void **state) {
     expect_string(__wrap__merror, formatted_msg, "/test/path - Success");
 
     fim_db_callback_save_path(test_data->fim_sql, test_data->entry, syscheck.database_store, test_data->tmp_file);
-    test_mode = 0;
     assert_int_equal(test_data->tmp_file->elements, 0);
 }
 

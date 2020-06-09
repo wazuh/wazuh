@@ -14,6 +14,9 @@
 
 #include <windows.h>
 
+#undef  ConvertSidToStringSid
+#define ConvertSidToStringSid wrap_ConvertSidToStringSid
+
 WINBOOL wrap_ConvertSidToStringSid(PSID Sid, LPSTR *StringSid);
 
 #endif

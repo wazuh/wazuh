@@ -34,10 +34,13 @@
 #ifdef UNIT_TESTING
 #include "unit_tests/wrappers/windows/aclapi_wrappers.h"
 #include "unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
+#include "unit_tests/wrappers/windows/fileapi_wrappers.h"
 #include "unit_tests/wrappers/windows/handleapi_wrappers.h"
 #include "unit_tests/wrappers/windows/heapapi_wrappers.h"
+#include "unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
 #include "unit_tests/wrappers/windows/sddl_wrappers.h"
 #include "unit_tests/wrappers/windows/securitybaseapi_wrappers.h"
+#include "unit_tests/wrappers/windows/stringapiset_wrappers.h"
 #include "unit_tests/wrappers/windows/synchapi_wrappers.h"
 #include "unit_tests/wrappers/windows/sysinfoapi_wrappers.h"
 #include "unit_tests/wrappers/windows/timezoneapi_wrappers.h"
@@ -45,54 +48,10 @@
 #include "unit_tests/wrappers/windows/winevt_wrappers.h"
 #include "unit_tests/wrappers/windows/winreg_wrappers.h"
 
+#define fgets wrap_fgets
+
 // Remove static qualifier when unit testing
 #define STATIC
-
-#undef OpenProcessToken
-#define OpenProcessToken wrap_OpenProcessToken
-#undef GetLastError
-#define GetLastError wrap_GetLastError
-#undef LookupPrivilegeValue
-#define LookupPrivilegeValue wrap_LookupPrivilegeValue
-#undef CloseHandle
-#define CloseHandle wrap_CloseHandle
-#define AdjustTokenPrivileges wrap_AdjustTokenPrivileges
-#undef GetNamedSecurityInfo
-#define GetNamedSecurityInfo wrap_GetNamedSecurityInfo
-#define AllocateAndInitializeSid wrap_AllocateAndInitializeSid
-#define GetAclInformation wrap_GetAclInformation
-#undef win_alloc
-#define win_alloc wrap_win_alloc
-#define InitializeAcl wrap_InitializeAcl
-#define LocalFree wrap_LocalFree
-#define CopySid wrap_CopySid
-#define GetAce wrap_GetAce
-#define AddAce wrap_AddAce
-#undef SetNamedSecurityInfo
-#define SetNamedSecurityInfo wrap_SetNamedSecurityInfo
-#undef RegOpenKeyEx
-#define RegOpenKeyEx wrap_RegOpenKeyEx
-#undef RegQueryValueEx
-#define RegQueryValueEx wrap_RegQueryValueEx
-#define WideCharToMultiByte wrap_WideCharToMultiByte
-#define GetVolumePathNamesForVolumeNameW wrap_GetVolumePathNamesForVolumeNameW
-#define FindFirstVolumeW wrap_FindFirstVolumeW
-#define FindVolumeClose wrap_FindVolumeClose
-#define QueryDosDeviceW wrap_QueryDosDeviceW
-#define FindNextVolumeW wrap_FindNextVolumeW
-#define FindVolumeClose wrap_FindVolumeClose
-#define EqualSid wrap_EqualSid
-#define FileTimeToSystemTime wrap_FileTimeToSystemTime
-#define DeleteAce wrap_DeleteAce
-#define fprintf wrap_fprintf
-#define fgets wrap_fgets
-#define EvtRender wrap_EvtRender
-#define Sleep wrap_Sleep
-#define GetSystemTime wrap_GetSystemTime
-#define EvtCreateRenderContext wrap_EvtCreateRenderContext
-#define EvtSubscribe wrap_EvtSubscribe
-#undef  ConvertSidToStringSid
-#define ConvertSidToStringSid wrap_ConvertSidToStringSid
 #else
 #define STATIC static
 #endif

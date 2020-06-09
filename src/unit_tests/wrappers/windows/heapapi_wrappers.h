@@ -12,6 +12,9 @@
 
 #include <windows.h>
 
+#undef win_alloc
+#define win_alloc wrap_win_alloc
+
 LPVOID wrap_win_alloc(SIZE_T size);
 
 #endif

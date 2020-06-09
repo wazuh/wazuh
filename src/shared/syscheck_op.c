@@ -27,25 +27,6 @@ extern void mock_assert(const int result, const char* const expression,
 #include "unit_tests/wrappers/windows/securitybaseapi_wrappers.h"
 #include "unit_tests/wrappers/windows/winbase_wrappers.h"
 
-#undef  CreateFile
-#define CreateFile      wrap_CreateFile
-#define CloseHandle     wrap_CloseHandle
-#define GetLastError    wrap_GetLastError
-#undef  FormatMessage
-#define FormatMessage   wrap_FormatMessage
-#define LocalFree       wrap_LocalFree
-#define GetSecurityInfo wrap_GetSecurityInfo
-#undef  ConvertSidToStringSid
-#define ConvertSidToStringSid   wrap_ConvertSidToStringSid
-#undef  LookupAccountSid
-#define LookupAccountSid        wrap_LookupAccountSid
-#define IsValidSid              wrap_IsValidSid
-#undef  GetFileSecurity
-#define GetFileSecurity             wrap_GetFileSecurity
-#define GetSecurityDescriptorDacl   wrap_GetSecurityDescriptorDacl
-#define GetAclInformation           wrap_GetAclInformation
-#define GetAce                      wrap_GetAce
-#define GetFileAttributesA          wrap_GetFileAttributesA
 #endif
 #endif
 

@@ -13,8 +13,6 @@
 #include "unit_tests/wrappers/common.h"
 #include "unit_tests/wrappers/windows/synchapi_wrappers.h"
 
-#define fprintf wrap_fprintf
-#define Sleep wrap_Sleep
 #endif
 
 #define static
