@@ -1147,11 +1147,11 @@ void *audit_healthcheck_thread(int *audit_sock) {
     w_cond_signal(&audit_hc_started);
     w_mutex_unlock(&audit_hc_mutex);
 
-    mdebug2(FIM_HEALTHCHECK_THREAD_ATIVE);
+    mdebug2(FIM_HEALTHCHECK_THREAD_ACTIVE);
 
     audit_read_events(audit_sock, HEALTHCHECK_MODE);
 
-    mdebug2(FIM_HEALTHCHECK_THREAD_FINISED);
+    mdebug2(FIM_HEALTHCHECK_THREAD_FINISHED);
 
     return NULL;
 }
@@ -1431,7 +1431,7 @@ int audit_health_check(int audit_socket) {
 
     if(retval = audit_add_rule(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_KEY), retval <= 0 && retval != -17) { // -17 Means audit rule exist EEXIST
         mdebug1(FIM_AUDIT_HEALTHCHECK_RULE);
-        goto exit_err;
+        return -1;
     }
 
     mdebug1(FIM_AUDIT_HEALTHCHECK_START);
@@ -1452,38 +1452,30 @@ int audit_health_check(int audit_socket) {
 
         if(!fp) {
             mdebug1(FIM_AUDIT_HEALTHCHECK_FILE);
-            goto exit_err;
+        } else {
+            fclose(fp);
         }
-        fclose(fp);
 
         sleep(1);
     } while (!audit_health_check_creation && --timer > 0);
 
     if (!audit_health_check_creation) {
-        mdebug1("error: audit_health_check_creation");
-        goto exit_err;
+        mdebug1(FIM_HEALTHCHECK_CREATE_ERROR);
+        retval = -1;
+    } else {
+        mdebug1(FIM_HEALTHCHECK_SUCCESS);
+        retval = 0;
     }
-
-    mdebug2(FIM_HEALTHCHECK_CREATE_RECEIVE);
 
     // Delete that file
     unlink(AUDIT_HEALTHCHECK_FILE);
 
-    if(retval = audit_delete_rule(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_KEY), retval <= 0){
+    if(audit_delete_rule(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_KEY) <= 0){
         mdebug1(FIM_HEALTHCHECK_CHECK_RULE);    // LCOV_EXCL_LINE
     }
     hc_thread_active = 0;
 
-    mdebug2(FIM_HEALTHCHECK_SUCCESS);
-
-    return 0;
-
-exit_err:
-    if(retval = audit_delete_rule(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_KEY), retval <= 0){
-        mdebug1(FIM_HEALTHCHECK_CHECK_RULE);    // LCOV_EXCL_LINE
-    }
-    hc_thread_active = 0;
-    return -1;
+    return retval;
 }
 
 #endif
