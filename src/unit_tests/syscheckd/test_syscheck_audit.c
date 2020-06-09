@@ -2224,10 +2224,6 @@ void test_audit_health_check_fail_to_add_rule(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, FIM_AUDIT_HEALTHCHECK_RULE);
 
-    expect_string(__wrap_audit_delete_rule, path, "/var/ossec/tmp");
-    expect_string(__wrap_audit_delete_rule, key, "wazuh_hc");
-    will_return(__wrap_audit_delete_rule, 1);
-
     ret = audit_health_check(123456);
 
     assert_int_equal(ret, -1);
@@ -2249,11 +2245,15 @@ void test_audit_health_check_fail_to_create_hc_file(void **state)
     expect_function_call(__wrap_pthread_cond_wait);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap_fopen, filename, "/var/ossec/tmp/audit_hc");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 0);
+    expect_string_count(__wrap_fopen, filename, "/var/ossec/tmp/audit_hc", 10);
+    expect_string_count(__wrap_fopen, mode, "w", 10);
+    will_return_count(__wrap_fopen, 0, 10);
 
-    expect_string(__wrap__mdebug1, formatted_msg, FIM_AUDIT_HEALTHCHECK_FILE);
+    expect_string_count(__wrap__mdebug1, formatted_msg, FIM_AUDIT_HEALTHCHECK_FILE, 10);
+
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_HEALTHCHECK_CREATE_ERROR);
+
+    will_return(__wrap_unlink, 0);
 
     expect_string(__wrap_audit_delete_rule, path, "/var/ossec/tmp");
     expect_string(__wrap_audit_delete_rule, key, "wazuh_hc");
@@ -2286,7 +2286,9 @@ void test_audit_health_check_no_creation_event_detected(void **state)
 
     will_return_count(__wrap_fclose, 0, 10);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "error: audit_health_check_creation");
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_HEALTHCHECK_CREATE_ERROR);
+
+    will_return(__wrap_unlink, 0);
 
     expect_string(__wrap_audit_delete_rule, path, "/var/ossec/tmp");
     expect_string(__wrap_audit_delete_rule, key, "wazuh_hc");
@@ -2319,17 +2321,13 @@ void test_audit_health_check_success(void **state)
 
     will_return(__wrap_fclose, 0);
 
-    expect_string(__wrap__mdebug2, msg, FIM_HEALTHCHECK_CREATE_RECEIVE);
-    expect_string(__wrap__mdebug2, formatted_msg, FIM_HEALTHCHECK_CREATE_RECEIVE);
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_HEALTHCHECK_SUCCESS);
 
     will_return(__wrap_unlink, 0);
 
     expect_string(__wrap_audit_delete_rule, path, "/var/ossec/tmp");
     expect_string(__wrap_audit_delete_rule, key, "wazuh_hc");
     will_return(__wrap_audit_delete_rule, 1);
-
-    expect_string(__wrap__mdebug2, msg, FIM_HEALTHCHECK_SUCCESS);
-    expect_string(__wrap__mdebug2, formatted_msg, FIM_HEALTHCHECK_SUCCESS);
 
     ret = audit_health_check(123456);
 
