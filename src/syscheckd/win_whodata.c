@@ -37,9 +37,6 @@
 // Remove static qualifier when unit testing
 #define STATIC
 
-// Control infinite loops during unit tests
-int FOREVER();
-
 #undef OpenProcessToken
 #define OpenProcessToken wrap_win_whodata_OpenProcessToken
 #undef GetLastError
@@ -87,7 +84,6 @@ int FOREVER();
 #define ConvertSidToStringSid wrap_win_whodata_ConvertSidToStringSid
 #else
 #define STATIC static
-#define FOREVER() 1
 #endif
 
 // Variables whodata

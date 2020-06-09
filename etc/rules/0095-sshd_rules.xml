@@ -19,8 +19,7 @@
     <description>sshd: Possible attack on the ssh server </description>
     <description>(or version gathering).</description>
     <mitre>
-      <id>T1021</id>
-      <id>T1071</id>
+      <id>T1190</id>
     </mitre>
     <group>recon,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -30,10 +29,6 @@
     <match>^reverse mapping</match>
     <regex>failed - POSSIBLE BREAK</regex>
     <description>sshd: Reverse lookup error (bad ISP or attack).</description>
-    <mitre>
-      <id>T1021</id>
-      <id>T1071</id>
-    </mitre>
     <group>pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
@@ -43,8 +38,7 @@
     <description>sshd: Possible breakin attempt </description>
     <description>(high number of reverse lookup errors).</description>
     <mitre>
-      <id>T1021</id>
-      <id>T1071</id>
+      <id>T1110</id>
     </mitre>
     <group>pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -60,9 +54,8 @@
     <description>sshd: Possible scan or breakin attempt </description>
     <description>(high number of login timeouts).</description>
     <mitre>
-      <id>T1021</id>
-      <id>T1046</id>
-      <id>T1071</id>
+      <id>T1190</id>
+      <id>T1110</id>
     </mitre>
     <group>pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -83,7 +76,7 @@
     <description>sshd: OpenSSH challenge-response exploit.</description>
     <mitre>
       <id>T1210</id>
-      <id>T1021</id>
+      <id>T1068</id>
     </mitre>
     <group>exploit_attempt,pci_dss_11.4,pci_dss_6.2,gpg13_4.12,gdpr_IV_35.7.d,nist_800_53_SI.4,nist_800_53_SI.2,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -101,7 +94,7 @@
     <match>illegal user|invalid user</match>
     <description>sshd: Attempt to login using a non-existent user</description>
     <mitre>
-      <id>T1071</id>
+      <id>T1110</id>
     </mitre>
     <group>invalid_login,authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AU.6,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -121,7 +114,6 @@
     <description>the system.</description>
     <mitre>
       <id>T1110</id>
-      <id>T1021</id>
     </mitre>
     <same_source_ip />
     <group>authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
@@ -138,9 +130,7 @@
     <match>Local: crc32 compensation attack</match>
     <description>sshd: SSH CRC-32 Compensation attack</description>
     <mitre>
-      <id>T1071</id>
       <id>T1210</id>
-      <id>T1021</id>
     </mitre>
     <info type="cve">2001-0144</info>
     <info type="link">http://www.securityfocus.com/bid/2347/info/</info>
@@ -162,6 +152,9 @@
     <if_sid>5700</if_sid>
     <match>^Failed|^error: PAM: Authentication</match>
     <description>sshd: authentication failed.</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
@@ -176,7 +169,7 @@
     <match>not allowed because</match>
     <description>sshd: Attempt to login using a denied user.</description>
     <mitre>
-      <id>T1021</id>
+      <id>T1110</id>
     </mitre>
     <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -186,7 +179,6 @@
     <description>sshd: Multiple access attempts using a denied user.</description>
     <mitre>
       <id>T1110</id>
-      <id>T1021</id>
     </mitre>
     <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -197,7 +189,6 @@
     <description>sshd: Multiple authentication failures.</description>
     <mitre>
       <id>T1110</id>
-      <id>T1021</id>
     </mitre>
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -276,7 +267,7 @@
     <match>AKASSH_Version_Mapper1.</match>
     <description>sshd: SSH Scanning.</description>
     <mitre>
-      <id>T1071</id>
+      <id>T1046</id>
     </mitre>
     <group>recon,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -459,7 +450,6 @@
     <description>Maximum authentication attempts exceeded.</description>
     <mitre>
       <id>T1110</id>
-      <id>T1021</id>
     </mitre>
     <group>authentication_failed,gpg13_7.1,</group>
   </rule>
