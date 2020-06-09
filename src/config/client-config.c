@@ -413,7 +413,7 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
             }
             int delay_after_enrollment;
             if (delay_after_enrollment = atoi(node[j]->content), delay_after_enrollment <= 0) {
-                merror(PORT_ERROR, port);
+                merror(XML_VALUEERR, node[j]->element, node[j]->content);
                 w_enrollment_target_destroy(target_cfg);
                 w_enrollment_cert_destroy(cert_cfg);
                 return (OS_INVALID);
