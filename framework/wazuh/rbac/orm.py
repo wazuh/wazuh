@@ -1309,7 +1309,9 @@ class RolesPoliciesManager:
                 RolesPolicies.level).all()
             policies = list()
             for relation in role_policies:
-                policies.append(self.session.query(Policies).filter_by(id=relation.policy_id).first())
+                policy = self.session.query(Policies).filter_by(id=relation.policy_id).first()
+                if policy:
+                    policies.append(policy)
             return policies
         except (IntegrityError, AttributeError):
             self.session.rollback()

@@ -361,38 +361,6 @@ stages:
         <<: *error
 
 ---
-test_name: CLEANER DELETE /security/{roles}
-
-stages:
-
-  # DELETE /security/roles
-  - name: Try to delete all roles
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: DELETE
-    response:
-      status_code: 200
-
----
-test_name: CLEANER DELETE /security/{policies}
-
-stages:
-
-  - name: Try to delete all policies
-    delay_before: 10
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: DELETE
-    response:
-      status_code: 200
-
----
 test_name: DELETE /security/users
 
 stages:
@@ -552,6 +520,11 @@ stages:
     response:
       status_code: 200
 
+---
+test_name: RESTORE /security/config
+
+stages:
+
   # DELETE /security/roles
   - name: Restore default configuration
     request:
@@ -562,6 +535,11 @@ stages:
       method: DELETE
     response:
       status_code: 200
+
+---
+test_name: CHECK /security/config
+
+stages:
 
   - name: Get security configuration to check if DELETE method worked correctly
     request:
@@ -577,3 +555,35 @@ stages:
           extra_kwargs:
             response_value: auth_token_exp_timeout
             unexpected_value: 3000
+
+---
+test_name: CLEANER DELETE /security/{policies}
+
+stages:
+
+  - name: Try to delete all policies
+    delay_before: 10
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+    response:
+      status_code: 200
+
+---
+test_name: CLEANER DELETE /security/{roles}
+
+stages:
+
+  # DELETE /security/roles
+  - name: Try to delete all roles
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+    response:
+      status_code: 200
