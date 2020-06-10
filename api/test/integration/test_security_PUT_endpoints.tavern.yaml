@@ -410,6 +410,11 @@ stages:
     response:
       status_code: 200
 
+---
+test_name: PUT /security/config (Check)
+
+stages:
+
   - name: Get security configuration to check if PUT method worked correctly
     request:
       verify: False

@@ -1,7 +1,6 @@
 # Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-
 import itertools
 import json
 import logging
@@ -51,7 +50,7 @@ def check_cluster_config(config):
     if len(config['nodes']) > 1:
         logger.warning(
             "Found more than one node in configuration. Only master node should be specified. Using {} as master.".
-            format(config['nodes'][0]))
+                format(config['nodes'][0]))
 
     invalid_elements = list(reservated_ips & set(config['nodes']))
 
@@ -87,6 +86,7 @@ def check_cluster_status():
     Function to check if cluster is enabled
     """
     return read_config()['disabled']
+
 
 #
 # Files
@@ -140,7 +140,6 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
 
 
 def get_files_status(node_type, node_name, get_md5=True):
-
     cluster_items = get_cluster_items()
 
     final_items = {}
@@ -262,6 +261,7 @@ def clean_up(node_name=""):
 
     :param node_name: Name of the node to clean up
     """
+
     def remove_directory_contents(local_rm_path):
         if not path.exists(local_rm_path):
             logger.debug("[Cluster] Nothing to remove in '{}'.".format(local_rm_path))

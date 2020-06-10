@@ -49,6 +49,7 @@ default_policies:
         - security:create_user
         - security:update
         - security:delete
+        - security:revoke
         - security:read_config
         - security:update_config
       resources:
@@ -66,6 +67,7 @@ default_policies:
         - security:create_user
         - security:update
         - security:delete
+        - security:revoke
       resources:
         - user:id:*
         - '*:*:*'

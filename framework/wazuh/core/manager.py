@@ -16,8 +16,8 @@ from typing import Dict
 
 import yaml
 from xml.dom.minidom import parseString
-from api import configuration
 
+from api import configuration
 from wazuh import common, WazuhInternalError, WazuhError
 from wazuh.core.cluster.utils import get_manager_status
 from wazuh.results import WazuhResult
@@ -33,7 +33,8 @@ def status():
 
 
 def get_ossec_log_fields(log):
-    regex_category = re.compile(r"^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+)(?:\[.*)?:\s(DEBUG|INFO|CRITICAL|ERROR|WARNING):(.*)$")
+    regex_category = re.compile(
+        r"^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+)(?:\[.*)?:\s(DEBUG|INFO|CRITICAL|ERROR|WARNING):(.*)$")
 
     match = re.search(regex_category, log)
 
