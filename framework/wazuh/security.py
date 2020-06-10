@@ -8,6 +8,7 @@ from functools import lru_cache
 
 from api import configuration
 from api.authentication import change_secret
+from wazuh.core.security import check_relationships, invalid_users_tokens
 from wazuh import common
 from wazuh.core.security import load_spec, update_security_conf
 from wazuh.exception import WazuhError
@@ -20,45 +21,6 @@ from wazuh.utils import process_array
 
 # Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[_@$!%*?&-])[A-Za-z\d@$!%*?&-_]{8,}$')
-
-
-def _check_relationships(roles: list = None):
-    """Check the users related with the specified list of roles
-
-    Parameters
-    ----------
-    roles : list
-        List of affected roles
-
-    Returns
-    -------
-    Set with all affected users
-    """
-    users_affected = set()
-    if roles:
-        for role in roles:
-            with RolesManager() as rm:
-                users_affected.update(set(rm.get_role_id(role['id'])['users']))
-
-    return users_affected
-
-
-def invalid_users_tokens(roles: list = None, users: list = None):
-    """Add the necessary rules to invalidate all affected user's tokens
-
-    Parameters
-    ----------
-    roles : list
-        List of modified roles
-    users : str
-        Modified user
-    """
-    related_users = _check_relationships(roles=roles)
-    if users:
-        for user in users:
-            related_users.add(user)
-    with TokenManager() as tm:
-        tm.add_user_rules(users=related_users)
 
 
 @expose_resources(actions=['security:read'], resources=['user:id:{username_list}'],
@@ -229,7 +191,7 @@ def remove_roles(role_ids):
         for r_id in role_ids:
             role = rm.get_role_id(int(r_id))
             if role != SecurityError.ROLE_NOT_EXIST and int(r_id) not in admin_role_ids:
-                related_users = _check_relationships([role])
+                related_users = check_relationships([role])
             role_delete = rm.delete_role(int(r_id))
             if role_delete == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=r_id, error=WazuhError(4008))
@@ -352,7 +314,7 @@ def remove_policies(policy_ids=None):
         for p_id in policy_ids:
             policy = pm.get_policy_id(int(p_id))
             if policy != SecurityError.POLICY_NOT_EXIST and int(p_id) not in admin_policy_ids:
-                related_users = _check_relationships(policy['roles'])
+                related_users = check_relationships(policy['roles'])
             policy_delete = pm.delete_policy(int(p_id))
             if policy_delete == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=p_id, error=WazuhError(4008))

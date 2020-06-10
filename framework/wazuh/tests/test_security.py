@@ -59,12 +59,13 @@ def db_setup():
                     decorators.expose_resources = RBAC_bypasser
                     from wazuh import security
                     from wazuh.results import WazuhResult
+                    from wazuh.core import security as core_security
     try:
         create_memory_db('schema_security_test.sql', orm._Session())
     except OperationalError:
         pass
 
-    yield security, WazuhResult
+    yield security, WazuhResult, core_security
 
 
 def affected_are_equal(target_dict, expected_dict):
@@ -100,7 +101,7 @@ def test_security(db_setup, security_function, params, expected_result):
         This is a list that contains the expected results .
     """
     try:
-        security, _ = db_setup
+        security, _, _ = db_setup
         result = getattr(security, security_function)(**params).to_dict()
         assert affected_are_equal(result, expected_result)
         assert failed_are_equal(result, expected_result)
@@ -123,7 +124,7 @@ def test_rbac_catalog(db_setup, security_function, params, expected_result):
     expected_result : list of dict
         This is a list that contains the expected results .
     """
-    security, _ = db_setup
+    security, _, _ = db_setup
     final_params = dict()
     for param, value in params.items():
         if value.lower() != 'none':
@@ -135,7 +136,7 @@ def test_rbac_catalog(db_setup, security_function, params, expected_result):
 def test_revoke_tokens(db_setup):
     """Checks that the return value of revoke_tokens is a WazuhResult."""
     with patch('wazuh.security.change_secret', side_effect=None):
-        security, WazuhResult = db_setup
+        security, WazuhResult, _ = db_setup
         result = security.revoke_tokens()
         assert isinstance(result, WazuhResult)
 
@@ -145,7 +146,7 @@ def test_revoke_tokens(db_setup):
     ([10], {'rbac'}),
     ([10, 11, 12], {'normal', 'rbac', 'ossec'})
 ])
-def test__check_relationships(db_setup, role_list, expected_users):
+def test_check_relationships(db_setup, role_list, expected_users):
     """Check that the relationship between role and user is correct according to
     `schema_security_test.sql`.
 
@@ -156,8 +157,8 @@ def test__check_relationships(db_setup, role_list, expected_users):
     expected_users : set
         Expected users.
     """
-    security, WazuhResult = db_setup
-    assert security._check_relationships(roles=[{'id': role_id} for role_id in role_list]) == expected_users
+    _, _, core_security = db_setup
+    assert core_security.check_relationships(roles=[{'id': role_id} for role_id in role_list]) == expected_users
 
 
 @pytest.mark.parametrize('role_list, user_list, expected_users', [
@@ -179,7 +180,7 @@ def test_invalid_users_tokens(db_setup, role_list, user_list, expected_users):
         Expected users.
     """
     with patch('wazuh.security.TokenManager.add_user_rules') as TM_mock:
-        security, WazuhResult = db_setup
-        security.invalid_users_tokens(roles=[{'id': role_id} for role_id in role_list], users=user_list)
+        _, _, core_security = db_setup
+        core_security.invalid_users_tokens(roles=[{'id': role_id} for role_id in role_list], users=user_list)
         related_users = TM_mock.call_args.kwargs['users']
         assert set(related_users) == expected_users

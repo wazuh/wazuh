@@ -15,7 +15,6 @@ from functools import reduce
 from operator import or_
 from typing import Callable, Dict, Tuple
 
-import api.configuration as configuration
 import wazuh.core.cluster.cluster
 import wazuh.core.cluster.utils
 import wazuh.core.manager

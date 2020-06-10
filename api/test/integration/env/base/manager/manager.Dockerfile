@@ -9,7 +9,6 @@ RUN apt-get update && apt-get install python python3 git gnupg2 gcc make vim lib
 
 RUN git clone https://github.com/wazuh/wazuh && cd /wazuh && git checkout $wazuhbranch
 COPY base/manager/preloaded-vars.conf /wazuh/etc/preloaded-vars.conf
-RUN sed -i 's!--index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple!!' /wazuh/src/Makefile
 RUN /wazuh/install.sh
 #####
 

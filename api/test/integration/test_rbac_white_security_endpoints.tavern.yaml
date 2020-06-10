@@ -1098,8 +1098,4 @@ stages:
     response:
       status_code: 400
       json:
-        title: Unauthorized
-        type: about:blank
-        detail: 'Permission denied in all manager nodes: Resource type: *:*'
-        code: 4000
-        status: 400
+        <<: *permission_denied

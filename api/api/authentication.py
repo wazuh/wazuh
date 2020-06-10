@@ -133,8 +133,6 @@ def generate_token(user_id=None, rbac_policies=None):
                           logger=logging.getLogger('wazuh')
                           )
     result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).values()
-    # import pydevd_pycharm
-    # pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
     token_exp, rbac_mode = list(result)
     timestamp = int(time())
     rbac_policies['rbac_mode'] = rbac_mode

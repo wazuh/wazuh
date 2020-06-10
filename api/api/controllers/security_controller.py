@@ -738,14 +738,7 @@ async def revoke_all_tokens(request):
     data = raise_if_exc(await dapi.distribute_function())
     status = 200
     if type(data) == AffectedItemsWazuhResult and len(data.affected_items) == 0:
-        status = 400
-        data = {
-            'title': 'Unauthorized',
-            'type': 'about:blank',
-            'detail': data.message,
-            'code': 4000,
-            'status': 400
-        }
+        raise_if_exc(WazuhError(4000, data.message))
 
     return web.json_response(data=data, status=status, dumps=dumps)
 
