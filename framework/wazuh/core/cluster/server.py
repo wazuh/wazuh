@@ -22,7 +22,7 @@ class AbstractServerHandler(c_common.Handler):
     """
 
     def __init__(self, server, loop: asyncio.AbstractEventLoop, fernet_key: str,
-                 logger: logging.Logger, cluster_items: Dict, tag: str = "Client"):
+                 cluster_items: Dict, logger: logging.Logger = None, tag: str = "Client"):
         """
         Class constructor
         :param server: Abstract server object that created this handler
@@ -146,7 +146,7 @@ class AbstractServer:
     """
 
     def __init__(self, performance_test: int, concurrency_test: int, configuration: Dict, cluster_items: Dict,
-                 enable_ssl: bool, logger: logging.Logger, tag: str = "Abstract Server"):
+                 enable_ssl: bool, logger: logging.Logger = None, tag: str = "Abstract Server"):
         """
         Class constructor
         :param performance_test: Message length to use in the performance test
@@ -164,7 +164,7 @@ class AbstractServer:
         self.cluster_items = cluster_items
         self.enable_ssl = enable_ssl
         self.tag = tag
-        self.logger = logging.getLogger('wazuh')
+        self.logger = logging.getLogger('wazuh') if not logger else logger
         # logging tag
         context_tag.set(self.tag)
         context_subtag.set("Main")
