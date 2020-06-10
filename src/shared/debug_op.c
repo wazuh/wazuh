@@ -220,9 +220,9 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 }
 
 void w_logging_init(){
+    flags.initialized = 1;
     w_mutex_init(&logging_mutex, NULL);
     os_logging_config();
-    flags.initialized = 1;
 }
 
 void os_logging_config(){
