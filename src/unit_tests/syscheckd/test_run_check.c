@@ -658,7 +658,7 @@ void test_fim_send_sync_msg_10_eps(void ** _state) {
     #ifndef TEST_WINAGENT
     expect_value(__wrap_sleep, seconds, 1);
     #else
-    expect_value(wrap_Sleep, dwMilliseconds, 1);
+    expect_value(wrap_Sleep, dwMilliseconds, 1000);
     #endif
 
     // After 10 times, sleep one second
@@ -704,7 +704,7 @@ void test_send_syscheck_msg_10_eps(void ** _state) {
     #ifndef TEST_WINAGENT
     expect_value(__wrap_sleep, seconds, 1);
     #else
-    expect_value(wrap_Sleep, dwMilliseconds, 1);
+    expect_value(wrap_Sleep, dwMilliseconds, 1000);
     #endif
 
     // After 10 times, sleep one second

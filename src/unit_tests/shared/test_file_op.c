@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../wrappers/common.h"
 #include "../headers/file_op.h"
 
 static int unit_testing;
@@ -85,11 +86,13 @@ FILE* __wrap_fopen(const char* path, const char* mode) {
 
 /* setups/teardowns */
 static int setup_group(void **state) {
+    test_mode = 1;
     unit_testing = 1;
     return 0;
 }
 
 static int teardown_group(void **state) {
+    test_mode = 0;
     unit_testing = 0;
     return 0;
 }
@@ -114,26 +117,19 @@ void test_CreatePID_success(void **state)
 
     will_return(__wrap_isChroot, 1);
 
-    expect_string(__wrap_chmod, path, "/var/run/test-42.pid");
-    will_return(__wrap_chmod, 0);
-
     expect_string(__wrap_fopen, path, "/var/run/test-42.pid");
     expect_string(__wrap_fopen, mode, "a");
     will_return(__wrap_fopen, fp);
 
+    expect_value(wrap_fprintf, __stream, fp);
+    expect_string(wrap_fprintf, formatted_msg, "42\n");
+    will_return(wrap_fprintf, 0);
+
+    expect_string(__wrap_chmod, path, "/var/run/test-42.pid");
+    will_return(__wrap_chmod, 0);
+
     ret = CreatePID("test", 42);
     assert_int_equal(0, ret);
-
-    // Reopen the file for content checking
-    fp = __real_fopen("./test_file.tmp", "r");
-
-    assert_non_null(fp);
-
-    char buff[256];
-    fgets(buff, 256, fp);
-    fclose(fp);
-
-    assert_string_equal(buff, "42\n");
 }
 
 void test_CreatePID_failure_chmod(void **state)
@@ -146,12 +142,16 @@ void test_CreatePID_failure_chmod(void **state)
 
     will_return(__wrap_isChroot, 1);
 
-    expect_string(__wrap_chmod, path, "/var/run/test-42.pid");
-    will_return(__wrap_chmod, -1);
-
     expect_string(__wrap_fopen, path, "/var/run/test-42.pid");
     expect_string(__wrap_fopen, mode, "a");
     will_return(__wrap_fopen, fp);
+
+    expect_value(wrap_fprintf, __stream, fp);
+    expect_string(wrap_fprintf, formatted_msg, "42\n");
+    will_return(wrap_fprintf, 0);
+
+    expect_string(__wrap_chmod, path, "/var/run/test-42.pid");
+    will_return(__wrap_chmod, -1);
 
     ret = CreatePID("test", 42);
     assert_int_equal(-1, ret);

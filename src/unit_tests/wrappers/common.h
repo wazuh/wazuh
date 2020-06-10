@@ -31,6 +31,7 @@ extern int test_mode;
 
 #define time(x) wrap_time(x)
 #define fprintf wrap_fprintf
+#define fgets wrap_fgets
 #endif
 
 #endif /* COMMON_H */
