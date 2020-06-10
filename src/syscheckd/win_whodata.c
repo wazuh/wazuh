@@ -48,8 +48,6 @@
 #include "unit_tests/wrappers/windows/winevt_wrappers.h"
 #include "unit_tests/wrappers/windows/winreg_wrappers.h"
 
-#define fgets wrap_fgets
-
 // Remove static qualifier when unit testing
 #define STATIC
 #else

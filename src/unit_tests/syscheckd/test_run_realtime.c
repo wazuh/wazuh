@@ -1270,6 +1270,7 @@ void test_realtime_adddir_success(void **state) {
 void test_RTCallBack_error_on_callback(void **state) {
     OVERLAPPED ov;
 
+    will_return(wrap_FormatMessage, "Path not found.");
     expect_string(__wrap__merror, formatted_msg, "(6613): Real time Windows callback process: 'Path not found.' (3).");
 
     RTCallBack(ERROR_PATH_NOT_FOUND, 0, &ov);

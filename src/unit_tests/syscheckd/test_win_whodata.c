@@ -77,11 +77,13 @@ int test_group_setup(void **state) {
 
     ret = Read_Syscheck_Config("test_syscheck.conf");
 
+    test_mode = 1;
     unit_testing = 1;
     return ret;
 }
 
 static int test_group_teardown(void **state) {
+    test_mode = 0;
     unit_testing = 0;
     return 0;
 }
@@ -263,8 +265,10 @@ static int teardown_state_checker(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 1");
     expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck.conf]");
 
+    test_mode = 0;
     unit_testing = 0;
     ret = Read_Syscheck_Config("test_syscheck.conf");
+    test_mode = 1;
     unit_testing = 1;
 
     return ret;
@@ -329,19 +333,6 @@ static int teardown_event_4663_dir(void **state) {
 
     return 0;
 }
-
-static int setup_test_mode(void **state) {
-    test_mode = 1;
-
-    return 0;
-}
-
-static int teardown_test_mode(void **state) {
-    test_mode = 0;
-    
-    return 0;
-}
-
 
 void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
     char formatted_msg[OS_MAXSTR];
@@ -8652,8 +8643,8 @@ int main(void) {
         cmocka_unit_test(test_run_whodata_scan_invalid_arch),
         cmocka_unit_test(test_run_whodata_scan_no_audit_policies),
         cmocka_unit_test(test_run_whodata_scan_no_auto_audit_policies),
-        cmocka_unit_test_setup_teardown(test_run_whodata_scan_error_event_channel, setup_test_mode, teardown_test_mode),
-        cmocka_unit_test_setup_teardown(test_run_whodata_scan_success, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test(test_run_whodata_scan_error_event_channel),
+        cmocka_unit_test(test_run_whodata_scan_success),
         /* get_file_time */
         // TODO: Should we add tests for NULL input parameters?
         cmocka_unit_test(test_get_file_time_error),
@@ -8665,8 +8656,8 @@ int main(void) {
         cmocka_unit_test(test_set_policies_fail_getting_policies),
         cmocka_unit_test_teardown(test_set_policies_unable_to_open_backup_file, teardown_reset_errno),
         cmocka_unit_test_teardown(test_set_policies_unable_to_open_new_file, teardown_reset_errno),
-        cmocka_unit_test_setup_teardown(test_set_policies_unable_to_restore_policies, setup_test_mode, teardown_test_mode),
-        cmocka_unit_test_setup_teardown(test_set_policies_success, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test(test_set_policies_unable_to_restore_policies),
+        cmocka_unit_test(test_set_policies_success),
         /* whodata_list_set_values */
         cmocka_unit_test(test_whodata_list_set_values),
         /* whodata_list_remove_multiple */

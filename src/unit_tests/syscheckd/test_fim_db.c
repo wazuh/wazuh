@@ -50,15 +50,6 @@ int __wrap_fseek(FILE *stream, long offset, int whence) {
     return __real_fseek(stream, offset, whence);
 }
 
-extern int __real_fgets(char *s, int size, FILE *stream);
-int __wrap_fgets(char *s, int size, FILE *stream) {
-    if (test_mode) {
-        strncpy(s, mock_type(char *), size);
-        return mock_type(int);
-    }
-    return __real_fgets(s, size, stream);
-}
-
 extern int __real_fclose(FILE *__stream);
 int __wrap_fclose(FILE *stream) {
     if (test_mode) {
@@ -2245,10 +2236,11 @@ void test_fim_db_process_get_query_error(void **state) {
 /*----------fim_db_sync_path_range()------------------*/
 void test_fim_db_sync_path_range_disk(void **state) {
     test_fim_db_insert_data *test_data = *state;
+    test_data->tmp_file->fd = (FILE*)2345;
 
     will_return(__wrap_fseek, 0);
-    will_return(__wrap_fgets, "/tmp/file\n");
-    will_return(__wrap_fgets, 1);
+    expect_value(wrap_fgets, __stream, (FILE*)2345);
+    will_return(wrap_fgets, "/tmp/file\n");
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return_always(__wrap_sqlite3_bind_text, 0);
@@ -2301,11 +2293,12 @@ void test_fim_db_sync_path_range_memory(void **state) {
 /*----------fim_db_delete_range()------------------*/
 void test_fim_db_delete_range_success(void **state) {
     test_fim_db_insert_data *test_data = *state;
+    test_data->tmp_file->fd = (FILE*)2345;
     int ret;
 
     will_return(__wrap_fseek, 0);
-    will_return(__wrap_fgets, "/tmp/file\n");
-    will_return(__wrap_fgets, 1);
+    expect_value(wrap_fgets, __stream, (FILE*)2345);
+    will_return(wrap_fgets, "/tmp/file\n");
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return_always(__wrap_sqlite3_bind_text, 0);
@@ -2331,11 +2324,12 @@ void test_fim_db_delete_range_success(void **state) {
 
 void test_fim_db_delete_range_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
+    test_data->tmp_file->fd = (FILE*)2345;
     int ret;
 
     will_return(__wrap_fseek, 0);
-    will_return(__wrap_fgets, "/tmp/file\n");
-    will_return(__wrap_fgets, 1);
+    expect_value(wrap_fgets, __stream, (FILE*)2345);
+    will_return(wrap_fgets, "/tmp/file\n");
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return_always(__wrap_sqlite3_bind_text, 0);
@@ -2356,11 +2350,12 @@ void test_fim_db_delete_range_error(void **state) {
 
 void test_fim_db_delete_range_path_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
+    test_data->tmp_file->fd = (FILE*)2345;
     int ret;
 
     will_return(__wrap_fseek, 0);
-    will_return(__wrap_fgets, "/tmp/file");
-    will_return(__wrap_fgets, 1);
+    expect_value(wrap_fgets, __stream, (FILE*)2345);
+    will_return(wrap_fgets, "\n");
 
     expect_string(__wrap__merror, formatted_msg, "Temporary path file '/tmp/file' is corrupt: missing line end.");
 
@@ -2376,11 +2371,12 @@ void test_fim_db_delete_range_path_error(void **state) {
 /*----------fim_db_delete_not_scanned()------------------*/
 void test_fim_db_delete_not_scanned(void **state) {
     test_fim_db_insert_data *test_data = *state;
+    test_data->tmp_file->fd = (FILE*)2345;
     int ret;
 
     will_return(__wrap_fseek, 0);
-    will_return(__wrap_fgets, "/tmp/file\n");
-    will_return(__wrap_fgets, 1);
+    expect_value(wrap_fgets, __stream, (FILE*)2345);
+    will_return(wrap_fgets, "/tmp/file\n");
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return_always(__wrap_sqlite3_bind_text, 0);
@@ -2404,11 +2400,12 @@ void test_fim_db_delete_not_scanned(void **state) {
 /*----------fim_db_process_missing_entry()------------------*/
 void test_fim_db_process_missing_entry(void **state) {
     test_fim_db_insert_data *test_data = *state;
+    test_data->tmp_file->fd = (FILE*)2345;
     int ret;
 
     will_return(__wrap_fseek, 0);
-    will_return(__wrap_fgets, "/tmp/file\n");
-    will_return(__wrap_fgets, 1);
+    expect_value(wrap_fgets, __stream, (FILE*)2345);
+    will_return(wrap_fgets, "/tmp/file\n");
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return_always(__wrap_sqlite3_bind_text, 0);

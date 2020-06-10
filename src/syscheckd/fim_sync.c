@@ -20,7 +20,6 @@
 #include "fim_db.h"
 
 #ifdef UNIT_TESTING
-#include "unit_tests/wrappers/common.h"
 /* Remove static qualifier when unit testing */
 #define static
 

@@ -8,7 +8,8 @@
  * Foundation
  */
 
-#include "common.h"
+#include <time.h>
+#include <stdio.h>
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
@@ -33,7 +34,7 @@ time_t wrap_time (__UNUSED_PARAM(time_t *t)) {
     return time_mock_value;
 }
 
-int wrap_fprintf(FILE *__stream, const char *__format, ...) {
+int wrap_fprintf (FILE *__stream, const char *__format, ...) {
     int ret;
     char formatted_msg[OS_MAXSTR];
     va_list args;
@@ -55,13 +56,16 @@ int wrap_fprintf(FILE *__stream, const char *__format, ...) {
 }
 
 char * wrap_fgets (char * __s, int __n, FILE * __stream) {
-  char *buffer = mock_type(char*);
-
-  check_expected(__stream);
-
-  if(buffer) {
-    strncpy(__s, buffer, __n - 1);
-    return __s;
-  }
-  return NULL;
+    if (test_mode) {
+        char *buffer = mock_type(char*);
+        check_expected(__stream);
+        if(buffer) {
+            strncpy(__s, buffer, __n - 1);
+            return __s;
+        }
+        return NULL;
+    } else {
+        int ret = fgets(__s, __n, __stream);
+        return ret;
+    }
 }

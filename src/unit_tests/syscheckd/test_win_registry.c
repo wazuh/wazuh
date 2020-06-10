@@ -360,7 +360,6 @@ void test_os_winreg_querykey_values_binary(void **state) {
     will_return(wrap_RegEnumValue, REG_BINARY);
     will_return(wrap_RegEnumValue, 4); // 32 bits number -> 4 * sizeof(char)
     unsigned int value = 0x2AFE80DC;
-    printf("TEST VALUE: %08x\n\n\n", value);
     will_return(wrap_RegEnumValue, &value);
     will_return(wrap_RegEnumValue, ERROR_SUCCESS);
 
@@ -507,6 +506,7 @@ void test_os_winreg_check_valid_subtree(void **state) {
     char debug_msg[OS_MAXSTR];
     snprintf(debug_msg, OS_MAXSTR, FIM_READING_REGISTRY, syscheck.registry[0].arch == ARCH_64BIT ? "[x64] " : "[x32] ", syscheck.registry[0].entry);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+    int pos = 0;
 
     // If os_winreg check tries to call os_winreg_open_key then subtree is valid
     // Inside RegOpenKeyEx
@@ -514,11 +514,11 @@ void test_os_winreg_check_valid_subtree(void **state) {
     expect_string(wrap_RegOpenKeyEx, lpSubKey,
         "Software\\Classes\\batfile");
     expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
-    expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ);
+    expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ | (syscheck.registry[pos].arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY));
     will_return(wrap_RegOpenKeyEx, NULL);
     will_return(wrap_RegOpenKeyEx, ERROR_ACCESS_DENIED);
     char debug_msg2[OS_MAXSTR];
-    snprintf(debug_msg2, OS_MAXSTR, "(6920): Unale to open registry key: 'Software\\Classes\\batfile' arch: '%s'.", syscheck.registry[0].arch == ARCH_64BIT ? "[x64]" : "[x32]");
+    snprintf(debug_msg2, OS_MAXSTR, "(6920): Unable to open registry key: 'Software\\Classes\\batfile' arch: '%s'.", syscheck.registry[0].arch == ARCH_64BIT ? "[x64]" : "[x32]");
     expect_string(__wrap__mdebug1, formatted_msg, debug_msg2);
 
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
@@ -527,12 +527,14 @@ void test_os_winreg_check_valid_subtree(void **state) {
 /**************************************************************************/
 /*************************os_winreg_open()*******************************/
 void test_os_winreg_open_fail(void **state) {
+    int pos = 0;
+
     // Inside RegOpenKeyEx
     expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
     expect_string(wrap_RegOpenKeyEx, lpSubKey,
         "Software\\Classes\\batfile");
     expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
-    expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ);
+    expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ | (syscheck.registry[pos].arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY));
     will_return(wrap_RegOpenKeyEx, NULL);
     will_return(wrap_RegOpenKeyEx, ERROR_ACCESS_DENIED);
     char debug_msg2[OS_MAXSTR];
@@ -542,12 +544,14 @@ void test_os_winreg_open_fail(void **state) {
 }
 
 void test_os_winreg_open_success(void **state) {
+    int pos = 0;
+
     // Inside RegOpenKeyEx
     expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
     expect_string(wrap_RegOpenKeyEx, lpSubKey,
         "Software\\Classes\\batfile");
     expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
-    expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ);
+    expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ | (syscheck.registry[pos].arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY));
     will_return(wrap_RegOpenKeyEx, NULL);
     will_return(wrap_RegOpenKeyEx, ERROR_SUCCESS);
     // Promptly exit from os_winreg_querykey
