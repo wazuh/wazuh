@@ -45,6 +45,7 @@ from os import path
 import operator
 from datetime import datetime
 from datetime import timedelta
+from datetime import timezone
 from time import mktime
 
 # Python 2/3 compatibility
@@ -285,7 +286,6 @@ class WazuhIntegration:
         """
         try:
             json_msg = json.dumps(msg, default=str)
-            debug("{header}{msg}".format(header=self.msg_header, msg=json_msg if dump_json else msg), 1)
 
             s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             s.connect(self.wazuh_queue)
@@ -2289,6 +2289,8 @@ class AWSCloudWatchLogs(AWSService):
         self.log_group_list = [group for group in aws_log_groups.split(",") if group != ""] if aws_log_groups else []
         self.cloudwatch_region = region
         self.remove_log_streams = remove_log_streams
+        self.start_time = int(datetime.strptime(only_logs_after, '%Y%m%d').replace(
+            tzinfo=timezone.utc).timestamp() * 1000) if only_logs_after else None
 
     def get_alerts(self):
         self.init_db(self.sql_create_cloudwatch_table.format(table_name=self.db_table_name))
@@ -2298,20 +2300,25 @@ class AWSCloudWatchLogs(AWSService):
                 for log_stream in self.get_log_streams(log_group=log_group):
                     response = None
                     next_token = self.get_next_token(log_group=log_group, log_stream=log_stream)
-                    debug('+++ The token retrieved from DB is "{}"'.format(next_token), 1)
+                    debug('The token retrieved from DB for log_group "{}" and log_stream "{}" is "{}"'.format(log_group,
+                                                                                                              log_stream,
+                                                                                                              next_token),
+                          2)
                     while not response or response['events'] != list():
-                        debug('+++ Getting CloudWatch logs from log stream {} in log group {}'.format(log_stream,
-                                                                                                      log_group), 1)
+                        debug('Getting CloudWatch logs from log stream "{}" in log group "{}" using token "{}" and '
+                              'startTime "{}"'.format(log_stream, log_group, next_token, self.start_time), 1)
                         parameters = {'logGroupName': log_group,
                                       'logStreamName': log_stream,
-                                      'nextToken': next_token}
+                                      'nextToken': next_token,
+                                      'startTime': self.start_time}
 
                         response = self.client.get_log_events(
                             **{param: value for param, value in parameters.items() if value is not None})
 
                         self.save_logs(response)
                         next_token = response['nextForwardToken']
-                        debug('+++ Next token is now "{}"'.format(next_token), 1)
+                        debug('The next token for log_group:{} and log_stream:{} is "{}"'.format(log_group, log_stream,
+                                                                                                 next_token), 2)
                     self.save_next_token(log_group=log_group, log_stream=log_stream, token=next_token)
                     if self.remove_log_streams:
                         debug('Removing logstream "{}" from log group "{}"'.format(log_group, log_stream), 1)
@@ -2320,7 +2327,7 @@ class AWSCloudWatchLogs(AWSService):
             self.close_database()
 
     def get_next_token(self, log_group, log_stream):
-        debug('+++ Getting the token from DB', 1)
+        debug('Getting the token from DB', 1)
         try:
             self.db_cursor.execute(self.sql_find_next_token.format(table_name=self.db_table_name,
                                                             service_name=self.service_name,
@@ -2333,7 +2340,8 @@ class AWSCloudWatchLogs(AWSService):
             return None
 
     def save_next_token(self, log_group, log_stream, token):
-        debug('+++ Saving token to the DB', 1)
+        debug('Saving token for log group "{}" and log stream "{}".'.format(log_group, log_stream), 1)
+        debug('The saved token is "{}"'.format(token), 2)
         try:
             self.db_cursor.execute(self.sql_insert_token_value.format(table_name=self.db_table_name,
                                                             service_name=self.service_name,
@@ -2343,7 +2351,7 @@ class AWSCloudWatchLogs(AWSService):
                                                             aws_log_stream=log_stream,
                                                             next_token=token))
         except sqlite3.IntegrityError:
-            debug("+++ The Token already exists on DB. Updating its value...", 1)
+            debug("The Token already exists on DB. Updating its value...", 2)
             self.db_cursor.execute(self.sql_update_token_value.format(table_name=self.db_table_name,
                                                                 service_name=self.service_name,
                                                                 aws_account_id=self.account_id,
@@ -2353,12 +2361,14 @@ class AWSCloudWatchLogs(AWSService):
                                                                 next_token=token))
 
     def save_logs(self, response):
-        debug('Sending message to Analysd...', 1)
         for event in response['events']:
+            debug('Sending message to Analysd...', 1)
+            debug('The message is {}'.format(event['message']), 2)
             self.send_msg(event['message'], dump_json=False)
 
     def get_log_streams(self, log_group):
         """Get the list of log streams contained in the specified log group."""
+        debug('Getting log streams for "{}" log group'.format(log_group), 1)
         log_stream_token = None
         prefix = None
         parameters = {'logGroupName': log_group, 'nextToken': log_stream_token, 'logStreamNamePrefix': prefix}
@@ -2366,12 +2376,19 @@ class AWSCloudWatchLogs(AWSService):
         # Get the logStreams available for the logGroup using boto3
         response = self.client.describe_log_streams(
             **{param: value for param, value in parameters.items() if value is not None})
-        result_list = []
+
+        result_list = list()
         for log_stream in response['logStreams']:
+            debug('Found "{}" log stream in {}'.format(log_stream, log_group), 2)
             result_list.append(log_stream['logStreamName'])
+
+        if result_list == list():
+            debug('No log streams were found for log group "{}"'.format(log_group), 1)
+
         return result_list
 
     def close_database(self):
+        debug("committing changes and closing the DB", 1)
         # DB maintenance
 
         # close connection with DB
@@ -2541,6 +2558,7 @@ def main(argv):
                                    'eu-central-1', 'eu-west-1']
 
             for region in options.regions:
+                debug('+++ Getting alerts from "{}" region.'.format(region), 1)
                 service = service_type(reparse=options.reparse, access_key=options.access_key,
                                        secret_key=options.secret_key, aws_profile=options.aws_profile,
                                        iam_role_arn=options.iam_role_arn, only_logs_after=options.only_logs_after,
