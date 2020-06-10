@@ -21,9 +21,6 @@ import wazuh.results as wresults
 from wazuh import exception, common, Wazuh
 
 
-token_blacklist = dict()
-
-
 class Response:
     """
     Defines and stores a response from a request

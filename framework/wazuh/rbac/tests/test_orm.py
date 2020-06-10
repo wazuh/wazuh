@@ -76,12 +76,12 @@ def test_delete_all_rules(db_setup):
         assert tm.delete_all_rules()
 
 
-def test_delete_all_expires_rules(db_setup):
+def test_delete_all_expired_rules(db_setup):
     """Check that rules are correctly deleted"""
     with patch('wazuh.rbac.orm.time', return_value=0):
         test_add_token(db_setup)
     with db_setup.TokenManager() as tm:
-        assert tm.delete_all_expires_rules()
+        assert tm.delete_all_expired_rules()
 
 
 def test_add_user(db_setup):

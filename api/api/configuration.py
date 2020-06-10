@@ -1,6 +1,7 @@
 # Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import copy
 import datetime
 import os
@@ -13,11 +14,10 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
-from api.constants import SECURITY_CONFIG_PATH
 
 from api.api_exception import APIException
+from api.constants import SECURITY_CONFIG_PATH
 from wazuh import common
-
 
 default_security_configuration = {
     "auth_token_exp_timeout": 36000,

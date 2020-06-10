@@ -231,13 +231,9 @@ def update_api_conf(new_config):
     new_config : dict
         Dictionary with the new configuration.
     """
-    need_revoke = False
     if new_config:
         for key in new_config:
             if key in configuration.api_conf:
-                if (key == 'rbac' or key == 'auth_token_exp_timeout') and \
-                        configuration.api_conf[key] != new_config[key]:
-                    need_revoke = True
                 if isinstance(configuration.api_conf[key], dict) and isinstance(new_config[key], dict):
                     configuration.api_conf[key].update(new_config[key])
                 else:
@@ -250,5 +246,3 @@ def update_api_conf(new_config):
             raise WazuhInternalError(1005)
     else:
         raise WazuhError(1105)
-
-    return need_revoke

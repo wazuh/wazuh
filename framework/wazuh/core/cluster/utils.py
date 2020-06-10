@@ -189,9 +189,6 @@ def read_config(config_file=common.ossec_conf):
     return read_cluster_config(config_file=config_file)
 
 
-# Token blacklist
-token_blacklist = dict()
-
 # Context vars
 context_tag: ContextVar[str] = ContextVar('tag', default='')
 context_subtag: ContextVar[str] = ContextVar('subtag', default='')

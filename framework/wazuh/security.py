@@ -713,7 +713,8 @@ def update_security_config(updated_config=None):
         Confirmation/Error message.
     """
     try:
-        update_security_conf(updated_config)
+        if update_security_conf(updated_config):
+            revoke_tokens()
         result = 'Configuration successfully updated'
     except WazuhError as e:
         result = f'Configuration could not be updated. Error: {e}'

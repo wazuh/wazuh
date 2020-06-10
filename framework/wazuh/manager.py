@@ -10,8 +10,6 @@ from datetime import timezone
 from os import remove
 from os.path import exists, join
 
-from api import configuration as api_conf
-from api.controllers.security_controller import revoke_all_tokens
 from wazuh import Wazuh
 from wazuh import common
 from wazuh import configuration

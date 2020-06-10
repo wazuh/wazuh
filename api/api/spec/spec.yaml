@@ -11988,6 +11988,8 @@ paths:
                     - POST /agents/insert/quick
         '400':
           $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
 
   /security/resources:
     get:
@@ -12034,6 +12036,8 @@ paths:
                   description: 'Reference security user via its username (i.e. user:id:wazuh)'
         '400':
           $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
 
   /security/user/revoke:
     put:

@@ -13,13 +13,12 @@ from time import time
 from jose import JWTError, jwt
 from werkzeug.exceptions import Unauthorized
 
-from api.configuration import read_yaml_config, default_security_configuration, SECURITY_CONFIG_PATH
 from api.api_exception import APIException
+from api.configuration import read_yaml_config, default_security_configuration, SECURITY_CONFIG_PATH
 from api.constants import SECURITY_PATH
 from api.util import raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.rbac.orm import AuthenticationManager
-from wazuh.rbac.orm import TokenManager
+from wazuh.rbac.orm import AuthenticationManager, TokenManager
 
 pool = concurrent.futures.ThreadPoolExecutor()
 
@@ -109,15 +108,8 @@ def change_secret():
         jwt_secret.write(new_secret)
 
 
-def get_token_blacklist():
-    """Get all token rules."""
-    with TokenManager() as tm:
-        return tm.get_all_rules()
-
-
 def get_security_conf():
-    config = read_yaml_config(config_file=SECURITY_CONFIG_PATH, default_conf=default_security_configuration)
-    return {'config': (config['auth_token_exp_timeout'], config['rbac_mode'])}
+    return read_yaml_config(config_file=SECURITY_CONFIG_PATH, default_conf=default_security_configuration)
 
 
 def generate_token(user_id=None, rbac_policies=None):
@@ -140,7 +132,10 @@ def generate_token(user_id=None, rbac_policies=None):
                           wait_for_complete=True,
                           logger=logging.getLogger('wazuh')
                           )
-    token_exp, rbac_mode = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())['config']
+    result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).values()
+    # import pydevd_pycharm
+    # pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
+    token_exp, rbac_mode = list(result)
     timestamp = int(time())
     rbac_policies['rbac_mode'] = rbac_mode
     payload = {
@@ -162,7 +157,7 @@ def check_token(username, token_iat_time):
     username : str
         Unique username
     token_iat_time : int
-        issued at of the current token
+        Issued at time of the current token
     Returns
     -------
     Dict with the result
@@ -205,30 +200,13 @@ def decode_token(token):
                               wait_for_complete=True,
                               logger=logging.getLogger('wazuh')
                               )
-        current_rbac_mode = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())['config'][1]
-        if payload['rbac_policies']['rbac_mode'] != current_rbac_mode:
+        result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
+        current_rbac_mode = result['rbac_mode']
+        current_expiration_time = result['auth_token_exp_timeout']
+        if payload['rbac_policies']['rbac_mode'] != current_rbac_mode or \
+                (payload['exp'] - payload['iat']) != current_expiration_time:
             raise Unauthorized
 
         return payload
     except JWTError as e:
         raise Unauthorized from e
-
-
-def get_permissions(header):
-    """Extract RBAC info from JWT token in request header.
-
-    Parameters
-    ----------
-    header : str
-        Connexion request header
-
-    Returns
-    -------
-    RBAC mode (white or black list) and user permissions
-    """
-    # We strip "Bearer " from the Authorization header of the request to get the token
-    jwt_token = header[7:]
-    payload = decode_token(jwt_token)
-    permissions = payload['rbac_policies']
-
-    return permissions, payload['rbac_mode']

@@ -29,7 +29,11 @@ def update_security_conf(new_config):
     """
     configuration.security_conf.update(new_config)
 
+    need_revoke = False
     if new_config:
+        for key in new_config:
+            if key in configuration.security_conf.keys():
+                need_revoke = True
         try:
             with open(SECURITY_CONFIG_PATH, 'w+') as f:
                 yaml.dump(configuration.security_conf, f)
@@ -37,4 +41,6 @@ def update_security_conf(new_config):
             raise WazuhInternalError(1005)
     else:
         raise WazuhError(4021)
+
+    return need_revoke
 

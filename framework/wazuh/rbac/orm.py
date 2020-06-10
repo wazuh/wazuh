@@ -114,13 +114,13 @@ class UserRoles(_Base):
 # Declare basic tables
 class TokenBlacklist(_Base):
     """
-    Table between Usernames and Policies, in this table are stored the relationship between the both entities
-    The information stored from Roles and Policies are:
+    Table between Usernames and Policies, this table stores the relationship between the both entities
+    The information stored from Roles and Policies ais:
         username: Affected username
         iat_invalid_until: The tokens that has an iat prior to this timestamp will be invalidated
         is_valid_until: Deadline for the rule's validity. To ensure that we can delete this rule,
         the deadline will be the time of token creation plus the time of token validity.
-        This way, when we delete this rule, the token will be invalid by time.
+        This way, when we delete this rule, we ensure the invalid tokens have already expired.
     """
     __tablename__ = "token_blacklist"
 
@@ -135,7 +135,7 @@ class TokenBlacklist(_Base):
         self.is_valid_until = self.iat_invalid_until + security_conf['auth_token_exp_timeout']
 
     def to_dict(self):
-        """Return the information of one policy and the roles that have assigned
+        """Return the information of the token rule.
 
         :return: Dict with the information
         """
@@ -295,8 +295,8 @@ class Policies(_Base):
 
 class TokenManager:
     """
-    This class is the manager of Token blacklist, this class provided
-    all the methods needed for thetoken blacklist administration.
+    This class is the manager of Token blacklist, this class provides
+    all the methods needed for the token blacklist administration.
     """
 
     def is_token_valid(self, username: str, token_iat_time: int):
@@ -348,7 +348,7 @@ class TokenManager:
         True if the success, SecurityError.ALREADY_EXIST if failed
         """
         try:
-            self.delete_all_expires_rules()
+            self.delete_all_expired_rules()
             for username in users:
                 self.delete_rule(username=username)
                 self.session.add(TokenBlacklist(username=username))
@@ -378,8 +378,8 @@ class TokenManager:
             self.session.rollback()
             return SecurityError.TOKEN_RULE_NOT_EXIST
 
-    def delete_all_expires_rules(self):
-        """Delete all expires rules in the system
+    def delete_all_expired_rules(self):
+        """Delete all expired rules in the system
 
         Returns
         -------
