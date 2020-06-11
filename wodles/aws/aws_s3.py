@@ -1353,7 +1353,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
             for row in tsv_file:
                 for key, value in row.items():
                     if key in unix_fields and value not in unix_fields:
-                        row[key] = datetime.fromtimestamp(int(value)).isoformat()
+                        row[key] = datetime.utcfromtimestamp(int(value)).strftime('%Y-%m-%dT%H:%M:%SZ')
 
                 result.append(dict(row, source='vpc'))
 
