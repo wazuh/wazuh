@@ -17,16 +17,28 @@ from wazuh import security
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhError
 from wazuh.rbac import preprocessor
+from api.configuration import default_security_configuration
+from wazuh.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh')
 auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
 
 
-async def login_user(request, user, auth_context=None):
-    """User/password authentication to get an access token
-
+async def login_user(request, user: str, auth_context=None):
+    """User/password authentication to get an access token.
     This method should be called to get an API token. This token will expire at some time. # noqa: E501
-    :return: TokenResponse
+
+    Parameters
+    ----------
+    request : connexion.request
+    user : str
+        Name of the user who wants to be authenticated
+    auth_context : dict, optional
+        User's authorization context
+
+    Returns
+    -------
+    TokenResponse
     """
     f_kwargs = {'auth_context': auth_context,
                 'user_id': user}
@@ -45,17 +57,30 @@ async def login_user(request, user, auth_context=None):
 
 async def get_users(request, usernames: list = None, pretty=False, wait_for_complete=False,
                     offset=0, limit=None, search=None, sort=None):
-    """Returns information from all system roles
+    """Returns information from all system roles.
 
-    :param usernames: List of users to be obtained
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :return Roles information
+    Parameters
+    ----------
+    request : connexion.request
+    usernames : list, optional
+        List of users to be obtained
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+    offset : int, optional
+        First item to return
+    limit : int, optional
+        Maximum number of items to return
+    search : str
+        Looks for elements with the specified string
+    sort : str, optional
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order
+
+    Returns
+    -------
+    Roles information
     """
     f_kwargs = {'username_list': usernames, 'offset': offset, 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['username'],
@@ -75,11 +100,18 @@ async def get_users(request, usernames: list = None, pretty=False, wait_for_comp
 
 
 def _check_body(f_kwargs, keys: list = None):
-    """Checks that body is correct
+    """Checks that body is correct.
 
-    :param f_kwargs: Body to be checked
-    :param keys: Keys that the body must have only and exclusively
-    :return: 0 -> Correct | str -> Incorrect
+    Parameters
+    ----------
+    f_kwargs : dict
+        Body to be checked
+    keys : list
+        Keys that the body must have only and exclusively
+
+    Returns
+    -------
+    False if invalid key detected else True
     """
     if keys is None:
         keys = ['username', 'password']
@@ -91,16 +123,23 @@ def _check_body(f_kwargs, keys: list = None):
 
 
 async def create_user(request):
-    """Create a new user
+    """Create a new user.
 
-    :return: User data
+    Parameters
+    ----------
+    request : connexion.request
+
+    Returns
+    -------
+    User data
     """
+    validate = False
     try:
         f_kwargs = {**await request.json()}
+        validate = _check_body(f_kwargs)
     except JSONDecodeError as e:
         raise_if_exc(APIError(code=2005, details=e.msg))
-    validate = _check_body(f_kwargs)
-    if validate is not True:
+    if not validate:
         raise_if_exc(WazuhError(5005, extra_message='Invalid field found {}'.format(f_kwargs)))
     dapi = DistributedAPI(f=security.create_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -114,11 +153,18 @@ async def create_user(request):
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-async def update_user(request, username):
-    """Modify an existent user
+async def update_user(request, username: str):
+    """Modify an existent user.
 
-    :param username: Name of the user to be modified
-    :return: User data
+    Parameters
+    ----------
+    request : connexion.request
+    username : str
+        Username of the user to be updated
+
+    Returns
+    -------
+    User data
     """
     try:
         f_kwargs = {'username': username, **await request.json()}
@@ -139,11 +185,18 @@ async def update_user(request, username):
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-async def delete_users(request, usernames=None):
-    """Delete an existent list of users
+async def delete_users(request, usernames: list = None):
+    """Delete an existent list of users.
 
-    :param usernames: Names of the users to be removed
-    :return: Result of the operation
+    Parameters
+    ----------
+    request : connexion.request
+    usernames : list, optional
+        Names of the users to be removed
+
+    Returns
+    -------
+    Result of the operation
     """
     f_kwargs = {'username_list': usernames}
     dapi = DistributedAPI(f=security.remove_users,
@@ -159,19 +212,32 @@ async def delete_users(request, usernames=None):
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-async def get_roles(request, role_ids=None, pretty=False, wait_for_complete=False, offset=0, limit=None, search=None,
-                    sort=None):
-    """Returns information from all system roles
+async def get_roles(request, role_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
+                    offset: int = 0, limit: int = None, search: str = None, sort: str = None):
+    """
 
-    :param role_ids: List of roles ids to be obtained
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :return Roles information
+    Parameters
+    ----------
+    request : connexion.request
+    role_ids : list, optional
+        List of roles ids to be obtained
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+    offset : int, optional
+        First item to return
+    limit : int, optional
+        Maximum number of items to return
+    search : str, optional
+        Looks for elements with the specified string
+    sort : str, optional
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order
+
+    Returns
+    -------
+    Roles information
     """
     f_kwargs = {'role_ids': role_ids, 'offset': offset, 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
@@ -193,14 +259,23 @@ async def get_roles(request, role_ids=None, pretty=False, wait_for_complete=Fals
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def add_role(request, pretty=False, wait_for_complete=False):
-    """Add one specified role
+async def add_role(request, pretty: bool = False, wait_for_complete: bool = False):
+    """Add one specified role.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :return Role information
+    Parameters
+    ----------
+    request : request.connexion
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+
+    Returns
+    -------
+    Role information
     """
     # get body parameters
+    role_added_model = dict()
     try:
         role_added_model = await request.json()
     except JSONDecodeError as e:
@@ -221,13 +296,22 @@ async def add_role(request, pretty=False, wait_for_complete=False):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def remove_roles(request, role_ids=None, pretty=False, wait_for_complete=False):
-    """Removes a list of roles in the system
+async def remove_roles(request, role_ids: list = None, pretty: bool = False, wait_for_complete: bool = False):
+    """Removes a list of roles in the system.
 
-    :param role_ids: List of roles ids to be deleted
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :return Two list with deleted roles and not deleted roles
+    Parameters
+    ----------
+    request : connexion.request
+    role_ids : list, optional
+        List of roles ids to be deleted
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+
+    Returns
+    -------
+    Two list with deleted roles and not deleted roles
     """
     f_kwargs = {'role_ids': role_ids}
 
@@ -244,15 +328,25 @@ async def remove_roles(request, role_ids=None, pretty=False, wait_for_complete=F
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def update_role(request, role_id, pretty=False, wait_for_complete=False):
-    """Update the information of one specified role
+async def update_role(request, role_id: int, pretty: bool = False, wait_for_complete: bool = False):
+    """Update the information of one specified role.
 
-    :param role_id: Specific role id in the system to be updated
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :return Role information updated
+    Parameters
+    ----------
+    request : connexion.request
+    role_id : int
+        Specific role id in the system to be updated
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+
+    Returns
+    -------
+    Role information updated
     """
     # get body parameters
+    role_added_model = dict()
     try:
         role_added_model = await request.json()
     except JSONDecodeError as e:
@@ -274,19 +368,32 @@ async def update_role(request, role_id, pretty=False, wait_for_complete=False):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_policies(request, policy_ids=None, pretty=False, wait_for_complete=False, offset=0, limit=None,
-                       search=None, sort=None):
-    """Returns information from all system policies
+async def get_policies(request, policy_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
+                       offset: int = 0, limit: int = None, search: str = None, sort: str = None):
+    """Returns information from all system policies.
 
-    :param policy_ids: List of policies
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :return Policies information
+    Parameters
+    ----------
+    request : connexion.request
+    policy_ids : list, optional
+        List of policies
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+    offset : int, optional
+        First item to return
+    limit : int, optional
+        Maximum number of items to return
+    search : str, optional
+        Looks for elements with the specified string
+    sort : str, optional
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order
+
+    Returns
+    -------
+    Policies information
     """
     f_kwargs = {'policy_ids': policy_ids, 'offset': offset, 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
@@ -308,14 +415,23 @@ async def get_policies(request, policy_ids=None, pretty=False, wait_for_complete
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def add_policy(request, pretty=False, wait_for_complete=False):
-    """Add one specified policy
+async def add_policy(request, pretty: bool = False, wait_for_complete: bool = False):
+    """Add one specified policy.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :return Policy information
+    Parameters
+    ----------
+    request : connexion.request
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+
+    Returns
+    -------
+    Policy information
     """
     # get body parameters
+    policy_added_model = dict()
     try:
         policy_added_model = await request.json()
     except JSONDecodeError as e:
@@ -336,13 +452,22 @@ async def add_policy(request, pretty=False, wait_for_complete=False):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def remove_policies(request, policy_ids=None, pretty=False, wait_for_complete=False):
-    """Removes a list of roles in the system
+async def remove_policies(request, policy_ids: list = None, pretty: bool = False, wait_for_complete: bool = False):
+    """Removes a list of roles in the system.
 
-    :param policy_ids: List of policies ids to be deleted
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :return Two list with deleted roles and not deleted roles
+    Parameters
+    ----------
+    request : connexion.request
+    policy_ids : list, optional
+        List of policies ids to be deleted
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+
+    Returns
+    -------
+    Two list with deleted roles and not deleted roles
     """
     f_kwargs = {'policy_ids': policy_ids}
 
@@ -359,15 +484,25 @@ async def remove_policies(request, policy_ids=None, pretty=False, wait_for_compl
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def update_policy(request, policy_id, pretty=False, wait_for_complete=False):
-    """Update the information of one specified policy
+async def update_policy(request, policy_id: int, pretty: bool = False, wait_for_complete: bool = False):
+    """Update the information of one specified policy.
 
-    :param policy_id: Specific policy id in the system to be updated
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :return Policy information updated
+    Parameters
+    ----------
+    request : connexion.request
+    policy_id : int
+        Specific policy id in the system to be updated
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+
+    Returns
+    -------
+    Policy information updated
     """
     # get body parameters
+    policy_added_model = dict()
     try:
         policy_added_model = await request.json()
     except JSONDecodeError as e:
@@ -390,20 +525,22 @@ async def update_policy(request, policy_id, pretty=False, wait_for_complete=Fals
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def set_user_role(request, username, role_ids, position=None, pretty=False, wait_for_complete=False):
-    """Add a list of roles to one specified user
+async def set_user_role(request, username: str, role_ids: list, position: int = None,
+                        pretty: bool = False, wait_for_complete: bool = False):
+    """Add a list of roles to one specified user.
 
     Parameters
     ----------
+    request : connexion.request
     username : str
         User's username
     role_ids : list of int
         List of role ids
-    position : int
+    position : int, optional
         Position where the new role will be inserted
-    pretty : bool
+    pretty : bool, optional
         Show results in human-readable format
-    wait_for_complete : bool
+    wait_for_complete : bool, optional
         Disable timeout response
 
     Returns
@@ -425,14 +562,24 @@ async def set_user_role(request, username, role_ids, position=None, pretty=False
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def remove_user_role(request, username, role_ids, pretty=False, wait_for_complete=False):
-    """Delete a list of roles of one specified user
+async def remove_user_role(request, username: str, role_ids: list, pretty: bool = False,
+                           wait_for_complete: bool = False):
+    """Delete a list of roles of one specified user.
 
-    :param username: User's username
-    :param role_ids: List of roles ids
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :return Result of the operation
+    Parameters
+    ----------
+    request : connexion.request
+    username : str
+    role_ids : list
+        List of roles ids
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete: bool, optional
+        Disable timeout response
+
+    Returns
+    -------
+    Result of the operation
     """
     f_kwargs = {'user_id': username, 'role_ids': role_ids}
 
@@ -450,7 +597,7 @@ async def remove_user_role(request, username, role_ids, pretty=False, wait_for_c
 
 
 async def set_role_policy(request, role_id, policy_ids, position=None, pretty=False, wait_for_complete=False):
-    """Add a list of policies to one specified role
+    """Add a list of policies to one specified role.
 
     Parameters
     ----------
@@ -485,14 +632,24 @@ async def set_role_policy(request, role_id, policy_ids, position=None, pretty=Fa
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def remove_role_policy(request, role_id, policy_ids, pretty=False, wait_for_complete=False):
-    """Delete a list of policies of one specified role
+async def remove_role_policy(request, role_id: int, policy_ids: list, pretty: bool = False,
+                             wait_for_complete: bool = False):
+    """Delete a list of policies of one specified role.
 
-    :param role_id: Role id
-    :param policy_ids: List of policy ids
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :return Role information
+    Parameters
+    ----------
+    request : request.connexion
+    role_id : int
+    policy_ids : list
+        List of policy ids
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+
+    Returns
+    -------
+    Role information
     """
     f_kwargs = {'role_id': role_id, 'policy_ids': policy_ids}
 
@@ -509,14 +666,14 @@ async def remove_role_policy(request, role_id, policy_ids, pretty=False, wait_fo
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_rbac_resources(pretty=False, resource: str = None):
-    """Gets all the current defined resources for RBAC
+async def get_rbac_resources(pretty: bool = False, resource: str = None):
+    """Gets all the current defined resources for RBAC.
 
     Parameters
     ----------
-    pretty : bool
+    pretty : bool, optional
         Show results in human-readable format
-    resource : str
+    resource : str, optional
         Show the information of the specified resource. Ex: agent:id
 
     Returns
@@ -537,14 +694,14 @@ async def get_rbac_resources(pretty=False, resource: str = None):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_rbac_actions(pretty=False, endpoint: str = None):
-    """Gets all the current defined actions for RBAC
+async def get_rbac_actions(pretty: bool = False, endpoint: str = None):
+    """Gets all the current defined actions for RBAC.
 
     Parameters
     ----------
-    pretty : bool
+    pretty : bool, optional
         Show results in human-readable format
-    endpoint : str
+    endpoint : str, optional
         Show actions and resources for the specified endpoint. Ex: GET /agents
 
     Returns
@@ -565,17 +722,96 @@ async def get_rbac_actions(pretty=False, endpoint: str = None):
 
 
 async def revoke_all_tokens(request):
-    """ Revoke all tokens """
+    """Revoke all tokens."""
 
     f_kwargs = {}
 
     dapi = DistributedAPI(f=security.revoke_tokens,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
+                          request_type='distributed_master',
                           is_async=False,
+                          broadcasting=True,
+                          wait_for_complete=True,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+    status = 200
+    if type(data) == AffectedItemsWazuhResult and len(data.affected_items) == 0:
+        raise_if_exc(WazuhError(4000, data.message))
+
+    return web.json_response(data=data, status=status, dumps=dumps)
+
+
+async def get_security_config(request, pretty=False, wait_for_complete=False):
+    """Get active security configuration.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+
+    Returns
+    -------
+    dict
+        Security configuration
+    """
+    f_kwargs = {}
+
+    dapi = DistributedAPI(f=security.get_security_config,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def put_security_config(request, pretty=False, wait_for_complete=False):
+    """Update current security configuration with the given one.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    """
+    try:
+        f_kwargs = {"updated_config": await request.json()}
+    except JSONDecodeError as e:
+        raise_if_exc(APIError(code=2005, details=e.msg))
+
+    dapi = DistributedAPI(f=security.update_security_config,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def delete_security_config(request, pretty=False, wait_for_complete=False):
+    """Restore default security configuration.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    """
+    try:
+        f_kwargs = {"updated_config": default_security_configuration}
+    except JSONDecodeError as e:
+        raise_if_exc(APIError(code=2005, details=e.msg))
+
+    dapi = DistributedAPI(f=security.update_security_config,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)

@@ -152,7 +152,7 @@ stages:
         # Check response item keys are the selected keys
         function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
-          select_keys: 'id,filename,details.noalert' # required_fields={'id'}
+          select_key: 'id,filename,details.noalert' # required_fields={'id'}
       status_code: 200
       json:
         data:

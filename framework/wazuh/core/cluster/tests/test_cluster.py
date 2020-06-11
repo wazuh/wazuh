@@ -26,44 +26,50 @@ with patch('wazuh.common.ossec_uid'):
 
 # Valid configurations
 default_cluster_configuration = {
-    'disabled': 'yes',
-    'node_type': 'master',
-    'name': 'wazuh',
-    'node_name': 'node01',
-    'key': '',
-    'port': 1516,
-    'bind_addr': '0.0.0.0',
-    'nodes': ['NODE_IP'],
-    'hidden': 'no'
+    'cluster': {
+        'disabled': 'yes',
+        'node_type': 'master',
+        'name': 'wazuh',
+        'node_name': 'node01',
+        'key': '',
+        'port': 1516,
+        'bind_addr': '0.0.0.0',
+        'nodes': ['NODE_IP'],
+        'hidden': 'no'
+    }
 }
 
 custom_cluster_configuration = {
-    'disabled': 'no',
-    'node_type': 'master',
-    'name': 'wazuh',
-    'node_name': 'node01',
-    'key': 'a' * 32,
-    'port': 1516,
-    'bind_addr': '0.0.0.0',
-    'nodes': ['172.10.0.100'],
-    'hidden': False
+    'cluster': {
+        'disabled': 'no',
+        'node_type': 'master',
+        'name': 'wazuh',
+        'node_name': 'node01',
+        'key': 'a' * 32,
+        'port': 1516,
+        'bind_addr': '0.0.0.0',
+        'nodes': ['172.10.0.100'],
+        'hidden': False
+    }
 }
 
 custom_incomplete_configuration = {
-    'key': 'a' * 32,
-    'node_name': 'master'
+    'cluster': {
+        'key': 'a' * 32,
+        'node_name': 'master'
+    }
 }
 
 
 def test_read_empty_configuration():
     """
-    Tests reading an empty cluster configuration
+    Test reading an empty cluster configuration
     """
-    with patch('wazuh.cluster.cluster.get_ossec_conf') as m:
+    with patch('wazuh.core.cluster.utils.get_ossec_conf') as m:
         m.side_effect = WazuhException(1106)
         configuration = wazuh.core.cluster.utils.read_config()
         configuration['disabled'] = 'yes' if configuration['disabled'] else 'no'
-        assert configuration == default_cluster_configuration
+        assert configuration == default_cluster_configuration['cluster']
 
 
 @pytest.mark.parametrize('read_config', [
@@ -75,12 +81,13 @@ def test_read_configuration(read_config):
     """
     Tests reading the cluster configuration from ossec.conf
     """
-    with patch('wazuh.cluster.utils.get_ossec_conf') as m:
+    with patch('wazuh.core.cluster.utils.get_ossec_conf') as m:
         m.return_value = read_config.copy()
         configuration = wazuh.core.cluster.utils.read_config()
         configuration['disabled'] = 'yes' if configuration['disabled'] else 'no'
-        for k in read_config.keys():
-            assert configuration[k] == read_config[k]
+        wazuh.core.cluster.utils.read_config.cache_clear()
+        for k in read_config['cluster'].keys():
+            assert configuration[k] == read_config['cluster'][k]
 
         # values not present in the read user configuration will be filled with default values
         if 'disabled' not in read_config and read_config != {}:
@@ -90,23 +97,23 @@ def test_read_configuration(read_config):
 
 
 @pytest.mark.parametrize('read_config', [
-    {'disabled': 'yay'},
-    {'key': '', 'nodes': ['192.158.35.13']},
-    {'key': 'a' * 15, 'nodes': ['192.158.35.13']},
-    {'port': 'string', 'key': 'a' * 32, 'nodes': ['192.158.35.13']},
-    {'port': 90, 'key': 'a' * 32, 'nodes': ['192.158.35.13']},
-    {'port': 70000, 'key': 'a' * 32, 'nodes': ['192.158.35.13']},
-    {'node_type': 'random', 'key': 'a' * 32, 'nodes': ['192.158.35.13']},
-    {'nodes': ['NODE_IP'], 'key': 'a' * 32},
-    {'nodes': ['localhost'], 'key': 'a' * 32},
-    {'nodes': ['0.0.0.0'], 'key': 'a' * 32},
-    {'nodes': ['127.0.1.1'], 'key': 'a' * 32}
+    {'cluster': {'disabled': 'yay'}},
+    {'cluster': {'key': '', 'nodes': ['192.158.35.13']}},
+    {'cluster': {'key': 'a' * 15, 'nodes': ['192.158.35.13']}},
+    {'cluster': {'port': 'string', 'key': 'a' * 32, 'nodes': ['192.158.35.13']}},
+    {'cluster': {'port': 90, 'key': 'a' * 32, 'nodes': ['192.158.35.13']}},
+    {'cluster': {'port': 70000, 'key': 'a' * 32, 'nodes': ['192.158.35.13']}},
+    {'cluster': {'node_type': 'random', 'key': 'a' * 32, 'nodes': ['192.158.35.13']}},
+    {'cluster': {'nodes': ['NODE_IP'], 'key': 'a' * 32}},
+    {'cluster': {'nodes': ['localhost'], 'key': 'a' * 32}},
+    {'cluster': {'nodes': ['0.0.0.0'], 'key': 'a' * 32}},
+    {'cluster': {'nodes': ['127.0.1.1'], 'key': 'a' * 32}}
 ])
 def test_checking_configuration(read_config):
     """
     Checks wrong configurations to check the proper exceptions are raised
     """
-    with patch('wazuh.cluster.cluster.get_ossec_conf') as m:
+    with patch('wazuh.core.cluster.utils.get_ossec_conf') as m:
         m.return_value = read_config.copy()
         with pytest.raises(WazuhException, match=r'.* 3004 .*'):
             configuration = wazuh.core.cluster.utils.read_config()
@@ -123,12 +130,12 @@ agent_info = b"""Linux |agent1 |3.10.0-862.el7.x86_64 |#1 SMP Fri Apr 20 16:44:2
 
 
 @patch('os.listdir', return_value=['agent1-any', 'agent2-any'])
-@patch('wazuh.cluster.cluster.stat')
+@patch('wazuh.core.cluster.cluster.stat')
 def test_merge_agent_info(stat_mock, listdir_mock):
     """
     Tests merge agent info function
     """
-    stat_mock.return_value.st_mtime = time.time()
+    stat_mock.return_value.st_mtime = time()
     stat_mock.return_value.st_size = len(agent_info)
 
     with patch('builtins.open', mock_open(read_data=agent_info)) as m:
@@ -145,7 +152,7 @@ def test_merge_agent_info(stat_mock, listdir_mock):
     (f"258 agent1-any 2019-03-29 14:57:29.610934\n{agent_info}".encode(), None),
     (f"2i58 agent1-any 2019-03-29 14:57:29.610934\n{agent_info}".encode(), ValueError)
 ])
-@patch('wazuh.cluster.cluster.stat')
+@patch('wazuh.core.cluster.cluster.stat')
 def test_unmerge_agent_info(stat_mock, agent_info, exception):
     stat_mock.return_value.st_size = len(agent_info)
     with patch('builtins.open', mock_open(read_data=agent_info)) as m:

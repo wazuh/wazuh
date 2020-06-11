@@ -16,7 +16,7 @@ from wazuh.common import database_limit
 current_module = sys.modules[__name__]
 
 
-class AbstractWazuhResult(collections.MutableMapping):
+class AbstractWazuhResult(collections.abc.MutableMapping):
     """
     Models a result returned by any framework function. This should be the class of object that every
     framework function returns.

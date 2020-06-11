@@ -460,7 +460,7 @@ class WazuhException(Exception):
         # The messages of these exceptions are provisional until the RBAC documentation is published.
         4000: {'message': "Permission denied",
                'remediation': "Please, make sure you have permissions to execute the current request. "
-                              "For more information on how to set up permissions, please visit XXXX"},
+                              "For more information on how to set up permissions, please visit https://documentation.wazuh.com/current/user-manual/api/rbac/configuration.html"},
         4001: {'message': 'The body of the request is empty, you must specify what you want to modify',
                'remediation': "The fields available for update are: name(str), rule(str), policies(list(dict))"},
         4002: {'message': 'The specified role does not exist',
@@ -494,12 +494,13 @@ class WazuhException(Exception):
         4017: {'message': 'The specified user-role link already exists'},
         4018: {'message': 'Level cannot be a negative number'},
         4019: {'message': 'Invalid resource specified',
-               'remediation': 'Please, check the current RBAC resources, for more information please visit XXXX'},
+               'remediation': 'Please, check the current RBAC resources, for more information please visit https://documentation.wazuh.com/current/user-manual/api/rbac/configuration.html'},
         4020: {'message': 'Invalid endpoint specified',
                'remediation': 'Valid endpoints are: '},
+        4021: 'Error reading security configuration',
         4500: {'message': 'The specified resources are invalid',
                'remediation': 'Please, make sure permissions are properly defined, '
-                              'for more information on setting up permissions please visit XXXX'},
+                              'for more information on setting up permissions please visit https://documentation.wazuh.com/current/user-manual/api/rbac/configuration.html'},
 
         # User management
         5000: {'message': 'The user could not be created',

@@ -14,8 +14,6 @@
 
 - actions:
   - cluster:status
-  - cluster:read_api_config
-  - cluster:update_api_config
   resources:
   - "*:*:*"
   effect: allow
@@ -33,6 +31,8 @@
 
 - actions:
   - cluster:upload_file
+  - cluster:read_api_config
+  - cluster:update_api_config
   resources:
   - node:id:master-node
   - node:id:worker2

@@ -8,8 +8,7 @@ import re
 from collections import defaultdict
 from functools import wraps
 
-from api import configuration
-from wazuh.common import rbac, broadcast, cluster_nodes
+from wazuh.common import rbac, broadcast, cluster_nodes, rbac_mode
 from wazuh.configuration import get_ossec_conf
 from wazuh.core.cdb_list import iterate_lists
 from wazuh.core.core_utils import get_agents_info, expand_group, get_groups, get_files
@@ -17,18 +16,6 @@ from wazuh.core.rule import format_rule_decoder_file, Status
 from wazuh.exception import WazuhError
 from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager
 from wazuh.results import AffectedItemsWazuhResult
-
-mode = configuration.api_conf['rbac']['mode']
-
-
-def switch_mode(m):
-    """This function is used to change the RBAC's mode
-    :param m: New RBAC's mode (white or black)
-    """
-    if m != 'white' and m != 'black':
-        raise TypeError
-    global mode
-    mode = m
 
 
 def _expand_resource(resource):
@@ -245,7 +232,7 @@ def _match_permissions(req_permissions: dict = None):
     allow_match = defaultdict(set)
     for req_action, req_resources in req_permissions.items():
         is_combination = any('&' in req_resource for req_resource in req_resources)
-        mode == 'black' and _black_expansion(req_resources, allow_match)
+        rbac_mode.get() == 'black' and _black_expansion(req_resources, allow_match)
         if not is_combination or len(req_resources) == 0:
             _single_processor(req_resources, rbac.get().get(req_action, dict()), allow_match)
         else:
@@ -340,8 +327,7 @@ async def async_list_handler(result: asyncio.coroutine, **kwargs):
 
 
 def list_handler(result: AffectedItemsWazuhResult, original: dict = None, allowed: dict = None, target: dict = None,
-                 add_denied: bool = False,
-                 **post_proc_kwargs):
+                 add_denied: bool = False, **post_proc_kwargs):
     """ Post processor for framework list responses with affected items and optional denied items
 
     :param result: Dict with affected_items, failed_items and str_priority
@@ -402,7 +388,8 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
                         raise Exception
                     if target_param != '*':  # No resourceless and not static
                         if target_param in original_kwargs and original_kwargs[target_param] is not None:
-                            kwargs[target_param] = list(filter(lambda x: x in allow[res_id], original_kwargs[target_param]))
+                            kwargs[target_param] = list(filter(lambda x: x in allow[res_id],
+                                                               original_kwargs[target_param]))
                         else:
                             kwargs[target_param] = list(allow[res_id])
                     elif len(allow[res_id]) == 0:

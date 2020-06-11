@@ -124,8 +124,7 @@ stages:
             - error:
                 code: 4000
                 message: 'Permission denied: Resource type: user:id'
-                remediation: "Please, make sure you have permissions to execute the current request.
-                For more information on how to set up permissions, please visit XXXX"
+                remediation: !anystr
               id:
                 - administrator
                 - guest
@@ -262,6 +261,42 @@ stages:
           total_affected_items: 2
           total_failed_items: 1
         message: Some policies could not be shown
+
+---
+test_name: GET SECURITY CONFIG
+
+stages:
+
+  - name: Get current security config (deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 400
+      json:
+        <<: *permission_denied
+
+---
+test_name: UPDATE SECURITY CONFIG
+
+stages:
+
+  - name: Update default security config (deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        auth_token_exp_timeout: 3000
+    response:
+      status_code: 400
+      json:
+        <<: *permission_denied
 
 ---
 test_name: UPDATE USERS RBAC
@@ -679,8 +714,7 @@ stages:
             - error:
                 code: 4000
                 message: 'Permission denied: Resource type: policy:id'
-                remediation: "Please, make sure you have permissions to execute the current request.
-                For more information on how to set up permissions, please visit XXXX"
+                remediation: !anystr
               id:
                 - '15'
         message: Some policies could not be linked to role 12
@@ -883,6 +917,7 @@ test_name: DELETE POLICIES RBAC
 stages:
 
   - name: Delete one specified policy in the system (Allow)
+    delay_before: 5
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"

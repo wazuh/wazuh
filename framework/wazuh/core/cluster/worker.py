@@ -71,10 +71,11 @@ class SyncWorker:
             self.logger.info('Master didnt grant permission to synchronize')
             return
         else:
-            self.logger.info("Permission to synchronize granted.")
+            self.logger.info("Permission to synchronize granted")
 
         self.logger.info("Compressing files")
-        compressed_data_path = wazuh.core.cluster.cluster.compress_files(name=self.worker.name, list_path=self.files_to_sync,
+        compressed_data_path = wazuh.core.cluster.cluster.compress_files(name=self.worker.name,
+                                                                         list_path=self.files_to_sync,
                                                                          cluster_control_json=self.checksums)
 
         task_id = await self.worker.send_request(command=self.cmd, data=b'')
@@ -82,7 +83,7 @@ class SyncWorker:
 
             self.logger.info("Sending compressed file to master")
             result = await self.worker.send_file(filename=compressed_data_path)
-            self.logger.info("Worker files sent to master.")
+            self.logger.info("Worker files sent to master")
             result = await self.worker.send_request(command=self.cmd + b'_e',
                                                     data=task_id + b' ' + os.path.relpath(
                                                         compressed_data_path, common.ossec_path).encode())

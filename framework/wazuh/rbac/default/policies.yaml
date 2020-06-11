@@ -49,6 +49,9 @@ default_policies:
         - security:create_user
         - security:update
         - security:delete
+        - security:revoke
+        - security:read_config
+        - security:update_config
       resources:
         - role:id:*
         - policy:id:*
@@ -64,6 +67,7 @@ default_policies:
         - security:create_user
         - security:update
         - security:delete
+        - security:revoke
       resources:
         - user:id:*
         - '*:*:*'
@@ -102,7 +106,7 @@ default_policies:
       actions:
         - rules:read
       resources:
-        - rules:file:*
+        - rule:file:*
       effect: allow
 
   cluster_all:
