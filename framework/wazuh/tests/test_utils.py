@@ -4,13 +4,15 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 
-import pytest
-from unittest.mock import patch, MagicMock
-from io import StringIO
 import os
-from xml.etree import ElementTree
-from tempfile import TemporaryDirectory, NamedTemporaryFile
+from collections.abc import KeysView
+from io import StringIO
 from os.path import join, exists
+from tempfile import TemporaryDirectory, NamedTemporaryFile
+from unittest.mock import patch, MagicMock
+from xml.etree import ElementTree
+
+import pytest
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
@@ -123,12 +125,12 @@ def test_execute(mock_output):
 
 
 @pytest.mark.parametrize('error_effect, expected_exception', [
-    (CalledProcessError(returncode=10000, cmd='Unspected error', output='{"data":"Some data", "message":"Error", '
-                                                                        '"error":10000}'), 10000),
+    (CalledProcessError(returncode=1000, cmd='Unexpected error', output='{"data":"Some data", "message":"Error", '
+                                                                       '"error":1000}'), 1000),
     (Exception, 1002),
-    (CalledProcessError(returncode=1, cmd='Unspected error', output={}), 1003),
-    (CalledProcessError(returncode=1, cmd='Unspected error', output='{"error":10000}'), 1004),
-    (CalledProcessError(returncode=1, cmd='Unspected error', output='{"data":"Some data", "message":"Error"}'), 1004)
+    (CalledProcessError(returncode=1, cmd='Unexpected error', output={}), 1003),
+    (CalledProcessError(returncode=1, cmd='Unexpected error', output='{"error":1000}'), 1004),
+    (CalledProcessError(returncode=1, cmd='Unexpected error', output='{"data":"Some data", "message":"Error"}'), 1004)
 ])
 def test_execute_ko(error_effect, expected_exception):
     """Test execute function for all exceptions.
@@ -159,6 +161,24 @@ def test_cut_array(array, limit):
     assert isinstance(result, list)
 
 
+@pytest.mark.parametrize('array, limit, search_text, sort_by, q', [
+    (['one', 'two', 'three'], 3, None, None, ''),
+    (['one', 'two', 'three'], 2, 'one', [''], 'contains=one'),
+    (['one', 'two', 'three'], 2, 'one', '+', 'two=two')
+])
+def test_process_array(array, limit, search_text, sort_by, q):
+    """Test cut_array function."""
+    result = process_array(array=array, limit=limit, offset=0, search_text=search_text, sort_by=sort_by, q=q)
+    if search_text:
+        array = search_array(array, search_text=search_text)
+    if q:
+        array = filter_array_by_query(q, array)
+    if sort_by == ['']:
+        array = sort_array(array)
+
+    assert result == {'items': cut_array(array, offset=0, limit=limit), 'totalItems': len(array)}
+
+
 @pytest.mark.parametrize('limit, offset, expected_exception', [
     (11, 0, 1405),
     (0, 0, 1406),
@@ -183,12 +203,13 @@ def test_cut_array_ko(limit, offset, expected_exception):
 def test_sort_array_type():
     """Test sort_array function."""
     assert isinstance(sort_array(mock_array, mock_sort_by), list)
+    assert isinstance(sort_array(mock_array, None), list)
 
 
 @pytest.mark.parametrize('array, sort_by, order, expected_exception', [
-    ([{'test': 'test'}], None, 'asc', 1404),
-    ('{}', None, 'ramdom', 1402),
-    (mock_array, ['test'], 'asc', 1403)
+    ([{'test': 'test'}], None, 'asc', 1402),
+    ('{}', None, 'random', 1402),
+    (mock_array, ['test'], False, 1403)
 ])
 def test_sort_array_error(array, sort_by, order, expected_exception):
     """Tests sort_array function for all exceptions.
@@ -204,11 +225,11 @@ def test_sort_array_error(array, sort_by, order, expected_exception):
 
 
 @pytest.mark.parametrize('array, sort_by, order, allowed_sort_field, output', [
-    ('', None, 'asc', None, ''),
-    ([4005, 4006, 4019, 36], None, 'asc', None, [36, 4005, 4006, 4019]),
-    ([4005, 4006, 4019, 36], None, 'desc', None, [4019, 4006, 4005, 36]),
-    (mock_array, mock_sort_by, 'asc', mock_sort_by, mock_array_order_by_mac),
-    (mock_array_class, ['name'], 'desc', ['name'], mock_array_class)
+    ('', None, True, None, ''),
+    ([4005, 4006, 4019, 36], None, True, None, [36, 4005, 4006, 4019]),
+    ([4005, 4006, 4019, 36], None, False, None, [4019, 4006, 4005, 36]),
+    (mock_array, mock_sort_by, True, mock_sort_by, mock_array_order_by_mac),
+    (mock_array_class, ['name'], False, ['name'], mock_array_class)
 ])
 def test_sort_array(array, sort_by, order, allowed_sort_field, output):
     """Test sort_array function.
@@ -247,7 +268,7 @@ def test_get_values(object, fields):
 ])
 def test_search_array(array, text, negation, length):
     """Test search_array function."""
-    result = search_array(array=array, text=text, negation=negation)
+    result = search_array(array=array, search_text=text, complementary_search=negation)
 
     assert isinstance(result, list)
     assert len(result) == length
@@ -273,7 +294,7 @@ def test_chmod_r(mock_chmod):
     """Tests chmod_r function."""
     with TemporaryDirectory() as tmpdirname:
         tmpfile = NamedTemporaryFile(dir=tmpdirname, delete=False)
-        tmpdir = TemporaryDirectory(dir=tmpdirname)
+        dummy_tmp = TemporaryDirectory(dir=tmpdirname)
         chmod_r(tmpdirname, 0o777)
         mock_chmod.assert_any_call(tmpdirname, 0o777)
         mock_chmod.assert_any_call(path.join(tmpdirname, tmpfile.name), 0o777)
@@ -282,20 +303,19 @@ def test_chmod_r(mock_chmod):
 @patch('wazuh.utils.chown')
 def test_chown_r(mock_chown):
     """Test chown_r function."""
-    with TemporaryDirectory() as tmpdirname:
-        tmpfile = NamedTemporaryFile(dir=tmpdirname, delete=False)
-        tmpdir = TemporaryDirectory(dir=tmpdirname)
-        chown_r(tmpdirname, 'test_user', 'test_group')
-        mock_chown.assert_any_call(tmpdirname, 'test_user', 'test_group')
-        mock_chown.assert_any_call(path.join(tmpdirname, tmpfile.name), 'test_user', 'test_group')
+    with TemporaryDirectory() as tmp_dirname:
+        tmp_file = NamedTemporaryFile(dir=tmp_dirname, delete=False)
+        dummy_tmp = TemporaryDirectory(dir=tmp_dirname)
+        chown_r(tmp_dirname, 'test_user', 'test_group')
+        mock_chown.assert_any_call(tmp_dirname, 'test_user', 'test_group')
+        mock_chown.assert_any_call(path.join(tmp_dirname, tmp_file.name), 'test_user', 'test_group')
 
 
 @pytest.mark.parametrize('ownership, time, permissions',
                          [((1000, 1000), None, None),
                           ((1000, 1000), (12345, 12345), None),
                           ((1000, 1000), None, 0o660),
-                          ((1000, 1000), (12345, 12345), 0o660)
-                          ]
+                          ((1000, 1000), (12345, 12345), 0o660)]
                          )
 @patch('wazuh.utils.chown')
 @patch('wazuh.utils.chmod')
@@ -314,16 +334,29 @@ def test_safe_move(mock_utime, mock_chmod, mock_chown, ownership, time, permissi
             mock_chmod.assert_called_once_with(target_file, permissions)
 
 
-@pytest.mark.parametrize('dir_name, exists', [
+@patch('wazuh.utils.chown')
+@patch('wazuh.utils.chmod')
+@patch('wazuh.utils.utime')
+def test_safe_move_exception(mock_utime, mock_chmod, mock_chown):
+    """Test safe_move function."""
+    with TemporaryDirectory() as tmpdirname:
+        tmp_file = NamedTemporaryFile(dir=tmpdirname, delete=False)
+        target_file = join(tmpdirname, 'target')
+        with patch('wazuh.utils.rename', side_effect=OSError(1)):
+            safe_move(tmp_file.name, target_file, ownership=(1000, 1000), time=(12345, 12345), permissions=0o660)
+        assert (exists(target_file))
+
+
+@pytest.mark.parametrize('dir_name, path_exists', [
     ('/var/test_path', True),
     ('./var/test_path/', False)
 ])
 @patch('wazuh.utils.chmod')
 @patch('wazuh.utils.mkdir')
 @patch('wazuh.utils.curdir', new='var')
-def test_mkdir_with_mode(mock_mkdir, mock_chmod, dir_name, exists):
+def test_mkdir_with_mode(mock_mkdir, mock_chmod, dir_name, path_exists):
     """Test mkdir_with_mode function."""
-    with patch('wazuh.utils.path.exists', return_value=exists):
+    with patch('wazuh.utils.path.exists', return_value=path_exists):
         mkdir_with_mode(dir_name)
         mock_chmod.assert_any_call(dir_name, 0o770)
         mock_mkdir.assert_any_call(dir_name, 0o770)
@@ -378,12 +411,6 @@ def test_get_hash(mock_open):
 
         assert type(result) == bytes
 
-        # with patch('wazuh.utils.hashlib.set.__init__', side_effect = Exception):
-        # mock.return_value.union.side_effect= Exception
-        # result = get_hash(filename='test_file', return_hex=False)
-
-        # assert type(result) == bytes
-
 
 @patch('wazuh.utils.open')
 @patch('wazuh.utils.iter', return_value=['1', '2'])
@@ -393,7 +420,7 @@ def test_get_hash_ko(mock_iter, mock_open):
         md.return_value.update.side_effect = IOError
         result = get_hash(filename='test_file')
 
-        assert result == None
+        assert result is None
         mock_open.assert_called_once_with('test_file', 'rb')
 
 
@@ -562,8 +589,7 @@ def test_failed_test_get_timeframe_in_seconds():
 @patch('sqlite3.connect')
 @patch("wazuh.database.isfile", return_value=True)
 @patch('socket.socket.connect')
-def test_WazuhDBQuery__init__(mock_socket_conn, mock_isfile, mock_sqli_conn,
-                              value):
+def test_WazuhDBQuery__init__(mock_socket_conn, mock_isfile, mock_sqli_conn, value):
     """Test WazuhDBQuery.__init__."""
     with patch('wazuh.utils.glob.glob', return_value=value):
         if value:
@@ -601,9 +627,7 @@ def test_WazuhDBQuery__init__(mock_socket_conn, mock_isfile, mock_sqli_conn,
 @patch("wazuh.database.isfile", return_value=True)
 @patch('socket.socket.connect')
 @patch('wazuh.utils.common.maximum_database_limit', new=10)
-def test_WazuhDBQuery_protected_add_limit_to_query(mock_socket_conn,
-                                                   mock_isfile, mock_conn_db,
-                                                   mock_glob, limit, error,
+def test_WazuhDBQuery_protected_add_limit_to_query(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob, limit, error,
                                                    expected_exception):
     """Test WazuhDBQuery._add_limit_to_query function."""
     query = WazuhDBQuery(offset=0, limit=limit, table='agent', sort=None,
@@ -626,8 +650,7 @@ def test_WazuhDBQuery_protected_add_limit_to_query(mock_socket_conn,
 @patch('wazuh.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.database.isfile", return_value=True)
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_sort_query(mock_socket_conn, mock_isfile,
-                                           mock_conn_db, mock_glob):
+def test_WazuhDBQuery_protected_sort_query(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob):
     """Tests WazuhDBQuery._sort_query function works"""
 
     query = WazuhDBQuery(offset=0, limit=1, table='agent',
@@ -651,10 +674,7 @@ def test_WazuhDBQuery_protected_sort_query(mock_socket_conn, mock_isfile,
 @patch('wazuh.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.database.isfile", return_value=True)
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_add_sort_to_query(mock_socket_conn,
-                                                  mock_isfile,
-                                                  mock_conn_db,
-                                                  mock_glob, sort,
+def test_WazuhDBQuery_protected_add_sort_to_query(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob, sort,
                                                   error, expected_exception):
     """Test WazuhDBQuery._add_sort_to_query function."""
     query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=sort,
@@ -677,9 +697,7 @@ def test_WazuhDBQuery_protected_add_sort_to_query(mock_socket_conn,
 @patch('wazuh.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.database.isfile", return_value=True)
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_add_search_to_query(mock_socket_conn,
-                                                    mock_isfile,
-                                                    mock_conn_db, mock_glob):
+def test_WazuhDBQuery_protected_add_search_to_query(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob):
     """Test WazuhDBQuery._add_search_to_query function."""
     query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                          search={"negation": True, "value": "1"}, select=None,
@@ -692,22 +710,17 @@ def test_WazuhDBQuery_protected_add_search_to_query(mock_socket_conn,
     mock_conn_db.assert_called_once_with()
 
 
-@pytest.mark.parametrize('selecter_fields, error, expected_exception', [
+@pytest.mark.parametrize('selector_fields, error, expected_exception', [
     (None, False, None),
-    ({'fields': ['1']}, False, None),
-    ({'fields': ['bad_field']}, True, 1724)
+    (['1'], False, None),
+    (['bad_field'], True, 1724)
 ])
-@patch('wazuh.utils.glob.glob', return_value=True)
 @patch('wazuh.utils.WazuhDBBackend.connect_to_db')
+@patch('wazuh.utils.glob.glob', return_value=True)
 @patch("wazuh.database.isfile", return_value=True)
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_parse_select_filter(mock_socket_conn,
-                                                    mock_isfile,
-                                                    mock_conn_db,
-                                                    mock_glob,
-                                                    selecter_fields,
-                                                    error,
-                                                    expected_exception):
+def test_WazuhDBQuery_protected_parse_select_filter(mock_socket_conn, mock_isfile, mock_glob, mock_conn_db,
+                                                    selector_fields, error, expected_exception):
     """Test WazuhDBQuery._parse_select_filter function."""
     query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                          search=None, select=None, filters=None,
@@ -718,9 +731,11 @@ def test_WazuhDBQuery_protected_parse_select_filter(mock_socket_conn,
 
     if error:
         with pytest.raises(exception.WazuhException, match=f'.* {expected_exception} .*'):
-            query._parse_select_filter(selecter_fields)
+            query._parse_select_filter(selector_fields)
+    elif not selector_fields:
+        assert isinstance(query._parse_select_filter(selector_fields), KeysView)
     else:
-        assert isinstance(query._parse_select_filter(selecter_fields), dict)
+        assert isinstance(query._parse_select_filter(selector_fields), set)
 
         mock_conn_db.assert_called_once_with()
 
@@ -730,10 +745,7 @@ def test_WazuhDBQuery_protected_parse_select_filter(mock_socket_conn,
 @patch("wazuh.database.isfile", return_value=True)
 @patch('socket.socket.connect')
 @patch('wazuh.utils.WazuhDBQuery._parse_select_filter')
-def test_WazuhDBQuery_protected_add_select_to_query(mock_parse,
-                                                    mock_socket_conn,
-                                                    mock_isfile,
-                                                    mock_conn_db, mock_glob):
+def test_WazuhDBQuery_protected_add_select_to_query(mock_parse, mock_socket_conn, mock_isfile, mock_conn_db, mock_glob):
     """Test WazuhDBQuery._add_select_to_query function."""
     query = WazuhDBQuery(offset=0, limit=1, table='agent',
                          sort={'order': 'asc'}, search=None, select=None,
@@ -748,6 +760,7 @@ def test_WazuhDBQuery_protected_add_select_to_query(mock_parse,
 
 @pytest.mark.parametrize('q, error, expected_exception', [
     ('os.name=ubuntu;os.version>12e', False, None),
+    ('os.name=debian;os.version>12e),(os.name=ubuntu;os.version>12e)', False, None),
     ('bad_query', True, 1407),
     ('os.bad_field=ubuntu', True, 1408),
     ('os.name=!ubuntu', True, 1409)
@@ -756,8 +769,7 @@ def test_WazuhDBQuery_protected_add_select_to_query(mock_parse,
 @patch('wazuh.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.database.isfile", return_value=True)
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_parse_query(mock_socket_conn, mock_isfile,
-                                            mock_conn_db, mock_glob, q,
+def test_WazuhDBQuery_protected_parse_query(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob, q,
                                             error, expected_exception):
     """Test WazuhDBQuery._parse_query function."""
     query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
@@ -785,10 +797,7 @@ def test_WazuhDBQuery_protected_parse_query(mock_socket_conn, mock_isfile,
 @patch('wazuh.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.database.isfile", return_value=True)
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_parse_legacy_filters(mock_socket_conn,
-                                                     mock_isfile,
-                                                     mock_conn_db,
-                                                     mock_glob, filter_):
+def test_WazuhDBQuery_protected_parse_legacy_filters(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob, filter_):
     """Test WazuhDBQuery._parse_legacy_filters function."""
     query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                          search=None, select=None, filters=filter_,
@@ -812,8 +821,7 @@ def test_WazuhDBQuery_protected_parse_legacy_filters(mock_socket_conn,
 @patch('socket.socket.connect')
 @patch('wazuh.utils.WazuhDBQuery._parse_legacy_filters')
 @patch('wazuh.utils.WazuhDBQuery._parse_query')
-def test_WazuhDBQuery_parse_filters(mock_query, mock_filter, mock_socket_conn,
-                                    mock_isfile, mock_conn_db, mock_glob,
+def test_WazuhDBQuery_parse_filters(mock_query, mock_filter, mock_socket_conn, mock_isfile, mock_conn_db, mock_glob,
                                     filter, q):
     """Test WazuhDBQuery._parse_filters function."""
     query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
@@ -845,13 +853,8 @@ def test_WazuhDBQuery_parse_filters(mock_query, mock_filter, mock_socket_conn,
 @patch('socket.socket.connect')
 @patch('wazuh.utils.WazuhDBQuery._filter_status')
 @patch('wazuh.utils.WazuhDBQuery._filter_date')
-def test_WazuhDBQuery_protected_process_filter(mock_date, mock_status,
-                                               mock_socket_conn,
-                                               mock_isfile,
-                                               mock_conn_db,
-                                               mock_glob,
-                                               field_name, field_filter,
-                                               q_filter):
+def test_WazuhDBQuery_protected_process_filter(mock_date, mock_status, mock_socket_conn, mock_isfile, mock_conn_db,
+                                               mock_glob, field_name, field_filter, q_filter):
     """Tests WazuhDBQuery._process_filter."""
     query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                          search=None, select=None,
@@ -873,37 +876,29 @@ def test_WazuhDBQuery_protected_process_filter(mock_date, mock_status,
 @patch('wazuh.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.database.isfile", return_value=True)
 @patch('socket.socket.connect')
-@patch('wazuh.utils.WazuhDBQuery._parse_filters')
 @patch('wazuh.utils.WazuhDBQuery._process_filter')
-def test_WazuhDBQuery_protected_add_filters_to_query(mock_process, mock_parse,
-                                                     mock_socket_conn,
-                                                     mock_isfile,
-                                                     mock_conn_db,
-                                                     mock_glob):
+def test_WazuhDBQuery_protected_add_filters_to_query(mock_process, mock_socket_conn, mock_isfile,
+                                                     mock_conn_db, mock_glob):
     """Test WazuhDBQuery._add_filters_to_query function."""
     query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
-                         search=None, select=None,
+                         search=None, select=['os.name'],
                          fields={'os.name': 'ubuntu', 'os.version': '18.04'},
-                         default_sort_field=None, query=None,
-                         backend=WazuhDBBackend(agent_id=0),
-                         count=5, get_data=None,
+                         default_sort_field=None, query='os.name=ubuntu',
+                         backend=WazuhDBBackend(agent_id=0), distinct=True,
+                         count=5, get_data=None, filters={'os.name': 'ubuntu'},
                          date_fields=['date1', 'date2'])
 
     query.query_filters = [{'field': 'os.name', 'level': 0, 'separator': ';'}]
-
     query._add_filters_to_query()
 
     mock_conn_db.assert_called_once_with()
-    mock_parse.assert_called_once_with()
-    mock_process.assert_called_once_with('os.name', 'os_name', query.query_filters[0])
 
 
 @patch('wazuh.utils.glob.glob', return_value=True)
 @patch('wazuh.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.database.isfile", return_value=True)
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_get_total_items(mock_socket_conn, mock_isfile,
-                                                mock_conn_db, mock_glob):
+def test_WazuhDBQuery_protected_get_total_items(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob):
     """Test WazuhDBQuery._get_total_items function."""
     query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                          search=None, select=None,
@@ -919,11 +914,48 @@ def test_WazuhDBQuery_protected_get_total_items(mock_socket_conn, mock_isfile,
 
 
 @patch('wazuh.utils.glob.glob', return_value=True)
+@patch('wazuh.utils.WazuhDBBackend.connect_to_db')
+@patch("wazuh.database.isfile", return_value=True)
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_protected_get_total_items_mitre(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob):
+    query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
+                         search=None, select=None,
+                         fields={'os.name': 'ubuntu', 'os.version': '18.04'},
+                         default_sort_field=None, query=None,
+                         backend=WazuhDBBackend(agent_id=0, query_format='mitre'), count=5,
+                         get_data=None, date_fields=['date1', 'date2'])
+
+    query._add_select_to_query()
+    query._get_total_items()
+
+    mock_conn_db.assert_called_once_with()
+
+
+@patch('wazuh.utils.glob.glob', return_value=True)
+@patch('wazuh.utils.WazuhDBBackend.connect_to_db')
+@patch("wazuh.database.isfile", return_value=True)
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_substitute_params(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob):
+    """Test WazuhDBQuery._get_total_items function."""
+    query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
+                         search=None, select=None,
+                         fields={'os.name': 'ubuntu', 'os.version': '18.04'},
+                         default_sort_field=None, query=None,
+                         backend=WazuhDBBackend(agent_id=0), count=5,
+                         get_data=None, date_fields=['date1', 'date2'])
+    query.request = {'testing': 'testing'}
+
+    query._add_select_to_query()
+    query._get_total_items()
+
+    mock_conn_db.assert_called_once_with()
+
+
+@patch('wazuh.utils.glob.glob', return_value=True)
 @patch('wazuh.utils.SQLiteBackend.connect_to_db')
 @patch("wazuh.database.isfile", return_value=True)
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_get_data(mock_socket_conn, mock_isfile,
-                                         mock_sqli_conn, mock_glob):
+def test_WazuhDBQuery_protected_get_data(mock_socket_conn, mock_isfile, mock_sqli_conn, mock_glob):
     """Test SQLiteBackend._get_data function."""
     query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                          search=None, select={'fields': set(['os.name'])},
@@ -941,10 +973,7 @@ def test_WazuhDBQuery_protected_get_data(mock_socket_conn, mock_isfile,
 @patch('wazuh.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.database.isfile", return_value=True)
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_format_data_into_dictionary(mock_socket_conn,
-                                                            mock_isfile,
-                                                            mock_conn_db,
-                                                            mock_glob):
+def test_WazuhDBQuery_protected_format_data_into_dictionary(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob):
     """Test WazuhDBQuery._format_data_into_dictionary."""
     query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                          search=None, select={'fields': set(['os.name'])},
@@ -964,8 +993,7 @@ def test_WazuhDBQuery_protected_format_data_into_dictionary(mock_socket_conn,
 @patch('wazuh.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.database.isfile", return_value=True)
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_filter_status(mock_socket_conn, mock_isfile,
-                                              mock_conn_db, mock_glob):
+def test_WazuhDBQuery_protected_filter_status(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob):
     """Test WazuhDBQuery._filter_status function."""
     query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                          search=None, select={'fields': set(['os.name'])},
@@ -990,10 +1018,8 @@ def test_WazuhDBQuery_protected_filter_status(mock_socket_conn, mock_isfile,
 @patch('wazuh.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.database.isfile", return_value=True)
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_filter_date(mock_socket_conn, mock_isfile,
-                                            mock_conn_db, mock_glob,
-                                            date_filter, filter_db_name,
-                                            time, error):
+def test_WazuhDBQuery_protected_filter_date(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob, date_filter,
+                                            filter_db_name, time, error):
     """Test WazuhDBQuery._filter_date function."""
     query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                          search=None, select={'fields': set(['os.name'])},
@@ -1025,16 +1051,15 @@ def test_WazuhDBQuery_protected_filter_date(mock_socket_conn, mock_isfile,
 @patch('wazuh.utils.WazuhDBQuery._add_limit_to_query')
 @patch('wazuh.utils.WazuhDBQuery._format_data_into_dictionary')
 @patch('wazuh.utils.SQLiteBackend._get_data')
-def test_WazuhDBQuery_run(mock_data, mock_dict, mock_limit, mock_sort,
-                          mock_items, mock_search, mock_filters, mock_select,
-                          mock_sqli_conn, mock_isfile, mock_glob):
+def test_WazuhDBQuery_run(mock_data, mock_dict, mock_limit, mock_sort, mock_items, mock_search, mock_filters,
+                          mock_select, mock_sqli_conn, mock_isfile, mock_glob):
     """Test WazuhDBQuery.run function."""
     query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
-                         search=None, select={'fields': set(['os.name'])},
+                         search=None, select={'os.name'},
                          fields={'os.name': 'ubuntu', 'os.version': '18.04'},
                          default_sort_field=None, query=None, count=5,
                          backend=SQLiteBackend(common.database_path),
-                         get_data=True, min_select_fields=set(['os.version']))
+                         get_data=True, min_select_fields={'os.version'})
 
     query.run()
 
@@ -1054,11 +1079,10 @@ def test_WazuhDBQuery_run(mock_data, mock_dict, mock_limit, mock_sort,
 @patch("wazuh.database.isfile", return_value=True)
 @patch('socket.socket.connect')
 @patch('wazuh.utils.WazuhDBQuery._default_query')
-def test_WazuhDBQuery_reset(mock_query, mock_socket_conn, mock_isfile,
-                            mock_conn_db, mock_glob):
+def test_WazuhDBQuery_reset(mock_query, mock_socket_conn, mock_isfile, mock_conn_db, mock_glob):
     """Test WazuhDBQuery.reset function."""
     query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
-                         search=None, select={'fields': set(['os.name'])},
+                         search=None, select={'os.name'},
                          fields={'os.name': 'ubuntu', 'os.version': '18.04'},
                          default_sort_field=None, query=None,
                          backend=WazuhDBBackend(agent_id=0),
@@ -1074,8 +1098,7 @@ def test_WazuhDBQuery_reset(mock_query, mock_socket_conn, mock_isfile,
 @patch('wazuh.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.database.isfile", return_value=True)
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_default_query(mock_socket_conn, mock_isfile,
-                                              mock_conn_db, mock_glob):
+def test_WazuhDBQuery_protected_default_query(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob):
     """Test WazuhDBQuery._default_query function."""
     query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                          search=None, select={'fields': set(['os.name'])},
@@ -1094,9 +1117,7 @@ def test_WazuhDBQuery_protected_default_query(mock_socket_conn, mock_isfile,
 @patch('wazuh.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.database.isfile", return_value=True)
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_default_count_query(mock_socket_conn,
-                                                    mock_isfile, mock_conn_db,
-                                                    mock_glob):
+def test_WazuhDBQuery_protected_default_count_query(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob):
     """Test WazuhDBQuery._default_count_query function."""
     query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                          search=None, select={'fields': set(['os.name'])},
@@ -1119,12 +1140,10 @@ def test_WazuhDBQuery_protected_default_count_query(mock_socket_conn,
 @patch('wazuh.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.database.isfile", return_value=True)
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_pass_filter(mock_socket_conn, mock_isfile,
-                                            mock_conn_db, mock_glob,
-                                            db_filter):
+def test_WazuhDBQuery_protected_pass_filter(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob, db_filter):
     """Test WazuhDBQuery._pass_filter function."""
     query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
-                         search=None, select={'fields': set(['os.name'])},
+                         search=None, select={'fields': {'os.name'}},
                          fields={'os.name': 'ubuntu', 'os.version': '18.04'},
                          default_sort_field=None, query=None,
                          backend=WazuhDBBackend(agent_id=1),
@@ -1140,9 +1159,7 @@ def test_WazuhDBQuery_protected_pass_filter(mock_socket_conn, mock_isfile,
 @patch('wazuh.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.database.isfile", return_value=True)
 @patch('socket.socket.connect')
-def test_WazuhDBQueryDistinct_protected_default_query(mock_socket_conn,
-                                                      mock_isfile,
-                                                      mock_conn_db, mock_glob):
+def test_WazuhDBQueryDistinct_protected_default_query(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob):
     """Test WazuhDBQueryDistinct._default_query function."""
     query = WazuhDBQueryDistinct(offset=0, limit=1, sort=None, search=None,
                                  query=None, select={'fields': ['name']},
@@ -1162,13 +1179,10 @@ def test_WazuhDBQueryDistinct_protected_default_query(mock_socket_conn,
 @patch('wazuh.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.database.isfile", return_value=True)
 @patch('socket.socket.connect')
-def test_WazuhDBQueryDistinct_protected_default_count_query(mock_socket_conn,
-                                                            mock_isfile,
-                                                            mock_conn_db,
-                                                            mock_glob):
+def test_WazuhDBQueryDistinct_protected_default_count_query(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob):
     """Test WazuhDBQueryDistinct._default_count_query function."""
     query = WazuhDBQueryDistinct(offset=0, limit=1, sort=None, search=None,
-                                 query=None, select={'fields': ['name']},
+                                 query=None, select={'name'},
                                  fields={'name': '`group`'}, count=True,
                                  get_data=True, default_sort_field='`group`',
                                  backend=WazuhDBBackend(agent_id=1),
@@ -1186,14 +1200,11 @@ def test_WazuhDBQueryDistinct_protected_default_count_query(mock_socket_conn,
 @patch("wazuh.database.isfile", return_value=True)
 @patch('socket.socket.connect')
 @patch('wazuh.utils.WazuhDBQuery._add_filters_to_query')
-def test_WazuhDBQueryDistinct_protected_add_filters_to_query(mock_add,
-                                                             mock_socket_conn,
-                                                             mock_isfile,
-                                                             mock_conn_db,
+def test_WazuhDBQueryDistinct_protected_add_filters_to_query(mock_add, mock_socket_conn, mock_isfile, mock_conn_db,
                                                              mock_glob):
     """Test WazuhDBQueryDistinct._add_filters_to_query function."""
     query = WazuhDBQueryDistinct(offset=0, limit=1, sort=None, search=None,
-                                 query=None, select={'fields': ['name']},
+                                 query=None, select={'name'},
                                  fields={'name': '`group`'}, count=True,
                                  get_data=True, default_sort_field='`group`',
                                  backend=WazuhDBBackend(agent_id=1),
@@ -1205,18 +1216,15 @@ def test_WazuhDBQueryDistinct_protected_add_filters_to_query(mock_add,
 
 
 @pytest.mark.parametrize('select', [
-    {'fields': ['name']},
-    {'fields': ['name', 'ip']}
+    {'name'},
+    {'name', 'ip'}
 ])
 @patch('wazuh.utils.glob.glob', return_value=True)
 @patch('wazuh.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.database.isfile", return_value=True)
 @patch('socket.socket.connect')
 @patch('wazuh.utils.WazuhDBQuery._add_select_to_query')
-def test_WazuhDBQueryDistinct_protected_add_select_to_query(mock_add,
-                                                            mock_socket_conn,
-                                                            mock_isfile,
-                                                            mock_conn_db,
+def test_WazuhDBQueryDistinct_protected_add_select_to_query(mock_add, mock_socket_conn, mock_isfile, mock_conn_db,
                                                             mock_glob, select):
     """Test WazuhDBQueryDistinct._add_select_to_query function."""
     query = WazuhDBQueryDistinct(offset=0, limit=1, sort=None, search=None,
@@ -1226,7 +1234,7 @@ def test_WazuhDBQueryDistinct_protected_add_select_to_query(mock_add,
                                  backend=WazuhDBBackend(agent_id=1),
                                  default_sort_field='`group`', table='agent')
 
-    if len(select['fields']) > 1:
+    if len(select) > 1:
         with pytest.raises(exception.WazuhException, match=".* 1410 .*"):
             query._add_select_to_query()
     else:
@@ -1239,9 +1247,7 @@ def test_WazuhDBQueryDistinct_protected_add_select_to_query(mock_add,
 @patch('wazuh.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.database.isfile", return_value=True)
 @patch('socket.socket.connect')
-def test_WazuhDBQueryDistinct_protected_format_data_into_dictionary(mock_socket_conn,
-                                                                    mock_isfile,
-                                                                    mock_conn_db,
+def test_WazuhDBQueryDistinct_protected_format_data_into_dictionary(mock_socket_conn, mock_isfile, mock_conn_db,
                                                                     mock_glob):
     """Test WazuhDBQueryDistinct._format_data_into_dictionary function."""
     query = WazuhDBQueryDistinct(offset=0, limit=1, sort=None, search=None,
@@ -1264,8 +1270,7 @@ def test_WazuhDBQueryDistinct_protected_format_data_into_dictionary(mock_socket_
 @patch('wazuh.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.database.isfile", return_value=True)
 @patch('socket.socket.connect')
-def test_WazuhDBQueryGroupBy__init__(mock_socket_conn, mock_isfile,
-                                     mock_conn_db, mock_glob):
+def test_WazuhDBQueryGroupBy__init__(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob):
     """Tests WazuhDBQueryGroupBy.__init__ function works"""
     WazuhDBQueryGroupBy(filter_fields=None, offset=0, limit=1, table='agent',
                         sort=None, search=None, select={'fields': ['name']},
@@ -1284,15 +1289,12 @@ def test_WazuhDBQueryGroupBy__init__(mock_socket_conn, mock_isfile,
 @patch("wazuh.database.isfile", return_value=True)
 @patch('socket.socket.connect')
 @patch('wazuh.utils.WazuhDBQuery._get_total_items')
-def test_WazuhDBQueryGroupBy_protected_get_total_items(mock_total,
-                                                       mock_socket_conn,
-                                                       mock_isfile,
-                                                       mock_conn_db,
+def test_WazuhDBQueryGroupBy_protected_get_total_items(mock_total, mock_socket_conn, mock_isfile, mock_conn_db,
                                                        mock_glob):
     """Test WazuhDBQueryGroupBy._get_total_items function."""
     query = WazuhDBQueryGroupBy(filter_fields={'fields': ['name']}, offset=0,
                                 limit=1, table='agent', sort=None, search=None,
-                                select={'fields': set(['name'])}, filters=None,
+                                select={'name'}, filters=None,
                                 fields={'name': '`group`'}, query=None,
                                 default_sort_field=None, get_data=None,
                                 default_sort_order='ASC',
@@ -1311,16 +1313,12 @@ def test_WazuhDBQueryGroupBy_protected_get_total_items(mock_total,
 @patch('socket.socket.connect')
 @patch('wazuh.utils.WazuhDBQuery._add_select_to_query')
 @patch('wazuh.utils.WazuhDBQuery._parse_select_filter')
-def test_WazuhDBQueryGroupBy_protected_add_select_to_query(mock_parse,
-                                                           mock_add,
-                                                           mock_socket_conn,
-                                                           mock_isfile,
-                                                           mock_conn_db,
-                                                           mock_glob):
+def test_WazuhDBQueryGroupBy_protected_add_select_to_query(mock_parse, mock_add, mock_socket_conn, mock_isfile,
+                                                           mock_conn_db, mock_glob):
     """Test WazuhDBQueryGroupBy._add_select_to_query function."""
     query = WazuhDBQueryGroupBy(filter_fields={'fields': ['name']}, offset=0,
                                 limit=1, table='agent', sort=None, search=None,
-                                select={'fields': set(['name'])}, filters=None,
+                                select={'name'}, filters=None,
                                 fields={'name': '`group`'}, query=None,
                                 default_sort_field=None,
                                 default_sort_order='ASC',
@@ -1337,7 +1335,7 @@ def test_WazuhDBQueryGroupBy_protected_add_select_to_query(mock_parse,
 @pytest.mark.parametrize('q, return_length', [
     ('name=firewall', 0),
     ('count=1', 0),
-    ('name~a', 0),
+    ('name~a', 3),
     ('count<0', 0),
     ('count>3', 0),
     ('count=3;name~test', 0),
@@ -1369,12 +1367,17 @@ def test_WazuhDBQueryGroupBy_protected_add_select_to_query(mock_parse,
     ('count<4', 4),
     ('count>0,count<4', 4),
     ('name~def,count=0', 4),
-    ('configSum~29,configSum~ab', 4)
+    ('configSum~29,configSum~ab', 4),
+    ('nameGfirewall', -1)
 ])
 def test_filter_array_by_query(q, return_length):
     """Test filter by query in an array."""
-    result = filter_array_by_query(q, input_array)
+    if return_length == -1:
+        with pytest.raises(exception.WazuhError, match='.* 1407 .*'):
+            filter_array_by_query(q='nameGfirewall', input_array=input_array)
+        return
 
+    result = filter_array_by_query(q, input_array)
     for item in result:
         # check fields returned in result
         item_keys = set(item.keys())
