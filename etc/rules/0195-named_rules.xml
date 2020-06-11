@@ -79,9 +79,6 @@
     <if_sid>12100</if_sid>
     <match>exiting (due to fatal error)</match>
     <description>Named fatal error. DNS service going down.</description>
-    <mitre>
-      <id>T1071</id>
-    </mitre>
     <group>service_availability,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 

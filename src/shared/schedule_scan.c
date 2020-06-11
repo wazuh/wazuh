@@ -34,6 +34,7 @@ void sched_scan_init(sched_scan_config *scan_config){
     scan_config->month_interval = false;
     scan_config->time_start = 0;
     scan_config->next_scheduled_scan_time = 0;
+    scan_config->daylight = -1;
 }
 
 /**
@@ -109,8 +110,12 @@ int sched_scan_read(sched_scan_config *scan_config, xml_node **nodes, const char
 }
 
 time_t sched_scan_get_time_until_next_scan(sched_scan_config *config, const char *MODULE_TAG,  const int run_on_start) {
-    const time_t next_time = _get_next_time(config, MODULE_TAG, run_on_start); 
-    config->next_scheduled_scan_time = time(NULL) + next_time;
+    time_t next_scan_time;
+
+    time_t next_time = _get_next_time(config, MODULE_TAG, run_on_start);
+    next_scan_time = time(NULL) + next_time;
+    check_daylight(config, &next_scan_time, false);
+    config->next_scheduled_scan_time = next_scan_time;
     return next_time;
 }
 
@@ -221,4 +226,172 @@ void sched_scan_dump(const sched_scan_config* scan_config, cJSON *cjson_object){
     }
     if (scan_config->scan_time) cJSON_AddStringToObject(cjson_object, "time", scan_config->scan_time);
 
+}
+
+// Function to check the change of daylight to add or subtract an hour
+void check_daylight(sched_scan_config *config, time_t * next_scan_time, bool test) {
+    struct tm tm_future;
+    int future_daylight;
+
+    localtime_r(next_scan_time, &tm_future);
+
+    if (test) {
+        future_daylight = 1;
+    } else {
+        future_daylight = tm_future.tm_isdst;
+    }
+    if (config->daylight != -1) {
+        *next_scan_time += 3600*(config->daylight - future_daylight);
+    }
+    config->daylight = future_daylight;
+}
+
+// Get time in seconds to the specified hour in hh:mm
+unsigned long int get_time_to_hour(const char * hour, const unsigned int num_days, bool first_time) {
+    time_t curr_time;
+    time_t target_time;
+    struct tm tm_result = { .tm_sec = 0 };
+    double diff;
+    int i;
+
+    char ** parts = OS_StrBreak(':', hour, 2);
+
+    // Get current time
+    curr_time = time(NULL);
+    localtime_r(&curr_time, &tm_result);
+
+    struct tm t_target = tm_result;
+
+    // Look for the particular hour
+    t_target.tm_hour = atoi(parts[0]);
+    t_target.tm_min = atoi(parts[1]);
+    t_target.tm_sec = 0;
+
+    // Calculate difference between hours
+    target_time = mktime(&t_target);
+    diff = difftime(target_time, curr_time);
+
+    if (diff <= 0) {
+        if (first_time) {
+            t_target.tm_mday += 1;
+        } else {
+            t_target.tm_mday += num_days;
+        }
+    }
+
+    target_time = mktime(&t_target);
+    diff = difftime(target_time, curr_time);
+
+    for (i=0; parts[i]; i++)
+        free(parts[i]);
+
+    free(parts);
+    return (unsigned long int)diff;
+}
+
+// Get time to reach a particular day of the week and hour
+unsigned long int get_time_to_day(int wday, const char * hour, const unsigned int num_weeks, bool first_time) {
+
+    time_t curr_time;
+    time_t target_time;
+    struct tm tm_result = { .tm_sec = 0 };
+    double diff;
+    int i, ret;
+
+    // Get exact hour and minute to go to
+    char ** parts = OS_StrBreak(':', hour, 2);
+
+    // Get current time
+    curr_time = time(NULL);
+    localtime_r(&curr_time, &tm_result);
+
+    struct tm t_target = tm_result;
+
+    // Look for the particular hour
+    t_target.tm_hour = atoi(parts[0]);
+    t_target.tm_min = atoi(parts[1]);
+    t_target.tm_sec = 0;
+
+    // Calculate difference between hours
+    target_time = mktime(&t_target);
+    diff = difftime(target_time, curr_time);
+
+    if (wday == tm_result.tm_wday) {    // We are in the desired day
+
+        if (diff <= 0) {
+            t_target.tm_mday += first_time ? 7 : num_weeks*7;   // Seconds of a week
+        }
+
+    } else if (wday > tm_result.tm_wday) {  // We are looking for a future day
+
+        while (wday > tm_result.tm_wday) {
+            t_target.tm_mday += 1;
+            tm_result.tm_wday++;
+        }
+
+    } else if (wday < tm_result.tm_wday) { // We have past the desired day
+
+        ret = 7 - (tm_result.tm_wday - wday);
+        for (i = 0; i < ret; i++) {
+            t_target.tm_mday += 1;
+        }
+    }
+
+    target_time = mktime(&t_target);
+    diff = difftime(target_time, curr_time);
+
+    free(parts[0]);
+    free(parts[1]);
+    free(parts);
+
+    return (unsigned long int)diff;
+
+}
+
+unsigned long int get_time_to_month_day(int month_day, const char* hour, int num_of_months) {
+    assert(num_of_months > 0);
+
+    time_t curr_time;
+    time_t target_time;
+    double diff;
+    struct tm tm_result = { .tm_sec = 0 };
+
+    // Get current time
+    curr_time = time(NULL);
+    localtime_r(&curr_time, &tm_result);
+
+    struct tm t_target = tm_result;
+    // Get exact hour and minute to go to
+    char ** parts = OS_StrBreak(':', hour, 2);
+    // Look for the target day an hour
+    t_target.tm_mday = month_day;
+    t_target.tm_hour = atoi(parts[0]);
+    t_target.tm_min = atoi(parts[1]);
+    t_target.tm_sec = 0;
+
+    target_time = mktime(&t_target);
+    diff = difftime(target_time, curr_time);
+    if ( (tm_result.tm_mday < month_day) || ((tm_result.tm_mday == month_day) && diff > 0) ) {
+        num_of_months = 0;
+    }
+
+    if (num_of_months >= 12) {
+        t_target.tm_year += (num_of_months / 12);
+        num_of_months = (num_of_months % 12);
+    }
+
+    if(t_target.tm_mon + num_of_months > 11) {
+        // We should increment a year
+        t_target.tm_mon = (t_target.tm_mon + num_of_months) % 12;
+        t_target.tm_year++;
+    } else {
+        t_target.tm_mon+= num_of_months;
+    }
+    target_time = mktime(&t_target);
+    diff = difftime(target_time, curr_time);
+    free(parts[0]);
+    free(parts[1]);
+    free(parts);
+
+    return (unsigned long int) diff;
 }

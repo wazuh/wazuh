@@ -44,7 +44,6 @@
         <match>TLS Error|TLS Auth Error</match>
         <description>OpenVPN: Connection Certificate Failed</description>
         <mitre>
-            <id>T1071</id>
             <id>T1133</id>
         </mitre>
         <group>openvpn-error,gdpr_IV_35.7.d,</group>

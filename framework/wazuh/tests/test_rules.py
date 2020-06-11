@@ -198,7 +198,7 @@ def test_get_rules_file_status_include(mock_config, mock_glob, status, func):
                 assert d_files['items'][0]['status'] == 'enabled'
                 assert d_files['items'][1]['status'] == 'disabled'
                 assert d_files['items'][2]['status'] == 'enabled'
-            elif status is 'enabled':
+            elif status == 'enabled':
                 assert d_files['totalItems'] == 2
                 assert d_files['items'][0]['status'] == status
                 assert d_files['items'][1]['status'] == status
