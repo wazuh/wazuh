@@ -22,8 +22,6 @@
 
 void set_priority_windows_thread();
 void set_whodata_mode_changes();
-#else
-struct state_t state;
 #endif
 
 /* External 'static' functions prototypes */
@@ -639,8 +637,8 @@ void test_fim_whodata_initialize_eventchannel(void **state) {
 }
 #endif  // WIN_WHODATA
 #endif
-void test_fim_send_sync_msg_10_eps(void ** _state) {
-    (void) _state;
+void test_fim_send_sync_msg_10_eps(void ** state) {
+    (void) state;
     syscheck.sync_max_eps = 10;
 
     // We must not sleep the first 9 times
@@ -671,8 +669,8 @@ void test_fim_send_sync_msg_10_eps(void ** _state) {
     fim_send_sync_msg("");
 }
 
-void test_fim_send_sync_msg_0_eps(void ** _state) {
-    (void) _state;
+void test_fim_send_sync_msg_0_eps(void ** state) {
+    (void) state;
     syscheck.sync_max_eps = 0;
 
     // We must not sleep
@@ -685,8 +683,8 @@ void test_fim_send_sync_msg_0_eps(void ** _state) {
     fim_send_sync_msg("");
 }
 
-void test_send_syscheck_msg_10_eps(void ** _state) {
-    (void) _state;
+void test_send_syscheck_msg_10_eps(void ** state) {
+    (void) state;
     syscheck.max_eps = 10;
 
     // We must not sleep the first 9 times
@@ -717,8 +715,8 @@ void test_send_syscheck_msg_10_eps(void ** _state) {
     send_syscheck_msg("");
 }
 
-void test_send_syscheck_msg_0_eps(void ** _state) {
-    (void) _state;
+void test_send_syscheck_msg_0_eps(void ** state) {
+    (void) state;
     syscheck.max_eps = 0;
 
     // We must not sleep

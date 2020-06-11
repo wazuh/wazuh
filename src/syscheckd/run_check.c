@@ -32,10 +32,11 @@
 #include "fim_db.h"
 
 #ifdef UNIT_TESTING
+#ifdef WIN32
 #include "unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
 #include "unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
 #include "unit_tests/wrappers/windows/synchapi_wrappers.h"
-
+#endif
 
 // Remove static qualifier when unit testing
 #define STATIC

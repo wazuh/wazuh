@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "headers/defs.h"
 
 #include "../wrappers/common.h"
 #include "../headers/file_op.h"
@@ -73,6 +74,29 @@ int __wrap__mferror(const char * file, int line, const char * func, const char *
     return 0;
 }
 
+
+extern int __real_fprintf (FILE *__stream, const char *__format, ...);
+int __wrap_fprintf (FILE *__stream, const char *__format, ...) {
+    int ret;
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, __format);
+    if (test_mode) {
+        vsnprintf(formatted_msg, OS_MAXSTR, __format, args);
+        check_expected(__stream);
+        check_expected(formatted_msg);
+    } else {
+        ret = __real_fprintf(__stream, __format, args);
+    }
+
+    va_end(args);
+    if(test_mode) {
+        return mock();
+    }
+    return ret;
+}
+
 extern FILE* __real_fopen(const char* path, const char* mode);
 FILE* __wrap_fopen(const char* path, const char* mode) {
     if(unit_testing) {
@@ -121,9 +145,15 @@ void test_CreatePID_success(void **state)
     expect_string(__wrap_fopen, mode, "a");
     will_return(__wrap_fopen, fp);
 
+#ifdef WIN32
     expect_value(wrap_fprintf, __stream, fp);
     expect_string(wrap_fprintf, formatted_msg, "42\n");
     will_return(wrap_fprintf, 0);
+#else
+    expect_value(__wrap_fprintf, __stream, fp);
+    expect_string(__wrap_fprintf, formatted_msg, "42\n");
+    will_return(__wrap_fprintf, 0);
+#endif
 
     expect_string(__wrap_chmod, path, "/var/run/test-42.pid");
     will_return(__wrap_chmod, 0);
@@ -146,9 +176,15 @@ void test_CreatePID_failure_chmod(void **state)
     expect_string(__wrap_fopen, mode, "a");
     will_return(__wrap_fopen, fp);
 
+#ifdef WIN32
     expect_value(wrap_fprintf, __stream, fp);
     expect_string(wrap_fprintf, formatted_msg, "42\n");
     will_return(wrap_fprintf, 0);
+#else
+    expect_value(__wrap_fprintf, __stream, fp);
+    expect_string(__wrap_fprintf, formatted_msg, "42\n");
+    will_return(__wrap_fprintf, 0);
+#endif
 
     expect_string(__wrap_chmod, path, "/var/run/test-42.pid");
     will_return(__wrap_chmod, -1);

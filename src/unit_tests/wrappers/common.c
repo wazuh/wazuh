@@ -18,9 +18,7 @@
 #include "headers/defs.h"
 
 time_t time_mock_value;
-#ifdef WIN32
 int test_mode = 0;
-#endif
 
 int FOREVER() {
     return 1;
@@ -30,7 +28,7 @@ int __wrap_FOREVER() {
     return mock();
 }
 
-time_t wrap_time (__UNUSED_PARAM(time_t *t)) {
+time_t wrap_time (__attribute__ ((__unused__)) time_t *t) {
     return time_mock_value;
 }
 
@@ -65,7 +63,7 @@ char * wrap_fgets (char * __s, int __n, FILE * __stream) {
         }
         return NULL;
     } else {
-        int ret = fgets(__s, __n, __stream);
+        char * ret = fgets(__s, __n, __stream);
         return ret;
     }
 }

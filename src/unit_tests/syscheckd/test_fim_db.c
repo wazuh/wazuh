@@ -20,8 +20,6 @@
 
 #ifdef TEST_WINAGENT
 #define __mode_t int
-#else
-static int test_mode = 0;
 #endif
 
 extern const char *SQL_STMT[];
@@ -106,20 +104,36 @@ char *__wrap_wstr_escape_json() {
 }
 
 #ifndef TEST_WINAGENT
-extern int __real_fprintf(FILE *fp, const char *fmt, ...);
-int __wrap_fprintf(FILE *fp, const char *fmt, ...)
-{
-    int ret;
 
+extern char * __real_fgets (char * __s, int __n, FILE * __stream);
+char * __wrap_fgets (char * __s, int __n, FILE * __stream) {
+    if (test_mode) {
+        char *buffer = mock_type(char*);
+        check_expected(__stream);
+        if(buffer) {
+            strncpy(__s, buffer, __n - 1);
+            return __s;
+        }
+        return NULL;
+    } else {
+        char * ret = __real_fgets(__s, __n, __stream);
+        return ret;
+    }
+}
+
+extern int __real_fprintf(FILE *__stream, const char *__format, ...);
+int __wrap_fprintf(FILE *__stream, const char *__format, ...) {
+    int ret;
     char formatted_msg[OS_MAXSTR];
     va_list args;
 
-    va_start(args, fmt);
+    va_start(args, __format);
     if (test_mode) {
-        vsnprintf(formatted_msg, OS_MAXSTR, fmt, args);
+        vsnprintf(formatted_msg, OS_MAXSTR, __format, args);
+        check_expected(__stream);
         check_expected(formatted_msg);
     } else {
-        ret = __real_fprintf(fp, fmt, args);
+        ret = __real_fprintf(__stream, __format, args);
     }
 
     va_end(args);
@@ -553,7 +567,6 @@ static int test_fim_tmp_file_setup_disk(void **state) {
     }
     test_data->tmp_file = calloc(1, sizeof(fim_tmp_file));
     test_data->tmp_file->path = strdup("/tmp/file");
-    test_data->tmp_file->fd = calloc(1, sizeof(FILE*));
     *state = test_data;
     return 0;
 }
@@ -561,7 +574,6 @@ static int test_fim_tmp_file_setup_disk(void **state) {
 static int test_fim_tmp_file_teardown_disk(void **state) {
     test_fim_db_insert_data *test_data = *state;
     free(test_data->tmp_file->path);
-    free(test_data->tmp_file->fd);
     free(test_data->tmp_file);
     return test_fim_db_teardown((void**)&test_data);
 }
@@ -2239,8 +2251,13 @@ void test_fim_db_sync_path_range_disk(void **state) {
     test_data->tmp_file->fd = (FILE*)2345;
 
     will_return(__wrap_fseek, 0);
+#ifdef WIN32
     expect_value(wrap_fgets, __stream, (FILE*)2345);
     will_return(wrap_fgets, "/tmp/file\n");
+#else
+    expect_value(__wrap_fgets, __stream, (FILE*)2345);
+    will_return(__wrap_fgets, "/tmp/file\n");
+#endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return_always(__wrap_sqlite3_bind_text, 0);
@@ -2297,8 +2314,13 @@ void test_fim_db_delete_range_success(void **state) {
     int ret;
 
     will_return(__wrap_fseek, 0);
+#ifdef WIN32
     expect_value(wrap_fgets, __stream, (FILE*)2345);
     will_return(wrap_fgets, "/tmp/file\n");
+#else
+    expect_value(__wrap_fgets, __stream, (FILE*)2345);
+    will_return(__wrap_fgets, "/tmp/file\n");
+#endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return_always(__wrap_sqlite3_bind_text, 0);
@@ -2328,8 +2350,13 @@ void test_fim_db_delete_range_error(void **state) {
     int ret;
 
     will_return(__wrap_fseek, 0);
+#ifdef WIN32
     expect_value(wrap_fgets, __stream, (FILE*)2345);
     will_return(wrap_fgets, "/tmp/file\n");
+#else
+    expect_value(__wrap_fgets, __stream, (FILE*)2345);
+    will_return(__wrap_fgets, "/tmp/file\n");
+#endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return_always(__wrap_sqlite3_bind_text, 0);
@@ -2354,8 +2381,13 @@ void test_fim_db_delete_range_path_error(void **state) {
     int ret;
 
     will_return(__wrap_fseek, 0);
+#ifdef WIN32
     expect_value(wrap_fgets, __stream, (FILE*)2345);
     will_return(wrap_fgets, "\n");
+#else
+    expect_value(__wrap_fgets, __stream, (FILE*)2345);
+    will_return(__wrap_fgets, "\n");
+#endif
 
     expect_string(__wrap__merror, formatted_msg, "Temporary path file '/tmp/file' is corrupt: missing line end.");
 
@@ -2375,8 +2407,13 @@ void test_fim_db_delete_not_scanned(void **state) {
     int ret;
 
     will_return(__wrap_fseek, 0);
+#ifdef WIN32
     expect_value(wrap_fgets, __stream, (FILE*)2345);
     will_return(wrap_fgets, "/tmp/file\n");
+#else
+    expect_value(__wrap_fgets, __stream, (FILE*)2345);
+    will_return(__wrap_fgets, "/tmp/file\n");
+#endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return_always(__wrap_sqlite3_bind_text, 0);
@@ -2404,8 +2441,13 @@ void test_fim_db_process_missing_entry(void **state) {
     int ret;
 
     will_return(__wrap_fseek, 0);
+#ifdef WIN32
     expect_value(wrap_fgets, __stream, (FILE*)2345);
     will_return(wrap_fgets, "/tmp/file\n");
+#else
+    expect_value(__wrap_fgets, __stream, (FILE*)2345);
+    will_return(__wrap_fgets, "/tmp/file\n");
+#endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return_always(__wrap_sqlite3_bind_text, 0);
@@ -2463,14 +2505,15 @@ void test_fim_db_callback_save_path_disk(void **state) {
 
     will_return(__wrap_wstr_escape_json, "/test/path");
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
+    expect_value(__wrap_fprintf, __stream, 2345);
     expect_string(__wrap_fprintf, formatted_msg, "/test/path\n");
     will_return(__wrap_fprintf, 11);
-    #else
+#else
     expect_value(wrap_fprintf, __stream, 2345);
     expect_string(wrap_fprintf, formatted_msg, "/test/path\n");
     will_return(wrap_fprintf, 11);
-    #endif
+#endif
 
     fim_db_callback_save_path(test_data->fim_sql, test_data->entry, syscheck.database_store, test_data->tmp_file);
     assert_int_equal(test_data->tmp_file->elements, 1);
@@ -2482,16 +2525,17 @@ void test_fim_db_callback_save_path_disk_error(void **state) {
 
     will_return(__wrap_wstr_escape_json, "/test/path");
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
+    expect_value(__wrap_fprintf, __stream, 2345);
     expect_string(__wrap_fprintf, formatted_msg, "/test/path\n");
     will_return(__wrap_fprintf, 0);
-    #else
+#else
     expect_value(wrap_fprintf, __stream, 2345);
     expect_string(wrap_fprintf, formatted_msg, "/test/path\n");
     will_return(wrap_fprintf, 0);
+#endif
 
     errno = 0;
-    #endif
 
     expect_string(__wrap__merror, formatted_msg, "/test/path - Success");
 
