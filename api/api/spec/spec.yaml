@@ -42,10 +42,10 @@ x-rbac-catalog:
       description: "Reference files via its path (i.e. file:path:etc/rules/new_rule.xml)"
     'decoder:file':
       description: "Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)"
-    'lists:path':
-      description: "Reference list files via its path (i.e. lists:path:etc/lists/audit-keys)"
-    'rules:file':
-      description: "Reference rule files via its path (i.e. rules:file:0610-win-ms_logs_rules.xml)"
+    'list:path':
+      description: "Reference list files via its path (i.e. list:path:etc/lists/audit-keys)"
+    'rule:file':
+      description: "Reference rule files via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)"
     'policy:id':
       description: "Reference security policies via its id (i.e. policy:id:1)"
     'role:id':
@@ -279,14 +279,6 @@ x-rbac-catalog:
         actions: ['manager:restart']
         resources: ['*:*:*']
         effect: "deny"
-    'manager:status':
-      description: "Check Wazuh manager status"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: ['manager:status']
-        resources: ['*:*:*']
-        effect: "deny"
     'mitre:read':
       description: "Get attacks information from MITRE database."
       resources:
@@ -295,29 +287,29 @@ x-rbac-catalog:
         actions: ['mitre:read']
         resources: ['*:*:*']
         effect: "allow"
-    'decoder:read':
+    'decoders:read':
       description: "Read decoders files"
       resources:
         - $ref: '#/x-rbac-catalog/resources/decoder:file'
       example:
-        actions: ['decoder:read']
+        actions: ['decoders:read']
         resources: ['decoder:file:*']
         effect: "allow"
     'lists:read':
       description: "Read lists files"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/lists:path'
+        - $ref: '#/x-rbac-catalog/resources/list:path'
       example:
         actions: ['lists:read']
-        resources: ['lists:path:etc/lists/audit-keys']
+        resources: ['list:path:etc/lists/audit-keys']
         effect: "deny"
     'rules:read':
       description: "Read rules files"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/rules:file'
+        - $ref: '#/x-rbac-catalog/resources/rule:file'
       example:
         actions: ['rules:read']
-        resources: ['rules:file:0610-win-ms_logs_rules.xml']
+        resources: ['rule:file:0610-win-ms_logs_rules.xml']
         effect: "allow"
     'sca:read':
       description: "Get a list of policies analyzed in the configuration assessment for a given agent"
@@ -4757,8 +4749,8 @@ components:
           - 'node:id'
           - 'file:path'
           - 'decoder:file'
-          - 'lists:path'
-          - 'rules:file'
+          - 'list:path'
+          - 'rule:file'
           - 'policy:id'
           - 'role:id'
           - 'user:id'
@@ -5560,7 +5552,9 @@ paths:
       description: "Delete all groups or a list of them"
       operationId: api.controllers.agents_controller.delete_groups
       x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:modify_group'
         - $ref: '#/x-rbac-catalog/actions/group:delete'
+        - $ref: '#/x-rbac-catalog/actions/group:modify_assignments'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -5683,6 +5677,7 @@ paths:
       description: "Return the list of agents that belong to the specified group"
       operationId: api.controllers.agents_controller.get_agents_in_group
       x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
         - $ref: '#/x-rbac-catalog/actions/group:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -5898,7 +5893,7 @@ paths:
       description: "Return the files placed under the group directory"
       operationId: api.controllers.agents_controller.get_group_files
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/group:delete'
+        - $ref: '#/x-rbac-catalog/actions/group:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -5960,7 +5955,7 @@ paths:
       description: "Return the contents of the specified group file parsed to JSON"
       operationId: api.controllers.agents_controller.get_group_file_json
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/group:delete'
+        - $ref: '#/x-rbac-catalog/actions/group:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6006,7 +6001,7 @@ paths:
       description: "Return the contents of the specified group file parsed to XML"
       operationId: api.controllers.agents_controller.get_group_file_xml
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/group:delete'
+        - $ref: '#/x-rbac-catalog/actions/group:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6033,7 +6028,6 @@ paths:
       description: 'Restart all agents which belong to a given group'
       operationId: api.controllers.agents_controller.restart_agents_by_group
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/group:read'
         - $ref: '#/x-rbac-catalog/actions/agent:restart'
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -6529,7 +6523,7 @@ paths:
       description: "Return the agent's ciscat results info"
       operationId: api.controllers.ciscat_controller.get_agents_ciscat_results
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:read'
+        - $ref: '#/x-rbac-catalog/actions/ciscat:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7036,7 +7030,7 @@ paths:
       description: "Return the status of all Wazuh daemons in node node_id"
       operationId: api.controllers.cluster_controller.get_status_node
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:status'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7810,6 +7804,7 @@ paths:
       description: "Replace file contents with the data contained in the API request in a specified cluster node"
       operationId: api.controllers.cluster_controller.put_files_node
       x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:delete_file'
         - $ref: '#/x-rbac-catalog/actions/cluster:upload_file'
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -8146,7 +8141,7 @@ paths:
       description: "Return the status of all Wazuh daemons"
       operationId: api.controllers.manager_controller.get_status
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:status'
+        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8909,6 +8904,7 @@ paths:
       description: "Replace file contents with the data contained in the API request"
       operationId: api.controllers.manager_controller.put_files
       x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:delete_file'
         - $ref: '#/x-rbac-catalog/actions/manager:upload_file'
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -10159,7 +10155,7 @@ paths:
       description: "Return information about all decoders included in ossec.conf. This information include decoder's route, decoder's name, decoder's file among others"
       operationId: api.controllers.decoders_controller.get_decoders
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/decoder:read'
+        - $ref: '#/x-rbac-catalog/actions/decoders:read'
       parameters:
         - $ref: '#/components/parameters/decoder_name'
         - $ref: '#/components/parameters/pretty'
@@ -10223,7 +10219,7 @@ paths:
       description: "Return information about all decoders files used in Wazuh. This information include decoder's file, decoder's route and decoder's status among others"
       operationId: api.controllers.decoders_controller.get_decoders_files
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/decoder:read'
+        - $ref: '#/x-rbac-catalog/actions/decoders:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -10275,7 +10271,7 @@ paths:
       description: "Download an specified decoder file"
       operationId: api.controllers.decoders_controller.get_download_file
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/decoder:read'
+        - $ref: '#/x-rbac-catalog/actions/decoders:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -10300,7 +10296,7 @@ paths:
       description: "Return information about all parent decoders. A parent decoder is a decoder used as base of other decoders"
       operationId: api.controllers.decoders_controller.get_decoders_parents
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/decoder:read'
+        - $ref: '#/x-rbac-catalog/actions/decoders:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -12024,10 +12020,10 @@ paths:
                   description: 'Reference file via its path (i.e. file:path:etc/rules/new_rule.xml)'
                 decoder:file:
                   description: 'Reference decoder file via its path (i.e. decoder:file:0005-wazuh_decoders.xml)'
-                lists:path:
-                  description: 'Reference list file via its path (i.e. lists:path:etc/lists/audit-keys)'
-                rules:file:
-                  description: 'Reference rule file via its path (i.e. rules:file:0610-win-ms_logs_rules.xml)'
+                list:path:
+                  description: 'Reference list file via its path (i.e. list:path:etc/lists/audit-keys)'
+                rule:file:
+                  description: 'Reference rule file via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)'
                 policy:id:
                   description: 'Reference security policy via its id (i.e. policy:id:1)'
                 role:id:
@@ -12512,7 +12508,7 @@ paths:
       description: "Create a specify relation role-policy, one role may have multiples policies"
       operationId: api.controllers.security_controller.set_role_policy
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/security:create'
+        - $ref: '#/x-rbac-catalog/actions/security:update'
       parameters:
         - $ref: '#/components/parameters/role_id'
         - $ref: '#/components/parameters/policy_ids_rbac_required'
@@ -12615,7 +12611,7 @@ paths:
       description: "Create a specify relation role-policy, one user may have multiples roles"
       operationId: api.controllers.security_controller.set_user_role
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/security:create'
+        - $ref: '#/x-rbac-catalog/actions/security:update'
       parameters:
         - $ref: '#/components/parameters/username'
         - $ref: '#/components/parameters/role_ids_required'

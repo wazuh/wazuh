@@ -108,7 +108,6 @@ def test_security(db_setup, security_function, params, expected_result):
     except WazuhError as e:
         assert str(e.code) == list(expected_result['failed_items'].keys())[0]
 
-
 @pytest.mark.parametrize('security_function, params, expected_result', rbac_cases)
 def test_rbac_catalog(db_setup, security_function, params, expected_result):
     """Verify RBAC catalog functions.

@@ -56,7 +56,7 @@ INSERT INTO policies VALUES(4,'security_all','{"actions": ["security:read", "sec
 INSERT INTO policies VALUES(5,'users_all','{"actions": ["security:read", "security:create", "security:update", "security:delete"], "resources": ["user:id:*"], "effect": "allow"}','1970-01-01 00:00:00');
 INSERT INTO policies VALUES(6,'ciscat_read','{"actions": ["ciscat:read"], "resources": ["agent:id:*"], "effect": "allow"}','1970-01-01 00:00:00');
 INSERT INTO policies VALUES(7,'decoders_read','{"actions": ["decoders:read"], "resources": ["decoder:file:*"], "effect": "allow"}','1970-01-01 00:00:00');
-INSERT INTO policies VALUES(8,'rules_read','{"actions": ["rules:read"], "resources": ["rules:file:*"], "effect": "allow"}','1970-01-01 00:00:00');
+INSERT INTO policies VALUES(8,'rules_read','{"actions": ["rules:read"], "resources": ["rule:file:*"], "effect": "allow"}','1970-01-01 00:00:00');
 INSERT INTO policies VALUES(9,'cluster_all','{"actions": ["cluster:read_config", "cluster:restart", "cluster:status", "cluster:read_file", "cluster:upload_file", "cluster:delete_file", "manager:read_config", "manager:delete_file", "manager:read_file", "manager:upload_file", "manager:restart"], "resources": ["file:path:*", "node:id:*", "node:id:*&file:path:*"], "effect": "allow"}','1970-01-01 00:00:00');
 INSERT INTO policies VALUES(10,'cluster_read','{"actions": ["cluster:read_config", "cluster:status", "cluster:read_file", "manager:read_config", "manager:read_file"], "resources": ["file:path:*", "node:id:*", "node:id:*&file:path:*"], "effect": "allow"}','1970-01-01 00:00:00');
 

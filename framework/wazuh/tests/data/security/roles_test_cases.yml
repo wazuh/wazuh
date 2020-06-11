@@ -13,7 +13,7 @@ get_roles:
           r'^auth[a-zA-Z]+$':
           - administrator
       policies:
-      - 12
+      - 100
       users:
       - wazuh
     - id: 11
@@ -22,8 +22,8 @@ get_roles:
         MATCH:
           definition: administratorRule
       policies:
-      - 16
-      - 15
+      - 104
+      - 103
       users:
       - normal
       - rbac
@@ -42,10 +42,10 @@ get_roles:
         MATCH:
           definition: technicalRule
       policies:
-      - 13
-      - 12
-      - 19
-      - 16
+      - 101
+      - 100
+      - 107
+      - 104
       users:
       - rbac
     - id: 12
@@ -54,9 +54,9 @@ get_roles:
         MATCH:
           definition: normalRule
       policies:
-      - 13
-      - 14
-      - 21
+      - 101
+      - 102
+      - 109
       users:
       - normal
       - ossec
@@ -67,16 +67,16 @@ get_roles:
         MATCH:
           definition: ossecRule
       policies:
-      - 13
-      - 19
-      - 18
-      - 21
-      - 16
-      - 20
-      - 12
-      - 17
-      - 14
-      - 15
+      - 101
+      - 107
+      - 106
+      - 109
+      - 104
+      - 108
+      - 100
+      - 105
+      - 102
+      - 103
       users:
       - normal
     failed_items:
@@ -146,16 +146,16 @@ update_role:
         MATCH:
           definition: normalRule3
       policies:
-      - 13
-      - 19
-      - 18
-      - 21
-      - 16
-      - 20
-      - 12
-      - 17
-      - 14
-      - 15
+      - 101
+      - 107
+      - 106
+      - 109
+      - 104
+      - 108
+      - 100
+      - 105
+      - 102
+      - 103
       users:
       - normal
     failed_items: {}
@@ -213,8 +213,8 @@ remove_roles:
     - id: 11
       name: administrator_test
       policies:
-      - 16
-      - 15
+      - 104
+      - 103
       rule:
         MATCH:
           definition: administratorRule
@@ -235,10 +235,10 @@ remove_roles:
     - id: 10
       name: technical
       policies:
-      - 13
-      - 12
-      - 19
-      - 16
+      - 101
+      - 100
+      - 107
+      - 104
       rule:
         MATCH:
           definition: technicalRule
@@ -247,9 +247,9 @@ remove_roles:
     - id: 12
       name: normalUser
       policies:
-      - 13
-      - 14
-      - 21
+      - 101
+      - 102
+      - 109
       rule:
         MATCH:
           definition: normalRule
@@ -260,16 +260,16 @@ remove_roles:
     - id: 13
       name: ossec
       policies:
-      - 13
-      - 19
-      - 18
-      - 21
-      - 16
-      - 20
-      - 12
-      - 17
-      - 14
-      - 15
+      - 101
+      - 107
+      - 106
+      - 109
+      - 104
+      - 108
+      - 100
+      - 105
+      - 102
+      - 103
       rule:
         MATCH:
           definition: ossecRule

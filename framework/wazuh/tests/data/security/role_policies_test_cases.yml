@@ -28,11 +28,11 @@ set_role_policy:
     role_id:
     - '10'
     policy_ids:
-    - '13'
-    - '12'
-    - '19'
-    - '16'
-    - '15'
+    - '100'
+    - '101'
+    - '104'
+    - '107'
+    - '103'
   result:
     affected_items:
     - id: 10
@@ -41,27 +41,27 @@ set_role_policy:
         MATCH:
           definition: technicalRule
       policies:
-      - 13
-      - 12
-      - 19
-      - 16
-      - 15
+      - 101
+      - 100
+      - 107
+      - 104
+      - 103
       users:
       - rbac
     failed_items:
       '4011':
-      - '13'
-      - '12'
-      - '19'
-      - '16'
+      - '101'
+      - '100'
+      - '107'
+      - '104'
 - params:
     role_id:
     - '10'
     policy_ids:
-    - '18'
-    - '14'
-    - '20'
-    - '15'
+    - '106'
+    - '102'
+    - '108'
+    - '103'
     position: 2
   result:
     affected_items:
@@ -71,14 +71,14 @@ set_role_policy:
         MATCH:
           definition: technicalRule
       policies:
-      - 13
-      - 12
-      - 18
-      - 14
-      - 20
-      - 15
-      - 19
-      - 16
+      - 101
+      - 100
+      - 106
+      - 102
+      - 108
+      - 103
+      - 107
+      - 104
       users:
       - rbac
     failed_items: {}
@@ -86,8 +86,8 @@ set_role_policy:
     role_id:
     - '11'
     policy_ids:
-    - '15'
-    - '17'
+    - '103'
+    - '105'
     - '99'
   result:
     affected_items:
@@ -97,9 +97,9 @@ set_role_policy:
         MATCH:
           definition: administratorRule
       policies:
-      - 16
-      - 15
-      - 17
+      - 104
+      - 103
+      - 105
       users:
       - normal
       - rbac
@@ -107,15 +107,15 @@ set_role_policy:
       '4007':
       - '99'
       '4011':
-      - '15'
+      - '103'
 remove_role_policy:
 - params:
     role_id:
     - '1'
     policy_ids:
-    - '16'
-    - '15'
-    - '17'
+    - '104'
+    - '103'
+    - '105'
   result:
     affected_items: []
     failed_items:
@@ -125,9 +125,9 @@ remove_role_policy:
     role_id:
     - '99'
     policy_ids:
-    - '16'
-    - '15'
-    - '17'
+    - '104'
+    - '103'
+    - '105'
   result:
     affected_items: []
     failed_items:
@@ -137,9 +137,9 @@ remove_role_policy:
     role_id:
     - '10'
     policy_ids:
-    - '16'
-    - '15'
-    - '17'
+    - '104'
+    - '103'
+    - '105'
   result:
     affected_items:
     - id: 10
@@ -148,35 +148,35 @@ remove_role_policy:
         MATCH:
           definition: technicalRule
       policies:
-      - 13
-      - 12
-      - 19
+      - 101
+      - 100
+      - 107
       users:
       - rbac
     failed_items:
       '4010':
-      - '15'
-      - '17'
+      - '103'
+      - '105'
 - params:
     role_id:
     - '13'
     policy_ids:
-    - '13'
-    - '16'
-    - '17'
-    - '27'
+    - '101'
+    - '104'
+    - '105'
+    - '26'
   result:
     affected_items:
     - id: 13
       name: ossec
       policies:
-      - 19
-      - 18
-      - 21
-      - 20
-      - 12
-      - 14
-      - 15
+      - 107
+      - 106
+      - 109
+      - 108
+      - 100
+      - 102
+      - 103
       rule:
         MATCH:
           definition: ossecRule
@@ -184,7 +184,4 @@ remove_role_policy:
       - normal
     failed_items:
       '4007':
-      - '27'
-      '4010':
-      - '13'
-      - '17'
+      - '26'

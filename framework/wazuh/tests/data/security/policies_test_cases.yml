@@ -2,11 +2,11 @@
 get_policies:
 - params:
     policy_ids:
-    - '12'
-    - '15'
+    - '100'
+    - '103'
   result:
     affected_items:
-    - id: 12
+    - id: 100
       name: wazuhPolicy
       policy:
         actions:
@@ -37,7 +37,7 @@ get_policies:
         rule:
           MATCH:
             definition: ossecRule
-    - id: 15
+    - id: 103
       name: administratorPolicy
       policy:
         actions:
@@ -60,13 +60,13 @@ get_policies:
     failed_items: {}
 - params:
     policy_ids:
-    - '14'
-    - '16'
-    - '17'
-    - '22'
+    - '102'
+    - '104'
+    - '105'
+    - '110'
   result:
     affected_items:
-    - id: 14
+    - id: 102
       name: technicalPolicy
       policy:
         actions:
@@ -85,7 +85,7 @@ get_policies:
         rule:
           MATCH:
             definition: ossecRule
-    - id: 16
+    - id: 104
       name: normalPolicy
       policy:
         actions:
@@ -110,7 +110,7 @@ get_policies:
         rule:
           MATCH:
             definition: ossecRule
-    - id: 17
+    - id: 105
       name: ossecPolicy
       policy:
         actions:
@@ -126,9 +126,10 @@ get_policies:
             definition: ossecRule
     failed_items:
       '4007':
-      - '22'
+      - '110'
 - params:
     policy_ids:
+    - '110'
     - '22'
     - '23'
     - '24'
@@ -136,6 +137,7 @@ get_policies:
     affected_items: []
     failed_items:
       '4007':
+      - '110'
       - '22'
       - '23'
       - '24'
@@ -150,7 +152,7 @@ add_policy:
       - agent:id:099
   result:
     affected_items:
-    - id: 22
+    - id: 110
       name: new_policy
       policy:
         actions:
@@ -189,15 +191,15 @@ add_policy:
 update_policy:
 - params:
     policy_id:
-    - '17'
+    - '105'
   result:
     affected_items: []
     failed_items:
       '4001':
-      - '17'
+      - '105'
 - params:
     policy_id:
-    - '17'
+    - '105'
     name: ossecPolicy1
     policy:
       actions:
@@ -207,7 +209,7 @@ update_policy:
       - agent:id:097
   result:
     affected_items:
-    - id: 17
+    - id: 105
       name: ossecPolicy1
       policy:
         actions:
@@ -239,7 +241,7 @@ update_policy:
       - '26'
 - params:
     policy_id:
-    - '15'
+    - '103'
     name: administratorPolicy
     policy:
       actions:
@@ -251,7 +253,7 @@ update_policy:
     affected_items: []
     failed_items:
       '4013':
-      - '15'
+      - '103'
 - params:
     policy_id:
     - '1'
@@ -271,10 +273,10 @@ remove_policies:
 - params:
     policy_ids:
     - '1'
-    - '15'
+    - '103'
   result:
     affected_items:
-    - id: 15
+    - id: 103
       name: administratorPolicy
       policy:
         actions:
@@ -299,13 +301,13 @@ remove_policies:
       - '1'
 - params:
     policy_ids:
-    - '14'
-    - '16'
-    - '17'
-    - '24'
+    - '102'
+    - '104'
+    - '105'
+    - '23'
   result:
     affected_items:
-    - id: 14
+    - id: 102
       name: technicalPolicy
       policy:
         actions:
@@ -324,7 +326,7 @@ remove_policies:
         rule:
           MATCH:
             definition: ossecRule
-    - id: 16
+    - id: 104
       name: normalPolicy
       policy:
         actions:
@@ -349,7 +351,7 @@ remove_policies:
         rule:
           MATCH:
             definition: ossecRule
-    - id: 17
+    - id: 105
       name: ossecPolicy
       policy:
         actions:
@@ -365,15 +367,16 @@ remove_policies:
             definition: ossecRule
     failed_items:
       '4007':
-      - '24'
+      - '23'
 - params:
     policy_ids:
+    - '109'
     - '21'
     - '22'
     - '23'
   result:
     affected_items:
-    - id: 21
+    - id: 109
       name: policy4
       policy:
         actions:
@@ -394,5 +397,6 @@ remove_policies:
             definition: ossecRule
     failed_items:
       '4007':
+      - '21'
       - '22'
       - '23'
