@@ -51,10 +51,7 @@ int local_start()
     w_logging_init();
     
     /* Start agent */
-    agt = (agent *)calloc(1, sizeof(agent));
-    if (!agt) {
-        merror_exit(MEM_ERROR, errno, strerror(errno));
-    }
+    os_calloc(1, sizeof(agent), agt);
 
     /* Configuration file not present */
     if (File_DateofChange(cfg) < 0) {
