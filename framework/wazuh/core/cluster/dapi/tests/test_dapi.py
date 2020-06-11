@@ -146,7 +146,7 @@ def test_DistributedAPI_distribute_function_exception():
 def test_DistributedAPI_invalid_json():
     """Check the behaviour of DistributedAPI when an invalid JSON is received."""
     dapi_kwargs = {'f': agent.get_agents_summary_status, 'logger': logger}
-    raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
+    assert raise_if_exc_routine(dapi_kwargs=dapi_kwargs) is None
 
 
 def test_DistributedAPI_local_request_errors():
@@ -270,7 +270,7 @@ def test_DistributedAPI_tmp_file(mock_cluster_status, mock_release_local_clients
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.get_solver_node',
        new=AsyncMock(return_value=WazuhResult({'testing': ['001', '002']})))
 def test_DistributedAPI_tmp_file_cluster_error(mock_cluster_status, mock_release_local_clients):
-    """Test the behaviour when an error raise with temporal files function."""
+    """Test the behaviour when an error raises with temporal files function."""
     open('/tmp/dapi_file.txt', 'a').close()
     with patch('wazuh.core.cluster.cluster.get_node', return_value={'type': 'master', 'node': 'unknown'}):
         with patch('wazuh.core.cluster.local_client.LocalClient.execute',
@@ -362,3 +362,12 @@ def test_APIRequestQueue():
     api_request_queue = APIRequestQueue(server=server)
     api_request_queue.add_request(b'testing')
     assert api_request_queue.server == server
+
+
+@pytest.mark.asyncio
+async def test_APIRequestQueue_run():
+    """Test run method of `APIRequestQueue`."""
+    server = DistributedAPI(f=agent.get_agents_summary_status, logger=logger)
+    api_request_queue = APIRequestQueue(server=server)
+    api_request_queue.add_request(b'testing')
+    api_request_queue.run()

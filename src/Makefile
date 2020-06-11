@@ -869,24 +869,26 @@ space +=
 VERSION = $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(patsubst v%,%,$(shell cat VERSION)))))
 RESOURCES_URL := https://packages.wazuh.com/deps/$(VERSION)
 CPYTHON := cpython
-ifneq (${PREFIX},/var/ossec)
-	CPYTHON := src_cpython
-else
+ifeq (${PREFIX},/var/ossec)
 	# Download the Python sources if we are building for any other OS.
-ifneq (${uname_S},Linux)
-CPYTHON := src_cpython
-else
+ifeq (${uname_S},Linux)
 cpu_arch := ${uname_P}
 ifneq (,$(filter ${cpu_arch},unknown Unknown))
 	cpu_arch := $(shell sh -c 'arch 2>/dev/null || echo not')
 endif
 ifneq (,$(filter ${cpu_arch},x86_64 amd64))
-CPYTHON := cpython_amd64
+PRECOMPILED_RES := linux/amd64
 else
 ifneq (,$(filter ${cpu_arch},i386 i686))
-CPYTHON := cpython_i386
+PRECOMPILED_RES := linux/i386
 else
-CPYTHON := src_cpython
+ifneq (,$(filter ${cpu_arch},aarch64 arm64))
+PRECOMPILED_RES := linux/aarch64
+else
+ifneq (,$(filter ${cpu_arch},armv8l armv7l arm32 armhf))
+PRECOMPILED_RES := linux/arm32
+endif
+endif
 endif
 endif
 endif
@@ -897,14 +899,30 @@ EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite
 EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
-.PHONY: deps
-deps: $(EXTERNAL_TAR)
+VULN_DETECTOR_DIR := wazuh_modules/vulnerability_detector
+MSU_JSON_GZ := $(VULN_DETECTOR_DIR)/msu.json.gz
 
-external/%.tar.gz:
-	$(CURL) $@ $(RESOURCES_URL)/$(patsubst external/%,%,$@)
+.PHONY: deps
+deps: $(EXTERNAL_TAR) $(MSU_JSON_GZ) $(MSU_JSON_GZ)
+
+external/$(CPYTHON).tar.gz:
+ifneq (,$(PRECOMPILED_RES))
+	$(CURL) $@ $(RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external/%,%,$@)
+else
+	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
+endif
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	rm $(patsubst %.gz,%,$@)
+
+external/%.tar.gz:
+	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
+	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
+	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
+	rm $(patsubst %.gz,%,$@)
+
+$(MSU_JSON_GZ):
+	$(CURL) $@ $(RESOURCES_URL)/vulnerability-detector/windows/$(patsubst $(VULN_DETECTOR_DIR)/%,%,$@)
 
 
 ####################
@@ -1500,12 +1518,12 @@ ifneq (,$(filter ${OPTIMIZE_CPYTHON},YES yes y Y 1))
 CPYTHON_FLAGS=--enable-optimizations
 endif
 
-wpython: build_python install_python install_dependencies install_framework install_api install_mitre
+wpython: install_dependencies install_framework install_api install_mitre
 
 ifeq (${uname_S},Darwin)
-WLIBPYTHON=libpython3.7m.dylib
+WLIBPYTHON=libpython3.8.dylib
 else
-WLIBPYTHON=libpython3.7m.so.1.0
+WLIBPYTHON=libpython3.8.so.1.0
 endif
 
 build_python:
@@ -1519,7 +1537,7 @@ ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python.exe))
 	mkdir -p ${ROUTE_PATH}/../lib && cp ${WAZUHEXT_LIB} ${ROUTE_PATH}/../lib
 	cd ${EXTERNAL_CPYTHON} && ./configure --prefix="${WPYTHON_DIR}" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH} -lwazuhext -Xlinker -rpath -Xlinker @executable_path/../../../lib" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
 	install_name_tool -change ${WLIBPYTHON} @rpath/../lib/${WLIBPYTHON} external/cpython/${WLIBPYTHON}
-	install_name_tool -change ${WPYTHON_DIR}/lib/libpython3.7m.dylib @rpath/../lib/${WLIBPYTHON} -id @rpath/../lib/${WLIBPYTHON} external/cpython/${WLIBPYTHON}
+	install_name_tool -change ${WPYTHON_DIR}/lib/${WLIBPYTHON} @rpath/../lib/${WLIBPYTHON} -id @rpath/../lib/${WLIBPYTHON} external/cpython/${WLIBPYTHON}
 	rm -rf ${ROUTE_PATH}/../lib
 endif
 else
@@ -1541,7 +1559,6 @@ python_dependencies := requirements.txt
 install_dependencies: install_python
 	LD_LIBRARY_PATH="${PREFIX}/lib" LDFLAGS="-L${PREFIX}/lib" ${WPYTHON_DIR}/bin/pip3 install -r ../framework/${python_dependencies}  --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
 
-
 install_framework: install_python
 	cd ../framework && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR} --wazuh-version=$(shell cat VERSION) --install-type=${TARGET}
 	chown -R root:${OSSEC_GROUP} ${WPYTHON_DIR}
@@ -1551,7 +1568,7 @@ install_api: install_python
 	cd ../api && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR}
 
 install_mitre: install_python
-	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${PREFIX}/var/db/mitre.db 
+	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${PREFIX}/var/db/mitre.db
 
 
 ####################
@@ -1751,7 +1768,7 @@ ifneq ($(wildcard external/cpython/*),)
 endif
 
 clean-deps:
-	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_CPYTHON)
+	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_CPYTHON) $(MSU_JSON_GZ)
 
 clean-internals:
 	rm -f $(BUILD_SERVER)

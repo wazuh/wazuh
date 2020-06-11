@@ -156,28 +156,28 @@ def healthcheck_procedure(module: str):
 
 
 def change_rbac_mode(rbac_mode: str):
-    """Modify api.yaml in base folder to change RBAC mode for the current test.
+    """Modify security.yaml in base folder to change RBAC mode for the current test.
 
     Parameters
     ----------
     rbac_mode : str
         RBAC Mode: Black (by default: all allowed), White (by default: all denied)
     """
-    with open(os.path.join(current_path, 'env', 'configurations', 'base', 'manager', 'api.yaml'),
-              'r+') as api_conf:
-        content = api_conf.read()
-        api_conf.seek(0)
-        api_conf.write(re.sub(r'mode: (white|black)', f'mode: {rbac_mode}', content))
+    with open(os.path.join(current_path, 'env', 'configurations', 'base', 'manager', 'security.yaml'),
+              'r+') as rbac_conf:
+        content = rbac_conf.read()
+        rbac_conf.seek(0)
+        rbac_conf.write(re.sub(r'rbac_mode: (white|black)', f'rbac_mode: {rbac_mode}', content))
 
 
 def clean_tmp_folder():
     """Remove temporal folder used te configure the environment and set RBAC mode to Black.
     """
-    with open(os.path.join(current_path, 'env', 'configurations', 'base', 'manager', 'api.yaml'),
-              'r+') as api_conf:
-        content = api_conf.read()
-        api_conf.seek(0)
-        api_conf.write(re.sub(r'mode: (white|black)', f'mode: black', content))
+    with open(os.path.join(current_path, 'env', 'configurations', 'base', 'manager', 'security.yaml'),
+              'r+') as rbac_conf:
+        content = rbac_conf.read()
+        rbac_conf.seek(0)
+        rbac_conf.write(re.sub(r'rbac_mode: (white|black)', f'rbac_mode: black', content))
 
     shutil.rmtree(os.path.join(current_path, 'env', 'configurations', 'tmp'), ignore_errors=True)
 
