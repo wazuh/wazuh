@@ -78,10 +78,6 @@ int __wrap_isChroot() {
 }
 #endif
 
-#ifndef WIN32
-int test_mode = 0;
-#endif
-
 /* redefinitons/wrapping */
 
 void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...)

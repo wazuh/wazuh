@@ -22,10 +22,12 @@ volatile int audit_db_consistency_flag;
 #include "syscheck_op.h"
 
 #ifdef UNIT_TESTING
+#ifdef WIN32
 #include "unit_tests/wrappers/windows/fileapi_wrappers.h"
 #include "unit_tests/wrappers/windows/handleapi_wrappers.h"
 #include "unit_tests/wrappers/windows/synchapi_wrappers.h"
 #include "unit_tests/wrappers/windows/winbase_wrappers.h"
+#endif
 #endif
 
 #ifdef INOTIFY_ENABLED

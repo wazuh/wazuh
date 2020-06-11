@@ -13,16 +13,12 @@
 #include <cmocka.h>
 #include <stdio.h>
 
-
+#include "../wrappers/common.h"
 #include "syscheckd/syscheck.h"
 #include "external/procps/readproc.h"
 
 #if defined(TEST_SERVER) || defined(TEST_AGENT)
 extern volatile int audit_health_check_deletion;
-
-#ifndef TEST_WINAGENT
-int test_mode = 0;
-#endif
 
 /* redefinitons/wrapping */
 
