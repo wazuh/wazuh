@@ -289,7 +289,8 @@ get_rbac_actions:
           actions:
             - cluster:read_api_config
           resources:
-            - "*:*:*"
+            - "node:id:worker1"
+            - "node:id:worker3"
           effect: "allow"
         related_endpoints:
           - 'GET /cluster/api/config'
@@ -301,7 +302,8 @@ get_rbac_actions:
           actions:
             - cluster:update_api_config
           resources:
-            - "*:*:*"
+            - "node:id:worker1"
+            - "node:id:worker3"
           effect: "allow"
         related_endpoints:
           - 'PUT /cluster/api/config'
@@ -611,6 +613,31 @@ get_rbac_actions:
           - GET /security/roles
           - GET /security/policies
           - GET /security/users
+      security:read_config:
+        description: "Read current security configuration"
+        resources:
+          - "*:*"
+        example:
+          actions:
+            - security:read_config
+          resources:
+            - "*:*:*"
+          effect: "allow"
+        related_endpoints:
+          - GET /security/config
+      security:update_config:
+        description: "Update current security configuration"
+        resources:
+          - "*:*"
+        example:
+          actions:
+            - security:update_config
+          resources:
+            - "*:*:*"
+          effect: "allow"
+        related_endpoints:
+          - PUT /security/config
+          - DELETE /security/config
       security:create:
         description: Create new system security resources
         resources:

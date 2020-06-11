@@ -58,7 +58,7 @@ def set_groups(groups, general_groups, rule):
                 break
         else:
             # If a requirement is not found we add it to the rule as group
-            rule['groups'].append(g) if g is not '' else None
+            rule['groups'].append(g) if g != '' else None
 
 
 def load_rules_from_file(rule_filename, rule_relative_path, rule_status):
