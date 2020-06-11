@@ -78,7 +78,7 @@ def get_identifier(resources):
                          configurations_black + configurations_white)
 def test_expose_resources(db_setup, decorator_params, function_params, rbac, fake_system_resources, allowed_resources,
                           result, mode):
-    db_setup.switch_mode(mode)
+    db_setup.rbac_mode.set(mode)
 
     def mock_expand_resource(resource):
         fake_values = fake_system_resources.get(resource, resource.split(':')[-1])
@@ -106,7 +106,7 @@ def test_expose_resources(db_setup, decorator_params, function_params, rbac, fak
 @pytest.mark.parametrize('decorator_params, rbac, allowed, mode',
                          configurations_resourceless_white + configurations_resourceless_black)
 def test_expose_resourcesless(db_setup, decorator_params, rbac, allowed, mode):
-    db_setup.switch_mode(mode)
+    db_setup.rbac_mode.set(mode)
 
     def mock_expand_resource(resource):
         return {'*'}
