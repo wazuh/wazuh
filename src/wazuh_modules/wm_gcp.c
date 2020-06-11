@@ -130,9 +130,7 @@ void wm_gcp_run(const wm_gcp *data) {
             os_free(output);
         }
         pthread_exit(NULL);
-    }
-
-    if (status > 0) {
+    } else if (status > 0) {
         mtwarn(WM_GCP_LOGTAG, "Command returned exit code %d", status);
         if(status == 1) {
             char * unknown_error_msg = strstr(output,"Unknown error");
