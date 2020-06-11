@@ -132,6 +132,7 @@ get_policies:
     - '110'
     - '22'
     - '23'
+    - '24'
   result:
     affected_items: []
     failed_items:
@@ -139,6 +140,7 @@ get_policies:
       - '110'
       - '22'
       - '23'
+      - '24'
 add_policy:
 - params:
     name: new_policy
@@ -224,7 +226,7 @@ update_policy:
     failed_items: {}
 - params:
     policy_id:
-    - '25'
+    - '26'
     name: normalPolicy2
     policy:
       actions:
@@ -236,7 +238,7 @@ update_policy:
     affected_items: []
     failed_items:
       '4007':
-      - '25'
+      - '26'
 - params:
     policy_id:
     - '103'
@@ -365,12 +367,13 @@ remove_policies:
             definition: ossecRule
     failed_items:
       '4007':
-      - '23'
+      - '24'
 - params:
     policy_ids:
     - '109'
     - '21'
     - '22'
+    - '23'
   result:
     affected_items:
     - id: 109
@@ -394,5 +397,5 @@ remove_policies:
             definition: ossecRule
     failed_items:
       '4007':
-      - '21'
       - '22'
+      - '23'

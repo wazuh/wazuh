@@ -16,13 +16,15 @@ logger = logging.getLogger('wazuh')
 
 
 async def get_lists(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
-                    sort: str = None, search: str = None, filename: str = None, relative_dirname: str = None):
+                    select: list = None, sort: str = None, search: str = None, filename: str = None,
+                    relative_dirname: str = None):
     """ Get all CDB lists
 
     :param pretty: Show results in human-readable format.
     :param wait_for_complete: Disable timeout response.
     :param offset: First element to return in the collection.
     :param limit: Maximum number of elements to return.
+    :param select: List of selected fields to return
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
     :param search: Looks for elements with the specified string.
@@ -32,6 +34,7 @@ async def get_lists(request, pretty: bool = False, wait_for_complete: bool = Fal
     """
     path = [os.path.join(relative_dirname, item) for item in filename] if filename and relative_dirname else None
     f_kwargs = {'offset': offset,
+                'select': select,
                 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['relative_dirname',
                                                                                              'filename'],

@@ -264,6 +264,42 @@ stages:
         message: Some policies could not be shown
 
 ---
+test_name: GET SECURITY CONFIG
+
+stages:
+
+  - name: Get current security config (deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 400
+      json:
+        <<: *permission_denied
+
+---
+test_name: UPDATE SECURITY CONFIG
+
+stages:
+
+  - name: Update default security config (deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        auth_token_exp_timeout: 3000
+    response:
+      status_code: 400
+      json:
+        <<: *permission_denied
+
+---
 test_name: UPDATE USERS RBAC
 
 stages:
@@ -883,6 +919,7 @@ test_name: DELETE POLICIES RBAC
 stages:
 
   - name: Delete one specified policy in the system (Allow)
+    delay_before: 5
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"

@@ -4,6 +4,7 @@ name: Common test information
 description: File with information such as global variables or repeteable stages to use with integration tests
 
 # Common variables
+# port: 55000 -> Master, 55001 -> Worker1, 55002 -> Worker2
 variables:
   protocol: https
   host: localhost

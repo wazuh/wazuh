@@ -19,7 +19,8 @@ class AbstractClientManager:
     Defines an abstract client. Manages connection with server.
     """
     def __init__(self, configuration: Dict, cluster_items: Dict, enable_ssl: bool, performance_test: int,
-                 concurrency_test: int, file: str, string: int, logger: logging.Logger, tag: str = "Client Manager"):
+                 concurrency_test: int, file: str, string: int, logger: logging.Logger = None,
+                 tag: str = "Client Manager"):
         """
         Class constructor
 
@@ -38,7 +39,7 @@ class AbstractClientManager:
         self.concurrency_test = concurrency_test
         self.file = file
         self.string = string
-        self.logger = logging.getLogger('wazuh')
+        self.logger = logging.getLogger('wazuh') if not logger else logger
         # logging tag
         self.tag = tag
         # modify filter tags with context vars

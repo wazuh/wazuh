@@ -10,12 +10,14 @@ from wazuh.core.rule import item_format
 from wazuh.exception import WazuhError, WazuhInternalError
 from wazuh.utils import load_wazuh_xml
 
+REQUIRED_FIELDS = ['filename', 'position']
+SORT_FIELDS = ['filename', 'relative_dirname', 'name', 'position', 'status']
+
 
 class Status(Enum):
     S_ENABLED = 'enabled'
     S_DISABLED = 'disabled'
     S_ALL = 'all'
-    SORT_FIELDS = ['filename', 'relative_dirname', 'name', 'position', 'status']
 
 
 def add_detail(detail, value, details):
