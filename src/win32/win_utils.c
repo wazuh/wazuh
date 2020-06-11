@@ -33,7 +33,6 @@ void *skthread()
 /* Locally start (after service/win init) */
 int local_start()
 {
-    int debug_level;
     int rc;
     char *cfg = DEFAULTCPATH;
     WSADATA wsaData;
@@ -41,18 +40,18 @@ int local_start()
     DWORD  threadID2;
     win_debug_level = getDefine_Int("windows", "debug", 0, 2);
 
-    /* Start agent */
-    agt = (agent *)calloc(1, sizeof(agent));
-    if (!agt) {
-        merror_exit(MEM_ERROR, errno, strerror(errno));
-    }
-
     /* Get debug level */
-    debug_level = win_debug_level;
+    int debug_level = win_debug_level;
     while (debug_level != 0) {
         nowDebug();
         debug_level--;
     }
+    
+    /* Initialize logging module*/
+    w_logging_init();
+    
+    /* Start agent */
+    os_calloc(1, sizeof(agent), agt);
 
     /* Configuration file not present */
     if (File_DateofChange(cfg) < 0) {
