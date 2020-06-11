@@ -184,7 +184,4 @@ remove_role_policy:
       - normal
     failed_items:
       '4007':
-      - '27'
-      '4010':
-      - '101'
-      - '105'
+      - '26'

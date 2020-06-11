@@ -367,7 +367,7 @@ remove_policies:
             definition: ossecRule
     failed_items:
       '4007':
-      - '24'
+      - '23'
 - params:
     policy_ids:
     - '109'
@@ -397,5 +397,6 @@ remove_policies:
             definition: ossecRule
     failed_items:
       '4007':
+      - '21'
       - '22'
       - '23'
