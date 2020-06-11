@@ -105,7 +105,7 @@ void authd_sigblock();
 
 /**
  * @brief Validate if groups are valid for new enrollment
- * @param groups Coma separated string with new enrollment groups
+ * @param groups Comma separated string with new enrollment groups
  * @param response 2048 length buffer where the error response will be copied. NULL if no response is required
  * */
 w_err_t w_auth_validate_groups(const char *groups, char *response);
@@ -115,9 +115,9 @@ w_err_t w_auth_validate_groups(const char *groups, char *response);
  * @param buf Raw buffer to be parsed
  * @param response 2048 length buffer where the error response will be copied
  * @param authpass Authentication password expected on the buffer, NULL if there isn't password
- * @param ip ip direction of the request. Can be override with IP parsed from buffer
- * @param agentname pointer where parsed agent name will be allocated
- * @param groups pointer where parsed groups will be allocated
+ * @param ip IP direction of the request. Can be override with IP parsed from buffer
+ * @param agentname Pointer where parsed agent name will be allocated
+ * @param groups Pointer where parsed groups will be allocated
  * */
 w_err_t w_auth_parse_data(const char* buf, char *response, const char *authpass, char *ip, char **agentname, char **groups);
 
@@ -138,8 +138,8 @@ w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentn
  * @param ip New enrollment ip direction
  * @param agentname New enrollment agent name
  * @param groups New enrollment groups
- * @param id pointer where new Agent ID will be allocated 
- * @param key pointer where new Agent key will be allocated 
+ * @param id Pointer where new Agent ID will be allocated 
+ * @param key Pointer where new Agent key will be allocated 
  * */
 w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, const char *groups, char **id, char **key);
 

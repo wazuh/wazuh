@@ -23,12 +23,12 @@
  * queue main structure 
  * */
 typedef struct queue_t {
-    void ** data; ///> Pointer to the ciruclar buffer
+    void ** data; ///> Pointer to the circular buffer
     size_t begin; ///> Stores the index of the next empty space
     size_t end;   ///> Stores the index of the next element
     size_t size;  ///> Size of the queue
     pthread_mutex_t mutex; ///> mutex for mutual exclusion
-    pthread_cond_t available; ///> condition varaible when queue is empty
+    pthread_cond_t available; ///> condition variable when queue is empty
     pthread_cond_t available_not_empty; ///> Condition variable when queue is full
     unsigned int elements; ///> counts the number of elements stored in the queue
 } w_queue_t;
@@ -49,7 +49,7 @@ w_queue_t * queue_init(size_t n);
 void queue_free(w_queue_t * queue);
 
 /**
- * @brief Evaluates whetever the queue is full or not
+ * @brief Evaluates whether the queue is full or not
  * 
  * @param queue
  * @return 1 if true, 0 if false
@@ -57,7 +57,7 @@ void queue_free(w_queue_t * queue);
 int queue_full(const w_queue_t * queue);
 
 /**
- * @brief Evaluates whetever the queue is empty or not
+ * @brief Evaluates whether the queue is empty or not
  * 
  * @param queue
  * @return 1 if true, 0 if false

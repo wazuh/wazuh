@@ -173,13 +173,13 @@ static char *w_enrollment_extract_agent_name(const w_enrollment_ctx *cfg) {
 }
 
 /**
- * Starts an SSL conection with the manger instance
- * @param cfg Enrollment configuration sturcture
+ * Starts an SSL connection with the manger instance
+ * @param cfg Enrollment configuration structure
  *      @see w_enrollment_ctx for details
- * @param server_adress Adress where the agent will try to connect
- * @return  socket_id >= 0 if successfull
- *         ENROLLMENT_WRONG_CONFIGURATION(-1) on invalid configuration
- *         ENROLLMENT_CONNECTION_FAILURE(-2) connection error
+ * @param server_adress Address where the agent will try to connect
+ * @return socket_id >= 0 if successful
+ * @retval ENROLLMENT_WRONG_CONFIGURATION(-1) on invalid configuration
+ * @retval ENROLLMENT_CONNECTION_FAILURE(-2) connection error
  */
 static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_address) 
 {
@@ -248,7 +248,7 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
 /**
  * Sends initial enrollment message. Must call 
  *      w_enrollment_process_response to obtain response
- * @param cfg Enrollment configuration sturcture
+ * @param cfg Enrollment configuration structure
  *      @see w_enrollment_ctx for details
  * @return   0 if message is sent successfully
  *          -1 if message cannot be sent
@@ -308,8 +308,9 @@ static int w_enrollment_send_message(w_enrollment_ctx *cfg) {
  * In charge of reading managers response and obtaining agent key
  * 
  * @param ssl SSL connection established with manager
- * @return 0 if key is obtained and saved
- *        -1 if there is an error
+ * @return response code
+ * @retval 0 if key is obtained and saved
+ * @retval -1 if there is an error
  * */
 static int w_enrollment_process_response(SSL *ssl) {
     assert(ssl != NULL);
@@ -363,10 +364,11 @@ static int w_enrollment_process_response(SSL *ssl) {
 
 /**
  * Stores entry string to the file containing the agent keys
- * @param keys string cointaining the following information:
+ * @param keys string containing the following information:
  *      ENTRY_ID AGENT_NAME IP KEY
- * @return 0 if key is store successfully 
- *        -1 if there is an error
+ * @return return code
+ * @retval 0 if key is store successfully 
+ * @retval -1 if there is an error
  * */
 static int w_enrollment_store_key_entry(const char* keys) {
     assert(keys != NULL);
@@ -409,8 +411,9 @@ static int w_enrollment_store_key_entry(const char* keys) {
  * @param buffer format:
  * [In] OSSEC K:'ID AGENT_NAME IP KEY'\n\n
  * [Out] ID AGENT_NAME IP KEY\n     
- * @return 0 on success
- *        -1 on failure
+ * @return return code
+ * @retval 0 on success
+ * @retval -1 on failure
  *  
  * */
 static int w_enrollment_process_agent_key(char *buffer) {
@@ -447,7 +450,7 @@ static int w_enrollment_process_agent_key(char *buffer) {
 
 /**
  * Verifies the manager's ca certificate. Displays a warning message if it does not match
- * @param ssl SSL conection established with the manager
+ * @param ssl SSL connection established with the manager
  * @param ca_cert cerificate to verify
  * @param hostname 
  * */
@@ -489,8 +492,9 @@ static void w_enrollment_concat_group(char *buff, const char* centralized_group)
  * 
  * @param buff buffer where the IP section will be concatenated
  * @param sender_ip Sender IP, if null it will be filled with "src"
- * @return 0 on success
- *        -1 if ip is invalid 
+ * @return return code
+ * @retval 0 on success
+ * @retval -1 if ip is invalid 
  */
 static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip, const int use_src_ip) {
     assert(buff != NULL); // buff should not be NULL.

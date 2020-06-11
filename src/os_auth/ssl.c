@@ -212,7 +212,7 @@ int wrap_SSL_read(SSL *ssl, void *buf, int num) {
         ret = SSL_read(ssl, (void *) buf + offset, num - offset);
     }
     if (ret < 0 && offset > 0) {
-        // If we have already read at least once retorn what was read
+        // If we have already read at least once return what was read
         return offset;
     } else {
         return offset + ret;
