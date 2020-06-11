@@ -221,6 +221,8 @@ void start_agent(int is_startup)
                 }
             }
         }
+        /* Wait for server reply */
+        mwarn(AG_WAIT_SERVER, agt->server[agt->rip_id].rip);
 
         /* If there is a next server, try it */
         if (agt->server[agt->rip_id + 1].rip) {
@@ -313,46 +315,47 @@ static void w_agentd_keys_init (void) {
 static ssize_t receive_message_udp(const char *msg, char *buffer, unsigned int max_lenght) {
     int attempts = 0;
     ssize_t recv_b = 0;
+    int connected = 1;
+    while (attempts < 6) {
+        if (connected) {
+            if (attempts >= 3 || recv_b == OS_SOCKTERR )
+                send_msg(msg, -1);
 
-    /* Wait for server reply */
-    mwarn(AG_WAIT_SERVER, agt->server[agt->rip_id].rip);
-    sleep(1);
+            sleep(attempts ? agt->enrollment_cfg->delay_after_enrollment/2 : 1);
 
-    while (attempts <= 5){
-        /* Receive response */
-        recv_b = recv(agt->sock, buffer, max_lenght, MSG_DONTWAIT);
-        
-        if (recv_b <= 0 ) {
-            switch (recv_b) {
-            case OS_SOCKTERR:
-                merror("Corrupt payload (exceeding size) received.");
-                break;
-            default:
-                #ifdef WIN32
-                    mdebug1("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
-                #else
-                    mdebug1("Connection socket: %s (%d)", strerror(errno), errno);
-                #endif
-                break;
+            /* Receive response */
+            recv_b = recv(agt->sock, buffer, max_lenght, MSG_DONTWAIT);
+
+            if (recv_b > 0) {
+                return recv_b;
             }
-            attempts++;
-            sleep(attempts);
 
+            switch (recv_b) {
+                case OS_SOCKTERR:
+                    merror("Corrupt payload (exceeding size) received.");
+                    break;
+                default:
+                    #ifdef WIN32
+                        mdebug1("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
+                    #else
+                        mdebug1("Connection socket: %s (%d)", strerror(errno), errno);
+                    #endif
+                    break;
+            }
             /* Send message again (after three attempts) */
             if (attempts >= 3 || recv_b == OS_SOCKTERR) {
-                if (attempts == 3 && agt->enrollment_cfg && agt->enrollment_cfg->enabled) { // Only one enrollment attemp
+                if (attempts == 5 && agt->enrollment_cfg && agt->enrollment_cfg->enabled) { // Only one enrollment attemp
                     try_enroll_to_server(agt->server[agt->rip_id].rip);
                 }
-                if (connect_server(agt->rip_id)) {
-                    // if enroll is successfull reconnect and re-send message
-                    send_msg(msg, -1);
-                    // After sending message wait before response
-                    sleep(attempts);
-                }
+                // After third attemp try reconnecting to socket
+                connected = connect_server(agt->rip_id);
             }
         } else {
-            return recv_b;
-        }   
+            connected = connect_server(agt->rip_id);
+            sleep(attempts);
+        }
+
+        attempts++;
     }
     return 0;
 }
@@ -371,7 +374,7 @@ static ssize_t receive_message_tcp(const char *msg, char *buffer, unsigned int m
     ssize_t recv_b = 0;
     int attempts = 0;
     bool enrollment_attemp = false;
-    
+
     while ((attempts <= 5) && (recv_b <= 0)) {
         int sock = wnet_select(agt->sock, timeout);
         if (sock < 0) {
