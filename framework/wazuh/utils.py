@@ -14,9 +14,9 @@ import sys
 import typing
 from datetime import datetime, timedelta
 from itertools import groupby, chain
-from os import remove, chmod, chown, path, listdir, close, mkdir, curdir, rename, utime
-from subprocess import call, CalledProcessError
-from tempfile import mkstemp
+from os import chmod, chown, path, listdir, mkdir, curdir, rename, utime
+from subprocess import CalledProcessError
+from subprocess import check_output
 from xml.etree.ElementTree import fromstring
 
 from wazuh import common
@@ -28,25 +28,6 @@ from wazuh.wdb import WazuhDBConnection
 # Python 2/3 compatibility
 if sys.version_info[0] == 3:
     unicode = str
-
-try:
-    from subprocess import check_output
-except ImportError:
-    def check_output(arguments, stdin=None, stderr=None, shell=False):
-        temp_f = mkstemp()
-        returncode = call(arguments, stdin=stdin, stdout=temp_f[0], stderr=stderr, shell=shell)
-        close(temp_f[0])
-        file_o = open(temp_f[1], 'r')
-        cmd_output = file_o.read()
-        file_o.close()
-        remove(temp_f[1])
-
-        if returncode != 0:
-            error_cmd = CalledProcessError(returncode, arguments[0])
-            error_cmd.output = cmd_output
-            raise error_cmd
-        else:
-            return cmd_output
 
 
 def previous_month(n=1):
@@ -518,12 +499,8 @@ def md5(fname):
 
 def _get_hashing_algorithm(hash_algorithm):
     # check hash algorithm
-    try:
-        algorithm_list = hashlib.algorithms_available
-    except Exception as e:
-        algorithm_list = hashlib.algorithms
-
-    if not hash_algorithm in algorithm_list:
+    algorithm_list = hashlib.algorithms_available
+    if hash_algorithm not in algorithm_list:
         raise WazuhException(1723, "Available algorithms are {0}.".format(', '.join(algorithm_list)))
 
     return hashlib.new(hash_algorithm)
