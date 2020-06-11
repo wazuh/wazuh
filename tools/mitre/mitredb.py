@@ -65,7 +65,8 @@ def create_delete_tables(conn):
  
     sql_create_attack = """CREATE TABLE IF NOT EXISTS attack (
                                     id TEXT PRIMARY KEY, 
-                                    json TEXT
+                                    json TEXT,
+                                    name TEXT
                                 );"""
  
     sql_create_has_phase = """CREATE TABLE IF NOT EXISTS has_phase (
@@ -100,7 +101,8 @@ def create_delete_tables(conn):
     # Create has_platform table
     table_stmt(conn, sql_create_has_platform)
 
-def insert_attack_table(conn, id, json_object, database):
+
+def insert_attack_table(conn, id, json_object, name, database):
     """ 
     Insert to Mitre 'attack' table from Mitre ID technique and its JSON object. 
 
@@ -109,9 +111,9 @@ def insert_attack_table(conn, id, json_object, database):
     :param json_object: JSON object with ID 'id' taken from the JSON file
     :return:
     """
-    attack_sql = """INSERT INTO attack ('id', 'json') VALUES (?, ?);"""
-    args = (id, json_object)
-    
+    attack_sql = """INSERT INTO attack ('id', 'json', 'name') VALUES (?, ?, ?);"""
+    args = (id, json_object, name)
+
     try:
         c = conn.cursor()
         c.execute(attack_sql, args)
@@ -197,9 +199,10 @@ def parse_json(pathfile, conn, database):
                 if data_object['type'] == 'attack-pattern' and data_object['external_references'][0]['source_name'] == 'mitre-attack':
                     string_id = json.dumps(data_object['external_references'][0]['external_id']).replace('"', '')
                     string_object = json.dumps(data_object)
+                    string_name = json.dumps(data_object['name']).replace('"', '')
 
                     # Fill the attack table 
-                    insert_attack_table(conn, string_id, string_object, database)
+                    insert_attack_table(conn, string_id, string_object, string_name, database)
                     
                     # Fill the phase table
                     n = len(data_object['kill_chain_phases'])
