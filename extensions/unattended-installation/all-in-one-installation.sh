@@ -1,20 +1,20 @@
 #!/bin/bash
-## Check if system is based on YUM or APT
+## Check if system is based on yum or apt-get
 
 if [ -n "$(command -v yum)" ] 
 then
-    sys_type="YUM"
+    sys_type="yum"
 elif [ -n "$(command -v apt-get)" ] 
 then
-    sys_type="APT"
+    sys_type="apt-get"
 fi
 
 
 ## Prerequisites
-if [ $sys_type == "YUM" ] 
+if [ $sys_type == "yum" ] 
 then
     yum install java-11-openjdk-devel unzip wget curl libcap -y
-elif [ $sys_type == "APT" ] 
+elif [ $sys_type == "apt-get" ] 
 then
     echo 'deb http://deb.debian.org/debian stretch-backports main' > /etc/apt/sources.list.d/backports.list
     add-apt-repository ppa:openjdk-r/ppa -y
@@ -23,28 +23,25 @@ then
 fi
 
 ## Wazuh manager and API
-if [ $sys_type == "YUM" ] 
+if [ $sys_type == "yum" ] 
 then
     rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH
     echo -e '[wazuh_trash]\ngpgcheck=1\ngpgkey=https://s3-us-west-1.amazonaws.com/packages-dev.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://s3-us-west-1.amazonaws.com/packages-dev.wazuh.com/trash/yum/\nprotect=1' | tee /etc/yum.repos.d/wazuh_pre.repo
-    yum install wazuh-manager -y 
     curl -sL https://rpm.nodesource.com/setup_10.x | bash -
-    yum install nodejs wazuh-api -y
-elif [ $sys_type == "APT" ] 
+elif [ $sys_type == "apt-get" ] 
 then
     curl -s https://s3-us-west-1.amazonaws.com/packages-dev.wazuh.com/key/GPG-KEY-WAZUH | apt-key add -
     echo "deb https://s3-us-west-1.amazonaws.com/packages-dev.wazuh.com/trash/apt/ unstable main" | tee -a /etc/apt/sources.list.d/wazuh_trash.list
     apt-get update
-    apt-get install wazuh-manager -y
     curl -sL https://deb.nodesource.com/setup_10.x | bash -
-    apt-get install nodejs wazuh-api -y
 fi 
+$sys_type install wazuh-manager nodejs wazuh-api -y    
 
 ## Elasticsearch
-if [ $sys_type == "YUM" ] 
+if [ $sys_type == "yum" ] 
 then
     yum install opendistroforelasticsearch-1.6.0 -y
-elif [ $sys_type == "APT" ] 
+elif [ $sys_type == "apt-get" ] 
 then
     apt install elasticsearch-oss opendistroforelasticsearch -y
 fi
@@ -63,29 +60,16 @@ chmod +x searchguard/tools/sgtlstool.sh
 ./searchguard/tools/sgtlstool.sh -c ./searchguard/search-guard.yml -ca -crt -t /etc/elasticsearch/certs/
 rm /etc/elasticsearch/certs/client-certificates.readme /etc/elasticsearch/certs/elasticsearch_elasticsearch_config_snippet.yml search-guard-tlstool-1.7.zip -f
 
-if [ $sys_type == "YUM" ] 
-then
-    chkconfig --add elasticsearch
-    service elasticsearch start
-elif [ $sys_type == "APT" ] 
-then
-    update-rc.d elasticsearch defaults 95 10
-    service elasticsearch start
-fi
+systemctl daemon-reload
+systemctl enable elasticsearch.service
+systemctl start elasticsearch.service
 
 cd /usr/share/elasticsearch/plugins/opendistro_security/tools/
 ./securityadmin.sh -cd ../securityconfig/ -nhnv -cacert /etc/elasticsearch/certs/root-ca.pem -cert /etc/elasticsearch/certs/admin.pem -key /etc/elasticsearch/certs/admin.key
 
 
 ## Filebeat
-if [ $sys_type == "YUM" ] 
-then
-    yum install filebeat -y
-elif [ $sys_type == "APT" ] 
-then
-    apt-get install filebeat -y
-fi
-
+$sys_type install filebeat -y
 curl -so /etc/filebeat/filebeat.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/filebeat/7.x/filebeat_all_in_one.yml
 curl -so /etc/filebeat/wazuh-template.json https://raw.githubusercontent.com/wazuh/wazuh/v3.12.0/extensions/elasticsearch/7.x/wazuh-template.json
 chmod go+r /etc/filebeat/wazuh-template.json
@@ -93,41 +77,23 @@ curl -s https://packages.wazuh.com/3.x/filebeat/wazuh-filebeat-0.1.tar.gz | tar 
 mkdir /etc/filebeat/certs
 cp /etc/elasticsearch/certs/root-ca.pem /etc/filebeat/certs/
 mv /etc/elasticsearch/certs/filebeat* /etc/filebeat/certs/
-if [ $sys_type == "YUM" ] 
-then
-    chkconfig --add filebeat
-    service filebeat start
-elif [ $sys_type == "APT" ] 
-then
-    update-rc.d filebeat defaults 95 10
-    service filebeat start
-fi
 
+systemctl daemon-reload
+systemctl enable filebeat.service
+systemctl start filebeat.service
 
 ## Kibana
-if [ $sys_type == "YUM" ] 
-then
-    yum install opendistroforelasticsearch-kibana -y 
-elif [ $sys_type == "APT" ] 
-then
-    apt-get install opendistroforelasticsearch-kibana -y
-fi
-
+$sys_type install opendistroforelasticsearch-kibana -y
 curl -so /etc/kibana/kibana.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/kibana/7.x/kibana_all_in_one.yml
 cd /usr/share/kibana
 sudo -u kibana /usr/share/kibana/bin/kibana-plugin install https://s3-us-west-1.amazonaws.com/packages-dev.wazuh.com/trash/app/kibana/wazuhapp-3.13.0-tsc-opendistro.zip
 mkdir /etc/kibana/certs
 mv /etc/elasticsearch/certs/kibana* /etc/kibana/certs/
 setcap 'cap_net_bind_service=+ep' /usr/share/kibana/node/bin/node
-if [ -n "$(command -v yum)" ] 
-then
-    chkconfig --add kibana
-    service kibana start
-elif [ $sys_type == "APT" ] 
-then
-    update-rc.d kibana defaults 95 10
-    service kibana start
-fi
+
+systemctl daemon-reload
+systemctl enable kibana.service
+systemctl start kibana.service
 
 curl -XGET https://localhost:9200 -uadmin:admin -k
 filebeat test output
