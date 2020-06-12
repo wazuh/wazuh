@@ -95,7 +95,7 @@ void test_queryid_error_parse(void **state)
     int ret;
 
     char *response_ids = " ";
-    will_return(__wrap_wdbc_query_ex, 0);    
+    will_return(__wrap_wdbc_query_ex, 0);
     will_return(__wrap_wdbc_query_ex, response_ids);
     will_return(__wrap_wdbc_query_ex, 0);
 
@@ -112,7 +112,7 @@ void test_queryid_empty_array(void **state)
     int ret;
 
     char *response_ids = "ok []";
-    will_return(__wrap_wdbc_query_ex, 0);    
+    will_return(__wrap_wdbc_query_ex, 0);
     will_return(__wrap_wdbc_query_ex, response_ids);
     will_return(__wrap_wdbc_query_ex, 0);
 
@@ -129,7 +129,7 @@ void test_queryid_error_parse_ids(void **state)
     int ret;
 
     char *response_ids = "ok [{\"ids\":\"T1001\"},{\"ids\":\"T1002\"}]";
-    will_return(__wrap_wdbc_query_ex, 0);    
+    will_return(__wrap_wdbc_query_ex, 0);
     will_return(__wrap_wdbc_query_ex, response_ids);
     will_return(__wrap_wdbc_query_ex, 0);
 
@@ -148,7 +148,7 @@ void test_querytactics_error_socket(void **state)
     char *response_ids = "ok [{\"id\":\"T1001\"},{\"id\":\"T1002\"}]";
 
     /* Mitre's techniques IDs query */
-    will_return(__wrap_wdbc_query_ex, 0);    
+    will_return(__wrap_wdbc_query_ex, 0);
     will_return(__wrap_wdbc_query_ex, response_ids);
     will_return(__wrap_wdbc_query_ex, 0);
 
@@ -170,7 +170,7 @@ void test_querytactics_no_response(void **state)
 
     char *response_ids = "ok [{\"id\":\"T1001\"},{\"id\":\"T1002\"}]";
     /* Mitre's techniques IDs query */
-    will_return(__wrap_wdbc_query_ex, 0);    
+    will_return(__wrap_wdbc_query_ex, 0);
     will_return(__wrap_wdbc_query_ex, response_ids);
     will_return(__wrap_wdbc_query_ex, 0);
 
@@ -193,7 +193,7 @@ void test_querytactics_bad_response(void **state)
     char *response_ids = "ok [{\"id\":\"T1001\"},{\"id\":\"T1002\"}]";
     char *response_tactics = "Bad response";
     /* Mitre's techniques IDs query */
-    will_return(__wrap_wdbc_query_ex, 0);    
+    will_return(__wrap_wdbc_query_ex, 0);
     will_return(__wrap_wdbc_query_ex, response_ids);
     will_return(__wrap_wdbc_query_ex, 0);
 
@@ -217,7 +217,7 @@ void test_querytactics_error_parse(void **state)
     char *response_ids = "ok [{\"id\":\"T1001\"},{\"id\":\"T1002\"}]";
     char *response_tactics = " ";
     /* Mitre's techniques IDs query */
-    will_return(__wrap_wdbc_query_ex, 0);    
+    will_return(__wrap_wdbc_query_ex, 0);
     will_return(__wrap_wdbc_query_ex, response_ids);
     will_return(__wrap_wdbc_query_ex, 0);
 
@@ -241,7 +241,7 @@ void test_querytactics_empty_array(void **state)
     char *response_ids = "ok [{\"id\":\"T1001\"},{\"id\":\"T1002\"}]";
     char *response_tactics = "ok [ ]";
     /* Mitre's techniques IDs query */
-    will_return(__wrap_wdbc_query_ex, 0);    
+    will_return(__wrap_wdbc_query_ex, 0);
     will_return(__wrap_wdbc_query_ex, response_ids);
     will_return(__wrap_wdbc_query_ex, 0);
     
@@ -265,7 +265,7 @@ void test_querytactics_error_parse_tactics(void **state)
     char *response_ids = "ok [{\"id\":\"T1001\"},{\"id\":\"T1002\"}]";
     char *response_tactics = "ok [{\"phase\":\"Discovery\"}]";
     /* Mitre's techniques IDs query */
-    will_return(__wrap_wdbc_query_ex, 0);    
+    will_return(__wrap_wdbc_query_ex, 0);
     will_return(__wrap_wdbc_query_ex, response_ids);
     will_return(__wrap_wdbc_query_ex, 0);
 
@@ -281,6 +281,86 @@ void test_querytactics_error_parse_tactics(void **state)
     assert_int_equal(-1, ret);
 }
 
+void test_queryname_error_socket(void **state) {
+    (void) state;
+    int ret;
+
+    char *response_ids = "ok [{\"id\":\"T1001\"},{\"id\":\"T1001\"}]";
+    /* Mitre's techniques IDs query */
+    will_return(__wrap_wdbc_query_ex, 0);
+    will_return(__wrap_wdbc_query_ex, response_ids);
+    will_return(__wrap_wdbc_query_ex, 0);
+
+    /* Mitre's tactics query */
+    will_return(__wrap_wdbc_query_ex, 0);
+    will_return(__wrap_wdbc_query_ex, "ok [{\"phase_name\":\"Command And Control\"}]");
+    will_return(__wrap_wdbc_query_ex, 0);
+
+    /* Mitre technique's name query */
+    will_return(__wrap_wdbc_query_ex, -2);
+    will_return(__wrap_wdbc_query_ex, -2);
+
+    expect_string(__wrap__merror, formatted_msg, "Unable to connect to socket '/queue/db/wdb'");
+    expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
+
+    ret = mitre_load("test");
+    assert_int_equal(-2, ret);
+}
+
+
+void test_queryname_no_response(void **state) {
+    (void) state;
+    int ret;
+
+    char *response_ids = "ok [{\"id\":\"T1001\"},{\"id\":\"T1001\"}]";
+    /* Mitre's techniques IDs query */
+    will_return(__wrap_wdbc_query_ex, 0);
+    will_return(__wrap_wdbc_query_ex, response_ids);
+    will_return(__wrap_wdbc_query_ex, 0);
+
+    /* Mitre's tactics query */
+    will_return(__wrap_wdbc_query_ex, 0);
+    will_return(__wrap_wdbc_query_ex, "ok [{\"phase_name\":\"Command And Control\"}]");
+    will_return(__wrap_wdbc_query_ex, 0);
+
+    /* Mitre technique's name query */
+    will_return(__wrap_wdbc_query_ex, -1);
+    will_return(__wrap_wdbc_query_ex, -1);
+
+    expect_string(__wrap__merror, formatted_msg, "No response or bad response from wazuh-db: 'ok [{\"phase_name\":\"Command And Control\"}]'");
+    expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
+
+    ret = mitre_load("test");
+    assert_int_equal(-1, ret);
+}
+
+void test_queryname_bad_response(void **state) {
+    (void) state;
+    int ret;
+
+    char *response_ids = "ok [{\"id\":\"T1001\"},{\"id\":\"T1001\"}]";
+    /* Mitre's techniques IDs query */
+    will_return(__wrap_wdbc_query_ex, 0);
+    will_return(__wrap_wdbc_query_ex, response_ids);
+    will_return(__wrap_wdbc_query_ex, 0);
+
+    /* Mitre's tactics query */
+    will_return(__wrap_wdbc_query_ex, 0);
+    will_return(__wrap_wdbc_query_ex, "ok [{\"phase_name\":\"Command And Control\"}]");
+    will_return(__wrap_wdbc_query_ex, 0);
+
+    /* Mitre technique's name query */
+    will_return(__wrap_wdbc_query_ex, 0);
+    will_return(__wrap_wdbc_query_ex, "Bad response");
+    will_return(__wrap_wdbc_query_ex, -1);
+
+    expect_string(__wrap__merror, formatted_msg, "No response or bad response from wazuh-db: 'Bad response'");
+    expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
+
+    ret = mitre_load("test");
+    assert_int_equal(-1, ret);
+}
+
 void test_querytactics_repeated_id(void **state)
 {
     (void) state;
@@ -288,17 +368,28 @@ void test_querytactics_repeated_id(void **state)
 
     char *response_ids = "ok [{\"id\":\"T1001\"},{\"id\":\"T1001\"}]";
     /* Mitre's techniques IDs query */
-    will_return(__wrap_wdbc_query_ex, 0);    
+    will_return(__wrap_wdbc_query_ex, 0);
     will_return(__wrap_wdbc_query_ex, response_ids);
     will_return(__wrap_wdbc_query_ex, 0);
 
     /* Mitre's tactics query */
     will_return(__wrap_wdbc_query_ex, 0);
-    will_return(__wrap_wdbc_query_ex, "ok [{\"phase_name\":\"Discovery\"}]");
+    will_return(__wrap_wdbc_query_ex, "ok [{\"phase_name\":\"Command And Control\"}]");
     will_return(__wrap_wdbc_query_ex, 0);
 
+    /* Mitre technique's name query */
     will_return(__wrap_wdbc_query_ex, 0);
-    will_return(__wrap_wdbc_query_ex, "ok [{\"phase_name\":\"Lateral Movement\"}]");
+    will_return(__wrap_wdbc_query_ex, "Data Obfuscation");
+    will_return(__wrap_wdbc_query_ex, 0);
+
+    /* Mitre's tactics query */
+    will_return(__wrap_wdbc_query_ex, 0);
+    will_return(__wrap_wdbc_query_ex, "ok [{\"phase_name\":\"Command And Control\"}]");
+    will_return(__wrap_wdbc_query_ex, 0);
+
+    /* Mitre technique's name query */
+    will_return(__wrap_wdbc_query_ex, 0);
+    will_return(__wrap_wdbc_query_ex, "Data Obfuscation");
     will_return(__wrap_wdbc_query_ex, 0);
 
     ret = mitre_load("test");
@@ -312,17 +403,27 @@ void test_querytactics_success(void **state)
     
     char *response_ids = "ok [{\"id\":\"T1001\"},{\"id\":\"T1002\"}]";
     /* Mitre's techniques IDs query */
-    will_return(__wrap_wdbc_query_ex, 0);    
+    will_return(__wrap_wdbc_query_ex, 0);
     will_return(__wrap_wdbc_query_ex, response_ids);
     will_return(__wrap_wdbc_query_ex, 0);
 
     /* Mitre's tactics query */
     will_return(__wrap_wdbc_query_ex, 0);
-    will_return(__wrap_wdbc_query_ex, "ok [{\"phase_name\":\"Discovery\"}]");
+    will_return(__wrap_wdbc_query_ex, "ok [{\"phase_name\":\"Command And Control\"}]");
+    will_return(__wrap_wdbc_query_ex, 0);
+
+    /* Mitre technique's name query */
+    will_return(__wrap_wdbc_query_ex, 0);
+    will_return(__wrap_wdbc_query_ex, "Data Obfuscation");
     will_return(__wrap_wdbc_query_ex, 0);
 
     will_return(__wrap_wdbc_query_ex, 0);
-    will_return(__wrap_wdbc_query_ex, "ok [{\"phase_name\":\"Lateral Movement\"}]");
+    will_return(__wrap_wdbc_query_ex, "ok [{\"phase_name\":\"Exfiltration\"}]");
+    will_return(__wrap_wdbc_query_ex, 0);
+
+    /* Mitre technique's name query */
+    will_return(__wrap_wdbc_query_ex, 0);
+    will_return(__wrap_wdbc_query_ex, "Data Compressed");
     will_return(__wrap_wdbc_query_ex, 0);
 
     ret = mitre_load("test");
@@ -344,6 +445,9 @@ int main(void) {
         cmocka_unit_test(test_querytactics_error_parse),
         cmocka_unit_test(test_querytactics_empty_array),
         cmocka_unit_test(test_querytactics_error_parse_tactics),
+        cmocka_unit_test(test_queryname_error_socket),
+        cmocka_unit_test(test_queryname_no_response),
+        cmocka_unit_test(test_queryname_bad_response),
         cmocka_unit_test(test_querytactics_repeated_id),
         cmocka_unit_test(test_querytactics_success),
     };

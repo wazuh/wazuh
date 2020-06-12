@@ -136,6 +136,9 @@ int mitre_load(char * mode){
 
         if (mode != NULL && !strcmp(mode,"test")) {
             cJSON_Delete(tactics_array);
+            cJSON_Delete(data_mitre->tactics_array);
+            os_free(data_mitre->technique_name);
+            os_free(data_mitre);
         }
     }
 
