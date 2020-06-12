@@ -400,7 +400,8 @@
       "rule.id",
       "rule.info",
       "rule.mitre.id",
-      "rule.mitre.tactics",
+      "rule.mitre.tactic",
+      "rule.mitre.technique",
       "rule.pci_dss",
       "rule.hipaa",
       "rule.nist_800_53",
@@ -764,7 +765,10 @@
               "id": {
                 "type": "keyword"
               },
-              "tactics": {
+              "tactic": {
+                "type": "keyword"
+              },
+              "technique": {
                 "type": "keyword"
               }
             }
