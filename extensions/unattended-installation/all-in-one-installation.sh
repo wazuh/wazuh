@@ -24,19 +24,27 @@ installPrerequisites() {
     fi
 }
 
-
-## Wazuh manager and API
-installWazuh() {
+## Add the Wazuh repository
+addWazuhrepo() {
     if [ $sys_type == "yum" ] 
     then
         rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH
         echo -e '[wazuh_trash]\ngpgcheck=1\ngpgkey=https://s3-us-west-1.amazonaws.com/packages-dev.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://s3-us-west-1.amazonaws.com/packages-dev.wazuh.com/trash/yum/\nprotect=1' | tee /etc/yum.repos.d/wazuh_pre.repo
-        curl -sL https://rpm.nodesource.com/setup_10.x | bash -
     elif [ $sys_type == "apt-get" ] 
     then
         curl -s https://s3-us-west-1.amazonaws.com/packages-dev.wazuh.com/key/GPG-KEY-WAZUH | apt-key add -
         echo "deb https://s3-us-west-1.amazonaws.com/packages-dev.wazuh.com/trash/apt/ unstable main" | tee -a /etc/apt/sources.list.d/wazuh_trash.list
         apt-get update
+    fi     
+}
+
+## Wazuh manager and API
+installWazuh() {
+    if [ $sys_type == "yum" ] 
+    then
+        curl -sL https://rpm.nodesource.com/setup_10.x | bash -
+    elif [ $sys_type == "apt-get" ] 
+    then
         curl -sL https://deb.nodesource.com/setup_10.x | bash -
     fi 
     $sys_type install wazuh-manager nodejs wazuh-api -y    
@@ -157,6 +165,7 @@ checkInstallation() {
 
 main() {
     installPrerequisites
+    addWazuhrepo
     installWazuh
     installElasticsearch
     installFilebeat
