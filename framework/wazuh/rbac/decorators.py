@@ -8,7 +8,7 @@ import re
 from collections import defaultdict
 from functools import wraps
 
-from wazuh.common import rbac, broadcast, cluster_nodes, rbac_mode
+from wazuh.common import rbac, broadcast, cluster_nodes
 from wazuh.configuration import get_ossec_conf
 from wazuh.core.cdb_list import iterate_lists
 from wazuh.core.core_utils import get_agents_info, expand_group, get_groups, get_files
@@ -223,7 +223,7 @@ def _combination_processor(req_resources, user_permissions_for_resource, final_u
                                     value, final_user_permissions, expanded_resource)
 
 
-def _match_permissions(req_permissions: dict = None):
+def _match_permissions(req_permissions: dict = None, rbac_mode: str = 'white'):
     """Try to match function required permissions against user permissions to allow or deny execution
 
     :param req_permissions: Required permissions to allow function execution
@@ -232,7 +232,7 @@ def _match_permissions(req_permissions: dict = None):
     allow_match = defaultdict(set)
     for req_action, req_resources in req_permissions.items():
         is_combination = any('&' in req_resource for req_resource in req_resources)
-        rbac_mode.get() == 'black' and _black_expansion(req_resources, allow_match)
+        rbac_mode == 'black' and _black_expansion(req_resources, allow_match)
         if not is_combination or len(req_resources) == 0:
             _single_processor(req_resources, rbac.get().get(req_action, dict()), allow_match)
         else:
@@ -373,7 +373,7 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
             original_kwargs = dict(kwargs)
             target_params, req_permissions, add_denied = \
                 _get_required_permissions(actions=actions, resources=resources, **kwargs)
-            allow = _match_permissions(req_permissions=req_permissions)
+            allow = _match_permissions(req_permissions=req_permissions, rbac_mode=rbac.get()['rbac_mode'])
             skip_execution = False
 
             for res_id, target_param in target_params.items():
