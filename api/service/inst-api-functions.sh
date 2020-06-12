@@ -26,45 +26,12 @@ backup_old_api() {
     fi
 
     # check current REVISION and perform the applicable backup
-    if [ "$1" -lt 40000 ]; then
-		    backup_old_api_3x
-		else
+    if [ "$1" -ge 40000 ]; then
         backup_old_api_4x
     fi
 
     # remove old API directory
     rm -rf "${API_PATH}"
-}
-
-
-backup_old_api_3x() {
-
-    # stop api process if its still running
-    OLD_API_PID=$(pgrep -f "${API_PATH}/app.js")
-
-    if [ -n "$OLD_API_PID" ]; then
-        echo "killing old api process: ${OLD_API_PID}"
-        kill -9 "${OLD_API_PID}"
-    fi
-
-    # do backup only if config.js file exists
-    if [ -d "${API_PATH}"/configuration ]; then
-        if [ -f "${API_PATH}"/configuration/config.js ]; then
-
-            install -o root -g ossec -m 0770 -d "${API_PATH_BACKUP}"
-            install -o root -g ossec -m 0770 -d "${API_PATH_BACKUP}"/configuration
-
-            cp -rLfp "${API_PATH}"/configuration/config.js "${API_PATH_BACKUP}"/configuration/config.js
-
-            # copy ssl contents if the folder exists and its not empty
-            if [ -d "${API_PATH}"/configuration/ssl ]; then
-                if [ -n "$(ls -A "${API_PATH}"/configuration/ssl)" ]; then
-                    install -o root -g ossec -m 0770 -d "${API_PATH_BACKUP}"/configuration/ssl
-                    cp -rLfp "${API_PATH}"/configuration/ssl/* "${API_PATH_BACKUP}"/configuration/ssl
-                fi
-            fi
-        fi
-    fi
 }
 
 
@@ -109,9 +76,7 @@ restore_old_api() {
     fi
 
     # check current REVISION and perform the applicable restore
-    if [ "$1" -lt 40000 ]; then
-		    restore_old_api_3x
-		else
+    if [ "$1" -ge 40000 ]; then
         restore_old_api_4x
     fi
 
@@ -119,35 +84,6 @@ restore_old_api() {
     rm -rf "${API_PATH_BACKUP}"
 }
 
-
-restore_old_api_3x() {
-
-    # perform migration only if there is config.js file in the old api backup
-    if [ -d "${API_PATH_BACKUP}"/configuration ]; then
-        if [ -r "${API_PATH_BACKUP}"/configuration/config.js ]; then
-
-            # execute migration.py
-            "${PREFIX}"/framework/python/bin/python3 ../api/scripts/migration.py
-
-            # create configuration folder if it does not exists in the new api
-            if [ ! -d "${API_PATH}"/configuration ]; then
-                install -o root -g ossec -m 0770 -d "${API_PATH}"/configuration
-            fi
-
-            # create ssl folder if it does not exists in the new api
-            if [ ! -d "${API_PATH}"/configuration/ssl ]; then
-                install -o root -g ossec -m 0770 -d "${API_PATH}"/configuration/ssl
-            fi
-
-            # Copy ssl folder if exists and its not empty
-            if [ -d "${API_PATH_BACKUP}"/configuration/ssl ]; then
-                if [ -n "$(ls -A "${API_PATH_BACKUP}"/configuration/ssl)" ]; then
-                    cp -rLfp "${API_PATH_BACKUP}"/configuration/ssl/* "${API_PATH}"/configuration/ssl
-                fi
-            fi
-        fi
-    fi
-}
 
 
 restore_old_api_4x() {
