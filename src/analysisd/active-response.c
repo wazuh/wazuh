@@ -48,7 +48,7 @@ int AR_ReadConfig(const char *cfgfile)
         merror(FOPEN_ERROR, DEFAULTARPATH, errno, strerror(errno));
         return (OS_INVALID);
     }
-    fprintf(fp, "restart-ossec0 - restart-ossec.sh - 0\n restart-ossec0 - restart-ossec.cmd - 0\n");
+    fprintf(fp, "restart-ossec0 - restart-ossec.sh - 0\nrestart-ossec0 - restart-ossec.cmd - 0\n");
     fclose(fp);
 
 #ifndef WIN32
