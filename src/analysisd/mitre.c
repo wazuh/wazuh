@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -29,6 +29,7 @@ int mitre_load(char * mode){
     cJSON *tactics_json = NULL;
     cJSON *tactics = NULL;
     cJSON *tactic = NULL;
+    mitre_data * data_mitre = NULL;
 
     /* Create hash table */
     mitre_table = OSHash_Create();
@@ -110,8 +111,24 @@ int mitre_load(char * mode){
         cJSON_Delete(tactics_json);
         tactics_json = NULL;
 
+        /* Consulting Mitre's database to get technique's name */
+        snprintf(wazuhdb_query, OS_SIZE_6144, "mitre get name %s", ext_id);
+        if (result = wdbc_query_ex(&sock, wazuhdb_query, response, OS_SIZE_6144), result == -2) {
+            merror("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
+            goto end;
+        }
+
+        if (result == -1) {
+            merror("No response or bad response from wazuh-db: '%s'", response);
+            goto end;
+        }
+
+        os_malloc(sizeof(mitre_data), data_mitre);
+        data_mitre->tactics_array = cJSON_Duplicate(tactics_array, 1);
+        data_mitre->technique_name = strdup(response+3);
+
         /* Filling Hash table with Mitre's information */
-        if (hashcheck = OSHash_Add(mitre_table, ext_id, tactics_array), hashcheck == 0) {
+        if (hashcheck = OSHash_Add(mitre_table, ext_id, data_mitre), hashcheck == 0) {
             merror("Mitre Hash table adding failed. Mitre Technique ID '%s' cannot be stored.", ext_id);
             result = -1;
             goto end;
@@ -127,7 +144,7 @@ end:
     os_free(response);
     if (mode != NULL && !strcmp(mode,"test")) {
         OSHash_Free(mitre_table);
-    }  
+    }
     if (root != NULL) {
         cJSON_Delete(root);
     }
@@ -143,6 +160,6 @@ end:
     return result;
 }
 
-cJSON * mitre_get_attack(const char * mitre_id) {
+mitre_data * mitre_get_attack(const char * mitre_id) {
     return OSHash_Get(mitre_table, mitre_id);
 }

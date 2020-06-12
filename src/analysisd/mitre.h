@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -15,6 +15,11 @@
 #include "os_net/os_net.h"
 #include "headers/wazuhdb_op.h"
 
+typedef struct mitre_data {
+    cJSON * tactics_array;
+    char * technique_name;
+} mitre_data;
+
 /**
  * @brief This function fills Hash Table using Mitre technique ID as Key and technique's tactics as info.
  * 
@@ -27,9 +32,9 @@ int mitre_load(char *mode);
 /**
  * @brief This function gets a Mitre technique ID's tactics from Hash Table 'mitre table'.
  * 
- * @param mitre_id Input parameter, Mitre technique ID (e.g. T1168). 
- * @return cJSON*, a cJSON array with tactic(s) or NULL if cJSON array is not found.   
+ * @param mitre_id Input parameter, Mitre technique ID (e.g. T1168).
+ * @return mitre_data*, struct that stores a MITRE tactics array and technique's name.
  */
-cJSON * mitre_get_attack(const char * mitre_id);
+mitre_data * mitre_get_attack(const char * mitre_id);
 
 #endif /* MITRE_H */
