@@ -99,6 +99,19 @@ installElasticsearch() {
     ./securityadmin.sh -cd ../securityconfig/ -nhnv -cacert /etc/elasticsearch/certs/root-ca.pem -cert /etc/elasticsearch/certs/admin.pem -key /etc/elasticsearch/certs/admin.key
 }
 
+## Configure JVM options for Elasticsearch
+configureJVMOptions() {
+
+    ram_gb=$(free -g | awk '/^Mem:/{print $2}')
+    ram=$(( ${ram_gb} / 2 ))
+
+    if [ ${ram} -eq "0" ]; then
+        ram=1;
+    fi    
+    sed -i "s/-Xms1g/-Xms${ram}g/" /etc/elasticsearch/jvm.options
+    sed -i "s/-Xmx1g/-Xmx${ram}g/" /etc/elasticsearch/jvm.options    
+}
+
 ## Filebeat
 installFilebeat() {
     $sys_type install filebeat -y
@@ -154,6 +167,21 @@ installKibana() {
     fi
 }
 
+## Health check
+healthCheck() {
+    cores=$(cat /proc/cpuinfo | grep processor | wc -l)
+    ram_gb=$(free -g | awk '/^Mem:/{print $2}')
+    ram=$(( ${ram_gb} / 2 ))
+
+    if [ $cores -lt "2" ] || [ $ram -lt "4" ]
+    then
+        echo "The system must have at least 4Gb of RAM and 2 CPUs"
+        exit 1;
+    else
+        echo "Starting the installation..."
+    fi
+}
+
 checkInstallation() {
     curl -XGET https://localhost:9200 -uadmin:admin -k
     filebeat test output
@@ -164,10 +192,12 @@ checkInstallation() {
 }
 
 main() {
+    healthCheck
     installPrerequisites
     addWazuhrepo
     installWazuh
     installElasticsearch
+    configureJVMOptions
     installFilebeat
     installKibana
     checkInstallation
