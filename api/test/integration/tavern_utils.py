@@ -1,43 +1,46 @@
-#tavern_utils.py
 import json
+import time
+
 from box import Box
 
 
-def calc_offset(response, total):
+def test_distinct_key(response):
     """
     :param response: Request response
-    :param total: Number
-    :return: Number - 1
+    :return: True if all request response items are unique
     """
-    return Box({"sort_offset": str(response.json()["data"]["total_affected_items"]-1)})
-
-
-def test_select_key(response, select_key):
-    """
-    :param response: Request response
-    :param select_key: Parametrized key used for select param in request
-    :return: True if request response item key matches used select param
-    """
-    if '.' in select_key:
-        assert list(response.json()["data"]["items"][0])[0] == select_key.split('.')[0]
-        assert list(response.json()["data"]["items"][0][select_key.split('.')[0]])[0] == select_key.split('.')[1]
-    else:
-        assert list(response.json()["data"]["items"][0])[0] == select_key
-    return
+    assert not any(response.json()["data"]["affected_items"].count(item) > 1 for item in response.json()["data"]["affected_items"])
 
 
 def test_select_key_affected_items(response, select_key):
     """
     :param response: Request response
-    :param select_key: Parametrized key used for select param in request
-    :return: True if request response item key matches used select param
+    :param select_key: Keys requested in select parameter.
+        Lists and nested fields accepted e.g: id,cpu.mhz,json
     """
-    if '.' in select_key:
-        assert list(response.json()["data"]["affected_items"][0])[0] == select_key.split('.')[0]
-        assert list(response.json()["data"]["affected_items"][0][select_key.split('.')[0]])[0] == select_key.split('.')[1]
-    else:
-        assert list(response.json()["data"]["affected_items"][0])[0] == select_key
-    return
+    main_keys = set()
+    nested_keys = dict()
+
+    for key in select_key.split(','):
+        if '.' in key:
+            main_keys.update({key.split('.')[0]})
+            left_key, right_key = key.split('.')
+
+            if left_key in nested_keys:
+                nested_keys[left_key].update({right_key})
+            else:
+                nested_keys[left_key] = {right_key}
+        else:
+            main_keys.update({key})
+
+    for item in response.json()['data']['affected_items']:
+        set1 = main_keys.symmetric_difference(set(item.keys()))
+        assert set1 == set() or set1.intersection({'id', 'agent_id'}), \
+            f'Select keys are {main_keys}, but this one is different {set1}'
+
+        for nested_key in nested_keys.items():
+            set2 = nested_key[1].symmetric_difference(set(item[nested_key[0]].keys()))
+            assert set2 == set(), f'Nested select keys are {nested_key[1]}, but this one is different {set2}'
 
 
 def test_select_key_affected_items_with_agent_id(response, select_key):
@@ -54,41 +57,6 @@ def test_select_key_affected_items_with_agent_id(response, select_key):
     else:
         expected_keys = {'agent_id', select_key}
         assert set(response.json()["data"]["affected_items"][0].keys()) == expected_keys
-    return
-
-
-def test_select_key_no_items(response, select_key):
-    """
-    :param response: Request response
-    :param select_key: Parametrized key used for select param in request
-    :return: True if request response item key matches used select param
-    """
-    if '.' in select_key:
-        assert list(response.json()["data"])[0] == select_key.split('.')[0]
-        assert list(response.json()["data"][select_key.split('.')[0]])[0] == select_key.split('.')[1]
-    else:
-        assert list(response.json()["data"])[0] == select_key
-    return
-
-
-def calc_agents(response, total):
-    """
-    :param response: Request response
-    :param total: Number
-    :return: Number - 1
-    """
-    return {"totalAgents": str(int(total)-1)}
-
-
-def test_affected_items_response(response, affected_items):
-    """
-    :param response: Request response
-    :param affected_items: List of agent
-    :return: True if request response have this items
-    """
-    assert set(response.json()['data']['affected_items']) != set(affected_items)
-
-    return
 
 
 def test_sort_response(response, affected_items):
@@ -101,8 +69,7 @@ def test_sort_response(response, affected_items):
     affected_items = json.loads(affected_items)
     reverse_index = len(affected_items) - 1
     for index, item_response in enumerate(response.json()['data']['affected_items']):
-        assert item_response != affected_items[reverse_index - index]
-    return
+        assert item_response == affected_items[reverse_index - index]
 
 
 def test_validate_data_dict_field(response, fields_dict):
@@ -116,3 +83,56 @@ def test_validate_data_dict_field(response, fields_dict):
             except KeyError:
                 assert len(element) == 1
                 assert isinstance(element['count'], int)
+
+
+def test_validate_upgrade(response):
+    # We accept the test as passed if it either ugprades correctly or the version is not available
+    assert response.json().get('message', None) == "Upgrade procedure started" \
+           or response.json().get('code', None) == 1718
+    if response.json().get('message', None) == "Upgrade procedure started":
+        time.sleep(45)
+        return Box({"upgraded": True})
+    else:
+        return Box({"upgraded": False})
+
+
+def test_validate_upgrade_result(response, upgraded):
+    if upgraded == 1:
+        assert response.json().get('message', None) == "Agent upgraded successfully"
+    else:
+        # If upgrade didnt work because no version was available, we expect an empty upgrade_result with error 1716
+        assert response.json().get('code', None) == 1716
+
+
+def test_validate_update_latest_version(response):
+    assert response.json().get('code', None) == 1749 or response.json().get('code', None) == 1718
+
+
+def test_count_elements(response, n_expected_items):
+    """
+    :param response: Request response
+    :param n_expected_items: Expected number of elements in affected_items
+    """
+    assert len(response.json()['data']['affected_items']) == n_expected_items
+
+
+def test_expected_value(response, key, expected_values):
+    """
+    :param response: Request response
+    :param key: Key whose value to compare.
+    :param expected_values: Values to be found inside response.
+    """
+    expected_values = set(expected_values.split(',')) if not isinstance(expected_values, list) else set(expected_values)
+
+    for item in response.json()['data']['affected_items']:
+        response_set = set(item[key])
+        assert bool(expected_values.intersection(response_set)), \
+            f'Expected values {expected_values} not found in {item[key]}'
+
+
+def test_response_is_different(response, response_value, unexpected_value):
+    """
+    :param response_value: Value to compare
+    :param unexpected_value: Response value should be different to this.
+    """
+    assert response_value != unexpected_value, f"{response_value} and {unexpected_value} shouldn't be the same"

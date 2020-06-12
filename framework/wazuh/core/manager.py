@@ -10,12 +10,14 @@ from collections import OrderedDict
 from datetime import datetime
 from os import chmod, remove
 from os.path import join
+from pyexpat import ExpatError
 from shutil import Error
 from typing import Dict
+
+import yaml
 from xml.dom.minidom import parseString
 
-from pyexpat import ExpatError
-
+from api import configuration
 from wazuh import common, WazuhInternalError, WazuhError
 from wazuh.core.cluster.utils import get_manager_status
 from wazuh.results import WazuhResult
@@ -31,7 +33,8 @@ def status():
 
 
 def get_ossec_log_fields(log):
-    regex_category = re.compile(r"^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+)(?:\[.*)?:\s(DEBUG|INFO|CRITICAL|ERROR|WARNING):(.*)$")
+    regex_category = re.compile(
+        r"^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+)(?:\[.*)?:\s(DEBUG|INFO|CRITICAL|ERROR|WARNING):(.*)$")
 
     match = re.search(regex_category, log)
 
@@ -213,3 +216,33 @@ def replace_in_comments(original_content, to_be_replaced, replacement):
         good_comment = comment.group(2).replace(to_be_replaced, replacement)
         original_content = original_content.replace(comment.group(2), good_comment)
     return original_content
+
+
+def get_api_conf():
+    """Returns current API configuration."""
+    return configuration.api_conf
+
+
+def update_api_conf(new_config):
+    """Update dict and subdicts without overriding unspecified keys and write it in the API.yaml file.
+
+    Parameters
+    ----------
+    new_config : dict
+        Dictionary with the new configuration.
+    """
+    if new_config:
+        for key in new_config:
+            if key in configuration.api_conf:
+                if isinstance(configuration.api_conf[key], dict) and isinstance(new_config[key], dict):
+                    configuration.api_conf[key].update(new_config[key])
+                else:
+                    configuration.api_conf[key] = new_config[key]
+
+        try:
+            with open(common.api_config_path, 'w+') as f:
+                yaml.dump(configuration.api_conf, f)
+        except IOError:
+            raise WazuhInternalError(1005)
+    else:
+        raise WazuhError(1105)

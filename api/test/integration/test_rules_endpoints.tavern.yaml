@@ -2,8 +2,7 @@
 test_name: GET /rules
 
 marks:
-  - usefixtures:
-    - base_tests
+  - base_tests
 
 stages:
 
@@ -140,6 +139,53 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: !anyint
+
+  - name: Show rules of the system using valid select
+    request:
+      verify: False
+      <<: *general_rules_request
+      params:
+        # Single and nested select
+        select: 'filename,details.noalert'
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_keys: 'id,filename,details.noalert' # required_fields={'id'}
+      status_code: 200
+      json:
+        data:
+          total_affected_items: !anyint
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Show rules of the system using invalid select
+    request:
+      verify: False
+      <<: *general_rules_request
+      params:
+        select: 'noexists'
+    response:
+      status_code: 400
+      json: &invalid_select
+        type: !anystr
+        detail: !anystr
+        status: 400
+        remediation: !anystr
+        code: 1724
+        dapi_errors: !anything
+
+  - name: Show rules of the system using select (one select is invalid)
+    request:
+      verify: False
+      <<: *general_rules_request
+      params:
+        select: 'id,filename,noexists'
+    response:
+      status_code: 400
+      json:
+        <<: *invalid_select
 
   - name: Search in rules
     request:

@@ -216,20 +216,24 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 result = (await self.server.clients[client].send_request(b'dapi', request_id.encode() + b' ' + request)).decode()
             else:
                 raise exception.WazuhClusterError(3022, extra_message=client)
-        else:
+        elif command == b'dapi':
             result = (await self.send_request(b'dapi', request_id.encode() + b' ' + data)).decode()
+        else:
+            result = self.process_request(command=command, data=data)
 
         if command == b'dapi' or command == b'dapi_forward':
             try:
                 timeout = None if wait_for_complete \
                                else self.cluster_items['intervals']['communication']['timeout_api_request']
                 await asyncio.wait_for(self.server.pending_api_requests[request_id]['Event'].wait(), timeout=timeout)
-                request_result = json.loads(self.server.pending_api_requests[request_id]['Response'],
-                                            cls=c_common.as_wazuh_object)
+                request_result = self.server.pending_api_requests[request_id]['Response']
             except asyncio.TimeoutError:
                 raise exception.WazuhClusterError(3021)
         else:
-            request_result = json.loads(result, cls=c_common.as_wazuh_object)
+            status, request_result = result
+            if status != b'ok':
+                raise exception.WazuhClusterError(3022, extra_message=request_result.decode())
+            request_result = request_result.decode()
         return request_result
 
     def hello(self, data: bytes) -> Tuple[bytes, bytes]:

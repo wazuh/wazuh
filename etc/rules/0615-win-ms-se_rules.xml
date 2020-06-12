@@ -81,6 +81,9 @@
     <group>pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
     <description>Microsoft Security Essentials - Service failed</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
   </rule>
 
   <rule id="63609" level="9">
@@ -89,6 +92,9 @@
     <group>pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
     <description>Microsoft Security Essentials - Real time protection failed</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
   </rule>
 
   <rule id="63610" level="8">
@@ -127,6 +133,9 @@
     <field name="win.system.eventID">^1005$</field>
     <group>pci_dss_10.6.1,gpg13_4.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
     <description>Microsoft Security Essentials - Scan error. Scan has stopped</description>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 

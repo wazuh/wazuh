@@ -4,9 +4,10 @@ services:
   wazuh-master:
     build:
       context: .
-      dockerfile: base/wazuh-manager/master.Dockerfile
+      dockerfile: base/manager/manager.Dockerfile
       args:
         wazuhbranch: ${WAZUH_BRANCH}
+        manager_type: master
     image: wazuh-master
     hostname: wazuh-master
     ports:
@@ -20,11 +21,14 @@ services:
   wazuh-worker1:
     build:
       context: .
-      dockerfile: base/wazuh-manager/manager.Dockerfile
+      dockerfile: base/manager/manager.Dockerfile
       args:
         wazuhbranch: ${WAZUH_BRANCH}
+        manager_type: worker
     image: wazuh-worker
     hostname: wazuh-worker1
+    ports:
+      - "55001:55000"
     entrypoint:
       - /scripts/entrypoint.sh
       - wazuh-master
@@ -34,11 +38,14 @@ services:
   wazuh-worker2:
     build:
       context: .
-      dockerfile: base/wazuh-manager/manager.Dockerfile
+      dockerfile: base/manager/manager.Dockerfile
       args:
         wazuhbranch: ${WAZUH_BRANCH}
+        manager_type: worker
     image: wazuh-worker
     hostname: wazuh-worker2
+    ports:
+      - "55002:55000"
     entrypoint:
       - /scripts/entrypoint.sh
       - wazuh-master
@@ -48,7 +55,7 @@ services:
   wazuh-agent1:
     build:
       context: .
-      dockerfile: base/wazuh-agent/Dockerfile
+      dockerfile: base/agent/Dockerfile
     image: wazuh-agent
     hostname: wazuh-agent1
     entrypoint:
@@ -63,7 +70,7 @@ services:
   wazuh-agent2:
     build:
       context: .
-      dockerfile: base/wazuh-agent/Dockerfile
+      dockerfile: base/agent/Dockerfile
     image: wazuh-agent
     hostname: wazuh-agent2
     entrypoint:
@@ -79,7 +86,7 @@ services:
   wazuh-agent3:
     build:
       context: .
-      dockerfile: base/wazuh-agent/Dockerfile
+      dockerfile: base/agent/Dockerfile
     image: wazuh-agent
     hostname: wazuh-agent3
     entrypoint:
@@ -95,7 +102,7 @@ services:
   wazuh-agent4:
     build:
       context: .
-      dockerfile: base/wazuh-agent/Dockerfile
+      dockerfile: base/agent/Dockerfile
     image: wazuh-agent
     hostname: wazuh-agent4
     entrypoint:
@@ -111,7 +118,7 @@ services:
   wazuh-agent5:
     build:
       context: .
-      dockerfile: base/wazuh-agent/Dockerfile
+      dockerfile: base/agent/Dockerfile
     image: wazuh-agent
     hostname: wazuh-agent5
     entrypoint:
@@ -127,7 +134,7 @@ services:
   wazuh-agent6:
     build:
       context: .
-      dockerfile: base/wazuh-agent/Dockerfile
+      dockerfile: base/agent/Dockerfile
     image: wazuh-agent
     hostname: wazuh-agent6
     entrypoint:
@@ -143,7 +150,7 @@ services:
   wazuh-agent7:
     build:
       context: .
-      dockerfile: base/wazuh-agent/Dockerfile
+      dockerfile: base/agent/Dockerfile
     image: wazuh-agent
     hostname: wazuh-agent7
     entrypoint:
@@ -159,7 +166,7 @@ services:
   wazuh-agent8:
     build:
       context: .
-      dockerfile: base/wazuh-agent/Dockerfile
+      dockerfile: base/agent/Dockerfile
     image: wazuh-agent
     hostname: wazuh-agent8
     entrypoint:

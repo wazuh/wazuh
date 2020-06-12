@@ -101,7 +101,8 @@ def rename_old_fields(config: Dict) -> Dict:
     if 'basic_auth' in new_config:
         del new_config['basic_auth']
 
-    new_config['rbac'] = {"mode": "white", "auth_token_exp_timeout": 36000}
+    new_config['rbac'] = {"mode": "white"}
+    new_config['auth_token_exp_timeout'] = 36000
 
     # relocate nested fields
     if 'https' in new_config:
@@ -179,7 +180,7 @@ def write_into_yaml_file(config: Dict):
             yaml.dump(json.loads(json_config), output_file, default_flow_style=False, allow_unicode=True)
         # change group and permissions from config.yml file
         os.chown(CONFIG_FILE_PATH, common.ossec_uid(), common.ossec_gid())
-        os.chmod(CONFIG_FILE_PATH, 0o640)
+        os.chmod(CONFIG_FILE_PATH, 0o660)
     except IOError as e:
         raise APIException(2002, details='API configuration could not be written into '
                            f'{to_relative_path(CONFIG_FILE_PATH)} file: '

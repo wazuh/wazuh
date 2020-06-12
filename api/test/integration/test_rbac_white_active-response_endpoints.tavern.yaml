@@ -2,8 +2,7 @@
 test_name: PUT ACTIVE-RESPONSE OVER A LIST OF AGENTS
 
 marks:
-  - usefixtures:
-    - active-response_white_rbac_tests
+  - rbac_tests
 
 stages:
 

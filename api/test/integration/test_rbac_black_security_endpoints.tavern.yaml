@@ -2,8 +2,7 @@
 test_name: GET USERS RBAC
 
 marks:
-  - usefixtures:
-    - security_black_rbac_tests
+  - rbac_tests
 
 stages:
 
@@ -21,10 +20,11 @@ stages:
           affected_items:
             - username: ossec
             - username: rbac
+            - username: testing
             - username: wazuh
             - username: wazuh-wui
           failed_items: []
-          total_affected_items: 4
+          total_affected_items: 5
           total_failed_items: 0
         message: All specified users were shown
 
@@ -124,8 +124,8 @@ stages:
             - error:
                 code: 4000
                 message: 'Permission denied: Resource type: user:id'
-                remediation: Please, make sure you have permissions to execute current request,
-                  for more information on setting up permissions please visit XXXX
+                remediation: "Please, make sure you have permissions to execute the current request.
+                For more information on how to set up permissions, please visit XXXX"
               id:
                 - administrator
                 - guest
@@ -221,7 +221,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        policy_ids: 99
+        policy_ids: 999
     response:
       status_code: 200
       json:
@@ -233,7 +233,7 @@ stages:
                 message: The specified policy does not exist
                 remediation: Please, create the specified policy with the endpoint POST /security/policies
               id:
-                - '99'
+                - '999'
           total_affected_items: 0
           total_failed_items: 1
         message: No policy were shown
@@ -246,7 +246,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        policy_ids: 1,2,99
+        policy_ids: 1,2,999
     response:
       status_code: 200
       json:
@@ -258,10 +258,46 @@ stages:
                 message: The specified policy does not exist
                 remediation: Please, create the specified policy with the endpoint POST /security/policies
               id:
-                - '99'
+                - '999'
           total_affected_items: 2
           total_failed_items: 1
         message: Some policies could not be shown
+
+---
+test_name: GET SECURITY CONFIG
+
+stages:
+
+  - name: Get current security config (deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 400
+      json:
+        <<: *permission_denied
+
+---
+test_name: UPDATE SECURITY CONFIG
+
+stages:
+
+  - name: Update default security config (deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        auth_token_exp_timeout: 3000
+    response:
+      status_code: 400
+      json:
+        <<: *permission_denied
 
 ---
 test_name: UPDATE USERS RBAC
@@ -539,6 +575,75 @@ stages:
           total_failed_items: 1
 
 ---
+test_name: CREATE USERS RBAC
+
+stages:
+
+  - name: Create one specified user (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        username: newUser
+        password: stringA1!
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - username: newUser
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        message: User created correctly
+
+---
+test_name: CREATE ROLES AND POLICIES RBAC
+
+stages:
+
+  - name: Create one specified role (Deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: newUserRole
+        rule:
+          FIND$:
+            definition: newUser
+    response:
+      status_code: 400
+      json:
+        <<: *permission_denied
+
+  - name: Create one specified policy (Deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: newUserPolicy
+        policy:
+          actions:
+            - security:delete
+          effect: allow
+          resources:
+            - role:id:*
+            - policy:id:*
+    response:
+      status_code: 400
+      json:
+        <<: *permission_denied
+
+---
 test_name: DELETE LINK ROLE-POLICIES RBAC
 
 stages:
@@ -610,8 +715,8 @@ stages:
             - error:
                 code: 4000
                 message: 'Permission denied: Resource type: policy:id'
-                remediation: Please, make sure you have permissions to execute current request,
-                  for more information on setting up permissions please visit XXXX
+                remediation: "Please, make sure you have permissions to execute the current request.
+                For more information on how to set up permissions, please visit XXXX"
               id:
                 - '15'
         message: Some policies could not be linked to role 12
@@ -695,11 +800,12 @@ stages:
       json:
         data:
           affected_items:
+            - username: newUser
             - username: ossec
             - username: python
             - username: rbac
           failed_items: []
-          total_affected_items: 3
+          total_affected_items: 4
           total_failed_items: 0
         message: Users deleted correctly
 
@@ -803,7 +909,7 @@ stages:
         data:
           affected_items: !anything
           failed_items: []
-          total_affected_items: 5
+          total_affected_items: 6
           total_failed_items: 0
         message: All specified roles were deleted
 
@@ -813,6 +919,7 @@ test_name: DELETE POLICIES RBAC
 stages:
 
   - name: Delete one specified policy in the system (Allow)
+    delay_before: 5
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
@@ -855,78 +962,9 @@ stages:
         data:
           affected_items: !anything
           failed_items: []
-          total_affected_items: 9
+          total_affected_items: 18
           total_failed_items: 0
         message: All specified policies were deleted
-
----
-test_name: CREATE USERS RBAC
-
-stages:
-
-  - name: Create one specified user (Allow)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: POST
-      json:
-        username: newUser
-        password: stringA1!
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - username: newUser
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-        message: User created correctly
-
----
-test_name: CREATE ROLES AND POLICIES RBAC
-
-stages:
-
-  - name: Create one specified role (Deny)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: POST
-      json:
-        name: newUserRole
-        rule:
-          FIND$:
-            definition: newUser
-    response:
-      status_code: 400
-      json:
-        <<: *permission_denied
-
-  - name: Create one specified policy (Deny)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: POST
-      json:
-        name: newUserPolicy
-        policy:
-          actions:
-            - security:delete
-          effect: allow
-          resources:
-            - role:id:*
-            - policy:id:*
-    response:
-      status_code: 400
-      json:
-        <<: *permission_denied
 
 ---
 test_name: REVOKE TOKENS RBAC

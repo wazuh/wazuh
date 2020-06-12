@@ -2,9 +2,9 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import copy
 import datetime
 import os
-import uuid
 from typing import Dict, List, Tuple
 
 import yaml
@@ -16,7 +16,44 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 
 from api.api_exception import APIException
+from api.constants import SECURITY_CONFIG_PATH
 from wazuh import common
+
+default_security_configuration = {
+    "auth_token_exp_timeout": 36000,
+    "rbac_mode": "black"
+}
+
+default_api_configuration = {
+    "host": "0.0.0.0",
+    "port": 55000,
+    "behind_proxy_server": False,
+    "https": {
+        "enabled": True,
+        "key": "api/configuration/ssl/server.key",
+        "cert": "api/configuration/ssl/server.crt",
+        "use_ca": False,
+        "ca": "api/configuration/ssl/ca.crt"
+    },
+    "logs": {
+        "level": "info",
+        "path": "logs/api.log"
+    },
+    "cors": {
+        "enabled": False,
+        "source_route": "*",
+        "expose_headers": "*",
+        "allow_headers": "*",
+        "allow_credentials": False,
+    },
+    "cache": {
+        "enabled": True,
+        "time": 0.750
+    },
+    "use_only_authd": False,
+    "drop_privileges": True,
+    "experimental_features": False
+}
 
 
 def dict_to_lowercase(mydict: Dict):
@@ -40,7 +77,10 @@ def append_ossec_path(dictionary: Dict, path_fields: List[Tuple[str, str]]):
     :return: None (the dictionary's reference is modified)
     """
     for section, subsection in path_fields:
-        dictionary[section][subsection] = os.path.join(common.ossec_path, dictionary[section][subsection])
+        try:
+            dictionary[section][subsection] = os.path.join(common.ossec_path, dictionary[section][subsection])
+        except KeyError:
+            pass
 
 
 def fill_dict(default: Dict, config: Dict) -> Dict:
@@ -138,45 +178,13 @@ def generate_self_signed_certificate(private_key, certificate_path):
         f.write(cert.public_bytes(serialization.Encoding.PEM))
 
 
-def read_api_config(config_file=common.api_config_path) -> Dict:
+def read_yaml_config(config_file=common.api_config_path, default_conf=None) -> Dict:
     """Reads user API configuration and merges it with the default one
 
     :return: API configuration
     """
-    default_configuration = {
-        "host": "0.0.0.0",
-        "port": 55000,
-        "behind_proxy_server": False,
-        "rbac": {
-            "mode": "black",
-            "auth_token_exp_timeout": 36000
-        },
-        "https": {
-            "enabled": True,
-            "key": "api/configuration/ssl/server.key",
-            "cert": "api/configuration/ssl/server.crt",
-            "use_ca": False,
-            "ca": "api/configuration/ssl/ca.crt"
-        },
-        "logs": {
-            "level": "info",
-            "path": "logs/api.log"
-        },
-        "cors": {
-            "enabled": False,
-            "source_route": "*",
-            "expose_headers": "*",
-            "allow_headers": "*",
-            "allow_credentials": False,
-        },
-        "cache": {
-            "enabled": True,
-            "time": 0.750
-        },
-        "use_only_authd": False,
-        "drop_privileges": True,
-        "experimental_features": False
-    }
+    if default_conf is None:
+        default_conf = default_api_configuration
 
     if os.path.exists(config_file):
         try:
@@ -189,10 +197,10 @@ def read_api_config(config_file=common.api_config_path) -> Dict:
 
     # If any value is missing from user's cluster configuration, add the default one:
     if configuration is None:
-        configuration = default_configuration
+        configuration = copy.deepcopy(default_conf)
     else:
         dict_to_lowercase(configuration)
-        configuration = fill_dict(default_configuration, configuration)
+        configuration = fill_dict(default_conf, configuration)
 
     # Append ossec_path to all paths in configuration
     append_ossec_path(configuration, [('logs', 'path'), ('https', 'key'), ('https', 'cert'), ('https', 'ca')])
@@ -201,4 +209,5 @@ def read_api_config(config_file=common.api_config_path) -> Dict:
 
 
 # Configuration - global object
-api_conf = read_api_config()
+api_conf = read_yaml_config()
+security_conf = read_yaml_config(config_file=SECURITY_CONFIG_PATH, default_conf=default_security_configuration)

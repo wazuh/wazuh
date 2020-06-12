@@ -27,13 +27,11 @@ class AgentMock:
     ('dmz,default', '005', 'default', 'dmz')
 ])
 @patch('wazuh.core.core_agent.Agent.get_agents_group_file')
-@patch('wazuh.core.core_agent.Agent.create_multi_group')
-@patch('wazuh.core.core_agent.Agent.unset_all_groups_agent')
+@patch('wazuh.core.core_agent.Agent.set_agent_group_file')
 @patch('wazuh.core.core_agent.Agent')
-def test_sucessfully_remove_single_group_agent(agent_patch, unset_groups_patch, create_multigroup_patch,
-                                               get_groups_patch, agent_groups, agent_id, group_id, expected_new_group):
-    """
-    Tests sucessfully unsseting a group from an agent. Test cases:
+def test_sucessfully_remove_single_group_agent(agent_patch, set_agent_group_patch, get_groups_patch, agent_groups,
+                                               agent_id, group_id, expected_new_group):
+    """Test sucessfully unsseting a group from an agent. Test cases:
         * The agent only belongs to one group. It must be assigned to the default one.
         * The agent belongs to two groups, it must be assigned to the remaining group.
         * The agent belongs to three groups, the group to remove must be removed from the multigroup.
@@ -44,9 +42,9 @@ def test_sucessfully_remove_single_group_agent(agent_patch, unset_groups_patch, 
     with patch('wazuh.core.core_agent.Agent.multi_group_exists', return_value=False):
         ret_msg = Agent.unset_single_group_agent(agent_id, group_id, force=False)
 
-    assert ret_msg == f"Agent '{agent_id}' removed from '{group_id}'. Agent reassigned to group {expected_new_group}."
-
-    unset_groups_patch.assert_called_with(agent_id=agent_id, force=True, group_id=expected_new_group)
+    reassigned_text = " Agent reassigned to group default." if expected_new_group == 'default' else ""
+    assert ret_msg == f"Agent '{agent_id}' removed from '{group_id}'.{reassigned_text}"
+    set_agent_group_patch.assert_called_with(agent_id, expected_new_group)
 
 
 @pytest.mark.parametrize('agent_groups, agent_id, group_id, expected_exception', [

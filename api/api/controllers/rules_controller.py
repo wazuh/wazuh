@@ -9,7 +9,7 @@ from aiohttp_cache import cache
 from connexion.lifecycle import ConnexionResponse
 
 from api import configuration
-from api.encoder import dumps
+from api.encoder import dumps, prettify
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh import rule as rule_framework
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -18,15 +18,16 @@ logger = logging.getLogger('wazuh')
 
 
 @cache(expires=configuration.api_conf['cache']['time'], unless=not configuration.api_conf['cache']['enabled'])
-async def get_rules(request, rule_ids=None, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
-                    search=None, q=None, status=None, group=None, level=None, filename=None, relative_dirname=None,
-                    pci_dss=None, gdpr=None, gpg13=None, hipaa=None):
+async def get_rules(request, rule_ids=None, pretty=False, wait_for_complete=False, offset=0, select=None,
+                    limit=None, sort=None, search=None, q=None, status=None, group=None, level=None, filename=None,
+                    relative_dirname=None, pci_dss=None, gdpr=None, gpg13=None, hipaa=None):
     """Get information about all Wazuh rules.
 
     :param rule_ids: Filters by rule ID
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param offset: First element to return in the collection
+    :param select: List of selected fields to return
     :param limit: Maximum number of elements to return
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
@@ -43,7 +44,7 @@ async def get_rules(request, rule_ids=None, pretty=False, wait_for_complete=Fals
     :param hipaa: Filters by HIPAA requirement.
     :return: Data object
     """
-    f_kwargs = {'rule_ids': rule_ids, 'offset': offset, 'limit': limit,
+    f_kwargs = {'rule_ids': rule_ids, 'offset': offset, 'limit': limit, 'select': select,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
@@ -65,13 +66,12 @@ async def get_rules(request, rule_ids=None, pretty=False, wait_for_complete=Fals
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 @cache(expires=configuration.api_conf['cache']['time'], unless=not configuration.api_conf['cache']['enabled'])
@@ -101,13 +101,12 @@ async def get_rules_groups(request, pretty=False, wait_for_complete=False, offse
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 @cache(expires=configuration.api_conf['cache']['time'], unless=not configuration.api_conf['cache']['enabled'])
@@ -136,13 +135,12 @@ async def get_rules_requirement(request, requirement=None, pretty=False, wait_fo
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 @cache(expires=configuration.api_conf['cache']['time'], unless=not configuration.api_conf['cache']['enabled'])
@@ -177,13 +175,12 @@ async def get_rules_files(request, pretty=False, wait_for_complete=False, offset
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 @cache(expires=configuration.api_conf['cache']['time'], unless=not configuration.api_conf['cache']['enabled'])
@@ -202,7 +199,6 @@ async def get_download_file(request, pretty: bool = False, wait_for_complete: bo
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )

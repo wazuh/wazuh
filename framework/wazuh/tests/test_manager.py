@@ -19,11 +19,11 @@ with patch('wazuh.common.ossec_uid'):
         sys.modules['api'] = MagicMock()
         import wazuh.rbac.decorators
         del sys.modules['wazuh.rbac.orm']
-        del sys.modules['api']
 
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh.manager import *
+        del sys.modules['api']
 
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -281,6 +281,38 @@ def test_delete_file():
         result = delete_file('/test/file')
         assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
         assert result.render()['data']['failed_items'][0]['error']['code'] == 1906, 'Error code not expected.'
+
+
+def test_get_api_config():
+    """Checks that get_api_config method is returning current api_conf dict."""
+    result = get_api_config().render()
+
+    assert 'node_api_config' in result['data']['affected_items'][0], 'node_api_config key not found in result'
+    assert result['data']['affected_items'][0]['node_name'] == 'manager', 'Not expected node name'
+
+
+@patch('wazuh.core.manager.yaml')
+@patch('wazuh.core.manager.open')
+def test_update_api_config(mock_open, mock_yaml):
+    """Checks that update_api_config method is updating current api_conf dict and returning expected result."""
+    old_config = {'experimental_features': True}
+    new_config = {'experimental_features': False}
+
+    with patch('wazuh.core.manager.configuration.api_conf', new=old_config):
+        result = update_api_config(updated_config=new_config)
+
+        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type.'
+        assert result.render()['data']['total_failed_items'] == 0, 'Total_failed_items should be 0.'
+        assert old_config == new_config, 'Old configuration should be equal to new configuration.'
+
+
+def test_update_api_config_ko():
+    """Checks that update_api_config method is returning expected fail."""
+    with patch('wazuh.core.manager.configuration.api_conf'):
+        result = update_api_config()
+
+        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type.'
+        assert result.render()['data']['total_failed_items'] == 1, 'Total_failed_items should be 1.'
 
 
 @patch('socket.socket')

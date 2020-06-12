@@ -40,10 +40,10 @@ DWORD wrap_syscheck_op_FormatMessage (__UNUSED_PARAM(DWORD dwFlags),
                                       __UNUSED_PARAM(LPCVOID lpSource),
                                       __UNUSED_PARAM(DWORD dwMessageId),
                                       __UNUSED_PARAM(DWORD dwLanguageId),
-                                      char** lpBuffer,
+                                      LPTSTR lpBuffer,
                                       __UNUSED_PARAM(DWORD nSize),
                                       __UNUSED_PARAM(va_list *Arguments)) {
-    *lpBuffer = mock_type(char*);
+    *((LPTSTR*)lpBuffer) = mock_type(char*);
     return 0;
 }
 

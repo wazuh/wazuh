@@ -2,8 +2,7 @@
 test_name: GET USERS RBAC
 
 marks:
-  - usefixtures:
-      - security_white_rbac_tests
+  - rbac_tests
 
 stages:
 
@@ -301,7 +300,24 @@ stages:
                 - 14
               users:
                 - normal
-          total_affected_items: 13
+            - id: 99
+              name: testing
+              rule:
+                FIND:
+                  r'^testing$': ['testing']
+              policies:
+                - 99
+                - 100
+                - 101
+                - 102
+                - 103
+                - 104
+                - 105
+                - 106
+                - 107
+              users:
+                - testing
+          total_affected_items: 14
           total_failed_items: 0
           failed_items: []
         message: All specified roles were shown
@@ -349,7 +365,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        role_ids: 99
+        role_ids: 999
     response:
       status_code: 200
       json:
@@ -361,7 +377,7 @@ stages:
                 message: The specified role does not exist
                 remediation: Please, create the specified role with the endpoint POST /security/roles
               id:
-                - '99'
+                - '999'
           total_affected_items: 0
           total_failed_items: 1
         message: No role were shown
@@ -374,7 +390,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        role_ids: 1,2,99
+        role_ids: 1,2,999
     response:
       status_code: 200
       json:
@@ -417,7 +433,7 @@ stages:
                 message: The specified role does not exist
                 remediation: Please, create the specified role with the endpoint POST /security/roles
               id:
-                - '99'
+                - '999'
         message: Some roles could not be shown
 
 ---
@@ -455,6 +471,41 @@ stages:
       status_code: 400
       json:
         <<: *permission_denied
+
+---
+test_name: GET SECURITY CONFIG
+
+stages:
+
+  - name: Get current security config (allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      json:
+        auth_token_exp_timeout: !anyint
+        rbac_mode: !anystr
+
+---
+test_name: UPDATE SECURITY CONFIG
+
+stages:
+
+  - name: Update default security config (deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        auth_token_exp_timeout: 3000
+    response:
+      status_code: 200
 
 ---
 test_name: UPDATE USERS RBAC
@@ -681,8 +732,8 @@ stages:
             - error:
                 code: 4000
                 message: 'Permission denied: Resource type: policy:id'
-                remediation: Please, make sure you have permissions to execute current request,
-                  for more information on setting up permissions please visit XXXX
+                remediation: "Please, make sure you have permissions to execute the current request.
+                For more information on how to set up permissions, please visit XXXX"
               id:
                 - '16'
                 - '17'
@@ -856,8 +907,8 @@ stages:
             - error:
                 code: 4000
                 message: 'Permission denied: Resource type: user:id'
-                remediation: Please, make sure you have permissions to execute current request,
-                  for more information on setting up permissions please visit XXXX
+                remediation: "Please, make sure you have permissions to execute the current request.
+                For more information on how to set up permissions, please visit XXXX"
               id:
                 - wazuh
             - error:
@@ -985,7 +1036,7 @@ stages:
       json:
         data:
           affected_items:
-            - id: 14
+            - id: 100
               name: newUserRole
               policies: []
               rule:
@@ -1017,7 +1068,7 @@ stages:
       json:
         data:
           affected_items:
-            - id: 21
+            - id: 109
               name: newUserPolicy
               policy:
                 actions:

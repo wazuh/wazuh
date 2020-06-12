@@ -7,7 +7,7 @@ import os
 
 from aiohttp import web
 
-from api.encoder import dumps
+from api.encoder import dumps, prettify
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh import cdb_list
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -16,13 +16,15 @@ logger = logging.getLogger('wazuh')
 
 
 async def get_lists(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
-                    sort: str = None, search: str = None, filename: str = None, relative_dirname: str = None):
+                    select: list = None, sort: str = None, search: str = None, filename: str = None,
+                    relative_dirname: str = None):
     """ Get all CDB lists
 
     :param pretty: Show results in human-readable format.
     :param wait_for_complete: Disable timeout response.
     :param offset: First element to return in the collection.
     :param limit: Maximum number of elements to return.
+    :param select: List of selected fields to return
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
     :param search: Looks for elements with the specified string.
@@ -32,6 +34,7 @@ async def get_lists(request, pretty: bool = False, wait_for_complete: bool = Fal
     """
     path = [os.path.join(relative_dirname, item) for item in filename] if filename and relative_dirname else None
     f_kwargs = {'offset': offset,
+                'select': select,
                 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['relative_dirname',
                                                                                              'filename'],
@@ -48,13 +51,12 @@ async def get_lists(request, pretty: bool = False, wait_for_complete: bool = Fal
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_lists_files(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
@@ -92,10 +94,9 @@ async def get_lists_files(request, pretty: bool = False, wait_for_complete: bool
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          pretty=pretty,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)

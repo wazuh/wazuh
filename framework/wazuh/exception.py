@@ -15,7 +15,7 @@ class WazuhException(Exception):
     """
 
     ERRORS = {
-        # < 1000: API
+        # < 999: API
 
         # Wazuh: 0999 - 1099
         999: 'Incompatible version of Python',
@@ -41,7 +41,7 @@ class WazuhException(Exception):
         1015: 'Error agent version is null. Was the agent ever connected?',
         1016: {'message': 'Error moving file',
                'remediation': 'Please, ensure you have the required file permissions in Wazuh directories'},
-        1017: 'Some Wazuh daemons are not ready yet in node \'{node_name}\' ',
+        1017: 'Some Wazuh daemons are not ready yet in node "{node_name}" ({not_ready_daemons})',
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
         1101: {'message': 'Requested component does not exist',
@@ -144,11 +144,11 @@ class WazuhException(Exception):
         1406: {'message': '0 is not a valid limit',
                'remediation': 'Please select a limit between 1 and 1000'
                },
-        1407: 'query does not match expected format',
+        1407: 'Query does not match expected format',
         1408: 'Field does not exist.',
         1409: 'Invalid query operator.',
         1410: 'Selecting more than one field in distinct mode',
-        1411: 'Timeframe is not valid',
+        1411: 'TimeFrame is not valid',
         1412: 'Date filter not valid. Valid formats are timeframe or YYYY-MM-DD HH:mm:ss',
         1413: {'message': 'Error reading rules file'},
         1414: {'message': 'Error reading rules file',
@@ -270,7 +270,7 @@ class WazuhException(Exception):
                'remediation': 'Characters supported  a-z, A-Z, 0-9, ., _ and -. Max length is 255'
                },
         1723: 'Hash algorithm not available',
-        1724: {'message': 'Not a valid select field ',
+        1724: {'message': 'Not a valid select field',
                'remediation': 'Please, use only allowed select fields'
                },
         1725: {'message': 'Error registering a new agent',
@@ -339,6 +339,8 @@ class WazuhException(Exception):
                'remediation': 'Please select another agent or connect your agent before assigning groups'},
         1754: {'message': 'Agent does not exist or you do not have permissions to access it',
                'remediation': 'Try listing all agents with GET /agents endpoint'},
+        1755: {'message': 'The group does not have any agent assigned',
+               'remediation': 'Please select another group or assign any agent to it'},
 
         # CDB List: 1800 - 1899
         1800: {'message': 'Bad format in CDB list {path}'},
@@ -457,8 +459,8 @@ class WazuhException(Exception):
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.
         4000: {'message': "Permission denied",
-               'remediation': "Please, make sure you have permissions to execute current request, "
-                              "for more information on setting up permissions please visit XXXX"},
+               'remediation': "Please, make sure you have permissions to execute the current request. "
+                              "For more information on how to set up permissions, please visit XXXX"},
         4001: {'message': 'The body of the request is empty, you must specify that you want to modify',
                'remediation': "The fields available for update are: name(str), rule(str), policies(list(dict))"},
         4002: {'message': 'The specified role does not exist',
@@ -481,7 +483,7 @@ class WazuhException(Exception):
         4012: {'message': 'The specified actions or resources '
                           'are invalid',
                'remediation': 'The actions and resources must be splitted by ":". Example: agent:id:001'},
-        4013: {'message': 'The specified name already exist'},
+        4013: {'message': 'The specified name already exists'},
         4014: {'message': 'Parameter {param} is required',
                'remediation': 'Please, make sure the parameter is defined'},
         4015: {'message': 'Permission denied, could not remove agents from group before deleting it',
@@ -496,6 +498,7 @@ class WazuhException(Exception):
                'remediation': 'Please, check the current RBAC resources, for more information please visit XXXX'},
         4020: {'message': 'Invalid endpoint specified',
                'remediation': 'Valid endpoints are: '},
+        4021: 'Error reading security configuration',
         4500: {'message': 'The specified resources are invalid',
                'remediation': 'Please, make sure permissions are properly defined, '
                               'for more information on setting up permissions please visit XXXX'},

@@ -2,8 +2,7 @@
 test_name: GET /ciscat/001/results
 
 marks:
-  - usefixtures:
-    - ciscat_tests
+  - base_tests
 
 stages:
 

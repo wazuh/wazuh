@@ -9,6 +9,9 @@ from os.path import isfile, isdir, join
 from wazuh import common
 from wazuh.exception import WazuhError
 
+REQUIRED_FIELDS = ['relative_dirname', 'filename']
+SORT_FIELDS = ['relative_dirname', 'filename']
+
 _regex_path = r'^(etc/lists/)[\w\.\-/]+$'
 _pattern_path = re.compile(_regex_path)
 

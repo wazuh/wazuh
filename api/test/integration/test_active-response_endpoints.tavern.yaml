@@ -2,8 +2,7 @@
 test_name: PUT /active-response/{:agent_id}
 
 marks:
-  - usefixtures:
-    - active-response_tests
+  - base_tests
 
 stages:
 
@@ -56,6 +55,7 @@ stages:
         message: Command sent to all agents
 
   - name: Send a message to a list of agents (Status=Active)
+    delay_before: 45
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
@@ -258,4 +258,3 @@ stages:
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
     response:
       status_code: 400
-

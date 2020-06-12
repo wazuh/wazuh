@@ -27,7 +27,7 @@ class WazuhJSONEncoder(JSONEncoder):
 
 def dumps(obj: object) -> str:
     """
-    Get a JSON encoded str from an object
+    Get a JSON encoded str from an object.
 
     Parameters
     ----------
@@ -43,3 +43,23 @@ def dumps(obj: object) -> str:
     str
     """
     return json.dumps(obj, cls=WazuhJSONEncoder)
+
+
+def prettify(obj: object) -> str:
+    """
+    Get a prettified JSON encoded str from an object.
+
+    Parameters
+    ----------
+    obj: object
+        Object to be encoded in a JSON string
+
+    Raises
+    ------
+    TypeError
+
+    Returns
+    -------
+    str
+    """
+    return json.dumps(obj, cls=WazuhJSONEncoder, indent=3)
