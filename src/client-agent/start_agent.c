@@ -182,45 +182,47 @@ void start_agent(int is_startup)
     #endif
 
     while (1) {
-        connect_server(agt->rip_id);
-        /* Send start up message */
-        send_msg(msg, -1);
+        if(connect_server(agt->rip_id)){
+            /* Send start up message */
+            send_msg(msg, -1);
 
-        /* Read until our reply comes back */
-        if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
-            recv_b = receive_message_udp(msg, buffer, OS_MAXSTR);
-        } else {
-            recv_b = receive_message_tcp(msg, buffer, OS_MAXSTR);
-        }
-        
-        if (recv_b > 0) {
-            /* Id of zero -- only one key allowed */
-            if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip, &tmp_msg) != KS_VALID) {
-                mwarn(MSG_ERROR, agt->server[agt->rip_id].rip);
+            /* Read until our reply comes back */
+            if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
+                recv_b = receive_message_udp(msg, buffer, OS_MAXSTR);
             } else {
-                /* Check for commands */
-                if (IsValidHeader(tmp_msg)) {
-                    /* If it is an ack reply */
-                    if (strcmp(tmp_msg, HC_ACK) == 0) {
-                        available_server = time(0);
+                recv_b = receive_message_tcp(msg, buffer, OS_MAXSTR);
+            }
+            
+            if (recv_b > 0) {
+                /* Id of zero -- only one key allowed */
+                if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip, &tmp_msg) != KS_VALID) {
+                    mwarn(MSG_ERROR, agt->server[agt->rip_id].rip);
+                } else {
+                    /* Check for commands */
+                    if (IsValidHeader(tmp_msg)) {
+                        /* If it is an ack reply */
+                        if (strcmp(tmp_msg, HC_ACK) == 0) {
+                            available_server = time(0);
 
-                        minfo(AG_CONNECTED, agt->server[agt->rip_id].rip,
-                                agt->server[agt->rip_id].port, agt->server[agt->rip_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
+                            minfo(AG_CONNECTED, agt->server[agt->rip_id].rip,
+                                    agt->server[agt->rip_id].port, agt->server[agt->rip_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
 
-                        if (is_startup) {
-                            /* Send log message about start up */
-                            snprintf(msg, OS_MAXSTR, OS_AG_STARTED,
-                                    keys.keyentries[0]->name,
-                                    keys.keyentries[0]->ip->ip);
-                            snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ,
-                                    "ossec", msg);
-                            send_msg(fmsg, -1);
+                            if (is_startup) {
+                                /* Send log message about start up */
+                                snprintf(msg, OS_MAXSTR, OS_AG_STARTED,
+                                        keys.keyentries[0]->name,
+                                        keys.keyentries[0]->ip->ip);
+                                snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ,
+                                        "ossec", msg);
+                                send_msg(fmsg, -1);
+                            }
+                            return;
                         }
-                        return;
                     }
                 }
             }
         }
+        
         /* Wait for server reply */
         mwarn(AG_WAIT_SERVER, agt->server[agt->rip_id].rip);
 
