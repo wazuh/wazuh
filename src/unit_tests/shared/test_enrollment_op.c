@@ -463,7 +463,7 @@ void test_w_enrollment_verify_ca_certificate_null_connection(void **state) {
 
 void test_w_enrollment_verify_ca_certificate_no_certificate(void **state) {
     SSL *ssl = *state;
-    expect_string(__wrap__mwarn, formatted_msg, "Registering agent to unverified manager.");
+    expect_string(__wrap__minfo, formatted_msg, "Registering agent to unverified manager.");
     w_enrollment_verify_ca_certificate(ssl, NULL, "hostname");
 }
 
