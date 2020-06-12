@@ -56,7 +56,7 @@ int connect_server(int initial_id)
         /* Check if we have a hostname */
         tmp_str = strchr(agt->server[rc].rip, '/');
         if (tmp_str) {
-            // Resolve hostname
+            /* Resolve hostname */
             if (!isChroot()) {
                 resolveHostname(&agt->server[rc].rip, 5);
 
@@ -71,7 +71,7 @@ int connect_server(int initial_id)
             tmp_str = agt->server[rc].rip;
         }
 
-        // The hostname was not resolved correctly
+        /* The hostname was not resolved correctly */
         if (tmp_str == NULL || *tmp_str == '\0') {
             int rip_l = strlen(agt->server[rc].rip);
             mdebug2("Could not resolve hostname '%.*s'", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
@@ -182,7 +182,7 @@ void start_agent(int is_startup)
     #endif
 
     while (1) {
-        if(connect_server(agt->rip_id)){
+        if (connect_server(agt->rip_id)) {
             /* Send start up message */
             send_msg(msg, -1);
 
@@ -258,17 +258,17 @@ static void w_agentd_keys_init (void) {
             while (registration_status != 0) {
                 int rc = 0;                
                 if (agt->enrollment_cfg->target_cfg->manager_name) {
-                    // Configured enrollment server
+                    /* Configured enrollment server */
                     registration_status = try_enroll_to_server(agt->enrollment_cfg->target_cfg->manager_name);
                 } 
                 
-                // Try to enroll to server list
+                /* Try to enroll to server list */
                 while (agt->server[rc].rip && (registration_status != 0)) {
                     registration_status = try_enroll_to_server(agt->server[rc].rip);
                     rc++;
                 }
 
-                //Sleep between retries
+                /* Sleep between retries */
                 if (registration_status != 0) {
                     if (delay_sleep < ENROLLMENT_RETRY_TIME_MAX) {
                         delay_sleep += ENROLLMENT_RETRY_TIME_DELTA;
@@ -278,7 +278,7 @@ static void w_agentd_keys_init (void) {
                 }
             }        
         }
-        /* If autoenrollment is disabled, stop daemon*/
+        /* If autoenrollment is disabled, stop daemon */
         else {
             merror_exit(AG_NOKEYS_EXIT);
         }
@@ -289,7 +289,7 @@ static void w_agentd_keys_init (void) {
     os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id,
                         agt->profile);
 
-    /*Set the crypto method for the agent */
+    /* Set the crypto method for the agent */
     os_set_agent_crypto_method(&keys,agt->crypto_method);
 
     switch (agt->crypto_method) {
@@ -322,14 +322,14 @@ static ssize_t receive_message_udp(const char *msg, char *buffer, unsigned int m
         attempts++;
         sleep(attempts*2);
 
-        // Receive response
+        /* Receive response */
         recv_b = recv(agt->sock, buffer, max_lenght, MSG_DONTWAIT);
 
-        // Successful response
+        /* Successful response */
         if (recv_b > 0) {                
             return recv_b;
         }
-        // Error response
+        /* Error response */
         else { 
             switch (recv_b) {
             case OS_SOCKTERR:
@@ -343,11 +343,11 @@ static ssize_t receive_message_udp(const char *msg, char *buffer, unsigned int m
                 #endif
                 break;
             }
-            // Try to enroll on fifth attempt
+            /* Try to enroll on fifth attempt */
             if (attempts == 5 && agt->enrollment_cfg && agt->enrollment_cfg->enabled) {           
                 try_enroll_to_server(agt->server[agt->rip_id].rip);
             }  
-            // Start retrying sending message after third attemp or OS_SOCKTERR
+            /* Start retrying sending message after third attemp or OS_SOCKTERR */
             if (attempts >= 3 || recv_b == OS_SOCKTERR) {
                 if (connect_server(agt->rip_id)) {
                     send_msg(msg, -1);  
@@ -380,26 +380,27 @@ static ssize_t receive_message_tcp(const char *msg, char *buffer, unsigned int m
             merror(SELECT_ERROR, errno, strerror(errno));
         } 
         else if (sock > 0) {
-            // Receive response
+            /* Receive response */
             recv_b = OS_RecvSecureTCP(agt->sock, buffer, max_lenght);
 
-            //Successful response
+            /* Successful response */
             if (recv_b > 0) {
                 return recv_b;
             }   
             
-            // Error response
+            /* Error response */
             switch (recv_b) {
                 case OS_SOCKTERR:
                     merror("Corrupt payload (exceeding size) received.");
                     break;
                 case 0:
-                    // Peer performed orderly shutdown (connection refused by manager)
-                    // Try to re enroll on fifth attempt
+                    /* Peer performed orderly shutdown (connection refused by manager)
+                    *  Try to re enroll on fifth attempt
+                    */
                     if (agt->enrollment_cfg && agt->enrollment_cfg->enabled && attempts == 5) {
                         try_enroll_to_server(agt->server[agt->rip_id].rip);                     
                     }
-                    // Try to re send msg every time due to possible keys update delay on manager
+                    /* Try to re send msg every time due to possible keys update delay on manager */
                     if (connect_server(agt->rip_id)) {
                         send_msg(msg, -1);
                     }
@@ -410,7 +411,7 @@ static ssize_t receive_message_tcp(const char *msg, char *buffer, unsigned int m
                     #else
                         mdebug1("Connection socket: %s (%d)", strerror(errno), errno);
                     #endif
-                    // Connection timeout, try to reconnect
+                    /* Connection timeout, try to reconnect */
                     if (connect_server(agt->rip_id)) {
                         send_msg(msg, -1);
                     }
@@ -424,12 +425,12 @@ static ssize_t receive_message_tcp(const char *msg, char *buffer, unsigned int m
 int try_enroll_to_server(const char * server_rip) {
     int enroll_result = w_enrollment_request_key(agt->enrollment_cfg, server_rip);
     if (enroll_result == 0) {
-        // Wait for key update on agent side
+        /* Wait for key update on agent side */
         mdebug1("Sleeping %d seconds to allow manager key file updates", agt->enrollment_cfg->delay_after_enrollment);
         sleep(agt->enrollment_cfg->delay_after_enrollment);
-        // Successfull enroll, read keys
+        /* Successfull enroll, read keys */
         OS_UpdateKeys(&keys);
-        // Set the crypto method for the agent
+        /* Set the crypto method for the agent */
         os_set_agent_crypto_method(&keys,agt->crypto_method);
     }
     return enroll_result;
