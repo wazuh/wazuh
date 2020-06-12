@@ -66,9 +66,21 @@ installElasticsearch() {
     ./searchguard/tools/sgtlstool.sh -c ./searchguard/search-guard.yml -ca -crt -t /etc/elasticsearch/certs/
     rm /etc/elasticsearch/certs/client-certificates.readme /etc/elasticsearch/certs/elasticsearch_elasticsearch_config_snippet.yml search-guard-tlstool-1.7.zip -f
 
+    # Start Elasticsearch
+    if [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
     systemctl daemon-reload
     systemctl enable elasticsearch.service
-    systemctl start elasticsearch.service
+    systemctl start elasticsearch.service    
+    systemctl start elasticsearch.service > /dev/null
+    elif [ -x /etc/rc.d/init.d/elasticsearch ] ; then
+    /etc/rc.d/init.d/elasticsearch start > /dev/null
+    elif [ -n "$(ps -e | egrep ^\ *1\ .*init$)" ]; then
+    chkconfig elasticsearch on
+    service elasticsearch start
+    /etc/init.d/elasticsearch start > /dev/null
+    else
+    echo "Error: Elasticsearch could not start"
+    fi
 
     cd /usr/share/elasticsearch/plugins/opendistro_security/tools/
     ./securityadmin.sh -cd ../securityconfig/ -nhnv -cacert /etc/elasticsearch/certs/root-ca.pem -cert /etc/elasticsearch/certs/admin.pem -key /etc/elasticsearch/certs/admin.key
@@ -85,9 +97,21 @@ installFilebeat() {
     cp /etc/elasticsearch/certs/root-ca.pem /etc/filebeat/certs/
     mv /etc/elasticsearch/certs/filebeat* /etc/filebeat/certs/
 
+    # Start Filebeat
+    if [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
     systemctl daemon-reload
     systemctl enable filebeat.service
-    systemctl start filebeat.service
+    systemctl start filebeat.service    
+    systemctl start filebeat.service > /dev/null
+    elif [ -x /etc/rc.d/init.d/filebeat ] ; then
+    /etc/rc.d/init.d/filebeat start > /dev/null
+    elif [ -n "$(ps -e | egrep ^\ *1\ .*init$)" ]; then
+    chkconfig filebeat on
+    service filebeat start
+    /etc/init.d/filebeat start > /dev/null
+    else
+    echo "Error: Filebeat could not start"
+    fi
 }
 
 ## Kibana
@@ -100,9 +124,21 @@ installKibana() {
     mv /etc/elasticsearch/certs/kibana* /etc/kibana/certs/
     setcap 'cap_net_bind_service=+ep' /usr/share/kibana/node/bin/node
 
+    # Start Kibana
+    if [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
     systemctl daemon-reload
     systemctl enable kibana.service
-    systemctl start kibana.service
+    systemctl start kibana.service    
+    systemctl start kibana.service > /dev/null
+    elif [ -x /etc/rc.d/init.d/kibana ] ; then
+    /etc/rc.d/init.d/kibana start > /dev/null
+    elif [ -n "$(ps -e | egrep ^\ *1\ .*init$)" ]; then
+    chkconfig kibana on
+    service kibana start
+    /etc/init.d/kibana start > /dev/null
+    else
+    echo "Error: Kibana could not start"
+    fi
 }
 
 checkInstallation() {
