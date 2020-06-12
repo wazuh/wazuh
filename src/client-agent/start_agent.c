@@ -315,47 +315,43 @@ static void w_agentd_keys_init (void) {
 static ssize_t receive_message_udp(const char *msg, char *buffer, unsigned int max_lenght) {
     int attempts = 0;
     ssize_t recv_b = 0;
-    int connected = 1;
-    while (attempts < 6) {
-        if (connected) {
-            if (attempts >= 3 || recv_b == OS_SOCKTERR )
-                send_msg(msg, -1);
-
-            sleep(attempts ? agt->enrollment_cfg->delay_after_enrollment/2 : 1);
-
-            /* Receive response */
-            recv_b = recv(agt->sock, buffer, max_lenght, MSG_DONTWAIT);
-
-            if (recv_b > 0) {
-                return recv_b;
-            }
-
-            switch (recv_b) {
-                case OS_SOCKTERR:
-                    merror("Corrupt payload (exceeding size) received.");
-                    break;
-                default:
-                    #ifdef WIN32
-                        mdebug1("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
-                    #else
-                        mdebug1("Connection socket: %s (%d)", strerror(errno), errno);
-                    #endif
-                    break;
-            }
-            /* Send message again (after three attempts) */
-            if (attempts >= 3 || recv_b == OS_SOCKTERR) {
-                if (attempts == 5 && agt->enrollment_cfg && agt->enrollment_cfg->enabled) { // Only one enrollment attemp
-                    try_enroll_to_server(agt->server[agt->rip_id].rip);
-                }
-                // After third attemp try reconnecting to socket
-                connected = connect_server(agt->rip_id);
-            }
-        } else {
-            connected = connect_server(agt->rip_id);
-            sleep(attempts);
-        }
-
+    
+    while (attempts < 6) {  
         attempts++;
+        sleep(attempts*2);
+
+        // Receive response
+        recv_b = recv(agt->sock, buffer, max_lenght, MSG_DONTWAIT);
+
+        // Successful response
+        if (recv_b > 0) {                
+            return recv_b;
+        }
+        // Error response
+        else { 
+            switch (recv_b) {
+            case OS_SOCKTERR:
+                merror("Corrupt payload (exceeding size) received.");
+                break;
+            default:
+                #ifdef WIN32
+                    mdebug1("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
+                #else
+                    mdebug1("Connection socket: %s (%d)", strerror(errno), errno);
+                #endif
+                break;
+            }
+            // Try to enroll on fifth attempt
+            if (attempts == 5 && agt->enrollment_cfg && agt->enrollment_cfg->enabled) {           
+                try_enroll_to_server(agt->server[agt->rip_id].rip);
+            }  
+            // Start retrying sending message after third attemp or OS_SOCKTERR
+            if (attempts >= 3 || recv_b == OS_SOCKTERR) {
+                if (connect_server(agt->rip_id)) {
+                    send_msg(msg, -1);  
+                } 
+            }                      
+        }
     }
     return 0;
 }
@@ -373,28 +369,37 @@ static ssize_t receive_message_udp(const char *msg, char *buffer, unsigned int m
 static ssize_t receive_message_tcp(const char *msg, char *buffer, unsigned int max_lenght) {
     ssize_t recv_b = 0;
     int attempts = 0;
-    bool enrollment_attemp = false;
-
-    while ((attempts <= 5) && (recv_b <= 0)) {
+    
+    while (attempts < 6) {
+        attempts++;
+        sleep(attempts*2);
         int sock = wnet_select(agt->sock, timeout);
         if (sock < 0) {
             merror(SELECT_ERROR, errno, strerror(errno));
-        } else if (sock > 0) {
+        } 
+        else if (sock > 0) {
+            // Receive response
             recv_b = OS_RecvSecureTCP(agt->sock, buffer, max_lenght);
 
+            //Successful response
+            if (recv_b > 0) {
+                return recv_b;
+            }   
+            
+            // Error response
             switch (recv_b) {
                 case OS_SOCKTERR:
                     merror("Corrupt payload (exceeding size) received.");
                     break;
                 case 0:
                     // Peer performed orderly shutdown (connection refused by manager)
-                    if (agt->enrollment_cfg && agt->enrollment_cfg->enabled && !enrollment_attemp) {
-                        if (try_enroll_to_server(agt->server[agt->rip_id].rip) == 0) {
-                            if (connect_server(agt->rip_id)) {
-                                send_msg(msg, -1);
-                            }
-                        }
-                        enrollment_attemp = true; // Only attemp enrolling once
+                    // Try to re enroll on fifth attempt
+                    if (agt->enrollment_cfg && agt->enrollment_cfg->enabled && attempts == 5) {
+                        try_enroll_to_server(agt->server[agt->rip_id].rip);                     
+                    }
+                    // Try to re send msg every time due to possible keys update delay on manager
+                    if (connect_server(agt->rip_id)) {
+                        send_msg(msg, -1);
                     }
                     break;
                 case -1:
@@ -410,12 +415,8 @@ static ssize_t receive_message_tcp(const char *msg, char *buffer, unsigned int m
                     break;
             }
         }
-        
-        attempts++;
-
-        
     }
-    return recv_b > 0 ? recv_b : 0;
+    return 0;
 }
 
 int try_enroll_to_server(const char * server_rip) {
