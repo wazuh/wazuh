@@ -82,6 +82,11 @@ installElasticsearch() {
     echo "Error: Elasticsearch could not start"
     fi
 
+    until $(curl -XGET https://localhost:9200/ -uadmin:admin -k --max-time 2 --silent --output /dev/null); do
+        echo "Waiting for Elasticsearch..."
+        sleep 2
+    done    
+
     cd /usr/share/elasticsearch/plugins/opendistro_security/tools/
     ./securityadmin.sh -cd ../securityconfig/ -nhnv -cacert /etc/elasticsearch/certs/root-ca.pem -cert /etc/elasticsearch/certs/admin.pem -key /etc/elasticsearch/certs/admin.key
 }
@@ -144,6 +149,10 @@ installKibana() {
 checkInstallation() {
     curl -XGET https://localhost:9200 -uadmin:admin -k
     filebeat test output
+    until [[ "$(curl https://localhost/status -I -uadmin:admin -k -s | grep HTTP)" == *"200"* ]]; do
+        echo "Waiting for Kibana..."
+        sleep 5
+    done    
 }
 
 main() {
