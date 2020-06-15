@@ -10,9 +10,6 @@
 /**
  * @file time_op.c
  * @brief Time operations
- * @author Vikman Fernandez-Castro
- * @author Jose Rafael Cenit
- * @author Pablo Navarro
  * @date October 4, 2017
  */
 
