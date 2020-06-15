@@ -97,7 +97,6 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
         }
         if(lf->generated_rule->mitre_id) {
             const char **mitre_cpy = (const char**)lf->generated_rule->mitre_id;
-            cJSON * name = NULL;
             cJSON * mitre = NULL;
             cJSON * tactic = NULL;
             cJSON * element = NULL;
@@ -132,8 +131,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
                         }
                     }
                     /* Filling technique array */
-                    name = cJSON_CreateString(data_mitre->technique_name);
-                    cJSON_AddItemToArray(mitre_technique_array, cJSON_Duplicate(name, 0));
+                    cJSON_AddItemToArray(mitre_technique_array, cJSON_CreateString(data_mitre->technique_name));
                 }
             }
             if (tactic_array_size = cJSON_GetArraySize(mitre_tactic_array), tactic_array_size > 0) {
