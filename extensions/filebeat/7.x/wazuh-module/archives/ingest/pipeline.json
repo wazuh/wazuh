@@ -3,18 +3,18 @@
   "processors": [
     { "json" : { "field" : "message", "add_to_root": true } },
     {
-      "grok": {
-        "field": "data.aws.awsRegion",
-        "patterns": ["(?<data.aws.region>.*)"],
-        "ignore_missing": true,
+      "set": {
+        "field": "data.aws.region",
+        "value": "{{data.aws.awsRegion}}",
+        "override": false,
         "ignore_failure": true
       }
     },
     {
-      "grok": {
-        "field": "data.aws.aws_account_id",
-        "patterns": ["(?<data.aws.accountId>.*)"],
-        "ignore_missing": true,
+      "set": {
+        "field": "data.aws.accountId",
+        "value": "{{data.aws.aws_account_id}}",
+        "override": false,
         "ignore_failure": true
       }
     },
