@@ -9,8 +9,8 @@
  */
 
 
-#ifndef ERRHANDLINGAPI_H
-#define ERRHANDLINGAPI_H
+#ifndef ERRHANDLINGAPI_WRAPPERS_H
+#define ERRHANDLINGAPI_WRAPPERS_H
 
 #include <windows.h>
 

@@ -9,8 +9,8 @@
  */
 
 
-#ifndef ACLAPI_H
-#define ACLAPI_H
+#ifndef ACLAPI_WRAPPERS_H
+#define ACLAPI_WRAPPERS_H
 
 #include <windows.h>
 #include <accctrl.h>

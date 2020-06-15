@@ -9,8 +9,8 @@
  */
 
 
-#ifndef HANDLEAPI_H
-#define HANDLEAPI_H
+#ifndef HANDLEAPI_WRAPPERS_H
+#define HANDLEAPI_WRAPPERS_H
 
 #include <windows.h>
 

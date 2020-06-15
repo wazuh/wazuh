@@ -9,8 +9,8 @@
  */
 
 
-#ifndef WINBASE_H
-#define WINBASE_H
+#ifndef WINBASE_WRAPPERS_H
+#define WINBASE_WRAPPERS_H
 
 #include <windows.h>
 

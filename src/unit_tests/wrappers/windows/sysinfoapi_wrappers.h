@@ -7,8 +7,9 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#ifndef SYSINFOAPI_H
-#define SYSINFOAPI_H
+
+#ifndef SYSINFOAPI_WRAPPERS_H
+#define SYSINFOAPI_WRAPPERS_H
 
 #include <windows.h>
 

@@ -11,8 +11,25 @@ if(${TARGET} STREQUAL "winagent")
 
   # Add test wrappers
   file(GLOB test_wrapper_files
-       ${SRC_FOLDER}/unit_tests/wrappers/syscheckd/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/shared/*.o
+       ${SRC_FOLDER}/unit_tests/wrappers/externals/*.o
+       ${SRC_FOLDER}/unit_tests/wrappers/externals/audit/*.o
+       ${SRC_FOLDER}/unit_tests/wrappers/externals/bzip2/*.o
+       ${SRC_FOLDER}/unit_tests/wrappers/externals/cJSON/*.o
+       ${SRC_FOLDER}/unit_tests/wrappers/externals/openssl/*.o
+       ${SRC_FOLDER}/unit_tests/wrappers/externals/procpc/*.o
+       ${SRC_FOLDER}/unit_tests/wrappers/externals/sqlite/*.o
+       ${SRC_FOLDER}/unit_tests/wrappers/libc/*.o
+       ${SRC_FOLDER}/unit_tests/wrappers/linux/*.o
+       ${SRC_FOLDER}/unit_tests/wrappers/posix/*.o
+       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/*.o
+       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/os_crypto/*.o
+       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/os_net/*.o
+       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/os_regex/*.o
+       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/*.o
+       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/syscheckd/*.o
+       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/wazuh_db/*.o
+       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/wazuh_modules/*.o
+       ${SRC_FOLDER}/unit_tests/wrappers/windows/*.o
        )
   list(APPEND sysfiles ${test_wrapper_files})
 endif()

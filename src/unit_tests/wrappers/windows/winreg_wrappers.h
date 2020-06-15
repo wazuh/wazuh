@@ -7,8 +7,9 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#ifndef WINREG_H
-#define WINREG_H
+
+#ifndef WINREG_WRAPPERS_H
+#define WINREG_WRAPPERS_H
 
 #include <windows.h>
 

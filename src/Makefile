@@ -971,6 +971,60 @@ os_net/%.o: os_net/%.c
 wrappers_common_c := $(wildcard unit_tests/wrappers/*.c)
 wrappers_common_o := $(wrappers_common_c:.c=.o)
 
+wrappers_externals_c := $(wildcard unit_tests/wrappers/externals/*.c)
+wrappers_externals_o := $(wrappers_externals_c:.c=.o)
+
+wrappers_externals_audit_c := $(wildcard unit_tests/wrappers/externals/audit/*.c)
+wrappers_externals_audit_o := $(wrappers_externals_audit_c:.c=.o)
+
+wrappers_externals_bzip2_c := $(wildcard unit_tests/wrappers/externals/bzip2/*.c)
+wrappers_externals_bzip2_o := $(wrappers_externals_bzip2_c:.c=.o)
+
+wrappers_externals_cJSON_c := $(wildcard unit_tests/wrappers/externals/cJSON/*.c)
+wrappers_externals_cJSON_o := $(wrappers_externals_cJSON_c:.c=.o)
+
+wrappers_externals_openssl_c := $(wildcard unit_tests/wrappers/externals/openssl/*.c)
+wrappers_externals_openssl_o := $(wrappers_externals_openssl_c:.c=.o)
+
+wrappers_externals_procpc_c := $(wildcard unit_tests/wrappers/externals/procpc/*.c)
+wrappers_externals_procpc_o := $(wrappers_externals_procpc_c:.c=.o)
+
+wrappers_externals_sqlite_c := $(wildcard unit_tests/wrappers/externals/sqlite/*.c)
+wrappers_externals_sqlite_o := $(wrappers_externals_sqlite_c:.c=.o)
+
+wrappers_libc_c := $(wildcard unit_tests/wrappers/libc/*.c)
+wrappers_libc_o := $(wrappers_libc_c:.c=.o)
+
+wrappers_linux_c := $(wildcard unit_tests/wrappers/linux/*.c)
+wrappers_linux_o := $(wrappers_linux_c:.c=.o)
+
+wrappers_posix_c := $(wildcard unit_tests/wrappers/posix/*.c)
+wrappers_posix_o := $(wrappers_posix_c:.c=.o)
+
+wrappers_wazuh_c := $(wildcard unit_tests/wrappers/wazuh/*.c)
+wrappers_wazuh_o := $(wrappers_wazuh_c:.c=.o)
+
+wrappers_wazuh_os_crypto_c := $(wildcard unit_tests/wrappers/wazuh/os_crypto/*.c)
+wrappers_wazuh_os_crypto_o := $(wrappers_wazuh_os_crypto_c:.c=.o)
+
+wrappers_wazuh_os_net_c := $(wildcard unit_tests/wrappers/wazuh/os_net/*.c)
+wrappers_wazuh_os_net_o := $(wrappers_wazuh_os_net_c:.c=.o)
+
+wrappers_wazuh_os_regex_c := $(wildcard unit_tests/wrappers/wazuh/os_regex/*.c)
+wrappers_wazuh_os_regex_o := $(wrappers_wazuh_os_regex_c:.c=.o)
+
+wrappers_wazuh_shared_c := $(wildcard unit_tests/wrappers/wazuh/shared/*.c)
+wrappers_wazuh_shared_o := $(wrappers_wazuh_shared_c:.c=.o)
+
+wrappers_wazuh_syscheckd_c := $(wildcard unit_tests/wrappers/wazuh/syscheckd/*.c)
+wrappers_wazuh_syscheckd_o := $(wrappers_wazuh_syscheckd_c:.c=.o)
+
+wrappers_wazuh_wazuh_db_c := $(wildcard unit_tests/wrappers/wazuh/wazuh_db/*.c)
+wrappers_wazuh_wazuh_db_o := $(wrappers_wazuh_wazuh_db_c:.c=.o)
+
+wrappers_wazuh_wazuh_modules_c := $(wildcard unit_tests/wrappers/wazuh/wazuh_modules/*.c)
+wrappers_wazuh_wazuh_modules_o := $(wrappers_wazuh_wazuh_modules_c:.c=.o)
+
 wrappers_windows_c := $(wildcard unit_tests/wrappers/windows/*.c)
 wrappers_windows_o := $(wrappers_windows_c:.c=.o)
 
@@ -980,9 +1034,30 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	OSSEC_LDFLAGS+=${CFLAGS_TEST}
 	OSSEC_LIBS+=${LIBS_TEST}
 
+
 UNIT_TEST_WRAPPERS:=${wrappers_common_o}
+UNIT_TEST_WRAPPERS+=${wrappers_externals_o}
+UNIT_TEST_WRAPPERS+=${wrappers_externals_audit_o}
+UNIT_TEST_WRAPPERS+=${wrappers_externals_bzip2_o}
+UNIT_TEST_WRAPPERS+=${wrappers_externals_cJSON_o}
+UNIT_TEST_WRAPPERS+=${wrappers_externals_openssl_o}
+UNIT_TEST_WRAPPERS+=${wrappers_externals_procpc_o}
+UNIT_TEST_WRAPPERS+=${wrappers_externals_sqlite_o}
+UNIT_TEST_WRAPPERS+=${wrappers_libc_o}
+UNIT_TEST_WRAPPERS+=${wrappers_posix_o}
+UNIT_TEST_WRAPPERS+=${wrappers_wazuh_o}
+UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_crypto_o}
+UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_net_o}
+UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_regex_o}
+UNIT_TEST_WRAPPERS+=${wrappers_wazuh_shared_o}
+UNIT_TEST_WRAPPERS+=${wrappers_wazuh_syscheckd_o}
+UNIT_TEST_WRAPPERS+=${wrappers_wazuh_wazuh_db_o}
+UNIT_TEST_WRAPPERS+=${wrappers_wazuh_wazuh_modules_o}
+
 ifeq (${TARGET},winagent)
 	UNIT_TEST_WRAPPERS+=${wrappers_windows_o}
+else
+	UNIT_TEST_WRAPPERS+=${wrappers_linux_o}
 endif
 endif #TEST
 
@@ -1597,11 +1672,62 @@ LIBS_TEST=-lcmocka
 unit_tests/wrappers/%.o: unit_tests/wrappers/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
-unit_tests/wrappers/syscheckd/%.o: unit_tests/wrappers/syscheckd/%.c
+unit_tests/wrappers/externals/%.o: unit_tests/wrappers/externals/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
-unit_tests/wrappers/shared/%.o: unit_tests/wrappers/shared/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+unit_tests/wrappers/externals/audit/%.o: unit_tests/wrappers/externals/audit/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
+unit_tests/wrappers/externals/bzip2/%.o: unit_tests/wrappers/externals/bzip2/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
+unit_tests/wrappers/externals/cJSON/%.o: unit_tests/wrappers/externals/cJSON/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
+unit_tests/wrappers/externals/openssl/%.o: unit_tests/wrappers/externals/openssl/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
+unit_tests/wrappers/externals/procpc/%.o: unit_tests/wrappers/externals/procpc/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
+unit_tests/wrappers/externals/sqlite/%.o: unit_tests/wrappers/externals/sqlite/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
+unit_tests/wrappers/libc/%.o: unit_tests/wrappers/libc/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
+unit_tests/wrappers/linux/%.o: unit_tests/wrappers/linux/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
+unit_tests/wrappers/posix/%.o: unit_tests/wrappers/posix/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
+unit_tests/wrappers/wazuh/%.o: unit_tests/wrappers/wazuh/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
+unit_tests/wrappers/wazuh/os_crypto/%.o: unit_tests/wrappers/wazuh/os_crypto/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
+unit_tests/wrappers/wazuh/os_net/%.o: unit_tests/wrappers/wazuh/os_net/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
+unit_tests/wrappers/wazuh/os_regex/%.o: unit_tests/wrappers/wazuh/os_regex/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
+unit_tests/wrappers/wazuh/shared/%.o: unit_tests/wrappers/wazuh/shared/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
+unit_tests/wrappers/wazuh/syscheckd/%.o: unit_tests/wrappers/wazuh/syscheckd/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
+unit_tests/wrappers/wazuh/wazuh_db/%.o: unit_tests/wrappers/wazuh/wazuh_db/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
+unit_tests/wrappers/wazuh/wazuh_modules/%.o: unit_tests/wrappers/wazuh/wazuh_modules/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
+unit_tests/wrappers/windows/%.o: unit_tests/wrappers/windows/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
 .PHONY: test run_valgrind_tests run_tests build_tests test_valgrind test_coverage
 
@@ -1805,8 +1931,26 @@ clean-internals: clean-unit-tests
 	rm -f ${SELINUX_POLICY}
 
 clean-unit-tests:
-	rm -f ${wrappers_windows_o}
 	rm -f ${wrappers_common_o}
+	rm -f ${wrappers_externals_o}
+	rm -f ${wrappers_externals_audit_o}
+	rm -f ${wrappers_externals_bzip2_o}
+	rm -f ${wrappers_externals_cJSON_o}
+	rm -f ${wrappers_externals_openssl_o}
+	rm -f ${wrappers_externals_procpc_o}
+	rm -f ${wrappers_externals_sqlite_o}
+	rm -f ${wrappers_libc_o}
+	rm -f ${wrappers_linux_o}
+	rm -f ${wrappers_posix_o}
+	rm -f ${wrappers_wazuh_o}
+	rm -f ${wrappers_wazuh_os_crypto_o}
+	rm -f ${wrappers_wazuh_os_net_o}
+	rm -f ${wrappers_wazuh_os_regex_o}
+	rm -f ${wrappers_wazuh_shared_o}
+	rm -f ${wrappers_wazuh_syscheckd_o}
+	rm -f ${wrappers_wazuh_wazuh_db_o}
+	rm -f ${wrappers_wazuh_wazuh_modules_o}
+	rm -f ${wrappers_windows_o}
 
 clean-framework:
 	${MAKE} -C ../framework clean

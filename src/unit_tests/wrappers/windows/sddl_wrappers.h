@@ -9,8 +9,8 @@
  */
 
 
-#ifndef SDDL_H
-#define SDDL_H
+#ifndef SDDL_WRAPPERS_H
+#define SDDL_WRAPPERS_H
 
 #include <windows.h>
 
