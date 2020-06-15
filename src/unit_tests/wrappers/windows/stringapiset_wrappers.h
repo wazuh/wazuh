@@ -7,8 +7,8 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#ifndef STRINGAPISET_H
-#define STRINGAPISET_H
+#ifndef STRINGAPISET_WRAPPERS_H
+#define STRINGAPISET_WRAPPERS_H
 
 #include <windows.h>
 

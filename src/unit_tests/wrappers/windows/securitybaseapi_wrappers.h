@@ -9,8 +9,8 @@
  */
 
 
-#ifndef SECURITYBASEAPI_H
-#define SECURITYBASEAPI_H
+#ifndef SECURITYBASEAPI_WRAPPERS_H
+#define SECURITYBASEAPI_WRAPPERS_H
 
 #include <windows.h>
 

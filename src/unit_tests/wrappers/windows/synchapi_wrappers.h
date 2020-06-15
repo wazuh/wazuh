@@ -9,8 +9,8 @@
  */
 
 
-#ifndef SYNCHAPI_H
-#define SYNCHAPI_H
+#ifndef SYNCHAPI_WRAPPERS_H
+#define SYNCHAPI_WRAPPERS_H
 
 #include <windows.h>
 

@@ -7,8 +7,8 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#ifndef HEAPAPI_H
-#define HEAPAPI_H
+#ifndef HEAPAPI_WRAPPERS_H
+#define HEAPAPI_WRAPPERS_H
 
 #include <windows.h>
 

@@ -9,8 +9,8 @@
  */
 
 
-#ifndef FILEAPI_H
-#define FILEAPI_H
+#ifndef FILEAPI_WRAPPERS_H
+#define FILEAPI_WRAPPERS_H
 
 #include <windows.h>
 

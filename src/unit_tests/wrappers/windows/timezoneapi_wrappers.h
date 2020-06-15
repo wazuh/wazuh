@@ -7,8 +7,9 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#ifndef TIMEZONEAPI_H
-#define TIMEZONEAPI_H
+
+#ifndef TIMEZONEAPI_WRAPPERS_H
+#define TIMEZONEAPI_WRAPPERS_H
 
 #include <windows.h>
 

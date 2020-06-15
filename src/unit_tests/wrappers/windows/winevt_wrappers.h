@@ -7,8 +7,9 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#ifndef WINEVT_H
-#define WINEVT_H
+
+#ifndef WINEVT_WRAPPERS_H
+#define WINEVT_WRAPPERS_H
 
 #include <windows.h>
 #include <winevt.h>

@@ -9,8 +9,8 @@
  */
 
 
-#ifndef PROCESSTHREADSAPI_H
-#define PROCESSTHREADSAPI_H
+#ifndef PROCESSTHREADSAPI_WRAPPERS_H
+#define PROCESSTHREADSAPI_WRAPPERS_H
 
 #include <windows.h>
 
