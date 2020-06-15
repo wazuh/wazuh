@@ -3,6 +3,22 @@
   "processors": [
     { "json" : { "field" : "message", "add_to_root": true } },
     {
+      "grok": {
+        "field": "data.aws.awsRegion",
+        "patterns": ["(?<data.aws.region>.*)"],
+        "ignore_missing": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "grok": {
+        "field": "data.aws.aws_account_id",
+        "patterns": ["(?<data.aws.accountId>.*)"],
+        "ignore_missing": true,
+        "ignore_failure": true
+      }
+    },
+    {
       "geoip": {
         "field": "data.srcip",
         "target_field": "GeoLocation",
