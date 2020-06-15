@@ -1490,7 +1490,8 @@ with open(os.path.join(default_path, "policies.yaml"), 'r') as stream:
 
     with PoliciesManager() as pm:
         for d_policy_name, payload in default_policies[next(iter(default_policies))].items():
-            pm.add_policy(name=d_policy_name, policy=payload['policy'])
+            for name, policy in payload['policies'].items():
+                pm.add_policy(name=f'{d_policy_name}_{name}', policy=policy)
 
 # Create the relationships
 with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:
@@ -1506,5 +1507,7 @@ with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:
     with RolesPoliciesManager() as rpm:
         for d_role_name, payload in default_relationships[next(iter(default_relationships))]['roles'].items():
             for d_policy_name in payload['policy_ids']:
-                rpm.add_policy_to_role(role_id=rm.get_role(name=d_role_name)['id'],
-                                       policy_id=pm.get_policy(name=d_policy_name)['id'], force_admin=True)
+                for sub_name in default_policies[next(iter(default_policies))][d_policy_name]['policies'].keys():
+                    rpm.add_policy_to_role(role_id=rm.get_role(name=d_role_name)['id'],
+                                           policy_id=pm.get_policy(name=f'{d_policy_name}_{sub_name}')['id'],
+                                           force_admin=True)
