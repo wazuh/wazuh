@@ -76,11 +76,11 @@ int main(int argc, char ** argv) {
 
     // Read internal options
 
-    config.sock_queue_size = getDefine_Int("wazuh_db", "sock_queue_size", 1, 1024);
-    config.worker_pool_size = getDefine_Int("wazuh_db", "worker_pool_size", 1, 32);
-    config.commit_time_min = getDefine_Int("wazuh_db", "commit_time_min", 1, 3600);
-    config.commit_time_max = getDefine_Int("wazuh_db", "commit_time_max", 1, 3600);
-    config.open_db_limit = getDefine_Int("wazuh_db", "open_db_limit", 1, 4096);
+    wconfig.sock_queue_size = getDefine_Int("wazuh_db", "sock_queue_size", 1, 1024);
+    wconfig.worker_pool_size = getDefine_Int("wazuh_db", "worker_pool_size", 1, 32);
+    wconfig.commit_time_min = getDefine_Int("wazuh_db", "commit_time_min", 1, 3600);
+    wconfig.commit_time_max = getDefine_Int("wazuh_db", "commit_time_max", 1, 3600);
+    wconfig.open_db_limit = getDefine_Int("wazuh_db", "open_db_limit", 1, 4096);
     nofile = getDefine_Int("wazuh_db", "rlimit_nofile", 1024, 1048576);
 
     if (!isDebug()) {
@@ -180,9 +180,9 @@ int main(int argc, char ** argv) {
         goto failure;
     }
 
-    os_malloc(sizeof(pthread_t) * config.worker_pool_size, worker_pool);
+    os_malloc(sizeof(pthread_t) * wconfig.worker_pool_size, worker_pool);
 
-    for (i = 0; i < config.worker_pool_size; i++) {
+    for (i = 0; i < wconfig.worker_pool_size; i++) {
         if (status = pthread_create(worker_pool + i, NULL, run_worker, NULL), status != 0) {
             merror("Couldn't create thread: %s", strerror(status));
             goto failure;
@@ -203,7 +203,7 @@ int main(int argc, char ** argv) {
 
     pthread_join(thread_dealer, NULL);
 
-    for (i = 0; i < config.worker_pool_size; i++) {
+    for (i = 0; i < wconfig.worker_pool_size; i++) {
         pthread_join(worker_pool[i], NULL);
     }
 

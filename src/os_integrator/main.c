@@ -12,7 +12,6 @@
 #include "integrator.h"
 #include "shared.h"
 
-IntegratorConfig **integrator_config;
 
 void help(const char *prog)
 {

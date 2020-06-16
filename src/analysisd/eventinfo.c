@@ -22,7 +22,6 @@ int alert_only;
 #define OS_COMMENT_MAX 1024
 
 EventList *last_events_list;
-int num_rule_matching_threads;
 time_t current_time = 0;
 
 size_t field_offset[] = {
@@ -45,7 +44,7 @@ size_t field_offset[] = {
     offsetof(Eventinfo, location)
 };
 
-// Function to check for repetitions from same fields 
+// Function to check for repetitions from same fields
 
 bool same_loop(RuleInfo *rule, Eventinfo *lf, Eventinfo *my_lf) {
     int i;
@@ -65,7 +64,7 @@ bool same_loop(RuleInfo *rule, Eventinfo *lf, Eventinfo *my_lf) {
     return TRUE;
 }
 
-// Function to check for repetitions from different fields 
+// Function to check for repetitions from different fields
 
 bool different_loop(RuleInfo *rule, Eventinfo *lf, Eventinfo *my_lf) {
     int i;

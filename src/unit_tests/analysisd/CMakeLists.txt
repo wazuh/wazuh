@@ -3,7 +3,8 @@ file(GLOB analysisd_files
     ${SRC_FOLDER}/analysisd/*.o
     ${SRC_FOLDER}/analysisd/cdb/*.o
     ${SRC_FOLDER}/analysisd/decoders/*.o
-    ${SRC_FOLDER}/analysisd/decoders/plugins/*.o)
+    ${SRC_FOLDER}/analysisd/decoders/plugins/*.o
+    ${SRC_FOLDER}/analysisd/compiled_rules/*.o)
 
 add_library(ANALYSISD_O STATIC ${analysisd_files})
 
