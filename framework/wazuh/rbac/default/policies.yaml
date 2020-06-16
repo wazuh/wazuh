@@ -172,6 +172,16 @@ default_policies:
           - agent:id:*
         effect: allow
 
+  syscollector_read:
+    description: Allow read agents information
+    policies:
+      syscollector:
+        actions:
+          - syscollector:read
+        resources:
+          - agent:id:*
+        effect: allow
+
   cluster_all:
     description: Provide full access to all cluster/manager related functionalities.
     policies:
