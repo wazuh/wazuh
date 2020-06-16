@@ -6,7 +6,7 @@
 -->
 
 <!-- ID: 87000 - 87100 -->
-<group name="cylance">
+<group name="cylance,">
     <rule id="87000" level="0">
         <decoded_as>cylance_events</decoded_as>
         <description>Cylance events messages grouped.</description>

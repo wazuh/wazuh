@@ -70,6 +70,13 @@ typedef struct fim_tmp_file {
     int elements;
 } fim_tmp_file;
 
+
+#ifdef WIN32
+/* Flags to know if a directory/file's watcher has been removed */
+#define FIM_RT_HANDLE_CLOSED 0
+#define FIM_RT_HANDLE_OPEN 1
+#endif
+
 /* Win32 does not have lstat */
 #ifdef WIN32
     #define w_stat(x, y) stat(x, y)
@@ -281,10 +288,11 @@ void check_deleted_files();
  * @param type Type of event: added, deleted or modified.
  * @param mode Event source.
  * @param w_evt Audit data structure.
+ * @param diff File diff if applicable.
  * @return File event JSON object.
  * @retval NULL No changes detected. Do not send an event.
  */
-cJSON *fim_json_event(char *file_name, fim_entry_data *old_data, fim_entry_data *new_data, int pos, unsigned int type, fim_event_mode mode, whodata_evt *w_evt);
+cJSON *fim_json_event(char *file_name, fim_entry_data *old_data, fim_entry_data *new_data, int pos, unsigned int type, fim_event_mode mode, whodata_evt *w_evt, const char *diff);
 
 /**
  * @brief Frees the memory of a FIM entry data structure
@@ -345,7 +353,7 @@ void free_syscheck_dirtb_data(char *data);
 
 /**
  * @brief Deletes subdirectories watches when a folder changes its name
- * 
+ *
  * @param dir Directory whose subdirectories need to delete their watches
  */
 
@@ -353,7 +361,7 @@ void delete_subdirectories_watches(char *dir);
 
 /**
  * @brief Count inotify watches
- * 
+ *
  * @return Number of inotify watches
  */
 unsigned int count_watches();

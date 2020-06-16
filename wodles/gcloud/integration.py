@@ -80,7 +80,7 @@ class WazuhGCloudSubscriber:
         :param msg: Message to be formatted
         """
         # Insert msg as value of self.key_name key.
-        return f'{{"{self.key_name}": {msg}}}'
+        return f'{{"integration": "gcp", "{self.key_name}": {msg}}}'
 
     def process_message(self, ack_id: str, data: bytes):
         """Send a message to Wazuh queue.
@@ -127,7 +127,7 @@ class WazuhGCloudSubscriber:
         """
         processed_messages = 0
         response = self.pull_request(max_messages)
-        while len(response.received_messages) > 0:
+        while len(response.received_messages) > 0 and processed_messages < max_messages:
             for message in response.received_messages:
                 message_data: bytes = message.message.data
                 if logger.getEffectiveLevel() == logging.DEBUG:
@@ -135,6 +135,6 @@ class WazuhGCloudSubscriber:
                 self.process_message(message.ack_id, message_data)
                 processed_messages += 1  # increment processed_messages counter
             # get more messages
-            response = self.pull_request(max_messages)
-
+            if processed_messages < max_messages:
+                response = self.pull_request(max_messages - processed_messages)
         return processed_messages

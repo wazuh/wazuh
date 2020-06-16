@@ -334,6 +334,9 @@
     <if_sid>24030</if_sid>
     <field name="osquery.name">suid_bin</field>
     <description>osquery: $(osquery.pack) $(osquery.subquery): File $(osquery.columns.path) has setuid enabled</description>
+    <mitre>
+      <id>T1166</id>
+    </mitre>
     <group>incident_response,</group>
     <options>no_full_log</options>
   </rule>
