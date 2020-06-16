@@ -12,8 +12,8 @@ ID: 65000 - 65499
     <!-- GCP wodle -->
     <rule id="65000" level="0">
         <decoded_as>json</decoded_as>
-        <field name="gcp.resource.labels.project_id">\.+</field>
-        <description>Google Cloud Pub/Sub alert</description>
+        <field name="integration">gcp</field>
+        <description>GCP alert.</description>
         <options>no_full_log</options>
     </rule>
 
