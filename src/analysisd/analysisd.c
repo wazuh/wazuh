@@ -1947,7 +1947,9 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
     #ifdef PRELUDE_OUTPUT_ENABLED
                 /* Log to prelude */
                 if (Config.prelude) {
-                    if (Config.prelude_log_level <= currently_rule->level) {
+                    RuleInfo *rule = lf->generated_rule;
+
+                    if (rule && Config.prelude_log_level <= rule->level) {
                         OS_PreludeLog(lf);
                     }
                 }
