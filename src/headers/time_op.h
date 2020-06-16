@@ -10,9 +10,6 @@
 /**
  * @file time_op.h
  * @brief Time operations header file
- * @author Vikman Fernandez-Castro
- * @author Jose Rafael Cenit
- * @author Pablo Navarro
  * @date October 4, 2017
  */
 
@@ -48,7 +45,21 @@ void time_sub(struct timespec * a, const struct timespec * b);
  */
 double time_diff(const struct timespec * a, const struct timespec * b);
 
-char *w_get_timestamp(time_t time);
+char *w_get_timestamp(const time_t time);
+
+/**
+ * @brief Takes sleeps of 1 second until the input time is reached
+ *
+ * @param time time until which the thread will sleep
+ * */
+void w_sleep_until(time_t abs_time);
+
+/**
+* @brief Sleep function for Windows and Unix (milliseconds)
+*
+* @param ms sleep time in miliseconds
+*/
+void w_time_delay(unsigned long int ms);
 
 #ifdef WIN32
 
@@ -68,5 +79,13 @@ long long int get_windows_time_epoch();
 long long int get_windows_file_time_epoch(FILETIME ft);
 
 #endif
+
+/**
+ * @brief Function to check if a year is a leap year or not.
+ *
+ * @param year Year to check.
+ * @return Boolean indicating whether the year is leap.
+ */
+bool is_leap_year(int year);
 
 #endif // TIME_OP_H

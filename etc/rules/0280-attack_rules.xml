@@ -19,7 +19,7 @@
     <mitre>
       <id>T1078</id>
     </mitre>
-    <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+    <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="40102" level="14">
@@ -28,7 +28,7 @@
     <mitre>
       <id>T1210</id>
     </mitre>
-    <group>exploit_attempt,pci_dss_6.2,pci_dss_6.5.2,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.2,nist_800_53_SA.11,nist_800_53_SI.4,</group>
+    <group>exploit_attempt,pci_dss_6.2,pci_dss_6.5.2,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.2,nist_800_53_SA.11,nist_800_53_SI.4,tsc_CC6.8,tsc_CC6.6,tsc_CC7.1,tsc_CC6.1,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="40103" level="14">
@@ -37,7 +37,7 @@
     <mitre>
       <id>T1210</id>
     </mitre>
-    <group>exploit_attempt,pci_dss_6.2,pci_dss_6.5.2,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.2,nist_800_53_SA.11,nist_800_53_SI.4,</group>
+    <group>exploit_attempt,pci_dss_6.2,pci_dss_6.5.2,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.2,nist_800_53_SA.11,nist_800_53_SI.4,tsc_CC6.8,tsc_CC6.6,tsc_CC7.1,tsc_CC6.1,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="40104" level="13">
@@ -46,7 +46,7 @@
     <mitre>
       <id>T1499</id>
     </mitre>
-    <group>exploit_attempt,pci_dss_6.2,pci_dss_6.5.2,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.2,nist_800_53_SA.11,nist_800_53_SI.4,</group>
+    <group>exploit_attempt,pci_dss_6.2,pci_dss_6.5.2,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.2,nist_800_53_SA.11,nist_800_53_SI.4,tsc_CC6.8,tsc_CC6.6,tsc_CC7.1,tsc_CC6.1,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="40105" level="12">
@@ -55,7 +55,7 @@
     <mitre>
       <id>T1098</id>
     </mitre>
-    <group>exploit_attempt,pci_dss_10.2.7,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AU.6,nist_800_53_SI.4,</group>
+    <group>exploit_attempt,pci_dss_10.2.7,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,</group>
   </rule>
 
   <rule id="40106" level="12">
@@ -64,7 +64,7 @@
     <mitre>
       <id>T1499</id>
     </mitre>
-    <group>exploit_attempt,pci_dss_6.2,pci_dss_6.5.2,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.2,nist_800_53_SA.11,nist_800_53_SI.4,</group>
+    <group>exploit_attempt,pci_dss_6.2,pci_dss_6.5.2,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.2,nist_800_53_SA.11,nist_800_53_SI.4,tsc_CC6.8,tsc_CC6.6,tsc_CC7.1,tsc_CC6.1,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="40107" level="14">
@@ -74,7 +74,7 @@
     <mitre>
       <id>T1210</id>
     </mitre>
-    <group>exploit_attempt,pci_dss_6.2,pci_dss_6.5.2,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.2,nist_800_53_SA.11,nist_800_53_SI.4,</group>
+    <group>exploit_attempt,pci_dss_6.2,pci_dss_6.5.2,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.2,nist_800_53_SA.11,nist_800_53_SI.4,tsc_CC6.8,tsc_CC6.6,tsc_CC7.1,tsc_CC6.1,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="40109" level="12">
@@ -85,7 +85,7 @@
     <mitre>
       <id>T1499</id>
     </mitre>
-    <group>exploit_attempt,pci_dss_6.2,pci_dss_6.5.2,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.2,nist_800_53_SA.11,nist_800_53_SI.4,</group>
+    <group>exploit_attempt,pci_dss_6.2,pci_dss_6.5.2,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.2,nist_800_53_SA.11,nist_800_53_SI.4,tsc_CC6.8,tsc_CC6.6,tsc_CC7.1,tsc_CC6.1,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="40111" level="10" frequency="12" timeframe="160">
@@ -95,7 +95,7 @@
     <mitre>
       <id>T1110</id>
     </mitre>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="40112" level="12" timeframe="240">
@@ -108,13 +108,13 @@
       <id>T1078</id>
       <id>T1110</id>
     </mitre>
-    <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,</group>
+    <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="40113" level="12" frequency="8" timeframe="360">
     <if_matched_group>virus</if_matched_group>
     <description>Multiple viruses detected - Possible outbreak.</description>
-    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,nist_800_53_SI.3,nist_800_53_SI.4,</group>
+    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,nist_800_53_SI.3,nist_800_53_SI.4,tsc_A1.2,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
 </group>
@@ -132,7 +132,7 @@
       <id>T1136</id>
       <id>T1203</id>
     </mitre>
-    <group>pci_dss_10.2.7,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AU.6,nist_800_53_SI.4,</group>
+    <group>pci_dss_10.2.7,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,</group>
   </rule>
 </group>
 
@@ -146,6 +146,6 @@
     <mitre>
       <id>T1046</id>
     </mitre>
-    <group>pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,</group>
+    <group>pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 </group>

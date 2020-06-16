@@ -239,6 +239,7 @@ int main(int argc, char **argv)
                 mwarn(FIM_WARN_REALTIME_DISABLED, syscheck.dir[r]);
 #endif
             }
+
             r++;
         }
     }

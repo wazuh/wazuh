@@ -172,10 +172,10 @@ int wdb_open_global();
 
 /**
  * @brief Open mitre database and store in DB poll.
- * 
+ *
  * It is opened every time a query to Mitre database is done.
- * 
- * @return wdb_t* Database Structure that store mitre database or NULL on failure. 
+ *
+ * @return wdb_t* Database Structure that store mitre database or NULL on failure.
  */
 wdb_t * wdb_open_mitre();
 

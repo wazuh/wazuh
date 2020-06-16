@@ -358,6 +358,7 @@ int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
 
                 pattern = _rkcl_get_pattern(value);
                 f_value = value;
+                assert(f_value != NULL);
 
                 /* Get any variable */
                 if (value[0] == '$') {
