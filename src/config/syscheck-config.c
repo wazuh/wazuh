@@ -784,6 +784,14 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 #else
         strncpy(real_path, tmp_dir, PATH_MAX);
 #endif
+
+        // Remove any trailling path separators
+        int path_length = strlen(real_path);
+        tmp_str = real_path + path_length - 1;
+        if (*tmp_str == PATH_SEP && path_length != 1) {
+            *tmp_str = '\0';
+        }
+
         /* Check for glob */
         /* The mingw32 builder used by travis.ci can't find glob.h
          * Yet glob must work on actual win32.
@@ -1012,9 +1020,9 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         /* Get directories */
         else if (strcmp(node[i]->element, xml_directories) == 0) {
             char dirs[OS_MAXSTR];
+#ifdef WIN32
             char *ptfile;
 
-#ifdef WIN32
             str_lowercase(node[i]->content);
             /* Change backslashes to forwardslashes on entry */
             ptfile = strchr(node[i]->content, '/');
@@ -1024,14 +1032,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
                 ptfile = strchr(ptfile, '/');
             }
-#endif
-            int path_lenght = strlen(node[i]->content);
-            ptfile = node[i]->content + path_lenght - 1;
-            if (*ptfile == '/' && path_lenght != 1) {
-                *ptfile = '\0';
-            }
 
-#ifdef WIN32
             if(!ExpandEnvironmentStrings(node[i]->content, dirs, sizeof(dirs) - 1)){
                 merror("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
                 continue;
