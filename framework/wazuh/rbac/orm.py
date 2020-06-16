@@ -781,7 +781,7 @@ class PoliciesManager:
                     if isinstance(policy['actions'], list) and isinstance(policy['resources'], list) \
                             and isinstance(policy['effect'], str):
                         # Regular expression that prevents the creation of invalid policies
-                        regex = r'^[a-z_*]+:[a-z0-9_*]+([:|&]{0,1}[a-z0-9_*]+)*$'
+                        regex = r'^[a-z_\-*]+:[a-z0-9_\-*]+([:|&]{0,1}[a-z0-9_\-*]+)*$'
                         for action in policy['actions']:
                             if not re.match(regex, action):
                                 return SecurityError.INVALID

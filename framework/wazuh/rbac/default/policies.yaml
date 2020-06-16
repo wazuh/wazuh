@@ -52,7 +52,7 @@ default_policies:
     policies:
       agents:
         actions:
-          - active_response:send_command
+          - active-response:command
         resources:
           - agent:id:*
         effect: allow
