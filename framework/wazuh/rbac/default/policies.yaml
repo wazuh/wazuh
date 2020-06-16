@@ -130,6 +130,16 @@ default_policies:
           - '*:*:*'
         effect: allow
 
+  lists_read:
+    description: Allow read all lists paths in the system.
+    policies:
+      rules:
+        actions:
+          - lists:read
+        resources:
+          - list:path:*
+        effect: allow
+
   rules_read:
     description: Allow read all rule files in the system.
     policies:
@@ -138,6 +148,28 @@ default_policies:
           - rules:read
         resources:
           - rule:file:*
+        effect: allow
+
+  syscheck_read:
+    description: Allow read syscheck information
+    policies:
+      syscheck:
+        actions:
+          - syscheck:read
+        resources:
+          - agent:id:*
+        effect: allow
+
+  syscheck_all:
+    description: Allow read, run and clear syscheck information
+    policies:
+      syscheck:
+        actions:
+          - syscheck:clear
+          - syscheck:read
+          - syscheck:run
+        resources:
+          - agent:id:*
         effect: allow
 
   cluster_all:
