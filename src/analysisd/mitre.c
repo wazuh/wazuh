@@ -40,32 +40,10 @@ int mitre_load(char * mode){
     os_calloc(OS_SIZE_6144, sizeof(char), response);
 
     snprintf(wazuhdb_query, OS_SIZE_6144, "mitre sql SELECT id from attack;");
-    result = wdbc_query_ex(&sock, wazuhdb_query, response, OS_SIZE_6144);
+    root = wdbc_query_parse_json(&sock, wazuhdb_query, response, OS_SIZE_6144);
 
-    switch (result) {
-    case -2:
-        merror("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
-        goto end;
-    case -1:
-        merror("No response from wazuh-db.");
-        goto end;
-    }
-
-    switch (wdbc_parse_result(response, &arg)) {
-    case WDBC_OK:
-        break;
-    case WDBC_ERROR:
-        merror("Bad response from wazuh-db: %s", arg);
-        // Fallthrough
-    default:
-        result = -1;
-        goto end;
-    }
-
-    /* Parse IDs string */
-    const char *jsonErrPtr;
-    if (root = cJSON_ParseWithOpts(response+3, &jsonErrPtr, 0), !root) {
-        merror("Response from the Mitre database cannot be parsed: '%s'", response);
+    if (!root) {
+        merror("Response from the Mitre database cannot be parsed.");
         result = -1;
         goto end;
     }
@@ -89,32 +67,12 @@ int mitre_load(char * mode){
 
         /* Consulting Mitre's database to get Tactics */
         snprintf(wazuhdb_query, OS_SIZE_6144, "mitre sql SELECT phase_name FROM has_phase WHERE attack_id = '%s';", ext_id);
-        result = wdbc_query_ex(&sock, wazuhdb_query, response, OS_SIZE_6144);
-
-        switch (result) {
-        case -2:
-            merror("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
-            goto end;
-        case -1:
-            merror("No response from wazuh-db.");
-            goto end;
-        }
-
-        switch (wdbc_parse_result(response, &arg)) {
-        case WDBC_OK:
-            break;
-        case WDBC_ERROR:
-            merror("Bad response from wazuh-db: %s", arg);
-            // Fallthrough
-        default:
-            result = -1;
-            goto end;
-        }
+        tactics_json = wdbc_query_parse_json(&sock, wazuhdb_query, response, OS_SIZE_6144);
 
         /* Getting tactics from Mitre's database in Wazuh-DB */
         tactics_array = cJSON_CreateArray();
-        if (tactics_json = cJSON_ParseWithOpts(response+3, &jsonErrPtr, 0), !tactics_json) {
-            merror("Response from the Mitre database cannot be parsed: '%s'", response);
+        if (!tactics_json) {
+            merror("Response from the Mitre database cannot be parsed.");
             result = -1;
             goto end;
         }
