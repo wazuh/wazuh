@@ -65,7 +65,7 @@ void test_queryid_no_response(void **state)
 
     will_return(__wrap_wdbc_query_ex, -1);
     will_return(__wrap_wdbc_query_ex, -1);
-    expect_string(__wrap__merror, formatted_msg, "No response or bad response from wazuh-db: ''");
+    expect_string(__wrap__merror, formatted_msg, "No response from wazuh-db.");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
     ret = mitre_load("test");
@@ -77,12 +77,12 @@ void test_queryid_bad_response(void **state)
     (void) state;
     int ret;
 
-    char *response_ids = "Bad response";
+    char *response_ids = "err not found";
     will_return(__wrap_wdbc_query_ex, 0);
     will_return(__wrap_wdbc_query_ex, response_ids);
-    will_return(__wrap_wdbc_query_ex, -1);
+    will_return(__wrap_wdbc_query_ex, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "No response or bad response from wazuh-db: 'Bad response'");
+    expect_string(__wrap__merror, formatted_msg, "Bad response from wazuh-db: not found");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
     ret = mitre_load("test");
@@ -94,12 +94,12 @@ void test_queryid_error_parse(void **state)
     (void) state;
     int ret;
 
-    char *response_ids = " ";
+    char *response_ids = "ok [";
     will_return(__wrap_wdbc_query_ex, 0);
     will_return(__wrap_wdbc_query_ex, response_ids);
     will_return(__wrap_wdbc_query_ex, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "Response from the Mitre database cannot be parsed: ' '");
+    expect_string(__wrap__merror, formatted_msg, "Response from the Mitre database cannot be parsed: 'ok'");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
     ret = mitre_load("test");
@@ -178,7 +178,7 @@ void test_querytactics_no_response(void **state)
     will_return(__wrap_wdbc_query_ex, -1);
     will_return(__wrap_wdbc_query_ex, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "No response or bad response from wazuh-db: 'ok [{\"id\":\"T1001\"},{\"id\":\"T1002\"}]'");
+    expect_string(__wrap__merror, formatted_msg, "No response from wazuh-db.");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
     ret = mitre_load("test");
@@ -191,7 +191,7 @@ void test_querytactics_bad_response(void **state)
     int ret;
 
     char *response_ids = "ok [{\"id\":\"T1001\"},{\"id\":\"T1002\"}]";
-    char *response_tactics = "Bad response";
+    char *response_tactics = "err not found";
     /* Mitre's techniques IDs query */
     will_return(__wrap_wdbc_query_ex, 0);
     will_return(__wrap_wdbc_query_ex, response_ids);
@@ -200,9 +200,9 @@ void test_querytactics_bad_response(void **state)
     /* Mitre's tactics query */
     will_return(__wrap_wdbc_query_ex, 0);
     will_return(__wrap_wdbc_query_ex, response_tactics);
-    will_return(__wrap_wdbc_query_ex, -1);
+    will_return(__wrap_wdbc_query_ex, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "No response or bad response from wazuh-db: 'Bad response'");
+    expect_string(__wrap__merror, formatted_msg, "Bad response from wazuh-db: not found");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
     ret = mitre_load("test");
@@ -215,7 +215,7 @@ void test_querytactics_error_parse(void **state)
     int ret;
 
     char *response_ids = "ok [{\"id\":\"T1001\"},{\"id\":\"T1002\"}]";
-    char *response_tactics = " ";
+    char *response_tactics = "ok [";
     /* Mitre's techniques IDs query */
     will_return(__wrap_wdbc_query_ex, 0);
     will_return(__wrap_wdbc_query_ex, response_ids);
@@ -226,7 +226,7 @@ void test_querytactics_error_parse(void **state)
     will_return(__wrap_wdbc_query_ex, response_tactics);
     will_return(__wrap_wdbc_query_ex, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "It was not possible to get MITRE tactics information.");
+    expect_string(__wrap__merror, formatted_msg, "Response from the Mitre database cannot be parsed: 'ok'");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
     ret = mitre_load("test");
@@ -327,7 +327,7 @@ void test_queryname_no_response(void **state) {
     will_return(__wrap_wdbc_query_ex, -1);
     will_return(__wrap_wdbc_query_ex, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "No response or bad response from wazuh-db: 'ok [{\"phase_name\":\"Command And Control\"}]'");
+    expect_string(__wrap__merror, formatted_msg, "No response from wazuh-db.");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
     ret = mitre_load("test");
@@ -351,10 +351,10 @@ void test_queryname_bad_response(void **state) {
 
     /* Mitre technique's name query */
     will_return(__wrap_wdbc_query_ex, 0);
-    will_return(__wrap_wdbc_query_ex, "Bad response");
-    will_return(__wrap_wdbc_query_ex, -1);
+    will_return(__wrap_wdbc_query_ex, "err not found");
+    will_return(__wrap_wdbc_query_ex, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "No response or bad response from wazuh-db: 'Bad response'");
+    expect_string(__wrap__merror, formatted_msg, "Bad response from wazuh-db: not found");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
     ret = mitre_load("test");
@@ -379,7 +379,7 @@ void test_querytactics_repeated_id(void **state)
 
     /* Mitre technique's name query */
     will_return(__wrap_wdbc_query_ex, 0);
-    will_return(__wrap_wdbc_query_ex, "Data Obfuscation");
+    will_return(__wrap_wdbc_query_ex, "ok Data Obfuscation");
     will_return(__wrap_wdbc_query_ex, 0);
 
     /* Mitre's tactics query */
@@ -389,7 +389,7 @@ void test_querytactics_repeated_id(void **state)
 
     /* Mitre technique's name query */
     will_return(__wrap_wdbc_query_ex, 0);
-    will_return(__wrap_wdbc_query_ex, "Data Obfuscation");
+    will_return(__wrap_wdbc_query_ex, "ok Data Obfuscation");
     will_return(__wrap_wdbc_query_ex, 0);
 
     ret = mitre_load("test");
@@ -414,7 +414,7 @@ void test_querytactics_success(void **state)
 
     /* Mitre technique's name query */
     will_return(__wrap_wdbc_query_ex, 0);
-    will_return(__wrap_wdbc_query_ex, "Data Obfuscation");
+    will_return(__wrap_wdbc_query_ex, "ok Data Obfuscation");
     will_return(__wrap_wdbc_query_ex, 0);
 
     will_return(__wrap_wdbc_query_ex, 0);
@@ -423,7 +423,7 @@ void test_querytactics_success(void **state)
 
     /* Mitre technique's name query */
     will_return(__wrap_wdbc_query_ex, 0);
-    will_return(__wrap_wdbc_query_ex, "Data Compressed");
+    will_return(__wrap_wdbc_query_ex, "ok Data Compressed");
     will_return(__wrap_wdbc_query_ex, 0);
 
     ret = mitre_load("test");

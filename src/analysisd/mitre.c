@@ -22,6 +22,7 @@ int mitre_load(char * mode){
     char *wazuhdb_query = NULL;
     char *response = NULL;
     char *ext_id = NULL;
+    char * arg = NULL;
     cJSON *root = NULL;
     cJSON *ids = NULL;
     cJSON *id = NULL;
@@ -39,13 +40,25 @@ int mitre_load(char * mode){
     os_calloc(OS_SIZE_6144, sizeof(char), response);
 
     snprintf(wazuhdb_query, OS_SIZE_6144, "mitre sql SELECT id from attack;");
-    if (result = wdbc_query_ex(&sock, wazuhdb_query, response, OS_SIZE_6144), result == -2) {
+    result = wdbc_query_ex(&sock, wazuhdb_query, response, OS_SIZE_6144);
+
+    switch (result) {
+    case -2:
         merror("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
+        goto end;
+    case -1:
+        merror("No response from wazuh-db.");
         goto end;
     }
 
-    if (result == -1) {
-        merror("No response or bad response from wazuh-db: '%s'", response);
+    switch (wdbc_parse_result(response, &arg)) {
+    case WDBC_OK:
+        break;
+    case WDBC_ERROR:
+        merror("Bad response from wazuh-db: %s", arg);
+        // Fallthrough
+    default:
+        result = -1;
         goto end;
     }
 
@@ -76,13 +89,25 @@ int mitre_load(char * mode){
 
         /* Consulting Mitre's database to get Tactics */
         snprintf(wazuhdb_query, OS_SIZE_6144, "mitre sql SELECT phase_name FROM has_phase WHERE attack_id = '%s';", ext_id);
-        if (result = wdbc_query_ex(&sock, wazuhdb_query, response, OS_SIZE_6144), result == -2) {
+        result = wdbc_query_ex(&sock, wazuhdb_query, response, OS_SIZE_6144);
+
+        switch (result) {
+        case -2:
             merror("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
+            goto end;
+        case -1:
+            merror("No response from wazuh-db.");
             goto end;
         }
 
-        if (result == -1) {
-            merror("No response or bad response from wazuh-db: '%s'", response);
+        switch (wdbc_parse_result(response, &arg)) {
+        case WDBC_OK:
+            break;
+        case WDBC_ERROR:
+            merror("Bad response from wazuh-db: %s", arg);
+            // Fallthrough
+        default:
+            result = -1;
             goto end;
         }
 
@@ -113,13 +138,25 @@ int mitre_load(char * mode){
 
         /* Consulting Mitre's database to get technique's name */
         snprintf(wazuhdb_query, OS_SIZE_6144, "mitre get name %s", ext_id);
-        if (result = wdbc_query_ex(&sock, wazuhdb_query, response, OS_SIZE_6144), result == -2) {
+        result = wdbc_query_ex(&sock, wazuhdb_query, response, OS_SIZE_6144);
+
+        switch (result) {
+        case -2:
             merror("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
+            goto end;
+        case -1:
+            merror("No response from wazuh-db.");
             goto end;
         }
 
-        if (result == -1) {
-            merror("No response or bad response from wazuh-db: '%s'", response);
+        switch (wdbc_parse_result(response, &arg)) {
+        case WDBC_OK:
+            break;
+        case WDBC_ERROR:
+            merror("Bad response from wazuh-db: %s", arg);
+            // Fallthrough
+        default:
+            result = -1;
             goto end;
         }
 
