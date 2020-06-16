@@ -125,18 +125,16 @@ installFilebeat() {
 
     # Start Filebeat
     if [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
-    systemctl daemon-reload
-    systemctl enable filebeat.service
-    systemctl start filebeat.service    
-    systemctl start filebeat.service > /dev/null
+        systemctl daemon-reload
+        systemctl enable filebeat.service
+        systemctl start filebeat.service > /dev/null
     elif [ -x /etc/rc.d/init.d/filebeat ] ; then
-    /etc/rc.d/init.d/filebeat start > /dev/null
+        /etc/rc.d/init.d/filebeat start > /dev/null
     elif [ -n "$(ps -e | egrep ^\ *1\ .*init$)" ]; then
-    chkconfig filebeat on
-    service filebeat start
-    /etc/init.d/filebeat start > /dev/null
+        chkconfig filebeat on
+        /etc/init.d/filebeat start > /dev/null
     else
-    echo "Error: Filebeat could not start"
+        echo "Error: Filebeat could not start"
     fi
 }
 
@@ -152,18 +150,16 @@ installKibana() {
 
     # Start Kibana
     if [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
-    systemctl daemon-reload
-    systemctl enable kibana.service
-    systemctl start kibana.service    
-    systemctl start kibana.service > /dev/null
+        systemctl daemon-reload
+        systemctl enable kibana.service  
+        systemctl start kibana.service > /dev/null
     elif [ -x /etc/rc.d/init.d/kibana ] ; then
-    /etc/rc.d/init.d/kibana start > /dev/null
+        /etc/rc.d/init.d/kibana start > /dev/null
     elif [ -n "$(ps -e | egrep ^\ *1\ .*init$)" ]; then
-    chkconfig kibana on
-    service kibana start
-    /etc/init.d/kibana start > /dev/null
+        chkconfig kibana on
+        /etc/init.d/kibana start > /dev/null
     else
-    echo "Error: Kibana could not start"
+        echo "Error: Kibana could not start"
     fi
 }
 
