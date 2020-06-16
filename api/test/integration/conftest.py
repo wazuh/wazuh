@@ -258,6 +258,8 @@ def api_test(request):
         module = test_filename[1]
     create_tmp_folders()
     general_procedure(module)
+    # Uncomment this line to run all test with white mode
+    change_rbac_mode('white')
     if rbac_mode:
         change_rbac_mode(rbac_mode)
         rbac_custom_config_generator(module, rbac_mode)

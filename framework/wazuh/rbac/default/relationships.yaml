@@ -21,6 +21,7 @@ relationships:
         - rules_read
         - mitre_read
         - syscheck_all
+        - syscollector_read
 
     readonly:
       policy_ids:
@@ -31,6 +32,7 @@ relationships:
         - rules_read
         - mitre_read
         - syscheck_read
+        - syscollector_read
 
     users_admin:
       policy_ids:
