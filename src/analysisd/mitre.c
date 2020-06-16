@@ -61,7 +61,7 @@ int mitre_load(char * mode){
         if (id = cJSON_GetObjectItem(ids,"id"), id == NULL) {
             merror("It was not possible to get Mitre techniques information.");
             result = -1;
-            goto end; 
+            goto end;
         }
         ext_id = id->valuestring;
 
@@ -119,7 +119,7 @@ int mitre_load(char * mode){
         }
 
         os_malloc(sizeof(mitre_data), data_mitre);
-        data_mitre->tactics_array = cJSON_Duplicate(tactics_array, 1);
+        data_mitre->tactics_array = tactics_array;
         data_mitre->technique_name = strdup(response+3);
 
         /* Filling Hash table with Mitre's information */
@@ -130,7 +130,6 @@ int mitre_load(char * mode){
         }
 
         if (mode != NULL && !strcmp(mode,"test")) {
-            cJSON_Delete(tactics_array);
             cJSON_Delete(data_mitre->tactics_array);
             os_free(data_mitre->technique_name);
             os_free(data_mitre);
