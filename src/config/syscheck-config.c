@@ -239,18 +239,17 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
             syscheck->registry[pl + 1].tag = NULL;
             syscheck->registry[pl].arch = vals;
             os_strdup(entry, syscheck->registry[pl].entry);
-        } else if (overwrite < 0) {
-            bool duplicated_registry = false;
+        } else {
             while (syscheck->registry[pl].entry != NULL) {
                 /* Duplicated entry */
                 if (strcmp(syscheck->registry[pl].entry, entry) == 0 && vals == syscheck->registry[pl].arch) {
-                    duplicated_registry = true;
+                    overwrite = pl;
                     mdebug2("Duplicated registration entry: %s", syscheck->registry[pl].entry);
                     break;
                 }
                 pl++;
             }
-            if (!duplicated_registry){
+            if (overwrite < 0) {
                 os_realloc(syscheck->registry, (pl + 2) * sizeof(registry),
                         syscheck->registry);
                 syscheck->registry[pl + 1].entry = NULL;
@@ -258,11 +257,10 @@ void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int r
                 syscheck->registry[pl + 1].tag = NULL;
                 syscheck->registry[pl].arch = vals;
                 os_strdup(entry, syscheck->registry[pl].entry);
+            } else {
+                os_free(syscheck->registry[pl].tag);
             }
-        } else {
-            os_free(syscheck->registry[pl].tag);
-            syscheck->registry[pl].arch = vals;
-        }
+        } 
 
         if (tag) {
             os_strdup(tag, syscheck->registry[pl].tag);
