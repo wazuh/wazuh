@@ -682,6 +682,13 @@ int fim_check_depth(char * path, int dir_position) {
         return -1;
     }
 
+#ifndef WIN32
+    // Check for monitoring of '/'
+    if(parent_path_size == 1) {
+        depth = 0;
+    }
+#endif
+
     pos = path + parent_path_size;
     while (pos) {
         if (pos = strchr(pos, PATH_SEP), pos) {
