@@ -388,12 +388,12 @@ stages:
   - name: Create link role-policy
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/11/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/103/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        policy_ids: 12
+        policy_ids: 105
     response:
       status_code: 200
       json:
@@ -405,12 +405,12 @@ stages:
   - name: Create link role-policy
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/10/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/100/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        policy_ids: 13
+        policy_ids: 105
     response:
       status_code: 200
       json:
@@ -427,7 +427,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        policy_ids: 12,13
+        policy_ids: 104,105
     response:
       status_code: 200
       json: &error
@@ -447,12 +447,12 @@ stages:
   - name: Create link role-policy (non-existent policy)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/9/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/101/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        policy_ids: 999,56
+        policy_ids: 999,10000
     response:
       status_code: 200
       json:
@@ -464,8 +464,8 @@ stages:
                 message: !anystr
                 remediation: !anything
               id:
-                - '56'
                 - '999'
+                - '10000'
           total_affected_items: 0
           total_failed_items: 2
 
@@ -478,7 +478,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        policy_ids: 999,12
+        policy_ids: 999,1000
     response:
       status_code: 200
       json:

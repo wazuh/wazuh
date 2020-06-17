@@ -19,13 +19,9 @@ def create_connection(agent_id):
 def check_hotfix_database():
     conn = create_connection('000')
     cur = conn.cursor()
-
     cur.execute("SELECT * FROM sys_hotfixes")
     result = cur.fetchall()
-    if result:
-        print('funciona')
-    else:
-        print('no funciona')
+
     return 0 if result else 1
 
 
