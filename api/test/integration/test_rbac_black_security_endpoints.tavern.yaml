@@ -917,7 +917,7 @@ test_name: DELETE POLICIES RBAC
 stages:
 
   - name: Delete one specified policy in the system (Allow)
-    delay_before: 10
+    delay_before: 20
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
