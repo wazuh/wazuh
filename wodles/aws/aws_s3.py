@@ -2029,7 +2029,7 @@ class AWSService(WazuhIntegration):
     """
 
     def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
-                 service_name, only_logs_after, region, aws_log_groups, remove_log_streams):
+                 service_name, only_logs_after, region, aws_log_groups=None, remove_log_streams=None):
         # DB name
         self.db_name = 'aws_services'
         # table name
@@ -2132,8 +2132,8 @@ class AWSInspector(AWSService):
     """
 
     def __init__(self, reparse, access_key, secret_key, aws_profile,
-                 iam_role_arn, only_logs_after, region, aws_log_groups,
-                 remove_log_streams):
+                 iam_role_arn, only_logs_after, region, aws_log_groups=None,
+                 remove_log_streams=None):
 
         self.service_name = 'inspector'
         self.inspector_region = region
