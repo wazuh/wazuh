@@ -1,7 +1,7 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.13]
+## [v3.13.0]
 
 ### Added
 
@@ -10,6 +10,34 @@ All notable changes to this project will be documented in this file.
   - Improve the Vulnerability Detector engine to correlate alerts between different feeds.
   - Add Vulnerability Detector module unit testing for Unix source code.
 - New option for the JSON decoder to choose the treatment of Array structures. ([#4836](https://github.com/wazuh/wazuh/pull/4836))
+- Added mode value (real-time, whodata or scheduled) as dynamic field in FIM alerts. ([#5051](https://github.com/wazuh/wazuh/pull/5051))
+- Set a configurable maximum limit of files to be monitored by FIM. ([#4717](https://github.com/wazuh/wazuh/pull/4717))
+- New integration for pull logs from Google Cloud Pub/Sub. ([#4078](https://github.com/wazuh/wazuh/pull/4078))
+- Added support for MITRE ATT&CK knowledge base. ([#3746](https://github.com/wazuh/wazuh/pull/3746))
+- Added new configuration block for Windows Defender eventchannel. ([#5037](https://github.com/wazuh/wazuh/pull/5037))
+
+### Changed
+
+- Internal variable rt_delay configuration changes to 5 miliseconds. ([#4760](https://github.com/wazuh/wazuh/pull/4760))
+- Who-data includes new fields: process CWD, parent process id, and CWD of paren process. ([#4782](https://github.com/wazuh/wazuh/pull/4782))
+- FIM opens files with shared deletion permission. ([#5018](https://github.com/wazuh/wazuh/pull/5018))
+- Extend the statics fields comparison in the ruleset options. ([#4416](https://github.com/wazuh/wazuh/pull/4416))
+
+### Fixed
+
+- Fixed a bug that, in some cases, kept the memory reserved when deleting monitored directories in FIM. ([#5118](https://github.com/wazuh/wazuh/issues/5118))
+- Free Inotify watches moving directories in the real-time mode of FIM. ([#4794](https://github.com/wazuh/wazuh/pull/4794))
+- Fixed an error that caused deletion alerts with a wrong path in Who-data mode. ([#4831](https://github.com/wazuh/wazuh/pull/4831))
+- Fixed generating alerts in Who-data mode when moving directories to the folder being monitored in Windows. ([#4762](https://github.com/wazuh/wazuh/pull/4762))
+- Avoid truncating the full log field of the alert when the path is too long.  ([#4792](https://github.com/wazuh/wazuh/pull/4792))
+- Fixed the change of monitoring from Who-data to real-time when there is a failure to set policies in Windows. ([#4753](https://github.com/wazuh/wazuh/pull/4753))
+- Fixed an error that prevents restarting Windows agents from the manager.. ([#5212](https://github.com/wazuh/wazuh/pull/5212))
+- Fixed an error that impedes the use of the tag url by configuring the NVD feed in vulnerability detector. ([#5165](https://github.com/wazuh/wazuh/pull/5165))
+- Fix TOCTOU condition in Clusterd when merging agent-info files. ([#5159](https://github.com/wazuh/wazuh/pull/5159))
+- Fix race condition in Analysisd when handling accumulated events. ([#5091](https://github.com/wazuh/wazuh/pull/5091))
+- Avoid to count links when generating alerts for ignored directories in Rootcheck. Thanks to Artur Molchanov (@Hexta). ([#4603](https://github.com/wazuh/wazuh/pull/4603))
+- Fix typo in the path used for logging when disabling an account. Thanks to Fontaine Pierre (@PierreFontaine). ([#4839](https://github.com/wazuh/wazuh/pull/4839))
+
 
 ## [v3.12.3] - 2020-04-30
 
