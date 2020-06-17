@@ -125,9 +125,9 @@ installElasticsearch() {
         echo "Error: Elasticsearch could not start"
     fi
 
-    until $(curl -XGET https://localhost:9200/ -uadmin:admin -k --max-time 2 --silent --output /dev/null 2>&1); do
+    until $(curl -XGET https://localhost:9200/ -uadmin:admin -k --max-time 2 --silent --output /dev/null); do
         echo "Waiting for Elasticsearch..."
-        sleep 2
+        sleep 5
     done    
 
     cd /usr/share/elasticsearch/plugins/opendistro_security/tools/ > /dev/null 2>&1
@@ -216,7 +216,7 @@ checkInstallation() {
     filebeat test output
     until [[ "$(curl https://localhost/status -I -uadmin:admin -k -s | grep HTTP)" == *"200"* ]]; do
         echo "Waiting for Kibana..."
-        sleep 5
+        sleep 15
     done    
 }
 
