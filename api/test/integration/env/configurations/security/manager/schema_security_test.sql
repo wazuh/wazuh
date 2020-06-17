@@ -64,17 +64,18 @@ INSERT INTO policies VALUES(12,'decoders_read_decoders','{"actions": ["decoders:
 INSERT INTO policies VALUES(13,'mitre_read_mitre','{"actions": ["mitre:read"], "resources": ["*:*:*"], "effect": "allow"}','2020-06-16 14:34:31.732129');
 INSERT INTO policies VALUES(14,'lists_read_rules','{"actions": ["lists:read"], "resources": ["list:path:*"], "effect": "allow"}','2020-06-16 14:34:31.743865');
 INSERT INTO policies VALUES(15,'rules_read_rules','{"actions": ["rules:read"], "resources": ["rule:file:*"], "effect": "allow"}','2020-06-16 14:34:31.760616');
-INSERT INTO policies VALUES(16,'syscheck_read_syscheck','{"actions": ["syscheck:read"], "resources": ["agent:id:*"], "effect": "allow"}','2020-06-16 14:34:31.771236');
-INSERT INTO policies VALUES(17,'syscheck_all_syscheck','{"actions": ["syscheck:clear", "syscheck:read", "syscheck:run"], "resources": ["agent:id:*"], "effect": "allow"}','2020-06-16 14:34:31.793929');
-INSERT INTO policies VALUES(18,'syscollector_read_syscollector','{"actions": ["syscollector:read"], "resources": ["agent:id:*"], "effect": "allow"}','2020-06-16 14:34:31.809009');
-INSERT INTO policies VALUES(19,'cluster_all_resourceless','{"actions": ["cluster:status", "manager:read_config", "manager:read_api_config", "manager:update_api_config", "manager:upload_file", "manager:restart", "manager:delete_file"], "resources": ["*:*:*"], "effect": "allow"}','2020-06-16 14:34:31.823710');
-INSERT INTO policies VALUES(20,'cluster_all_files','{"actions": ["manager:delete_file", "manager:read_file"], "resources": ["file:path:*"], "effect": "allow"}','2020-06-16 14:34:31.837608');
-INSERT INTO policies VALUES(21,'cluster_all_nodes','{"actions": ["cluster:delete_file", "cluster:read_api_config", "cluster:read_config", "cluster:read_api_config", "cluster:update_api_config", "cluster:restart", "cluster:upload_file"], "resources": ["node:id:*"], "effect": "allow"}','2020-06-16 14:34:31.852327');
-INSERT INTO policies VALUES(22,'cluster_all_combination','{"actions": ["cluster:read_file", "cluster:delete_file"], "resources": ["node:id:*&file:path:*"], "effect": "allow"}','2020-06-16 14:34:31.866994');
-INSERT INTO policies VALUES(23,'cluster_read_resourceless','{"actions": ["cluster:status", "manager:read_config", "manager:read_api_config"], "resources": ["*:*:*"], "effect": "allow"}','2020-06-16 14:34:31.881676');
-INSERT INTO policies VALUES(24,'cluster_read_files','{"actions": ["manager:read_config", "manager:read_api_config"], "resources": ["file:path:*"], "effect": "allow"}','2020-06-16 14:34:31.896095');
-INSERT INTO policies VALUES(25,'cluster_read_nodes','{"actions": ["cluster:read_api_config", "cluster:read_config", "cluster:read_api_config"], "resources": ["node:id:*"], "effect": "allow"}','2020-06-16 14:34:31.911005');
-INSERT INTO policies VALUES(26,'cluster_read_combination','{"actions": ["cluster:read_file"], "resources": ["node:id:*&file:path:*"], "effect": "allow"}','2020-06-16 14:34:31.925851');
+INSERT INTO policies VALUES(16,'sca_read_sca','{"actions": ["sca:read"], "resources": ["agent:id:*"], "effect": "allow"}','2020-06-16 14:34:31.760616');
+INSERT INTO policies VALUES(17,'syscheck_read_syscheck','{"actions": ["syscheck:read"], "resources": ["agent:id:*"], "effect": "allow"}','2020-06-16 14:34:31.771236');
+INSERT INTO policies VALUES(18,'syscheck_all_syscheck','{"actions": ["syscheck:clear", "syscheck:read", "syscheck:run"], "resources": ["agent:id:*"], "effect": "allow"}','2020-06-16 14:34:31.793929');
+INSERT INTO policies VALUES(19,'syscollector_read_syscollector','{"actions": ["syscollector:read"], "resources": ["agent:id:*"], "effect": "allow"}','2020-06-16 14:34:31.809009');
+INSERT INTO policies VALUES(20,'cluster_all_resourceless','{"actions": ["cluster:status", "manager:read_config", "manager:read_api_config", "manager:update_api_config", "manager:upload_file", "manager:restart", "manager:delete_file"], "resources": ["*:*:*"], "effect": "allow"}','2020-06-16 14:34:31.823710');
+INSERT INTO policies VALUES(21,'cluster_all_files','{"actions": ["manager:delete_file", "manager:read_file"], "resources": ["file:path:*"], "effect": "allow"}','2020-06-16 14:34:31.837608');
+INSERT INTO policies VALUES(22,'cluster_all_nodes','{"actions": ["cluster:delete_file", "cluster:read_api_config", "cluster:read_config", "cluster:read_api_config", "cluster:update_api_config", "cluster:restart", "cluster:upload_file"], "resources": ["node:id:*"], "effect": "allow"}','2020-06-16 14:34:31.852327');
+INSERT INTO policies VALUES(23,'cluster_all_combination','{"actions": ["cluster:read_file", "cluster:delete_file"], "resources": ["node:id:*&file:path:*"], "effect": "allow"}','2020-06-16 14:34:31.866994');
+INSERT INTO policies VALUES(24,'cluster_read_resourceless','{"actions": ["cluster:status", "manager:read_config", "manager:read_api_config"], "resources": ["*:*:*"], "effect": "allow"}','2020-06-16 14:34:31.881676');
+INSERT INTO policies VALUES(25,'cluster_read_files','{"actions": ["manager:read_config", "manager:read_api_config"], "resources": ["file:path:*"], "effect": "allow"}','2020-06-16 14:34:31.896095');
+INSERT INTO policies VALUES(26,'cluster_read_nodes','{"actions": ["cluster:read_api_config", "cluster:read_config", "cluster:read_api_config"], "resources": ["node:id:*"], "effect": "allow"}','2020-06-16 14:34:31.911005');
+INSERT INTO policies VALUES(27,'cluster_read_combination','{"actions": ["cluster:read_file"], "resources": ["node:id:*&file:path:*"], "effect": "allow"}','2020-06-16 14:34:31.925851');
 
 /* Testing */
 INSERT INTO policies VALUES(100,'wazuhPolicy','{"actions": ["*:*"], "resources": ["*:*"], "effect": "allow"}','1970-01-01 00:00:00');
