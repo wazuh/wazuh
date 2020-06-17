@@ -12,7 +12,43 @@
 #ifndef BZLIB_WRAPPERS_H
 #define BZLIB_WRAPPERS_H
 
+#include "bzlib.h"
 
+int __wrap_BZ2_bzRead(int* bzerror,
+                      BZFILE* f,
+                      void* buf,
+                      int len);
 
+void __wrap_BZ2_bzReadClose(int* bzerror,
+                            BZFILE* f,
+                            int abandon,
+                            unsigned int* nbytes_in,
+                            unsigned int* nbytes_out);
+
+BZFILE* __wrap_BZ2_bzReadOpen(int* bzerror,
+                          FILE* f,
+                          int verbosity,
+                          int small,
+                          void* unused,
+                          int nUnused);
+
+void __wrap_BZ2_bzWrite(int* bzerror,
+                       BZFILE* f,
+                       void* buf,
+                       int len);
+
+void __wrap_BZ2_bzWriteClose64(int* bzerror,
+                               BZFILE* f,
+                               int abandon,
+                               unsigned int* nbytes_in_lo32,
+                               unsigned int* nbytes_in_hi32,
+                               unsigned int* nbytes_out_lo32,
+                               unsigned int* nbytes_out_hi32);
+
+BZFILE* __wrap_BZ2_bzWriteOpen(int* bzerror,
+                               FILE* f,
+                               int blockSize100k,
+                               int verbosity,
+                               int workFactor);
 
 #endif
