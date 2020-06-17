@@ -16,6 +16,7 @@
 #include "shared.h"
 
 #include "../headers/bzip2_op.h"
+#include "../wrappers/externals/bzip2/bzlib_wrappers.h"
 
 static int unit_testing;
 
@@ -49,71 +50,6 @@ size_t __wrap_fwrite(const void * ptr, size_t size, size_t count, FILE * stream)
 
 int __wrap_fclose() {
     return 0;
-}
-
-BZFILE* __wrap_BZ2_bzWriteOpen(int* bzerror,
-                               FILE* f,
-                               int blockSize100k,
-                               int verbosity,
-                               int workFactor) {
-    check_expected_ptr(f);
-    *bzerror = mock();
-
-    return mock_type(BZFILE*);
-}
-
-void __wrap_BZ2_bzReadClose(int* bzerror,
-                            BZFILE* f,
-                            int abandon,
-                            unsigned int* nbytes_in,
-                            unsigned int* nbytes_out) {
-    return;
-}
-
-void __wrap_BZ2_bzWriteClose64(int* bzerror,
-                               BZFILE* f,
-                               int abandon,
-                               unsigned int* nbytes_in_lo32,
-                               unsigned int* nbytes_in_hi32,
-                               unsigned int* nbytes_out_lo32,
-                               unsigned int* nbytes_out_hi32) {
-    check_expected_ptr(f);
-    *bzerror = mock();
-}
-
-BZFILE* __wrap_BZ2_bzReadOpen(int* bzerror,
-                          FILE* f,
-                          int verbosity,
-                          int small,
-                          void* unused,
-                          int nUnused) {
-    check_expected_ptr(f);
-    *bzerror = mock();
-
-    return mock_type(BZFILE*);
-}
-
-int __wrap_BZ2_bzRead(int* bzerror,
-                      BZFILE* f,
-                      void* buf,
-                      int len) {
-    check_expected_ptr(f);
-    *bzerror = mock();
-    int n = mock();
-    if(n <= len) {
-        memcpy(buf, mock_type(void*), n);
-    }
-    return n;
-}
-
-void __wrap_BZ2_bzWrite(int* bzerror,
-                       BZFILE* f,
-                       void* buf,
-                       int len) {
-    check_expected_ptr(f);
-    check_expected(buf);
-    check_expected(len);
-    *bzerror = mock();
 }
 
 void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
