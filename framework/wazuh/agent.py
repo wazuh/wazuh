@@ -321,12 +321,6 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort_by=None, sort_a
     :return: AffectedItemsWazuhResult.
     """
 
-    # Connect DB
-    db_global = glob(common.database_path_global)
-    if not db_global:
-        raise WazuhInternalError(1600)
-
-    conn = Connection(db_global[0])
     affected_groups = list()
     result = AffectedItemsWazuhResult(all_msg='Obtained information about all selected groups',
                                       some_msg='Some groups information was not obtained',
@@ -343,22 +337,15 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort_by=None, sort_a
 
             full_entry = path.join(common.shared_path, group_id)
 
-            # Get the id of the group
-            query = "SELECT id FROM `group` WHERE name = :group_id"
-            request = {'group_id': group_id}
-            conn.execute(query, request)
-            id_group = conn.fetch()
-
-            # Group count
-            query = "SELECT {0} FROM belongs WHERE id_group = :id"
-            request = {'id': id_group}
-            conn.execute(query.format('COUNT(*)'), request)
+            # Get agents from the group
+            db_query = WazuhDBQueryAgents(select=['id'], filters={'group': group_id}, min_select_fields=set())
+            query_data = db_query.run()
 
             # merged.mg and agent.conf sum
             merged_sum = get_hash(path.join(full_entry, "merged.mg"), hash_algorithm)
             conf_sum = get_hash(path.join(full_entry, "agent.conf"), hash_algorithm)
 
-            item = {'count': conn.fetch(), 'name': group_id}
+            item = {'count': query_data['totalItems'], 'name': group_id}
 
             if merged_sum:
                 item['mergedSum'] = merged_sum
