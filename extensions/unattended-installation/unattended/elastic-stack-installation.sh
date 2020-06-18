@@ -111,7 +111,7 @@ configureElastic() {
 
 configureKibana() {
 
-    conf="$(awk '{sub(/0.0.0.0/,"'$eip'")}1' /etc/kibana/kibana.yml >| /etc/kibana/kibana.yml)"
+    conf="$(awk '{sub(/0.0.0.0/,"'$eip'")}1' /etc/kibana/kibana.yml)"
     echo "$conf" > /etc/kibana/kibana.yml
 
 }
