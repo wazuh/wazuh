@@ -35,6 +35,8 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     const char *xml_auto_restart = "auto_restart";
     const char *xml_crypto_method = "crypto_method";
     const char *xml_client_auto_enrollment = "auto_enrollment";
+    const char *xml_connection_retries = "connection_retries";
+    const char *xml_interval_between_connections = "interval_between_connections";
 
     /* Old XML definitions */
     const char *xml_client_ip = "server-ip";
@@ -46,6 +48,8 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     logr->notify_time = 0;
     logr->max_time_reconnect_try = 0;
     logr->rip_id = 0;
+    logr->connection_retries = 5;
+    logr->interval_between_connections = 5;
 
     for (i = 0; node[i]; i++) {
         rip = NULL;
@@ -178,6 +182,26 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             else if(strcmp(node[i]->content, "aes") == 0){
                 logr->crypto_method = W_METH_AES;
             }else{
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+        } else if (strcmp(node[i]->element, xml_connection_retries) == 0) { 
+            if (!OS_StrIsNum(node[i]->content)) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+            logr->connection_retries = atoi(node[i]->content);
+            if (logr->connection_retries < 0) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+        } else if (strcmp(node[i]->element, xml_interval_between_connections) == 0) { 
+            if (!OS_StrIsNum(node[i]->content)) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+            logr->interval_between_connections = atoi(node[i]->content);
+            if (logr->interval_between_connections < 0) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }

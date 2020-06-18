@@ -40,6 +40,8 @@ typedef struct _agent {
     int buflength;
     int events_persec;
     int crypto_method;
+    int connection_retries; ///> Number of connection retries.
+    int interval_between_connections; ///> Time interval between connection attempts.
     wlabel_t *labels; /* null-ended label set */
     agent_flags_t flags;
     w_enrollment_ctx *enrollment_cfg;
