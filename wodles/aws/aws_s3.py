@@ -2366,10 +2366,11 @@ class AWSCloudWatchLogs(AWSService):
                             result_before = self.get_alerts_within_range(log_group=log_group, log_stream=log_stream,
                                                                          token=None, start_time=None,
                                                                          end_time=db_values['start_time'])
-                            result_after = self.get_alerts_within_range(log_group=log_group, log_stream=log_stream,
-                                                                        token=db_values['token'],
-                                                                        start_time=db_values['end_time'] + 1,
-                                                                        end_time=None)
+                            if db_values['end_time'] is not None:
+                                result_after = self.get_alerts_within_range(log_group=log_group, log_stream=log_stream,
+                                                                            token=db_values['token'],
+                                                                            start_time=db_values['end_time'] + 1,
+                                                                            end_time=None)
                         else:
                             result_after = self.get_alerts_within_range(log_group=log_group, log_stream=log_stream,
                                                                         token=None, start_time=None, end_time=None)
@@ -2381,10 +2382,11 @@ class AWSCloudWatchLogs(AWSService):
                         result_before = self.get_alerts_within_range(log_group=log_group, log_stream=log_stream,
                                                                      token=None, start_time=self.only_logs_after_millis,
                                                                      end_time=db_values['start_time'])
-                        result_after = self.get_alerts_within_range(log_group=log_group, log_stream=log_stream,
-                                                                    token=db_values['token'],
-                                                                    start_time=db_values['end_time'] + 1,
-                                                                    end_time=None)
+                        if db_values['end_time'] is not None:
+                            result_after = self.get_alerts_within_range(log_group=log_group, log_stream=log_stream,
+                                                                        token=db_values['token'],
+                                                                        start_time=db_values['end_time'] + 1,
+                                                                        end_time=None)
                     elif db_values['end_time'] is not None and self.only_logs_after_millis < db_values['end_time']:
                         result_after = self.get_alerts_within_range(log_group=log_group, log_stream=log_stream,
                                                                     token=db_values['token'],
