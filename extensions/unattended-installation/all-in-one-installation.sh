@@ -122,7 +122,8 @@ installElasticsearch() {
         service elasticsearch start > /dev/null 2>&1
         /etc/init.d/elasticsearch start > /dev/null 2>&1
     else
-        echo "Error: Elasticsearch could not start"
+        echo "Error: Elasticsearch could not start. No service manager found on the system"
+        exit 1;
     fi
 
     until $(curl -XGET https://localhost:9200/ -uadmin:admin -k --max-time 2 --silent --output /dev/null); do
@@ -161,7 +162,8 @@ installFilebeat() {
         chkconfig filebeat on > /dev/null 2>&1
         /etc/init.d/filebeat start > /dev/null 2>&1
     else
-        echo "Error: Filebeat could not start"
+        echo "Error: Filebeat could not start. No service manager found on the system"
+        exit 1;
     fi
 
     logger "Done"
@@ -191,7 +193,8 @@ installKibana() {
         chkconfig kibana on > /dev/null 2>&1
         /etc/init.d/kibana start > /dev/null 2>&1
     else
-        echo "Error: Kibana could not start"
+        echo "Error: Kibana could not start. No service manager found on the system"
+        exit 1;
     fi
 
     logger "Done"
