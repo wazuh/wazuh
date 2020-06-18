@@ -11,7 +11,7 @@ from shutil import copyfile
 from wazuh import common, configuration
 from wazuh.InputValidator import InputValidator
 from wazuh.core.core_agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, \
-    WazuhDBQueryMultigroups, Agent
+    WazuhDBQueryMultigroups, Agent, WazuhDBQueryGroup
 from wazuh.core.core_utils import get_agents_info, get_groups
 from wazuh.database import Connection
 from wazuh.exception import WazuhError, WazuhInternalError, WazuhException
@@ -337,8 +337,12 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort_by=None, sort_a
 
             full_entry = path.join(common.shared_path, group_id)
 
-            # Get agents from the group
-            db_query = WazuhDBQueryAgents(select=['id'], filters={'group': group_id}, min_select_fields=set())
+            # Get ID from group
+            db_query = WazuhDBQueryGroup(select=['name'], filters={'name': group_id})
+            query_data = db_query.run()
+
+            # Group count
+            db_query = WazuhDBQueryAgents(get_data=False, filters={'group': query_data['items'][0]['name']})
             query_data = db_query.run()
 
             # merged.mg and agent.conf sum

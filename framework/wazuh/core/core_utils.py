@@ -7,7 +7,7 @@ from os.path import join
 
 from wazuh import common
 from wazuh.common import ossec_path
-from wazuh.core.core_agent import WazuhDBQueryAgents, WazuhDBQueryMultigroups
+from wazuh.core.core_agent import WazuhDBQueryAgents, WazuhDBQueryMultigroups, WazuhDBQueryGroup
 from wazuh.database import Connection
 from wazuh.exception import WazuhInternalError
 
@@ -32,12 +32,9 @@ def get_groups():
 
     :return: List of group names
     """
-    db_global = glob(common.database_path_global)
-    if not db_global:
-        raise WazuhInternalError(1600)
-    conn = Connection(db_global[0])
-    conn.execute("SELECT name FROM `group`")
-    groups = conn.fetch_all()
+    db_query = WazuhDBQueryGroup(select=['name'], min_select_fields=set())
+    query_data = db_query.run()
+    groups = query_data['items']
     groups_list = set()
     for group in groups:
         groups_list.add(group['name'])

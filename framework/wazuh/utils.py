@@ -1157,6 +1157,8 @@ class WazuhDBQuery(object):
         self._add_search_to_query()
         if self.count:
             self._get_total_items()
+            if not self.data:
+                return {'totalItems': self.total_items}
         self._add_sort_to_query()
         self._add_limit_to_query()
         if self.data:
