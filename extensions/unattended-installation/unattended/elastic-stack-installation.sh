@@ -174,7 +174,8 @@ main() {
                 if [ -n "$e" ]
                 then
                     configureElastic $eip
-                elif [ -n "$k" ]
+                fi
+                if [ -n "$k" ]
                 then
                     configureKibana $eip
                 fi
