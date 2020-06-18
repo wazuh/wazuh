@@ -571,7 +571,7 @@ test_name: CLEANER DELETE /security/{roles}
 
 stages:
 
-  # DELETE /security/roles, this tests should fail in white mode
+  # DELETE /security/roles
   - name: Try to delete all roles
     request:
       verify: False
