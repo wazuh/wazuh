@@ -14,8 +14,8 @@ def calculate_result(file_name):
     with open(file_name, 'r') as f:
         file = f.read()
     try:
-        result = re.search(r'^=+ (.+) in (.*) \(\d+:\d+:\d+\) =+$', file).group(1)
-        print(result)
+        result = re.search(r'=+ (.+) in (.*) \(\d+:\d+:\d+\) =+', file).group(1)
+        print(f'\t {result}\n')
     except AttributeError:
         print('\tCould not retrieve results from this test')
 
