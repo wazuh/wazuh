@@ -191,11 +191,21 @@ char * wstr_escape_json(const char * string);
 char * wstr_unescape_json(const char * string);
 
 /**
- * @brief Lowercase a string
- *
+ * @brief Check if the specified string is alphanumeric 
+ * 
  * @param string Input string
- * @return Pointer to a new string containing a lowercased copy of "string"
+ * @return true if the string is alphanumeric.
  */
-char * w_tolower_str(const char *string);
+bool is_string_alphanumeric(const char* string);
+
+
+/**
+ * @brief Convert string to time_t 
+ * 
+ * @param string Input string
+ * @param default_value default value if config read fail
+ * @return c.
+ */
+time_t string_to_time_t(char* string, const time_t default_value);
 
 #endif

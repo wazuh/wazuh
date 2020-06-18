@@ -910,24 +910,36 @@ char * wstr_unescape_json(const char * string) {
     return output;
 }
 
-// Lowercase a string
-
-char * w_tolower_str(const char *string) {
-    char *tolower_str;
-    int count;
-
-    if (!string) {
-        return NULL;
+/* Check if the specified string is alphanumeric */
+bool is_string_alphanumeric(const char* string) {
+    bool ret_val = FALSE;
+    if (NULL != string) {
+        bool is_alpha = true;
+        int i = 0;
+        while (is_alpha && string[i] != '\0') {
+            is_alpha &= 0 == isalnum(string[i]) ? false : true;
+            ++i;
+        }
+        ret_val = is_alpha;
     }
-
-    os_malloc(1, tolower_str);
-
-    for(count = 0; string[count]; count++) {
-        os_realloc(tolower_str, count + 2, tolower_str);
-        tolower_str[count] = tolower(string[count]);
-    }
-
-    tolower_str[count] = '\0';
-
-    return tolower_str;
+    
+    return ret_val;
 }
+
+/* Convert string to time_t */
+time_t string_to_time_t(char* string, const time_t default_value) {
+    time_t ret_val = default_value;
+    if (NULL != string && w_str_is_number(string)) {
+        if (sizeof(time_t) == sizeof(int)) {
+            ret_val = atoi(string);
+        } else if (sizeof(time_t) == sizeof(long)) {
+            ret_val = atol(string);
+        } else if (sizeof(time_t) == sizeof(long long)) {
+            ret_val = atoll(string);
+        } else {
+            mwarn("Unrecognized time_t value type.");
+        }
+    }
+    return ret_val;
+}
+

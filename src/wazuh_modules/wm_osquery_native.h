@@ -16,18 +16,30 @@
 
 extern const wm_context WM_OSQUERYNATIVE_CONTEXT;
 
+typedef struct task_osquery {
+	char* sql_string;
+    char* table;
+	void* function;
+	time_t refresh_rate;
+	struct timespec last_refresh;
+	struct task_osquery * next;
+} task_osquery_t;
+
+
+
 typedef struct wm_osquery_native_t {
    char *bin_path;
    char *config_path;
    int disable;
-   int run_daemon;
-   int disable_process_events;
-   unsigned long interval_process_events;
+   task_osquery_t * task_list;
    int msg_delay;
    int queue_fd;
    void *remote_ondemand_call;
 } wm_osquery_native_t;
 
-int wm_osquery_native_configuration_reader(xml_node **nodes, wmodule *module);
-
+int wm_osquery_native_configuration_reader(const OS_XML *xml, xml_node **nodes, wmodule *module);
+void task_osquery_push(task_osquery_t* head, char* table, time_t refresh_rate);
+void task_osquery_delete_list(task_osquery_t *head);
+int wm_osquery_read_query(const OS_XML *xml, xml_node *node, task_osquery_t* tasks);
+char* wm_osquery_read_table_name(xml_node* node);
 #endif

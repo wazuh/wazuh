@@ -24,14 +24,14 @@ int main()
     cJSON * json_insert { cJSON_Parse(insert_sql.c_str()) };
     cJSON * json_update { cJSON_Parse(update_sql.c_str()) } ;
     cJSON * json_result { nullptr };
-    auto handle { initialize(HostType::AGENT, DbEngineType::SQLITE3, "temp.db", sql.c_str()) };
+    auto handle { dbsync_initialize(HostType::AGENT, DbEngineType::SQLITE3, "temp.db", sql.c_str()) };
     if (0 != handle)
     {
-      if(0 == insert_data(handle, json_insert)) { 
+      if(0 == dbsync_insert_data(handle, json_insert)) { 
         do {
           auto t_start {std::chrono::high_resolution_clock::now()};
           //if(update_with_snapshot_cb(handle, json_update, (void *)&callback)) {
-          if(0 == update_with_snapshot(handle, json_update, &json_result)) {   
+          if(0 == dbsync_update_with_snapshot(handle, json_update, &json_result)) {   
             auto t_end {std::chrono::high_resolution_clock::now()};
             std::cout << "duration: "<<std::chrono::duration_cast<std::chrono::microseconds>(t_end-t_start).count()<<std::endl;
             char* result_print = cJSON_Print(json_result);
@@ -41,7 +41,7 @@ int main()
           } 
         }while(getc(stdin) != 'q');
       }
-      teardown();
+      dbsync_teardown();
     }
     cJSON_Delete(json_update);
     cJSON_Delete(json_insert);
