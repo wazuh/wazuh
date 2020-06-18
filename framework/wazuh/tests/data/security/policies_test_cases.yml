@@ -15,24 +15,24 @@ get_policies:
         - "*:*"
         effect: allow
       roles:
-      - id: 8
+      - id: 100
         name: wazuh
         rule:
           FIND:
             r'^auth[a-zA-Z]+$':
             - administrator
-      - id: 9
+      - id: 101
         name: wazuh-wui
         rule:
           FIND:
             r'^auth[a-zA-Z]+$':
             - administrator-app
-      - id: 10
+      - id: 102
         name: technical
         rule:
           MATCH:
             definition: technicalRule
-      - id: 13
+      - id: 105
         name: ossec
         rule:
           MATCH:
@@ -47,12 +47,12 @@ get_policies:
         resources:
         - agent:id:*
       roles:
-      - id: 11
+      - id: 103
         name: administrator_test
         rule:
           MATCH:
             definition: administratorRule
-      - id: 13
+      - id: 105
         name: ossec
         rule:
           MATCH:
@@ -75,12 +75,12 @@ get_policies:
         resources:
         - "*:*:*"
       roles:
-      - id: 12
+      - id: 104
         name: normalUser
         rule:
           MATCH:
             definition: normalRule
-      - id: 13
+      - id: 105
         name: ossec
         rule:
           MATCH:
@@ -95,17 +95,17 @@ get_policies:
         resources:
         - agent:id:*
       roles:
-      - id: 10
+      - id: 102
         name: technical
         rule:
           MATCH:
             definition: technicalRule
-      - id: 11
+      - id: 103
         name: administrator_test
         rule:
           MATCH:
             definition: administratorRule
-      - id: 13
+      - id: 105
         name: ossec
         rule:
           MATCH:
@@ -119,7 +119,7 @@ get_policies:
         resources:
         - role:id:*
       roles:
-      - id: 13
+      - id: 105
         name: ossec
         rule:
           MATCH:
@@ -129,18 +129,18 @@ get_policies:
       - '110'
 - params:
     policy_ids:
-    - '110'
-    - '22'
-    - '23'
-    - '24'
+    - '999'
+    - '800'
+    - '700'
+    - '600'
   result:
     affected_items: []
     failed_items:
       '4007':
-      - '110'
-      - '22'
-      - '23'
-      - '24'
+      - '999'
+      - '800'
+      - '700'
+      - '600'
 add_policy:
 - params:
     name: new_policy
@@ -218,7 +218,7 @@ update_policy:
         resources:
         - agent:id:097
       roles:
-      - id: 13
+      - id: 105
         name: ossec
         rule:
           MATCH:
@@ -226,7 +226,7 @@ update_policy:
     failed_items: {}
 - params:
     policy_id:
-    - '26'
+    - '950'
     name: normalPolicy2
     policy:
       actions:
@@ -238,7 +238,7 @@ update_policy:
     affected_items: []
     failed_items:
       '4007':
-      - '26'
+      - '950'
 - params:
     policy_id:
     - '103'
@@ -286,12 +286,12 @@ remove_policies:
         resources:
         - agent:id:*
       roles:
-      - id: 11
+      - id: 103
         name: administrator_test
         rule:
           MATCH:
             definition: administratorRule
-      - id: 13
+      - id: 105
         name: ossec
         rule:
           MATCH:
@@ -304,7 +304,7 @@ remove_policies:
     - '102'
     - '104'
     - '105'
-    - '23'
+    - '200'
   result:
     affected_items:
     - id: 102
@@ -316,12 +316,12 @@ remove_policies:
         resources:
         - "*:*:*"
       roles:
-      - id: 12
+      - id: 104
         name: normalUser
         rule:
           MATCH:
             definition: normalRule
-      - id: 13
+      - id: 105
         name: ossec
         rule:
           MATCH:
@@ -336,17 +336,17 @@ remove_policies:
         resources:
         - agent:id:*
       roles:
-      - id: 10
+      - id: 102
         name: technical
         rule:
           MATCH:
             definition: technicalRule
-      - id: 11
+      - id: 103
         name: administrator_test
         rule:
           MATCH:
             definition: administratorRule
-      - id: 13
+      - id: 105
         name: ossec
         rule:
           MATCH:
@@ -360,20 +360,20 @@ remove_policies:
         resources:
         - role:id:*
       roles:
-      - id: 13
+      - id: 105
         name: ossec
         rule:
           MATCH:
             definition: ossecRule
     failed_items:
       '4007':
-      - '23'
+      - '200'
 - params:
     policy_ids:
     - '109'
-    - '21'
-    - '22'
-    - '23'
+    - '901'
+    - '902'
+    - '903'
   result:
     affected_items:
     - id: 109
@@ -385,18 +385,18 @@ remove_policies:
         resources:
         - policy:id:*
       roles:
-      - id: 12
+      - id: 104
         name: normalUser
         rule:
           MATCH:
             definition: normalRule
-      - id: 13
+      - id: 105
         name: ossec
         rule:
           MATCH:
             definition: ossecRule
     failed_items:
       '4007':
-      - '21'
-      - '22'
-      - '23'
+      - '901'
+      - '902'
+      - '903'

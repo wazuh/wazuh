@@ -141,9 +141,9 @@ def test_revoke_tokens(db_setup):
 
 
 @pytest.mark.parametrize('role_list, expected_users', [
-    ([8, 9], {'wazuh', 'administrator', 'wazuh-wui', 'ossec'}),
-    ([10], {'rbac'}),
-    ([10, 11, 12], {'normal', 'rbac', 'ossec'})
+    ([100, 101], {'administrator', 'python', 'ossec'}),
+    ([102], {'rbac'}),
+    ([102, 103, 104], {'normal', 'rbac', 'ossec'})
 ])
 def test_check_relationships(db_setup, role_list, expected_users):
     """Check that the relationship between role and user is correct according to
@@ -161,8 +161,8 @@ def test_check_relationships(db_setup, role_list, expected_users):
 
 
 @pytest.mark.parametrize('role_list, user_list, expected_users', [
-    ([12], None, {'normal', 'rbac', 'ossec'}),
-    ([10, 11], ['administrator'], {'normal', 'rbac', 'administrator'}),
+    ([104], None, {'normal', 'rbac', 'ossec'}),
+    ([102, 103], ['administrator'], {'normal', 'rbac', 'administrator'}),
     ([], ['wazuh', 'wazuh-wui'], {'wazuh', 'wazuh-wui'})
 ])
 def test_invalid_users_tokens(db_setup, role_list, user_list, expected_users):
