@@ -56,7 +56,7 @@ int connect_server(int initial_id)
         /* Check if we have a hostname */
         tmp_str = strchr(agt->server[rc].rip, '/');
         if (tmp_str) {
-            // Resolve hostname
+            /* Resolve hostname */
             if (!isChroot()) {
                 resolveHostname(&agt->server[rc].rip, 5);
 
@@ -71,7 +71,7 @@ int connect_server(int initial_id)
             tmp_str = agt->server[rc].rip;
         }
 
-        // The hostname was not resolved correctly
+        /* The hostname was not resolved correctly */
         if (tmp_str == NULL || *tmp_str == '\0') {
             int rip_l = strlen(agt->server[rc].rip);
             mdebug2("Could not resolve hostname '%.*s'", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
@@ -182,45 +182,49 @@ void start_agent(int is_startup)
     #endif
 
     while (1) {
-        connect_server(agt->rip_id);
-        /* Send start up message */
-        send_msg(msg, -1);
+        if (connect_server(agt->rip_id)) {
+            /* Send start up message */
+            send_msg(msg, -1);
 
-        /* Read until our reply comes back */
-        if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
-            recv_b = receive_message_udp(msg, buffer, OS_MAXSTR);
-        } else {
-            recv_b = receive_message_tcp(msg, buffer, OS_MAXSTR);
-        }
-        
-        if (recv_b > 0) {
-            /* Id of zero -- only one key allowed */
-            if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip, &tmp_msg) != KS_VALID) {
-                mwarn(MSG_ERROR, agt->server[agt->rip_id].rip);
+            /* Read until our reply comes back */
+            if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
+                recv_b = receive_message_udp(msg, buffer, OS_MAXSTR);
             } else {
-                /* Check for commands */
-                if (IsValidHeader(tmp_msg)) {
-                    /* If it is an ack reply */
-                    if (strcmp(tmp_msg, HC_ACK) == 0) {
-                        available_server = time(0);
+                recv_b = receive_message_tcp(msg, buffer, OS_MAXSTR);
+            }
+            
+            if (recv_b > 0) {
+                /* Id of zero -- only one key allowed */
+                if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip, &tmp_msg) != KS_VALID) {
+                    mwarn(MSG_ERROR, agt->server[agt->rip_id].rip);
+                } else {
+                    /* Check for commands */
+                    if (IsValidHeader(tmp_msg)) {
+                        /* If it is an ack reply */
+                        if (strcmp(tmp_msg, HC_ACK) == 0) {
+                            available_server = time(0);
 
-                        minfo(AG_CONNECTED, agt->server[agt->rip_id].rip,
-                                agt->server[agt->rip_id].port, agt->server[agt->rip_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
+                            minfo(AG_CONNECTED, agt->server[agt->rip_id].rip,
+                                    agt->server[agt->rip_id].port, agt->server[agt->rip_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
 
-                        if (is_startup) {
-                            /* Send log message about start up */
-                            snprintf(msg, OS_MAXSTR, OS_AG_STARTED,
-                                    keys.keyentries[0]->name,
-                                    keys.keyentries[0]->ip->ip);
-                            snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ,
-                                    "ossec", msg);
-                            send_msg(fmsg, -1);
+                            if (is_startup) {
+                                /* Send log message about start up */
+                                snprintf(msg, OS_MAXSTR, OS_AG_STARTED,
+                                        keys.keyentries[0]->name,
+                                        keys.keyentries[0]->ip->ip);
+                                snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ,
+                                        "ossec", msg);
+                                send_msg(fmsg, -1);
+                            }
+                            return;
                         }
-                        return;
                     }
                 }
             }
         }
+        
+        /* Wait for server reply */
+        mwarn(AG_WAIT_SERVER, agt->server[agt->rip_id].rip);
 
         /* If there is a next server, try it */
         if (agt->server[agt->rip_id + 1].rip) {
@@ -254,17 +258,17 @@ static void w_agentd_keys_init (void) {
             while (registration_status != 0) {
                 int rc = 0;                
                 if (agt->enrollment_cfg->target_cfg->manager_name) {
-                    // Configured enrollment server
+                    /* Configured enrollment server */
                     registration_status = try_enroll_to_server(agt->enrollment_cfg->target_cfg->manager_name);
                 } 
                 
-                // Try to enroll to server list
+                /* Try to enroll to server list */
                 while (agt->server[rc].rip && (registration_status != 0)) {
                     registration_status = try_enroll_to_server(agt->server[rc].rip);
                     rc++;
                 }
 
-                //Sleep between retries
+                /* Sleep between retries */
                 if (registration_status != 0) {
                     if (delay_sleep < ENROLLMENT_RETRY_TIME_MAX) {
                         delay_sleep += ENROLLMENT_RETRY_TIME_DELTA;
@@ -274,7 +278,7 @@ static void w_agentd_keys_init (void) {
                 }
             }        
         }
-        /* If autoenrollment is disabled, stop daemon*/
+        /* If autoenrollment is disabled, stop daemon */
         else {
             merror_exit(AG_NOKEYS_EXIT);
         }
@@ -285,7 +289,7 @@ static void w_agentd_keys_init (void) {
     os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id,
                         agt->profile);
 
-    /*Set the crypto method for the agent */
+    /* Set the crypto method for the agent */
     os_set_agent_crypto_method(&keys,agt->crypto_method);
 
     switch (agt->crypto_method) {
@@ -313,16 +317,20 @@ static void w_agentd_keys_init (void) {
 static ssize_t receive_message_udp(const char *msg, char *buffer, unsigned int max_lenght) {
     int attempts = 0;
     ssize_t recv_b = 0;
+    
+    while (attempts < 6) {  
+        attempts++;
+        sleep(attempts*2);
 
-    /* Wait for server reply */
-    mwarn(AG_WAIT_SERVER, agt->server[agt->rip_id].rip);
-    sleep(1);
-
-    while (attempts <= 5){
         /* Receive response */
         recv_b = recv(agt->sock, buffer, max_lenght, MSG_DONTWAIT);
-        
-        if (recv_b <= 0 ) {
+
+        /* Successful response */
+        if (recv_b > 0) {                
+            return recv_b;
+        }
+        /* Error response */
+        else { 
             switch (recv_b) {
             case OS_SOCKTERR:
                 merror("Corrupt payload (exceeding size) received.");
@@ -335,24 +343,17 @@ static ssize_t receive_message_udp(const char *msg, char *buffer, unsigned int m
                 #endif
                 break;
             }
-            attempts++;
-            sleep(attempts);
-
-            /* Send message again (after three attempts) */
+            /* Try to enroll on fifth attempt */
+            if (attempts == 5 && agt->enrollment_cfg && agt->enrollment_cfg->enabled) {           
+                try_enroll_to_server(agt->server[agt->rip_id].rip);
+            }  
+            /* Start retrying sending message after third attemp or OS_SOCKTERR */
             if (attempts >= 3 || recv_b == OS_SOCKTERR) {
-                if (attempts == 3 && agt->enrollment_cfg && agt->enrollment_cfg->enabled) { // Only one enrollment attemp
-                    try_enroll_to_server(agt->server[agt->rip_id].rip);
-                }
                 if (connect_server(agt->rip_id)) {
-                    // if enroll is successfull reconnect and re-send message
-                    send_msg(msg, -1);
-                    // After sending message wait before response
-                    sleep(attempts);
-                }
-            }
-        } else {
-            return recv_b;
-        }   
+                    send_msg(msg, -1);  
+                } 
+            }                      
+        }
     }
     return 0;
 }
@@ -370,28 +371,38 @@ static ssize_t receive_message_udp(const char *msg, char *buffer, unsigned int m
 static ssize_t receive_message_tcp(const char *msg, char *buffer, unsigned int max_lenght) {
     ssize_t recv_b = 0;
     int attempts = 0;
-    bool enrollment_attemp = false;
     
-    while ((attempts <= 5) && (recv_b <= 0)) {
+    while (attempts < 6) {
+        attempts++;
+        sleep(attempts*2);
         int sock = wnet_select(agt->sock, timeout);
         if (sock < 0) {
             merror(SELECT_ERROR, errno, strerror(errno));
-        } else if (sock > 0) {
+        } 
+        else if (sock > 0) {
+            /* Receive response */
             recv_b = OS_RecvSecureTCP(agt->sock, buffer, max_lenght);
 
+            /* Successful response */
+            if (recv_b > 0) {
+                return recv_b;
+            }   
+            
+            /* Error response */
             switch (recv_b) {
                 case OS_SOCKTERR:
                     merror("Corrupt payload (exceeding size) received.");
                     break;
                 case 0:
-                    // Peer performed orderly shutdown (connection refused by manager)
-                    if (agt->enrollment_cfg && agt->enrollment_cfg->enabled && !enrollment_attemp) {
-                        if (try_enroll_to_server(agt->server[agt->rip_id].rip) == 0) {
-                            if (connect_server(agt->rip_id)) {
-                                send_msg(msg, -1);
-                            }
-                        }
-                        enrollment_attemp = true; // Only attemp enrolling once
+                    /* Peer performed orderly shutdown (connection refused by manager)
+                    *  Try to re enroll on fifth attempt
+                    */
+                    if (agt->enrollment_cfg && agt->enrollment_cfg->enabled && attempts == 5) {
+                        try_enroll_to_server(agt->server[agt->rip_id].rip);                     
+                    }
+                    /* Try to re send msg every time due to possible keys update delay on manager */
+                    if (connect_server(agt->rip_id)) {
+                        send_msg(msg, -1);
                     }
                     break;
                 case -1:
@@ -400,30 +411,26 @@ static ssize_t receive_message_tcp(const char *msg, char *buffer, unsigned int m
                     #else
                         mdebug1("Connection socket: %s (%d)", strerror(errno), errno);
                     #endif
-                    // Connection timeout, try to reconnect
+                    /* Connection timeout, try to reconnect */
                     if (connect_server(agt->rip_id)) {
                         send_msg(msg, -1);
                     }
                     break;
             }
         }
-        
-        attempts++;
-
-        
     }
-    return recv_b > 0 ? recv_b : 0;
+    return 0;
 }
 
 int try_enroll_to_server(const char * server_rip) {
     int enroll_result = w_enrollment_request_key(agt->enrollment_cfg, server_rip);
     if (enroll_result == 0) {
-        // Wait for key update on agent side
+        /* Wait for key update on agent side */
         mdebug1("Sleeping %d seconds to allow manager key file updates", agt->enrollment_cfg->delay_after_enrollment);
         sleep(agt->enrollment_cfg->delay_after_enrollment);
-        // Successfull enroll, read keys
+        /* Successfull enroll, read keys */
         OS_UpdateKeys(&keys);
-        // Set the crypto method for the agent
+        /* Set the crypto method for the agent */
         os_set_agent_crypto_method(&keys,agt->crypto_method);
     }
     return enroll_result;

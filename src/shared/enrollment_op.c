@@ -466,7 +466,7 @@ static void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_ce
         }
     }
     else {
-        mwarn("Registering agent to unverified manager.");
+        minfo("Registering agent to unverified manager.");
     }
 }
 
