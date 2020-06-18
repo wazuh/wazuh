@@ -70,9 +70,9 @@ installWazuh() {
 }
 
 configureFilebeat() {
-
-    awk '{sub(/127.0.0.1/,"'$wip'")}1' /etc/filebeat/filebeat.yml
-
+    
+    conf="$(awk '{sub(/127.0.0.1/,"'$wip'")}1' /etc/filebeat/filebeat.yml)"
+    echo "$conf" > /etc/filebeat/filebeat.yml
 }
 
 ## Filebeat
