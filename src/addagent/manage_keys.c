@@ -455,8 +455,12 @@ int k_bulkload(const char *cmdbulk)
              * Random 5: Final key
              */
 
-            snprintf(str1, STR_SIZE, "%d%s%d", (int)(time3 - time2), name, (int)rand1);
-            snprintf(str2, STR_SIZE, "%d%s%s%d", (int)(time2 - time1), ip, id, (int)rand2);
+            if (snprintf(str1, STR_SIZE, "%d%s%d", (int)(time3 - time2), name, (int)rand1) >= STR_SIZE) {
+                mwarn("Bulk generate client keys: a string used to generate the client key may be truncated.");
+            }
+            if (snprintf(str2, STR_SIZE, "%d%s%s%d", (int)(time2 - time1), ip, id, (int)rand2) >= STR_SIZE) {
+                mwarn("Bulk generate client keys: a string used to generate the client key may be truncated.");
+            }
 
             OS_MD5_Str(str1, -1, md1);
             OS_MD5_Str(str2, -1, md2);
