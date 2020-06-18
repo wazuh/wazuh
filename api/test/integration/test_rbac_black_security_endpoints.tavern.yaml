@@ -960,7 +960,7 @@ stages:
         data:
           affected_items: !anything
           failed_items: []
-          total_affected_items: 18
+          total_affected_items: 19
           total_failed_items: 0
         message: All specified policies were deleted
 

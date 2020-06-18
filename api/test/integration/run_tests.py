@@ -26,7 +26,8 @@ def collect_tests(test_list=None, keyword=None, rbac='both'):
         kw = kw if kw is not None else ''
         t_list = t_list.split(',') if t_list else None
         collected_items = []
-        candidate_tests = [test for test in glob.glob('test_*') for t in t_list if t in test] if t_list else glob.glob('test_*')
+        candidate_tests = [test for test in glob.glob('test_*.yaml') for t in t_list if t in test] \
+            if t_list else glob.glob('test_*.yaml')
         for file in candidate_tests:
             if rb == 'yes':
                 if kw in file and 'rbac' in file:

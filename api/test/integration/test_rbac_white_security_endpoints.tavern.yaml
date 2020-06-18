@@ -163,17 +163,18 @@ stages:
                 - 6
                 - 7
                 - 8
-                - 19
                 - 20
                 - 21
                 - 22
+                - 23
                 - 11
                 - 12
                 - 14
                 - 15
                 - 13
-                - 17
                 - 18
+                - 19
+                - 16
               users:
                 - wazuh
             - id: 2
@@ -192,6 +193,8 @@ stages:
                 - 13
                 - 16
                 - 18
+                - 17
+                - 19
               users:
                 - wazuh-wui
             - id: 3
@@ -236,6 +239,7 @@ stages:
                 - 24
                 - 25
                 - 26
+                - 27
               users: []
             - id: 7
               name: cluster_admin
@@ -248,6 +252,7 @@ stages:
                 - 20
                 - 21
                 - 22
+                - 23
               users: []
             - id: 99
               name: testing
@@ -375,17 +380,18 @@ stages:
                 - 6
                 - 7
                 - 8
-                - 19
                 - 20
                 - 21
                 - 22
+                - 23
                 - 11
                 - 12
                 - 14
                 - 15
                 - 13
-                - 17
                 - 18
+                - 19
+                - 16
               users:
                 - wazuh
           total_affected_items: 1
@@ -445,17 +451,18 @@ stages:
                 - 6
                 - 7
                 - 8
-                - 19
                 - 20
                 - 21
                 - 22
+                - 23
                 - 11
                 - 12
                 - 14
                 - 15
                 - 13
-                - 17
                 - 18
+                - 19
+                - 16
               users:
                 - wazuh
             - id: 2
@@ -474,6 +481,8 @@ stages:
                 - 13
                 - 16
                 - 18
+                - 17
+                - 19
               users:
                 - wazuh-wui
           total_affected_items: 2
