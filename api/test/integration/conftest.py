@@ -198,9 +198,9 @@ def generate_rbac_pair(index: int, permission: dict):
         List with two SQL sentences, the first creates the policy and the second links it with the testing role
     """
     role_policy_pair = [
-        f'INSERT INTO policies VALUES({99 + index},\'testing{index}\',\'{json.dumps(permission)}\','
+        f'INSERT INTO policies VALUES({1000 + index},\'testing{index}\',\'{json.dumps(permission)}\','
         f'\'1970-01-01 00:00:00\');\n',
-        f'INSERT INTO roles_policies VALUES({99 + index},99,{99 + index},{index},\'1970-01-01 00:00:00\');\n'
+        f'INSERT INTO roles_policies VALUES({1000 + index},99,{1000 + index},{index},\'1970-01-01 00:00:00\');\n'
     ]
 
     return role_policy_pair
@@ -258,6 +258,8 @@ def api_test(request):
         module = test_filename[1]
     create_tmp_folders()
     general_procedure(module)
+    # Uncomment this line to run all test with white mode
+    # change_rbac_mode('white')
     if rbac_mode:
         change_rbac_mode(rbac_mode)
         rbac_custom_config_generator(module, rbac_mode)

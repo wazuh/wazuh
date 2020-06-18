@@ -659,7 +659,7 @@ stages:
             - 1.1.1
             - 1.3.4
           failed_items: []
-          total_affected_items: 40
+          total_affected_items: !anyint
           total_failed_items: 0
         message: Selected rules were shown
 
@@ -677,7 +677,7 @@ stages:
           affected_items:
             - 1.1.1
           failed_items: []
-          total_affected_items: 40
+          total_affected_items: !anyint
           total_failed_items: 0
         message: Selected rules were shown
 
@@ -704,7 +704,7 @@ stages:
         data:
           affected_items: !anything
           failed_items: []
-          total_affected_items: 40
+          total_affected_items: !anyint
           total_failed_items: 0
         message: Selected rules were shown
       save:
@@ -771,7 +771,7 @@ stages:
             - II_5.1.f
             - IV_30.1.g
           failed_items: []
-          total_affected_items: 4
+          total_affected_items: !anyint
           total_failed_items: 0
         message: Selected rules were shown
 
@@ -789,7 +789,7 @@ stages:
           affected_items:
             - II_5.1.f
           failed_items: []
-          total_affected_items: 4
+          total_affected_items: !anyint
           total_failed_items: 0
         message: Selected rules were shown
 
@@ -816,7 +816,7 @@ stages:
         data:
           affected_items: !anything
           failed_items: []
-          total_affected_items: 4
+          total_affected_items: !anyint
           total_failed_items: 0
         message: Selected rules were shown
       save:
@@ -939,7 +939,7 @@ stages:
         data:
           affected_items: !anything
           failed_items: []
-          total_affected_items: 28
+          total_affected_items: !anyint
           total_failed_items: 0
         message: Selected rules were shown
       save:
@@ -1390,7 +1390,7 @@ stages:
           affected_items:
             - <<: *rules_response
           failed_items: []
-          total_affected_items: 1
+          total_affected_items: !anyint
           total_failed_items: 0
 
   - name: Try to show a rule with two existent ids
@@ -1407,7 +1407,7 @@ stages:
             - <<: *rules_response
             - <<: *rules_response
           failed_items: []
-          total_affected_items: 2
+          total_affected_items: !anyint
           total_failed_items: 0
 
   - name: Try to show a rule with a existent id and no existent one
@@ -1429,7 +1429,7 @@ stages:
                 remediation: !anystr
               id:
                 - 9
-          total_affected_items: 1
+          total_affected_items: !anyint
           total_failed_items: 1
         message: Some rules could not be shown
 
@@ -1476,7 +1476,7 @@ stages:
           affected_items:
             - <<: *rules_response
           failed_items: []
-          total_affected_items: 1
+          total_affected_items: !anyint
           total_failed_items: 0
 
   - name: Filter search error
