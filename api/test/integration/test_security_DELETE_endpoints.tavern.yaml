@@ -391,7 +391,7 @@ stages:
           total_failed_items: 1
         message: !anystr
 
-  - name: Delete the current user (Skipped)
+  - name: Delete the current user
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
@@ -405,9 +405,15 @@ stages:
       json:
         data:
           affected_items: []
-          failed_items: []
+          failed_items:
+            - error:
+                code: 5008
+                message: !anystr
+                remediation: !anystr
+              id:
+                - testing
           total_affected_items: 0
-          total_failed_items: 0
+          total_failed_items: 1
         message: !anystr
 
   - name: Delete an admin user (wazuh-wui)
@@ -491,10 +497,16 @@ stages:
               roles: []
             - username: python
               roles: []
-          failed_items: []
+          failed_items:
+            - error:
+                code: 5008
+                message: !anystr
+                remediation: !anystr
+              id:
+                - testing
           total_affected_items: 4
-          total_failed_items: 0
-        message: Users deleted correctly
+          total_failed_items: 1
+        message: !anystr
 
 ---
 test_name: DELETE /security/config

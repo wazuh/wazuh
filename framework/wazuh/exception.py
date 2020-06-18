@@ -521,7 +521,10 @@ class WazuhException(Exception):
                'remediation': 'No user, except administrator users, can change the data of a different user.'},
         5007: {'message': 'Insecure password provided.',
                'remediation': 'The password for users must be at least 8 characters long and must have at least '
-                              'one upper and lower case letter, a number and a symbol. '}
+                              'one upper and lower case letter, a number and a symbol. '},
+        5008: {'message': 'The current user cannot be deleted',
+               'remediation': 'You can delete this user with the administrator user (wazuh) or '
+                              'any other user with the necessary permissions.'}
 
         # > 9000: Authd
     }

@@ -122,6 +122,7 @@ def remove_users(username_list):
     with AuthenticationManager() as auth:
         for username in username_list:
             if username == common.current_user.get():
+                result.add_failed_item(id_=username, error=WazuhError(5008))
                 continue
             user = auth.get_user(username)
             query = auth.delete_user(username)

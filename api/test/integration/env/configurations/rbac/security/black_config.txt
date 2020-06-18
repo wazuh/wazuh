@@ -16,7 +16,7 @@
 | security:update       | user:id   | *     |                                   |
 | security:update       | role:id   |       | 102,103,105                       |
 | security:update       | policy:id |       | 104,102,107                       |
-| security:delete       | user:id   |       | guest,normal,wazuh-wui            |
+| security:delete       | user:id   |       | guest,normal,wazuh-wui,testing    |
 | security:delete       | role:id   | *     |                                   |
 | security:delete       | policy:id | *     |                                   |
 | security:create       | *         |       | *                                 |
