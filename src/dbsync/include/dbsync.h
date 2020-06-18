@@ -1,3 +1,14 @@
+/*
+ * Wazuh DBSYNC
+ * Copyright (C) 2015-2020, Wazuh Inc.
+ * June 11, 2020.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 /**
  * @file dbsync.h
  * @author Dwordcito
@@ -29,7 +40,7 @@ extern "C" {
 /**
  * @brief Turn off the services provided by the shared library.
  */
-  EXPORTED void teardown(void);
+  EXPORTED void dbsync_teardown(void);
 
 /**
  * @brief Initialize DBSync.
@@ -41,7 +52,7 @@ extern "C" {
  *
  * @return return a instance number to be used in the future.
  */
-  EXPORTED unsigned long long initialize(
+  EXPORTED unsigned long long dbsync_initialize(
     const HostType host_type, 
     const DbEngineType db_type,
     const char* path, 
@@ -55,7 +66,7 @@ extern "C" {
  *
  * @return return 0 if the operations is success, otherwise an error code will vary depending on the operating system.
  */
-  EXPORTED int insert_data(
+  EXPORTED int dbsync_insert_data(
     const unsigned long long handle,
     const cJSON* json_insert);
 
@@ -68,7 +79,7 @@ extern "C" {
  *
  * @return return 0 if the operations is success, otherwise an error code will vary depending on the operating system.
  */
-  EXPORTED int update_with_snapshot(
+  EXPORTED int dbsync_update_with_snapshot(
     const unsigned long long handle,
     const cJSON* json_snapshot,
     cJSON** json_return_modifications);
@@ -82,7 +93,7 @@ extern "C" {
  *
  * @return return 0 if the operations is success, otherwise an error code will vary depending on the operating system.
  */
-  EXPORTED int update_with_snapshot_cb(
+  EXPORTED int dbsync_update_with_snapshot_cb(
     const unsigned long long handle,
     const cJSON* json_snapshot,
     void* callback);
@@ -96,7 +107,7 @@ extern "C" {
  *
  * @return return 0 if the operations is success, otherwise an error code will vary depending on the operating system.
  */
-  EXPORTED int select_rows(
+  EXPORTED int dbsync_select_rows(
     const unsigned long long handle,
     const cJSON* json_data_input,
     cJSON** json_return_rows);
@@ -110,7 +121,7 @@ extern "C" {
  *
  * @return return 0 if the operations is success, otherwise an error code will vary depending on the operating system.
  */
-  EXPORTED int set_max_rows(
+  EXPORTED int dbsync_set_max_rows(
     const unsigned long long handle,
     const char* table,
     const unsigned long long max_rows);

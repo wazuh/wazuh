@@ -1,3 +1,14 @@
+/*
+ * Wazuh DBSYNC
+ * Copyright (C) 2015-2020, Wazuh Inc.
+ * June 11, 2020.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #include "sqlite_dbengine.h"
 #include "string_helper.h"
 #include "typedef.h"
@@ -44,7 +55,7 @@ void SQLiteDBEngine::Initialize(
     m_sqlite_connection->Execute("PRAGMA synchronous = OFF;");
 
     for (const auto& query : create_db_querys_list) {
-      auto stmt { m_sqlite_factory->CreateStatement(m_sqlite_connection, query) }; 
+      auto const& stmt { GetStatement(query) }; 
       stmt->Step();
     }
   }
@@ -70,7 +81,7 @@ bool SQLiteDBEngine::BulkInsert(const std::string& table, const nlohmann::json& 
     if(!sql.empty()) {
       
       auto transaction { m_sqlite_factory->CreateTransaction(m_sqlite_connection) };
-      auto stmt { m_sqlite_factory->CreateStatement(m_sqlite_connection, sql) };
+      auto const& stmt { GetStatement(sql) };
       for (const auto& json_value : data){
         for (const auto& value : m_table_fields[table]) {
           BindJsonData(stmt, value, json_value);
@@ -143,27 +154,41 @@ ColumnType SQLiteDBEngine::ColumnTypeName(const std::string& type) {
   return UNKNOWN_TYPE;
 }
 
-bool SQLiteDBEngine::BindJsonData(std::unique_ptr<SQLite::IStatement>& stmt, const ColumnData& cd, const nlohmann::json::value_type& value_type){
+bool SQLiteDBEngine::BindJsonData(std::unique_ptr<SQLite::IStatement>const& stmt, const ColumnData& cd, const nlohmann::json::value_type& value_type){
   const auto type = std::get<TableHeader::TYPE>(cd);
   const auto cid = std::get<TableHeader::CID>(cd) + 1;
   const auto name = std::get<TableHeader::NAME>(cd);
 
   auto ret_val{ false };
-  
+  const auto& json_data { value_type[name] };
+
   if (ColumnType::BIGINT_TYPE == type) {
-    int64_t value = value_type[name].is_number() ? value_type[name].get<int64_t>() : 0;
+    int64_t value = json_data.is_number() ? 
+      json_data.get<int64_t>() :
+      json_data.is_string() && json_data.get_ref<const std::string&>().size() ? 
+        std::stoll(json_data.get_ref<const std::string&>()) : 0;
     ret_val = stmt->Bind(cid, value);
   } else if (ColumnType::UNSIGNED_BIGINT_TYPE == type) {
-    uint64_t value = value_type[name].is_number_unsigned() ? value_type[name].get<uint64_t>() : 0;
+    uint64_t value = json_data.is_number_unsigned() ? 
+      json_data.get<uint64_t>() :
+      json_data.is_string() && json_data.get_ref<const std::string&>().size() ? 
+        std::stoull(json_data.get_ref<const std::string&>()) : 0;
     ret_val = stmt->Bind(cid, value);
   } else if (ColumnType::INTEGER_TYPE == type) {
-    int32_t value = value_type[name].is_number() ? value_type[name].get<int32_t>() : 0;
+    int32_t value = json_data.is_number() ? 
+      json_data.get<int32_t>() : 
+      json_data.is_string() && json_data.get_ref<const std::string&>().size() ? 
+        std::stol(json_data.get_ref<const std::string&>()) : 0;
     ret_val = stmt->Bind(cid, value);
   } else if (ColumnType::TEXT_TYPE == type) {
-    std::string value = value_type[name].is_string() ? value_type[name].get<std::string>() : "";
+    std::string value = json_data.is_string() ? 
+      json_data.get_ref<const std::string&>() : "";
     ret_val = stmt->Bind(cid, value);
   } else if (ColumnType::DOUBLE_TYPE == type) {
-    double value = value_type[name].is_number_float() ? value_type[name].get<double>() : .0f;
+    double value = json_data.is_number_float() ? 
+      json_data.get<double>() : 
+      json_data.is_string() && json_data.get_ref<const std::string&>().size() ? 
+        std::stod(json_data.get_ref<const std::string&>()) : .0f;
     ret_val = stmt->Bind(cid, value);
   } else if (ColumnType::BLOB_TYPE == type) {
     std::cout << "not implemented "<< __LINE__ << " - " << __FILE__ << std::endl;
@@ -174,25 +199,26 @@ bool SQLiteDBEngine::BindJsonData(std::unique_ptr<SQLite::IStatement>& stmt, con
 
 bool SQLiteDBEngine::RefreshTablaData(const nlohmann::json& data, const std::tuple<nlohmann::json&, void *> delta) {
   auto ret_val {false};
-  const std::string table { data["table"].is_string() ? data["table"].get<std::string>() : "" };
+  const std::string table { data["table"].is_string() ? data["table"].get_ref<const std::string&>() : "" };
   if (CreateCopyTempTable(table)) {
     if (BulkInsert(table + kTempTableSubFix, data["data"])) {
-      std::vector<std::string> primary_key_list;
-      if (GetPrimaryKeysFromTable(table, primary_key_list)) {
-        if (!RemoveNotExistsRows(table, primary_key_list, delta)) {
-          std::cout << "Error during the delete rows update "<< __LINE__ << " - " << __FILE__ << std::endl;
+      if (0 != LoadTableData(table)) {
+        std::vector<std::string> primary_key_list;
+        if (GetPrimaryKeysFromTable(table, primary_key_list)) {
+          if (!RemoveNotExistsRows(table, primary_key_list, delta)) {
+            std::cout << "Error during the delete rows update "<< __LINE__ << " - " << __FILE__ << std::endl;
+          }
+          if (!ChangeModifiedRows(table, primary_key_list, delta)) {
+            std::cout << "Error during the change of modified rows " << __LINE__ << " - " << __FILE__ << std::endl;
+          }
+          if (!InsertNewRows(table, primary_key_list, delta)) {
+            std::cout << "Error during the insert rows update "<< __LINE__ << " - " << __FILE__ << std::endl;
+          }
+          
         }
-        if (!ChangeModifiedRows(table, primary_key_list, delta)) {
-          std::cout << "Error during the change of modified rows " << __LINE__ << " - " << __FILE__ << std::endl;
-        }
-        if (!InsertNewRows(table, primary_key_list, delta)) {
-          std::cout << "Error during the insert rows update "<< __LINE__ << " - " << __FILE__ << std::endl;
-        }
-        
+        ret_val = true;
       }
-      ret_val = true;
     }
-    DeleteTempTable(table);
   }
   return ret_val;
 }
@@ -200,9 +226,10 @@ bool SQLiteDBEngine::RefreshTablaData(const nlohmann::json& data, const std::tup
 bool SQLiteDBEngine::CreateCopyTempTable(const std::string& table) {
   auto ret_val { false };
   std::string result_query;
+  DeleteTempTable(table);
   if (GetTableCreateQuery(table, result_query)) {
     if(StringHelper::replace_string(result_query, "CREATE TABLE " + table, "CREATE TEMP TABLE " + table + "_TEMP")) {
-      auto stmt { m_sqlite_factory->CreateStatement(m_sqlite_connection, result_query) };
+      auto const& stmt { GetStatement(result_query) };
       if (SQLITE_DONE == stmt->Step()) {
         ret_val = true;
       }
@@ -223,7 +250,7 @@ bool SQLiteDBEngine::GetTableCreateQuery(
   const std::string sql {"SELECT sql FROM sqlite_master WHERE type='table' AND name=?;"}; 
 
   if (!table.empty()) {
-    auto stmt { m_sqlite_factory->CreateStatement(m_sqlite_connection, sql) };
+    auto const& stmt { GetStatement(sql) };
     stmt->Bind(1, table);
     while (SQLITE_ROW == stmt->Step()) {
       result_query.append(std::move(stmt->GetColumn(0)->String()));
@@ -280,7 +307,7 @@ bool SQLiteDBEngine::GetPrimaryKeysFromTable(
 }
 
 int32_t SQLiteDBEngine::GetTableData(
-  std::unique_ptr<SQLite::IStatement>& stmt, 
+  std::unique_ptr<SQLite::IStatement>const & stmt, 
   const int32_t index, 
   const ColumnType& type, 
   const std::string& field_name, 
@@ -318,7 +345,7 @@ bool SQLiteDBEngine::GetLeftOnly(
   const std::string query { BuildLeftOnlyQuery(t1, t2, primary_key_list) };
 
   if (!t1.empty() && !query.empty()) {
-    auto stmt { m_sqlite_factory->CreateStatement(m_sqlite_connection, query) };
+    auto const& stmt { GetStatement(query) };
     const auto table_fields { m_table_fields[t1] };
     while (SQLITE_ROW == stmt->Step()) {
       Row register_fields;
@@ -348,7 +375,7 @@ bool SQLiteDBEngine::GetPKListLeftOnly(
   const std::string sql { BuildLeftOnlyQuery(t1, t2, primary_key_list, true) };
   std::cout << sql << std::endl;
   if (!t1.empty() && !sql.empty()) {
-    auto stmt { m_sqlite_factory->CreateStatement(m_sqlite_connection, sql) };
+    auto const& stmt { GetStatement(sql) };
     const auto table_fields { m_table_fields[t1] };
     while (SQLITE_ROW == stmt->Step()) {
       Row register_fields;
@@ -410,7 +437,7 @@ bool SQLiteDBEngine::DeleteRows(
 
   if(!sql.empty()) {
     auto transaction { m_sqlite_factory->CreateTransaction(m_sqlite_connection)};
-    auto stmt { m_sqlite_factory->CreateStatement(m_sqlite_connection, sql) };
+    auto const& stmt { GetStatement(sql) };
 
     for (const auto& row : rows_to_remove){
       auto index {1l};
@@ -430,7 +457,7 @@ bool SQLiteDBEngine::DeleteRows(
 
 
 int32_t SQLiteDBEngine::BindFieldData(
-  std::unique_ptr<SQLite::IStatement>& stmt, 
+  std::unique_ptr<SQLite::IStatement>const & stmt, 
   const int32_t index, 
   const TableField& field_data){
 
@@ -536,7 +563,7 @@ bool SQLiteDBEngine::BulkInsert(
   if(!sql.empty()) {
 
     auto transaction { m_sqlite_factory->CreateTransaction(m_sqlite_connection)};
-    auto stmt { m_sqlite_factory->CreateStatement(m_sqlite_connection, sql) };
+    auto const& stmt { GetStatement(sql) };
 
     for (const auto& row : data){
       for (const auto& value : m_table_fields[table]) {
@@ -699,7 +726,7 @@ bool SQLiteDBEngine::GetRowsToModify(
 
   if(!sql.empty())
   {
-    auto stmt { m_sqlite_factory->CreateStatement(m_sqlite_connection, sql) };
+    auto const& stmt { GetStatement(sql) };
 
     while (SQLITE_ROW == stmt->Step()) {
       const auto table_fields { m_table_fields[table] };
@@ -810,4 +837,15 @@ bool SQLiteDBEngine::GetFieldValueFromTuple(
     ret_val = false;
   }
   return ret_val;
+}
+
+std::unique_ptr<SQLite::IStatement>const& SQLiteDBEngine::GetStatement(const std::string& sql) {
+  const auto it = m_statements_cache.find(sql);
+  if(m_statements_cache.end() != it) {
+    it->second->Reset();
+    return it->second;
+  } else {
+    m_statements_cache[sql] = m_sqlite_factory->CreateStatement(m_sqlite_connection, sql);
+    return m_statements_cache[sql];
+  }
 }

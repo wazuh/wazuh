@@ -81,7 +81,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
         }
     }
     else if (!strcmp(node->values[0], WM_OSQUERYNATIVE_CONTEXT.name)) {
-        if (wm_osquery_native_configuration_reader(children, cur_wmodule) < 0) {
+        if (wm_osquery_native_configuration_reader(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }

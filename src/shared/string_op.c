@@ -909,3 +909,37 @@ char * wstr_unescape_json(const char * string) {
     output[j] = '\0';
     return output;
 }
+
+/* Check if the specified string is alphanumeric */
+bool is_string_alphanumeric(const char* string) {
+    bool ret_val = FALSE;
+    if (NULL != string) {
+        bool is_alpha = true;
+        int i = 0;
+        while (is_alpha && string[i] != '\0') {
+            is_alpha &= 0 == isalnum(string[i]) ? false : true;
+            ++i;
+        }
+        ret_val = is_alpha;
+    }
+    
+    return ret_val;
+}
+
+/* Convert string to time_t */
+time_t string_to_time_t(char* string, const time_t default_value) {
+    time_t ret_val = default_value;
+    if (NULL != string && w_str_is_number(string)) {
+        if (sizeof(time_t) == sizeof(int)) {
+            ret_val = atoi(string);
+        } else if (sizeof(time_t) == sizeof(long)) {
+            ret_val = atol(string);
+        } else if (sizeof(time_t) == sizeof(long long)) {
+            ret_val = atoll(string);
+        } else {
+            mwarn("Unrecognized time_t value type.");
+        }
+    }
+    return ret_val;
+}
+
