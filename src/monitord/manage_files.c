@@ -47,11 +47,17 @@ void manage_log(const char * logdir, int cday, int cmon, int cyear, const struct
     OS_SignLog(logfile, logfile_old, ext);
 
     if (mond.compress) {
-        snprintf(logfile_r, OS_FLSIZE + 1, "%s.%s", logfile, ext);
+        if (snprintf(logfile_r, OS_FLSIZE + 1, "%s.%s", logfile, ext) >= OS_FLSIZE) {
+            mwarn("The rotated log's name may be truncated because it is too long.");
+        }
         OS_CompressLog(logfile_r);
 
-        for (i = 1; snprintf(logfile_r, OS_FLSIZE + 1, "%s-%.3d.%s", logfile, i, ext), !IsFile(logfile_r) && FileSize(logfile_r) > 0; i++) {
-            OS_CompressLog(logfile_r);
+        for (i = 1; !IsFile(logfile_r) && FileSize(logfile_r) > 0; i++) {
+            if (snprintf(logfile_r, OS_FLSIZE + 1, "%s-%.3d.%s", logfile, i, ext) < OS_FLSIZE) {
+                OS_CompressLog(logfile_r);
+            } else {
+                mwarn("The rotated log's name may be truncated because it is too long.");
+            }
         }
     }
 }
