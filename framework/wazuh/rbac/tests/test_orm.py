@@ -168,7 +168,7 @@ def test_get_policies(db_setup):
             assert isinstance(policy.name, str)
             assert isinstance(json.loads(policy.policy), dict)
 
-        assert policies[1].name == 'agents_read'
+        assert policies[1].name == 'agents_all_agents'
 
 
 def test_delete_users(db_setup):
@@ -247,7 +247,7 @@ def test_update_role(db_setup):
     """Check update a role in the database"""
     with db_setup.RolesManager() as rm:
         rm.add_role(name='toUpdate', rule={'Unittest': 'Role'})
-        tid = rm.get_role_id(role_id=14)['id']
+        tid = rm.get_role_id(role_id=106)['id']
         tname = rm.get_role(name='toUpdate')['name']
         rm.update_role(role_id=tid, name='updatedName', rule={'Unittest1': 'Role'})
         assert tid == rm.get_role(name='updatedName')['id']
@@ -364,10 +364,10 @@ def test_add_role_policy(db_setup):
         roles_ids = list()
 
         with db_setup.RolesManager() as rm:
-            rm.add_role('normal', rule={'Unittest': 'Role'})
-            roles_ids.append(rm.get_role('normal')['id'])
-            rm.add_role('advanced', rule={'Unittest1': 'Role'})
-            roles_ids.append(rm.get_role('advanced')['id'])
+            rm.add_role('normalUnit', rule={'Unittest': 'Role'})
+            roles_ids.append(rm.get_role('normalUnit')['id'])
+            rm.add_role('advancedUnit', rule={'Unittest1': 'Role'})
+            roles_ids.append(rm.get_role('advancedUnit')['id'])
 
         with db_setup.PoliciesManager() as pm:
             policy = {
@@ -377,12 +377,11 @@ def test_add_role_policy(db_setup):
                 ],
                 'effect': 'allow'
             }
-            pm.add_policy('normalPolicy', policy)
-            policies_ids.append(pm.get_policy('normalPolicy')['id'])
+            pm.add_policy('normalPolicyUnit', policy)
+            policies_ids.append(pm.get_policy('normalPolicyUnit')['id'])
             policy['actions'] = ['agents:create']
-            pm.add_policy('advancedPolicy', policy)
-            policies_ids.append(pm.get_policy('advancedPolicy')['id'])
-
+            pm.add_policy('advancedPolicyUnit', policy)
+            policies_ids.append(pm.get_policy('advancedPolicyUnit')['id'])
         # New role-policy
         for policy in policies_ids:
             for role in roles_ids:
@@ -562,9 +561,9 @@ def test_get_all_role_from_policy(db_setup):
     with db_setup.RolesPoliciesManager() as rpm:
         policies_ids, roles_ids = test_add_role_policy(db_setup)
         for policy in policies_ids:
-            roles = rpm.get_all_roles_from_policy(policy_id=policy)
-            for index, role in enumerate(roles):
-                assert role.id == roles_ids[index]
+            roles = [role.id for role in rpm.get_all_roles_from_policy(policy_id=policy)]
+            for role_id in roles_ids:
+                assert role_id in roles
 
 
 def test_remove_all_roles_from_user(db_setup):
