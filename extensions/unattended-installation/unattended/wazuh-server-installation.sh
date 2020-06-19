@@ -71,7 +71,7 @@ installWazuh() {
 
 configureFilebeat() {
     
-    conf="$(awk '{sub(/127.0.0.1/,"'$wip'")}1' /etc/filebeat/filebeat.yml)"
+    conf="$(awk '{sub(/127.0.0.1/,"'$ip'")}1' /etc/filebeat/filebeat.yml)"
     echo "$conf" > /etc/filebeat/filebeat.yml
 }
 
@@ -119,9 +119,9 @@ main() {
         while [ -n "$1" ]
         do
             case "$1" in
-            "-wip"|"--elasticsearch-ip")        
-                wip="$2"
-                configureFilebeat $wip
+            "-ip"|"--elasticsearch-ip")        
+                ip="$2"
+                configureFilebeat $ip
                 shift
                 shift
                 ;;
