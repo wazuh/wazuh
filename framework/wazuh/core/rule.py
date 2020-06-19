@@ -11,7 +11,7 @@ from wazuh.exception import WazuhError
 from wazuh.utils import load_wazuh_xml
 
 REQUIRED_FIELDS = ['id']
-RULE_REQUIREMENTS = ['pci_dss', 'gdpr', 'hipaa', 'nist_800_53', 'gpg13']
+RULE_REQUIREMENTS = ['pci_dss', 'gdpr', 'hipaa', 'nist_800_53', 'gpg13', 'tsc']
 SORT_FIELDS = ['filename', 'relative_dirname', 'description', 'id', 'level', 'status']
 
 
@@ -52,7 +52,7 @@ def set_groups(groups, general_groups, rule):
     groups.extend(general_groups)
     for g in groups:
         for req in RULE_REQUIREMENTS:
-            if req in g:
+            if g.startswith(req):
                 # We add the requirement to the rule
                 rule[req].append(g[len(req) + 1:]) if g[len(req) + 1:] not in rule[req] else None
                 break
@@ -76,7 +76,7 @@ def load_rules_from_file(rule_filename, rule_relative_path, rule_status):
                         rule = {'filename': rule_filename, 'relative_dirname': rule_relative_path,
                                 'id': int(xml_rule.attrib['id']), 'level': int(xml_rule.attrib['level']),
                                 'status': rule_status, 'details': dict(), 'pci_dss': list(), 'gpg13': list(),
-                                'gdpr': list(), 'hipaa': list(), 'nist_800_53': list(), 'groups': list(),
+                                'gdpr': list(), 'hipaa': list(), 'nist_800_53': list(), 'tsc': list(), 'groups': list(),
                                 'description': ''}
                         for k in xml_rule.attrib:
                             if k != 'id' and k != 'level':

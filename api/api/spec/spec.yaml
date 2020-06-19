@@ -2382,6 +2382,11 @@ components:
               description: "NIST-800-53 checks the rule is checking"
               items:
                 type: string
+            tsc:
+              type: array
+              description: "TSC checks the rule is checking"
+              items:
+                type: string
             pci:
               type: array
               description: "PCI DSS checks the rule is checking"
@@ -3813,7 +3818,7 @@ components:
       required: true
       schema:
         type: string
-        enum: [pci_dss, gdpr, hipaa, nist-800-53, gpg13]
+        enum: [pci_dss, gdpr, hipaa, nist-800-53, gpg13, tsc]
     result:
       in: query
       name: result
@@ -4205,6 +4210,13 @@ components:
       in: query
       name: nist-800-53
       description: "Filter by NIST-800-53 requirement"
+      schema:
+        type: string
+        format: alphanumeric
+    tsc:
+      in: query
+      name: tsc
+      description: "Filters by TSC requirement."
       schema:
         type: string
         format: alphanumeric
@@ -9566,6 +9578,7 @@ paths:
         - $ref: '#/components/parameters/gpg13'
         - $ref: '#/components/parameters/hipaa'
         - $ref: '#/components/parameters/nist-800-53'
+        - $ref: '#/components/parameters/tsc'
       responses:
         '200':
           description: "Rule"
@@ -9594,6 +9607,7 @@ paths:
                       id: 1
                       level: 0
                       nist_800_53: []
+                      tsc: []
                       path: ruleset/rules
                       pci_dss: []
                       status: enabled
@@ -9610,6 +9624,7 @@ paths:
                       id: 5
                       level: 0
                       nist_800_53: []
+                      tsc: []
                       path: ruleset/rules
                       pci_dss: []
                       status: enabled

@@ -31,6 +31,7 @@ stages:
               id: !anyint
               level: !anyint
               nist_800_53: !anything
+              tsc: !anything
               relative_dirname: !anystr
               pci_dss: !anything
               status: !anystr
