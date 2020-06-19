@@ -21,20 +21,10 @@ static ssize_t receive_message_udp(const char *msg, char *buffer, unsigned int m
 static ssize_t receive_message_tcp(const char *msg, char *buffer, unsigned int max_lenght);
 static void w_agentd_keys_init (void);
 
-/* Attempt to connect to all configured servers */
-int connect_server(int initial_id)
+
+int connect_server(int server_id)
 {
-    int attempts = 2;
-    int rc = initial_id;
-
     timeout = getDefine_Int("agent", "recv_timeout", 1, 600);
-
-    /* Checking if the initial is zero, meaning we have to
-     * rotate to the beginning
-     */
-    if (agt->server[initial_id].rip == NULL) {
-        rc = 0;
-    }
 
     /* Close socket if available */
     if (agt->sock >= 0) {
@@ -42,116 +32,87 @@ int connect_server(int initial_id)
         CloseSocket(agt->sock);
         agt->sock = -1;
 
-        if (agt->server[1].rip) {
+        if (agt->server[server_id].rip) {
             minfo("Closing connection to server (%s:%d/%s).",
-                    agt->server[rc].rip,
-                    agt->server[rc].port,
-                    agt->server[rc].protocol == IPPROTO_UDP ? "udp" : "tcp");
+                    agt->server[server_id].rip,
+                    agt->server[server_id].port,
+                    agt->server[server_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
         }
     }
 
-    while (agt->server[rc].rip) {
-        char *tmp_str;
+    
+    char *tmp_str;
 
-        /* Check if we have a hostname */
-        tmp_str = strchr(agt->server[rc].rip, '/');
-        if (tmp_str) {
-            /* Resolve hostname */
-            if (!isChroot()) {
-                resolveHostname(&agt->server[rc].rip, 5);
+    /* Check if we have a hostname */
+    tmp_str = strchr(agt->server[server_id].rip, '/');
+    if (tmp_str) {
+        /* Resolve hostname */
+        if (!isChroot()) {
+            resolveHostname(&agt->server[server_id].rip, 5);
 
-                tmp_str = strchr(agt->server[rc].rip, '/');
-                if (tmp_str) {
-                    tmp_str++;
-                }
-            } else {
+            tmp_str = strchr(agt->server[server_id].rip, '/');
+            if (tmp_str) {
                 tmp_str++;
             }
         } else {
-            tmp_str = agt->server[rc].rip;
+            tmp_str++;
         }
+    } else {
+        tmp_str = agt->server[server_id].rip;
+    }
 
-        /* The hostname was not resolved correctly */
-        if (tmp_str == NULL || *tmp_str == '\0') {
-            int rip_l = strlen(agt->server[rc].rip);
-            mdebug2("Could not resolve hostname '%.*s'", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
-            rc++;
-            if (agt->server[rc].rip == NULL) {
-                attempts += 10;
-                if (agt->server[1].rip) {
-                    merror("Unable to connect to any server.");
-                }
-                sleep(attempts < agt->notify_time ? attempts : agt->notify_time);
-                rc = 0;
-            }
-            continue;
-        }
+    /* The hostname was not resolved correctly */
+    if (tmp_str == NULL || *tmp_str == '\0') {
+        int rip_l = strlen(agt->server[server_id].rip);
+        mdebug2("Could not resolve hostname '%.*s'", agt->server[server_id].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[server_id].rip);
+            
+        return 0;
+    }
 
-        minfo("Trying to connect to server (%s:%d/%s).",
-                agt->server[rc].rip,
-                agt->server[rc].port,
-                agt->server[rc].protocol == IPPROTO_UDP ? "udp" : "tcp");
+    minfo("Trying to connect to server (%s:%d/%s).",
+            agt->server[server_id].rip,
+            agt->server[server_id].port,
+            agt->server[server_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
 
-        if (agt->server[rc].protocol == IPPROTO_UDP) {
-            agt->sock = OS_ConnectUDP(agt->server[rc].port, tmp_str, strchr(tmp_str, ':') != NULL);
-        } else {
-            if (agt->sock >= 0) {
-                close(agt->sock);
-                agt->sock = -1;
-            }
-
-            agt->sock = OS_ConnectTCP(agt->server[rc].port, tmp_str, strchr(tmp_str, ':') != NULL);
-        }
-
-        if (agt->sock < 0) {
-            agt->sock = -1;
-#ifdef WIN32
+    if (agt->server[server_id].protocol == IPPROTO_UDP) {
+        agt->sock = OS_ConnectUDP(agt->server[server_id].port, tmp_str, strchr(tmp_str, ':') != NULL);
+    } else {
+        agt->sock = OS_ConnectTCP(agt->server[server_id].port, tmp_str, strchr(tmp_str, ':') != NULL);
+    }
+    
+    if (agt->sock < 0) {
+        agt->sock = -1;
+        #ifdef WIN32
             merror(CONNS_ERROR, tmp_str, win_strerror(WSAGetLastError()));
-#else
+        #else
             merror(CONNS_ERROR, tmp_str, strerror(errno));
-#endif
-            rc++;
-
-            if (agt->server[rc].rip == NULL) {
-                attempts += 10;
-
-                /* Only log that if we have more than 1 server configured */
-                if (agt->server[1].rip) {
-                    merror("Unable to connect to any server.");
-                }
-
-                sleep(attempts < agt->notify_time ? attempts : agt->notify_time);
-                rc = 0;
-            }
-        } else {
-            if (agt->server[rc].protocol == IPPROTO_TCP) {
-                if (OS_SetRecvTimeout(agt->sock, timeout, 0) < 0){
-                    switch (errno) {
+        #endif
+    } else {
+        if (agt->server[server_id].protocol == IPPROTO_TCP) {
+            if (OS_SetRecvTimeout(agt->sock, timeout, 0) < 0) {
+                switch (errno) {
                     case ENOPROTOOPT:
                         mdebug1("Cannot set network timeout: operation not supported by this OS.");
                         break;
                     default:
                         merror("Cannot set network timeout: %s (%d)", strerror(errno), errno);
                         return EXIT_FAILURE;
-                    }
                 }
             }
 
-#ifdef WIN32
-            if (agt->server[rc].protocol == IPPROTO_UDP) {
-                int bmode = 1;
+            #ifdef WIN32
+                if (agt->server[server_id].protocol == IPPROTO_UDP) {
+                    int bmode = 1;
 
-                /* Set socket to non-blocking */
-                ioctlsocket(agt->sock, FIONBIO, (u_long FAR *) &bmode);
-            }
-#endif
-
-            agt->rip_id = rc;
-            return (1);
+                    /* Set socket to non-blocking */
+                    ioctlsocket(agt->sock, FIONBIO, (u_long FAR *) &bmode);
+                }
+            #endif
         }
+        agt->rip_id = server_id;
+        return 1;
     }
-
-    return (0);
+    return 0;
 }
 
 /* Send synchronization message to the server and wait for the ack */

@@ -232,7 +232,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             logr->server[i].protocol = protocol;
         }
     }
-
+    logr->rip_id = 0;
     return (0);
 }
 

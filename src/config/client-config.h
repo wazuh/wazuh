@@ -31,7 +31,7 @@ typedef struct _agent {
     int sock;
     int execdq;
     int cfgadq;
-    int rip_id;
+    int rip_id; ///> Holds the index of the current connected server
     char *lip;
     int notify_time;
     int max_time_reconnect_try;
