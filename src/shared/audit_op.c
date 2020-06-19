@@ -114,7 +114,7 @@ void kernel_get_reply(int fd) {
                 continue;
             }
 
-            if ((retval = audit_print_reply(&rep)) == 0) {
+            if (retval = audit_print_reply(&rep), retval == 0) {
                 break;
             } else {
                 i = 0;

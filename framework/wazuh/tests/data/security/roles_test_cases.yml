@@ -2,98 +2,98 @@
 get_roles:
 - params:
     role_ids:
-    - '8'
-    - '11'
+    - '100'
+    - '103'
   result:
     affected_items:
-    - id: 8
+    - id: 100
       name: wazuh
       rule:
         FIND:
           r'^auth[a-zA-Z]+$':
           - administrator
       policies:
-      - 11
+      - 100
       users:
-      - wazuh
-    - id: 11
+      - administrator
+    - id: 103
       name: administrator_test
       rule:
         MATCH:
           definition: administratorRule
       policies:
-      - 15
-      - 14
+      - 104
+      - 103
       users:
       - normal
       - rbac
     failed_items: {}
 - params:
     role_ids:
-    - '10'
-    - '12'
-    - '13'
-    - '16'
+    - '102'
+    - '104'
+    - '105'
+    - '200'
   result:
     affected_items:
-    - id: 10
+    - id: 102
       name: technical
       rule:
         MATCH:
           definition: technicalRule
       policies:
-      - 12
-      - 11
-      - 18
-      - 15
+      - 101
+      - 100
+      - 107
+      - 104
       users:
       - rbac
-    - id: 12
+    - id: 104
       name: normalUser
       rule:
         MATCH:
           definition: normalRule
       policies:
-      - 12
-      - 13
-      - 20
+      - 101
+      - 102
+      - 109
       users:
       - normal
       - ossec
       - rbac
-    - id: 13
+    - id: 105
       name: ossec
       rule:
         MATCH:
           definition: ossecRule
       policies:
-      - 12
-      - 18
-      - 17
-      - 20
-      - 15
-      - 19
-      - 11
-      - 16
-      - 13
-      - 14
+      - 101
+      - 107
+      - 106
+      - 109
+      - 104
+      - 108
+      - 100
+      - 105
+      - 102
+      - 103
       users:
       - normal
     failed_items:
       '4002':
-      - '16'
+      - '200'
 - params:
     role_ids:
-    - '17'
-    - '18'
-    - '19'
+    - '200'
+    - '201'
+    - '202'
   result:
     affected_items: []
     failed_items:
       '4002':
-      - '17'
-      - '18'
-      - '19'
+      - '200'
+      - '201'
+      - '202'
 add_role:
 - params:
     name: new_role
@@ -102,7 +102,7 @@ add_role:
         definition: normalRule1
   result:
     affected_items:
-    - id: 14
+    - id: 106
       name: new_role
       rule:
         MATCH:
@@ -133,29 +133,29 @@ add_role:
 update_role:
 - params:
     role_id:
-    - '13'
+    - '105'
     name: ossec1
     rule:
       MATCH:
         definition: normalRule3
   result:
     affected_items:
-    - id: 13
+    - id: 105
       name: ossec1
       rule:
         MATCH:
           definition: normalRule3
       policies:
-      - 12
-      - 18
-      - 17
-      - 20
-      - 15
-      - 19
-      - 11
-      - 16
-      - 13
-      - 14
+      - 101
+      - 107
+      - 106
+      - 109
+      - 104
+      - 108
+      - 100
+      - 105
+      - 102
+      - 103
       users:
       - normal
     failed_items: {}
@@ -173,15 +173,15 @@ update_role:
       - '89'
 - params:
     role_id:
-    - '10'
+    - '102'
   result:
     affected_items: []
     failed_items:
       '4001':
-      - '10'
+      - '102'
 - params:
     role_id:
-    - '12'
+    - '104'
     name: normalUser
     rule:
       MATCH:
@@ -190,7 +190,7 @@ update_role:
     affected_items: []
     failed_items:
       '4005':
-      - '12'
+      - '104'
 - params:
     role_id:
     - '1'
@@ -207,14 +207,14 @@ remove_roles:
 - params:
     role_ids:
     - '1'
-    - '11'
+    - '103'
   result:
     affected_items:
-    - id: 11
+    - id: 103
       name: administrator_test
       policies:
-      - 15
-      - 14
+      - 104
+      - 103
       rule:
         MATCH:
           definition: administratorRule
@@ -226,30 +226,30 @@ remove_roles:
       - '1'
 - params:
     role_ids:
-    - '10'
-    - '12'
-    - '13'
-    - '16'
+    - '102'
+    - '104'
+    - '105'
+    - '200'
   result:
     affected_items:
-    - id: 10
+    - id: 102
       name: technical
       policies:
-      - 12
-      - 11
-      - 18
-      - 15
+      - 101
+      - 100
+      - 107
+      - 104
       rule:
         MATCH:
           definition: technicalRule
       users:
       - rbac
-    - id: 12
+    - id: 104
       name: normalUser
       policies:
-      - 12
-      - 13
-      - 20
+      - 101
+      - 102
+      - 109
       rule:
         MATCH:
           definition: normalRule
@@ -257,19 +257,19 @@ remove_roles:
       - normal
       - ossec
       - rbac
-    - id: 13
+    - id: 105
       name: ossec
       policies:
-      - 12
-      - 18
-      - 17
-      - 20
-      - 15
-      - 19
-      - 11
-      - 16
-      - 13
-      - 14
+      - 101
+      - 107
+      - 106
+      - 109
+      - 104
+      - 108
+      - 100
+      - 105
+      - 102
+      - 103
       rule:
         MATCH:
           definition: ossecRule
@@ -277,16 +277,16 @@ remove_roles:
       - normal
     failed_items:
       '4002':
-      - '16'
+      - '200'
 - params:
     role_ids:
-    - '20'
-    - '21'
-    - '22'
+    - '200'
+    - '201'
+    - '202'
   result:
     affected_items: []
     failed_items:
       '4002':
-      - '20'
-      - '21'
-      - '22'
+      - '200'
+      - '201'
+      - '202'

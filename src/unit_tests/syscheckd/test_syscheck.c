@@ -52,6 +52,18 @@ void __wrap__mwarn(const char * file, int line, const char * func, const char *m
     check_expected(formatted_msg);
 }
 
+void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...)
+{
+    char formatted_msg[OS_MAXSTR];
+    va_list args;
+
+    va_start(args, msg);
+    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
+    va_end(args);
+
+    check_expected(formatted_msg);
+}
+
 void __wrap__merror_exit(const char * file, int line, const char * func, const char *msg, ...)
 {
     char formatted_msg[OS_MAXSTR];
@@ -193,8 +205,7 @@ void test_Start_win32_Syscheck_no_config_file(void **state)
     expect_string(__wrap__merror_exit, formatted_msg, "(1239): Configuration file not found: 'ossec.conf'.");
 
     expect_string(__wrap_Read_Syscheck_Config, file, "ossec.conf");
-    will_return(__wrap_Read_Syscheck_Config, -1);
-    expect_string(__wrap__merror_exit, formatted_msg, "(1202): Configuration error at 'ossec.conf'.");
+    will_return(__wrap_Read_Syscheck_Config, 0);
 
     will_return(__wrap_rootcheck_init, 1);
 
@@ -206,6 +217,36 @@ void test_Start_win32_Syscheck_no_config_file(void **state)
     expect_function_call(__wrap_os_wait);
 
     expect_function_call(__wrap_start_daemon);
+    Start_win32_Syscheck();
+}
+
+void test_Start_win32_Syscheck_corrupted_config_file(void **state)
+{
+    (void) state;
+
+    char *SYSCHECK_EMPTY[] = { NULL };
+    registry REGISTRY_EMPTY[] = { { NULL, 0, NULL } };
+    syscheck.dir = SYSCHECK_EMPTY;
+    syscheck.registry = REGISTRY_EMPTY;
+    syscheck.disabled = 1;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Starting ...");
+
+    will_return_always(__wrap_getDefine_Int, 1);
+    expect_string(__wrap_File_DateofChange, file, "ossec.conf");
+    will_return(__wrap_File_DateofChange, 0);
+
+    expect_string(__wrap_Read_Syscheck_Config, file, "ossec.conf");
+    will_return(__wrap_Read_Syscheck_Config, -1);
+    expect_string(__wrap__merror, formatted_msg, "(1207): syscheck remote configuration in 'ossec.conf' is corrupted.");
+
+    will_return(__wrap_rootcheck_init, 1);
+    expect_value(__wrap_fim_db_init, memory, 0);
+    will_return(__wrap_fim_db_init, NULL);
+    expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
+    expect_function_call(__wrap_os_wait);
+    expect_function_call(__wrap_start_daemon);
+
     Start_win32_Syscheck();
 }
 
@@ -420,6 +461,7 @@ int main(void) {
         /* Windows specific tests */
         #ifdef TEST_WINAGENT
             cmocka_unit_test(test_Start_win32_Syscheck_no_config_file),
+            cmocka_unit_test(test_Start_win32_Syscheck_corrupted_config_file),
             cmocka_unit_test(test_Start_win32_Syscheck_syscheck_disabled_1),
             cmocka_unit_test(test_Start_win32_Syscheck_syscheck_disabled_2),
             cmocka_unit_test(test_Start_win32_Syscheck_dirs_and_registry),

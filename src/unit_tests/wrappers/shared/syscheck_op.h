@@ -16,7 +16,7 @@
 HANDLE wrap_syscheck_op_CreateFile (LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile);
 WINBOOL wrap_syscheck_op_CloseHandle (HANDLE hObject);
 DWORD wrap_syscheck_op_GetLastError (VOID);
-DWORD wrap_syscheck_op_FormatMessage (DWORD dwFlags, LPCVOID lpSource, DWORD dwMessageId, DWORD dwLanguageId, char** lpBuffer, DWORD nSize, va_list *Arguments);
+DWORD wrap_syscheck_op_FormatMessage (DWORD dwFlags, LPCVOID lpSource, DWORD dwMessageId, DWORD dwLanguageId, LPTSTR lpBuffer, DWORD nSize, va_list *Arguments);
 HLOCAL wrap_syscheck_op_LocalFree (HLOCAL hMem);
 DWORD wrap_syscheck_op_GetSecurityInfo (HANDLE handle, SE_OBJECT_TYPE ObjectType, SECURITY_INFORMATION SecurityInfo, PSID *ppsidOwner, PSID *ppsidGroup, PACL *ppDacl, PACL *ppSacl, PSECURITY_DESCRIPTOR *ppSecurityDescriptor);
 WINBOOL wrap_syscheck_op_ConvertSidToStringSid(PSID Sid,LPSTR *StringSid);

@@ -8,11 +8,6 @@
 
 # Advanced configuration
 
-# RBAC configuration
-# rbac:
-  # mode: white
-  # auth_token_exp_timeout: 36000
-
 # https:
 #  enabled: yes
 #  key: "api/configuration/ssl/server.key"

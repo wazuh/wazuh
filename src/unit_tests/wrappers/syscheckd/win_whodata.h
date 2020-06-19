@@ -10,8 +10,12 @@
 #define UNIT_TEST_WRAPPERS_WIN_WHODATA
 
 #ifdef WIN32
+#include <winsock2.h>
 #include <windows.h>
-#include <accctrl.h>
+#include <aclapi.h>
+#include <sddl.h>
+#include <winevt.h>
+#include <stdio.h>
 
 BOOL WINAPI wrap_win_whodata_OpenProcessToken(
   HANDLE  ProcessHandle,
@@ -143,5 +147,73 @@ WINBOOL WINAPI wrap_win_whodata_GetVolumePathNamesForVolumeNameW(
   DWORD cchBufferLength,
   PDWORD lpcchReturnLength
 );
+
+HANDLE WINAPI wrap_win_whodata_FindFirstVolumeW(
+  LPWSTR lpszVolumeName,
+  DWORD cchBufferLength
+);
+
+WINBOOL WINAPI wrap_win_whodata_FindVolumeClose (HANDLE hFindVolume);
+
+DWORD WINAPI wrap_win_whodata_QueryDosDeviceW(
+  LPCWSTR lpDeviceName,
+  LPWSTR lpTargetPath,
+  DWORD ucchMax
+);
+
+WINBOOL WINAPI wrap_win_whodata_FindNextVolumeW(
+  HANDLE hFindVolume,
+  LPWSTR lpszVolumeName,
+  DWORD cchBufferLength
+);
+
+WINBOOL WINAPI wrap_win_whodata_EqualSid(
+  __attribute__ ((unused)) PSID pSid1,
+  __attribute__ ((unused)) PSID pSid2
+);
+
+WINBOOL WINAPI wrap_win_whodata_FileTimeToSystemTime(
+  CONST FILETIME *lpFileTime,
+  LPSYSTEMTIME lpSystemTime
+);
+
+BOOL WINAPI wrap_win_whodata_DeleteAce(
+  PACL  pAcl,
+  DWORD dwAceIndex
+);
+
+BOOL WINAPI wrap_win_whodata_EvtRender(
+  EVT_HANDLE Context,
+  EVT_HANDLE Fragment,
+  DWORD      Flags,
+  DWORD      BufferSize,
+  PVOID      Buffer,
+  PDWORD     BufferUsed,
+  PDWORD     PropertyCount
+);
+
+EVT_HANDLE wrap_win_whodata_EvtCreateRenderContext(
+  DWORD   ValuePathsCount,
+  LPCWSTR *ValuePaths,
+  DWORD   Flags
+);
+
+EVT_HANDLE wrap_win_whodata_EvtSubscribe(
+  EVT_HANDLE             Session,
+  HANDLE                 SignalEvent,
+  LPCWSTR                ChannelPath,
+  LPCWSTR                Query,
+  EVT_HANDLE             Bookmark,
+  PVOID                  Context,
+  EVT_SUBSCRIBE_CALLBACK Callback,
+  DWORD                  Flags
+);
+
+
+int wrap_win_whodata_fprintf (FILE *__stream, const char *__format, ...);
+char * wrap_win_whodata_fgets (char * __s, int __n, FILE * __stream);
+VOID wrap_win_whodata_Sleep (DWORD dwMilliseconds);
+VOID WINAPI wrap_win_whodata_GetSystemTime (LPSYSTEMTIME lpSystemTime);
+WINBOOL wrap_win_whodata_ConvertSidToStringSid(PSID Sid,LPSTR *StringSid);
 #endif
 #endif

@@ -2,8 +2,7 @@
 test_name: PUT /security/roles
 
 marks:
- - usefixtures:
-   - security_tests
+  - base_tests
 
 stages:
 
@@ -11,7 +10,7 @@ stages:
   - name: Modify a role in the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/10"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/102"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -25,7 +24,7 @@ stages:
       json:
         data:
           affected_items:
-            - id: 10
+            - id: 102
               name: testModified
               policies: !anything
               rule:
@@ -37,7 +36,7 @@ stages:
   - name: Modify a role in the system (without change rule)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/11"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/103"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -48,14 +47,14 @@ stages:
       json:
         data:
           affected_items:
-            - id: 11
+            - id: 103
               name: testModified2
               rule:
                 MATCH:
                   definition: administratorRule
               policies:
-                - 15
-                - 14
+                - 104
+                - 103
               users:
                 - normal
                 - rbac
@@ -68,7 +67,7 @@ stages:
   - name: Modify a role in the system (without change name)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/10"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/102"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -81,7 +80,7 @@ stages:
       json:
         data:
           affected_items:
-            - id: 10
+            - id: 102
               name: testModified
               policies: !anything
               rule:
@@ -125,7 +124,7 @@ stages:
   - name: Modify a policy in the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/12"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/104"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -144,7 +143,7 @@ stages:
       json:
         data:
           affected_items:
-            - id: 12
+            - id: 104
               name: testModifiedPolicy
               policy:
                 actions:
@@ -161,7 +160,7 @@ stages:
   - name: Modify a policy in the system (without change policy definition)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/12"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/104"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -172,7 +171,7 @@ stages:
       json:
         data:
           affected_items:
-            - id: 12
+            - id: 104
               name: testModifiedPolicy2
               policy:
                 actions:
@@ -189,7 +188,7 @@ stages:
   - name: Modify a policy in the system (without change name)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/12"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/104"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -207,7 +206,7 @@ stages:
       json:
         data:
           affected_items:
-            - id: 12
+            - id: 104
               name: testModifiedPolicy2
               policy:
                 actions:
@@ -258,7 +257,7 @@ stages:
   - name: Modify a policy in the system, bad policy definition
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/12"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/104"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -393,3 +392,38 @@ stages:
           affected_items:
             - username: python
           total_affected_items: 1
+
+---
+test_name: PUT /security/config
+
+stages:
+
+  - name: Update security configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        auth_token_exp_timeout: 3000
+    response:
+      status_code: 200
+
+---
+test_name: PUT /security/config (Check)
+
+stages:
+
+  - name: Get security configuration to check if PUT method worked correctly
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      json:
+        auth_token_exp_timeout: 3000
+        rbac_mode: !anystr

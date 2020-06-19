@@ -23,7 +23,7 @@ def db_setup():
                 with patch('api.constants.SECURITY_PATH', new=test_data_path):
                     import wazuh.rbac.orm as rbac
                     import wazuh.rbac.decorators
-                    wazuh.rbac.decorators.switch_mode('black')
+                    wazuh.rbac.decorators.rbac.set({'rbac_mode': 'black'})
     init_db('schema_security_test.sql', test_data_path)
 
     yield rbac
@@ -39,7 +39,10 @@ with open(default_configuration + 'roles.yaml') as f:
 with open(default_configuration + 'policies.yaml') as f:
     policy_yaml = yaml.safe_load(f)
     policies = policy_yaml[list(policy_yaml.keys())[0]]
-    policies_configuration = [(policy_name, info['policy']) for policy_name, info in policies.items()]
+    policies_configuration = list()
+    for name, payload in policies.items():
+        for sub_name, policy in payload['policies'].items():
+            policies_configuration.append((f'{name}_{sub_name}', policy))
 
 with open(default_configuration + 'users.yaml') as f:
     user_yaml = yaml.safe_load(f)
@@ -64,9 +67,9 @@ def test_roles_default(db_setup, role_name, role_rule):
 @pytest.mark.parametrize('policy_name, policy_policy', policies_configuration)
 def test_policies_default(db_setup, policy_name, policy_policy):
     with db_setup.PoliciesManager() as pm:
-        policy = pm.get_policy(name=policy_name)
-        assert policy_name == policy['name']
-        assert policy_policy == policy['policy']
+        current_policy = pm.get_policy(name=policy_name)
+        assert policy_name == current_policy['name']
+        assert policy_policy == current_policy['policy']
 
 
 @pytest.mark.parametrize('user_name, auth_context', users_configuration)
@@ -90,4 +93,6 @@ def test_role_policies_default(db_setup, role_name, policy_names):
         with db_setup.RolesManager() as rm:
             db_policies = rpm.get_all_policies_from_role(role_id=rm.get_role(name=role_name)['id'])
             orm_policy_names = [policy.name for policy in db_policies]
-            assert set(orm_policy_names) == set(policy_names)
+            for current_policy in orm_policy_names:
+                current_policy = '_'.join(current_policy.split('_')[:2])
+                assert current_policy in policy_names

@@ -5,20 +5,22 @@
 import os
 
 from wazuh import common
-from wazuh.core.cdb_list import iterate_lists, get_list_from_file
+from wazuh.core.cdb_list import iterate_lists, get_list_from_file, REQUIRED_FIELDS, SORT_FIELDS
 from wazuh.rbac.decorators import expose_resources
 from wazuh.results import AffectedItemsWazuhResult
 from wazuh.utils import process_array
 
 
 @expose_resources(actions=['lists:read'], resources=['list:path:{path}'])
-def get_lists(path=None, offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True, search_text=None,
-              complementary_search=False, search_in_fields=None, relative_dirname=None, filename=None):
+def get_lists(path=None, offset=0, limit=common.database_limit, select=None, sort_by=None, sort_ascending=True,
+              search_text=None, complementary_search=False, search_in_fields=None, relative_dirname=None,
+              filename=None):
     """Get CDB lists
 
     :param path: Relative path of list file to get (if it is not specified, all lists will be returned)
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
+    :param select: List of selected fields to return
     :param sort_by: Fields to sort the items by
     :param sort_ascending: Sort in ascending (true) or descending (false) order
     :param search_text: Text to search
@@ -41,7 +43,8 @@ def get_lists(path=None, offset=0, limit=common.database_limit, sort_by=None, so
 
     data = process_array(lists, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit, allowed_sort_fields=['relative_dirname', 'filename'])
+                         offset=offset, limit=limit, select=select, allowed_sort_fields=SORT_FIELDS,
+                         required_fields=REQUIRED_FIELDS)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 

@@ -2,8 +2,7 @@
 test_name: GET /syscollector/{agent_id}/os
 
 marks:
-  - usefixtures:
-    - syscollector_tests
+  - base_tests
 
 stages:
 

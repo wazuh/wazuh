@@ -7,7 +7,7 @@ from os.path import join
 
 from wazuh import common
 from wazuh.common import ossec_path
-from wazuh.core.core_agent import WazuhDBQueryAgents, WazuhDBQueryMultigroups
+from wazuh.core.core_agent import WazuhDBQueryAgents, WazuhDBQueryMultigroups, WazuhDBQueryGroup
 from wazuh.database import Connection
 from wazuh.exception import WazuhInternalError
 
@@ -18,12 +18,10 @@ def get_agents_info():
 
     :return: List of agents ids
     """
-    agents = WazuhDBQueryAgents(select=['id']).run()['items']
-    agents_list = set()
-    for agent_info in agents:
-        agents_list.add(str(agent_info['id']).zfill(3))
+    db_query = WazuhDBQueryAgents(select=['id'])
+    query_data = db_query.run()
 
-    return agents_list
+    return {str(agent_info['id']).zfill(3) for agent_info in query_data['items']}
 
 
 @common.context_cached('system_groups')
@@ -32,17 +30,10 @@ def get_groups():
 
     :return: List of group names
     """
-    db_global = glob(common.database_path_global)
-    if not db_global:
-        raise WazuhInternalError(1600)
-    conn = Connection(db_global[0])
-    conn.execute("SELECT name FROM `group`")
-    groups = conn.fetch_all()
-    groups_list = set()
-    for group in groups:
-        groups_list.add(group['name'])
+    db_query = WazuhDBQueryGroup(select=['name'], min_select_fields=set())
+    query_data = db_query.run()
 
-    return groups_list
+    return {group['name'] for group in query_data['items']}
 
 
 @common.context_cached('system_files')

@@ -2,8 +2,7 @@
 test_name: DELETE /experimental/syscheck
 
 marks:
-  - usefixtures:
-    - experimental_white_rbac_tests
+  - rbac_tests
 
 stages:
 

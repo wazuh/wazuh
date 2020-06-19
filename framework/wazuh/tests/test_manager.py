@@ -283,11 +283,12 @@ def test_delete_file():
         assert result.render()['data']['failed_items'][0]['error']['code'] == 1906, 'Error code not expected.'
 
 
-@patch('wazuh.manager.api_conf.api_conf', new={'experimental_features': True})
 def test_get_api_config():
     """Checks that get_api_config method is returning current api_conf dict."""
-    result = get_api_config()
-    assert result == {'experimental_features': True}
+    result = get_api_config().render()
+
+    assert 'node_api_config' in result['data']['affected_items'][0], 'node_api_config key not found in result'
+    assert result['data']['affected_items'][0]['node_name'] == 'manager', 'Not expected node name'
 
 
 @patch('wazuh.core.manager.yaml')

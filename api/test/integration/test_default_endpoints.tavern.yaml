@@ -2,8 +2,7 @@
 test_name: GET /
 
 marks:
-  - usefixtures:
-      - base_tests
+  - base_tests
 
 stages:
 

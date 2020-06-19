@@ -2,8 +2,7 @@
 test_name: PUT /active-response/{:agent_id}
 
 marks:
-  - usefixtures:
-    - active-response_tests
+  - base_tests
 
 stages:
 
@@ -209,6 +208,7 @@ stages:
 
     # PUT /active-response
   - name: Runs an Active Response command on all agents
+    delay_before: 5
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"
@@ -259,4 +259,3 @@ stages:
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
     response:
       status_code: 400
-

@@ -137,6 +137,8 @@ def test_failed_get_rules_file(mock_config):
 
 
 @pytest.mark.parametrize('arg', [
+    {'group': 'web', 'pci_dss': 'user1'},
+    {'rule_ids': ['31301'], 'filename': '0025-sendmail_rules.xml'},
     {'group': 'user1'},
     {'pci_dss': 'user1'},
     {'pci_dss': '11.4'},

@@ -121,13 +121,14 @@ typedef enum wdb_stmt {
     WDB_STMT_FIM_CLEAR,
     WDB_STMT_SYNC_UPDATE_ATTEMPT,
     WDB_STMT_SYNC_UPDATE_COMPLETION,
-    WDB_STMT_SIZE
+    WDB_STMT_SIZE,
+    WDB_STMT_PRAGMA_JOURNAL_WAL,
 } wdb_stmt;
 
 typedef struct wdb_t {
     sqlite3 * db;
     sqlite3_stmt * stmt[WDB_STMT_SIZE];
-    char * agent_id;
+    char * id;
     unsigned int refcount;
     unsigned int transaction:1;
     time_t last;
@@ -158,6 +159,7 @@ extern char *schema_upgrade_v1_sql;
 extern char *schema_upgrade_v2_sql;
 extern char *schema_upgrade_v3_sql;
 extern char *schema_upgrade_v4_sql;
+extern char *schema_upgrade_v5_sql;
 
 extern wdb_config config;
 extern pthread_mutex_t pool_mutex;
@@ -167,6 +169,15 @@ extern OSHash * open_dbs;
 
 /* Open global database. Returns 0 on success or -1 on failure. */
 int wdb_open_global();
+
+/**
+ * @brief Open mitre database and store in DB poll.
+ *
+ * It is opened every time a query to Mitre database is done.
+ *
+ * @return wdb_t* Database Structure that store mitre database or NULL on failure.
+ */
+wdb_t * wdb_open_mitre();
 
 /* Close global database */
 void wdb_close_global();
@@ -504,7 +515,7 @@ int wdb_ciscat_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
 // Delete old information from the 'ciscat_results' table
 int wdb_ciscat_del(wdb_t * wdb, const char * scan_id);
 
-wdb_t * wdb_init(sqlite3 * db, const char * agent_id);
+wdb_t * wdb_init(sqlite3 * db, const char * id);
 
 void wdb_destroy(wdb_t * wdb);
 
@@ -612,6 +623,15 @@ int wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, const char * com
  * @retval -1 On error.
  */
 int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payload);
+
+/**
+ * @brief Set the database journal mode to write-ahead logging
+ *
+ * @param db Pointer to an open database.
+ * @retval 0 On success.
+ * @retval -1 On error.
+ */
+int wdb_journal_wal(sqlite3 *db);
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }

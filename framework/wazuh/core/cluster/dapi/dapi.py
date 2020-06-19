@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -25,24 +25,49 @@ from wazuh.exception import WazuhException, WazuhClusterError, WazuhError
 
 
 class DistributedAPI:
-    """
-    Represents a distributed API request
-    """
+    """Represents a distributed API request."""
 
     def __init__(self, f: Callable, logger: logging.getLogger, f_kwargs: Dict = None, node: c_common.Handler = None,
-                 debug: bool = False, request_type: str = "local_master",
+                 debug: bool = False, request_type: str = 'local_master', current_user: str = '',
                  wait_for_complete: bool = False, from_cluster: bool = False, is_async: bool = False,
                  broadcasting: bool = False, basic_services: tuple = None, local_client_arg: str = None,
-                 rbac_permissions: Dict = None, nodes: list = None):
-        """
-        Class constructor
+                 rbac_permissions: Dict = None, nodes: list = None, cluster_required: bool = False):
+        """Class constructor.
 
-        :param f: function to be executed
-        :param f_kwargs: arguments to be passed to function `f`
-        :param logger: Logging logger to use
-        :param node: Asyncio protocol object to use when sending requests to other nodes
-        :param debug: Enable debug messages and raise exceptions.
-        :param wait_for_complete: true to disable timeout, false otherwise
+        Parameters
+        ----------
+        f : callable
+            Function to be executed.
+        logger : logging.getLogger
+            Logging logger to use.
+        f_kwargs : dict, optional
+            Arguments to be passed to function `f`. Default `None`
+        node : c_common.Handler, optional
+            Asyncio protocol object to use when sending requests to other nodes. Default `None`
+        debug : bool, optional
+            Enable debug messages and raise exceptions. Default `False`
+        request_type : str, optional
+            Default `"local_master"`
+        wait_for_complete : bool, optional
+            True to disable timeout, false otherwise. Default `False`
+        from_cluster : bool, optional
+            Default `False`, specify if the request goes from cluster or not
+        is_async : bool, optional
+            Default `False`, specify if the request is asynchronous or not
+        broadcasting : bool, optional
+            Default `False`, True if the request need to be executed in all managers
+        basic_services : tuple, optional
+            Default `None`, services that must be started for correct behaviour
+        local_client_arg: str, optional
+            Default `None`, LocalClient additional arguments
+        rbac_permissions : dict, optional
+            Default `None`, RBAC user's permissions
+        nodes : list, optional
+            Default `None`, list of system nodes
+        cluster_required : bool, optional
+            True when the cluster must be enabled. False otherwise. Default `False`
+        current_user : str
+            User who started the request
         """
         self.logger = logger
         self.f = f
@@ -58,7 +83,9 @@ class DistributedAPI:
         self.is_async = is_async
         self.broadcasting = broadcasting
         self.rbac_permissions = rbac_permissions if rbac_permissions is not None else dict()
+        self.current_user = current_user
         self.nodes = nodes if nodes is not None else list()
+        self.cluster_required = cluster_required
         if not basic_services:
             self.basic_services = ('wazuh-modulesd', 'ossec-analysisd', 'ossec-execd', 'wazuh-db')
             if common.install_type != "local":
@@ -72,9 +99,12 @@ class DistributedAPI:
 
     async def distribute_function(self) -> [Dict, exception.WazuhException]:
         """
-        Distributes an API call
+        Distribute an API call.
 
-        :return: Dictionary with API response or WazuhException in case of error
+        Returns
+        -------
+        dict or WazuhException
+            Dictionary with API response or WazuhException in case of error.
         """
         try:
             self.logger.debug("Receiving parameters {}".format(self.f_kwargs))
@@ -82,18 +112,14 @@ class DistributedAPI:
             is_cluster_disabled = self.node == local_client and wazuh.core.cluster.cluster.check_cluster_status()
 
             # If it is a cluster API request and the cluster is not enabled, raise an exception
-            if is_cluster_disabled and 'cluster' in self.f.__name__ and \
-                    self.f.__name__ != '/cluster/status' and \
-                    self.f.__name__ != '/cluster/config' and \
-                    self.f.__name__ != '/cluster/node':
+            if is_cluster_disabled and self.cluster_required:
                 raise exception.WazuhError(3013)
 
-            # First case: execute the request local.
+            # First case: execute the request locally.
             # If the distributed api is not enabled
             # If the cluster is disabled or the request type is local_any
             # if the request was made in the master node and the request type is local_master
             # if the request came forwarded from the master node and its type is distributed_master
-
             if not is_dapi_enabled or is_cluster_disabled or self.request_type == 'local_any' or \
                     (self.request_type == 'local_master' and self.node_info['type'] == 'master') or \
                     (self.request_type == 'distributed_master' and self.from_cluster):
@@ -142,7 +168,7 @@ class DistributedAPI:
         There are some services that are required for wazuh to correctly process API requests. If any of those services
         is not running, the API must raise an exception indicating that:
             * It's not ready yet to process requests if services are restarting
-            * There's an error in any of those services that must be adressed before using the API if any service is
+            * There's an error in any of those services that must be addressed before using the API if any service is
               in failed status.
             * Wazuh must be started before using the API is the services are stopped.
 
@@ -166,17 +192,19 @@ class DistributedAPI:
             raise exception.WazuhError(1017, extra_message=extra_info)
 
     async def execute_local_request(self) -> str:
-        """
-        Executes an API request locally.
+        """Execute an API request locally.
 
-        :return: a JSON response.
+        Returns
+        -------
+        str
+            JSON response.
         """
-
         def run_local():
             self.logger.debug("Starting to execute request locally")
             common.rbac.set(self.rbac_permissions)
             common.broadcast.set(self.broadcasting)
             common.cluster_nodes.set(self.nodes)
+            common.current_user.set(self.current_user)
             data = self.f(**self.f_kwargs)
             common.reset_context_cache()
             self.logger.debug("Finished executing request locally")
@@ -184,7 +212,6 @@ class DistributedAPI:
 
         try:
             before = time.time()
-
             self.check_wazuh_status()
 
             timeout = None if self.wait_for_complete \
@@ -264,17 +291,22 @@ class DistributedAPI:
                 "local_client_arg": self.local_client_arg,
                 "basic_services": self.basic_services,
                 "rbac_permissions": self.rbac_permissions,
+                "current_user": self.current_user,
                 "broadcasting": self.broadcasting,
                 "nodes": self.nodes
                 }
 
     def get_error_info(self, e) -> Dict:
-        """
-        Builds a response given an Exception
+        """Build a response given an Exception.
 
-        :param e: Exception
+        Parameters
+        ----------
+        e : Exception
 
-        :return: dict where keys are nodes and values are error information
+        Returns
+        -------
+        dict
+            Dict where keys are nodes and values are error information.
         """
         error_message = e.message if isinstance(e, exception.WazuhException) else exception.GENERIC_ERROR_MSG
         result = {self.node_info['node']: {'error': error_message}
@@ -301,10 +333,12 @@ class DistributedAPI:
         os.remove(os.path.join(common.ossec_path, self.f_kwargs['tmp_file']))
 
     async def execute_remote_request(self) -> Dict:
-        """
-        Executes a remote request. This function is used by worker nodes to execute master_only API requests.
+        """Execute a remote request. This function is used by worker nodes to execute master_only API requests.
 
-        :return: JSON response
+        Returns
+        -------
+        dict
+            JSON response.
         """
         if 'tmp_file' in self.f_kwargs:
             await self.send_tmp_file()
@@ -321,19 +355,26 @@ class DistributedAPI:
                           object_hook=c_common.as_wazuh_object)
 
     async def forward_request(self) -> [wresults.AbstractWazuhResult, exception.WazuhException]:
-        """
-        Forwards a request to the node who has all available information to answer it. This function is called when a
-        distributed_master function is used. Only the master node calls this function. An API request will only be
-        forwarded to worker nodes.
+        """Forward a request to the node who has all available information to answer it.
 
-        :return: a JSON response.
-        """
+        This function is called when a distributed_master function is used. Only the master node calls this function.
+        An API request will only be forwarded to worker nodes.
 
+        Returns
+        -------
+        wresults.AbstractWazuhResult or exception.WazuhException
+        """
         async def forward(node_name: Tuple) -> [wresults.AbstractWazuhResult, exception.WazuhException]:
-            """
-            Forwards a request to a node.
-            :param node_name: Node to forward a request to.
-            :return: a JSON response
+            """Forward a request to a node.
+
+            Parameters
+            ----------
+            node_name : tuple
+                Node to forward a request to.
+
+            Returns
+            -------
+            wresults.AbstractWazuhResult or exception.WazuhException
             """
             node_name, agent_list = node_name
             if agent_list:
@@ -387,12 +428,15 @@ class DistributedAPI:
         return response
 
     async def get_solver_node(self) -> Dict:
-        """ Gets the node(s) that can solve a request
+        """Get the node(s) that can solve a request.
 
         Get the node(s) that have all the necessary information to answer the request. Only called when the request type
         is 'master_distributed' and the node_type is master.
 
-        :return: List of node names with agents
+        Returns
+        -------
+        dict
+            Dict with node names with agents.
         """
         select_node = ['node_name']
         if 'agent_id' in self.f_kwargs or 'agent_list' in self.f_kwargs:
@@ -405,7 +449,6 @@ class DistributedAPI:
                                                             sort={'fields': ['node_name'], 'order': 'desc'})['items']
             node_name = {k: list(map(operator.itemgetter('id'), g)) for k, g in
                          itertools.groupby(system_agents, key=operator.itemgetter('node_name'))}
-
             if requested_agents != '*':  # When all agents are requested cannot be non existent ids
                 # Add non existing ids in the master's dictionary entry
                 non_existent_ids = list(set(requested_agents) - set(map(operator.itemgetter('id'), system_agents)))
@@ -481,7 +524,6 @@ class APIRequestQueue:
                 request = json.loads(request, object_hook=c_common.as_wazuh_object)
                 self.logger.info("Receiving request: {} from {}".format(
                     request['f'].__name__, names[0] if not name_2 else '{} ({})'.format(names[0], names[1])))
-
                 result = await DistributedAPI(**request,
                                               logger=self.logger,
                                               node=node).distribute_function()
@@ -502,10 +544,12 @@ class APIRequestQueue:
                 self.logger.error(result.message)
 
     def add_request(self, request: bytes):
-        """
-        Adds request to the queue
+        """Add a request to the queue.
 
-        :param request: Request to add
+        Parameters
+        ----------
+        request : bytes
+            Request to add.
         """
         self.logger.debug("Received request: {}".format(request))
         self.request_queue.put_nowait(request.decode())

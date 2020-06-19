@@ -101,7 +101,8 @@ def rename_old_fields(config: Dict) -> Dict:
     if 'basic_auth' in new_config:
         del new_config['basic_auth']
 
-    new_config['rbac'] = {"mode": "white", "auth_token_exp_timeout": 36000}
+    new_config['rbac'] = {"mode": "white"}
+    new_config['auth_token_exp_timeout'] = 36000
 
     # relocate nested fields
     if 'https' in new_config:

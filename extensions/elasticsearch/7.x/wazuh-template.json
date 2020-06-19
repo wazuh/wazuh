@@ -289,8 +289,6 @@
       "data.virustotal.source.file",
       "data.virustotal.source.md5",
       "data.virustotal.source.sha1",
-      "data.vulnerability.advisories",
-      "data.vulnerability.bugzilla_reference",
       "data.vulnerability.cve",
       "data.vulnerability.cvss.cvss2.base_score",
       "data.vulnerability.cvss.cvss2.exploitability_score",
@@ -317,16 +315,17 @@
       "data.vulnerability.cvss.cvss3.vector.scope",
       "data.vulnerability.cvss.cvss3.vector.user_interaction",
       "data.vulnerability.cwe_reference",
+      "data.vulnerability.package.source",
       "data.vulnerability.package.architecture",
       "data.vulnerability.package.condition",
       "data.vulnerability.package.generated_cpe",
       "data.vulnerability.package.name",
       "data.vulnerability.package.version",
       "data.vulnerability.rationale",
-      "data.vulnerability.reference",
       "data.vulnerability.severity",
-      "data.vulnerability.state",
       "data.vulnerability.title",
+      "data.vulnerability.assigner",
+      "data.vulnerability.cve_version",
       "data.win.eventdata.auditPolicyChanges",
       "data.win.eventdata.auditPolicyChangesId",
       "data.win.eventdata.binary",
@@ -399,6 +398,8 @@
       "rule.groups",
       "rule.id",
       "rule.info",
+      "rule.mitre.id",
+      "rule.mitre.tactics",
       "rule.pci_dss",
       "rule.hipaa",
       "rule.nist_800_53",
@@ -424,6 +425,7 @@
       "syscheck.md5_after",
       "syscheck.md5_before",
       "syscheck.path",
+      "syscheck.mode",
       "syscheck.perm_after",
       "syscheck.perm_before",
       "syscheck.sha1_after",
@@ -559,6 +561,9 @@
             "type": "keyword"
           },
           "hard_links": {
+            "type": "keyword"
+          },
+          "mode": {
             "type": "keyword"
           },
           "sha1_before": {
@@ -752,6 +757,16 @@
           },
           "mail": {
             "type": "boolean"
+          },
+          "mitre": {
+            "properties": {
+              "id": {
+                "type": "keyword"
+              },
+              "tactics": {
+                "type": "keyword"
+              }
+            }
           }
         }
       },
@@ -1556,12 +1571,6 @@
           },
           "vulnerability": {
             "properties": {
-              "advisories": {
-                "type": "keyword"
-              },
-              "bugzilla_reference": {
-                "type": "keyword"
-              },
               "cve": {
                 "type": "keyword"
               },
@@ -1662,6 +1671,9 @@
               },
               "package": {
                 "properties": {
+                  "source": {
+                    "type": "keyword"
+                  },
                   "architecture": {
                     "type": "keyword"
                   },
@@ -1688,16 +1700,16 @@
               "rationale": {
                 "type": "keyword"
               },
-              "reference": {
-                "type": "keyword"
-              },
               "severity": {
                 "type": "keyword"
               },
-              "state": {
+              "title": {
                 "type": "keyword"
               },
-              "title": {
+              "assigner": {
+                "type": "keyword"
+              },
+              "cve_version": {
                 "type": "keyword"
               }
             }

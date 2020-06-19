@@ -6,16 +6,14 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include "./fim_db.h"
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
 #include <cmocka.h>
-#include <stdio.h>
 #include "headers/defs.h"
 
-#ifdef TEST_WINAGENT
-#include "../wrappers/syscheckd/fim_db.h"
-#else
+#ifdef WIN32
 int test_mode;
 #endif
 
@@ -38,3 +36,9 @@ int wrap_fprintf(FILE * __restrict__ _File,const char * __restrict__ _Format,...
     }
     return ret;
 }
+
+#ifdef WIN32
+VOID wrap_fim_db_Sleep (__UNUSED_PARAM(DWORD dwMilliseconds)) {
+    function_called();
+}
+#endif

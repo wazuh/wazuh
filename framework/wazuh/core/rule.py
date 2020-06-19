@@ -10,14 +10,15 @@ from wazuh import common
 from wazuh.exception import WazuhError
 from wazuh.utils import load_wazuh_xml
 
+REQUIRED_FIELDS = ['id']
 RULE_REQUIREMENTS = ['pci_dss', 'gdpr', 'hipaa', 'nist_800_53', 'gpg13', 'tsc']
+SORT_FIELDS = ['filename', 'relative_dirname', 'description', 'id', 'level', 'status']
 
 
 class Status(Enum):
     S_ENABLED = 'enabled'
     S_DISABLED = 'disabled'
     S_ALL = 'all'
-    SORT_FIELDS = ['filename', 'relative_dirname', 'description', 'id', 'level', 'status']
 
 
 def add_detail(detail, value, details):
@@ -57,7 +58,7 @@ def set_groups(groups, general_groups, rule):
                 break
         else:
             # If a requirement is not found we add it to the rule as group
-            rule['groups'].append(g) if g is not '' else None
+            rule['groups'].append(g) if g != '' else None
 
 
 def load_rules_from_file(rule_filename, rule_relative_path, rule_status):

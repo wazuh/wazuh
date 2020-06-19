@@ -1,5 +1,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import asyncio
 import base64
 import datetime
@@ -92,7 +93,7 @@ class ReceiveFileTask:
         """
         self.wazuh_common = wazuh_common
         self.coro = self.set_up_coro()
-        self.name = str(random.randint(0, 2**32))
+        self.name = str(random.randint(0, 2 ** 32))
         self.received_information = asyncio.Event()
         self.task = asyncio.create_task(self.coro(self.name, self.received_information))
         self.task.add_done_callback(self.done_callback)
@@ -127,7 +128,7 @@ class Handler(asyncio.Protocol):
     Defines common methods for echo clients and servers
     """
 
-    def __init__(self, fernet_key: str, logger: logging.Logger, cluster_items: Dict, tag: str = "Handler"):
+    def __init__(self, fernet_key: str, cluster_items: Dict, logger: logging.Logger = None, tag: str = "Handler"):
         """
         Class constructor
 
@@ -157,11 +158,11 @@ class Handler(asyncio.Protocol):
         # maximum message length to send in a single request
         self.request_chunk = 5242880
         # stores message to be sent
-        self.out_msg = bytearray(self.header_len + self.request_chunk*2)
+        self.out_msg = bytearray(self.header_len + self.request_chunk * 2)
         # object use to encrypt and decrypt requests
         self.my_fernet = cryptography.fernet.Fernet(base64.b64encode(fernet_key.encode())) if fernet_key else None
         # logging.Logger object used to write logs
-        self.logger = logging.getLogger('wazuh')
+        self.logger = logging.getLogger('wazuh') if not logger else logger
         # logging tag
         self.tag = tag
         # modify filter tags with context vars
@@ -185,7 +186,7 @@ class Handler(asyncio.Protocol):
 
         :return: new counter
         """
-        self.counter = (self.counter + 1) % (2**32)
+        self.counter = (self.counter + 1) % (2 ** 32)
         return self.counter
 
     def msg_build(self, command: bytes, counter: int, data: bytes) -> bytes:
@@ -246,7 +247,7 @@ class Handler(asyncio.Protocol):
                 # decrypt received message
                 try:
                     decrypted_payload = self.my_fernet.decrypt(bytes(self.in_msg.payload)) if self.my_fernet is not None \
-                                                                                           else bytes(self.in_msg.payload)
+                        else bytes(self.in_msg.payload)
                 except cryptography.fernet.InvalidToken:
                     raise exception.WazuhClusterError(3025)
                 yield self.in_msg.cmd, self.in_msg.counter, decrypted_payload
@@ -277,7 +278,9 @@ class Handler(asyncio.Protocol):
         except Exception as e:
             raise exception.WazuhClusterError(3018, extra_message=str(e))
         try:
-            response_data = await asyncio.wait_for(response.read(), timeout=self.cluster_items['intervals']['communication']['timeout_cluster_request'])
+            response_data = await asyncio.wait_for(response.read(),
+                                                   timeout=self.cluster_items['intervals']['communication'][
+                                                       'timeout_cluster_request'])
             del self.box[msg_counter]
         except asyncio.TimeoutError:
             self.box[msg_counter] = None
@@ -350,7 +353,8 @@ class Handler(asyncio.Protocol):
             res = await self.send_request(b'dapi_err', json.dumps(e, cls=WazuhJSONEncoder).encode())
         except Exception as e:
             self.logger.error(f"Error sending API response to local client: {e}")
-            exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)), cls=WazuhJSONEncoder).encode()
+            exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
+                                  cls=WazuhJSONEncoder).encode()
             res = await self.send_request(b'dapi_err', exc_info)
 
     def data_received(self, message: bytes) -> None:
@@ -538,6 +542,7 @@ class WazuhCommon:
     """
     Task implementing common methods for both clients and servers that are Wazuh specific.
     """
+
     def __init__(self):
         self.sync_tasks = {}
         self.logger_tag = ''

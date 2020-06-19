@@ -2,8 +2,7 @@
 test_name: GET OS SYSCOLLECTOR RBAC
 
 marks:
-  - usefixtures:
-    - syscollector_white_rbac_tests
+  - rbac_tests
 
 stages:
 

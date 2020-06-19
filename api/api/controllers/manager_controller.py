@@ -347,7 +347,6 @@ async def delete_files(request, pretty=False, wait_for_complete=False, path=None
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-
 async def get_api_config(request, pretty=False, wait_for_complete=False):
     """Get active API configuration in manager or local_node.
 
@@ -382,11 +381,10 @@ async def put_api_config(request, pretty=False, wait_for_complete=False):
 
     dapi = DistributedAPI(f=manager.update_api_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
+                          request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          broadcasting=True,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
@@ -400,18 +398,16 @@ async def delete_api_config(request, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    allowed_fields = {'behind_proxy_server', 'rbac', 'logs', 'cache', 'cors', 'use_only_authd', 'experimental_features'}
-    default_config = {key: configuration.default_configuration[key] for key in allowed_fields}
+    default_config = {key: configuration.default_api_configuration[key] for key in manager.allowed_api_fields}
 
     f_kwargs = {"updated_config": default_config}
 
     dapi = DistributedAPI(f=manager.update_api_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
+                          request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          broadcasting=True,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())

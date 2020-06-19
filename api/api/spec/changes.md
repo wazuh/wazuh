@@ -1,383 +1,532 @@
 ## General
-* Changed parameter **status** type *string* to *array*
 * Date type use a standard format ISO-8601 defined by date-time format.
-* Changed parameter **agent_id** type *integer* to *string* with minLength=3
-* Changed all return parameters **agent_id** type *integer* to *string*
 * Deleted all return parameters **path**, new API don't show any absolute path in responses.
-* `error` field has been removed. Now error status is shown in HTTP status code (400 for client error and 500 for server error)
-* `data` is never showing a human readable message. To be consistent, it will only contain an object or list of objects. In case
-a human readable message is shown, the new field `message` will be used instead.
 * Changed search negation from `!` to `-`.
 * Changed nested fields from `a_b` to `a.b`
 * Changed parameter **query** to allow reserved characters.
+* The endpoint's responses has been changed accordingly to the new RBAC standard. See spec schema responses carefully.
+* The responses no longer will have `items` and `totalitems` fields, instead most responses will have the following structure:
+```
+{
+  "data": {
+    "affected_items": [],
+    "total_affected_items": 0,
+    "total_failed_items": 0,
+    "failed_items": [],
+    "message": ""
+  }
+}
+```
+* Errors follow the generic error format and are shown in `dapi_errors` key
+
+## Default
+### GET     /
+* New endpoint. Returns basic information about the API.
 
 ## Active Response
-### PUT /active-response
-* New endpoint that provides the old functionality of PUT /active-response/all
-* Parameters **command**, **Custom** and **Arguments** must be in body.
+### PUT     /active-response
+* New endpoint. Run commands in all agents by default. 
+* Use **list_agents** parameter in query to specify which agents must run the command.
 
-### PUT /active-response/:agent_id
-* Parameters **command**, **Custom** and **Arguments** must be in body.
-* **command** description changed.
-* In response, `data` key is now moved to new `message` key
-* Option to send command to all agents removed
+### PUT     /active-response/{agent_id}
+* Endpoint removed. Use `PUT /active-response?list_agents=agent_id` instead.
 
 ## Agents
-### DELETE /agents
-* Parameter **ids** must be in query, not in body because DELETE operations can't have a requestBody in OpenAPI 3
-* In response, `msg` key is now moved to new `message` key
+### DELETE  /agents
+* Removed **ids** query parameter. Use **list_agents** instead.
+* Added **list_agents** parameter in query used to specify which agents must be deleted. 
+* If no **list_agents** is provided in query all agents will be removed.
 
-### GET /agents/groups/{group_id}
-* Endpoint deleted, use `GET /groups?list_groups=group_id`
-* To get all agents in a group use `GET /groups/{group_id}/agents`
+### DELETE  /agents/{agent_id}
+* Endpoint removed. Use `DELETE /agents?list_agents=agent_id` instead
 
-### GET /agents/groups/{group_id}/configuration
-* Endpoint renamed to `GET /groups/{group_id}/configuration`
-* In response, `filter` key is now moved to new `filters` key
+### DELETE  /agents/{agent_id}/group
+* Added **list_groups** parameter in query to specify an array of group IDs to remove from the agent.
+* Removes the agent from all groups by default or a list of them if **list_groups** parameter is found.	
 
-### PUT /agents/groups/{group_id}
-* Endpoint deleted, use `POST /groups?group_id=group_id`
-* In response, `msg` key is now moved to new `message` key
-* Verb changed to POST
+### DELETE  /agents/group
+* New endpoint. Remove all agents assignment or a list of them from the specified group.
+* Use `group_id` parameter in query to specify the group.
 
-### PUT /agents/groups/:group_id/restart
-* Endpoint deleted, use `PUT /groups/{group_id}/restart`
+### DELETE  /agents/group/{group_id}
+* Endpoint removed. Use `DELETE /agents/group?group_id=id` instead.
 
-### POST /agents
-* Changed parameter **force** name to **force_time**
+### DELETE  /agents/groups
+* Endpoint removed. Use `DELETE /groups` instead.
 
-### POST /agents/:agent_id
-* Verb changed to POST
+### DELETE  /agents/groups/{group_id}
+* Endpoint removed. Use `DELETE /groups?list_groups=group_id` instead.
 
-### DELETE /agents/:agent_id
-* Endpoint deleted. Use `DELETE /agents?list_agents=agent_id&older_than=0s`
-* Be aware that `DELETE /agents` older_than filter is not defaulted to '0s'
-
-### DELETE /agents/:agent_id/group
-* In response, `data` key is now moved to new `message` key
-
-### DELETE /agents/group/:group_id
-* Endpoint renamed to `DELETE /agents/group`, now param group_id must be passed in the query string.
-* Parameter **agent_id** must be in query, not in body because DELETE operations can't have a requestBody in OpenAPI 3
-* Changed parameter **agent_id** name to **list_agents**
-* In response, `msg` key is now moved to new `message` key
-
-### PUT /agents/group/:group_id
-* Verb changed to PUT
-* Endpoint renamed to `PUT /agents/group`, now param group_id must be passed in the query string.
-
-### DELETE /agents/{agent_id}/group/{group_id}
-* In response, `data` key is now moved to new `message` key
-
-### PUT /agents/{agent_id}/group/{group_id}
-* In response, `data` key is now moved to new `message` key
-
-### DELETE /agents/groups
-* Endpoint renamed to `DELETE /groups`
-* Changed parameter **ids** name to **list_groups**
-* Changed request parameters **ids** and **failed_ids** to **affected_groups** and **failed_groups**
-* In response, `msg` key is now moved to new `message` key
-
-### DELETE /agents/groups/:group_id
-* In response, `msg` key is now moved to new `message` key
-
-### POST /agents/groups/:group_id
-* In response, now when group don't exists return a WazuhError and when agent don't exists return error infomation in failed_items section.
-
-### PUT /agents/groups/:group_id
-* In response, `data` key is now moved to new `message` key
-
-### PUT /agents/groups/:group_id/configuration
-* Endpoint renamed to `PUT /groups/:group_id/configuration`
-* In response, `data` key is now moved to new `message` key
-* Verb changed to PUT
-
-### GET /agents/groups/{group_id}/files/{file_name}
-* Renamed by removing the `/agents` prefix
-* This endpoint has been split into 2 new endpoints (`GET /groups/{group_id}/files/{file_name}/json` & `GET /groups/{group_id}/files/{file_name}/xml`) because the response changes depending on the format.
-
-### PUT /agents/groups/{group_id}/files/{file_name}
-* Renamed by removing the `/agents` prefix
-* In response, `data` key is now moved to new `message` key
-* Verb changed to PUT
-
-### PUT /agents/{agent_id}/upgrade
-* Changed parameter type **force** from integer to boolean
-* In response, `data` key is now moved to new `message` key
-
-### PUT /agents/{agent_id}/upgrade_custom
-* In response, `data` key is now moved to new `message` key
-
-### GET /agents/{agent_id}/upgrade_result
-* In response, `data` key is now moved to new `message` key
-
-### PUT /agents/:agent_id/restart
-* In response, `msg` key is now moved to new `message` key
-
-### POST /agents/insert
-* Parameter **force** renamed to **force_after**
-
-### GET /agents/:agent_id/key
-* Response structure changed from `{"data": "agent_key"}` to `{"data": {"key": "agent_key"}}`
-
-### PUT /agents/restart
-* In response, `msg` key is now moved to new `message` key
-* Verb changed to PUT
-
-### PUT /agents/restart
-* In response, `data` key is now moved to new `message` key
-
-### GET /agents/name
-* Endpoint deleted. Use `GET /agents?name=agent_name` instead.
-* Be aware that with the new endpoint, you won't get a 400 response in agent name cannot be found,
+### GET     /agents
+* Return information about all available agents or a list of them.
+* Added parameter **list_agents** in query used to specify a list of agent IDs (separated by comma) from which agents get the information.
+* Added parameter **registerIP** in query used to filter by the IP used when registering the agent.
+* With this new endpoint, you won't get a 400 response if agent name cannot be found,
 you will get a 200 response with 0 items in the result.
 
-### POST /agents/{agent_name}
-* Endpoint renamed to `POST /agents/insert/quick`
-* Path parameter `agent_name` now is passed in the query string
+### GET     /agents/{agent_id}
+* Endpoint removed. Use `GET /agents?list_agents=agent_id` instead.
 
-### DELETE /agents/{agent_id}
-* Endpoint deleted. Use `DELETE /agents?list_agents=agent_id` instead
+### GET     /agents/groups
+* Endpoint removed. Use `GET /groups` instead.
 
+### GET     /agents/groups/{group_id}
+* Endpoint removed. Use `GET /groups?list_groups=group_id` instead.
+To get all agents in a group use `GET /groups/{group_id}/agents`.
+
+### GET     /agents/groups/{group_id}/configuration
+* Endpoint removed. Use `GET /groups/{group_id}/configuration` instead.
+
+### GET     /agents/groups/{group_id}/files
+* Endpoint removed. Use `GET /groups/{group_id}/files` instead.
+
+### GET     /agents/groups/{group_id}/files/{file_name}
+* Endpoint removed. Use `GET /groups/{group_id}/files/{filename}/json` or 
+`GET /groups/{group_id}/files/{filename}/xml` instead.
+
+### GET     /agents/name/{agent_name}
+* Endpoint removed. Use `GET /agents?name=agent_name` instead.
+
+### GET     /agents/outdated
+* Added **search** parameter in query used to look for elements with the specified string.
+
+### GET     /agents/summary
+* Endpoint removed. Use `GET /agents/summary/status` instead.
+
+### GET     /agents/summary/os
+* Removed **offset** parameter.
+* Removed **limit** parameter.
+* Removed **sort** parameter.
+* Removed **search** parameter.
+* Removed **q** parameter.
+
+### GET     /agents/summary/status
+* New endpoint. Returns a summary of the status of available agents.
+
+### POST    /agents
+* Renamed **force** parameter in request body to **force_time**.
+
+### POST    /agents/{agent_name}
+* Endpoint removed. Use `POST /agents/insert/quick` instead.
+
+### POST    /agents/group/{group_id}
+* Endpoint removed. Use `PUT /agents/group` instead.
+
+### POST    /agents/groups/{group_id}/configuration
+* Endpoint removed. Use `PUT /groups/{group_id}/configuration` instead.
+
+### POST    /agents/groups/{group_id}/files/{file_name}
+* Endpoint removed. Use `PUT /groups/{group_id}/configuration` instead.
+
+### POST    /agents/insert
+* Renamed **force** parameter in request body to **force_time**.
+
+### POST    /agents/insert/quick
+* New endpoint. Adds a new agent with the name specified by **agent_name** parameter.
+This agent will use **any** as IP.
+
+### POST    /agents/restart
+* Endpoint removed. Use `PUT /agents/restart` instead.
+
+### PUT     /agents/{agent_id}/upgrade
+* Changed parameter type **force** in request body from integer to boolean.
+
+### PUT     /agents/{agent_name}
+* Endpoint removed. Use `POST /agents/insert/quick?agent_name=name`.
+
+### PUT     /agents/group
+* New endpoint. Assign all agents or a list of them to the specified group.
+
+### PUT     /agents/groups/{group_id}
+* Endpoint removed. Use `POST /groups?group_id=group_id` instead.
+
+### PUT     /agents/groups/{group_id}/configuration
+* Endpoint removed. Use `PUT /groups/{group_id}/configuration` instead.
+
+### PUT     /agents/groups/{group_id}/files/{file_name}
+* Endpoint removed. Use `PUT /groups/{group_id}/files/{file_name}` instead.
+
+### PUT     /agents/groups/{group_id}/restart
+* Endpoint removed. Use `PUT /groups/{group_id}/restart` instead.
+
+### PUT     /agents/restart
+* Added **list_agents** parameter in query to specify which agents must be restarted.
+* Restarts all agents by default or a list of them if **list_agents** parameter is used.
 
 ## Cache
-### DELETE /cache 
-### GET /cache 
-### DELETE /cache{group} (Clear group cache)
-### GET /cache/config 
-* All cache endpoints have been removed
+### DELETE  /cache 
+### GET     /cache 
+### DELETE  /cache{group} (Clear group cache)
+### GET     /cache/config 
+* All cache endpoints have been removed.
 
 ## Ciscat
-### GET /ciscat/{agent_id}/results
-* The output now fits the affected_items - failed_items pattern to be consistent with the rest
-of endpoints
-
-## Lists
-### GET /lists
-* The output of this endpoint has changed
-
-### GET /lists/files 
-* The output of this endpoint has changed
+### GET     /ciscat/{agent_id}/results
+* removed **q** parameter in query.
 
 ## Cluster
-### GET /cluster/{node_id}/stats
-* Changed date format from YYYYMMDD to YYYY-MM-DD
+### DELETE  /cluster/api/config
+* New endpoint. Restore default API configuration.
 
-### GET /cluster/{node_id}/files
-* Now file contents are return in a structure like `{"data": {"contents": "file contents"}}`
+### GET     /cluster/api/config
+* New endpoint. Returns the API configuration in JSON format.
 
-### PUT /cluster/{node_id}/files
-* In response, `data` key is now moved to new `message` key
-* Verb changed to PUT
+### GET     /cluster/config
+* Endpoint removed. Use `GET /cluster/local/config` instead.
 
-### DELETE /cluster/{node_id}/files
-* In response, `data` key is now moved to new `message` key
+### GET     /cluster/configuration/validation
+* Added **list_nodes** parameter in query.
+* Return whether the Wazuh configuration is correct or not in all cluster nodes 
+or a list of them if parameter **list_nodes** is used.
 
-### PUT /cluster/restart
-* In response, `data` key is now moved to new `message` key
+### GET     /cluster/healthcheck
+* Renamed **node** parameter in query to **list_nodes**.
 
-### PUT /cluster/{node_id}/restart
-* In response, `data` key is now moved to new `message` key
+### GET     /cluster/local/config
+* New endpoint. Get local node cluster configuration
 
-### GET /cluster/configuration/validation
-* Now errors are shown in a different schema with a HTTP status 400. Errors follow the generic error format and are shown
-in `dapi_errors` key
+### GET     /cluster/local/info
+* New endpoint. Get information about the local node.
 
-### GET /cluster/{node_id}/configuration/validation
-* Now errors are shown in a different schema with a HTTP status 400. Errors follow the generic error format and are shown
-in `dapi_errors` key
+### GET     /cluster/node
+* Endpoint removed. Use `GET /cluster/nodes?list_agents=agent_id` instead.
+
+### GET     /cluster/{node_id}/configuration/validation
+* Endpoint removed. Use `GET /cluster/configuration/validation?list_nodes=node_id` instead.
+
+### GET     /cluster/{node_id}/files
+* Removed **validation** parameter in query. Use `GET /cluster/configuration/validation?list_nodes=node_id` instead.
+
+### GET ​   /cluster/{node_id}/logs
+* Removed **q** parameter in query.
+
+### GET     /cluster/{node_id}/stats
+* Changed date format from YYYYMMDD to YYYY-MM-DD for **date** parameter in query.
+
+### GET ​   /cluster/{node_id}/stats/weekly
+* Parameter **hours** changed to **averages** in response body.
+
+### GET     /cluster/nodes
+* Get information about all nodes in the cluster or a list of them
+* Added **list_nodes** parameter in query used to specify from which nodes get the information.
+* Removed **q** parameter in query.
+
+### GET     /cluster/nodes/{node_name}
+* Endpoint removed. Use `GET /cluster/nodes?list_nodes=node_id` instead.
+
+### POST    /cluster/{node_id}/files
+* Endpoint removed. Use `PUT /cluster/{node_id}/files` instead.
+
+### PUT     /cluster/api/config
+* New endpoint. Updates API configuration with the data contained in the API request.
+
+### PUT     /cluster/{node_id}/files
+* New endpoint. Replaces file contents with the data contained in the API request in a specified cluster node.
+
+### PUT     /cluster/{node_id}/restart
+* Endpoint removed. Use `PUT /cluster/restart?list_nodes=node_id` instead.
+
+### PUT     /cluster/restart
+* Added **list_nodes** parameter in query 
+* Restarts all nodes in the cluster by default or a list of them if **list_nodes** is found.
 
 ## Decoders
-### GET /decoders
-* In response, `regex` key is now an array
-* The response has been changed to the new RBAC generic response
-* Now this endpoint can receive a list of names as parameter
+### GET     /decoders
+* Added **select** parameter.
+* Added **decoder_name** parameter in query used to specify a list of decoder's names to get.
+* Renamed **file** parameter in query to **filename**.
+* Renamed **path** parameter in query to **relative_dirname**.
+* The response has been changed to the new RBAC generic response.
 
-### GET /decoders/files
-* Parameter **download** removed
-* Now this endpoint can receive a list of filenames as parameter
-* The response has been changed to the new RBAC generic response
+### GET     /decoders/parents
+* Added **select** parameter.
 
-### GET /decoders/files/{file_id}/download
-* This endpoint provides the functionality of GET /decoders/files with the old removed **download** param 
-* The response has been changed to the new RBAC generic response 
+### GET     /decoders/{decoder_name}
+* Endpoint removed. Use `GET /decoders?decoder_name=name` instead.
 
-### GET /decoders/parents
-* In response, `regex` key is now an array
-* The response has been changed to the new RBAC generic response
+### GET     /decoders/files
+* Removed **download** parameter. Use `GET /decoders/files/{filename}/download` instead.
+* Renamed **file** parameter in query to **filename**.
+* Renamed **path** parameter in query to **relative_dirname**.
+* The response has been changed to the new RBAC generic response.
+
+### GET     /decoders/files/{filename}/download
+* New endpoint. Download an specified decoder file.
+* The response has been changed to the new RBAC generic response. 
 
 ## Experimental
 ### General
-* Changed **ram_free**, **ram_total**, **cpu_cores** type to integer and **cpu_mhz** type to number float
-* Deleded all parameters **agent_id** from all endpoints
+* Added **list_agents** parameter in query to all experimental endpoints.
+* Removed **agent_id** parameter from all endpoints.
 
-### DELETE /experimental/syscheck
-* In response, `data` key is now moved to new `message` key
+### GET ​   /experimental/ciscat/results
+* Removed **agent_id** parameter in query.
 
-### GET /experimental/syscollector/hardware
-* Parameters **ram_free**, **ram_total**, **cpu_cores**, **cpu_mhz**, **cpu_name** renamed to **ram.free**, **ram.total**, **cpu.cores**, **cpu.mhz**, **cpu.name**
+### GET     /experimental/syscollector/hardware
+* Renamed **ram_free** parameter in query to **ram.free** and changed it's type to integer.
+* Renamed **ram_total** parameter in query to **ram.total** and changed it's type to integer.
+* Renamed **cpu_cores** parameter in query to **cpu.cores** and changed it's type to integer.
+* Renamed **cpu_mhz** parameter in query to **cpu.mhz** and changed it's type to number.
+* Renamed **cpu_name**  parameter in query to **cpu.name**.
 
-### GET /experimental/syscollector/netiface
-* Parameters **tx_packets**, **rx_packets**, **tx_bytes**, **rx_bytes**, **tx_errors**, **rx_errors**, **tx_dropped** and **rx_dropped** renamed to **tx.packets**, **rx.packets**, **tx.bytes**, **rx.bytes**, **tx.errors**, **rx.errors**, **tx.dropped** and **rx.dropped**
-* Changed **mtu**, **tx.packets**, **rx.packets**, **tx.bytes**, **rx.bytes**, **tx.errors**, **rx.errors**, **tx.dropped** and **rx.dropped** parameters to type integer.
+### GET ​   /experimental/syscollector/hotfixes
+* New endpoint. Get the hotfixes info of all agents or a list of agents.
 
+### GET     /experimental/syscollector/netiface
+* Changed the type of **mtu** parameter to integer.
+* Renamed **tx_packets** parameter in query to **tx.packets** and changed it's type to integer.
+* Renamed **rx_packets** parameter in query to **rx.packets** and changed it's type to integer.
+* Renamed **tx_bytes** parameter in query to **tx.bytes** and changed it's type to integer.
+* Renamed **rx_bytes** parameter in query to **rx.bytes** and changed it's type to integer.
+* Renamed **tx_errors** parameter in query to **tx.errors** and changed it's type to integer.
+* Renamed **rx_errors** parameter in query to **rx.errors** and changed it's type to integer.
+* Renamed **tx_dropped** parameter in query to **tx.dropped**  and changed it's type to integer.
+* Renamed **rx_dropped** parameter in query to **rx.dropped** and changed it's type to integer.
 
-### GET /experimental/syscollector/processes
-* Parameter **pid** renamed to **process_pid**
-* Parameter **status** renamed to **process_status**
-* Parameter **name** renamed to **process_name**
+### GET ​   /experimental/syscollector/os
+* Renamed **os_name** parameter in query to **os.name**.
+* Renamed **os_version** parameter in query to **os.version**.
 
-### GET /experimental/syscollector/packages
-* Parameter **format** renamed to **package_format**
+### GET     /experimental/syscollector/ports
+* Renamed **local_ip** parameter to **local.ip**.
+* Renamed **local_port** parameter to **local.port**.
+* Renamed **remote_ip**  parameter to **remote.ip**. 
 
-### GET /experimental/syscollector/ports
-* Parameters **local_ip**, **local_port**, **remote_ip** renamed to **local.ip**, **local.port**, **remote.ip** 
+## Groups
+### DELETE ​/groups
+* New endpoint. Deletes all groups or a list of them.
+
+### GET ​   /groups
+* New endpoint. Get information about all groups or a list of them. 
+Returns a list containing basic information about each group such as number of agents belonging 
+to the group and the checksums of the configuration and shared files.
+
+### GET ​   /groups/{group_id}/agents
+* New endpoint. Returns the list of agents that belongs to the specified group.
+
+### GET ​   /groups/{group_id}/configuration
+* New endpoint. Returns the group configuration defined in the agent.conf file.
+
+### GET ​   /groups/{group_id}/files
+* New endpoint. Return the files placed under the group directory.
+
+### GET ​   /groups/{group_id}/files/{file_name}/json
+* New endpoint. Returns the contents of the specified group file parsed to JSON.
+
+### GET ​   /groups/{group_id}/files/{file_name}/xml
+* New endpoint. Returns the contents of the specified group file parsed to XML.
+
+### POST ​  /groups
+* New endpoint. Creates a new group.
+
+### PUT ​   /groups/{group_id}/configuration
+* New endpoint. Update an specified group's configuration. 
+This API call expects a full valid XML file with the shared configuration tags/syntax.
+
+### PUT ​   /groups/{group_id}/restart
+* New endpoint. Restart all agents which belong to a given group.
+
+## Lists
+### GET     /lists
+* Added **select** parameter.
+* Added **filename** parameter in query used to filter by filename.
+* Renamed **path** parameter in query to **relative_dirname**.
+
+### GET     /lists/files 
+* Added **filename** parameter in query used to filter by filename.
+* added **relative_dirname** parameter in query used to filter by relative directory name.
 
 ## Manager
+### DELETE ​/manager/api/config
+* New endpoint. Replaces API configuration with the original one.
 
-### GET /manager/files
-* Now file contents are return in a structure like `{"data": {"contents": "file contents"}}`
+### GET ​   /manager/api/config
+* New endpoint. Returns the API configuration in JSON format.
 
-### PUT /manager/files
-* In response, `data` key is now moved to new `message` key
-* Verb changed to PUT
+### GET     /manager/files
+* Removed **validation** parameter in query. Use `GET /manager/configuration/validation` instead.
 
-### DELETE /manager/files
-* In response, `data` key is now moved to new `message` key
+### GET     /manager/info
+* Parameter `openssl_support` in response is now a boolean.
 
-### GET /manager/stats
-* Changed date format from YYYYMMDD to YYYY-MM-DD
+### GET ​   /manager/logs
+* Removed **q** parameter in query.
 
-### GET /manager/info
-* Parameter `openssl_support` is now a boolean.
+### GET ​   /manager/logs/summary
+* Return a summary of the last 2000 wazuh log entries instead of the last three months.
 
-### PUT /manager/restart
-* In response, `data` key is now moved to new `message` key
+### GET     /manager/stats
+* Changed date format from YYYYMMDD to YYYY-MM-DD for **date** parameter in query.
 
-### GET /manager/stats/weekly
-* Parameter **hours** changed to **averages**.
+### GET     /manager/stats/weekly
+* Parameter **hours** changed to **averages** in response body.
 
-### GET /manager/configuration
-* Output now always follow the same structure. See spec schema response carefully.
+### POST    /manager/files
+* Endpoint removed. Use `PUT /manager/files` instead.
 
-## Manager
+### PUT ​   /manager/api/config
+* New endpoint. Updates API configuration with the data contained in the API request.
 
-### GET /overview/agent
-* The output of this endpoint has changed
+### PUT     /manager/files
+* New endpoint. Replaces file contents with the data contained in the API request.
+
+## Overview
+### GET     /overview/agents
+* New endpoint. Returns a dictionary with a full agents overview.
 
 ## Rootcheck
-### PUT /rootcheck
-* In response, `data` key is now moved to new `message` key
-
-### DELETE /rootcheck
-* In response, `data` key is now moved to new `message` key
-
-### PUT /rootcheck/:agent_id
-* In response, `data` key is now moved to new `message` key
-
-### DELETE /rootcheck/:agent_id
-* In response, `data` key is now moved to new `message` key
+### GET ​   /rootcheck/{agent_id}
+* Added **select** parameter in query used to select which fields to return.
+* Added **q** parameter in query used to filter.
 
 ## Rules
-### GET /rules
-* The response has been changed to the new RBAC generic response
+### GET     /rules
+* Added **rule_ids** parameter in query.
+* Added **select** parameter.
+* Renamed **file** parameter to **filename**.
+* Renamed **pci** parameter in query to **pci_dss**.
 
-### GET /rules/files
-* Parameter **download** removed
-* Now this endpoint can receive a list of ids as parameter
-* The response has been changed to the new RBAC generic response
+### GET     /rules/gdpr
+* Endpoint removed. Use `GET /rules/requirement/gdpr` instead.
 
-### GET /rules/files/:file/download
-* This endpoint provides the functionality of GET /rules/files with the old removed **download** param
-* The response has been changed to the new RBAC generic response 
+### GET     /rules/gpg13
+* Endpoint removed. Use `GET /rules/requirement/gpg13` instead.
 
-### GET /rules/requirement/{requirement}
-* This endpoint provides the functionality of GET /rules/pci GET /rules/gpg13 GET /rules/gdpr GET /rules/hipaa GET /rules/nist-800-53
-* The response has been changed to the new RBAC generic response
+### GET     /rules/files
+* Renamed **path** parameter in query to **relative_dirname**.
+* Renamed **file** parameter in query to **filename**.
+* Removed **download** parameter in query. Use `GET /rules/files/{file}/download` instead.
 
-### GET /rules/groups
-* The response has been changed to the new RBAC generic response
+### GET     /rules/files/{file}/download
+* New endpoint. Download an specified rule file.
 
-## Syscheck
-### PUT /syscheck
-* The response has been changed to the new RBAC generic response
+### GET     /rules/hipaa
+* Endpoint removed. Use `GET /rules/requirement/hipaa` instead.
 
-### PUT /syscheck/{agent_id}
-* Removed endpoint
+### GET     /rules/nist-800-53
+* Endpoint removed. Use `GET /rules/requirement/nist-800-53` instead.
 
-### DELETE /syscheck/{agent_id}
-* The response has been changed to the new RBAC generic response
+### GET     /rules/pci
+* Endpoint removed. Use `GET /rules/requirement/pci_dss` instead.
 
-## Syscollector
-### GET /syscollector/:agent_id/netaddr
-* Added **agent_id** parameter.
+### GET     /rules/requirement/{requirement}
+* New endpoint. Returns all specified requirement names defined in the Wazuh ruleset.
 
-### GET /syscollector/:agent_id/netiface
-* Added **agent_id** parameter.
-* Parameters **tx_packets**, **rx_packets**, **tx_bytes**, **rx_bytes**, **tx_errors**, **rx_errors**, **tx_dropped** and **rx_dropped** renamed to **tx.packets**, **rx.packets**, **tx.bytes**, **rx.bytes**, **tx.errors**, **rx.errors**, **tx.dropped** and **rx.dropped**
-
-### GET /syscollector/:agent_id/netproto
-* Added **agent_id** parameter.
-
-### GET /syscollector/:agent_id/netproto
-* Added parameter **process** filter
-
-### GET /syscollector/:agent_id/processes
-* Parameter **pid** renamed to **process_pid**
-* Parameter **status** renamed to **process_status**
-* Parameter **name** renamed to **process_name**
-
-### GET /syscollector/:agent_id/ports
-* Parameters **local_ip**, **local_port**, **remote_ip** renamed to **local.ip**, **local.port**, **remote.ip** 
+### GET     /rules/{rule_id}
+* Endpoint removed. Use `GET /rules?rule_ids=rule_id` instead.
 
 ## Security
-* These endpoints provide the functionality of RBAC and authentication
+* These endpoints provide the functionality of RBAC and authentication.
 
-### GET /security/user/authenticate
-* New endpoint
+### GET ​   /security/actions
+* New endpoint. Get all RBAC actions.
 
-### GET /security/roles
-* New endpoint
+### GET     /security/policies
+* New endpoint. Get all policies in the system.
 
-### GET /security/roles/{role_id}
-* New endpoint
+### POST    /security/policies
+* New endpoint. Add a new policy.
 
-### GET /security/policies
-* New endpoint
+### DELETE  /security/policies
+* New endpoint. Delete a list of policies or all policies in the system.
 
-### GET /security/policies/{policy_id}
-* New endpoint
+### PUT     /security/policies/{policy_id}
+* New endpoint. Modify a specified policy.
 
-### POST /security/roles
-* New endpoint
+### GET ​   /security/resources
+* New endpoint. Get RBAC resources.
 
-### POST /security/policies
-* New endpoint
+### GET     /security/roles
+* New endpoint. Gets a list of roles or all roles in the system without specifying anything.
 
-### DELETE /security/roles
-* New endpoint
+### POST    /security/roles
+* New endpoint. Add a new role to the system.
 
-### DELETE /security/policies
-* New endpoint
+### DELETE  /security/roles
+* New endpoint. Delete a list of roles or all roles in the system.
 
-### PUT /security/roles/{role_id}
-* New endpoint
+### PUT     /security/roles/{role_id}
+* New endpoint. Modify a specified role.
 
-### PUT /security/policies/{policy_id}
-* New endpoint
+### POST ​  /security/roles/{role_id}/policies
+* New endpoint. Create a relation between one role and one or more policies.
 
-### DELETE /security/roles/{role_id}
-* New endpoint
+### DELETE ​/security/roles/{role_id}/policies
+* New endpoint. Delete a specify relation role-policy.
 
-### DELETE /security/policies/{policy_id}
-* New endpoint
+### GET     /security/user/authenticate
+* New endpoint. User/password authentication to get an access token.
 
-### PUT /security/roles/{role_id}/policies/{policy_id}
-* New endpoint
+### PUT ​   /security/user/revoke
+* New endpoint. Revoke all active JWT tokens.
 
-### DELETE /security/roles/{role_id}/policies/{policy_id}
-* New endpoint
+### GET ​   /security/users
+* New endpoint. Get user information.
+
+### POST ​  /security/users
+* New endpoint. Create new user.
+
+### DELETE ​/security/users
+* New endpoint. Delete an user.
+
+### PUT ​   /security/users/{username}
+* New endpoint. Modify a user.
+
+### POST    /security/users/{username}/roles
+* New endpoint. Create a specify relation between one user and one role.
+
+### DELETE  /security/users/{username}/roles
+* New endpoint. Delete a specify relation user-roles.
+
+## Summary
+### GET     /summary/agents
+* Endpoint removed. Use the new `GET /overview/agents` endpoint instead.
+
+## Syscheck
+### GET ​   /syscheck/{agent_id}
+* Removed **q** parameter in query.
+
+### PUT     /syscheck
+* Added **list_agents** parameter in query used to specify which agents must perform a syscheck scan.
+
+### PUT     /syscheck/{agent_id}
+* Endpoint removed. Use `PUT /syscheck?list_agents=agent_id` instead.
+
+## Syscollector
+### GET     /syscollector/{agent_id}/hotfixes
+* Removed **q** parameter in query.
+
+### GET     /syscollector/{agent_id}/netaddr
+* Removed **q** parameter in query.
+
+### GET     /syscollector/{agent_id}/netiface
+* Removed **q** parameter in query.
+* Changed the type of **mtu** parameter to integer.
+* Renamed **tx_packets** parameter in query to **tx.packets** and changed it's type to integer.
+* Renamed **rx_packets** parameter in query to **rx.packets** and changed it's type to integer.
+* Renamed **tx_bytes** parameter in query to **tx.bytes** and changed it's type to integer.
+* Renamed **rx_bytes** parameter in query to **rx.bytes** and changed it's type to integer.
+* Renamed **tx_errors** parameter in query to **tx.errors** and changed it's type to integer.
+* Renamed **rx_errors** parameter in query to **rx.errors** and changed it's type to integer.
+* Renamed **tx_dropped** parameter in query to **tx.dropped**  and changed it's type to integer.
+* Renamed **rx_dropped** parameter in query to **rx.dropped** and changed it's type to integer.
+
+### GET     /syscollector/{agent_id}/netproto
+* Removed **q** parameter in query.
+
+### GET ​   /syscollector/{agent_id}/packages
+* Removed **q** parameter in query.
+
+### GET     /syscollector/{agent_id}/ports
+* Added **process** parameter used to filter by process name.
+* Removed **q** parameter in query.
+* Renamed **local_ip** parameter to **local.ip**.
+* Renamed **local_port** parameter to **local.port**.
+* Renamed **remote_ip**  parameter to **remote.ip**. 
+ 
+### GET     /syscollector/{agent_id}/processes
+* Removed **q** parameter in query.
 
 ## Version
-### GET /version 
-* Removed endpoint
+### GET     /version 
+* Endpoint removed. Use `GET /` instead.

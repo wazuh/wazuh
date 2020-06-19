@@ -12,6 +12,7 @@ import wazuh.core.cluster.control as cluster_control
 import wazuh.configuration as configuration
 import wazuh.sca as sca
 import wazuh.manager as manager
+import wazuh.mitre as mitre
 import wazuh.rootcheck as rootcheck
 import wazuh.stats as stats
 import wazuh.syscheck as syscheck
@@ -519,6 +520,16 @@ functions = {
         'type': 'local_any',
         'is_async': False
     },
+    '/rules/tsc': {
+        'function': Rule.get_tsc,
+        'type': 'local_any',
+        'is_async': False
+    },
+    '/rules/mitre': {
+        'function': Rule.get_mitre,
+        'type': 'local_any',
+        'is_async': False
+    },
     '/rules/files': {
         'function': Rule.get_rules_files,
         'type': 'local_any',
@@ -675,6 +686,13 @@ functions = {
     # Summary
     '/summary/agents': {
         'function': Agent.get_full_summary,
+        'type': 'local_master',
+        'is_async': False
+    },
+
+    # Mitre
+    '/mitre': {
+        'function': mitre.get_attack,
         'type': 'local_master',
         'is_async': False
     },

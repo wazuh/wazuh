@@ -1,8 +1,6 @@
 /**
  * @file log_builder.c
- * @author Vikman Fernandez-Castro (victor@wazuh.com)
  * @brief Definition of the shared log builder library
- * @version 0.1
  * @date 2019-12-06
  *
  * @copyright Copyright (c) 2015-2020 Wazuh, Inc.
@@ -102,6 +100,8 @@ char * log_builder_build(log_builder_t * builder, const char * pattern, const ch
     if (!pattern) {
         return strdup(logmsg);
     }
+
+    assert(&builder->rwlock != NULL);
 
     os_malloc(OS_MAXSTR, final);
     os_strdup(pattern, _pattern);

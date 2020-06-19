@@ -98,7 +98,8 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_FIM_DELETE_RANGE] = "DELETE FROM fim_entry WHERE file > ? AND file < ?;",
     [WDB_STMT_FIM_CLEAR] = "DELETE FROM fim_entry;",
     [WDB_STMT_SYNC_UPDATE_ATTEMPT] = "UPDATE sync_info SET last_attempt = ?, n_attempts = n_attempts + 1 WHERE component = ?;",
-    [WDB_STMT_SYNC_UPDATE_COMPLETION] = "UPDATE sync_info SET last_attempt = ?, last_completion = ?, n_attempts = n_attempts + 1, n_completions = n_completions + 1 WHERE component = ?;"
+    [WDB_STMT_SYNC_UPDATE_COMPLETION] = "UPDATE sync_info SET last_attempt = ?, last_completion = ?, n_attempts = n_attempts + 1, n_completions = n_completions + 1 WHERE component = ?;",
+    [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
 };
 
 sqlite3 *wdb_global = NULL;
@@ -145,6 +146,42 @@ int wdb_open_global() {
     return 0;
 }
 
+wdb_t * wdb_open_mitre() {
+    char path[PATH_MAX + 1];
+    sqlite3 *db;
+    wdb_t * wdb = NULL;
+
+    // Find BD in pool
+
+    w_mutex_lock(&pool_mutex);
+
+    if (wdb = (wdb_t *)OSHash_Get(open_dbs, WDB_MITRE_NAME), wdb) {
+        goto success;
+    }
+
+    // Try to open DB
+
+    snprintf(path, sizeof(path), "%s/%s.db", WDB_DIR, WDB_MITRE_NAME);
+
+    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
+        merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(db));
+        sqlite3_close_v2(db);
+        goto end;
+
+    } else {
+        wdb = wdb_init(db, WDB_MITRE_NAME);
+        wdb_pool_append(wdb);
+    }
+
+success:
+    w_mutex_lock(&wdb->mutex);
+    wdb->refcount++;
+
+end:
+    w_mutex_unlock(&pool_mutex);
+    return wdb;
+}
+
 /* Close global database */
 void wdb_close_global() {
     sqlite3_close_v2(wdb_global);
@@ -175,6 +212,11 @@ sqlite3* wdb_open_agent(int id_agent, const char *name) {
             return NULL;
         }
 
+        if (wdb_journal_wal(db) == -1) {
+            merror("Cannot open database '%s': error setting the journalig mode.", dir);
+            sqlite3_close_v2(db);
+            return NULL;
+        }
     }
 
     sqlite3_busy_timeout(db, BUSY_SLEEP);
@@ -187,7 +229,6 @@ wdb_t * wdb_open_agent2(int agent_id) {
     char path[PATH_MAX + 1];
     sqlite3 * db;
     wdb_t * wdb = NULL;
-    wdb_t * new_wdb = NULL;
 
     snprintf(sagent_id, sizeof(sagent_id), "%03d", agent_id);
 
@@ -226,11 +267,10 @@ wdb_t * wdb_open_agent2(int agent_id) {
     else {
         wdb = wdb_init(db, sagent_id);
         wdb_pool_append(wdb);
+        wdb = wdb_upgrade(wdb);
 
-        if (new_wdb = wdb_upgrade(wdb), new_wdb != wdb) {
-            // If I had to generate backup and change DB
-            wdb = new_wdb;
-            wdb_pool_append(wdb);
+        if (wdb == NULL) {
+            goto end;
         }
     }
 
@@ -567,17 +607,17 @@ int wdb_insert_info(const char *key, const char *value) {
     return result;
 }
 
-wdb_t * wdb_init(sqlite3 * db, const char * agent_id) {
+wdb_t * wdb_init(sqlite3 * db, const char * id) {
     wdb_t * wdb;
     os_calloc(1, sizeof(wdb_t), wdb);
     wdb->db = db;
     w_mutex_init(&wdb->mutex, NULL);
-    os_strdup(agent_id, wdb->agent_id);
+    os_strdup(id, wdb->id);
     return wdb;
 }
 
 void wdb_destroy(wdb_t * wdb) {
-    os_free(wdb->agent_id);
+    os_free(wdb->id);
     w_mutex_destroy(&wdb->mutex);
     free(wdb);
 }
@@ -594,16 +634,16 @@ void wdb_pool_append(wdb_t * wdb) {
 
     db_pool_size++;
 
-    if (r = OSHash_Add(open_dbs, wdb->agent_id, wdb), r != 2) {
-        merror_exit("OSHash_Add(%s) returned %d.", wdb->agent_id, r);
+    if (r = OSHash_Add(open_dbs, wdb->id, wdb), r != 2) {
+        merror_exit("OSHash_Add(%s) returned %d.", wdb->id, r);
     }
 }
 
 void wdb_pool_remove(wdb_t * wdb) {
     wdb_t * prev;
 
-    if (!OSHash_Delete(open_dbs, wdb->agent_id)) {
-        merror("Database for agent '%s' was not in hash table.", wdb->agent_id);
+    if (!OSHash_Delete(open_dbs, wdb->id)) {
+        merror("Database for agent '%s' was not in hash table.", wdb->id);
     }
 
     if (wdb == db_pool_begin) {
@@ -623,7 +663,7 @@ void wdb_pool_remove(wdb_t * wdb) {
 
         db_pool_size--;
     } else {
-        merror("Database for agent '%s' not found in the pool.", wdb->agent_id);
+        merror("Database for agent '%s' not found in the pool.", wdb->id);
     }
 }
 
@@ -634,10 +674,11 @@ void wdb_close_all() {
     w_mutex_lock(&pool_mutex);
 
     while (node = db_pool_begin, node) {
-        mdebug2("Closing database for agent %s", node->agent_id);
+        mdebug2("Closing database for agent %s", node->id);
 
         if (wdb_close(node, TRUE) < 0) {
-            merror("Couldn't close DB for agent %s", node->agent_id);
+            merror("Couldn't close DB for agent %s", node->id);
+
         }
     }
 
@@ -662,7 +703,7 @@ void wdb_commit_old() {
             wdb_commit2(node);
             gettime(&ts_end);
 
-            mdebug2("Agent '%s' database commited. Time: %.3f ms.", node->agent_id, time_diff(&ts_start, &ts_end) * 1e3);
+            mdebug2("Agent '%s' database commited. Time: %.3f ms.", node->id, time_diff(&ts_start, &ts_end) * 1e3);
         }
 
         w_mutex_unlock(&node->mutex);
@@ -681,7 +722,7 @@ void wdb_close_old() {
         next = node->next;
 
         if (node->refcount == 0 && !node->transaction) {
-            mdebug2("Closing database for agent %s", node->agent_id);
+            mdebug2("Closing database for agent %s", node->id);
             wdb_close(node, FALSE);
         }
     }
@@ -763,11 +804,11 @@ int wdb_close(wdb_t * wdb, bool commit) {
             wdb_destroy(wdb);
             return 0;
         } else {
-            merror("DB(%s) wdb_close(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+            merror("DB(%s) wdb_close(): %s", wdb->id, sqlite3_errmsg(wdb->db));
             return -1;
         }
     } else {
-        mdebug1("Couldn't close database for agent %s: refcount = %u", wdb->agent_id, wdb->refcount);
+        mdebug1("Couldn't close database for agent %s: refcount = %u", wdb->id, wdb->refcount);
         return -1;
     }
 }
@@ -792,23 +833,23 @@ wdb_t * wdb_pool_find_prev(wdb_t * wdb) {
 
 int wdb_stmt_cache(wdb_t * wdb, int index) {
     if (index >= WDB_STMT_SIZE) {
-        merror("DB(%s) SQL statement index (%d) out of bounds", wdb->agent_id, index);
+        merror("DB(%s) SQL statement index (%d) out of bounds", wdb->id, index);
         return -1;
     }
     if (!wdb->stmt[index]) {
         if (sqlite3_prepare_v2(wdb->db, SQL_STMT[index], -1, wdb->stmt + index, NULL) != SQLITE_OK) {
-            merror("DB(%s) sqlite3_prepare_v2() stmt(%d): %s", wdb->agent_id, index, sqlite3_errmsg(wdb->db));
+            merror("DB(%s) sqlite3_prepare_v2() stmt(%d): %s", wdb->id, index, sqlite3_errmsg(wdb->db));
             return -1;
         }
     } else if (sqlite3_reset(wdb->stmt[index]) != SQLITE_OK || sqlite3_clear_bindings(wdb->stmt[index]) != SQLITE_OK) {
-        mdebug1("DB(%s) sqlite3_reset() stmt(%d): %s", wdb->agent_id, index, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) sqlite3_reset() stmt(%d): %s", wdb->id, index, sqlite3_errmsg(wdb->db));
 
         // Retry to prepare
 
         sqlite3_finalize(wdb->stmt[index]);
 
         if (sqlite3_prepare_v2(wdb->db, SQL_STMT[index], -1, wdb->stmt + index, NULL) != SQLITE_OK) {
-            merror("DB(%s) sqlite3_prepare_v2() stmt(%d): %s", wdb->agent_id, index, sqlite3_errmsg(wdb->db));
+            merror("DB(%s) sqlite3_prepare_v2() stmt(%d): %s", wdb->id, index, sqlite3_errmsg(wdb->db));
             return -1;
         }
     }
@@ -824,7 +865,7 @@ int wdb_sql_exec(wdb_t *wdb, const char *sql_exec) {
     sqlite3_exec(wdb->db, sql_exec, NULL, NULL, &sql_error);
 
     if(sql_error) {
-        mwarn("DB(%s) wdb_sql_exec returned error: '%s'", wdb->agent_id, sql_error);
+        mwarn("DB(%s) wdb_sql_exec returned error: '%s'", wdb->id, sql_error);
         sqlite3_free(sql_error);
         result = -1;
     }
@@ -911,4 +952,21 @@ cJSON *wdb_remove_multiple_agents(char *agent_list) {
     mdebug1("Deleting databases. JSON output: %s", json_formated);
     os_free(json_formated);
     return response;
+}
+
+
+// Set the database journal mode to write-ahead logging
+
+int wdb_journal_wal(sqlite3 *db) {
+    char *sql_error = NULL;
+
+    sqlite3_exec(db, SQL_STMT[WDB_STMT_PRAGMA_JOURNAL_WAL], NULL, NULL, &sql_error);
+
+    if (sql_error != NULL) {
+        merror("Cannot set database journaling mode to WAL: '%s'", sql_error);
+        sqlite3_free(sql_error);
+        return -1;
+    }
+
+    return 0;
 }

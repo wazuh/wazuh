@@ -26,6 +26,24 @@ from grp import getgrnam
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'test_core_agent')
 
 
+def get_WazuhDBQuery_params(wdb_class):
+    """Get default parameters for the specified WazuhDBQuery class.
+
+    Parameters
+    ----------
+    wdb_class : str
+        Suffix of the WazuhDBQuery class. Example: 'Agents' to get default parameters from `WazuhDBQueryAgents` class.
+
+    Returns
+    -------
+    parameters_dict
+        Dictionary with all the default parameters.
+    """
+    with patch('wazuh.core.core_agent.WazuhDBQuery.__init__') as wdbquery_mock:
+        getattr(sys.modules[__name__], f'WazuhDBQuery{wdb_class}')()
+        return wdbquery_mock.call_args.kwargs
+
+
 # list with Wazuh packages availables with their hash
 wpk_versions = [['v3.10.0', '251b1af81d45d291540d8589b124302613f0a4e0'],
                 ['v3.9.0', '180e25a1fefafe8d83c763d375cb1a3a387bc08a'],
@@ -66,7 +84,7 @@ class InitAgent:
 
         self.never_connected_fields = {'status', 'name', 'ip', 'registerIP', 'node_name', 'dateAdd', 'id'}
         self.pending_fields = self.never_connected_fields | {'manager', 'lastKeepAlive'}
-        self.manager_fields = self.pending_fields | {'version', 'os'}
+        self.manager_fields = self.pending_fields | {'version', 'os', 'group'}
         self.active_fields = self.manager_fields | {'group', 'mergedSum', 'configSum'}
         self.manager_fields -= {'registerIP'}
 
@@ -301,6 +319,78 @@ def test_WazuhDBQueryAgents_process_filter(mock_socket_conn, mock_isfile, mock_s
             'Query returned does not match the expected one'
 
     mock_sqli_conn.assert_called_once()
+
+
+@pytest.mark.parametrize('value', [
+    True,
+    False
+])
+@patch('sqlite3.connect')
+@patch("wazuh.database.isfile", return_value=True)
+@patch('socket.socket.connect')
+def test_WazuhDBQueryGroup__init__(mock_socket_conn, mock_isfile, mock_sqli_conn, value):
+    """Test if method __init__ of WazuhDBQueryGroup works properly.
+
+    Parameters
+    ----------
+    mock_sqli_conn : mock
+        Mock of SQLite connection.
+    value : boolean
+        Boolean to be returned by the method glob.glob().
+    """
+    with patch('wazuh.utils.glob.glob', return_value=value):
+        if value:
+            WazuhDBQueryGroup()
+            mock_sqli_conn.assert_called_once()
+        else:
+            with pytest.raises(WazuhException, match=".* 1600 .*"):
+                WazuhDBQueryGroup()
+
+
+@pytest.mark.parametrize('select', [
+    ['name'],
+    ['id'],
+    ['name', 'id'],
+    None
+])
+@patch("wazuh.common.database_path_global", new=os.path.join(test_data_path,  'global.db'))
+def test_WazuhDBQueryGroup_select(select):
+    """Test if parameter select of WazuhDBQueryGroup works properly.
+
+    Parameters
+    ----------
+    select : list
+        List of selects to apply.
+    """
+    params = get_WazuhDBQuery_params('Group')
+    query_group = WazuhDBQueryGroup(select=select)
+    result = query_group.run()
+    for item in result['items']:
+        if select is not None:
+            assert set(item.keys()) == set(select) | set(params['min_select_fields'])
+        else:
+            assert set(item.keys()) == set(params['fields'].keys())
+
+
+@pytest.mark.parametrize('filters', [
+    {'name': 'group-1'},
+    {'id': 2},
+    {'name': 'group-1', 'id': 1}
+])
+@patch("wazuh.common.database_path_global", new=os.path.join(test_data_path,  'global.db'))
+def test_WazuhDBQueryGroup_filters(filters):
+    """Test if parameter filters of WazuhDBQueryGroup works properly.
+
+        Parameters
+        ----------
+        filters : dict
+            Dict of filters to apply.
+        """
+    query_group = WazuhDBQueryGroup(filters=filters)
+    result = query_group.run()
+    assert result['totalItems'] > 0
+    for item in result['items']:
+        assert (item[key] == value for key, value in filters.items())
 
 
 @patch('wazuh.utils.glob.glob', return_value=True)

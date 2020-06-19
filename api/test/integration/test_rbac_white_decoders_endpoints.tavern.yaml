@@ -2,8 +2,7 @@
 test_name: GET DECODERS RBAC
 
 marks:
-  - usefixtures:
-    - decoders_white_rbac_tests
+  - rbac_tests
 
 stages:
 

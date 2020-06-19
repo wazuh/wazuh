@@ -56,18 +56,18 @@ INSERT INTO agent (id, name, ip, os_name, os_version, os_major, os_minor, os_cod
                    (0,'master','127.0.0.1','Ubuntu','18.04.1 LTS','18','04','Bionic Beaver','ubuntu',
                    'Linux |master |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
                    'Wazuh v3.9.0','master','node01',strftime('%s','now','-10 days'),253402300799,
-                    'updated',NULL);
+                    'updated','group-1');
 
 -- Connected agent with IP and Registered IP filled
 INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
                    os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add,
-                   last_keepalive, status) VALUES (1,'agent-1','172.17.0.202','any',
+                   last_keepalive, status, `group`) VALUES (1,'agent-1','172.17.0.202','any',
                    'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f', 'Ubuntu','18.04.1 LTS','18','04',
                    'Bionic Beaver','ubuntu',
                    'Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
                    'Wazuh v3.8.2','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
                    'node01',strftime('%s','now','-4 days'),
-                    strftime('%s','now','-5 seconds'),'updated');
+                    strftime('%s','now','-5 seconds'),'updated', 'group-2');
 
 -- Connected agent with just Registered IP filled
 INSERT INTO agent (id, name, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
@@ -129,3 +129,11 @@ INSERT INTO agent (id, name, register_ip, internal_key, os_name, os_version, os_
                    'Wazuh v3.8.2','ab73af41699f13fgt81903b5f23d8d00','f8d49771911ed9d5c45bdfa40babd065','master',
                    'node01',strftime('%s','now','-3 days'),
                     strftime('%s','now','-15 minutes'),'updated');
+
+-- Create group-1 and group-2
+INSERT INTO `group` (id, name) VALUES (1, 'group-1');
+INSERT INTO `group` (id, name) VALUES (2, 'group-2');
+
+-- Add Agent1 to group-1 and agent2 to group-2
+INSERT INTO belongs (id_agent, id_group) VALUES (1, 1);
+INSERT INTO belongs (id_agent, id_group) VALUES (2, 2);

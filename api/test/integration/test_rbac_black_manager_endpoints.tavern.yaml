@@ -2,8 +2,7 @@
 test_name: GET /manager/configuration
 
 marks:
-  - usefixtures:
-    - manager_black_rbac_tests
+  - rbac_tests
 
 stages:
 
@@ -353,14 +352,9 @@ stages:
           enabled: false
           time: 1
     response:
-      status_code: 200
+      status_code: 400
       json:
-        data:
-          affected_items: []
-          total_affected_items: 0
-          total_failed_items: 0
-          failed_items: []
-        message: !anystr
+        code: 4000
 
 ---
 test_name: DELETE /manager/api/config
@@ -375,11 +369,6 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      status_code: 400
       json:
-        data:
-          affected_items: []
-          total_affected_items: 0
-          total_failed_items: 0
-          failed_items: []
-        message: !anystr
+        code: 4000

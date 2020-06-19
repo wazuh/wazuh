@@ -300,10 +300,3 @@ class RBAChecker:
                     user_policies.append(policy.to_dict()['policy'])
 
         return user_policies
-
-    @staticmethod
-    def run_testing():
-        """This is for TESTING. This method returns a list of hardcoded policies for testing"""
-        testing_policies = []
-
-        return testing_policies

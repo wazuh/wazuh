@@ -1,0 +1,70 @@
+---
+- actions:
+  - security:read
+  resources:
+  - user:id:administrator
+  - user:id:normal
+  - user:id:python
+  - user:id:guest
+  - role:id:*
+  effect: allow
+
+- actions:
+  - security:read
+  resources:
+  - policy:id:*
+  effect: deny
+
+- actions:
+  - security:update
+  resources:
+  - user:id:*
+  effect: deny
+
+- actions:
+  - security:update
+  resources:
+  - role:id:103
+  - role:id:102
+  - role:id:105
+  - policy:id:107
+  - policy:id:102
+  - policy:id:104
+  effect: allow
+
+- actions:
+  - security:update
+  resources:
+  - policy:id:107
+  - policy:id:102
+  effect: deny
+
+- actions:
+  - security:delete
+  resources:
+  - user:id:guest
+  - user:id:normal
+  - user:id:wazuh-wui
+  - policy:id:*
+  effect: allow
+
+- actions:
+  - security:delete
+  resources:
+  - policy:id:*
+  - role:id:*
+  effect: deny
+
+- actions:
+  - security:create_user
+  resources:
+  - "*:*:*"
+  effect: deny
+
+- actions:
+  - security:create
+  - security:read_config
+  - security:update_config
+  resources:
+  - "*:*:*"
+  effect: allow

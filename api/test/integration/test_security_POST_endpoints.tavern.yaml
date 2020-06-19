@@ -2,8 +2,7 @@
 test_name: POST /security/roles
 
 marks:
-  - usefixtures:
-    - security_tests
+  - base_tests
 
 stages:
 
@@ -389,12 +388,12 @@ stages:
   - name: Create link role-policy
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/11/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/103/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        policy_ids: 12
+        policy_ids: 105
     response:
       status_code: 200
       json:
@@ -406,12 +405,12 @@ stages:
   - name: Create link role-policy
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/10/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/100/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        policy_ids: 13
+        policy_ids: 105
     response:
       status_code: 200
       json:
@@ -428,7 +427,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        policy_ids: 12,13
+        policy_ids: 104,105
     response:
       status_code: 200
       json: &error
@@ -448,12 +447,12 @@ stages:
   - name: Create link role-policy (non-existent policy)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/9/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/101/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        policy_ids: 999,56
+        policy_ids: 999,10000
     response:
       status_code: 200
       json:
@@ -465,8 +464,8 @@ stages:
                 message: !anystr
                 remediation: !anything
               id:
-                - '56'
                 - '999'
+                - '10000'
           total_affected_items: 0
           total_failed_items: 2
 
@@ -479,7 +478,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        policy_ids: 999,12
+        policy_ids: 999,1000
     response:
       status_code: 200
       json:
@@ -699,7 +698,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        role_ids: 99,98
+        role_ids: 500,498
     response:
       status_code: 200
       json:
@@ -711,8 +710,8 @@ stages:
                 message: !anystr
                 remediation: !anystr
               id:
-                - '98'
-                - '99'
+                - '498'
+                - '500'
           total_affected_items: 0
           total_failed_items: 2
 
@@ -725,7 +724,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        role_ids: 4,5,3,99,98
+        role_ids: 4,5,3,500,498
     response:
       status_code: 200
       json:
@@ -742,8 +741,8 @@ stages:
                 message: !anystr
                 remediation: !anystr
               id:
-                - '98'
-                - '99'
+                - '498'
+                - '500'
             - error:
                 code: 4017
                 message: !anystr

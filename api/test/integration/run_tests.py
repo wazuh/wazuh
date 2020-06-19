@@ -5,7 +5,7 @@ import re
 import subprocess
 
 
-RESULTS_PATH = PUT_YOUR_RESULTS_PATH_HERE
+RESULTS_PATH = '_test_results'
 PYTEST_COMMAND = 'pytest -vv'
 TESTS_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -13,40 +13,73 @@ TESTS_PATH = os.path.dirname(os.path.abspath(__file__))
 def calculate_result(file_name):
     with open(file_name, 'r') as f:
         file = f.read()
-    print(f'\t{re.search(r"=+(.*) in (.*)s.*=+", file).group(1)}\n')
+    try:
+        result = re.search(r'=+ (.+) in (.*) \(\d+:\d+:\d+\) =+', file).group(1)
+        print(f'\t {result}\n')
+    except AttributeError:
+        print('\tCould not retrieve results from this test')
 
 
-def run_tests(keyword=None, rbac='both', iterations=1):
+def collect_tests(test_list=None, keyword=None, rbac='both'):
     os.chdir(TESTS_PATH)
 
-    def filter_tests(kw, rb):
+    def filter_tests(kw, rb, t_list=None):
         kw = kw if kw is not None else ''
-        test_list = []
-        for file in glob.glob('test_*'):
+        t_list = t_list.split(',') if t_list else None
+        collected_items = []
+        candidate_tests = [test for test in glob.glob('test_*.yaml') for t in t_list if t in test] \
+            if t_list else glob.glob('test_*.yaml')
+        for file in candidate_tests:
             if rb == 'yes':
                 if kw in file and 'rbac' in file:
-                    test_list.append(file)
+                    collected_items.append(file)
             elif kw in file and rb == 'no':
                 if 'rbac' not in file:
-                    test_list.append(file)
+                    collected_items.append(file)
             else:
                 if kw in file:
-                    test_list.append(file)
-        return sorted(test_list)
+                    collected_items.append(file)
+        return sorted(collected_items)
 
-    tests = filter_tests(keyword, rbac)
-    print(f'Collected tests [{len(tests)}]:')
-    print('{}\n\n'.format(", ".join([t for t in tests])))
+    collected_tests = filter_tests(keyword, rbac, t_list=test_list)
+    print(f'Collected tests [{len(collected_tests)}]:')
+    print('{}\n\n'.format(", ".join([t for t in collected_tests])))
 
-    for test in tests:
-        for i in range(1, iterations + 1):
-            iteration_info = f'[{i}/{iterations}]' if iterations > 1 else ''
+    return collected_tests
+
+
+def collect_non_excluded_tests():
+    os.chdir(f'{TESTS_PATH}/{RESULTS_PATH}')
+    done_tests = glob.glob(f'test_*')
+    os.chdir(TESTS_PATH)
+    collected_tests = sorted([test for test in glob.glob('test_*') if test.rstrip('.tavern.yaml') not in done_tests])
+    print(f'Collected tests [{len(collected_tests)}]:')
+    print('{}\n\n'.format(", ".join([t for t in collected_tests])))
+
+    return collected_tests
+
+
+def run_tests(collected_tests, n_iterations=1):
+    os.chdir(TESTS_PATH)
+    for test in collected_tests:
+        for i in range(1, n_iterations + 1):
+            iteration_info = f'[{i}/{n_iterations}]' if n_iterations > 1 else ''
             test_name = f'{test.rsplit(".")[0]}{i if i != 1 else ""}'
             print(f'{test} {iteration_info}')
             f = open(os.path.join(RESULTS_PATH, test_name), 'w')
             subprocess.call(PYTEST_COMMAND.split(' ') + [test], stdout=f)
             f.close()
-            calculate_result(os.path.join(RESULTS_PATH, test_name))
+            get_results(filename=os.path.join(RESULTS_PATH, test_name))
+
+
+def get_results(filename=None):
+    if filename:
+        calculate_result(filename)
+    else:
+        os.chdir(RESULTS_PATH)
+        for file in sorted(glob.glob('test_*')):
+            print(file)
+            calculate_result(file)
 
 
 def get_script_arguments():
@@ -54,6 +87,13 @@ def get_script_arguments():
     parser = argparse.ArgumentParser(usage="%(prog)s [options]",
                                      description="API integration tests",
                                      formatter_class=argparse.RawTextHelpFormatter)
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('-l', '--list', dest='test_list', default=None,
+                       help='Specify a list of tests separated by a comma.', action='store')
+    group.add_argument('-e', '--exclude', dest='exclude', action='store_true', default=None,
+                       help='Run every test excluding the already saved in the RESULTS_PATH.')
+    group.add_argument('-r', '--results', dest='results', action='store_true', default=None,
+                       help='Get result summary from the already run tests.')
     parser.add_argument('-k', '--keyword', dest='keyword', default=None,
                         help='Specify the keyword to filter tests out. Default None.', action='store')
     parser.add_argument('-rbac', dest='rbac', default='both', choices=rbac_choices,
@@ -66,10 +106,17 @@ def get_script_arguments():
 
 
 if __name__ == '__main__':
-    assert os.path.exists(RESULTS_PATH), f'"{RESULTS_PATH}" is not a valid path for the test results.'
+    os.makedirs(os.path.join(TESTS_PATH, RESULTS_PATH), exist_ok=True)
     options = get_script_arguments()
-    keyword = options.keyword
-    rbac = options.rbac
+    key = options.keyword
+    tl = options.test_list
+    exclude = options.exclude
+    results = options.results
+    rbac_arg = options.rbac
     iterations = options.iterations
 
-    run_tests(keyword=keyword, rbac=rbac, iterations=iterations)
+    if results:
+        get_results()
+    else:
+        tests = collect_non_excluded_tests() if exclude else collect_tests(test_list=tl, keyword=key, rbac=rbac_arg)
+        run_tests(collected_tests=tests, n_iterations=iterations)

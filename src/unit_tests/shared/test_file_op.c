@@ -107,7 +107,6 @@ void test_CreatePID_success(void **state)
 {
     (void) state;
     int ret;
-    size_t len;
     FILE* fp = __real_fopen("./test_file.tmp", "a");
     char* content = NULL;
 

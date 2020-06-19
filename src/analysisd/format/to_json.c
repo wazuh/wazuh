@@ -13,6 +13,7 @@
 #include "shared.h"
 #include "syscheck_op.h"
 #include "rules.h"
+#include "mitre.h"
 #include "cJSON.h"
 #include "config.h"
 #include "wazuh_modules/wmodules.h"
@@ -22,7 +23,7 @@
 void add_json_attrs(const char *attrs_str, cJSON *file_diff, char after);
 
 /* Convert Eventinfo to json */
-char* Eventinfo_to_jsonstr(const Eventinfo* lf)
+char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
 {
     cJSON* root;
     cJSON* rule = NULL;
@@ -94,6 +95,46 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             snprintf(id, 12, "%d", lf->generated_rule->sigid);
             cJSON_AddStringToObject(rule, "id", id);
         }
+        if(lf->generated_rule->mitre_id) {
+            const char **mitre_cpy = (const char**)lf->generated_rule->mitre_id;
+            cJSON * mitre = NULL;
+            cJSON *tactics = NULL;
+            cJSON * tactic = NULL;
+            cJSON * element = NULL;
+            int tactic_array_size;
+
+            cJSON_AddItemToObject(rule, "mitre", mitre = cJSON_CreateObject());
+            /* Creating id array */
+            for (i = 0; lf->generated_rule->mitre_id[i] != NULL; i++) {
+            }
+            cJSON *mitre_id_array = cJSON_CreateStringArray(mitre_cpy, i);
+            cJSON_AddItemToObject(mitre, "id", mitre_id_array);
+            /* Creating tactics array */
+            cJSON *mitre_tactic_array = cJSON_CreateArray();
+            for (i = 0; lf->generated_rule->mitre_id[i] != NULL; i++){
+                if (tactics = mitre_get_attack(lf->generated_rule->mitre_id[i]), tactics == NULL) {
+                    mwarn("Mitre Technique ID '%s' not found in database.", lf->generated_rule->mitre_id[i]);
+                } else {
+                    cJSON_ArrayForEach(tactic, tactics){
+                        int inarray = 0;
+                        /* Check if the element is already in the array */
+                        cJSON_ArrayForEach(element, mitre_tactic_array){
+                            if (strcmp(element->valuestring, tactic->valuestring) == 0) {
+                                inarray = 1;
+                            }
+                        }
+                        if (!inarray) {
+                            cJSON_AddItemToArray(mitre_tactic_array, cJSON_Duplicate(tactic,0));
+                        }
+                    }
+                }
+            }
+            if (tactic_array_size = cJSON_GetArraySize(mitre_tactic_array), tactic_array_size > 0) {
+                cJSON_AddItemToObject(mitre, "tactics", mitre_tactic_array);
+            } else {
+                cJSON_Delete(mitre_tactic_array);
+            }
+        }
         if(lf->generated_rule->cve) {
             cJSON_AddStringToObject(rule, "cve", lf->generated_rule->cve);
         }
@@ -157,7 +198,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     if(lf->dstuser) {
         cJSON_AddStringToObject(data, "dstuser", lf->dstuser);
     }
-    if(lf->full_log && !(lf->generated_rule && lf->generated_rule->alert_opts & NO_FULL_LOG)) {
+    if(lf->full_log && (force_full_log || !(lf->generated_rule && lf->generated_rule->alert_opts & NO_FULL_LOG))) {
         cJSON_AddStringToObject(root, "full_log", lf->full_log);
     }
     if (lf->agent_id) {
@@ -171,6 +212,10 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
 
         if (lf->fields[FIM_HARD_LINKS].value && *lf->fields[FIM_HARD_LINKS].value) {
             cJSON_AddItemToObject(file_diff, "hard_links", cJSON_Parse(lf->fields[FIM_HARD_LINKS].value));
+        }
+
+        if (lf->fields[FIM_MODE].value) {
+            cJSON_AddStringToObject(file_diff, "mode", lf->fields[FIM_MODE].value);
         }
 
         if (lf->sym_path && *lf->sym_path) {
@@ -389,6 +434,9 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         // Process section
         add_json_field(process_sect, "id", lf->fields[FIM_PROC_ID].value, "");
         add_json_field(process_sect, "name", lf->fields[FIM_PROC_NAME].value, "");
+        add_json_field(process_sect, "cwd", lf->fields[FIM_AUDIT_CWD].value, "");
+        add_json_field(process_sect, "parent_name", lf->fields[FIM_PROC_PNAME].value, "");
+        add_json_field(process_sect, "parent_cwd", lf->fields[FIM_AUDIT_PCWD].value, "");
         add_json_field(process_sect, "ppid", lf->fields[FIM_PPID].value, "");
 
         // Auser sect

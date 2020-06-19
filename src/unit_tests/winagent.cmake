@@ -1,5 +1,5 @@
 # WINAGENT NEEDS TO BE BUILT WITH WIN32 toolchain
-# cmake ../ -DCMAKE_TOOLCHAIN_FILE=../Toolchain-win32.cmake
+# cmake ../ -DCMAKE_TOOLCHAIN_FILE=../Toolchain-win32.cmake -DTARGET=winagent
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a;.dll")
 
@@ -29,7 +29,7 @@ endif()
 
 # Add compiling flags
 add_compile_options(-ggdb -O0 -g -coverage)
-add_definitions(-DTEST_WINAGENT -DDEBUG -DENABLE_AUDIT)
+add_definitions(-DTEST_WINAGENT -DDEBUG -DENABLE_AUDIT -D_WIN32_WINNT=0x600)
 
 # Add logcollector objects
 file(GLOB logcollector_lib ${SRC_FOLDER}/logcollector/*.o)

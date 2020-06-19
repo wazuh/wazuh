@@ -22,6 +22,7 @@ static registry REGISTRY_EMPTY[] = { { NULL, 0, NULL } };
 int Read_Syscheck_Config(const char *cfgfile)
 {
     int modules = 0;
+    int it = 0;
     modules |= CSYSCHECK;
 
     syscheck.rootcheck      = 0;
@@ -39,6 +40,8 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.nodiff_regex   = NULL;
     syscheck.scan_day       = NULL;
     syscheck.scan_time      = NULL;
+    syscheck.file_limit_enabled = true;
+    syscheck.file_limit     = 100000;
     syscheck.dir            = NULL;
     syscheck.opts           = NULL;
     syscheck.enable_synchronization = 1;
@@ -79,6 +82,17 @@ int Read_Syscheck_Config(const char *cfgfile)
     modules |= CAGENT_CONFIG;
     ReadConfig(modules, AGENTCONFIG, &syscheck, NULL);
 #endif
+
+    // Check directories options to determine whether to start the whodata thread or not
+    if (syscheck.dir) {
+        for (it = 0; syscheck.dir[it]; it++) {
+            if (syscheck.opts[it] & WHODATA_ACTIVE) {
+                syscheck.enable_whodata = 1;
+
+                break;  // Exit loop with the first whodata directory
+            }
+        }
+    }
 
     switch (syscheck.disabled) {
     case SK_CONF_UNPARSED:
@@ -123,6 +137,7 @@ void free_whodata_event(whodata_evt *w_evt) {
         LocalFree(w_evt->user_id);
 #endif
     }
+    if (w_evt->cwd) free(w_evt->cwd);
     if (w_evt->audit_name) free(w_evt->audit_name);
     if (w_evt->audit_uid) free(w_evt->audit_uid);
     if (w_evt->effective_name) free(w_evt->effective_name);
@@ -130,6 +145,8 @@ void free_whodata_event(whodata_evt *w_evt) {
     if (w_evt->group_id) free(w_evt->group_id);
     if (w_evt->path) free(w_evt->path);
     if (w_evt->process_name) free(w_evt->process_name);
+    if (w_evt->parent_name) free(w_evt->parent_name);
+    if (w_evt->parent_cwd) free(w_evt->parent_cwd);
     if (w_evt->inode) free(w_evt->inode);
     if (w_evt->dev) free(w_evt->dev);
     free(w_evt);
@@ -154,6 +171,12 @@ cJSON *getSyscheckConfig(void) {
     if (syscheck.scan_on_start) cJSON_AddStringToObject(syscfg,"scan_on_start","yes"); else cJSON_AddStringToObject(syscfg,"scan_on_start","no");
     if (syscheck.scan_day) cJSON_AddStringToObject(syscfg,"scan_day",syscheck.scan_day);
     if (syscheck.scan_time) cJSON_AddStringToObject(syscfg,"scan_time",syscheck.scan_time);
+
+    cJSON * file_limit = cJSON_CreateObject();
+    cJSON_AddStringToObject(file_limit, "enabled", syscheck.file_limit_enabled ? "yes" : "no");
+    cJSON_AddNumberToObject(file_limit, "entries", syscheck.file_limit);
+    cJSON_AddItemToObject(syscfg, "file_limit", file_limit);
+
     if (syscheck.dir) {
         cJSON *dirs = cJSON_CreateArray();
         for (i=0;syscheck.dir[i];i++) {
