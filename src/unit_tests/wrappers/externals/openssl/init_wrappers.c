@@ -16,6 +16,6 @@
 
 
 int __wrap_OPENSSL_init_crypto(__attribute__((unused)) uint64_t opts,
-                               const OPENSSL_INIT_SETTINGS *settings) {
+                               __attribute__((unused)) const OPENSSL_INIT_SETTINGS *settings) {
     return mock();
 }

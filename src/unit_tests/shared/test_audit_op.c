@@ -15,8 +15,9 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
-
+#ifndef TEST_WINAGENT
 #include "../wrappers/externals/audit/libaudit_wrappers.h"
+#endif
 #include "../headers/audit_op.h"
 #include "../headers/defs.h"
 #include "../headers/exec_op.h"
