@@ -152,7 +152,7 @@ installElasticsearch() {
     # Start Elasticsearch
     startService "elasticsearch"
 
-    until $(curl -XGET https://localhost:9200/ -uadmin:admin -k --max-time 300 --silent --output /dev/null); do
+    until $(curl -XGET https://localhost:9200/ -uadmin:admin -k --max-time 120 --silent --output /dev/null); do
         echo "Waiting for Elasticsearch..."
         sleep 5
     done    
