@@ -13,3 +13,14 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+
+int __wrap_readlink(__attribute__((unused)) void **state) {
+    return mock();
+}
+
+int __wrap_symlink(const char *path1, const char *path2) {
+    check_expected(path1);
+    check_expected(path2);
+    return mock();
+}

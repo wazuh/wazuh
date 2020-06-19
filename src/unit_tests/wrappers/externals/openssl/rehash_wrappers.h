@@ -13,6 +13,8 @@
 #define REHASH_WRAPPERS_H
 
 
+int __wrap_readlink(void **state);
 
+int __wrap_symlink(const char *path1, const char *path2);
 
 #endif

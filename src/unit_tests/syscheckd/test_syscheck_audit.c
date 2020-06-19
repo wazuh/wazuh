@@ -14,6 +14,7 @@
 #include <stdio.h>
 
 #include "../wrappers/common.h"
+#include "../wrappers/externals/openssl/rehash_wrappers.h"
 #include "syscheckd/syscheck.h"
 #include "external/procps/readproc.h"
 
@@ -170,13 +171,6 @@ int __wrap_unlink()
     return mock();
 }
 
-int __wrap_symlink(const char *path1, const char *path2)
-{
-    check_expected(path1);
-    check_expected(path2);
-    return mock();
-}
-
 int __wrap_audit_open()
 {
     return 1;
@@ -264,10 +258,6 @@ char *__wrap_get_user(__attribute__((unused)) const char *path, int uid, __attri
 {
     check_expected(uid);
     return mock_type(char*);
-}
-
-int __wrap_readlink(void **state) {
-    return mock();
 }
 
 /* setup/teardown */
