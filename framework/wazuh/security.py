@@ -23,30 +23,44 @@ from wazuh.utils import process_array
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[_@$!%*?&-])[A-Za-z\d@$!%*?&-_]{8,}$')
 
 
-@expose_resources(actions=['security:read'], resources=['user:id:{username_list}'],
+@expose_resources(actions=['security:read'], resources=['user:id:{user_ids}'],
                   post_proc_kwargs={'exclude_codes': [5001]})
-def get_users(username_list=None, offset=0, limit=common.database_limit, sort_by=None,
-              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+def get_users(user_ids: list = None, offset: int = 0, limit: int = common.database_limit, sort_by: dict = None,
+              sort_ascending: bool = True, search_text: str = None,
+              complementary_search: bool = False, search_in_fields: list = None):
     """Get the information of a specified user
 
-    :param username_list: Name of the user (None for all users)
-    :param offset: First item to return
-    :param limit: Maximum number of items to return
-    :param sort_by: Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
-    :param sort_ascending: Sort in ascending (true) or descending (false) order
-    :param search_text: Text to search
-    :param complementary_search: Find items without the text to search
-    :param search_in_fields: Fields to search in
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    Parameters
+    ----------
+    user_ids : list
+        List of user ids
+    offset : int
+        First item to return
+    limit : int
+        Maximum number of items to return
+    sort_by : dict
+        Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
+    sort_ascending : bool
+        Sort in ascending (true) or descending (false) order
+    search_text : str
+        Text to search
+    complementary_search : bool
+        Find items without the text to search
+    search_in_fields : list
+        Fields to search in
+
+    Returns
+    -------
+    AffectedItemsWazuhResult with the desired information
     """
     result = AffectedItemsWazuhResult(none_msg='No user was shown',
                                       some_msg='Some users could not be shown',
                                       all_msg='All specified users were shown')
     affected_items = list()
     with AuthenticationManager() as auth:
-        for username in username_list:
-            user = auth.get_user(username)
-            affected_items.append(user) if user else result.add_failed_item(id_=username, error=WazuhError(5001))
+        for user_id in user_ids:
+            user = auth.get_user_id(user_id)
+            affected_items.append(user) if user else result.add_failed_item(id_=user_id, error=WazuhError(5001))
 
     data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
@@ -84,56 +98,69 @@ def create_user(username: str = None, password: str = None):
     return result
 
 
-@expose_resources(actions=['security:update'], resources=['user:id:{username}'])
-def update_user(username=None, password=None):
+@expose_resources(actions=['security:update'], resources=['user:id:{user_id}'])
+def update_user(user_id=None, password=None):
     """Update a specified user
 
-    :param username: Name for the new user
-    :param password: Password for the new user
-    :return: Status message
+    Parameters
+    ----------
+    user_id : str
+        User ID
+    password : str
+        Password for the new user
+
+    Returns
+    -------
+    Status message
     """
     if not _user_password.match(password):
         raise WazuhError(5007)
     result = AffectedItemsWazuhResult(all_msg='User modified correctly',
                                       none_msg='User could not be updated')
     with AuthenticationManager() as auth:
-        query = auth.update_user(username[0], password)
+        query = auth.update_user(user_id[0], password)
         if not query:
-            result.add_failed_item(id_=username[0], error=WazuhError(5001))
+            result.add_failed_item(id_=user_id[0], error=WazuhError(5001))
         else:
-            result.affected_items.append(auth.get_user(username[0]))
+            result.affected_items.append(auth.get_user_id(user_id[0]))
             result.total_affected_items += 1
-            invalid_users_tokens(users=[username[0]])
+            invalid_users_tokens(users=[user_id[0]])
 
     return result
 
 
-@expose_resources(actions=['security:delete'], resources=['user:id:{username_list}'],
+@expose_resources(actions=['security:delete'], resources=['user:id:{user_ids}'],
                   post_proc_kwargs={'exclude_codes': [5001, 5004]})
-def remove_users(username_list):
+def remove_users(user_ids):
     """Remove a specified list of users
 
-    :param username_list: List of usernames
-    :return: Status message
+    Parameters
+    ----------
+    user_ids : list
+        List of IDs
+
+    Returns
+    -------
+    Status message
     """
     result = AffectedItemsWazuhResult(none_msg='No user was deleted',
                                       some_msg='Some users could not be deleted',
                                       all_msg='Users deleted correctly')
     with AuthenticationManager() as auth:
-        for username in username_list:
-            if username == common.current_user.get():
-                result.add_failed_item(id_=username, error=WazuhError(5008))
+        for user_id in user_ids:
+            if user_id == common.current_user.get():
+                result.add_failed_item(id_=user_id, error=WazuhError(5008))
                 continue
-            user = auth.get_user(username)
-            query = auth.delete_user(username)
+            user = auth.get_user_id(user_id)
+            query = auth.delete_user(user_id)
             if not query:
-                result.add_failed_item(id_=username, error=WazuhError(5001))
+                result.add_failed_item(id_=user_id, error=WazuhError(5001))
             elif query == SecurityError.ADMIN_RESOURCES:
-                result.add_failed_item(id_=username, error=WazuhError(5004))
+                result.add_failed_item(id_=user_id, error=WazuhError(5004))
             elif user:
                 result.affected_items.append(user)
                 result.total_affected_items += 1
-                invalid_users_tokens(users=[username])
+                invalid_users_tokens(users=[user_id])
         result.affected_items.sort(key=str)
 
     return result
@@ -394,7 +421,7 @@ def set_user_role(user_id, role_ids, position=None):
     Parameters
     ----------
     user_id : str
-        Username
+        User ID
     role_ids : list of int
         List of role ids
     position : int
@@ -413,7 +440,7 @@ def set_user_role(user_id, role_ids, position=None):
     success = False
     with UserRolesManager() as urm:
         for role_id in role_ids:
-            user_role = urm.add_role_to_user(username=user_id[0], role_id=role_id, position=position)
+            user_role = urm.add_role_to_user(user_id=user_id[0], role_id=role_id, position=position)
             if user_role == SecurityError.ALREADY_EXIST:
                 result.add_failed_item(id_=role_id, error=WazuhError(4017))
             elif user_role == SecurityError.ROLE_NOT_EXIST:
@@ -430,7 +457,7 @@ def set_user_role(user_id, role_ids, position=None):
                     position += 1
         if success:
             with AuthenticationManager() as auth:
-                result.affected_items.append(auth.get_user(user_id[0]))
+                result.affected_items.append(auth.get_user_id(user_id[0]))
             result.affected_items.sort(key=str)
             invalid_users_tokens(users=[user_id[0]])
 
@@ -452,7 +479,7 @@ def remove_user_role(user_id, role_ids):
     success = False
     with UserRolesManager() as urm:
         for role_id in role_ids:
-            user_role = urm.remove_role_in_user(username=user_id[0], role_id=role_id)
+            user_role = urm.remove_role_in_user(user_id=user_id[0], role_id=role_id)
             if user_role == SecurityError.INVALID:
                 result.add_failed_item(id_=role_id, error=WazuhError(4016))
             elif user_role == SecurityError.ROLE_NOT_EXIST:
@@ -467,7 +494,7 @@ def remove_user_role(user_id, role_ids):
                 result.total_affected_items += 1
         if success:
             with AuthenticationManager() as auth:
-                result.affected_items.append(auth.get_user(user_id[0]))
+                result.affected_items.append(auth.get_user_id(user_id[0]))
             result.affected_items.sort(key=str)
             invalid_users_tokens(users=[user_id[0]])
 

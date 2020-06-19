@@ -291,8 +291,10 @@ class RBAChecker:
     @staticmethod
     def run_user_role_link(user_id):
         """This function will return the final policies of an user according to its roles in the RBAC database"""
+        with orm.AuthenticationManager() as am:
+            user_id = am.get_user(user_id)['id']
         with orm.UserRolesManager() as urm:
-            user_roles = list(role for role in urm.get_all_roles_from_user(username=user_id))
+            user_roles = list(role for role in urm.get_all_roles_from_user(user_id=user_id))
         user_policies = list()
         with orm.RolesPoliciesManager() as rpm:
             for role in user_roles:

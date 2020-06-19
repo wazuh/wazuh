@@ -50,7 +50,7 @@ def _expand_resource(resource):
             with AuthenticationManager() as auth:
                 users = auth.get_users()
             for user in users:
-                users_system.add(user['username'])
+                users_system.add(user['user_id'])
             return users_system
         elif resource_type == 'rule:file':
             tags = ['rule_include', 'rule_exclude', 'rule_dir']

@@ -1507,6 +1507,10 @@ components:
       type: string
       format: numbers
       description: "Policy ID"
+    User_id:
+      type: string
+      format: numbers
+      description: "User ID"
     Username:
       type: string
       description: "Username of the user"
@@ -3979,6 +3983,23 @@ components:
       description: "Type of file"
       schema:
         type: string
+    user_ids:
+      in: query
+      name: 'user_ids'
+      description: "List of user IDs"
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/User_id'
+    user_id_required:
+      in: path
+      name: 'user_id'
+      description: "User ID"
+      required: True
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/User_id'
     unknown:
       in: query
       name: unknown
@@ -12696,7 +12717,7 @@ paths:
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:read'
       parameters:
-        - $ref: '#/components/parameters/usernames'
+        - $ref: '#/components/parameters/user_ids'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/pretty'
@@ -12806,12 +12827,12 @@ paths:
       tags:
         - security
       summary: "Delete a user"
-      description: "Delete a user by specifying their name"
+      description: "Delete a user by specifying their ID"
       operationId: api.controllers.security_controller.delete_users
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
-        - $ref: '#/components/parameters/usernames'
+        - $ref: '#/components/parameters/user_ids'
       responses:
         '200':
           description: "User deleted successful"
@@ -12828,17 +12849,17 @@ paths:
                   data:
                     message: 'User deleted correctly'
 
-  /security/users/{username}:
+  /security/users/{user_id}:
     put:
       tags:
         - security
       summary: "Modify a user"
-      description: "Modify a user's password by specifying their name"
+      description: "Modify a user's password by specifying their ID"
       operationId: api.controllers.security_controller.update_user
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:update'
       parameters:
-        - $ref: '#/components/parameters/username'
+        - $ref: '#/components/parameters/user_id_required'
       requestBody:
         content:
           application/json:
