@@ -124,8 +124,7 @@ stages:
             - error:
                 code: 4000
                 message: 'Permission denied: Resource type: user:id'
-                remediation: "Please, make sure you have permissions to execute the current request.
-                For more information on how to set up permissions, please visit XXXX"
+                remediation: !anystr
               id:
                 - administrator
                 - guest
@@ -352,7 +351,7 @@ stages:
   - name: Update one specified role in the system (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/12"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/104"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -366,15 +365,15 @@ stages:
       json:
         data:
           affected_items:
-            - id: 12
+            - id: 104
               name: normalUserModified
               rule:
                 FIND$:
                   definition: normalUserRuleModified
               policies:
-                - 12
-                - 13
-                - 20
+                - 101
+                - 102
+                - 109
               users:
                 - normal
                 - ossec
@@ -387,7 +386,7 @@ stages:
   - name: Update one specified role in the system (Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/11"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/103"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -437,7 +436,7 @@ stages:
   - name: Update one specified policy in the system (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/14"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/103"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -456,7 +455,7 @@ stages:
       json:
         data:
           affected_items:
-            - id: 14
+            - id: 103
               name: administratorPolicyModified
               policy:
                 actions:
@@ -467,12 +466,12 @@ stages:
                   - agent:id:002
                   - agent:id:003
               roles:
-                - id: 11
+                - id: 103
                   name: administrator_test
                   rule:
                     MATCH:
                       definition: administratorRule
-                - id: 13
+                - id: 105
                   name: ossec
                   rule:
                     MATCH:
@@ -485,7 +484,7 @@ stages:
   - name: Update one specified policy in the system (Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/15"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/104"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -517,7 +516,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        role_ids: 8,9,10,11,14
+        role_ids: 100,101,102,103,106
     response:
       status_code: 200
       json:
@@ -525,24 +524,24 @@ stages:
           affected_items:
             - username: python
               roles:
-                - 9
-                - 8
+                - 101
+                - 100
           total_affected_items: 1
           total_failed_items: 4
           failed_items:
             - error:
                 code: 4000
               id:
-                - '10'
-                - '11'
+                - '102'
+                - '103'
             - error:
                 code: 4002
               id:
-                - '14'
+                - '106'
             - error:
                 code: 4017
               id:
-                - '9'
+                - '101'
         message: Some roles could not be linked to user python
 
   - name: Create one specified link between one user and a list of roles (Allow)
@@ -553,16 +552,16 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        role_ids: 8,12
+        role_ids: 100,104
     response:
       status_code: 200
       json:
         data:
           affected_items:
             - roles:
-                - 9
-                - 12
-                - 8
+                - 101
+                - 104
+                - 100
               username: ossec
           failed_items:
             - error:
@@ -570,7 +569,7 @@ stages:
                 message: !anystr
                 remediation: !anything
               id:
-                - '12'
+                - '104'
           total_affected_items: 1
           total_failed_items: 1
 
@@ -656,7 +655,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        role_ids: 8,11,12,10,9,5
+        role_ids: 100,103,104,102,101,5
     response:
       status_code: 200
       json:
@@ -671,8 +670,8 @@ stages:
                 remediation: !anystr
               id:
                 - '5'
-                - '8'
-                - '9'
+                - '100'
+                - '101'
           total_affected_items: 3
           total_failed_items: 3
 
@@ -684,28 +683,28 @@ stages:
   - name: Create one specified link between one role and a list of policies (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/12/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/104/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        policy_ids: 15,16,17
+        policy_ids: 104,105,106
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - id: 12
+            - id: 104
               name: normalUserModified
               rule:
                 FIND$:
                   definition: normalUserRuleModified
               policies:
-                - 12
-                - 13
-                - 20
-                - 16
-                - 17
+                - 101
+                - 102
+                - 109
+                - 105
+                - 106
               users:
                 - normal
                 - ossec
@@ -715,11 +714,10 @@ stages:
             - error:
                 code: 4000
                 message: 'Permission denied: Resource type: policy:id'
-                remediation: "Please, make sure you have permissions to execute the current request.
-                For more information on how to set up permissions, please visit XXXX"
+                remediation: !anystr
               id:
-                - '15'
-        message: Some policies could not be linked to role 12
+                - '104'
+        message: !anystr
 
 ---
 test_name: DELETE LINK ROLE-POLICIES RBAC
@@ -729,26 +727,26 @@ stages:
   - name: Delete one specified link between one role and a list of policies (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/12/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/104/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        policy_ids: 15,16,17
+        policy_ids: 104,105,106
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - id: 12
+            - id: 104
               name: normalUserModified
               rule:
                 FIND$:
                   definition: normalUserRuleModified
               policies:
-                - 12
-                - 13
-                - 20
+                - 101
+                - 102
+                - 109
               users:
                 - normal
                 - ossec
@@ -760,8 +758,8 @@ stages:
                 message: The specified role-policy does not exist
                 remediation: !anystr
               id:
-                - '15'
-        message: Some policies could not be unlinked from role 12
+                - '104'
+        message: !anystr
 
 ---
 test_name: DELETE USERS RBAC
@@ -875,20 +873,20 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        role_ids: 11
+        role_ids: 103
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - id: 11
+            - id: 103
               name: administrator_test
               rule:
                 MATCH:
                   definition: administratorRule
               policies:
-                - 15
-                - 14
+                - 104
+                - 103
               users:
                 - normal
           total_affected_items: 1
@@ -919,7 +917,7 @@ test_name: DELETE POLICIES RBAC
 stages:
 
   - name: Delete one specified policy in the system (Allow)
-    delay_before: 5
+    delay_before: 20
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
@@ -927,13 +925,13 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        policy_ids: 14
+        policy_ids: 103
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - id: 14
+            - id: 103
               name: administratorPolicyModified
               policy:
                 actions:
@@ -962,7 +960,7 @@ stages:
         data:
           affected_items: !anything
           failed_items: []
-          total_affected_items: 18
+          total_affected_items: 19
           total_failed_items: 0
         message: All specified policies were deleted
 

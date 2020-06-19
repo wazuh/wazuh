@@ -118,7 +118,7 @@ stages:
         # Check response item keys are the selected keys
         function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
-          select_keys: 'filename,relative_dirname' # required_fields={'filename', 'relative_dirname'}
+          select_key: 'filename,relative_dirname' # required_fields={'filename', 'relative_dirname'}
       status_code: 200
       json:
         data:

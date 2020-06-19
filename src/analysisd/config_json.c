@@ -191,7 +191,7 @@ void _getRulesListJSON(RuleNode *list, cJSON *array) {
         "same_data",
         "same_extra_data",
         "same_status",
-        "same_systemname",
+        "same_system_name",
         "same_srcgeoip",
         "same_dstgeoip",
         "same_location"
@@ -211,7 +211,7 @@ void _getRulesListJSON(RuleNode *list, cJSON *array) {
         "different_data",
         "different_extra_data",
         "different_status",
-        "different_systemname",
+        "different_system_name",
         "different_srcgeoip",
         "different_dstgeoip",
         "different_location"

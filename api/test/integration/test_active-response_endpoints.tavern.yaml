@@ -208,6 +208,7 @@ stages:
 
     # PUT /active-response
   - name: Runs an Active Response command on all agents
+    delay_before: 5
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/active-response"

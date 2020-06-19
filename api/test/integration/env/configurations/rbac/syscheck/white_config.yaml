@@ -3,6 +3,7 @@
   - syscheck:read
   resources:
   - agent:id:*
+  - agent:dummy:testing # We add this to avoid duplicating default policy
   effect: allow
 
 - actions:
@@ -23,6 +24,7 @@
   - syscheck:run
   resources:
   - agent:id:*
+  - agent:dummy:testing # We add this to avoid duplicating default policy
   effect: allow
 
 - actions:
@@ -43,6 +45,7 @@
   - syscheck:clear
   resources:
   - agent:id:*
+  - agent:dummy:testing # We add this to avoid duplicating default policy
   effect: allow
 
 - actions:

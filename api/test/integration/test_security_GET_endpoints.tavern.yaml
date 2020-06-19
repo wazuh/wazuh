@@ -518,27 +518,27 @@ stages:
           affected_items:
             - username: administrator
               roles:
-                - 8
-                - 9
+                - 100
+                - 101
             - username: guest
               roles: []
             - username: normal
               roles:
-                - 12
-                - 13
-                - 11
+                - 104
+                - 105
+                - 103
             - username: ossec
               roles:
-                - 9
-                - 12
+                - 101
+                - 104
             - username: python
               roles:
-                - 9
+                - 101
             - username: rbac
               roles:
-                - 12
-                - 10
-                - 11
+                - 104
+                - 102
+                - 103
             - username: testing
               roles:
                 - 99
@@ -739,25 +739,27 @@ stages:
           affected_items:
             - username: administrator
               roles:
-                - 9
+                - 100
+                - 101
             - username: guest
               roles: []
             - username: normal
               roles:
-                - 12
-                - 13
-                - 11
+                - 104
+                - 105
+                - 103
             - username: ossec
               roles:
-                - 9
-                - 12
+                - 101
+                - 104
             - username: python
-              roles: []
+              roles:
+                - 101
             - username: rbac
               roles:
-                - 12
-                - 10
-                - 11
+                - 104
+                - 102
+                - 103
             - username: testing
               roles:
                 - 99
@@ -791,27 +793,27 @@ stages:
                 - 99
             - username: rbac
               roles:
-                - 12
-                - 10
-                - 11
+                - 104
+                - 102
+                - 103
             - username: python
               roles:
-                - 9
+                - 101
             - username: ossec
               roles:
-                - 9
-                - 12
+                - 101
+                - 104
             - username: normal
               roles:
-                - 12
-                - 13
-                - 11
+                - 104
+                - 105
+                - 103
             - username: guest
               roles: []
             - username: administrator
               roles:
-                - 8
-                - 9
+                - 100
+                - 101
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []
@@ -829,27 +831,27 @@ stages:
           affected_items:
             - username: administrator
               roles:
-                - 8
-                - 9
+                - 100
+                - 101
             - username: guest
               roles: []
             - username: normal
               roles:
-                - 12
-                - 13
-                - 11
+                - 104
+                - 105
+                - 103
             - username: ossec
               roles:
-                - 9
-                - 12
+                - 101
+                - 104
             - username: python
               roles:
-                - 9
+                - 101
             - username: rbac
               roles:
-                - 12
-                - 10
-                - 11
+                - 104
+                - 102
+                - 103
             - username: testing
               roles:
                 - 99
@@ -880,16 +882,16 @@ stages:
           affected_items:
             - username: ossec
               roles:
-                - 9
-                - 12
+                - 101
+                - 104
             - username: python
               roles:
-                - 9
+                - 101
             - username: rbac
               roles:
-                - 12
-                - 10
-                - 11
+                - 104
+                - 102
+                - 103
             - username: testing
               roles:
                 - 99
@@ -916,7 +918,8 @@ stages:
           affected_items:
             - username: administrator
               roles:
-                - 9
+                - 100
+                - 101
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []

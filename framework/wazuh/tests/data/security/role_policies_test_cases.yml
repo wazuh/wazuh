@@ -14,28 +14,27 @@ set_role_policy:
       - '1'
 - params:
     role_id:
-    - '99'
+    - '999'
     policy_ids:
-    - '16'
-    - '15'
-    - '17'
+    - '101'
+    - '100'
+    - '102'
   result:
     affected_items: []
     failed_items:
       '4002':
-      - '99'
+      - '999'
 - params:
     role_id:
-    - '10'
+    - '102'
     policy_ids:
-    - '100'
     - '101'
     - '104'
     - '107'
     - '103'
   result:
     affected_items:
-    - id: 10
+    - id: 102
       name: technical
       rule:
         MATCH:
@@ -51,12 +50,11 @@ set_role_policy:
     failed_items:
       '4011':
       - '101'
-      - '100'
       - '107'
       - '104'
 - params:
     role_id:
-    - '10'
+    - '102'
     policy_ids:
     - '106'
     - '102'
@@ -65,7 +63,7 @@ set_role_policy:
     position: 2
   result:
     affected_items:
-    - id: 10
+    - id: 102
       name: technical
       rule:
         MATCH:
@@ -84,14 +82,14 @@ set_role_policy:
     failed_items: {}
 - params:
     role_id:
-    - '11'
+    - '103'
     policy_ids:
     - '103'
     - '105'
-    - '99'
+    - '999'
   result:
     affected_items:
-    - id: 11
+    - id: 103
       name: administrator_test
       rule:
         MATCH:
@@ -105,7 +103,7 @@ set_role_policy:
       - rbac
     failed_items:
       '4007':
-      - '99'
+      - '999'
       '4011':
       - '103'
 remove_role_policy:
@@ -123,7 +121,7 @@ remove_role_policy:
       - '1'
 - params:
     role_id:
-    - '99'
+    - '999'
     policy_ids:
     - '104'
     - '103'
@@ -132,17 +130,17 @@ remove_role_policy:
     affected_items: []
     failed_items:
       '4002':
-      - '99'
+      - '999'
 - params:
     role_id:
-    - '10'
+    - '102'
     policy_ids:
     - '104'
     - '103'
     - '105'
   result:
     affected_items:
-    - id: 10
+    - id: 102
       name: technical
       rule:
         MATCH:
@@ -159,15 +157,15 @@ remove_role_policy:
       - '105'
 - params:
     role_id:
-    - '13'
+    - '105'
     policy_ids:
     - '101'
     - '104'
     - '105'
-    - '26'
+    - '999'
   result:
     affected_items:
-    - id: 13
+    - id: 105
       name: ossec
       policies:
       - 107
@@ -184,4 +182,4 @@ remove_role_policy:
       - normal
     failed_items:
       '4007':
-      - '26'
+      - '999'

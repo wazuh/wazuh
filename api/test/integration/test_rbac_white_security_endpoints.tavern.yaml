@@ -158,12 +158,23 @@ stages:
                     - full_admin
               policies:
                 - 1
+                - 2
                 - 3
-                - 4
-                - 9
                 - 6
                 - 7
                 - 8
+                - 20
+                - 21
+                - 22
+                - 23
+                - 11
+                - 12
+                - 14
+                - 15
+                - 13
+                - 18
+                - 19
+                - 16
               users:
                 - wazuh
             - id: 2
@@ -173,10 +184,17 @@ stages:
                   r'^auth[a-zA-Z]+$':
                     - readonly
               policies:
-                - 2
-                - 6
-                - 7
-                - 8
+                - 4
+                - 5
+                - 11
+                - 12
+                - 14
+                - 15
+                - 13
+                - 16
+                - 18
+                - 17
+                - 19
               users:
                 - wazuh-wui
             - id: 3
@@ -186,7 +204,8 @@ stages:
                   r'^auth[a-zA-Z]+$':
                     - users_admin
               policies:
-                - 5
+                - 9
+                - 10
               users: []
             - id: 4
               name: agents_readonly
@@ -195,7 +214,8 @@ stages:
                   r'^auth[a-zA-Z]+$':
                     - agents_readonly
               policies:
-                - 2
+                - 4
+                - 5
               users: []
             - id: 5
               name: agents_admin
@@ -205,6 +225,8 @@ stages:
                     - agents_admin
               policies:
                 - 1
+                - 2
+                - 3
               users: []
             - id: 6
               name: cluster_readonly
@@ -213,7 +235,11 @@ stages:
                   r'^auth[a-zA-Z]+$':
                     - cluster_readonly
               policies:
-                - 10
+                - 23
+                - 24
+                - 25
+                - 26
+                - 27
               users: []
             - id: 7
               name: cluster_admin
@@ -222,101 +248,106 @@ stages:
                   r'^auth[a-zA-Z]+$':
                     - cluster_admin
               policies:
-                - 9
+                - 19
+                - 20
+                - 21
+                - 22
+                - 23
               users: []
-            - id: 8
+            - id: 99
+              name: testing
+              rule:
+                FIND:
+                  r'^testing$':
+                    - testing
+              policies:
+                - 1000
+                - 1001
+                - 1002
+                - 1003
+                - 1004
+                - 1005
+                - 1006
+                - 1007
+                - 1008
+              users:
+                - testing
+            - id: 100
               name: wazuh
               rule:
                 FIND:
                   r'^auth[a-zA-Z]+$':
                     - administrator
               policies:
-                - 11
+                - 100
               users:
                 - administrator
-            - id: 9
+            - id: 101
               name: wazuh-wui
               rule:
                 FIND:
                   r'^auth[a-zA-Z]+$':
                     - administrator-app
               policies:
-                - 11
+                - 100
               users:
                 - administrator
                 - ossec
                 - python
-            - id: 10
+            - id: 102
               name: technical
               rule:
                 MATCH:
                   definition: technicalRule
               policies:
-                - 12
-                - 11
-                - 18
-                - 15
+                - 101
+                - 100
+                - 107
+                - 104
               users:
                 - rbac
-            - id: 11
+            - id: 103
               name: administrator_test
               rule:
                 MATCH:
                   definition: administratorRule
               policies:
-                - 15
-                - 14
+                - 104
+                - 103
               users:
                 - normal
                 - rbac
-            - id: 12
+            - id: 104
               name: normalUser
               rule:
                 MATCH:
                   definition: normalRule
               policies:
-                - 12
-                - 13
-                - 20
+                - 101
+                - 102
+                - 109
               users:
                 - normal
                 - ossec
                 - rbac
-            - id: 13
+            - id: 105
               name: ossec
               rule:
                 MATCH:
                   definition: ossecRule
               policies:
-                - 12
-                - 18
-                - 17
-                - 20
-                - 15
-                - 19
-                - 11
-                - 16
-                - 13
-                - 14
-              users:
-                - normal
-            - id: 99
-              name: testing
-              rule:
-                FIND:
-                  r'^testing$': ['testing']
-              policies:
-                - 99
-                - 100
                 - 101
+                - 107
+                - 106
+                - 109
+                - 104
+                - 108
+                - 100
+                - 105
                 - 102
                 - 103
-                - 104
-                - 105
-                - 106
-                - 107
               users:
-                - testing
+                - normal
           total_affected_items: 14
           total_failed_items: 0
           failed_items: []
@@ -344,12 +375,23 @@ stages:
                     - full_admin
               policies:
                 - 1
+                - 2
                 - 3
-                - 4
-                - 9
                 - 6
                 - 7
                 - 8
+                - 20
+                - 21
+                - 22
+                - 23
+                - 11
+                - 12
+                - 14
+                - 15
+                - 13
+                - 18
+                - 19
+                - 16
               users:
                 - wazuh
           total_affected_items: 1
@@ -404,12 +446,23 @@ stages:
                     - full_admin
               policies:
                 - 1
+                - 2
                 - 3
-                - 4
-                - 9
                 - 6
                 - 7
                 - 8
+                - 20
+                - 21
+                - 22
+                - 23
+                - 11
+                - 12
+                - 14
+                - 15
+                - 13
+                - 18
+                - 19
+                - 16
               users:
                 - wazuh
             - id: 2
@@ -419,10 +472,17 @@ stages:
                   r'^auth[a-zA-Z]+$':
                     - readonly
               policies:
-                - 2
-                - 6
-                - 7
-                - 8
+                - 4
+                - 5
+                - 11
+                - 12
+                - 14
+                - 15
+                - 13
+                - 16
+                - 18
+                - 17
+                - 19
               users:
                 - wazuh-wui
           total_affected_items: 2
@@ -548,7 +608,7 @@ stages:
   - name: Update one specified role in the system (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/10"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/102"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -562,16 +622,16 @@ stages:
       json:
         data:
           affected_items:
-            - id: 10
+            - id: 102
               name: technicalModified
               rule:
                 FIND$:
                   definition: technicalRuleModified
               policies:
-                - 12
-                - 11
-                - 18
-                - 15
+                - 101
+                - 100
+                - 107
+                - 104
               users:
                 - rbac
           total_affected_items: 1
@@ -604,7 +664,7 @@ stages:
   - name: Update one specified policy in the system (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/15"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/104"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -623,7 +683,7 @@ stages:
       json:
         data:
           affected_items:
-            - id: 15
+            - id: 104
               name: normalPolicyModified
               policy:
                 actions:
@@ -634,17 +694,17 @@ stages:
                   - agent:id:003
                 effect: deny
               roles:
-                - id: 10
+                - id: 102
                   name: technicalModified
                   rule:
                     FIND$:
                       definition: technicalRuleModified
-                - id: 11
+                - id: 103
                   name: administrator_test
                   rule:
                     MATCH:
                       definition: administratorRule
-                - id: 13
+                - id: 105
                   name: ossec
                   rule:
                     MATCH:
@@ -657,7 +717,7 @@ stages:
   - name: Update one specified policy in the system (Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/14"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies/106"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -687,7 +747,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        role_ids: 10,11
+        role_ids: 102,103
     response:
       status_code: 400
       json:
@@ -701,7 +761,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        role_ids: 10,11,12,13
+        role_ids: 102,103,104,105
     response:
       status_code: 400
       json:
@@ -715,12 +775,12 @@ stages:
   - name: Create one specified link between one role and a list of policies (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/11/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/103/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        policy_ids: 15,16,17
+        policy_ids: 104,105,106
     response:
       status_code: 200
       json:
@@ -732,17 +792,16 @@ stages:
             - error:
                 code: 4000
                 message: 'Permission denied: Resource type: policy:id'
-                remediation: "Please, make sure you have permissions to execute the current request.
-                For more information on how to set up permissions, please visit XXXX"
+                remediation: !anystr
               id:
-                - '16'
-                - '17'
+                - '105'
+                - '106'
             - error:
                 code: 4011
                 message: The specified role-policy link already exist
               id:
-                - '15'
-        message: No link created to role 11
+                - '104'
+        message: !anystr
 
 ---
 test_name: CREATE LINK USER-ROLES RBAC
@@ -757,7 +816,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        role_ids: 10,11
+        role_ids: 102,103
     response:
       status_code: 400
       json:
@@ -771,7 +830,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       params:
-        role_ids: 10,11,12,13
+        role_ids: 102,103,104,105
     response:
       status_code: 400
       json:
@@ -790,7 +849,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        role_ids: 10,11
+        role_ids: 102,103
     response:
       status_code: 400
       json:
@@ -804,7 +863,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        role_ids: 10,11,12,13
+        role_ids: 102,103,104,105
     response:
       status_code: 400
       json:
@@ -823,7 +882,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        policy_ids: 15,16,17
+        policy_ids: 104,105,106
     response:
       status_code: 400
       json:
@@ -907,8 +966,7 @@ stages:
             - error:
                 code: 4000
                 message: 'Permission denied: Resource type: user:id'
-                remediation: "Please, make sure you have permissions to execute the current request.
-                For more information on how to set up permissions, please visit XXXX"
+                remediation: !anystr
               id:
                 - wazuh
             - error:
@@ -952,7 +1010,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        role_ids: 9,10
+        role_ids: 101,102
     response:
       status_code: 400
       json:
@@ -988,7 +1046,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        policy_ids: 12,13
+        policy_ids: 101,102
     response:
       status_code: 400
       json:
@@ -1036,7 +1094,7 @@ stages:
       json:
         data:
           affected_items:
-            - id: 100
+            - id: !anyint
               name: newUserRole
               policies: []
               rule:
@@ -1068,7 +1126,7 @@ stages:
       json:
         data:
           affected_items:
-            - id: 109
+            - id: !anyint
               name: newUserPolicy
               policy:
                 actions:

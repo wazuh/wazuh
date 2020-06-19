@@ -518,17 +518,18 @@ stages:
       json:
         data:
           affected_items:
-            - auth: !anything
+            - alerts: !anything
+              auth: !anything
               cis-cat: !anything
               cluster: !anything
               command: !anything
               global: !anything
               localfile: !anything
-              open-scap: !anything
               osquery: !anything
               remote: !anything
               rootcheck: !anything
               ruleset: !anything
+              sca: !anything
               syscheck: !anything
               syscollector: !anything
               vulnerability-detector: !anything
@@ -2217,11 +2218,10 @@ stages:
             - wazuh-modulesd:control: !anything
             - wazuh-modulesd:database: !anything
             - wazuh-modulesd:download: !anything
-            - wazuh-modulesd:oscap: !anything
             - wazuh-modulesd:osquery: !anything
             - wazuh-modulesd:syscollector: !anything
           failed_items: []
-          total_affected_items: 21
+          total_affected_items: 20
           total_failed_items: 0
         message: !anystr
 

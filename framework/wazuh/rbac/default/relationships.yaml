@@ -17,16 +17,24 @@ relationships:
         - cluster_all
         - ciscat_read
         - decoders_read
+        - lists_read
         - rules_read
         - mitre_read
+        - sca_read
+        - syscheck_all
+        - syscollector_read
 
     readonly:
       policy_ids:
         - agents_read
         - ciscat_read
         - decoders_read
+        - lists_read
         - rules_read
         - mitre_read
+        - sca_read
+        - syscheck_read
+        - syscollector_read
 
     users_admin:
       policy_ids:

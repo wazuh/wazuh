@@ -137,6 +137,22 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             WazuhDBQuery._process_filter(self, field_name, field_filter, q_filter)
 
 
+class WazuhDBQueryGroup(WazuhDBQuery):
+    def __init__(self, offset=0, limit=common.database_limit, sort=None, search=None, select=None, count=True,
+                 get_data=True, query='', filters=None, default_sort_field='id', min_select_fields=None,
+                 remove_extra_fields=True):
+        if filters is None:
+            filters = {}
+        if min_select_fields is None:
+            min_select_fields = {'id'}
+        backend = SQLiteBackend(common.database_path_global)
+        WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='`group`', sort=sort, search=search, select=select,
+                              filters=filters, fields={'id': 'id', 'name': 'name'},
+                              default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
+                              backend=backend, min_select_fields=min_select_fields, count=count, get_data=get_data)
+        self.remove_extra_fields = remove_extra_fields
+
+
 class WazuhDBQueryDistinctAgents(WazuhDBQueryDistinct, WazuhDBQueryAgents):
     pass
 

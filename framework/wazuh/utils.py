@@ -937,7 +937,7 @@ class WazuhDBQuery(object):
             r'(\()?' +  # A ( character.
             r'([\w.]+)' +  # Field name: name of the field to look on DB
             '([' + ''.join(self.query_operators.keys()) + "]{1,2})" +  # Operator: looks for =, !=, <, > or ~.
-            r"([\[\]\w _\-\.:/']+)" +  # Value: A string.
+            r"([\[\]\w _\-\.:\\/']+)" +  # Value: A string.
             r"(\))?" +  # A ) character
             "([" + ''.join(self.query_separators.keys()) + "])?"  # Separator: looks for ;, , or nothing.
         )
@@ -1157,6 +1157,8 @@ class WazuhDBQuery(object):
         self._add_search_to_query()
         if self.count:
             self._get_total_items()
+            if not self.data:
+                return {'totalItems': self.total_items}
         self._add_sort_to_query()
         self._add_limit_to_query()
         if self.data:

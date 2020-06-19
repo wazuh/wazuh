@@ -364,6 +364,9 @@
     <field name="win.system.providerName">^Application Hang$</field>
     <field name="win.system.eventID">^1002$</field>
     <description>Application stopped responding, program closed</description>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -521,6 +524,9 @@
     <if_sid>60648</if_sid>
     <field name="win.system.eventID">^1013$</field>
     <description>The Windows Search Service stopped normally</description>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 

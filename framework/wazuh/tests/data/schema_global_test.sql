@@ -145,11 +145,11 @@ INSERT INTO `group` (id, name) VALUES (2, 'group-2');
 INSERT INTO `group` (id, name) VALUES (3, 'group-empty');
 
 
--- agent-6 and agent-7 -> group-1
+-- agent-6 -> group-1 and agent-7 -> group-2
 INSERT INTO belongs (id_agent, id_group) VALUES (6, 1);
-INSERT INTO belongs (id_agent, id_group) VALUES (7, 1);
+INSERT INTO belongs (id_agent, id_group) VALUES (7, 2);
 
 
--- agent-8 -> group-2
+-- agent-8 -> group-1 and group-2
 INSERT INTO belongs (id_agent, id_group) VALUES (8, 2);
 INSERT INTO belongs (id_agent, id_group) VALUES (8, 1);

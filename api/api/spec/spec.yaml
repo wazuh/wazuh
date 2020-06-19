@@ -427,7 +427,7 @@ components:
             title: "Wazuh Error"
             detail: "Permission denied: Resource type: *:*"
             status: 400
-            remediation: "Please, make sure you have permissions to execute the current request. For more information on how to set up permissions, please visit XXXX"
+            remediation: "Please, make sure you have permissions to execute the current request. For more information on how to set up permissions, please visit https://documentation.wazuh.com/current/user-manual/api/rbac/configuration.html"
             code: 4000
             dapi_errors:
               master-node:
@@ -1637,7 +1637,7 @@ components:
         path:
           type: string
           format: paths
-          description: "Wazuh install path"
+          description: "Wazuh installation path"
         version:
           type: string
           description: "Wazuh version"
@@ -1646,7 +1646,7 @@ components:
           format: date-time
         type:
           type: string
-          description: "Wazuh install type. "
+          description: "Wazuh installation type. "
           enum:
           - server
           - local
@@ -1775,7 +1775,7 @@ components:
           events:
             type: integer
             format: int32
-            description: "Number of events procesed during the specified hour"
+            description: "Number of events processed during the specified hour"
           firewall:
             type: integer
             format: int32
@@ -13039,3 +13039,4 @@ paths:
 externalDocs:
   description: "Find more about Wazuh API usage"
   url: 'https://documentation.wazuh.com/current/user-manual/api/index.html'
+

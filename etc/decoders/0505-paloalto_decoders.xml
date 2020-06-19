@@ -1,0 +1,95 @@
+<!--
+  -  PaloAlto v9.0 decoders
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<decoder name="paloalto_system">
+  <prematch>\d*/\d*/\d* \d*:\d*:\d*,\d*,SYSTEM,\w*</prematch>
+</decoder>
+
+<decoder name="paloalto_system_fields">
+  <parent>paloalto_system</parent>
+  <regex>(\d*/\d*/\d* \d*:\d*:\d*),(\d*),(\w*),(\w*),\.*,(\.*),(\.*),(\S*),(\.*),</regex>
+  <order>receive_time,serial_number,type,content_type,time_generated,virtual_system,eventid,object</order>
+</decoder>
+
+<decoder name="paloalto_system_fields">
+  <parent>paloalto_system</parent>
+  <regex offset="after_regex">\.*,\.*,(\w*),(\w*),"(\.*)",(\d*),(\S*),(\d*,\d*,\d*,\d*),(\.*),(\S*)</regex>
+  <order>module,severity,description,sequence_number,actionflags,dg_hier_level_1_to_dg_hier_level_4,virtual_system_name,device_name</order>
+</decoder>
+
+
+<decoder name="paloalto_traffic">
+  <prematch>\d*/\d*/\d* \d*:\d*:\d*,\d*,TRAFFIC,\w*</prematch>
+</decoder>
+
+<decoder name="paloalto_traffic_fields">
+  <parent>paloalto_traffic</parent>
+  <regex>(\d*/\d*/\d* \d*:\d*:\d*),(\d*),(\w*),(\w*),\.*,(\.*),(\S*),(\S*),</regex>
+  <order>receive_time,serial_number,type,content_type,generated_time,src_ip,dst_ip</order>
+</decoder>
+
+<decoder name="paloalto_traffic_fields">
+  <parent>paloalto_traffic</parent>
+  <regex offset="after_regex">(\.*),(\.*),(\.*),(\.*),(\.*),(\.*),(\.*),(\.*),</regex>
+  <order>nat_src_ip,nat_dst_ip,rule_name,src_user,dst_user,application,virtual_system</order>
+</decoder>
+
+<decoder name="paloalto_traffic_fields">
+  <parent>paloalto_traffic</parent>
+  <regex offset="after_regex">(\.*),(\.*),(\.*),(\.*),(\.*),\.*,(\.*),</regex>
+  <order>src_zone,dst_zone,inbound_interface,outbound_interface,log_action,session_id</order>
+</decoder>
+
+<decoder name="paloalto_traffic_fields">
+  <parent>paloalto_traffic</parent>
+  <regex offset="after_regex">(\.*),(\.*),(\.*),(\.*),(\.*),(\.*),(\.*),(\.*),(\.*),</regex>
+  <order>src_port,dst_port,nat_src_port,nat_dst_port,flags,protocol,action,bytes,bytes_sent</order>
+</decoder>
+
+<decoder name="paloalto_traffic_fields">
+  <parent>paloalto_traffic</parent>
+  <regex offset="after_regex">(\.*),(\.*),(\.*),\.*,(\.*),\.*,(\.*),(\.*),</regex>
+  <order>bytes_received,packets,start_time,category,sequence_number,action_flags</order>
+</decoder>
+
+<decoder name="paloalto_traffic_fields">
+  <parent>paloalto_traffic</parent>
+  <regex offset="after_regex">(\.*),(\.*),\.*,(\.*),(\.*),(\.*),</regex>
+  <order>src_location,dst_location,packets_sent,packets_received,session_end_reason</order>
+</decoder>
+
+<decoder name="paloalto_traffic_fields">
+  <parent>paloalto_traffic</parent>
+  <regex offset="after_regex">(\.*),(\.*),(\.*),(\.*),</regex>
+  <order>dg_hier_level_1,dg_hier_level_2,dg_hier_level_3,dg_hier_level_4</order>
+</decoder>
+
+<decoder name="paloalto_traffic_fields">
+  <parent>paloalto_traffic</parent>
+  <regex offset="after_regex">(\.*),(\.*),(\.*),(\.*),</regex>
+  <order>virtual_system_name,device_name,action_src,src_vm_uuid</order>
+</decoder>
+
+<decoder name="paloalto_traffic_fields">
+  <parent>paloalto_traffic</parent>
+  <regex offset="after_regex">(\.*),(\.*),(\.*),(\.*),(\.*),(\.*),</regex>
+  <order>dst_vm_uuid,tunnel_id,monitor_tag,parent_session_id,parent_start_time,tunnel_type</order>
+</decoder>
+
+<decoder name="paloalto_traffic_fields">
+  <parent>paloalto_traffic</parent>
+  <regex offset="after_regex">(\.*),(\.*),(\.*),(\.*),</regex>
+  <order>sctp_association_id,sctp_chunks,sctp_chunks_sent,sctp_chunks_received</order>
+</decoder>
+
+<decoder name="paloalto_traffic_fields">
+  <parent>paloalto_traffic</parent>
+  <regex offset="after_regex">(\.*),(\.*)</regex>
+  <order>uuid_for_rule,http/2_connection</order>
+</decoder>
+
+

@@ -14,7 +14,8 @@ def calculate_result(file_name):
     with open(file_name, 'r') as f:
         file = f.read()
     try:
-        print(f'\t{re.search(r"=+(.*) in (.*)s.*=+", file).group(1)}\n')
+        result = re.search(r'=+ (.+) in (.*) \(\d+:\d+:\d+\) =+', file).group(1)
+        print(f'\t {result}\n')
     except AttributeError:
         print('\tCould not retrieve results from this test')
 
@@ -26,7 +27,8 @@ def collect_tests(test_list=None, keyword=None, rbac='both'):
         kw = kw if kw is not None else ''
         t_list = t_list.split(',') if t_list else None
         collected_items = []
-        candidate_tests = [test for test in glob.glob('test_*') for t in t_list if t in test] if t_list else glob.glob('test_*')
+        candidate_tests = [test for test in glob.glob('test_*.yaml') for t in t_list if t in test] \
+            if t_list else glob.glob('test_*.yaml')
         for file in candidate_tests:
             if rb == 'yes':
                 if kw in file and 'rbac' in file:
@@ -75,7 +77,7 @@ def get_results(filename=None):
         calculate_result(filename)
     else:
         os.chdir(RESULTS_PATH)
-        for file in glob.glob('test_*'):
+        for file in sorted(glob.glob('test_*')):
             print(file)
             calculate_result(file)
 

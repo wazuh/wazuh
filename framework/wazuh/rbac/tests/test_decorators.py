@@ -78,49 +78,47 @@ def get_identifier(resources):
                          configurations_black + configurations_white)
 def test_expose_resources(db_setup, decorator_params, function_params, rbac, fake_system_resources, allowed_resources,
                           result, mode):
-    db_setup.rbac_mode.set(mode)
+    rbac['rbac_mode'] = mode
+    db_setup.rbac.set(rbac)
 
     def mock_expand_resource(resource):
         fake_values = fake_system_resources.get(resource, resource.split(':')[-1])
         return {fake_values} if isinstance(fake_values, str) else set(fake_values)
 
-    with patch('wazuh.rbac.decorators.rbac') as mock_rbac:
-        mock_rbac.get.return_value = rbac
-        with patch('wazuh.rbac.decorators._expand_resource', side_effect=mock_expand_resource):
-            @db_setup.expose_resources(**decorator_params)
-            def framework_dummy(*args, **kwargs):
-                for target_param, allowed_resource in zip(get_identifier(decorator_params['resources']),
-                                                          allowed_resources):
-                    assert set(kwargs[target_param]) == set(allowed_resource)
+    with patch('wazuh.rbac.decorators._expand_resource', side_effect=mock_expand_resource):
+        @db_setup.expose_resources(**decorator_params)
+        def framework_dummy(**kwargs):
+            for target_param, allowed_resource in zip(get_identifier(decorator_params['resources']),
+                                                      allowed_resources):
+                assert set(kwargs[target_param]) == set(allowed_resource)
 
-            try:
-                framework_dummy(rbac=rbac, **function_params)
-                assert (result is None or result == "allow")
-            except WazuhError as e:
-                assert (result is None or result == "deny")
-                for allowed_resource in allowed_resources:
-                    assert (len(allowed_resource) == 0)
-                assert (e.code == 4000)
+        try:
+            framework_dummy(**function_params)
+            assert (result is None or result == "allow")
+        except WazuhError as e:
+            assert (result is None or result == "deny")
+            for allowed_resource in allowed_resources:
+                assert (len(allowed_resource) == 0)
+            assert (e.code == 4000)
 
 
 @pytest.mark.parametrize('decorator_params, rbac, allowed, mode',
                          configurations_resourceless_white + configurations_resourceless_black)
 def test_expose_resourcesless(db_setup, decorator_params, rbac, allowed, mode):
-    db_setup.rbac_mode.set(mode)
+    rbac['rbac_mode'] = mode
+    db_setup.rbac.set(rbac)
 
     def mock_expand_resource(resource):
         return {'*'}
 
-    with patch('wazuh.rbac.decorators.rbac') as mock_rbac:
-        mock_rbac.get.return_value = rbac
-        with patch('wazuh.rbac.decorators._expand_resource', side_effect=mock_expand_resource):
-            @db_setup.expose_resources(**decorator_params)
-            def framework_dummy(*args, **kwargs):
-                pass
+    with patch('wazuh.rbac.decorators._expand_resource', side_effect=mock_expand_resource):
+        @db_setup.expose_resources(**decorator_params)
+        def framework_dummy():
+            pass
 
-            try:
-                framework_dummy(rbac=rbac)
-                assert allowed
-            except WazuhError as e:
-                assert (not allowed)
-                assert (e.code == 4000)
+        try:
+            framework_dummy()
+            assert allowed
+        except WazuhError as e:
+            assert (not allowed)
+            assert (e.code == 4000)

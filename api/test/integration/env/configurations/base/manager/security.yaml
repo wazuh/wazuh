@@ -1,3 +1,2 @@
 auth_token_exp_timeout: 36000
 rbac_mode: black
-

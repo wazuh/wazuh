@@ -198,9 +198,9 @@ def generate_rbac_pair(index: int, permission: dict):
         List with two SQL sentences, the first creates the policy and the second links it with the testing role
     """
     role_policy_pair = [
-        f'INSERT INTO policies VALUES({99 + index},\'testing{index}\',\'{json.dumps(permission)}\','
+        f'INSERT INTO policies VALUES({1000 + index},\'testing{index}\',\'{json.dumps(permission)}\','
         f'\'1970-01-01 00:00:00\');\n',
-        f'INSERT INTO roles_policies VALUES({99 + index},99,{99 + index},{index},\'1970-01-01 00:00:00\');\n'
+        f'INSERT INTO roles_policies VALUES({1000 + index},99,{1000 + index},{index},\'1970-01-01 00:00:00\');\n'
     ]
 
     return role_policy_pair
@@ -258,6 +258,7 @@ def api_test(request):
         module = test_filename[1]
     create_tmp_folders()
     general_procedure(module)
+
     if rbac_mode:
         change_rbac_mode(rbac_mode)
         rbac_custom_config_generator(module, rbac_mode)
@@ -265,7 +266,7 @@ def api_test(request):
     values = build_and_up(interval=10)
     while values['retries'] < values['max_retries']:
         managers_health = check_health(interval=values['interval'])
-        agents_health = check_health(interval=values['interval'], node_type='agent', agents=range(1, 9))
+        agents_health = check_health(interval=values['interval'], node_type='agent', agents=list(range(1, 9)))
         if managers_health and agents_health:
             time.sleep(values['interval'])
             yield

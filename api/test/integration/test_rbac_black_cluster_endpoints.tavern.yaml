@@ -286,7 +286,6 @@ stages:
               command: !anything
               global: !anything
               localfile: !anything
-              open-scap: !anything
               osquery: !anything
               remote: !anything
               rootcheck: !anything

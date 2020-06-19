@@ -33,7 +33,7 @@ admin_usernames = ['wazuh', 'wazuh-wui']
 
 # IDs reserved for administrator roles and policies, these can not be modified or deleted
 admin_role_ids = [1, 2, 3, 4, 5, 6, 7]
-admin_policy_ids = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+admin_policy_ids = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 ,16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
 
 
 def json_validator(data):
@@ -781,7 +781,7 @@ class PoliciesManager:
                     if isinstance(policy['actions'], list) and isinstance(policy['resources'], list) \
                             and isinstance(policy['effect'], str):
                         # Regular expression that prevents the creation of invalid policies
-                        regex = r'^[a-z_*]+:[a-z0-9_*]+([:|&]{0,1}[a-z0-9_*]+)*$'
+                        regex = r'^[a-z_\-*]+:[a-z0-9_\-*]+([:|&]{0,1}[a-z0-9_\-*]+)*$'
                         for action in policy['actions']:
                             if not re.match(regex, action):
                                 return SecurityError.INVALID
@@ -1490,7 +1490,8 @@ with open(os.path.join(default_path, "policies.yaml"), 'r') as stream:
 
     with PoliciesManager() as pm:
         for d_policy_name, payload in default_policies[next(iter(default_policies))].items():
-            pm.add_policy(name=d_policy_name, policy=payload['policy'])
+            for name, policy in payload['policies'].items():
+                pm.add_policy(name=f'{d_policy_name}_{name}', policy=policy)
 
 # Create the relationships
 with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:
@@ -1506,5 +1507,7 @@ with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:
     with RolesPoliciesManager() as rpm:
         for d_role_name, payload in default_relationships[next(iter(default_relationships))]['roles'].items():
             for d_policy_name in payload['policy_ids']:
-                rpm.add_policy_to_role(role_id=rm.get_role(name=d_role_name)['id'],
-                                       policy_id=pm.get_policy(name=d_policy_name)['id'], force_admin=True)
+                for sub_name in default_policies[next(iter(default_policies))][d_policy_name]['policies'].keys():
+                    rpm.add_policy_to_role(role_id=rm.get_role(name=d_role_name)['id'],
+                                           policy_id=pm.get_policy(name=f'{d_policy_name}_{sub_name}')['id'],
+                                           force_admin=True)
