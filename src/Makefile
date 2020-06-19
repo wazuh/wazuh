@@ -1040,7 +1040,6 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 
 UNIT_TEST_WRAPPERS:=${wrappers_common_o}
 UNIT_TEST_WRAPPERS+=${wrappers_externals_o}
-UNIT_TEST_WRAPPERS+=${wrappers_externals_audit_o}
 UNIT_TEST_WRAPPERS+=${wrappers_externals_bzip2_o}
 UNIT_TEST_WRAPPERS+=${wrappers_externals_cJSON_o}
 UNIT_TEST_WRAPPERS+=${wrappers_externals_openssl_o}
@@ -1061,6 +1060,7 @@ ifeq (${TARGET},winagent)
 	UNIT_TEST_WRAPPERS+=${wrappers_windows_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_client_agent_o}
 else
+	UNIT_TEST_WRAPPERS+=${wrappers_externals_audit_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_linux_o}
 endif
 endif #TEST

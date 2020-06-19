@@ -15,6 +15,7 @@
 
 #include "../wrappers/common.h"
 #include "../wrappers/externals/openssl/rehash_wrappers.h"
+#include "../wrappers/externals/audit/libaudit_wrappers.h"
 #include "syscheckd/syscheck.h"
 #include "external/procps/readproc.h"
 
@@ -169,16 +170,6 @@ int __wrap_fclose(FILE *fp)
 int __wrap_unlink()
 {
     return mock();
-}
-
-int __wrap_audit_open()
-{
-    return 1;
-}
-
-int __wrap_audit_close()
-{
-    return 1;
 }
 
 int __wrap_audit_get_rule_list()
@@ -839,8 +830,14 @@ void test_add_audit_rules_syscheck_not_added(void **state)
     syscheck.opts[0] |= WHODATA_ACTIVE;
     syscheck.max_audit_entries = 100;
 
+    // Audit open
+    will_return(__wrap_audit_open, 1);
+
     // Read loaded rules in Audit
     will_return(__wrap_audit_get_rule_list, 0);
+
+    // Audit close
+    will_return(__wrap_audit_close, 1);
 
     expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
 
@@ -879,8 +876,14 @@ void test_add_audit_rules_syscheck_not_added_new(void **state)
     syscheck.opts[0] |= WHODATA_ACTIVE;
     syscheck.max_audit_entries = 100;
 
+    // Audit open
+    will_return(__wrap_audit_open, 1);
+
     // Read loaded rules in Audit
     will_return(__wrap_audit_get_rule_list, 0);
+
+    // Audit close
+    will_return(__wrap_audit_close, 1);
 
     expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
 
@@ -919,8 +922,14 @@ void test_add_audit_rules_syscheck_not_added_error(void **state)
     syscheck.opts[0] |= WHODATA_ACTIVE;
     syscheck.max_audit_entries = 100;
 
+    // Audit open
+    will_return(__wrap_audit_open, 1);
+
     // Read loaded rules in Audit
     will_return(__wrap_audit_get_rule_list, 0);
+
+    // Audit close
+    will_return(__wrap_audit_close, 1);
 
     expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
 
@@ -958,8 +967,14 @@ void test_add_audit_rules_syscheck_not_added_first_error(void **state)
     syscheck.opts[0] |= WHODATA_ACTIVE;
     syscheck.max_audit_entries = 100;
 
+    // Audit open
+    will_return(__wrap_audit_open, 1);
+
     // Read loaded rules in Audit
     will_return(__wrap_audit_get_rule_list, 0);
+
+    // Audit close
+    will_return(__wrap_audit_close, 1);
 
     expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
 
@@ -997,8 +1012,14 @@ void test_add_audit_rules_syscheck_added(void **state)
     syscheck.opts[0] |= WHODATA_ACTIVE;
     syscheck.max_audit_entries = 100;
 
+    // Audit open
+    will_return(__wrap_audit_open, 1);
+
     // Read loaded rules in Audit
     will_return(__wrap_audit_get_rule_list, 5);
+
+    // Audit close
+    will_return(__wrap_audit_close, 1);
 
     // Audit added rules
     will_return(__wrap_W_Vector_length, 3);
@@ -1038,8 +1059,14 @@ void test_add_audit_rules_syscheck_max(void **state)
     syscheck.opts[1] |= WHODATA_ACTIVE;
     syscheck.max_audit_entries = 3;
 
+    // Audit open
+    will_return(__wrap_audit_open, 1);
+
     // Read loaded rules in Audit
     will_return(__wrap_audit_get_rule_list, 5);
+
+    // Audit close
+    will_return(__wrap_audit_close, 1);
 
     // Audit added rules
     will_return(__wrap_W_Vector_length, 3);
@@ -1565,8 +1592,14 @@ void test_audit_parse_delete(void **state)
     expect_string(__wrap__mwarn, formatted_msg, "(6911): Detected Audit rules manipulation: Audit rules removed.");
     expect_string(__wrap__mdebug1, formatted_msg, "(6275): Reloading Audit rules.");
 
+    // Audit open
+    will_return(__wrap_audit_open, 1);
+
     // Read loaded rules in Audit
     will_return(__wrap_audit_get_rule_list, 5);
+
+    // Audit close
+    will_return(__wrap_audit_close, 1);
 
     // Audit added rules
     will_return(__wrap_W_Vector_length, 3);
@@ -1607,14 +1640,20 @@ void test_audit_parse_delete_recursive(void **state)
     expect_string_count(__wrap__mdebug2, msg, FIM_AUDIT_MATCH_KEY, 4);
     expect_string_count(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'", 4);
 
+    // Audit open
+    will_return_always(__wrap_audit_open, 5);
+
     // Read loaded rules in Audit
-    will_return_count(__wrap_audit_get_rule_list, 5, -1);
+    will_return_always(__wrap_audit_get_rule_list, 5);
+
+    // Audit close
+    will_return_always(__wrap_audit_close, 5);
 
     // Audit added rules
-    will_return_count(__wrap_W_Vector_length, 3, -1);
+    will_return_always(__wrap_W_Vector_length, 3);
 
     // Rule already not added
-    will_return_count(__wrap_search_audit_rule, 5, -1);
+    will_return_always(__wrap_search_audit_rule, 5);
 
     expect_string_count(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed", 4);
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Max rules reload retries");
