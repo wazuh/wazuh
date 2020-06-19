@@ -12,7 +12,10 @@
 #ifndef SSL_INIT_WRAPPERS_H
 #define SSL_INIT_WRAPPERS_H
 
+#include <stdint.h>
+#include <openssl/crypto.h>
 
-
+int __wrap_OPENSSL_init_ssl(uint64_t opts,
+                            const OPENSSL_INIT_SETTINGS * settings);
 
 #endif
