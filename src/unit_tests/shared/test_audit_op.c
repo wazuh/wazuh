@@ -16,6 +16,7 @@
 #include <errno.h>
 #include <string.h>
 
+#include "../wrappers/externals/audit/libaudit_wrappers.h"
 #include "../headers/audit_op.h"
 #include "../headers/defs.h"
 #include "../headers/exec_op.h"
@@ -65,25 +66,6 @@ void __wrap__mdebug2(const char * file, int line, const char * func, const char 
     check_expected(formatted_msg);
 }
 
-int __wrap_audit_send(int fd, int type, const void *data, unsigned int size) {
-    check_expected(fd);
-    check_expected(type);
-
-    return mock();
-}
-
-int __wrap_audit_get_reply(int fd, struct audit_reply *rep, reply_t block, int peek) {
-    check_expected(fd);
-    check_expected(block);
-
-    struct audit_reply *reply = mock_type(struct audit_reply *);
-    if (reply) {
-        *rep = *reply;
-    }
-
-    return mock();
-}
-
 int __wrap_select() {
     return mock();
 }
@@ -98,46 +80,6 @@ wfd_t *__wrap_wpopenv() {
 }
 
 int __wrap_wpclose() {
-    return mock();
-}
-
-int __wrap_audit_open() {
-    return mock();
-}
-
-int __wrap_audit_add_watch_dir(int type, struct audit_rule_data **rulep, const char *path) {
-    check_expected(type);
-    check_expected(path);
-
-    return mock();
-}
-
-int __wrap_audit_update_watch_perms(struct audit_rule_data *rule, int perms) {
-    check_expected(perms);
-
-    return mock();
-}
-
-char *__wrap_audit_errno_to_name() {
-    return mock_type(char *);
-}
-
-int __wrap_audit_rule_fieldpair_data(struct audit_rule_data **rulep, const char *pair, int flags) {
-    check_expected(pair);
-    check_expected(flags);
-
-    return mock();
-}
-
-int __wrap_audit_add_rule_data() {
-    return mock();
-}
-
-int __wrap_audit_delete_rule_data() {
-    return mock();
-}
-
-int __wrap_audit_close() {
     return mock();
 }
 
