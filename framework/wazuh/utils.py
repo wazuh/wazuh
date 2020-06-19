@@ -14,9 +14,9 @@ import sys
 import typing
 from datetime import datetime, timedelta
 from itertools import groupby, chain
-from os import remove, chmod, chown, path, listdir, close, mkdir, curdir, rename, utime
-from subprocess import call, CalledProcessError
-from tempfile import mkstemp
+from os import chmod, chown, path, listdir, mkdir, curdir, rename, utime
+from subprocess import CalledProcessError
+from subprocess import check_output
 from xml.etree.ElementTree import fromstring
 
 from wazuh import common
@@ -28,25 +28,6 @@ from wazuh.wdb import WazuhDBConnection
 # Python 2/3 compatibility
 if sys.version_info[0] == 3:
     unicode = str
-
-try:
-    from subprocess import check_output
-except ImportError:
-    def check_output(arguments, stdin=None, stderr=None, shell=False):
-        temp_f = mkstemp()
-        returncode = call(arguments, stdin=stdin, stdout=temp_f[0], stderr=stderr, shell=shell)
-        close(temp_f[0])
-        file_o = open(temp_f[1], 'r')
-        cmd_output = file_o.read()
-        file_o.close()
-        remove(temp_f[1])
-
-        if returncode != 0:
-            error_cmd = CalledProcessError(returncode, arguments[0])
-            error_cmd.output = cmd_output
-            raise error_cmd
-        else:
-            return cmd_output
 
 
 def previous_month(n=1):
@@ -93,22 +74,27 @@ def execute(command):
         return output_json['data']
 
 
-def process_array(array, search_text=None, complementary_search=False, search_in_fields=None, sort_by=None,
-                  sort_ascending=True, allowed_sort_fields=None, offset=0, limit=None, q=''):
+def process_array(array, search_text=None, complementary_search=False, search_in_fields=None, select=None, sort_by=None,
+                  sort_ascending=True, allowed_sort_fields=None, offset=0, limit=None, q='', required_fields=None):
     """ Process a Wazuh framework data array
 
     :param array: Array to process
     :param search_text: Text to search and search type
     :param complementary_search: Perform a complementary search
     :param search_in_fields: Fields to search in
+    :param select: Select fields to return
     :param sort_by: Fields to sort_by. Will sort the array directly if [''] is received
     :param sort_ascending: Sort order ascending or descending
     :param allowed_sort_fields: Allowed fields to sort_by
     :param offset: First element to return.
     :param limit: Maximum number of elements to return
     :param q: Query to filter by
+    :param required_fields: Required fields that must appear in the response
     :return: Dictionary: {'items': Processed array, 'totalItems': Number of items, before applying offset and limit)}
     """
+    if select:
+        array = select_array(array, select=select, required_fields=required_fields)
+
     if search_text:
         array = search_array(array, search_text=search_text, complementary_search=complementary_search,
                              search_in_fields=search_in_fields)
@@ -192,7 +178,7 @@ def sort_array(array, sort_by=None, sort_ascending=True, allowed_sort_fields=Non
         else:
             return sorted(array,
                           key=lambda o: tuple(
-                              getattr(o, a).lower() if type(getattr(o, a)) in (str,unicode) else getattr(o, a)
+                              getattr(o, a).lower() if type(getattr(o, a)) in (str, unicode) else getattr(o, a)
                               for a in sort_by),
                           reverse=not sort_ascending)
     else:
@@ -260,6 +246,69 @@ def search_array(array, search_text=None, complementary_search=False, search_in_
                 found.append(item)
 
     return found
+
+
+def select_array(array, select=None, required_fields=None):
+    """Get only those values from each element in the array that matches the select values.
+
+    Parameters
+    ----------
+    array : list
+        Array of elements. It contains all the results without any filter.
+    select : list of str, optional
+        List of select fields. These can be nested fields of n depth levels. Default `None`
+        Example: ['select1', 'select2.select21.select22', 'select3.select31']
+    required_fields : set, optional
+        Set of fields that must be in the response. These depends on the framework function.
+
+    Raises
+    ------
+    WazuhError(1724)
+        Raise this exception when at least one of the select fields is not valid.
+
+    Returns
+    -------
+    result_list : list
+        Filtered array of dicts with only the selected (and required) fields as keys.
+    """
+    def get_nested_fields(dikt, select_field):
+        split_select = select_field.split('.')
+        if len(split_select) == 1:
+            try:
+                last_field = {select_field: dikt[select_field]}
+            except (KeyError, TypeError):
+                last_field = None
+            return last_field
+        else:
+            try:
+                next_element = get_nested_fields(dikt[split_select[0]], '.'.join(split_select[1:]))
+            except (KeyError, TypeError):
+                next_element = None
+            return {split_select[0]: next_element} if next_element else None
+
+    if required_fields is None:
+        required_fields = set()
+    select = set(select)
+
+    result_list = list()
+    for item in array:
+        selected_fields = dict()
+        missing_select = False
+        # Build an entry with the filtered values
+        for sel in select:
+            candidate = get_nested_fields(item, sel)
+            if candidate:
+                selected_fields.update(candidate)
+            else:
+                missing_select = True
+                break
+        # Add required fields if the entry is not empty or missing one of the selects
+        if selected_fields and not missing_select:
+            selected_fields.update({req_field: item[req_field] for req_field in required_fields})
+            result_list.append(selected_fields)
+    if not result_list:
+        raise WazuhError(1724, "{}".format(', '.join(select)))
+    return result_list
 
 
 _filemode_table = (
@@ -450,12 +499,8 @@ def md5(fname):
 
 def _get_hashing_algorithm(hash_algorithm):
     # check hash algorithm
-    try:
-        algorithm_list = hashlib.algorithms_available
-    except Exception as e:
-        algorithm_list = hashlib.algorithms
-
-    if not hash_algorithm in algorithm_list:
+    algorithm_list = hashlib.algorithms_available
+    if hash_algorithm not in algorithm_list:
         raise WazuhException(1723, "Available algorithms are {0}.".format(', '.join(algorithm_list)))
 
     return hashlib.new(hash_algorithm)
@@ -591,7 +636,7 @@ def load_wazuh_xml(xml_path):
     data = re.sub(f"&(?!({'|'.join(default_entities + list(custom_entities))});)", "&amp;", data)
 
     entities = '<!DOCTYPE xmlfile [\n' + \
-               '\n'.join([f'<!ENTITY {name} "{value}">' for name, value in custom_entities.items()]) +\
+               '\n'.join([f'<!ENTITY {name} "{value}">' for name, value in custom_entities.items()]) + \
                '\n]>\n'
 
     return fromstring(entities + '<root_tag>' + data + '</root_tag>')
@@ -892,7 +937,7 @@ class WazuhDBQuery(object):
             r'(\()?' +  # A ( character.
             r'([\w.]+)' +  # Field name: name of the field to look on DB
             '([' + ''.join(self.query_operators.keys()) + "]{1,2})" +  # Operator: looks for =, !=, <, > or ~.
-            r"([\[\]\w _\-\.:/']+)" +  # Value: A string.
+            r"([\[\]\w _\-\.:\\/']+)" +  # Value: A string.
             r"(\))?" +  # A ) character
             "([" + ''.join(self.query_separators.keys()) + "])?"  # Separator: looks for ;, , or nothing.
         )
@@ -949,8 +994,8 @@ class WazuhDBQuery(object):
             # if select is empty, it will be a subset of any set
             if not set_select_fields or not set_select_fields.issubset(set_fields_keys):
                 raise WazuhError(1724, "Allowed select fields: {0}. Fields {1}". \
-                                     format(', '.join(self.fields.keys()),
-                                            ', '.join(set_select_fields - set_fields_keys)))
+                                 format(', '.join(self.fields.keys()),
+                                        ', '.join(set_select_fields - set_fields_keys)))
 
             select_fields = set_select_fields
         else:
@@ -1112,6 +1157,8 @@ class WazuhDBQuery(object):
         self._add_search_to_query()
         if self.count:
             self._get_total_items()
+            if not self.data:
+                return {'totalItems': self.total_items}
         self._add_sort_to_query()
         self._add_limit_to_query()
         if self.data:
@@ -1190,4 +1237,3 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
                 'fields': set(self.filter_fields)
             }
         self.select = self.select & self.filter_fields['fields']
-

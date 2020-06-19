@@ -18,7 +18,9 @@ COPY configurations/base/manager/config/agent-groups /aux_testing/queue/agent-gr
 COPY configurations/base/manager/config/shared /aux_testing/etc/shared
 COPY configurations/base/manager/config/agent-info /aux_testing/queue/agent-info
 COPY configurations/base/manager/api.yaml /var/ossec/api/configuration/api.yaml
+COPY configurations/base/manager/security.yaml /var/ossec/api/configuration/security/security.yaml
 RUN chown ossec:ossec /var/ossec/api/configuration/api.yaml
+RUN chown ossec:ossec /var/ossec/api/configuration/security/security.yaml
 
 ARG manager_type
 

@@ -520,6 +520,11 @@ functions = {
         'type': 'local_any',
         'is_async': False
     },
+    '/rules/tsc': {
+        'function': Rule.get_tsc,
+        'type': 'local_any',
+        'is_async': False
+    },
     '/rules/mitre': {
         'function': Rule.get_mitre,
         'type': 'local_any',

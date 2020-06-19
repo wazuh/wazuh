@@ -8,17 +8,19 @@
 | role:policy | (1:1),(2:1),(10:11,12,15,18),(11:14,15),(12:12,13,20),(13:*)     |
 
 
-| Actions              | Resources | Allow | Deny                              |
-|----------------------|-----------|-------|-----------------------------------|
-| security:read        | user:id   |       | administrator,normal,python,guest |
-| security:read        | role:id   |       | *                                 |
-| security:read        | policy:id | *     |                                   |
-| security:update      | user:id   | *     |                                   |
-| security:update      | role:id   |       | 10,11,13                          |
-| security:update      | policy:id |       | 15                                |
-| security:delete      | user:id   |       | guest,normal,wazuh-wui            |
-| security:delete      | role:id   | *     |                                   |
-| security:delete      | policy:id | *     |                                   |
-| security:create      | *         |       | *                                 |
-| security:create_user | *         | *     |                                   |
-| security:revoke      | *         | *     |                                   |
+| Actions               | Resources | Allow | Deny                              |
+|-----------------------|-----------|-------|-----------------------------------|
+| security:read         | user:id   |       | administrator,normal,python,guest |
+| security:read         | role:id   |       | *                                 |
+| security:read         | policy:id | *     |                                   |
+| security:update       | user:id   | *     |                                   |
+| security:update       | role:id   |       | 102,103,105                       |
+| security:update       | policy:id |       | 104,102,107                       |
+| security:delete       | user:id   |       | guest,normal,wazuh-wui,testing    |
+| security:delete       | role:id   | *     |                                   |
+| security:delete       | policy:id | *     |                                   |
+| security:create       | *         |       | *                                 |
+| security:create_user  | *         | *     |                                   |
+| security:revoke       | *         | *     |                                   |
+| security:read_config  | *         |       | *                                 |
+| security:update_config| *         |       | *                                 |

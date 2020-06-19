@@ -15,13 +15,13 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        role_ids: 10
+        role_ids: 102
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - id: 10
+            - id: 102
               name: !anystr
               policies: !anything
               rule: !anything
@@ -75,12 +75,12 @@ stages:
   - name: Try to delete a existent role-policy
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/11/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles/103/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        policy_ids: 12,15
+        policy_ids: 104,109
     response:
       status_code: 200
       json:
@@ -155,7 +155,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        role_ids: 12,11
+        role_ids: 104,103
     response:
       status_code: 200
       json:
@@ -174,7 +174,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        role_ids: 12
+        role_ids: 104
     response:
       status_code: 200
       json:
@@ -189,7 +189,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        role_ids: 99
+        role_ids: 999
     response:
       status_code: 200
       json:
@@ -209,13 +209,13 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        policy_ids: 12
+        policy_ids: 104
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - id: 12
+            - id: 104
               name: !anystr
               policy: !anything
               roles: !anything
@@ -264,13 +264,13 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        role_ids: 10,11
+        role_ids: 999,103
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - id: 11
+            - id: 103
               name: !anystr
               policies: !anything
               rule: !anything
@@ -280,7 +280,7 @@ stages:
                 message: The specified role does not exist
                 remediation: Please, create the specified role with the endpoint POST /security/roles
               id:
-                - '10'
+                - '999'
           total_affected_items: 1
           total_failed_items: 1
 
@@ -321,17 +321,17 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        policy_ids: 13,14
+        policy_ids: 100,101
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - id: 13
+            - id: 100
               name: !anystr
               policy: !anything
               roles: !anything
-            - id: 14
+            - id: 101
               name: !anystr
               policy: !anything
               roles: !anything
@@ -361,37 +361,12 @@ stages:
         <<: *error
 
 ---
-test_name: CLEANER DELETE /security/{roles/policies}
-
-stages:
-
-  # DELETE /security/roles
-  - name: Try to delete all roles
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: DELETE
-    response:
-      status_code: 200
-
-  - name: Try to delete all policies
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: DELETE
-    response:
-      status_code: 200
-
----
 test_name: DELETE /security/users
 
 stages:
 
   - name: Delete a non-existent user
+    delay_before: 10
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
@@ -416,7 +391,7 @@ stages:
           total_failed_items: 1
         message: !anystr
 
-  - name: Delete an admin user (wazuh)
+  - name: Delete the current user
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
@@ -424,7 +399,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        usernames: wazuh
+        usernames: testing
     response:
       status_code: 200
       json:
@@ -432,11 +407,11 @@ stages:
           affected_items: []
           failed_items:
             - error:
-                code: 5004
+                code: 5008
                 message: !anystr
                 remediation: !anystr
               id:
-                - wazuh
+                - testing
           total_affected_items: 0
           total_failed_items: 1
         message: !anystr
@@ -522,7 +497,99 @@ stages:
               roles: []
             - username: python
               roles: []
-          failed_items: []
+          failed_items:
+            - error:
+                code: 5008
+                message: !anystr
+                remediation: !anystr
+              id:
+                - testing
           total_affected_items: 4
-          total_failed_items: 0
-        message: Users deleted correctly
+          total_failed_items: 1
+        message: !anystr
+
+---
+test_name: DELETE /security/config
+
+stages:
+
+  # PUT /security/config
+  - name: Change security configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        auth_token_exp_timeout: 3000
+    response:
+      status_code: 200
+
+---
+test_name: RESTORE /security/config
+
+stages:
+
+  # DELETE /security/roles
+  - name: Restore default configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+    response:
+      status_code: 200
+
+---
+test_name: CHECK /security/config
+
+stages:
+
+  - name: Get security configuration to check if DELETE method worked correctly
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_response_is_different
+          extra_kwargs:
+            response_value: auth_token_exp_timeout
+            unexpected_value: 3000
+
+---
+test_name: CLEANER DELETE /security/{policies}
+
+stages:
+
+  - name: Try to delete all policies
+    delay_before: 10
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+    response:
+      status_code: 200
+
+---
+test_name: CLEANER DELETE /security/{roles}
+
+stages:
+
+  # DELETE /security/roles
+  - name: Try to delete all roles
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+    response:
+      status_code: 200

@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../wrappers/common.h"
 #include "../syscheckd/syscheck.h"
 #include "../syscheckd/fim_db.h"
 
@@ -28,9 +29,11 @@ typedef struct __json_payload_s {
 } json_payload_t;
 
 /* redefinitons/wrapping */
+#ifndef TEST_WINAGENT
 int __wrap_time() {
     return 1572521857;
 }
+#endif
 
 void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...) {
     char formatted_msg[OS_MAXSTR];
@@ -186,6 +189,14 @@ int __wrap_pthread_mutex_unlock(pthread_mutex_t *mutex) {
 #endif
 
 /* setup/teardown */
+static int setup_group(void **state) {
+    #ifdef TEST_WINAGENT
+    time_mock_value = 1572521857;
+    #endif
+
+    return 0;
+}
+
 static int setup_fim_sync_queue(void **state) {
     fim_sync_queue = queue_init(10);
 
@@ -651,5 +662,5 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_sync_dispatch_unwknown_command, setup_json_payload, teardown_json_payload),
     };
 
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, setup_group, NULL);
 }

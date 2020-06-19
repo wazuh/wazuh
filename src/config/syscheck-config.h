@@ -278,7 +278,7 @@ typedef struct _config {
     int time;                       /* frequency (secs) for syscheck to run */
     int queue;                      /* file descriptor of socket to write to queue */
     unsigned int restart_audit:1;   /* Allow Syscheck restart Auditd */
-    unsigned int enable_whodata:1;  /* At less one directory configured with whodata */
+    unsigned int enable_whodata:1;  /* At least one directory configured with whodata */
     unsigned int enable_synchronization:1;    /* Enable database synchronization */
 
     int *opts;                      /* attributes set in the <directories> tag element */
@@ -287,6 +287,7 @@ typedef struct _config {
     char *scan_time;                /* run syscheck at this time */
 
     unsigned int file_limit;        /* maximum number of files to monitor */
+    unsigned int file_limit_enabled;    /* Enable file_limit option */
 
     char **ignore;                  /* list of files/dirs to ignore */
     OSMatch **ignore_regex;         /* regex of files/dirs to ignore */

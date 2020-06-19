@@ -42,10 +42,10 @@ x-rbac-catalog:
       description: "Reference files via its path (i.e. file:path:etc/rules/new_rule.xml)"
     'decoder:file':
       description: "Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)"
-    'lists:path':
-      description: "Reference list files via its path (i.e. lists:path:etc/lists/audit-keys)"
-    'rules:file':
-      description: "Reference rule files via its path (i.e. rules:file:0610-win-ms_logs_rules.xml)"
+    'list:path':
+      description: "Reference list files via its path (i.e. list:path:etc/lists/audit-keys)"
+    'rule:file':
+      description: "Reference rule files via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)"
     'policy:id':
       description: "Reference security policies via its id (i.e. policy:id:1)"
     'role:id':
@@ -171,7 +171,7 @@ x-rbac-catalog:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
         actions: ['cluster:read_api_config']
-        resources: ['*:*:*']
+        resources: ['node:id:worker1', 'node:id:worker3']
         effect: "allow"
     'cluster:update_api_config':
       description: "Modify Wazuh's cluster API configuration"
@@ -179,7 +179,7 @@ x-rbac-catalog:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
         actions: ['cluster:update_api_config']
-        resources: ['*:*:*']
+        resources: ['node:id:worker1', 'node:id:worker3']
         effect: "allow"
     'cluster:read_file':
       description: "Read Wazuh's cluster files"
@@ -279,37 +279,37 @@ x-rbac-catalog:
         actions: ['manager:restart']
         resources: ['*:*:*']
         effect: "deny"
-    'manager:status':
-      description: "Check Wazuh manager status"
+    'mitre:read':
+      description: "Get attacks information from MITRE database."
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
-        actions: ['manager:status']
+        actions: ['mitre:read']
         resources: ['*:*:*']
-        effect: "deny"
-    'decoder:read':
+        effect: "allow"
+    'decoders:read':
       description: "Read decoders files"
       resources:
         - $ref: '#/x-rbac-catalog/resources/decoder:file'
       example:
-        actions: ['decoder:read']
+        actions: ['decoders:read']
         resources: ['decoder:file:*']
         effect: "allow"
     'lists:read':
       description: "Read lists files"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/lists:path'
+        - $ref: '#/x-rbac-catalog/resources/list:path'
       example:
         actions: ['lists:read']
-        resources: ['lists:path:etc/lists/audit-keys']
+        resources: ['list:path:etc/lists/audit-keys']
         effect: "deny"
     'rules:read':
       description: "Read rules files"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/rules:file'
+        - $ref: '#/x-rbac-catalog/resources/rule:file'
       example:
         actions: ['rules:read']
-        resources: ['rules:file:0610-win-ms_logs_rules.xml']
+        resources: ['rule:file:0610-win-ms_logs_rules.xml']
         effect: "allow"
     'sca:read':
       description: "Get a list of policies analyzed in the configuration assessment for a given agent"
@@ -365,6 +365,22 @@ x-rbac-catalog:
         actions: ['security:update']
         resources: ['policy:id:*', 'role:id:administrator', 'user:id:python',]
         effect: "deny"
+    'security:read_config':
+      description: "Read current security configuration"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['security:read_config']
+        resources: ['*:*:*']
+        effect: "allow"
+    'security:update_config':
+      description: "Update current security configuration"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['security:update_config']
+        resources: ['*:*:*']
+        effect: "allow"
     'syscheck:read':
       description: "Read information from syscheck's database"
       resources:
@@ -411,7 +427,7 @@ components:
             title: "Wazuh Error"
             detail: "Permission denied: Resource type: *:*"
             status: 400
-            remediation: "Please, make sure you have permissions to execute the current request. For more information on how to set up permissions, please visit XXXX"
+            remediation: "Please, make sure you have permissions to execute the current request. For more information on how to set up permissions, please visit https://documentation.wazuh.com/current/user-manual/api/rbac/configuration.html"
             code: 4000
             dapi_errors:
               master-node:
@@ -1071,9 +1087,6 @@ components:
 
     RulesetFile:
       type: object
-      required:
-        - filename
-        - relative_dirname
       properties:
         filename:
           type: string
@@ -1085,8 +1098,6 @@ components:
 
     RulesetStatus:
       type: object
-      required:
-        - status
       properties:
         status:
           type: string
@@ -1626,7 +1637,7 @@ components:
         path:
           type: string
           format: paths
-          description: "Wazuh install path"
+          description: "Wazuh installation path"
         version:
           type: string
           description: "Wazuh version"
@@ -1635,7 +1646,7 @@ components:
           format: date-time
         type:
           type: string
-          description: "Wazuh install type. "
+          description: "Wazuh installation type. "
           enum:
           - server
           - local
@@ -1764,7 +1775,7 @@ components:
           events:
             type: integer
             format: int32
-            description: "Number of events procesed during the specified hour"
+            description: "Number of events processed during the specified hour"
           firewall:
             type: integer
             format: int32
@@ -2221,20 +2232,6 @@ components:
           description: Set this option to "yes" in case the API is running behind a proxy server.
           type: boolean
           default: false
-        auth_token_exp_timeout:
-          description: Time in seconds until the token expires.
-          type: integer
-          format: int32
-          minimum: 30
-          example: 36000
-        rbac:
-          type: object
-          additionalProperties: false
-          properties:
-            mode:
-              description: RBAC mode (white/black).
-              type: string
-              enum: [white, black]
         logs:
           type: object
           additionalProperties: false
@@ -2385,11 +2382,34 @@ components:
               description: "NIST-800-53 checks the rule is checking"
               items:
                 type: string
+            tsc:
+              type: array
+              description: "TSC checks the rule is checking"
+              items:
+                type: string
             pci:
               type: array
               description: "PCI DSS checks the rule is checking"
               items:
                 type: string
+
+    SecurityConfiguration:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        auth_token_exp_timeout:
+          description: "Time in seconds until the token expires"
+          type: integer
+          format: int32
+          minimum: 30
+          example: 36000
+        rbac_mode:
+          description: "RBAC mode (white/black)"
+          type: string
+          additionalProperties: false
+          enum: [white, black]
+          example: white
 
     # SCA models
     SCAChecks:
@@ -3184,6 +3204,13 @@ components:
       required: False
       schema:
         type: object
+    attack_id:
+      in: query
+      name: id
+      description: "MITRE attack ID."
+      schema:
+        type: string
+        format: alphanumeric
     agent_id:
       in: path
       name: agent_id
@@ -3665,6 +3692,20 @@ components:
         type: integer
         format: int32
         minimum: 0
+    phase_name:
+      in: query
+      name: phase_name
+      description: "Show results filtered by phase."
+      schema:
+        type: string
+        format: alphanumeric
+    platform_name:
+      in: query
+      name: platform_name
+      description: "Show results filtered by platform."
+      schema:
+        type: string
+        format: alphanumeric
     pretty:
       in: query
       name: pretty
@@ -3777,7 +3818,7 @@ components:
       required: true
       schema:
         type: string
-        enum: [pci_dss, gdpr, hipaa, nist-800-53, gpg13, mitre]
+        enum: [pci_dss, gdpr, hipaa, nist-800-53, gpg13, tsc, mitre]
     result:
       in: query
       name: result
@@ -4169,6 +4210,13 @@ components:
       in: query
       name: nist-800-53
       description: "Filter by NIST-800-53 requirement"
+      schema:
+        type: string
+        format: alphanumeric
+    tsc:
+      in: query
+      name: tsc
+      description: "Filters by TSC requirement."
       schema:
         type: string
         format: alphanumeric
@@ -4720,8 +4768,8 @@ components:
           - 'node:id'
           - 'file:path'
           - 'decoder:file'
-          - 'lists:path'
-          - 'rules:file'
+          - 'list:path'
+          - 'rule:file'
           - 'policy:id'
           - 'role:id'
           - 'user:id'
@@ -4745,6 +4793,8 @@ tags:
     description: "CDB lists management"
   - name: manager
     description: "Wazuh manager management"
+  - name: mitre
+    description: "Attacks information from MITRE database"
   - name: overview
     description: "Overwiew of Wazuh"
   - name: rootcheck
@@ -5521,7 +5571,9 @@ paths:
       description: "Delete all groups or a list of them"
       operationId: api.controllers.agents_controller.delete_groups
       x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:modify_group'
         - $ref: '#/x-rbac-catalog/actions/group:delete'
+        - $ref: '#/x-rbac-catalog/actions/group:modify_assignments'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -5644,6 +5696,7 @@ paths:
       description: "Return the list of agents that belong to the specified group"
       operationId: api.controllers.agents_controller.get_agents_in_group
       x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
         - $ref: '#/x-rbac-catalog/actions/group:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -5859,7 +5912,7 @@ paths:
       description: "Return the files placed under the group directory"
       operationId: api.controllers.agents_controller.get_group_files
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/group:delete'
+        - $ref: '#/x-rbac-catalog/actions/group:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -5921,7 +5974,7 @@ paths:
       description: "Return the contents of the specified group file parsed to JSON"
       operationId: api.controllers.agents_controller.get_group_file_json
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/group:delete'
+        - $ref: '#/x-rbac-catalog/actions/group:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -5967,7 +6020,7 @@ paths:
       description: "Return the contents of the specified group file parsed to XML"
       operationId: api.controllers.agents_controller.get_group_file_xml
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/group:delete'
+        - $ref: '#/x-rbac-catalog/actions/group:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -5994,7 +6047,6 @@ paths:
       description: 'Restart all agents which belong to a given group'
       operationId: api.controllers.agents_controller.restart_agents_by_group
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/group:read'
         - $ref: '#/x-rbac-catalog/actions/agent:restart'
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -6490,7 +6542,7 @@ paths:
       description: "Return the agent's ciscat results info"
       operationId: api.controllers.ciscat_controller.get_agents_ciscat_results
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:read'
+        - $ref: '#/x-rbac-catalog/actions/ciscat:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -6838,14 +6890,15 @@ paths:
     get:
       tags:
         - cluster
-      summary: Get API configuration.
-      description: Returns the API configuration in JSON format.
+      summary: "Get the API configuration of all nodes (or a list of them)"
+      description: "Return the API configuration of all the selected nodes in JSON format"
       operationId: api.controllers.cluster_controller.get_api_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read_api_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_nodes'
       responses:
         '200':
           description: Current API configuration
@@ -6855,32 +6908,62 @@ paths:
                 type: object
                 additionalProperties: true
               example:
-                host: 0.0.0.0
-                port: 55000
-                behind_proxy_server: false
-                auth_token_exp_timeout: 36000
-                rbac:
-                  mode: white
-                https:
-                  enabled: true
-                  key: "/var/ossec/api/configuration/ssl/server.key"
-                  cert: "/var/ossec/api/configuration/ssl/server.crt"
-                  use_ca: false
-                  ca: "/var/ossec/api/configuration/ssl/ca.crt"
-                logs:
-                  path: /var/ossec/logs/api.log
-                  level: info
-                cors:
-                  enabled: false
-                  source_route: "*"
-                  allow_headers: "*"
-                  allow_credentials: false
-                cache:
-                  enabled: true
-                  time: 0.75
-                use_only_authd: false
-                drop_privileges: true
-                experimental_features: false
+                data:
+                  affected_items:
+                    - node_name: "master_node"
+                      node_api_config:
+                        host: 0.0.0.0
+                        port: 55000
+                        behind_proxy_server: false
+                        https:
+                          enabled: true
+                          key: "/var/ossec/api/configuration/ssl/server.key"
+                          cert: "/var/ossec/api/configuration/ssl/server.crt"
+                          use_ca: false
+                          ca: "/var/ossec/api/configuration/ssl/ca.crt"
+                        logs:
+                          path: /var/ossec/logs/api.log
+                          level: info
+                        cors:
+                          enabled: false
+                          source_route: "*"
+                          allow_headers: "*"
+                          allow_credentials: false
+                        cache:
+                          enabled: true
+                          time: 0.75
+                        use_only_authd: false
+                        drop_privileges: true
+                        experimental_features: false
+                    - node_name: "worker1"
+                      node_api_config:
+                        host: 0.0.0.0
+                        port: 55000
+                        behind_proxy_server: false
+                        https:
+                          enabled: true
+                          key: "/var/ossec/api/configuration/ssl/server.key"
+                          cert: "/var/ossec/api/configuration/ssl/server.crt"
+                          use_ca: false
+                          ca: "/var/ossec/api/configuration/ssl/ca.crt"
+                        logs:
+                          path: /var/ossec/logs/api.log
+                          level: info
+                        cors:
+                          enabled: false
+                          source_route: "*"
+                          allow_headers: "*"
+                          allow_credentials: false
+                        cache:
+                          enabled: true
+                          time: 0.75
+                        use_only_authd: false
+                        drop_privileges: true
+                        experimental_features: false
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: []
+                message: "API configuration read successfully in all specified nodes"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6889,21 +6972,20 @@ paths:
     put:
       tags:
         - cluster
-      summary: Update API configuration.
-      description: Updates API configuration with the data contained in the API request.
+      summary: "Update the API configuration of all nodes (or a list of them)"
+      description: "Update the API configuration of all the selected nodes with the data contained in the API request"
       operationId: api.controllers.cluster_controller.put_api_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:update_api_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-
+        - $ref: '#/components/parameters/list_nodes'
       requestBody:
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/APIconfiguration'
-
       responses:
         '200':
           description: 'Confirmation message'
@@ -6919,7 +7001,7 @@ paths:
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
-                message: "API configuration successfully updated. Some settings may require restarting the API to be applied."
+                message: "API configuration successfully updated in all specified nodes. Some settings may require restarting the API to be applied"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6928,14 +7010,15 @@ paths:
     delete:
       tags:
         - cluster
-      summary: Restore default API configuration.
-      description: Replaces API configuration with the original one.
+      summary: "Restore the default API configuration of all nodes (or a list of them)"
+      description: "Replace the API configuration of all the selected nodes with the default one"
       operationId: api.controllers.cluster_controller.delete_api_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:update_api_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_nodes'
       responses:
         '200':
           description: 'Confirmation message'
@@ -6951,7 +7034,7 @@ paths:
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
-                message: API configuration successfully updated. Some settings may require restarting the API to be applied.
+                message: "API configuration successfully updated in all specified nodes. Some settings may require restarting the API to be applied"
 
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -6966,7 +7049,7 @@ paths:
       description: "Return the status of all Wazuh daemons in node node_id"
       operationId: api.controllers.cluster_controller.get_status_node
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:status'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7740,6 +7823,7 @@ paths:
       description: "Replace file contents with the data contained in the API request in a specified cluster node"
       operationId: api.controllers.cluster_controller.put_files_node
       x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:delete_file'
         - $ref: '#/x-rbac-catalog/actions/cluster:upload_file'
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -7951,6 +8035,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/etc_and_ruleset_path'
@@ -8075,7 +8160,7 @@ paths:
       description: "Return the status of all Wazuh daemons"
       operationId: api.controllers.manager_controller.get_status
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:status'
+        - $ref: '#/x-rbac-catalog/actions/manager:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8838,6 +8923,7 @@ paths:
       description: "Replace file contents with the data contained in the API request"
       operationId: api.controllers.manager_controller.put_files
       x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:delete_file'
         - $ref: '#/x-rbac-catalog/actions/manager:upload_file'
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -8906,8 +8992,8 @@ paths:
     get:
       tags:
         - manager
-      summary: Get API configuration.
-      description: Returns the API configuration in JSON format.
+      summary: "Get local API configuration"
+      description: "Return the local API configuration in JSON format"
       operationId: api.controllers.manager_controller.get_api_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/manager:read_api_config'
@@ -8916,22 +9002,43 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
-          description: Current API configuration
+          description: "Current API configuration"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                host: 0.0.0.0
-                port: 55000
-                behind_proxy_server: false
-                auth_token_exp_timeout: 36000
-                rbac:
-                  mode: white
-                logs:
-                  path: /var/ossec/logs/api.log
-                  level: info
-                experimental_features: false
+                data:
+                  affected_items:
+                    - node_name: "manager"
+                      node_api_config:
+                        host: 0.0.0.0
+                        port: 55000
+                        behind_proxy_server: false
+                        https:
+                          enabled: true
+                          key: "/var/ossec/api/configuration/ssl/server.key"
+                          cert: "/var/ossec/api/configuration/ssl/server.crt"
+                          use_ca: false
+                          ca: "/var/ossec/api/configuration/ssl/ca.crt"
+                        logs:
+                          path: /var/ossec/logs/api.log
+                          level: info
+                        cors:
+                          enabled: false
+                          source_route: "*"
+                          allow_headers: "*"
+                          allow_credentials: false
+                        cache:
+                          enabled: true
+                          time: 0.75
+                        use_only_authd: false
+                        drop_privileges: true
+                        experimental_features: false
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: "API configuration read successfully"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8940,8 +9047,8 @@ paths:
     put:
       tags:
         - manager
-      summary: Update API configuration.
-      description: Updates API configuration with the data contained in the API request.
+      summary: "Update local API configuration"
+      description: "Update local API configuration with the data contained in the API request"
       operationId: api.controllers.manager_controller.put_api_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/manager:update_api_config'
@@ -8963,13 +9070,11 @@ paths:
               example:
                 data:
                   affected_items:
-                    - master-node
-                    - worker1
-                    - worker2
-                  total_affected_items: 3
+                    - manager
+                  total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: API configuration successfully updated. Some settings may require restarting the API to be applied.
+                message: "API configuration successfully updated. Some settings may require restarting the API to be applied"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8978,8 +9083,8 @@ paths:
     delete:
       tags:
         - manager
-      summary: Restore default API configuration.
-      description: Replaces API configuration with the original one.
+      summary: "Restore default API configuration locally"
+      description: "Replace local API configuration with the original one"
       operationId: api.controllers.manager_controller.delete_api_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/manager:update_api_config'
@@ -8997,13 +9102,11 @@ paths:
               example:
                 data:
                   affected_items:
-                    - master-node
-                    - worker1
-                    - worker2
-                  total_affected_items: 3
+                    - manager
+                  total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: API configuration successfully updated. Some settings may require restarting the API to be applied.
+                message: "API configuration successfully updated. Some settings may require restarting the API to be applied"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9109,6 +9212,83 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: "Active configuration read successfully on specified node"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+
+  /mitre:
+    get:
+      tags:
+        - mitre
+      summary: "Get attacks information from MITRE database"
+      description: "Return the requested attacks from MITRE database"
+      operationId: api.controllers.mitre_controller.get_attack
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/mitre:read'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/attack_id'
+        - $ref: '#/components/parameters/phase_name'
+        - $ref: '#/components/parameters/platform_name'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/sort'
+      responses:
+        '200':
+          description: "List of attacks or error description"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  affected_items:
+                    json:
+                      x_mitre_data_sources:
+                        - "Packet capture"
+                        - "Process use of network"
+                      name: "Data Obfuscation"
+                      description: "Command and control (C2) communications are hidden (but not necessarily encrypted)..."
+                      id: "attack-pattern--ad255bfe-a9e6-4b52-a258-8d3462abe842"
+                      x_mitre_platforms:
+                        - "Linux"
+                        - "macOS"
+                        - "Windows"
+                      object_marking_refs":
+                        - "marking-definition--fa42a846-8d90-4e51-bc29-71d5b4802168"
+                      x_mitre_version: "1.0"
+                      type: "attack-pattern"
+                      x_mitre_detection: "Analyze network data for uncommon data flows (e.g., a client sending cious..."
+                      created_by_ref: "identity--c78cb6e5-0c4b-4611-8297-d1b8b55e40b5"
+                      x_mitre_network_requirements: true
+                      created: "2017-05-31T21:30:18.931Z"
+                      kill_chain_phases:
+                        - kill_chain_name: "mitre-attack"
+                        - phase_name: "Command and Control"
+                      external_references":
+                        - external_id: "T1001"
+                          source_name: "mitre-attack"
+                          url: "https://attack.mitre.org/techniques/T1001"
+                        - source_name: "University of Birmingham C2"
+                          description: "Gardiner, J.,  Cova, M., Nagaraja, S. (2014, February)..."
+                          url: "https://arxiv.org/ftp/arxiv/papers/1408/1408.1136.pdf"
+                      modified: "2019-07-17T18:54:32.478Z"
+                      phase_name:
+                        - "Command and Control"
+                      platform_name:
+                        - "Linux"
+                        - "Windows"
+                        - "macOS"
+                    id: "T1001"
+                  total_affected_items: 1
+                  failed_items: []
+                  total_failed_items: 0
+                message: "All selected MITRE information is shown"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9391,6 +9571,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/query'
@@ -9404,6 +9585,7 @@ paths:
         - $ref: '#/components/parameters/gpg13'
         - $ref: '#/components/parameters/hipaa'
         - $ref: '#/components/parameters/nist-800-53'
+        - $ref: '#/components/parameters/tsc'
         - $ref: '#/components/parameters/mitre'
       responses:
         '200':
@@ -9433,6 +9615,7 @@ paths:
                       id: 1
                       level: 0
                       nist_800_53: []
+                      tsc: []
                       path: ruleset/rules
                       pci_dss: []
                       status: enabled
@@ -9449,6 +9632,7 @@ paths:
                       id: 5
                       level: 0
                       nist_800_53: []
+                      tsc: []
                       path: ruleset/rules
                       pci_dss: []
                       status: enabled
@@ -9994,13 +10178,14 @@ paths:
       description: "Return information about all decoders included in ossec.conf. This information include decoder's route, decoder's name, decoder's file among others"
       operationId: api.controllers.decoders_controller.get_decoders
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/decoder:read'
+        - $ref: '#/x-rbac-catalog/actions/decoders:read'
       parameters:
         - $ref: '#/components/parameters/decoder_name'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/query'
@@ -10057,7 +10242,7 @@ paths:
       description: "Return information about all decoders files used in Wazuh. This information include decoder's file, decoder's route and decoder's status among others"
       operationId: api.controllers.decoders_controller.get_decoders_files
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/decoder:read'
+        - $ref: '#/x-rbac-catalog/actions/decoders:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -10109,7 +10294,7 @@ paths:
       description: "Download an specified decoder file"
       operationId: api.controllers.decoders_controller.get_download_file
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/decoder:read'
+        - $ref: '#/x-rbac-catalog/actions/decoders:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -10134,12 +10319,13 @@ paths:
       description: "Return information about all parent decoders. A parent decoder is a decoder used as base of other decoders"
       operationId: api.controllers.decoders_controller.get_decoders_parents
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/decoder:read'
+        - $ref: '#/x-rbac-catalog/actions/decoders:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
       responses:
@@ -11857,10 +12043,10 @@ paths:
                   description: 'Reference file via its path (i.e. file:path:etc/rules/new_rule.xml)'
                 decoder:file:
                   description: 'Reference decoder file via its path (i.e. decoder:file:0005-wazuh_decoders.xml)'
-                lists:path:
-                  description: 'Reference list file via its path (i.e. lists:path:etc/lists/audit-keys)'
-                rules:file:
-                  description: 'Reference rule file via its path (i.e. rules:file:0610-win-ms_logs_rules.xml)'
+                list:path:
+                  description: 'Reference list file via its path (i.e. list:path:etc/lists/audit-keys)'
+                rule:file:
+                  description: 'Reference rule file via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)'
                 policy:id:
                   description: 'Reference security policy via its id (i.e. policy:id:1)'
                 role:id:
@@ -12345,7 +12531,7 @@ paths:
       description: "Create a specify relation role-policy, one role may have multiples policies"
       operationId: api.controllers.security_controller.set_role_policy
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/security:create'
+        - $ref: '#/x-rbac-catalog/actions/security:update'
       parameters:
         - $ref: '#/components/parameters/role_id'
         - $ref: '#/components/parameters/policy_ids_rbac_required'
@@ -12448,7 +12634,7 @@ paths:
       description: "Create a specify relation role-policy, one user may have multiples roles"
       operationId: api.controllers.security_controller.set_user_role
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/security:create'
+        - $ref: '#/x-rbac-catalog/actions/security:update'
       parameters:
         - $ref: '#/components/parameters/username'
         - $ref: '#/components/parameters/role_ids_required'
@@ -12803,6 +12989,77 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
 
+  /security/config:
+    get:
+      tags:
+        - security
+      summary: "Get current security configuration"
+      description: "Return the security configuration in JSON format"
+      operationId: api.controllers.security_controller.get_security_config
+      x-rbac-actions:
+        - $ref: "#/x-rbac-catalog/actions/security:read_config"
+      parameters:
+        - $ref: "#/components/parameters/pretty"
+        - $ref: "#/components/parameters/wait_for_complete"
+      responses:
+        "200":
+          description: "Current security configuration"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+              example:
+                auth_token_exp_timeout: 36000
+                rbac_mode: white
+        "400":
+          $ref: "#/components/responses/ResponseError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedResponse"
+
+    put:
+      tags:
+        - security
+      summary: "Update security configuration"
+      description: "Update the security configuration with the data contained in the API request"
+      operationId: api.controllers.security_controller.put_security_config
+      x-rbac-actions:
+        - $ref: "#/x-rbac-catalog/actions/security:update_config"
+      parameters:
+        - $ref: "#/components/parameters/pretty"
+        - $ref: "#/components/parameters/wait_for_complete"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SecurityConfiguration"
+      responses:
+        "200":
+          description: "Configuration successfully updated"
+        "400":
+          $ref: "#/components/responses/ResponseError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedResponse"
+
+    delete:
+      tags:
+        - security
+      summary: "Restore default security configuration"
+      description: "Replaces the security configuration with the original one"
+      operationId: api.controllers.security_controller.delete_security_config
+      x-rbac-actions:
+        - $ref: "#/x-rbac-catalog/actions/security:update_config"
+      parameters:
+        - $ref: "#/components/parameters/pretty"
+        - $ref: "#/components/parameters/wait_for_complete"
+      responses:
+        "200":
+          description: "Configuration successfully restored"
+        "400":
+          $ref: "#/components/responses/ResponseError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedResponse"
+
 externalDocs:
   description: "Find more about Wazuh API usage"
   url: 'https://documentation.wazuh.com/current/user-manual/api/index.html'
+

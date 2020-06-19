@@ -518,27 +518,27 @@ stages:
           affected_items:
             - username: administrator
               roles:
-                - 8
-                - 9
+                - 100
+                - 101
             - username: guest
               roles: []
             - username: normal
               roles:
-                - 12
-                - 13
-                - 11
+                - 104
+                - 105
+                - 103
             - username: ossec
               roles:
-                - 9
-                - 12
+                - 101
+                - 104
             - username: python
               roles:
-                - 9
+                - 101
             - username: rbac
               roles:
-                - 12
-                - 10
-                - 11
+                - 104
+                - 102
+                - 103
             - username: testing
               roles:
                 - 99
@@ -739,25 +739,27 @@ stages:
           affected_items:
             - username: administrator
               roles:
-                - 9
+                - 100
+                - 101
             - username: guest
               roles: []
             - username: normal
               roles:
-                - 12
-                - 13
-                - 11
+                - 104
+                - 105
+                - 103
             - username: ossec
               roles:
-                - 9
-                - 12
+                - 101
+                - 104
             - username: python
-              roles: []
+              roles:
+                - 101
             - username: rbac
               roles:
-                - 12
-                - 10
-                - 11
+                - 104
+                - 102
+                - 103
             - username: testing
               roles:
                 - 99
@@ -791,27 +793,27 @@ stages:
                 - 99
             - username: rbac
               roles:
-                - 12
-                - 10
-                - 11
+                - 104
+                - 102
+                - 103
             - username: python
               roles:
-                - 9
+                - 101
             - username: ossec
               roles:
-                - 9
-                - 12
+                - 101
+                - 104
             - username: normal
               roles:
-                - 12
-                - 13
-                - 11
+                - 104
+                - 105
+                - 103
             - username: guest
               roles: []
             - username: administrator
               roles:
-                - 8
-                - 9
+                - 100
+                - 101
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []
@@ -829,27 +831,27 @@ stages:
           affected_items:
             - username: administrator
               roles:
-                - 8
-                - 9
+                - 100
+                - 101
             - username: guest
               roles: []
             - username: normal
               roles:
-                - 12
-                - 13
-                - 11
+                - 104
+                - 105
+                - 103
             - username: ossec
               roles:
-                - 9
-                - 12
+                - 101
+                - 104
             - username: python
               roles:
-                - 9
+                - 101
             - username: rbac
               roles:
-                - 12
-                - 10
-                - 11
+                - 104
+                - 102
+                - 103
             - username: testing
               roles:
                 - 99
@@ -880,16 +882,16 @@ stages:
           affected_items:
             - username: ossec
               roles:
-                - 9
-                - 12
+                - 101
+                - 104
             - username: python
               roles:
-                - 9
+                - 101
             - username: rbac
               roles:
-                - 12
-                - 10
-                - 11
+                - 104
+                - 102
+                - 103
             - username: testing
               roles:
                 - 99
@@ -916,7 +918,8 @@ stages:
           affected_items:
             - username: administrator
               roles:
-                - 9
+                - 100
+                - 101
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []
@@ -962,12 +965,12 @@ stages:
         rules:read:
           description: Read rules files
           resources:
-            - rules:file
+            - rule:file
           example:
             actions:
               - rules:read
             resources:
-              - rules:file:0610-win-ms_logs_rules.xml
+              - rule:file:0610-win-ms_logs_rules.xml
             effect: allow
           related_endpoints:
             - GET /rules/files
@@ -999,10 +1002,10 @@ stages:
           description: Reference files via its path (i.e. file:path:etc/rules/new_rule.xml)
         decoder:file:
           description: Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)
-        lists:path:
-          description: Reference list files via its path (i.e. lists:path:etc/lists/audit-keys)
-        rules:file:
-          description: Reference rule files via its path (i.e. rules:file:0610-win-ms_logs_rules.xml)
+        list:path:
+          description: Reference list files via its path (i.e. list:path:etc/lists/audit-keys)
+        rule:file:
+          description: Reference rule files via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)
         policy:id:
           description: Reference security policies via its id (i.e. policy:id:1)
         role:id:
@@ -1020,3 +1023,21 @@ stages:
       json:
         agent:id:
           description: Reference agents via agent ID (i.e. agent:id:001)
+
+---
+test_name: GET /security/config
+
+stages:
+
+  - name: Get current security configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      json:
+        auth_token_exp_timeout: !anyint
+        rbac_mode: !anystr

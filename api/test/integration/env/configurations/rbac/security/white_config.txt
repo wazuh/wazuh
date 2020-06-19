@@ -1,24 +1,26 @@
 | Resource    | List                                                             |
 |-------------|------------------------------------------------------------------|
 | user:id     | wazuh,wazuh-wui,administrator,normal,ossec,python,rbac,guest     |
-| role:id     | 1,2,3,4,5,6                                                      |
-| policy:id   | 1,2,3,4,5,6,7,8,9,10                                             |
+| role:id     | 1,2,3,4,5,6,7,8,9,10,11,12,13                                    |
+| policy:id   | 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20               |
 | user:role   | (wazuh:1,8),(wazuh-wui:2,9),(administrator:9),(normal:12,13,11), |
 |             | (ossec:9,12),(python:),(rbac:12,10,11),(guest:)                  |
 | role:policy | (1:1),(2:1),(10:11,12,15,18),(11:14,15),(12:12,13,20),(13:*)     |
 
 
-| Actions              | Resources | Allow                             | Deny |
-|----------------------|-----------|-----------------------------------|------|
-| security:read        | user:id   | administrator,normal,python,guest |      |
-| security:read        | role:id   | *                                 |      |
-| security:read        | policy:id |                                   | *    |
-| security:update      | user:id   |                                   | *    |
-| security:update      | role:id   | 3,4,6                             |      |
-| security:update      | policy:id | 5                                 |      |
-| security:delete      | user:id   | guest,normal,wazuh-wui            |      |
-| security:delete      | role:id   |                                   | *    |
-| security:delete      | policy:id |                                   | *    |
-| security:create      | *         | *                                 |      |
-| security:create_user | *         |                                   | *    |
-| security:revoke      | *         |                                   | *    |
+| Actions               | Resources | Allow                             | Deny |
+|-----------------------|-----------|-----------------------------------|------|
+| security:read         | user:id   | administrator,normal,python,guest |      |
+| security:read         | role:id   | *                                 |      |
+| security:read         | policy:id |                                   | *    |
+| security:update       | user:id   |                                   | *    |
+| security:update       | role:id   | 102,103,105                       |      |
+| security:update       | policy:id | 104,102,107                       |      |
+| security:delete       | user:id   | guest,normal,wazuh-wui            |      |
+| security:delete       | role:id   |                                   | *    |
+| security:delete       | policy:id |                                   | *    |
+| security:create       | *         | *                                 |      |
+| security:create_user  | *         |                                   | *    |
+| security:revoke       | *         |                                   | *    |
+| security:read_config  | *         | *                                 |      |
+| security:update_config| *         | *                                 |      |

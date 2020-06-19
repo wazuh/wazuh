@@ -65,10 +65,9 @@ def start(foreground, root, config_file):
         print(f"Cannot start API while other processes are running. Kill these before {pids}")
         sys.exit(2)
 
-    configuration.api_conf.update(configuration.read_api_config(config_file=args.config_file))
+    configuration.api_conf.update(configuration.read_yaml_config(config_file=args.config_file))
     api_conf = configuration.api_conf
     cors = api_conf['cors']
-    cache_conf = api_conf['cache']
     log_path = api_conf['logs']['path']
 
     ssl_context = None
@@ -266,7 +265,7 @@ def test_config(config_file):
         Path of the file
     """
     try:
-        configuration.read_api_config(config_file=config_file)
+        configuration.read_yaml_config(config_file=config_file)
     except Exception as e:
         print(f"Configuration not valid: {e}")
         sys.exit(1)

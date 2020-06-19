@@ -232,10 +232,14 @@ or a list of them if parameter **list_nodes** is used.
 
 ## Decoders
 ### GET     /decoders
+* Added **select** parameter.
 * Added **decoder_name** parameter in query used to specify a list of decoder's names to get.
 * Renamed **file** parameter in query to **filename**.
 * Renamed **path** parameter in query to **relative_dirname**.
 * The response has been changed to the new RBAC generic response.
+
+### GET     /decoders/parents
+* Added **select** parameter.
 
 ### GET     /decoders/{decoder_name}
 * Endpoint removed. Use `GET /decoders?decoder_name=name` instead.
@@ -324,6 +328,7 @@ This API call expects a full valid XML file with the shared configuration tags/s
 
 ## Lists
 ### GET     /lists
+* Added **select** parameter.
 * Added **filename** parameter in query used to filter by filename.
 * Renamed **path** parameter in query to **relative_dirname**.
 
@@ -377,6 +382,7 @@ This API call expects a full valid XML file with the shared configuration tags/s
 ## Rules
 ### GET     /rules
 * Added **rule_ids** parameter in query.
+* Added **select** parameter.
 * Renamed **file** parameter to **filename**.
 * Renamed **pci** parameter in query to **pci_dss**.
 

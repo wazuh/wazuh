@@ -11,7 +11,7 @@ from shutil import copyfile
 from wazuh import common, configuration
 from wazuh.InputValidator import InputValidator
 from wazuh.core.core_agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, \
-    WazuhDBQueryMultigroups, Agent
+    WazuhDBQueryMultigroups, Agent, WazuhDBQueryGroup
 from wazuh.core.core_utils import get_agents_info, get_groups
 from wazuh.database import Connection
 from wazuh.exception import WazuhError, WazuhInternalError, WazuhException
@@ -321,12 +321,6 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort_by=None, sort_a
     :return: AffectedItemsWazuhResult.
     """
 
-    # Connect DB
-    db_global = glob(common.database_path_global)
-    if not db_global:
-        raise WazuhInternalError(1600)
-
-    conn = Connection(db_global[0])
     affected_groups = list()
     result = AffectedItemsWazuhResult(all_msg='Obtained information about all selected groups',
                                       some_msg='Some groups information was not obtained',
@@ -343,22 +337,19 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort_by=None, sort_a
 
             full_entry = path.join(common.shared_path, group_id)
 
-            # Get the id of the group
-            query = "SELECT id FROM `group` WHERE name = :group_id"
-            request = {'group_id': group_id}
-            conn.execute(query, request)
-            id_group = conn.fetch()
+            # Get ID from group
+            db_query = WazuhDBQueryGroup(select=['name'], filters={'name': group_id})
+            query_data = db_query.run()
 
             # Group count
-            query = "SELECT {0} FROM belongs WHERE id_group = :id"
-            request = {'id': id_group}
-            conn.execute(query.format('COUNT(*)'), request)
+            db_query = WazuhDBQueryAgents(get_data=False, filters={'group': query_data['items'][0]['name']})
+            query_data = db_query.run()
 
             # merged.mg and agent.conf sum
             merged_sum = get_hash(path.join(full_entry, "merged.mg"), hash_algorithm)
             conf_sum = get_hash(path.join(full_entry, "agent.conf"), hash_algorithm)
 
-            item = {'count': conn.fetch(), 'name': group_id}
+            item = {'count': query_data['totalItems'], 'name': group_id}
 
             if merged_sum:
                 item['mergedSum'] = merged_sum

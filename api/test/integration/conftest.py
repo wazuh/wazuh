@@ -156,28 +156,28 @@ def healthcheck_procedure(module: str):
 
 
 def change_rbac_mode(rbac_mode: str):
-    """Modify api.yaml in base folder to change RBAC mode for the current test.
+    """Modify security.yaml in base folder to change RBAC mode for the current test.
 
     Parameters
     ----------
     rbac_mode : str
         RBAC Mode: Black (by default: all allowed), White (by default: all denied)
     """
-    with open(os.path.join(current_path, 'env', 'configurations', 'base', 'manager', 'api.yaml'),
-              'r+') as api_conf:
-        content = api_conf.read()
-        api_conf.seek(0)
-        api_conf.write(re.sub(r'mode: (white|black)', f'mode: {rbac_mode}', content))
+    with open(os.path.join(current_path, 'env', 'configurations', 'base', 'manager', 'security.yaml'),
+              'r+') as rbac_conf:
+        content = rbac_conf.read()
+        rbac_conf.seek(0)
+        rbac_conf.write(re.sub(r'rbac_mode: (white|black)', f'rbac_mode: {rbac_mode}', content))
 
 
 def clean_tmp_folder():
     """Remove temporal folder used te configure the environment and set RBAC mode to Black.
     """
-    with open(os.path.join(current_path, 'env', 'configurations', 'base', 'manager', 'api.yaml'),
-              'r+') as api_conf:
-        content = api_conf.read()
-        api_conf.seek(0)
-        api_conf.write(re.sub(r'mode: (white|black)', f'mode: black', content))
+    with open(os.path.join(current_path, 'env', 'configurations', 'base', 'manager', 'security.yaml'),
+              'r+') as rbac_conf:
+        content = rbac_conf.read()
+        rbac_conf.seek(0)
+        rbac_conf.write(re.sub(r'rbac_mode: (white|black)', f'rbac_mode: black', content))
 
     shutil.rmtree(os.path.join(current_path, 'env', 'configurations', 'tmp'), ignore_errors=True)
 
@@ -198,9 +198,9 @@ def generate_rbac_pair(index: int, permission: dict):
         List with two SQL sentences, the first creates the policy and the second links it with the testing role
     """
     role_policy_pair = [
-        f'INSERT INTO policies VALUES({99 + index},\'testing{index}\',\'{json.dumps(permission)}\','
+        f'INSERT INTO policies VALUES({1000 + index},\'testing{index}\',\'{json.dumps(permission)}\','
         f'\'1970-01-01 00:00:00\');\n',
-        f'INSERT INTO roles_policies VALUES({99 + index},99,{99 + index},{index},\'1970-01-01 00:00:00\');\n'
+        f'INSERT INTO roles_policies VALUES({1000 + index},99,{1000 + index},{index},\'1970-01-01 00:00:00\');\n'
     ]
 
     return role_policy_pair
@@ -218,9 +218,13 @@ def rbac_custom_config_generator(module: str, rbac_mode: str):
         RBAC Mode: Black (by default: all allowed), White (by default: all denied)
     """
     custom_rbac_path = os.path.join(current_path, 'env', 'configurations', 'tmp', 'manager', 'custom_rbac_schema.sql')
-    with open(os.path.join(current_path, 'env', 'configurations', 'rbac', module,
-                           f'{rbac_mode}_config.yaml')) as configuration_sentences:
-        list_custom_policy = yaml.safe_load(configuration_sentences.read())
+
+    try:
+        with open(os.path.join(current_path, 'env', 'configurations', 'rbac', module,
+                               f'{rbac_mode}_config.yaml')) as configuration_sentences:
+            list_custom_policy = yaml.safe_load(configuration_sentences.read())
+    except FileNotFoundError:
+        return
 
     sql_sentences = list()
     sql_sentences.append('PRAGMA foreign_keys=OFF;\n')
@@ -254,6 +258,7 @@ def api_test(request):
         module = test_filename[1]
     create_tmp_folders()
     general_procedure(module)
+
     if rbac_mode:
         change_rbac_mode(rbac_mode)
         rbac_custom_config_generator(module, rbac_mode)
@@ -261,7 +266,7 @@ def api_test(request):
     values = build_and_up(interval=10)
     while values['retries'] < values['max_retries']:
         managers_health = check_health(interval=values['interval'])
-        agents_health = check_health(interval=values['interval'], node_type='agent', agents=range(1, 9))
+        agents_health = check_health(interval=values['interval'], node_type='agent', agents=list(range(1, 9)))
         if managers_health and agents_health:
             time.sleep(values['interval'])
             yield

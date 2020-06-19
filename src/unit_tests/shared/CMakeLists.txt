@@ -9,8 +9,14 @@ list(APPEND shared_tests_flags " ")
 list(APPEND shared_tests_names "test_rbtree_op")
 list(APPEND shared_tests_flags " ")
 
+list(APPEND shared_tests_names "test_string_op")
+list(APPEND shared_tests_flags "")
+
 list(APPEND shared_tests_names "test_version_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose")
+
+list(APPEND shared_tests_names "test_time_op")
+list(APPEND shared_tests_flags " ")
 
 if(${TARGET} STREQUAL "server")
 list(APPEND shared_tests_names "test_bzip2_op")

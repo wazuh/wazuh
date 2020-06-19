@@ -10,7 +10,6 @@ from datetime import timezone
 from os import remove
 from os.path import exists, join
 
-from api import configuration as api_conf
 from wazuh import Wazuh
 from wazuh import common
 from wazuh import configuration
@@ -18,12 +17,13 @@ from wazuh.configuration import get_ossec_conf
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart, read_cluster_config
 from wazuh.core.manager import status, get_ossec_log_fields, upload_xml, upload_list, validate_xml, validate_cdb_list, \
-    parse_execd_output, update_api_conf
+    parse_execd_output, get_api_conf, update_api_conf
 from wazuh.exception import WazuhError, WazuhInternalError
 from wazuh.rbac.decorators import expose_resources
 from wazuh.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.utils import previous_month, tail, process_array
 
+allowed_api_fields = {'behind_proxy_server', 'logs', 'cache', 'cors', 'use_only_authd', 'experimental_features'}
 execq_lockfile = join(common.ossec_path, "var", "run", ".api_execq_lock")
 cluster_enabled = not read_cluster_config()['disabled']
 node_id = get_node().get('node') if cluster_enabled else 'manager'
@@ -273,20 +273,49 @@ def delete_file(path):
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_api_config"], resources=['*:*:*'])
-def get_api_config():
-    """Returns current API configuration."""
-    return api_conf.api_conf
-
-
-_update_config_default_result_kwargs = {
-    'all_msg': f"API configuration successfully updated. Some settings may require restarting the API to be applied.",
-    'none_msg': "API configuration could not be updated.",
+_get_config_default_result_kwargs = {
+    'all_msg': f"API configuration read successfully{' in all specified nodes' if node_id != 'manager' else '' }",
+    'some_msg': 'Not all API configurations could be read',
+    'none_msg': f"Could not read API configuration{' in any node' if node_id != 'manager' else ''}",
     'sort_casting': ['str']
 }
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:update_api_config"], resources=['*:*:*'],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_api_config"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
+                  post_proc_kwargs={'default_result_kwargs': _get_config_default_result_kwargs})
+def get_api_config():
+    """Returns current API configuration.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        Current API configuration of the manager.
+    """
+    result = AffectedItemsWazuhResult(**_get_config_default_result_kwargs)
+
+    try:
+        api_config = {'node_name': node_id,
+                      'node_api_config': get_api_conf()}
+        result.affected_items.append(api_config)
+    except WazuhError as e:
+        result.add_failed_item(id_=node_id, error=e)
+    result.total_affected_items = len(result.affected_items)
+
+    return result
+
+
+_update_config_default_result_kwargs = {
+    'all_msg': f"API configuration successfully updated{' in all specified nodes' if node_id != 'manager' else '' }. "
+               f"Some settings may require restarting the API to be applied",
+    'some_msg': 'Not all API configuration could be updated',
+    'none_msg': f"API configuration could not be updated{' in any node' if node_id != 'manager' else ''}",
+    'sort_casting': ['str']
+}
+
+
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:update_api_config"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
                   post_proc_kwargs={'default_result_kwargs': _update_config_default_result_kwargs})
 def update_api_config(updated_config=None):
     """Update or restore current API configuration.
@@ -307,7 +336,7 @@ def update_api_config(updated_config=None):
     result = AffectedItemsWazuhResult(**_update_config_default_result_kwargs)
 
     try:
-        update_api_conf(updated_config, get_node().get('type'))
+        update_api_conf(updated_config)
         result.affected_items.append(node_id)
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)

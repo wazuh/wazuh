@@ -6,7 +6,7 @@
 -->
 
 <!-- ID: 86900 - 87000 -->
-<group name="qualysguard">
+<group name="qualysguard,">
     <rule id="86900" level="0">
        <decoded_as>qualysguard</decoded_as>
        <description>Qualysguard messages grouped.</description>

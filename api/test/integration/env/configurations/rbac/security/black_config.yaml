@@ -24,19 +24,19 @@
 - actions:
   - security:update
   resources:
-  - role:id:11
-  - role:id:10
-  - role:id:13
-  - policy:id:18
-  - policy:id:13
-  - policy:id:15
+  - role:id:103
+  - role:id:102
+  - role:id:105
+  - policy:id:107
+  - policy:id:102
+  - policy:id:104
   effect: deny
 
 - actions:
   - security:update
   resources:
-  - policy:id:18
-  - policy:id:13
+  - policy:id:107
+  - policy:id:102
   effect: allow
 
 - actions:
@@ -64,6 +64,8 @@
 
 - actions:
   - security:create
+  - security:read_config
+  - security:update_config
   resources:
   - "*:*:*"
   effect: deny

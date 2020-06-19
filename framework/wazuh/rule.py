@@ -6,7 +6,8 @@ import os
 
 import wazuh.configuration as configuration
 from wazuh import common
-from wazuh.core.rule import check_status, load_rules_from_file, Status, format_rule_decoder_file, RULE_REQUIREMENTS
+from wazuh.core.rule import check_status, load_rules_from_file, format_rule_decoder_file, REQUIRED_FIELDS, \
+    RULE_REQUIREMENTS, SORT_FIELDS
 from wazuh.exception import WazuhError
 from wazuh.rbac.decorators import expose_resources
 from wazuh.results import AffectedItemsWazuhResult
@@ -14,9 +15,9 @@ from wazuh.utils import process_array
 
 
 def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, gdpr=None, hipaa=None, nist_800_53=None,
-              mitre=None, relative_dirname=None, filename=None, level=None, offset=0, limit=common.database_limit,
-              sort_by=None, sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None,
-              q=''):
+              tsc=None, mitre=None, relative_dirname=None, filename=None, level=None, offset=0,
+              limit=common.database_limit, select=None, sort_by=None, sort_ascending=True, search_text=None,
+              complementary_search=False, search_in_fields=None, q=''):
     """Gets a list of rules.
 
     :param rule_ids: IDs of rules.
@@ -27,12 +28,14 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
     :param gdpr: Filters the rules by gdpr requirement.
     :param hipaa: Filters the rules by hipaa requirement.
     :param nist_800_53: Filters the rules by nist_800_53 requirement.
+    :param tsc: Filters the rules by tsc requirement.
     :param mitre: Filters the rules by mitre attack ID.
     :param relative_dirname: Filters the relative dirname.
     :param filename: List of filenames to filter by.
     :param level: Filters the rules by level. level=2 or level=2-5.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
+    :param select: List of selected fields to return
     :param sort_by: Fields to sort the items by
     :param sort_ascending: Sort in ascending (true) or descending (false) order
     :param search_text: Text to search
@@ -60,34 +63,32 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
     status = check_status(status)
     status = ['enabled', 'disabled'] if status == 'all' else [status]
     parameters = {'groups': group, 'pci_dss': pci_dss, 'gpg13': gpg13, 'gdpr': gdpr, 'hipaa': hipaa,
-                  'nist_800_53': nist_800_53, 'mitre': mitre, 'relative_dirname': relative_dirname,
+                  'nist_800_53': nist_800_53, 'tsc': tsc, 'mitre': mitre, 'relative_dirname': relative_dirname,
                   'filename': filename, 'id': rule_ids, 'level': levels, 'status': status}
     original_rules = list(rules)
     no_existent_ids = rule_ids[:]
     for r in original_rules:
+        if r['id'] in no_existent_ids:
+            no_existent_ids.remove(r['id'])
         for key, value in parameters.items():
             if value:
-                if key == 'level' and r in rules:
-                    if len(value) == 1 and int(value[0]) != r['level'] or len(value) == 2 and \
-                            not int(value[0]) <= r['level'] <= int(value[1]):
-                        rules.remove(r)
-                elif key == 'id':
-                    if r[key] not in value and r in rules:
-                        rules.remove(r)
-                    elif r[key] in no_existent_ids:
-                        no_existent_ids.remove(r[key])
-                elif key == 'filename' and r[key] not in filename and r in rules:
+                if key == 'level' and (len(value) == 1 and int(value[0]) != r['level'] or len(value) == 2
+                                       and not int(value[0]) <= r['level'] <= int(value[1])) or \
+                        (key == 'id' and r[key] not in value) or \
+                        (key == 'filename' and r[key] not in filename) or \
+                        (key == 'status' and r[key] not in value) or \
+                        (not isinstance(value, list) and value not in r[key]):
                     rules.remove(r)
-                elif key == 'status' and r[key] not in value and r in rules:
-                    rules.remove(r)
-                elif not isinstance(value, list) and value not in r[key]:
-                    rules.remove(r)
+                    break
+
     for rule_id in no_existent_ids:
         result.add_failed_item(id_=rule_id, error=WazuhError(1208))
 
     data = process_array(rules, search_text=search_text, search_in_fields=search_in_fields,
-                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         allowed_sort_fields=Status.SORT_FIELDS.value, offset=offset, limit=limit, q=q)
+                         complementary_search=complementary_search, select=select, sort_by=sort_by,
+                         sort_ascending=sort_ascending, allowed_sort_fields=SORT_FIELDS, offset=offset,
+                         limit=limit, q=q, required_fields=REQUIRED_FIELDS)
+
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 

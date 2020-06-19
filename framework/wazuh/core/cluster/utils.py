@@ -1,7 +1,6 @@
 # Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-
 import fcntl
 import json
 import logging
@@ -199,6 +198,7 @@ class ClusterFilter(logging.Filter):
     """
     Adds cluster related information into cluster logs.
     """
+
     def __init__(self, tag: str, subtag: str, name: str = ''):
         """
         Class constructor
@@ -238,6 +238,6 @@ class ClusterLogger(WazuhLogger):
         super().setup_logger()
         self.logger.addFilter(ClusterFilter(tag='Cluster', subtag='Main'))
         debug_level = logging.DEBUG2 if self.debug_level == 2 else \
-                                        logging.DEBUG if self.debug_level == 1 else logging.INFO
+            logging.DEBUG if self.debug_level == 1 else logging.INFO
 
         self.logger.setLevel(debug_level)

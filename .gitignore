@@ -101,3 +101,6 @@ framework/wazuh/rbac/migrations/versions/*
 
 # Documentation folder
 documentation/
+
+# MSU for Vulnerability Detector
+src/wazuh_modules/vulnerability_detector/msu.json.gz

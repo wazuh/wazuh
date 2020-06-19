@@ -10,14 +10,15 @@ from wazuh import common
 from wazuh.exception import WazuhError
 from wazuh.utils import load_wazuh_xml
 
-RULE_REQUIREMENTS = ['pci_dss', 'gdpr', 'hipaa', 'nist_800_53', 'gpg13', 'mitre']
+REQUIRED_FIELDS = ['id']
+RULE_REQUIREMENTS = ['pci_dss', 'gdpr', 'hipaa', 'nist_800_53', 'gpg13', 'tsc', 'mitre']
+SORT_FIELDS = ['filename', 'relative_dirname', 'description', 'id', 'level', 'status']
 
 
 class Status(Enum):
     S_ENABLED = 'enabled'
     S_DISABLED = 'disabled'
     S_ALL = 'all'
-    SORT_FIELDS = ['filename', 'relative_dirname', 'description', 'id', 'level', 'status']
 
 
 def add_detail(detail, value, details):
@@ -51,13 +52,13 @@ def set_groups(groups, general_groups, rule):
     groups.extend(general_groups)
     for g in groups:
         for req in RULE_REQUIREMENTS:
-            if req in g:
+            if g.startswith(req):
                 # We add the requirement to the rule
                 rule[req].append(g[len(req) + 1:]) if g[len(req) + 1:] not in rule[req] else None
                 break
         else:
             # If a requirement is not found we add it to the rule as group
-            rule['groups'].append(g) if g is not '' else None
+            rule['groups'].append(g) if g != '' else None
 
 
 def load_rules_from_file(rule_filename, rule_relative_path, rule_status):
@@ -75,7 +76,7 @@ def load_rules_from_file(rule_filename, rule_relative_path, rule_status):
                         rule = {'filename': rule_filename, 'relative_dirname': rule_relative_path,
                                 'id': int(xml_rule.attrib['id']), 'level': int(xml_rule.attrib['level']),
                                 'status': rule_status, 'details': dict(), 'pci_dss': list(), 'gpg13': list(),
-                                'gdpr': list(), 'hipaa': list(), 'nist_800_53': list(), 'mitre': list(),
+                                'gdpr': list(), 'hipaa': list(), 'nist_800_53': list(), 'tsc': list(), 'mitre': list(),
                                 'groups': list(), 'description': ''}
                         for k in xml_rule.attrib:
                             if k != 'id' and k != 'level':
