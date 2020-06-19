@@ -13,6 +13,7 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include <string.h>
 
 
 int __wrap_BZ2_bzRead(int* bzerror,

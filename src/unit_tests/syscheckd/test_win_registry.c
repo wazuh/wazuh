@@ -18,6 +18,7 @@
 #include<libloaderapi.h>
 #include <openssl/evp.h>
 
+#include "../wrappers/externals/openssl/digest_wrappers.h"
 #include "syscheckd/syscheck.h"
 
 extern char *os_winreg_sethkey(char *reg_entry);
@@ -76,12 +77,6 @@ int __wrap_fim_registry_event(char *key, fim_entry_data *data, int pos) {
     return mock();
 }
 
-int __wrap_EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data, size_t count)
-{
-   check_expected(data);
-   check_expected(count);
-   return mock();
-}
 /**************************************************************************/
 /*************************os_winreg_sethkey********************************/
 void test_os_winreg_sethkek_invalid_subtree(void **state) {

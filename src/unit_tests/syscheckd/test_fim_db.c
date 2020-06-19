@@ -15,6 +15,7 @@
 #include <stdlib.h>
 
 #include "../wrappers/common.h"
+#include "../wrappers/externals/openssl/digest_wrappers.h"
 #include "../syscheckd/fim_db.h"
 #include "../config/syscheck-config.h"
 
@@ -295,12 +296,6 @@ char *__wrap_dbsync_state_msg(const char * component, cJSON * data) {
     check_expected_ptr(data);
 
     return mock_type(char*);
-}
-
-int __wrap_EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *d, size_t cnt) {
-    check_expected(d);
-    check_expected(cnt);
-    return mock();
 }
 
 int __wrap_fim_configuration_directory() {
@@ -1757,8 +1752,8 @@ void test_fim_db_get_data_checksum_success(void **state) {
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     wraps_fim_db_decode_full_row();
-    expect_string(__wrap_EVP_DigestUpdate, d, "checksum");
-    expect_value(__wrap_EVP_DigestUpdate, cnt, 8);
+    expect_string(__wrap_EVP_DigestUpdate, data, "checksum");
+    expect_value(__wrap_EVP_DigestUpdate, count, 8);
     will_return(__wrap_EVP_DigestUpdate, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);  // Ending the loop at fim_db_process_get_query()
     wraps_fim_db_check_transaction();
@@ -2044,8 +2039,8 @@ void test_fim_db_data_checksum_range_second_half_failed(void **state) {
     // First half
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     wraps_fim_db_decode_full_row();
-    expect_string(__wrap_EVP_DigestUpdate, d, "checksum");
-    expect_value(__wrap_EVP_DigestUpdate, cnt, 8);
+    expect_string(__wrap_EVP_DigestUpdate, data, "checksum");
+    expect_value(__wrap_EVP_DigestUpdate, count, 8);
     will_return(__wrap_EVP_DigestUpdate, 0);
 
     // Second half
@@ -2067,8 +2062,8 @@ void test_fim_db_data_checksum_range_null_path(void **state) {
     // Fist half
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     wraps_fim_db_decode_full_row();
-    expect_string(__wrap_EVP_DigestUpdate, d, "checksum");
-    expect_value(__wrap_EVP_DigestUpdate, cnt, 8);
+    expect_string(__wrap_EVP_DigestUpdate, data, "checksum");
+    expect_value(__wrap_EVP_DigestUpdate, count, 8);
     will_return(__wrap_EVP_DigestUpdate, 0);
 
     expect_string(__wrap__merror, formatted_msg, "Failed to obtain required paths in order to form message");
@@ -2087,15 +2082,15 @@ void test_fim_db_data_checksum_range_success(void **state) {
     // Fist half
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     wraps_fim_db_decode_full_row();
-    expect_string(__wrap_EVP_DigestUpdate, d, "checksum");
-    expect_value(__wrap_EVP_DigestUpdate, cnt, 8);
+    expect_string(__wrap_EVP_DigestUpdate, data, "checksum");
+    expect_value(__wrap_EVP_DigestUpdate, count, 8);
     will_return(__wrap_EVP_DigestUpdate, 0);
 
     // Second half
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     wraps_fim_db_decode_full_row();
-    expect_string(__wrap_EVP_DigestUpdate, d, "checksum");
-    expect_value(__wrap_EVP_DigestUpdate, cnt, 8);
+    expect_string(__wrap_EVP_DigestUpdate, data, "checksum");
+    expect_value(__wrap_EVP_DigestUpdate, count, 8);
     will_return(__wrap_EVP_DigestUpdate, 0);
 
     int ret;
@@ -2584,8 +2579,8 @@ void test_fim_db_callback_calculate_checksum(void **state) {
     data->test_data->entry->data->mtime = 6789;
 
     // Mock EVP_DigestUpdate()
-    expect_string(__wrap_EVP_DigestUpdate, d, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-    expect_value(__wrap_EVP_DigestUpdate, cnt, 40);
+    expect_string(__wrap_EVP_DigestUpdate, data, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    expect_value(__wrap_EVP_DigestUpdate, count, 40);
     will_return(__wrap_EVP_DigestUpdate, 0);
 
     fim_db_callback_calculate_checksum(data->test_data->fim_sql, data->test_data->entry, syscheck.database_store, data->ctx);
