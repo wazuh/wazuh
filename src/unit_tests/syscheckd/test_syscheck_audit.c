@@ -16,6 +16,7 @@
 #include "../wrappers/common.h"
 #include "../wrappers/externals/openssl/rehash_wrappers.h"
 #include "../wrappers/externals/audit/libaudit_wrappers.h"
+#include "../wrappers/externals/procpc/readproc_wrappers.h"
 #include "syscheckd/syscheck.h"
 #include "external/procps/readproc.h"
 
@@ -219,30 +220,6 @@ int __wrap_fim_whodata_event(whodata_evt * w_evt)
 
 const char *__wrap_get_group(int gid) {
     return mock_ptr_type(const char *);
-}
-
-PROCTAB* __wrap_openproc(int flags, ...)
-{
-    check_expected(flags);
-    return mock_type(PROCTAB*);
-}
-
-proc_t* __wrap_readproc(PROCTAB *restrict const PT, proc_t *restrict p)
-{
-    check_expected(PT);
-    check_expected(p);
-
-    return mock_type(proc_t*);
-}
-
-void __wrap_freeproc(proc_t* p)
-{
-    check_expected(p);
-}
-
-void __wrap_closeproc(PROCTAB* PT)
-{
-    check_expected(PT);
 }
 
 char *__wrap_get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid)
