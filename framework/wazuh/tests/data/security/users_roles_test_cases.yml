@@ -2,41 +2,44 @@
 get_users:
 - params:
     username_list:
-    - wazuh
-    - wazuh-wui
+    - administrator
+    - normal
   result:
     affected_items:
-    - username: wazuh
+    - username: administrator
       roles:
-      - 1
-      - 8
-    - username: wazuh-wui
+      - 100
+      - 101
+    - username: normal
       roles:
-      - 2
-      - 9
+      - 104
+      - 105
+      - 103
     failed_items: {}
 - params:
     username_list:
-    - wazuh
-    - wazuh-wui
+    - administrator
+    - normal
     - ossec
     - python
   result:
     affected_items:
-    - username: wazuh
+    - username: administrator
       roles:
-      - 1
-      - 8
-    - username: wazuh-wui
+      - 100
+      - 101
+    - username: normal
       roles:
-      - 2
-      - 9
+      - 104
+      - 105
+      - 103
     - username: ossec
       roles:
-      - 9
-      - 12
+      - 101
+      - 104
     - username: python
-      roles: []
+      roles:
+        - 101
     failed_items: {}
 - params:
     username_list:
@@ -46,12 +49,13 @@ get_users:
   result:
     affected_items:
     - username: python
-      roles: []
+      roles:
+        - 101
     - username: normal
       roles:
-      - 12
-      - 13
-      - 11
+      - 104
+      - 105
+      - 103
     failed_items:
       '5001':
       - noexists
@@ -101,8 +105,8 @@ update_user:
     affected_items:
     - username: ossec
       roles:
-      - 9
-      - 12
+      - 101
+      - 104
     failed_items: {}
 - params:
     username:
@@ -131,10 +135,11 @@ remove_users:
     affected_items:
     - username: ossec
       roles:
-      - 9
-      - 12
+      - 101
+      - 104
     - username: python
-      roles: []
+      roles:
+        - 101
     failed_items: {}
 - params:
     username_list:
@@ -143,7 +148,8 @@ remove_users:
   result:
     affected_items:
     - username: python
-      roles: []
+      roles:
+        - 101
     failed_items:
       '5001':
       - new_user
@@ -157,11 +163,12 @@ remove_users:
     affected_items:
     - username: normal
       roles:
-      - 12
-      - 13
-      - 11
+      - 104
+      - 105
+      - 103
     - username: python
-      roles: []
+      roles:
+        - 101
     failed_items:
       '5001':
       - new_user1
@@ -174,9 +181,9 @@ remove_users:
     affected_items:
     - username: normal
       roles:
-      - 12
-      - 13
-      - 11
+      - 104
+      - 105
+      - 103
     failed_items:
       '5004':
       - wazuh
