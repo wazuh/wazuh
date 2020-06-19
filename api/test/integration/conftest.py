@@ -258,8 +258,7 @@ def api_test(request):
         module = test_filename[1]
     create_tmp_folders()
     general_procedure(module)
-    # Uncomment this line to run all test with white mode
-    # change_rbac_mode('white')
+
     if rbac_mode:
         change_rbac_mode(rbac_mode)
         rbac_custom_config_generator(module, rbac_mode)
@@ -267,7 +266,7 @@ def api_test(request):
     values = build_and_up(interval=10)
     while values['retries'] < values['max_retries']:
         managers_health = check_health(interval=values['interval'])
-        agents_health = check_health(interval=values['interval'], node_type='agent', agents=range(1, 9))
+        agents_health = check_health(interval=values['interval'], node_type='agent', agents=list(range(1, 9)))
         if managers_health and agents_health:
             time.sleep(values['interval'])
             yield

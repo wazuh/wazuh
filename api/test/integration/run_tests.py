@@ -77,7 +77,7 @@ def get_results(filename=None):
         calculate_result(filename)
     else:
         os.chdir(RESULTS_PATH)
-        for file in glob.glob('test_*'):
+        for file in sorted(glob.glob('test_*')):
             print(file)
             calculate_result(file)
 
