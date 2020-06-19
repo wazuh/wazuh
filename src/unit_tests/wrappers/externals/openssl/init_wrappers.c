@@ -13,3 +13,9 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+
+int __wrap_OPENSSL_init_crypto(__attribute__((unused)) uint64_t opts,
+                               const OPENSSL_INIT_SETTINGS *settings) {
+    return mock();
+}
