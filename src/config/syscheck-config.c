@@ -768,7 +768,10 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             continue;
         }
 
-        // Get absolute path
+        // Get absolute path cheking if the path is a drive without the backslash.
+        if (strlen(expandedpath) == 2) {
+            strcat(expandedpath, "\\");
+        }
         int retval = GetFullPathName(expandedpath, PATH_MAX, real_path, NULL);
 
         if (retval == 0) {
