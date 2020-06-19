@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 - Added support for MITRE ATT&CK knowledge base. ([#3746](https://github.com/wazuh/wazuh/pull/3746))
 - Added new configuration block for Windows Defender EventChannel. ([#5037](https://github.com/wazuh/wazuh/pull/5037))
 - Microsoft Software Update Catalog used by vulnerability detector added as a dependency. ([#5101](https://github.com/wazuh/wazuh/pull/5101))
+- Added support for `aarch64` and `armhf` architectures. ([#5030](https://github.com/wazuh/wazuh/pull/5030))
 
 ### Changed
 
@@ -28,7 +29,8 @@ All notable changes to this project will be documented in this file.
 - The NVD is now the primary feed for the vulnerability detector in Linux. ([#5097](https://github.com/wazuh/wazuh/pull/5097))
 - Removed OpenSCAP policies installation and configuration block. ([#5061](https://github.com/wazuh/wazuh/pull/5061))
 - Changed the internal configuration of Analysisd to be able to register by default a number of agents higher than 65536. ([#4332](https://github.com/wazuh/wazuh/pull/4332))
-- Change 'same/different_systemname' for 'same/different_system_name' in Analysisd static filters. ([#5131](https://github.com/wazuh/wazuh/pull/5131))
+- Changed `same/different_systemname` for `same/different_system_name` in Analysisd static filters. ([#5131](https://github.com/wazuh/wazuh/pull/5131))
+- Updated the internal Python interpreter from v3.7.2 to v3.8.2. ([#5030](https://github.com/wazuh/wazuh/pull/5030))
 
 
 ### Fixed
