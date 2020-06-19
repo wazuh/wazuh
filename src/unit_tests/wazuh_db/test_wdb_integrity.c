@@ -17,6 +17,7 @@
 #include "../headers/shared.h"
 #include "../os_crypto/sha1/sha1_op.h"
 #include "../external/sqlite/sqlite3.h"
+#include "../wrappers/externals/openssl/digest_wrappers.h"
 
 void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp);
 
@@ -57,25 +58,6 @@ int __wrap_sqlite3_step(sqlite3_stmt * stmt)
 const char * __wrap_sqlite3_errmsg(sqlite3 *db)
 {
     return mock_type(const char*);
-}
-
-int __wrap_EVP_DigestInit(EVP_MD_CTX *ctx, const EVP_MD *type)
-{
-    return mock();
-}
-
-int __wrap_EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *impl)
-{
-    return mock();
-}
-int __wrap_EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *d, size_t cnt)
-{
-    return mock();
-}
-
-int __wrap_EVP_DigestFinal_ex(EVP_MD_CTX *ctx, unsigned char *md, unsigned int *s)
-{
-    return mock();
 }
 
 const unsigned char * __wrap_sqlite3_column_text(sqlite3_stmt * stmt, int iCol)
@@ -640,6 +622,8 @@ void test_wdbi_query_checksum_equal_hexdigest(void **state)
     will_return(__wrap_wdb_stmt_cache, 0);
     will_return(__wrap_sqlite3_step, 100);
     will_return(__wrap_sqlite3_column_text, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    expect_string(__wrap_EVP_DigestUpdate, data, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    expect_value(__wrap_EVP_DigestUpdate, count, 40);
     will_return(__wrap_EVP_DigestUpdate, 0);
     will_return(__wrap_sqlite3_step, 101);
     will_return(__wrap_wdb_stmt_cache, -1);
@@ -686,6 +670,8 @@ void test_wdbi_query_checksum_check_left_no_tail(void **state)
     will_return(__wrap_wdb_stmt_cache, 0);
     will_return(__wrap_sqlite3_step, 100);
     will_return(__wrap_sqlite3_column_text, "something");
+    expect_string(__wrap_EVP_DigestUpdate, data, "something");
+    expect_value(__wrap_EVP_DigestUpdate, count, 9);
     will_return(__wrap_EVP_DigestUpdate, 0);
     will_return(__wrap_sqlite3_step, 101);
     will_return(__wrap_wdb_stmt_cache, -1);
@@ -709,6 +695,8 @@ void test_wdbi_query_checksum_check_left_ok(void **state)
     will_return(__wrap_wdb_stmt_cache, 0);
     will_return(__wrap_sqlite3_step, 100);
     will_return(__wrap_sqlite3_column_text, "something");
+    expect_string(__wrap_EVP_DigestUpdate, data, "something");
+    expect_value(__wrap_EVP_DigestUpdate, count, 9);    
     will_return(__wrap_EVP_DigestUpdate, 0);
     will_return(__wrap_sqlite3_step, 101);
     will_return(__wrap_wdb_stmt_cache, -1);

@@ -9,7 +9,15 @@
  */
 
 #include "digest_wrappers.h"
-#include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+
+int __wrap_EVP_DigestUpdate(__attribute__((unused)) EVP_MD_CTX *ctx,
+                            const void *data,
+                            size_t count) {
+   check_expected(data);
+   check_expected(count);
+   return mock();
+}

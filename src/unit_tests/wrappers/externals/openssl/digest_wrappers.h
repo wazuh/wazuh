@@ -12,7 +12,11 @@
 #ifndef DIGEST_WRAPPERS_H
 #define DIGEST_WRAPPERS_H
 
+#include <stddef.h>
+#include <openssl/evp.h>
 
-
+int __wrap_EVP_DigestUpdate(EVP_MD_CTX *ctx,
+                            const void *data,
+                            size_t count);
 
 #endif
