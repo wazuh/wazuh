@@ -87,6 +87,7 @@ installElasticsearch() {
         chmod +x searchguard/tools/sgtlstool.sh > /dev/null 2>&1
         ./searchguard/tools/sgtlstool.sh -c ./searchguard/search-guard.yml -ca -crt -t /etc/elasticsearch/certs/ > /dev/null 2>&1
         rm /etc/elasticsearch/certs/client-certificates.readme /etc/elasticsearch/certs/elasticsearch_elasticsearch_config_snippet.yml search-guard-tlstool-1.7.zip -f > /dev/null 2>&1
+        logger "Done"
     fi
     
     # Configure JVM options for Elasticsearch
@@ -96,22 +97,25 @@ installElasticsearch() {
     if [ ${ram} -eq "0" ]; then
         ram=1;
     fi    
-    sed -i "s/-Xms1g/-Xms${ram}g/" /etc/elasticsearch/jvm.options > /dev/null 2>&1
-    sed -i "s/-Xmx1g/-Xmx${ram}g/" /etc/elasticsearch/jvm.options > /dev/null 2>&1
 
+
+    conf="$(awk '{sub(/-Xms1g/,"-Xms'${ram}'g")}1' /etc/elasticsearch/jvm.options)"
+    echo "$conf" > /etc/elasticsearch/jvm.options
+    conf="$(awk '{sub(/-Xmx1g/,"-Xmx'${ram}'g")}1' /etc/elasticsearch/jvm.options)"
+    echo "$conf" > /etc/elasticsearch/jvm.options
     logger "Done"
 }
 
 configureElastic() {
 
-    conf="$(awk '{sub(/127.0.0.1/,"'$eip'")}1' /etc/elasticsearch/elasticsearch.yml)"
+    conf="$(awk '{sub(/127.0.0.1/,"'$ip'")}1' /etc/elasticsearch/elasticsearch.yml)"
     echo "$conf" > /etc/elasticsearch/elasticsearch.yml
 
 }
 
 configureKibana() {
 
-    conf="$(awk '{sub(/0.0.0.0/,"'$eip'")}1' /etc/kibana/kibana.yml)"
+    conf="$(awk '{sub(/0.0.0.0/,"'$ip'")}1' /etc/kibana/kibana.yml)"
     echo "$conf" > /etc/kibana/kibana.yml
 
 }
@@ -169,15 +173,15 @@ main() {
                 installKibana
                 shift 1
                 ;;
-            "-eip"|"--elasticsearch-ip")        
-                eip="$2"
+            "-ip"|"--elasticsearch-ip")        
+                ip="$2"
                 if [ -n "$e" ]
                 then
-                    configureElastic $eip
+                    configureElastic $ip
                 fi
                 if [ -n "$k" ]
                 then
-                    configureKibana $eip
+                    configureKibana $ip
                 fi
                 shift
                 shift
