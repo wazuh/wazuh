@@ -13,6 +13,45 @@ logger() {
     echo $1
 }
 
+startService() {
+
+if [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
+    systemctl daemon-reload > /dev/null 2>&1
+    systemctl enable $1.service > /dev/null 2>&1
+    systemctl start $1.service > /dev/null 2>&1
+    if [  "$?" != 0  ]
+    then
+        echo "${1^} could not be started."
+        exit 1;
+    else
+        echo "${1^} started"
+    fi  
+elif [ -x /etc/rc.d/init.d/$1 ] ; then
+    /etc/rc.d/init.d/$1 start > /dev/null 2>&1
+    if [  "$?" != 0  ]
+    then
+        echo "${1^} could not be started."
+        exit 1;
+    else
+        echo "${1^} started"
+    fi       
+elif [ -n "$(ps -e | egrep ^\ *1\ .*init$)" ]; then
+    chkconfig $1 on > /dev/null 2>&1
+    service $1 start > /dev/null 2>&1
+    /etc/init.d/$1 start > /dev/null 2>&1
+    if [  "$?" != 0  ]
+    then
+        echo "${1^} could not be started."
+        exit 1;
+    else
+        echo "${1^} started"
+    fi       
+else
+    echo "Error: ${1^} could not start. No service manager found on the system."
+    exit 1;
+fi
+}
+
 
 ## Install the required packages for the installation
 installPrerequisites() {
@@ -111,20 +150,7 @@ installElasticsearch() {
     sed -i "s/-Xmx1g/-Xmx${ram}g/" /etc/elasticsearch/jvm.options > /dev/null 2>&1
 
     # Start Elasticsearch
-    if [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
-        systemctl daemon-reload > /dev/null 2>&1
-        systemctl enable elasticsearch.service > /dev/null 2>&1
-        systemctl start elasticsearch.service > /dev/null 2>&1
-    elif [ -x /etc/rc.d/init.d/elasticsearch ] ; then
-        /etc/rc.d/init.d/elasticsearch start > /dev/null 2>&1
-    elif [ -n "$(ps -e | egrep ^\ *1\ .*init$)" ]; then
-        chkconfig elasticsearch on > /dev/null 2>&1
-        service elasticsearch start > /dev/null 2>&1
-        /etc/init.d/elasticsearch start > /dev/null 2>&1
-    else
-        echo "Error: Elasticsearch could not start. No service manager found on the system."
-        exit 1;
-    fi
+    startService "elasticsearch"
 
     until $(curl -XGET https://localhost:9200/ -uadmin:admin -k --max-time 300 --silent --output /dev/null); do
         echo "Waiting for Elasticsearch..."
@@ -152,19 +178,7 @@ installFilebeat() {
     mv /etc/elasticsearch/certs/filebeat* /etc/filebeat/certs/ > /dev/null 2>&1
 
     # Start Filebeat
-    if [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
-        systemctl daemon-reload > /dev/null 2>&1
-        systemctl enable filebeat.service > /dev/null 2>&1
-        systemctl start filebeat.service > /dev/null 2>&1
-    elif [ -x /etc/rc.d/init.d/filebeat ] ; then
-        /etc/rc.d/init.d/filebeat start > /dev/null 2>&1
-    elif [ -n "$(ps -e | egrep ^\ *1\ .*init$)" ]; then
-        chkconfig filebeat on > /dev/null 2>&1
-        /etc/init.d/filebeat start > /dev/null 2>&1
-    else
-        echo "Error: Filebeat could not start. No service manager found on the system."
-        exit 1;
-    fi
+    startService "filebeat"
 
     logger "Done"
 }
@@ -183,19 +197,7 @@ installKibana() {
     setcap 'cap_net_bind_service=+ep' /usr/share/kibana/node/bin/node > /dev/null 2>&1
 
     # Start Kibana
-    if [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
-        systemctl daemon-reload > /dev/null 2>&1
-        systemctl enable kibana.service > /dev/null 2>&1
-        systemctl start kibana.service > /dev/null 2>&1
-    elif [ -x /etc/rc.d/init.d/kibana ] ; then
-        /etc/rc.d/init.d/kibana start > /dev/null 2>&1
-    elif [ -n "$(ps -e | egrep ^\ *1\ .*init$)" ]; then
-        chkconfig kibana on > /dev/null 2>&1
-        /etc/init.d/kibana start > /dev/null 2>&1
-    else
-        echo "Error: Kibana could not start. No service manager found on the system."
-        exit 1;
-    fi
+    startService "kibana"
 
     logger "Done"
 }
