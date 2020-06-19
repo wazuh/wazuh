@@ -3553,7 +3553,6 @@ stages:
            - count: !anyint
              os:
                platform: !anystr
-           - count: !anyint
          failed_items: []
          total_affected_items: !anyint
          total_failed_items: 0
