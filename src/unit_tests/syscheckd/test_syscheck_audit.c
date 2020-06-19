@@ -14,13 +14,15 @@
 #include <stdio.h>
 
 #include "../wrappers/common.h"
-#include "../wrappers/externals/openssl/rehash_wrappers.h"
-#include "../wrappers/externals/audit/libaudit_wrappers.h"
-#include "../wrappers/externals/procpc/readproc_wrappers.h"
 #include "syscheckd/syscheck.h"
-#include "external/procps/readproc.h"
 
 #if defined(TEST_SERVER) || defined(TEST_AGENT)
+
+#include "../wrappers/externals/audit/libaudit_wrappers.h"
+#include "../wrappers/externals/openssl/rehash_wrappers.h"
+#include "../wrappers/externals/procpc/readproc_wrappers.h"
+#include "external/procps/readproc.h"
+
 extern volatile int audit_health_check_deletion;
 
 /* redefinitons/wrapping */

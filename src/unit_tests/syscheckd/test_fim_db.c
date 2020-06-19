@@ -16,6 +16,7 @@
 
 #include "../wrappers/common.h"
 #include "../wrappers/externals/openssl/digest_wrappers.h"
+#include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
 #include "../syscheckd/fim_db.h"
 #include "../config/syscheck-config.h"
 
@@ -152,93 +153,6 @@ int __wrap_usleep(useconds_t usec) {
 
 #endif
 
-int __wrap_sqlite3_open_v2(
-  const char *filename,   /* Database filename (UTF-8) */
-  sqlite3 **ppDb,         /* OUT: SQLite db handle */
-  int flags,              /* Flags */
-  const char *zVfs        /* Name of VFS module to use */
-) {
-    check_expected(filename);
-    check_expected(flags);
-    *ppDb = mock_type(sqlite3 *);
-    return mock();
-}
-
-int __wrap_sqlite3_exec(
-  sqlite3* db,                                  /* An open database */
-  const char *sql,                           /* SQL to be evaluated */
-  int (*callback)(void*,int,char**,char**),  /* Callback function */
-  void *arg,                                    /* 1st argument to callback */
-  char **errmsg                              /* Error msg written here */
-) {
-    check_expected(sql);
-    *errmsg = mock_ptr_type(char *);
-    return mock();
-}
-
-int __wrap_sqlite3_prepare_v2(
-  sqlite3 *db,            /* Database handle */
-  const char *zSql,       /* SQL statement, UTF-8 encoded */
-  int nByte,              /* Maximum length of zSql in bytes. */
-  sqlite3_stmt **ppStmt,  /* OUT: Statement handle */
-  const char **pzTail     /* OUT: Pointer to unused portion of zSql */
-){
-    if(pzTail){
-        *pzTail = 0;
-    }
-    return mock();
-}
-
-int __wrap_sqlite3_step(sqlite3_stmt* ptr) {
-    return mock();
-}
-
-int __wrap_sqlite3_finalize(sqlite3_stmt *pStmt) {
-    return mock();
-}
-
-int __wrap_sqlite3_close_v2(sqlite3* ptr){
-    return mock();
-}
-
-void __wrap_sqlite3_free(void* ptr) {
-   return;
-}
-
-int __wrap_sqlite3_reset(sqlite3_stmt *pStmt) {
-    return mock();
-}
-
-int __wrap_sqlite3_clear_bindings(sqlite3_stmt* pStmt) {
-    return mock();
-}
-
-const char *__wrap_sqlite3_errmsg(sqlite3* db){
-    return mock_ptr_type(const char *);
-}
-
-int __wrap_sqlite3_bind_int(sqlite3_stmt* pStmt, int a, int b) {
-    return mock();
-}
-
-int __wrap_sqlite3_bind_text(sqlite3_stmt* pStmt,int a,const char* b,int c,void *d ) {
-    return mock();
-}
-
-int __wrap_sqlite3_column_int(sqlite3_stmt* pStmt, int iCol) {
-    check_expected(iCol);
-    return mock();
-}
-
-const char *__wrap_sqlite3_column_text(sqlite3_stmt* pStmt, int iCol) {
-    check_expected(iCol);
-    return mock_ptr_type(const char *);
-}
-
-int __wrap_sqlite3_last_insert_rowid(sqlite3* db){
-    return mock();
-}
-
 void __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...)
 {
     char formatted_msg[OS_MAXSTR];
@@ -314,15 +228,6 @@ int __wrap_delete_target_file() {
     return 1;
 }
 
-int __wrap_sqlite3_bind_int64(sqlite3_stmt *stmt, int index, sqlite3_int64 value) {
-    return mock();
-}
-
-sqlite3_int64 __wrap_sqlite3_column_int64(sqlite3_stmt* stmt, int iCol) {
-    check_expected(iCol);
-    return mock();
-}
-
 #ifdef TEST_AGENT
 char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
 
@@ -392,7 +297,6 @@ static void wraps_fim_db_create_file() {
     will_return(__wrap_sqlite3_finalize, 0);
     will_return(__wrap_sqlite3_close_v2,0);
     will_return(__wrap_chmod, 0);
-
 }
 
 /**
@@ -424,45 +328,45 @@ static void wraps_fim_db_check_transaction() {
  * Successfully wrappes a fim_db_decode_full_row() call
  * */
 static void wraps_fim_db_decode_full_row() {
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    expect_value(__wrap_sqlite3_column_text, i, 0);
     will_return(__wrap_sqlite3_column_text, "/some/random/path"); // path
-    expect_value(__wrap_sqlite3_column_int, iCol, 2);
+    expect_value(__wrap_sqlite3_column_int, i, 2);
     will_return(__wrap_sqlite3_column_int, 1); // mode
-    expect_value(__wrap_sqlite3_column_int, iCol, 3);
+    expect_value(__wrap_sqlite3_column_int, i, 3);
     will_return(__wrap_sqlite3_column_int, 1000000); // last_event
-    expect_value(__wrap_sqlite3_column_int, iCol, 4);
+    expect_value(__wrap_sqlite3_column_int, i, 4);
     will_return(__wrap_sqlite3_column_int, 2); // entry_type
-    expect_value(__wrap_sqlite3_column_int, iCol, 5);
+    expect_value(__wrap_sqlite3_column_int, i, 5);
     will_return(__wrap_sqlite3_column_int, 1000001); // scanned
-    expect_value(__wrap_sqlite3_column_int, iCol, 6);
+    expect_value(__wrap_sqlite3_column_int, i, 6);
     will_return(__wrap_sqlite3_column_int, 1000002); // options
-    expect_value(__wrap_sqlite3_column_text, iCol, 7);
+    expect_value(__wrap_sqlite3_column_text, i, 7);
     will_return(__wrap_sqlite3_column_text, "checksum"); // checksum
-    expect_value(__wrap_sqlite3_column_int, iCol, 8);
+    expect_value(__wrap_sqlite3_column_int, i, 8);
     will_return(__wrap_sqlite3_column_int, 111); // dev
     expect_value(__wrap_sqlite3_column_int64, iCol, 9);
     will_return(__wrap_sqlite3_column_int64, 1024); // inode
-    expect_value(__wrap_sqlite3_column_int, iCol, 10);
+    expect_value(__wrap_sqlite3_column_int, i, 10);
     will_return(__wrap_sqlite3_column_int, 4096); // size
-    expect_value_count(__wrap_sqlite3_column_text, iCol, 11, 2);
+    expect_value_count(__wrap_sqlite3_column_text, i, 11, 2);
     will_return_count(__wrap_sqlite3_column_text, "perm",2); // perm
-    expect_value_count(__wrap_sqlite3_column_text, iCol, 12, 2);
+    expect_value_count(__wrap_sqlite3_column_text, i, 12, 2);
     will_return_count(__wrap_sqlite3_column_text, "attributes", 2); // attributes
-    expect_value_count(__wrap_sqlite3_column_text, iCol, 13, 2);
+    expect_value_count(__wrap_sqlite3_column_text, i, 13, 2);
     will_return_count(__wrap_sqlite3_column_text, "uid", 2); // uid
-    expect_value_count(__wrap_sqlite3_column_text, iCol, 14, 2);
+    expect_value_count(__wrap_sqlite3_column_text, i, 14, 2);
     will_return_count(__wrap_sqlite3_column_text, "gid", 2); // gid
-    expect_value_count(__wrap_sqlite3_column_text, iCol, 15, 2);
+    expect_value_count(__wrap_sqlite3_column_text, i, 15, 2);
     will_return_count(__wrap_sqlite3_column_text, "user_name", 2); // user_name
-    expect_value_count(__wrap_sqlite3_column_text, iCol, 16, 2);
+    expect_value_count(__wrap_sqlite3_column_text, i, 16, 2);
     will_return_count(__wrap_sqlite3_column_text, "group_name", 2); // group_name
-    expect_value(__wrap_sqlite3_column_text, iCol, 17);
+    expect_value(__wrap_sqlite3_column_text, i, 17);
     will_return(__wrap_sqlite3_column_text, "hash_md5"); // hash_md5
-    expect_value(__wrap_sqlite3_column_text, iCol, 18);
+    expect_value(__wrap_sqlite3_column_text, i, 18);
     will_return(__wrap_sqlite3_column_text, "hash_sha1"); // hash_sha1
-    expect_value(__wrap_sqlite3_column_text, iCol, 19);
+    expect_value(__wrap_sqlite3_column_text, i, 19);
     will_return(__wrap_sqlite3_column_text, "hash_sha256"); // hash_sha256
-    expect_value(__wrap_sqlite3_column_int, iCol, 20);
+    expect_value(__wrap_sqlite3_column_int, i, 20);
     will_return(__wrap_sqlite3_column_int, 12345678); // mtime
 }
 
@@ -471,6 +375,8 @@ static void wraps_fim_db_decode_full_row() {
  * Successfully wrappes a wraps_fim_db_insert_data() call
  * */
 static void wraps_fim_db_insert_data_success(int row_id) {
+    expect_any(__wrap_sqlite3_bind_int64, index);
+    expect_any(__wrap_sqlite3_bind_int64, value);
     will_return(__wrap_sqlite3_bind_int64, 0);
 
     will_return(__wrap_sqlite3_reset, SQLITE_OK);
@@ -946,10 +852,16 @@ void test_fim_db_insert_data_no_rowid_error(void **state) {
 
     //Inside fim_db_bind_insert_data
     {
+        expect_any_always(__wrap_sqlite3_bind_int, index);
+        expect_any_always(__wrap_sqlite3_bind_int, value);
         will_return_always(__wrap_sqlite3_bind_int, 0);
         #ifndef TEST_WINAGENT
+        expect_any_always(__wrap_sqlite3_bind_int64, index);
+        expect_any_always(__wrap_sqlite3_bind_int64, value);
         will_return_always(__wrap_sqlite3_bind_int64, 0);
         #endif
+        expect_any_always(__wrap_sqlite3_bind_text, a);
+        expect_any_always(__wrap_sqlite3_bind_text, b);
         will_return_always(__wrap_sqlite3_bind_text, 0);
     }
 
@@ -976,10 +888,16 @@ void test_fim_db_insert_data_no_rowid_success(void **state) {
 
     //Inside fim_db_bind_insert_data
     {
+        expect_any_always(__wrap_sqlite3_bind_int, index);
+        expect_any_always(__wrap_sqlite3_bind_int, value);
         will_return_always(__wrap_sqlite3_bind_int, 0);
         #ifndef TEST_WINAGENT
+        expect_any_always(__wrap_sqlite3_bind_int64, index);
+        expect_any_always(__wrap_sqlite3_bind_int64, value);
         will_return_always(__wrap_sqlite3_bind_int64, 0);
         #endif
+        expect_any_always(__wrap_sqlite3_bind_text, a);
+        expect_any_always(__wrap_sqlite3_bind_text, b);
         will_return_always(__wrap_sqlite3_bind_text, 0);
     }
 
@@ -996,7 +914,11 @@ void test_fim_db_insert_data_rowid_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return(__wrap_sqlite3_reset, SQLITE_OK);
     will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_int, index);
+    expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, 0);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
@@ -1012,7 +934,11 @@ void test_fim_db_insert_data_rowid_success(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return(__wrap_sqlite3_reset, SQLITE_OK);
     will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_int, index);
+    expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, 0);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
     int ret;
@@ -1027,7 +953,11 @@ void test_fim_db_insert_path_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return(__wrap_sqlite3_reset, SQLITE_OK);
     will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_int, index);
+    expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, 0);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
@@ -1041,7 +971,11 @@ void test_fim_db_insert_path_constraint_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_int, index);
+    expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, 0);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_CONSTRAINT);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
@@ -1056,7 +990,11 @@ void test_fim_db_insert_path_constraint_success(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_int, index);
+    expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, 0);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_CONSTRAINT);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
@@ -1069,7 +1007,11 @@ void test_fim_db_insert_path_success(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_int, index);
+    expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, 0);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
     int ret;
@@ -1090,11 +1032,17 @@ void test_fim_db_insert_error(void **state) {
     }
 
     #ifdef TEST_WINAGENT
+    expect_any(__wrap_sqlite3_bind_text, a);
+    expect_any(__wrap_sqlite3_bind_text, b);
     will_return(__wrap_sqlite3_bind_text, 0);
     #else
     // Inside fim_db_bind_get_inode
     {
+        expect_any(__wrap_sqlite3_bind_int64, index);
+        expect_any(__wrap_sqlite3_bind_int64, value);
         will_return(__wrap_sqlite3_bind_int64, 0);
+        expect_any(__wrap_sqlite3_bind_int, index);
+        expect_any(__wrap_sqlite3_bind_int, value);
         will_return(__wrap_sqlite3_bind_int, 0);
     }
     #endif
@@ -1126,7 +1074,7 @@ void test_fim_db_insert_db_full(void **state) {
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    expect_value(__wrap_sqlite3_column_int, i, 0);
     will_return(__wrap_sqlite3_column_int, 50000);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Couldn't insert '/test/path' entry into DB. The DB is full, please check your configuration.");
@@ -1145,11 +1093,15 @@ void test_fim_db_insert_inode_id_nonull(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return(__wrap_sqlite3_reset, SQLITE_OK);
     will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_int, index);
+    expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, 0);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);    // Needed for fim_db_insert_path()
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    expect_value(__wrap_sqlite3_column_int, i, 0);
     will_return(__wrap_sqlite3_column_int, 1);
 
     // Wrap functions for fim_db_insert_data() & fim_db_insert_path()
@@ -1168,8 +1120,14 @@ void test_fim_db_insert_inode_id_null(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 2);
     will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 2);
+    expect_any_always(__wrap_sqlite3_bind_int, index);
+    expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, 0);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
+    expect_any(__wrap_sqlite3_bind_int64, index);
+    expect_any(__wrap_sqlite3_bind_int64, value);
     will_return(__wrap_sqlite3_bind_int64, 0);
 
     will_return_count(__wrap_sqlite3_step, SQLITE_DONE, 2);
@@ -1190,8 +1148,14 @@ void test_fim_db_insert_inode_id_null_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 2);
     will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 2);
+    expect_any_always(__wrap_sqlite3_bind_int, index);
+    expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, 0);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
+    expect_any(__wrap_sqlite3_bind_int64, index);
+    expect_any(__wrap_sqlite3_bind_int64, value);
     will_return(__wrap_sqlite3_bind_int64, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
@@ -1209,8 +1173,14 @@ void test_fim_db_insert_inode_id_null_delete(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 4);
     will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 4);
+    expect_any_always(__wrap_sqlite3_bind_int, index);
+    expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, 0);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
+    expect_any(__wrap_sqlite3_bind_int64, index);
+    expect_any(__wrap_sqlite3_bind_int64, value);
     will_return(__wrap_sqlite3_bind_int64, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
@@ -1221,7 +1191,7 @@ void test_fim_db_insert_inode_id_null_delete(void **state) {
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    expect_value(__wrap_sqlite3_column_int, i, 0);
     will_return(__wrap_sqlite3_column_int, 1);
 
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
@@ -1244,8 +1214,15 @@ void test_fim_db_insert_inode_id_null_delete_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 4);
     will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 4);
+    expect_any_always(__wrap_sqlite3_bind_int, index);
+    expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, 0);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
+    
+    expect_any(__wrap_sqlite3_bind_int64, index);
+    expect_any(__wrap_sqlite3_bind_int64, value);
     will_return(__wrap_sqlite3_bind_int64, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
@@ -1256,7 +1233,7 @@ void test_fim_db_insert_inode_id_null_delete_error(void **state) {
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    expect_value(__wrap_sqlite3_column_int, i, 0);
     will_return(__wrap_sqlite3_column_int, 1);
 
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
@@ -1273,8 +1250,15 @@ void test_fim_db_insert_inode_id_null_delete_row_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 3);
     will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 3);
+    expect_any_always(__wrap_sqlite3_bind_int, index);
+    expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, 0);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
+    
+    expect_any(__wrap_sqlite3_bind_int64, index);
+    expect_any(__wrap_sqlite3_bind_int64, value);
     will_return(__wrap_sqlite3_bind_int64, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
@@ -1305,11 +1289,13 @@ void test_fim_db_remove_path_no_entry(void **state) {
     #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    expect_value(__wrap_sqlite3_column_int, i, 0);
     will_return(__wrap_sqlite3_column_int, 0);
-    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    expect_value(__wrap_sqlite3_column_int, i, 1);
     will_return(__wrap_sqlite3_column_int, 1);
     wraps_fim_db_check_transaction();
     time_t last_commit =  test_data->fim_sql->transaction.last_commit;
@@ -1327,12 +1313,16 @@ void test_fim_db_remove_path_one_entry(void **state) {
     #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_int, index);
+    expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, 0);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    expect_value(__wrap_sqlite3_column_int, i, 0);
     will_return(__wrap_sqlite3_column_int, 1);
-    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    expect_value(__wrap_sqlite3_column_int, i, 1);
     will_return(__wrap_sqlite3_column_int, 1);
     will_return_count(__wrap_sqlite3_step, SQLITE_DONE, 2);
     wraps_fim_db_check_transaction();
@@ -1351,12 +1341,16 @@ void test_fim_db_remove_path_one_entry_step_fail(void **state) {
     #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_int, index);
+    expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, 0);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    expect_value(__wrap_sqlite3_column_int, i, 0);
     will_return(__wrap_sqlite3_column_int, 1);
-    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    expect_value(__wrap_sqlite3_column_int, i, 1);
     will_return(__wrap_sqlite3_column_int, 1);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     wraps_fim_db_check_transaction();
@@ -1377,12 +1371,16 @@ void test_fim_db_remove_path_one_entry_alert_fail(void **state) {
     #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_int, index);
+    expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, 0);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    expect_value(__wrap_sqlite3_column_int, i, 0);
     will_return(__wrap_sqlite3_column_int, 1);
-    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    expect_value(__wrap_sqlite3_column_int, i, 1);
     will_return(__wrap_sqlite3_column_int, 1);
     will_return_count(__wrap_sqlite3_step, SQLITE_DONE, 2);
 
@@ -1411,12 +1409,16 @@ void test_fim_db_remove_path_one_entry_alert_fail_invalid_pos(void **state) {
     #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_int, index);
+    expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, 0);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    expect_value(__wrap_sqlite3_column_int, i, 0);
     will_return(__wrap_sqlite3_column_int, 1);
-    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    expect_value(__wrap_sqlite3_column_int, i, 1);
     will_return(__wrap_sqlite3_column_int, 1);
     will_return_count(__wrap_sqlite3_step, SQLITE_DONE, 2);
     will_return(__wrap_fim_configuration_directory, -1);
@@ -1437,12 +1439,16 @@ void test_fim_db_remove_path_one_entry_alert_success(void **state) {
     #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_int, index);
+    expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, 0);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    expect_value(__wrap_sqlite3_column_int, i, 0);
     will_return(__wrap_sqlite3_column_int, 1);
-    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    expect_value(__wrap_sqlite3_column_int, i, 1);
     will_return(__wrap_sqlite3_column_int, 1);
     will_return_count(__wrap_sqlite3_step, SQLITE_DONE, 2);
 
@@ -1473,11 +1479,13 @@ void test_fim_db_remove_path_multiple_entry(void **state) {
     #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    expect_value(__wrap_sqlite3_column_int, i, 0);
     will_return(__wrap_sqlite3_column_int, 5);
-    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    expect_value(__wrap_sqlite3_column_int, i, 1);
     will_return(__wrap_sqlite3_column_int, 1);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
     wraps_fim_db_check_transaction();
@@ -1496,11 +1504,13 @@ void test_fim_db_remove_path_multiple_entry_step_fail(void **state) {
     #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    expect_value(__wrap_sqlite3_column_int, i, 0);
     will_return(__wrap_sqlite3_column_int, 5);
-    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    expect_value(__wrap_sqlite3_column_int, i, 1);
     will_return(__wrap_sqlite3_column_int, 1);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     wraps_fim_db_check_transaction();
@@ -1519,8 +1529,9 @@ void test_fim_db_remove_path_failed_path(void **state) {
     #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    will_return_maybe(__wrap_sqlite3_bind_int, 0);
-    will_return_maybe(__wrap_sqlite3_bind_text, 0);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
+    will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     expect_string(__wrap_sqlite3_exec, sql, "END;");
     will_return(__wrap_sqlite3_exec, "ERROR MESSAGE");
@@ -1550,11 +1561,13 @@ void test_fim_db_remove_path_no_entry_realtime_file(void **state) {
     #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    expect_value(__wrap_sqlite3_column_int, i, 0);
     will_return(__wrap_sqlite3_column_int, 0);
-    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    expect_value(__wrap_sqlite3_column_int, i, 1);
     will_return(__wrap_sqlite3_column_int, 1);
     wraps_fim_db_check_transaction();
     time_t last_commit =  test_data->fim_sql->transaction.last_commit;
@@ -1572,11 +1585,13 @@ void test_fim_db_remove_path_no_entry_scheduled_file(void **state) {
     #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    expect_value(__wrap_sqlite3_column_int, i, 0);
     will_return(__wrap_sqlite3_column_int, 0);
-    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    expect_value(__wrap_sqlite3_column_int, i, 1);
     will_return(__wrap_sqlite3_column_int, 1);
     wraps_fim_db_check_transaction();
     time_t last_commit =  test_data->fim_sql->transaction.last_commit;
@@ -1591,8 +1606,9 @@ void test_fim_db_get_path_inexistent(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    will_return_maybe(__wrap_sqlite3_bind_int, 0);
-    will_return_maybe(__wrap_sqlite3_bind_text, 0);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
+    will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     fim_entry *ret = fim_db_get_path(test_data->fim_sql, test_data->entry->path);
     state[1] = ret;
@@ -1603,8 +1619,9 @@ void test_fim_db_get_path_existent(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    will_return_maybe(__wrap_sqlite3_bind_int, 0);
-    will_return_maybe(__wrap_sqlite3_bind_text, 0);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
+    will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     wraps_fim_db_decode_full_row();
     fim_entry *ret = fim_db_get_path(test_data->fim_sql, test_data->entry->path);
@@ -1679,6 +1696,8 @@ void test_fim_db_get_path_range_success(void **state) {
     will_return(__wrap_fopen, 1);
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
@@ -1921,7 +1940,11 @@ void test_fim_db_get_paths_from_inode_none_path(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 2);
     will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 2);
+    expect_any_always(__wrap_sqlite3_bind_int, index);
+    expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, 0);
+    expect_any_always(__wrap_sqlite3_bind_int64, index);
+    expect_any_always(__wrap_sqlite3_bind_int64, value);
     will_return_always(__wrap_sqlite3_bind_int64, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
     wraps_fim_db_check_transaction();
@@ -1935,13 +1958,17 @@ void test_fim_db_get_paths_from_inode_single_path(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 2);
     will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 2);
+    expect_any_always(__wrap_sqlite3_bind_int, index);
+    expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, 0);
+    expect_any_always(__wrap_sqlite3_bind_int64, index);
+    expect_any_always(__wrap_sqlite3_bind_int64, value);
     will_return_always(__wrap_sqlite3_bind_int64, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    expect_value(__wrap_sqlite3_column_int, i, 0);
     will_return(__wrap_sqlite3_column_int, 1);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    expect_value(__wrap_sqlite3_column_text, i, 0);
     will_return(__wrap_sqlite3_column_text, "Path 1");
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
     wraps_fim_db_check_transaction();
@@ -1956,17 +1983,21 @@ void test_fim_db_get_paths_from_inode_multiple_path(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 2);
     will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 2);
+    expect_any_always(__wrap_sqlite3_bind_int, index);
+    expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, 0);
+    expect_any_always(__wrap_sqlite3_bind_int64, index);
+    expect_any_always(__wrap_sqlite3_bind_int64, value);
     will_return_always(__wrap_sqlite3_bind_int64, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    expect_value(__wrap_sqlite3_column_int, i, 0);
     will_return(__wrap_sqlite3_column_int, 5);
     int i;
     char buffers[5][10];
     for(i = 0; i < sizeof(buffers)/10; i++) {
         // Generate 5 paths
         will_return(__wrap_sqlite3_step, SQLITE_ROW);
-        expect_value(__wrap_sqlite3_column_text, iCol, 0);
+        expect_value(__wrap_sqlite3_column_text, i, 0);
         snprintf(buffers[i], 10, "Path %d", i + 1);
         will_return(__wrap_sqlite3_column_text, buffers[i]);
     }
@@ -1989,17 +2020,21 @@ void test_fim_db_get_paths_from_inode_multiple_unamatched_rows(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return_count(__wrap_sqlite3_reset, SQLITE_OK, 2);
     will_return_count(__wrap_sqlite3_clear_bindings, SQLITE_OK, 2);
+    expect_any_always(__wrap_sqlite3_bind_int, index);
+    expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, 0);
+    expect_any_always(__wrap_sqlite3_bind_int64, index);
+    expect_any_always(__wrap_sqlite3_bind_int64, value);
     will_return_always(__wrap_sqlite3_bind_int64, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    expect_value(__wrap_sqlite3_column_int, i, 0);
     will_return(__wrap_sqlite3_column_int, 5);
     int i;
     char buffers[5][10];
     for(i = 0; i < sizeof(buffers)/10; i++) {
         // Generate 5 paths
         will_return(__wrap_sqlite3_step, SQLITE_ROW);
-        expect_value(__wrap_sqlite3_column_text, iCol, 0);
+        expect_value(__wrap_sqlite3_column_text, i, 0);
         snprintf(buffers[i], 10, "Path %d", i + 1);
         will_return(__wrap_sqlite3_column_text, buffers[i]);
     }
@@ -2021,6 +2056,8 @@ void test_fim_db_data_checksum_range_first_half_failed(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return(__wrap_sqlite3_reset, SQLITE_OK);
     will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
@@ -2034,6 +2071,8 @@ void test_fim_db_data_checksum_range_second_half_failed(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return(__wrap_sqlite3_reset, SQLITE_OK);
     will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
 
     // First half
@@ -2057,6 +2096,8 @@ void test_fim_db_data_checksum_range_null_path(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return(__wrap_sqlite3_reset, SQLITE_OK);
     will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
 
     // Fist half
@@ -2077,6 +2118,8 @@ void test_fim_db_data_checksum_range_success(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return(__wrap_sqlite3_reset, SQLITE_OK);
     will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
 
     // Fist half
@@ -2132,7 +2175,7 @@ void test_fim_db_get_row_path_sqlite_row(void **state) {
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    expect_value(__wrap_sqlite3_column_text, i, 0);
     will_return(__wrap_sqlite3_column_text, "/some/random/path");
 
     ret = fim_db_get_row_path(test_data->fim_sql, FIMDB_STMT_GET_FIRST_PATH, &path);
@@ -2169,6 +2212,8 @@ void test_fim_db_get_count_range_error_stepping(void **state) {
     will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
 
     // Inside fim_db_bind_range
+    expect_any_count(__wrap_sqlite3_bind_text, a, 2);
+    expect_any_count(__wrap_sqlite3_bind_text, b, 2);
     will_return_count(__wrap_sqlite3_bind_text, 0, 2);
 
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
@@ -2192,11 +2237,13 @@ void test_fim_db_get_count_range_success(void **state) {
     will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
 
     // Inside fim_db_bind_range
+    expect_any_count(__wrap_sqlite3_bind_text, a, 2);
+    expect_any_count(__wrap_sqlite3_bind_text, b, 2);
     will_return_count(__wrap_sqlite3_bind_text, 0, 2);
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    expect_value(__wrap_sqlite3_column_int, i, 0);
     will_return(__wrap_sqlite3_column_int, 15);
 
     ret = fim_db_get_count_range(test_data->fim_sql, "begin", "top", &count);
@@ -2255,6 +2302,8 @@ void test_fim_db_sync_path_range_disk(void **state) {
 #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     wraps_fim_db_decode_full_row();
@@ -2281,6 +2330,8 @@ void test_fim_db_sync_path_range_memory(void **state) {
 
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     wraps_fim_db_decode_full_row();
@@ -2318,15 +2369,17 @@ void test_fim_db_delete_range_success(void **state) {
 #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     wraps_fim_db_decode_full_row();
 
     // Inside fim_db_remove_path (callback)
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    expect_value(__wrap_sqlite3_column_int, i, 0);
     will_return(__wrap_sqlite3_column_int, 5);
-    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    expect_value(__wrap_sqlite3_column_int, i, 1);
     will_return(__wrap_sqlite3_column_int, 1);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
     wraps_fim_db_check_transaction();
@@ -2354,6 +2407,8 @@ void test_fim_db_delete_range_error(void **state) {
 #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     wraps_fim_db_decode_full_row();
@@ -2411,6 +2466,8 @@ void test_fim_db_delete_not_scanned(void **state) {
 #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     wraps_fim_db_decode_full_row();
@@ -2445,6 +2502,8 @@ void test_fim_db_process_missing_entry(void **state) {
 #endif
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_text, a);
+    expect_any_always(__wrap_sqlite3_bind_text, b);
     will_return_always(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     wraps_fim_db_decode_full_row();
@@ -2597,7 +2656,7 @@ void test_fim_db_get_count_entry_data(void **state) {
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    expect_value(__wrap_sqlite3_column_int, i, 0);
     will_return(__wrap_sqlite3_column_int, 1);
 
     int ret = fim_db_get_count_entry_data(test_data->fim_sql);
@@ -2629,7 +2688,7 @@ void test_fim_db_get_count_entry_path(void **state) {
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
 
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    expect_value(__wrap_sqlite3_column_int, i, 0);
     will_return(__wrap_sqlite3_column_int, 1);
 
     int ret = fim_db_get_count_entry_path(test_data->fim_sql);
@@ -2691,6 +2750,8 @@ void test_fim_db_set_scanned_error(void **state) {
 
     will_return(__wrap_sqlite3_reset, SQLITE_OK);
     will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any(__wrap_sqlite3_bind_text, a);
+    expect_any(__wrap_sqlite3_bind_text, b);
     will_return(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
@@ -2705,6 +2766,8 @@ void test_fim_db_set_scanned_success(void **state) {
 
     will_return(__wrap_sqlite3_reset, SQLITE_OK);
     will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any(__wrap_sqlite3_bind_text, a);
+    expect_any(__wrap_sqlite3_bind_text, b);
     will_return(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
