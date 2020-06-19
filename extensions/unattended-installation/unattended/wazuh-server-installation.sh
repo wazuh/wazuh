@@ -45,7 +45,7 @@ addWazuhrepo() {
         echo -e '[wazuh_trash]\ngpgcheck=1\ngpgkey=https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages-dev.wazuh.com/trash/yum/\nprotect=1' | tee /etc/yum.repos.d/wazuh_pre.repo > /dev/null 2>&1
     elif [ $sys_type == "apt-get" ] 
     then
-        curl -s https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH | apt-key add - > /dev/null 2>&1
+        curl -s https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH --max-time 300 | apt-key add - > /dev/null 2>&1
         echo "deb https://packages-dev.wazuh.com/trash/apt/ unstable main" | tee -a /etc/apt/sources.list.d/wazuh_trash.list > /dev/null 2>&1
         apt-get update -q > /dev/null 2>&1
     fi    
@@ -59,10 +59,10 @@ installWazuh() {
 
     if [ $sys_type == "yum" ] 
     then
-        curl -sL https://rpm.nodesource.com/setup_10.x | bash - > /dev/null 2>&1
+        curl -sL https://rpm.nodesource.com/setup_10.x --max-time 300 | bash - > /dev/null 2>&1
     elif [ $sys_type == "apt-get" ] 
     then
-        curl -sL https://deb.nodesource.com/setup_10.x | bash - > /dev/null 2>&1
+        curl -sL https://deb.nodesource.com/setup_10.x --max-time 300 | bash - > /dev/null 2>&1
     fi 
     $sys_type install wazuh-manager nodejs wazuh-api -y -q > /dev/null 2>&1
 
@@ -81,10 +81,10 @@ installFilebeat() {
     logger "Installing Filebeat..."
 
     $sys_type install filebeat -y -q  > /dev/null 2>&1
-    curl -so /etc/filebeat/filebeat.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/filebeat/7.x/filebeat_all_in_one.yml > /dev/null 2>&1
-    curl -so /etc/filebeat/wazuh-template.json https://raw.githubusercontent.com/wazuh/wazuh/v3.12.0/extensions/elasticsearch/7.x/wazuh-template.json > /dev/null 2>&1
+    curl -so /etc/filebeat/filebeat.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/filebeat/7.x/filebeat_all_in_one.yml --max-time 300 > /dev/null 2>&1
+    curl -so /etc/filebeat/wazuh-template.json https://raw.githubusercontent.com/wazuh/wazuh/v3.12.0/extensions/elasticsearch/7.x/wazuh-template.json --max-time 300 > /dev/null 2>&1
     chmod go+r /etc/filebeat/wazuh-template.json > /dev/null 2>&1
-    curl -s https://packages.wazuh.com/3.x/filebeat/wazuh-filebeat-0.1.tar.gz | tar -xvz -C /usr/share/filebeat/module > /dev/null 2>&1
+    curl -s https://packages.wazuh.com/3.x/filebeat/wazuh-filebeat-0.1.tar.gz | tar -xvz -C /usr/share/filebeat/module --max-time 300 > /dev/null 2>&1
     mkdir /etc/filebeat/certs > /dev/null 2>&1
 
     logger "Done"

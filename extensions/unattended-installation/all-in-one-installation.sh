@@ -46,7 +46,7 @@ addWazuhrepo() {
         echo -e '[wazuh_trash]\ngpgcheck=1\ngpgkey=https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages-dev.wazuh.com/trash/yum/\nprotect=1' | tee /etc/yum.repos.d/wazuh_pre.repo > /dev/null 2>&1
     elif [ $sys_type == "apt-get" ] 
     then
-        curl -s https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH | apt-key add - > /dev/null 2>&1
+        curl -s https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH --max-time 300 | apt-key add - > /dev/null 2>&1
         echo "deb https://packages-dev.wazuh.com/trash/apt/ unstable main" | tee -a /etc/apt/sources.list.d/wazuh_trash.list > /dev/null 2>&1
         apt-get update -q > /dev/null 2>&1
     fi    
@@ -60,10 +60,10 @@ installWazuh() {
 
     if [ $sys_type == "yum" ] 
     then
-        curl -sL https://rpm.nodesource.com/setup_10.x | bash - > /dev/null 2>&1
+        curl -sL https://rpm.nodesource.com/setup_10.x --max-time 300 | bash - > /dev/null 2>&1
     elif [ $sys_type == "apt-get" ] 
     then
-        curl -sL https://deb.nodesource.com/setup_10.x | bash - > /dev/null 2>&1
+        curl -sL https://deb.nodesource.com/setup_10.x --max-time 300 | bash - > /dev/null 2>&1
     fi 
     $sys_type install wazuh-manager nodejs wazuh-api -y -q > /dev/null 2>&1
 
@@ -86,16 +86,16 @@ installElasticsearch() {
 
     logger "Configuring Elasticsearch..."
 
-    curl -so /etc/elasticsearch/elasticsearch.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/7.x/elasticsearch_all_in_one.yml > /dev/null 2>&1
-    curl -so /usr/share/elasticsearch/plugins/opendistro_security/securityconfig/roles.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/roles/roles.yml > /dev/null 2>&1
-    curl -so /usr/share/elasticsearch/plugins/opendistro_security/securityconfig/roles_mapping.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/roles/roles_mapping.yml > /dev/null 2>&1
-    curl -so /usr/share/elasticsearch/plugins/opendistro_security/securityconfig/internal_users.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/roles/internal_users.yml > /dev/null 2>&1
+    curl -so /etc/elasticsearch/elasticsearch.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/7.x/elasticsearch_all_in_one.yml --max-time 300 > /dev/null 2>&1
+    curl -so /usr/share/elasticsearch/plugins/opendistro_security/securityconfig/roles.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/roles/roles.yml --max-time 300 > /dev/null 2>&1
+    curl -so /usr/share/elasticsearch/plugins/opendistro_security/securityconfig/roles_mapping.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/roles/roles_mapping.yml --max-time 300 > /dev/null 2>&1
+    curl -so /usr/share/elasticsearch/plugins/opendistro_security/securityconfig/internal_users.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/roles/internal_users.yml --max-time 300 > /dev/null 2>&1
     rm /etc/elasticsearch/esnode-key.pem /etc/elasticsearch/esnode.pem /etc/elasticsearch/kirk-key.pem /etc/elasticsearch/kirk.pem /etc/elasticsearch/root-ca.pem -f > /dev/null 2>&1
     mkdir /etc/elasticsearch/certs > /dev/null 2>&1
     cd /etc/elasticsearch/certs > /dev/null 2>&1
     wget -q https://releases.floragunn.com/search-guard-tlstool/1.7/search-guard-tlstool-1.7.zip > /dev/null 2>&1
     unzip search-guard-tlstool-1.7.zip -d searchguard > /dev/null 2>&1
-    curl -so /etc/elasticsearch/certs/searchguard/search-guard.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/searchguard/search-guard-aio.yml > /dev/null 2>&1
+    curl -so /etc/elasticsearch/certs/searchguard/search-guard.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/searchguard/search-guard-aio.yml --max-time 300 > /dev/null 2>&1
     chmod +x searchguard/tools/sgtlstool.sh > /dev/null 2>&1
     ./searchguard/tools/sgtlstool.sh -c ./searchguard/search-guard.yml -ca -crt -t /etc/elasticsearch/certs/ > /dev/null 2>&1
     rm /etc/elasticsearch/certs/client-certificates.readme /etc/elasticsearch/certs/elasticsearch_elasticsearch_config_snippet.yml search-guard-tlstool-1.7.zip -f > /dev/null 2>&1
@@ -122,11 +122,11 @@ installElasticsearch() {
         service elasticsearch start > /dev/null 2>&1
         /etc/init.d/elasticsearch start > /dev/null 2>&1
     else
-        echo "Error: Elasticsearch could not start. No service manager found on the system"
+        echo "Error: Elasticsearch could not start. No service manager found on the system."
         exit 1;
     fi
 
-    until $(curl -XGET https://localhost:9200/ -uadmin:admin -k --max-time 2 --silent --output /dev/null); do
+    until $(curl -XGET https://localhost:9200/ -uadmin:admin -k --max-time 300 --silent --output /dev/null); do
         echo "Waiting for Elasticsearch..."
         sleep 5
     done    
@@ -143,10 +143,10 @@ installFilebeat() {
     logger "Installing Filebeat..."
 
     $sys_type install filebeat -y -q  > /dev/null 2>&1
-    curl -so /etc/filebeat/filebeat.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/filebeat/7.x/filebeat_all_in_one.yml > /dev/null 2>&1
-    curl -so /etc/filebeat/wazuh-template.json https://raw.githubusercontent.com/wazuh/wazuh/v3.12.0/extensions/elasticsearch/7.x/wazuh-template.json > /dev/null 2>&1
+    curl -so /etc/filebeat/filebeat.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/filebeat/7.x/filebeat_all_in_one.yml --max-time 300  > /dev/null 2>&1
+    curl -so /etc/filebeat/wazuh-template.json https://raw.githubusercontent.com/wazuh/wazuh/v3.12.0/extensions/elasticsearch/7.x/wazuh-template.json --max-time 300 > /dev/null 2>&1
     chmod go+r /etc/filebeat/wazuh-template.json > /dev/null 2>&1
-    curl -s https://packages.wazuh.com/3.x/filebeat/wazuh-filebeat-0.1.tar.gz | tar -xvz -C /usr/share/filebeat/module > /dev/null 2>&1
+    curl -s https://packages.wazuh.com/3.x/filebeat/wazuh-filebeat-0.1.tar.gz --max-time 300 | tar -xvz -C /usr/share/filebeat/module > /dev/null 2>&1
     mkdir /etc/filebeat/certs > /dev/null 2>&1
     cp /etc/elasticsearch/certs/root-ca.pem /etc/filebeat/certs/ > /dev/null 2>&1
     mv /etc/elasticsearch/certs/filebeat* /etc/filebeat/certs/ > /dev/null 2>&1
@@ -162,7 +162,7 @@ installFilebeat() {
         chkconfig filebeat on > /dev/null 2>&1
         /etc/init.d/filebeat start > /dev/null 2>&1
     else
-        echo "Error: Filebeat could not start. No service manager found on the system"
+        echo "Error: Filebeat could not start. No service manager found on the system."
         exit 1;
     fi
 
@@ -175,7 +175,7 @@ installKibana() {
     logger "Installing Open Distro for Kibana..."
 
     $sys_type install opendistroforelasticsearch-kibana -y -q > /dev/null 2>&1
-    curl -so /etc/kibana/kibana.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/kibana/7.x/kibana_all_in_one.yml > /dev/null 2>&1
+    curl -so /etc/kibana/kibana.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/kibana/7.x/kibana_all_in_one.yml --max-time 300 > /dev/null 2>&1
     cd /usr/share/kibana > /dev/null 2>&1
     sudo -u kibana /usr/share/kibana/bin/kibana-plugin install https://packages-dev.wazuh.com/trash/app/kibana/wazuhapp-3.13.0-tsc-opendistro.zip > /dev/null 2>&1
     mkdir /etc/kibana/certs > /dev/null 2>&1
@@ -193,7 +193,7 @@ installKibana() {
         chkconfig kibana on > /dev/null 2>&1
         /etc/init.d/kibana start > /dev/null 2>&1
     else
-        echo "Error: Kibana could not start. No service manager found on the system"
+        echo "Error: Kibana could not start. No service manager found on the system."
         exit 1;
     fi
 
@@ -215,7 +215,7 @@ healthCheck() {
 }
 
 checkInstallation() {
-    curl -XGET https://localhost:9200 -uadmin:admin -k
+    curl -XGET https://localhost:9200 -uadmin:admin -k --max-time 300 
     filebeat test output
     until [[ "$(curl https://localhost/status -I -uadmin:admin -k -s | grep HTTP)" == *"200"* ]]; do
         echo "Waiting for Kibana..."
