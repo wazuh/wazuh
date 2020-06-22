@@ -22,6 +22,8 @@ typedef struct agent_server {
     char * rip;
     int port;
     int protocol;
+    int max_retries; ///> Maximum number of connection retries.
+    int retry_interval; ///> Time interval between connection attempts.
 } agent_server;
 
 /* Configuration structure */
@@ -32,6 +34,7 @@ typedef struct _agent {
     int execdq;
     int cfgadq;
     int rip_id; ///> Holds the index of the current connected server
+    int server_count; ///> Holds the total amount of servers
     char *lip;
     int notify_time;
     int max_time_reconnect_try;
@@ -40,8 +43,6 @@ typedef struct _agent {
     int buflength;
     int events_persec;
     int crypto_method;
-    int connection_retries; ///> Number of connection retries.
-    int interval_between_connections; ///> Time interval between connection attempts.
     wlabel_t *labels; /* null-ended label set */
     agent_flags_t flags;
     w_enrollment_ctx *enrollment_cfg;
@@ -56,5 +57,8 @@ void Free_Client(agent * config);
  * @return Returns true if successful and false if not success
  */
 bool Validate_Address(agent_server *servers);
+
+#define DEFAULT_MAX_RETRIES 5
+#define DEFAULT_RETRY_INTERVAL 5
 
 #endif /* CAGENTD_H */

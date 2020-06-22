@@ -89,26 +89,15 @@ int connect_server(int server_id)
             merror(CONNS_ERROR, tmp_str, strerror(errno));
         #endif
     } else {
-        if (agt->server[server_id].protocol == IPPROTO_TCP) {
-            if (OS_SetRecvTimeout(agt->sock, timeout, 0) < 0) {
-                switch (errno) {
-                    case ENOPROTOOPT:
-                        mdebug1("Cannot set network timeout: operation not supported by this OS.");
-                        break;
-                    default:
-                        merror("Cannot set network timeout: %s (%d)", strerror(errno), errno);
-                        return EXIT_FAILURE;
-                }
+        if (OS_SetRecvTimeout(agt->sock, timeout, 0) < 0) {
+            switch (errno) {
+                case ENOPROTOOPT:
+                    mdebug1("Cannot set network timeout: operation not supported by this OS.");
+                    break;
+                default:
+                    merror("Cannot set network timeout: %s (%d)", strerror(errno), errno);
+                    return EXIT_FAILURE;
             }
-
-            #ifdef WIN32
-                if (agt->server[server_id].protocol == IPPROTO_UDP) {
-                    int bmode = 1;
-
-                    /* Set socket to non-blocking */
-                    ioctlsocket(agt->sock, FIONBIO, (u_long FAR *) &bmode);
-                }
-            #endif
         }
         agt->rip_id = server_id;
         return 1;
@@ -130,16 +119,16 @@ void start_agent(int is_startup)
 
     while (1) {
         int attempts = 0;
-        while (attempts <= agt->connection_retries) {
+        while (attempts <= agt->server[agt->rip_id].max_retries) {
             if (agent_handshake_to_server()) {
                 if (is_startup) {
                     send_msg_on_startup();
                 }
                 return;
             }
-            sleep(agt->interval_between_connections);
+            sleep(agt->server[agt->rip_id].retry_interval);
 
-            if (agt->enrollment_cfg && agt->enrollment_cfg->enabled && attempts == (agt->connection_retries -1)) {
+            if (agt->enrollment_cfg && agt->enrollment_cfg->enabled && attempts == (agt->server[agt->rip_id].max_retries -1)) {
                 try_enroll_to_server(agt->server[agt->rip_id].rip);                     
             }
             attempts ++;
@@ -233,43 +222,36 @@ static void w_agentd_keys_init (void) {
 static ssize_t receive_message(char *buffer, unsigned int max_lenght) {
     
     ssize_t recv_b = 0;
-    int sock = wnet_select(agt->sock, timeout);
-    if (sock < 0) {
-        merror(SELECT_ERROR, errno, strerror(errno));
+    /* Read received reply */
+    if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
+        /* Receive response UDP*/
+        recv_b = recv(agt->sock, buffer, max_lenght, 0);
+    } else {
+        /* Receive response TCP*/
+        recv_b = OS_RecvSecureTCP(agt->sock, buffer, max_lenght);
     }
-    else {
-        if (sock == 0) {
-            minfo("Unable to receive start response: Timeout reached");
-        }
-        else {
-            /* Read received reply */
-            if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
-                /* Receive response UDP*/
-                recv_b = recv(agt->sock, buffer, max_lenght, 0);
-            } else {
-                /* Receive response TCP*/
-                recv_b = OS_RecvSecureTCP(agt->sock, buffer, max_lenght);
-            }
 
-            /* Successful response */
-            if (recv_b > 0) {                
-                return recv_b;
+    /* Successful response */
+    if (recv_b > 0) {
+        return recv_b;
+    }
+    /* Error response */
+    else { 
+        switch (recv_b) {
+        case OS_SOCKTERR:
+            merror("Corrupt payload (exceeding size) received.");
+            break;
+        default:
+            if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
+                minfo("Unable to receive start response: Timeout reached");
+            } else {
+                #ifdef WIN32
+                    mdebug1("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
+                #else
+                    mdebug1("Connection socket: %s (%d)", strerror(errno), errno);
+                #endif
             }
-            /* Error response */
-            else { 
-                switch (recv_b) {
-                case OS_SOCKTERR:
-                    merror("Corrupt payload (exceeding size) received.");
-                    break;
-                default:
-                    #ifdef WIN32
-                        mdebug1("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
-                    #else
-                        mdebug1("Connection socket: %s (%d)", strerror(errno), errno);
-                    #endif
-                    break;
-                }
-            }
+            break;
         }
     }
     return 0;

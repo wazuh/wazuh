@@ -85,8 +85,6 @@ cJSON *getClientConfig(void) {
     if (agt->profile) cJSON_AddStringToObject(client,"config-profile",agt->profile);
     cJSON_AddNumberToObject(client,"notify_time",agt->notify_time);
     cJSON_AddNumberToObject(client,"time-reconnect",agt->max_time_reconnect_try);
-    cJSON_AddNumberToObject(client,"connection_retries", agt->connection_retries);
-    cJSON_AddNumberToObject(client,"interval_between_connections", agt->interval_between_connections);
     if (agt->lip) cJSON_AddStringToObject(client,"local_ip",agt->lip);
     if (agt->flags.auto_restart) cJSON_AddStringToObject(client,"auto_restart","yes"); else cJSON_AddStringToObject(client,"auto_restart","no");
     if (agt->flags.remote_conf) cJSON_AddStringToObject(client,"remote_conf","yes"); else cJSON_AddStringToObject(client,"remote_conf","no");
@@ -100,6 +98,9 @@ cJSON *getClientConfig(void) {
             cJSON *server = cJSON_CreateObject();
             cJSON_AddStringToObject(server,"address",agt->server[i].rip);
             cJSON_AddNumberToObject(server,"port",agt->server[i].port);
+            cJSON_AddNumberToObject(client,"max_retries", agt->server[i].max_retries);
+            cJSON_AddNumberToObject(client,"rety_interval", agt->server[i].retry_interval);
+    
             if (agt->server[i].protocol == IPPROTO_UDP) cJSON_AddStringToObject(server,"protocol","udp"); else cJSON_AddStringToObject(server,"protocol","tcp");
             cJSON_AddItemToArray(servers,server);
         }
