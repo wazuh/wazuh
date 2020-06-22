@@ -171,6 +171,7 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             goto end;
         }
         upd->dist_ref = FEED_UBUNTU;
+
     } else  if (strcasestr(feed, vu_feed_tag[FEED_DEBIAN]) && version) {
         if (!strcmp(version, "10") || strcasestr(version, vu_feed_tag[FEED_BUSTER])) {
             os_index = CVE_BUSTER;
@@ -198,20 +199,39 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             goto end;
         }
         upd->dist_ref = FEED_DEBIAN;
+
     } else if (strcasestr(feed, vu_feed_tag[FEED_REDHAT])) {
-        static char rh_dep_adv = 0;
-
-        if (version && !rh_dep_adv) {
-            mwarn("The specific definition of the Red Hat feeds is deprecated. Use only redhat instead.");
-            rh_dep_adv = 1;
+        // RHEL8
+        if (!strcmp(version, "8")) {
+            os_index = CVE_REDHAT8;
+            upd->dist_tag_ref = FEED_RHEL8;
+            os_strdup(version, upd->version);
+            upd->dist_ext = vu_feed_ext[FEED_RHEL8];
+        // RHEL7
+        } else if (!strcmp(version, "7")) {
+            os_index = CVE_REDHAT7;
+            upd->dist_tag_ref = FEED_RHEL7;
+            os_strdup(version, upd->version);
+            upd->dist_ext = vu_feed_ext[FEED_RHEL7];
+        // RHEL6
+        } else if (!strcmp(version, "6")) {
+            os_index = CVE_REDHAT6;
+            upd->dist_tag_ref = FEED_RHEL6;
+            os_strdup(version, upd->version);
+            upd->dist_ext = vu_feed_ext[FEED_RHEL6];
+        // RHEL5
+        } else if (!strcmp(version, "5")) {
+            os_index = CVE_REDHAT5;
+            upd->dist_tag_ref = FEED_RHEL5;
+            os_strdup(version, upd->version);
+            upd->dist_ext = vu_feed_ext[FEED_RHEL5];
+        } else {
+            merror("Invalid RedHat version '%s'.", version);
+            retval = OS_INVALID;
+            goto end;
         }
-
-        os_index = CVE_REDHAT7;
-        upd->dist_tag_ref = FEED_REDHAT;
-        upd->dist_ext = vu_feed_ext[FEED_REDHAT];
-        upd->update_from_year = RED_HAT_REPO_DEFAULT_MIN_YEAR;
         upd->dist_ref = FEED_REDHAT;
-        upd->json_format = 1;
+
     } else if (strcasestr(feed, vu_feed_tag[FEED_NVD])) {
         os_index = CVE_NVD;
         upd->dist_tag_ref = FEED_NVD;
@@ -381,8 +401,7 @@ int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2) {
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_FEED) ||
-                   !strcmp(nodes[i]->element, XML_UPDATE_UBUNTU_OVAL) ||
-                   !strcmp(nodes[i]->element, XML_UPDATE_REDHAT_OVAL)) {
+                   !strcmp(nodes[i]->element, XML_UPDATE_UBUNTU_OVAL)) {
             if (wm_vuldet_read_deprecated_config(xml, nodes[i], updates, &run_update)) {
                 return OS_INVALID;
             }
@@ -1068,9 +1087,11 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
 }
 
 char wm_vuldet_provider_type(char *pr_name) {
-    if (strcasestr(pr_name, vu_feed_tag[FEED_CANONICAL]) || strcasestr(pr_name, vu_feed_tag[FEED_DEBIAN])) {
+    if (strcasestr(pr_name, vu_feed_tag[FEED_CANONICAL]) ||
+        strcasestr(pr_name, vu_feed_tag[FEED_DEBIAN]) ||
+        strcasestr(pr_name, vu_feed_tag[FEED_REDHAT])) {
         return 0;
-    } else if (strcasestr(pr_name, vu_feed_tag[FEED_NVD]) || strcasestr(pr_name, vu_feed_tag[FEED_REDHAT])) {
+    } else if (strcasestr(pr_name, vu_feed_tag[FEED_NVD])) {
         return 1;
     } else {
         return OS_INVALID;
