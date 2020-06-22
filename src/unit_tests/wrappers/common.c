@@ -47,7 +47,7 @@ int wrap_fprintf (FILE *__stream, const char *__format, ...) {
     }
 
     va_end(args);
-    if(test_mode) {
+    if (test_mode) {
         return mock();
     }
     return ret;

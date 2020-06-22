@@ -14,15 +14,14 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../wrappers/common.h"
 #include "../headers/version_op.h"
-
-static int unit_testing;
 
 /* redefinitons/wrapping */
 
 int __real_fopen(const char *filename, const char *mode);
 int __wrap_fopen(const char *filename, const char *mode) {
-    if(unit_testing){
+    if(test_mode){
         check_expected(filename);
         return mock();
     } else {
@@ -41,12 +40,12 @@ int __wrap_fgets(char *str, int n, FILE *stream) {
 
 /* setup/teardowns */
 static int setup_group(void **state) {
-    unit_testing = 1;
+    test_mode = 1;
     return 0;
 }
 
 static int teardown_group(void **state) {
-    unit_testing = 0;
+    test_mode = 0;
     return 0;
 }
 

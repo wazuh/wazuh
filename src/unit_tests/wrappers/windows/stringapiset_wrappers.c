@@ -27,4 +27,3 @@ int wrap_WideCharToMultiByte(__UNUSED_PARAM(UINT CodePage),
     strncpy(lpMultiByteStr, mock_type(char*), cbMultiByte);
   return mock();
 }
-

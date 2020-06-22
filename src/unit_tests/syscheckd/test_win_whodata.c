@@ -59,7 +59,6 @@ extern int restore_policies;
 extern EVT_HANDLE context;
 
 extern const wchar_t* event_fields[];
-static int unit_testing = 0;
 static int OSHash_Add_ex_check_data = 1;
 /**************************************************************************/
 /*************************WRAPS - FIXTURES*********************************/
@@ -78,13 +77,13 @@ int test_group_setup(void **state) {
     ret = Read_Syscheck_Config("test_syscheck.conf");
 
     test_mode = 1;
-    unit_testing = 1;
+    test_mode = 1;
     return ret;
 }
 
 static int test_group_teardown(void **state) {
     test_mode = 0;
-    unit_testing = 0;
+    test_mode = 0;
     return 0;
 }
 
@@ -266,10 +265,10 @@ static int teardown_state_checker(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck.conf]");
 
     test_mode = 0;
-    unit_testing = 0;
+    test_mode = 0;
     ret = Read_Syscheck_Config("test_syscheck.conf");
     test_mode = 1;
-    unit_testing = 1;
+    test_mode = 1;
 
     return ret;
 }
@@ -439,7 +438,7 @@ int __wrap_IsFile(const char * file)
 
 int __real_remove(const char *filename);
 int __wrap_remove(const char *filename) {
-    if(unit_testing){
+    if(test_mode){
         check_expected(filename);
         return mock();
     } else {
@@ -458,7 +457,7 @@ int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const 
 
 FILE *__cdecl __real_fopen(const char * __restrict__ _Filename,const char * __restrict__ _Mode) __MINGW_ATTRIB_DEPRECATED_SEC_WARN;
 FILE * __wrap_fopen(const char * __restrict__ _Filename,const char * __restrict__ _Mode) {
-    if(unit_testing) {
+    if(test_mode) {
         check_expected(_Filename);
         check_expected(_Mode);
 
@@ -470,7 +469,7 @@ FILE * __wrap_fopen(const char * __restrict__ _Filename,const char * __restrict_
 
 int __cdecl __real_fclose(FILE *_File);
 int __wrap_fclose(FILE *_File) {
-    if(unit_testing) {
+    if(test_mode) {
         check_expected(_File);
         return mock();
     } else {
@@ -480,7 +479,7 @@ int __wrap_fclose(FILE *_File) {
 
 int __cdecl __real_atexit(void (__cdecl *callback)(void));
 int __cdecl __wrap_atexit(void (__cdecl *callback)(void)) {
-    if(unit_testing)
+    if(test_mode)
         return 0;
     else
         return __real_atexit(callback);

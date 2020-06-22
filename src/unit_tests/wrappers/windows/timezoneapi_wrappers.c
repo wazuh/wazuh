@@ -18,4 +18,3 @@ WINBOOL wrap_FileTimeToSystemTime(CONST FILETIME *lpFileTime,
   memcpy(lpSystemTime, mock_type(LPSYSTEMTIME), sizeof(SYSTEMTIME));
   return mock();
 }
-
