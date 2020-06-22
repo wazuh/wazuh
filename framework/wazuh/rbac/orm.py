@@ -191,7 +191,7 @@ class User(_Base):
         """
         with UserRolesManager() as urm:
             return {'id': self.id, 'username': self.username,
-                    'roles': [role.id for role in urm.get_all_roles_from_user(user_id=self.username)]}
+                    'roles': [role.id for role in urm.get_all_roles_from_user(user_id=str(self.id))]}
 
 
 class Roles(_Base):
