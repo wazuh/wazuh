@@ -88,11 +88,7 @@ int __crt_wday;
 struct timespec c_timespec;
 char __shost[512];
 OSDecoderInfo *NULL_Decoder;
-rlim_t nofile;
-int sys_debug_level;
 int num_rule_matching_threads;
-EventList *last_events_list;
-time_t current_time;
 
 /* execd queue */
 static int execdq = 0;

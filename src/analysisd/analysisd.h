@@ -67,7 +67,7 @@ void w_init_queues();
 #define OSSEC_SERVER    "ossec-server"
 #define MAX_DECODER_ORDER_SIZE  1024
 
-OSHash *fim_agentinfo;
+extern OSHash *fim_agentinfo;
 extern int num_rule_matching_threads;
 
 #define FIM_MAX_WAZUH_DB_ATTEMPS 5
