@@ -659,7 +659,7 @@ stages:
   - name: Create link user-role
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/new_user/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/106/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -676,7 +676,7 @@ stages:
   - name: Create link user-role
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/new_user1/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/107/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -693,7 +693,7 @@ stages:
   - name: Create link user-role (non-existent roles)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/new_user1/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/107/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -719,7 +719,7 @@ stages:
   - name: Create link user-role (valid roles, already linked roles, non-existent roles)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/new_user/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/106/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST

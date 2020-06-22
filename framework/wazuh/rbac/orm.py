@@ -146,7 +146,7 @@ class TokenBlacklist(_Base):
 class User(_Base):
     __tablename__ = 'users'
 
-    id = Column('id', Integer, primary_key=True)
+    id = Column('id', Integer, primary_key=True, autoincrement=True)
     username = Column(String(32))
     password = Column(String(256))
     auth_context = Column(Boolean, default=False, nullable=False)
