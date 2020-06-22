@@ -1,8 +1,6 @@
 /**
  * @file wdb_integrity.c
- * @author Vikman Fernandez-Castro (victor@wazuh.com)
  * @brief DB integrity synchronization library definition.
- * @version 0.1
  * @date 2019-08-14
  *
  * @copyright Copyright (c) 2019 Wazuh, Inc.
