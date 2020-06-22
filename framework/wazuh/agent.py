@@ -12,6 +12,7 @@ from wazuh.InputValidator import InputValidator
 from wazuh.core.core_agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, \
     WazuhDBQueryMultigroups, Agent, WazuhDBQueryGroup
 from wazuh.core.core_utils import get_agents_info, get_groups
+from wazuh.database import Connection
 from wazuh.exception import WazuhError, WazuhInternalError, WazuhException
 from wazuh.rbac.decorators import expose_resources
 from wazuh.results import WazuhResult, AffectedItemsWazuhResult

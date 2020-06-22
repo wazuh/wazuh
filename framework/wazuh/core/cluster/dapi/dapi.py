@@ -326,7 +326,7 @@ class DistributedAPI:
             str
                 Current node name.
             """
-            return filter_node[0]
+            return filter_node[0] if isinstance(filter_node, list) else filter_node
 
         try:
             common.rbac.set(self.rbac_permissions)
