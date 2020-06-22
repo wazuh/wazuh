@@ -206,7 +206,7 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             rh_dep_adv = 1;
         }
 
-        os_index = CVE_REDHAT;
+        os_index = CVE_REDHAT7;
         upd->dist_tag_ref = FEED_REDHAT;
         upd->dist_ext = vu_feed_ext[FEED_REDHAT];
         upd->update_from_year = RED_HAT_REPO_DEFAULT_MIN_YEAR;
