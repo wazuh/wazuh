@@ -19,6 +19,8 @@ int timeout;    //timeout in seconds waiting for a server reply
 
 static ssize_t receive_message(char *buffer, unsigned int max_lenght);
 static void w_agentd_keys_init (void);
+static int agent_handshake_to_server(void);
+static void send_msg_on_startup(void);
 
 
 int connect_server(int server_id)
@@ -117,21 +119,7 @@ int connect_server(int server_id)
 /* Send synchronization message to the server and wait for the ack */
 void start_agent(int is_startup)
 {
-    size_t msg_length;
-    ssize_t recv_b = 0;
-
-    char *tmp_msg;
-    char msg[OS_MAXSTR + 2];
-    char buffer[OS_MAXSTR + 1];
-    char cleartext[OS_MAXSTR + 1];
-    char fmsg[OS_MAXSTR + 1];
-
-    memset(msg, '\0', OS_MAXSTR + 2);
-    memset(buffer, '\0', OS_MAXSTR + 1);
-    memset(cleartext, '\0', OS_MAXSTR + 1);
-    memset(fmsg, '\0', OS_MAXSTR + 1);
-    snprintf(msg, OS_MAXSTR, "%s%s", CONTROL_HEADER, HC_STARTUP);
-
+    
     if (is_startup) {
         w_agentd_keys_init();
     }
@@ -143,41 +131,11 @@ void start_agent(int is_startup)
     while (1) {
         int attempts = 0;
         while (attempts <= agt->connection_retries) {
-            if (connect_server(agt->rip_id)) {
-                /* Send start up message */
-                send_msg(msg, -1);
-
-                /* Read until our reply comes back */
-                recv_b = receive_message(buffer, OS_MAXSTR);
-                
-                if (recv_b > 0) {
-                    /* Id of zero -- only one key allowed */
-                    if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip, &tmp_msg) != KS_VALID) {
-                        mwarn(MSG_ERROR, agt->server[agt->rip_id].rip);
-                    } else {
-                        /* Check for commands */
-                        if (IsValidHeader(tmp_msg)) {
-                            /* If it is an ack reply */
-                            if (strcmp(tmp_msg, HC_ACK) == 0) {
-                                available_server = time(0);
-
-                                minfo(AG_CONNECTED, agt->server[agt->rip_id].rip,
-                                        agt->server[agt->rip_id].port, agt->server[agt->rip_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
-
-                                if (is_startup) {
-                                    /* Send log message about start up */
-                                    snprintf(msg, OS_MAXSTR, OS_AG_STARTED,
-                                            keys.keyentries[0]->name,
-                                            keys.keyentries[0]->ip->ip);
-                                    snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ,
-                                            "ossec", msg);
-                                    send_msg(fmsg, -1);
-                                }
-                                return;
-                            }
-                        }
-                    }
+            if (agent_handshake_to_server()) {
+                if (is_startup) {
+                    send_msg_on_startup();
                 }
+                return;
             }
             sleep(agt->interval_between_connections);
 
@@ -329,4 +287,68 @@ int try_enroll_to_server(const char * server_rip) {
         os_set_agent_crypto_method(&keys,agt->crypto_method);
     }
     return enroll_result;
+}
+
+/**
+ * @brief Holds hanshake logic for a attempt to connect to server
+ * @return Integer value indicating the status code.
+ * @retval 1 on success
+ * @retval 0 when failed
+ * */
+static int agent_handshake_to_server(){
+    size_t msg_length;
+    ssize_t recv_b = 0;
+
+    char *tmp_msg;
+    char msg[OS_MAXSTR + 2] = { '\0' };
+    char buffer[OS_MAXSTR + 1] = { '\0' };
+    char cleartext[OS_MAXSTR + 1] = { '\0' };
+    char fmsg[OS_MAXSTR + 1] = { '\0' };
+
+    snprintf(msg, OS_MAXSTR, "%s%s", CONTROL_HEADER, HC_STARTUP);
+
+    if (connect_server(agt->rip_id)) {
+        /* Send start up message */
+        send_msg(msg, -1);
+
+        /* Read until our reply comes back */
+        recv_b = receive_message(buffer, OS_MAXSTR);
+        
+        if (recv_b > 0) {
+            /* Id of zero -- only one key allowed */
+            if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip, &tmp_msg) != KS_VALID) {
+                mwarn(MSG_ERROR, agt->server[agt->rip_id].rip);
+            } else {
+                /* Check for commands */
+                if (IsValidHeader(tmp_msg)) {
+                    /* If it is an ack reply */
+                    if (strcmp(tmp_msg, HC_ACK) == 0) {
+                        available_server = time(0);
+
+                        minfo(AG_CONNECTED, agt->server[agt->rip_id].rip,
+                                agt->server[agt->rip_id].port, agt->server[agt->rip_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
+
+                        return 1;
+                    }
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+static void send_msg_on_startup(void){
+
+    char msg[OS_MAXSTR + 2] = { '\0' };
+    char fmsg[OS_MAXSTR + 1] = { '\0' };
+    
+    snprintf(msg, OS_MAXSTR, "%s%s", CONTROL_HEADER, HC_STARTUP);
+
+    /* Send log message about start up */
+    snprintf(msg, OS_MAXSTR, OS_AG_STARTED,
+            keys.keyentries[0]->name,
+            keys.keyentries[0]->ip->ip);
+    snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ,
+            "ossec", msg);
+    send_msg(fmsg, -1);
 }
