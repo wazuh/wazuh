@@ -44,4 +44,3 @@ BOOL wrap_OpenProcessToken(__UNUSED_PARAM (HANDLE  ProcessHandle),
     *TokenHandle = mock_type(HANDLE);
     return mock();
 }
-

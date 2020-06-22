@@ -13,17 +13,16 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <stdio.h>
-#include "shared.h"
 
+#include "../wrappers/common.h"
+#include "shared.h"
 #include "../headers/bzip2_op.h"
 #include "../wrappers/externals/bzip2/bzlib_wrappers.h"
-
-static int unit_testing;
 
 
 extern FILE* __real_fopen(const char* path, const char* mode);
 FILE* __wrap_fopen(const char* path, const char* mode) {
-    if(unit_testing) {
+    if(test_mode) {
         check_expected_ptr(path);
         check_expected(mode);
         return mock_ptr_type(FILE*);
@@ -33,7 +32,7 @@ FILE* __wrap_fopen(const char* path, const char* mode) {
 
 size_t __real_fread(void *ptr, size_t size, size_t n, FILE *stream);
 size_t __wrap_fread(void *ptr, size_t size, size_t n, FILE *stream) {
-    if (unit_testing) {
+    if (test_mode) {
         strncpy((char *) ptr, mock_type(char *), n);
         return mock();
     }
@@ -42,7 +41,7 @@ size_t __wrap_fread(void *ptr, size_t size, size_t n, FILE *stream) {
 
 size_t __real_fwrite(const void * ptr, size_t size, size_t count, FILE * stream);
 size_t __wrap_fwrite(const void * ptr, size_t size, size_t count, FILE * stream) {
-    if (unit_testing) {
+    if (test_mode) {
         return mock();
     }
     return __real_fwrite(ptr, size, count, stream);
@@ -63,12 +62,12 @@ void __wrap__mdebug2(const char * file, int line, const char * func, const char 
 
 /* setups/teardowns */
 static int setup_group(void **state) {
-    unit_testing = 1;
+    test_mode = 1;
     return 0;
 }
 
 static int teardown_group(void **state) {
-    unit_testing = 0;
+    test_mode = 0;
     return 0;
 }
 

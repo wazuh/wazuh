@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../wrappers/common.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 #include "../syscheckd/fim_db.h"
@@ -34,8 +35,6 @@ typedef struct __fim_data_s {
     struct dirent *entry;       // Used on fim_directory tests, not affected by group setup/teardown
     cJSON *json;
 }fim_data_t;
-
-bool unit_testing;
 
 /* redefinitons/wrapping */
 
@@ -99,7 +98,7 @@ int __wrap_lstat(const char *path, struct stat *buf) {
 #else
 extern int __real_stat(const char *path, struct stat *buf);
 int __wrap_stat(const char *path, struct stat *buf) {
-    if(unit_testing){
+    if(test_mode){
         buf->st_dev = 1;
         buf->st_ino = 999;
         buf->st_uid = 0;
@@ -342,7 +341,7 @@ int __wrap_pthread_mutex_unlock (pthread_mutex_t *__mutex) {
 static int setup_group(void **state) {
     fim_data_t *fim_data = calloc(1, sizeof(fim_data_t));
 
-    unit_testing = false;
+    test_mode = 0;
 
     if(fim_data == NULL)
         return -1;
@@ -431,7 +430,7 @@ static int setup_group(void **state) {
     syscheck.max_depth = 256;
     syscheck.file_max_size = 1024;
 
-    unit_testing = true;
+    test_mode = 1;
 
     return 0;
 }
@@ -439,7 +438,7 @@ static int setup_group(void **state) {
 static int teardown_group(void **state) {
     fim_data_t *fim_data = *state;
 
-    unit_testing = false;
+    test_mode = 0;
 
     free(fim_data->item);
     free_whodata_event(fim_data->w_evt);

@@ -19,8 +19,6 @@
 #include "../wrappers/common.h"
 #include "../headers/file_op.h"
 
-static int unit_testing;
-
 /* redefinitons/wrapping */
 
 int __wrap_isChroot() {
@@ -99,7 +97,7 @@ int __wrap_fprintf (FILE *__stream, const char *__format, ...) {
 
 extern FILE* __real_fopen(const char* path, const char* mode);
 FILE* __wrap_fopen(const char* path, const char* mode) {
-    if(unit_testing) {
+    if(test_mode) {
         check_expected_ptr(path);
         check_expected(mode);
         return mock_ptr_type(FILE*);
@@ -111,13 +109,11 @@ FILE* __wrap_fopen(const char* path, const char* mode) {
 /* setups/teardowns */
 static int setup_group(void **state) {
     test_mode = 1;
-    unit_testing = 1;
     return 0;
 }
 
 static int teardown_group(void **state) {
     test_mode = 0;
-    unit_testing = 0;
     return 0;
 }
 

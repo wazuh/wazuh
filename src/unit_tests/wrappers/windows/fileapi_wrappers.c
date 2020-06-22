@@ -72,4 +72,3 @@ WINBOOL wrap_FindNextVolumeW(HANDLE hFindVolume,
   wcsncpy(lpszVolumeName, mock_type(LPWSTR), cchBufferLength);
   return mock();
 }
-
