@@ -4871,7 +4871,7 @@ paths:
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
-                message: "Command sent to all agents"
+                message: 'AR command was sent to all agents'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
