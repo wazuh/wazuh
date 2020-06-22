@@ -17,8 +17,7 @@
 
 int timeout;    //timeout in seconds waiting for a server reply
 
-static ssize_t receive_message_udp(const char *msg, char *buffer, unsigned int max_lenght);
-static ssize_t receive_message_tcp(const char *msg, char *buffer, unsigned int max_lenght);
+static ssize_t receive_message(char *buffer, unsigned int max_lenght);
 static void w_agentd_keys_init (void);
 
 
@@ -119,7 +118,6 @@ int connect_server(int server_id)
 void start_agent(int is_startup)
 {
     size_t msg_length;
-    int delay = 1;
     ssize_t recv_b = 0;
 
     char *tmp_msg;
@@ -143,47 +141,51 @@ void start_agent(int is_startup)
     #endif
 
     while (1) {
-        if (connect_server(agt->rip_id)) {
-            /* Send start up message */
-            send_msg(msg, -1);
+        int attempts = 0;
+        while (attempts <= agt->connection_retries) {
+            if (connect_server(agt->rip_id)) {
+                /* Send start up message */
+                send_msg(msg, -1);
 
-            /* Read until our reply comes back */
-            if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
-                recv_b = receive_message_udp(msg, buffer, OS_MAXSTR);
-            } else {
-                recv_b = receive_message_tcp(msg, buffer, OS_MAXSTR);
-            }
-            
-            if (recv_b > 0) {
-                /* Id of zero -- only one key allowed */
-                if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip, &tmp_msg) != KS_VALID) {
-                    mwarn(MSG_ERROR, agt->server[agt->rip_id].rip);
-                } else {
-                    /* Check for commands */
-                    if (IsValidHeader(tmp_msg)) {
-                        /* If it is an ack reply */
-                        if (strcmp(tmp_msg, HC_ACK) == 0) {
-                            available_server = time(0);
+                /* Read until our reply comes back */
+                recv_b = receive_message(buffer, OS_MAXSTR);
+                
+                if (recv_b > 0) {
+                    /* Id of zero -- only one key allowed */
+                    if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip, &tmp_msg) != KS_VALID) {
+                        mwarn(MSG_ERROR, agt->server[agt->rip_id].rip);
+                    } else {
+                        /* Check for commands */
+                        if (IsValidHeader(tmp_msg)) {
+                            /* If it is an ack reply */
+                            if (strcmp(tmp_msg, HC_ACK) == 0) {
+                                available_server = time(0);
 
-                            minfo(AG_CONNECTED, agt->server[agt->rip_id].rip,
-                                    agt->server[agt->rip_id].port, agt->server[agt->rip_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
+                                minfo(AG_CONNECTED, agt->server[agt->rip_id].rip,
+                                        agt->server[agt->rip_id].port, agt->server[agt->rip_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
 
-                            if (is_startup) {
-                                /* Send log message about start up */
-                                snprintf(msg, OS_MAXSTR, OS_AG_STARTED,
-                                        keys.keyentries[0]->name,
-                                        keys.keyentries[0]->ip->ip);
-                                snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ,
-                                        "ossec", msg);
-                                send_msg(fmsg, -1);
+                                if (is_startup) {
+                                    /* Send log message about start up */
+                                    snprintf(msg, OS_MAXSTR, OS_AG_STARTED,
+                                            keys.keyentries[0]->name,
+                                            keys.keyentries[0]->ip->ip);
+                                    snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ,
+                                            "ossec", msg);
+                                    send_msg(fmsg, -1);
+                                }
+                                return;
                             }
-                            return;
                         }
                     }
                 }
             }
+            sleep(agt->interval_between_connections);
+
+            if (agt->enrollment_cfg && agt->enrollment_cfg->enabled && attempts == (agt->connection_retries -1)) {
+                try_enroll_to_server(agt->server[agt->rip_id].rip);                     
+            }
+            attempts ++;
         }
-        
         /* Wait for server reply */
         mwarn(AG_WAIT_SERVER, agt->server[agt->rip_id].rip);
 
@@ -191,12 +193,9 @@ void start_agent(int is_startup)
         if (agt->server[agt->rip_id + 1].rip) {
             agt->rip_id++;
             minfo("Trying next server ip in the line: '%s'.", agt->server[agt->rip_id].rip);
-            delay += 5;
-            sleep(delay < agt->notify_time ? delay : agt->notify_time);
         } else {
             agt->rip_id = 0;
-            delay += (5 * 3);
-            sleep(delay < agt->notify_time ? delay : agt->notify_time);
+            mwarn("Unable to connect to any server.");
         }
     }
 
@@ -266,117 +265,52 @@ static void w_agentd_keys_init (void) {
 }
 
 /**
- * @brief Holds the message reception logic for udp
- * 
- * @param msg message to be sent
+ * @brief Holds the message reception logic for udp and tcp
  * @param buffer pointer to buffer where the information will be stored
  * @param max_length size of buffer
  * @return Integer value indicating the status code.
  * @retval message_size on success
- * @retval 0 when all retries failed
+ * @retval 0 when retries failed
  * */
-static ssize_t receive_message_udp(const char *msg, char *buffer, unsigned int max_lenght) {
-    int attempts = 0;
-    ssize_t recv_b = 0;
+static ssize_t receive_message(char *buffer, unsigned int max_lenght) {
     
-    while (attempts < 6) {  
-        attempts++;
-        sleep(attempts*2);
-
-        /* Receive response */
-        recv_b = recv(agt->sock, buffer, max_lenght, MSG_DONTWAIT);
-
-        /* Successful response */
-        if (recv_b > 0) {                
-            return recv_b;
-        }
-        /* Error response */
-        else { 
-            switch (recv_b) {
-            case OS_SOCKTERR:
-                merror("Corrupt payload (exceeding size) received.");
-                break;
-            default:
-                #ifdef WIN32
-                    mdebug1("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
-                #else
-                    mdebug1("Connection socket: %s (%d)", strerror(errno), errno);
-                #endif
-                break;
-            }
-            /* Try to enroll on fifth attempt */
-            if (attempts == 5 && agt->enrollment_cfg && agt->enrollment_cfg->enabled) {           
-                try_enroll_to_server(agt->server[agt->rip_id].rip);
-            }  
-            /* Start retrying sending message after third attemp or OS_SOCKTERR */
-            if (attempts >= 3 || recv_b == OS_SOCKTERR) {
-                if (connect_server(agt->rip_id)) {
-                    send_msg(msg, -1);  
-                } 
-            }                      
-        }
+    ssize_t recv_b = 0;
+    int sock = wnet_select(agt->sock, timeout);
+    if (sock < 0) {
+        merror(SELECT_ERROR, errno, strerror(errno));
     }
-    return 0;
-}
-
-/**
- * @brief Holds the message reception logic for tcp
- * 
- * @param msg message to be sent
- * @param buffer pointer to buffer where the information will be stored
- * @param max_length size of buffer
- * @return Integer value indicating the status code.
- * @retval message_size on success
- * @retval 0 when all retries failed
- * */
-static ssize_t receive_message_tcp(const char *msg, char *buffer, unsigned int max_lenght) {
-    ssize_t recv_b = 0;
-    int attempts = 0;
-    
-    while (attempts < 6) {
-        attempts++;
-        sleep(attempts*2);
-        int sock = wnet_select(agt->sock, timeout);
-        if (sock < 0) {
-            merror(SELECT_ERROR, errno, strerror(errno));
-        } 
-        else if (sock > 0) {
-            /* Receive response */
-            recv_b = OS_RecvSecureTCP(agt->sock, buffer, max_lenght);
+    else {
+        if (sock == 0) {
+            minfo("Unable to receive start response: Timeout reached");
+        }
+        else {
+            /* Read received reply */
+            if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
+                /* Receive response UDP*/
+                recv_b = recv(agt->sock, buffer, max_lenght, 0);
+            } else {
+                /* Receive response TCP*/
+                recv_b = OS_RecvSecureTCP(agt->sock, buffer, max_lenght);
+            }
 
             /* Successful response */
-            if (recv_b > 0) {
+            if (recv_b > 0) {                
                 return recv_b;
-            }   
-            
+            }
             /* Error response */
-            switch (recv_b) {
+            else { 
+                switch (recv_b) {
                 case OS_SOCKTERR:
                     merror("Corrupt payload (exceeding size) received.");
                     break;
-                case 0:
-                    /* Peer performed orderly shutdown (connection refused by manager)
-                    *  Try to re enroll on fifth attempt
-                    */
-                    if (agt->enrollment_cfg && agt->enrollment_cfg->enabled && attempts == 5) {
-                        try_enroll_to_server(agt->server[agt->rip_id].rip);                     
-                    }
-                    /* Try to re send msg every time due to possible keys update delay on manager */
-                    if (connect_server(agt->rip_id)) {
-                        send_msg(msg, -1);
-                    }
-                    break;
-                case -1:
+                default:
                     #ifdef WIN32
                         mdebug1("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
                     #else
                         mdebug1("Connection socket: %s (%d)", strerror(errno), errno);
                     #endif
-                    /* Connection timeout, try to reconnect */
-                    if (connect_server(agt->rip_id)) {
-                        send_msg(msg, -1);
-                    }
                     break;
+                }
             }
         }
     }
