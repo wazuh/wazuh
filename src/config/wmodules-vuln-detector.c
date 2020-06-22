@@ -140,11 +140,10 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
     upd->interval = WM_VULNDETECTOR_DEFAULT_UPDATE_INTERVAL;
 
     if ((strcasestr(feed, vu_feed_tag[FEED_CANONICAL]) || strcasestr(feed, vu_feed_tag[FEED_UBUNTU])) && version) {
-        if (!strcmp(version, "12") || strcasestr(version, vu_feed_tag[FEED_PRECISE])) {
-            os_index = CVE_PRECISE;
-            os_strdup(vu_feed_tag[FEED_PRECISE], upd->version);
-            upd->dist_tag_ref = FEED_PRECISE;
-            upd->dist_ext = vu_feed_ext[FEED_PRECISE];
+        if (!strcmp(version, "12") || strcasestr(version, "PRECISE")) {
+            mwarn("Ubuntu Precise is no longer supported.");
+            retval = OS_DEPRECATED;
+            goto end;
         } else if (!strcmp(version, "14") || strcasestr(version, vu_feed_tag[FEED_TRUSTY])) {
             os_index = CVE_TRUSTY;
             os_strdup(vu_feed_tag[FEED_TRUSTY], upd->version);
@@ -171,7 +170,7 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             goto end;
         }
         upd->dist_ref = FEED_UBUNTU;
-    } else  if (strcasestr(feed, vu_feed_tag[FEED_DEBIAN]) && version) {
+    } else if (strcasestr(feed, vu_feed_tag[FEED_DEBIAN]) && version) {
         if (!strcmp(version, "10") || strcasestr(version, vu_feed_tag[FEED_BUSTER])) {
             os_index = CVE_BUSTER;
             os_strdup(vu_feed_tag[FEED_BUSTER], upd->version);
@@ -187,11 +186,10 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             os_strdup(vu_feed_tag[FEED_JESSIE], upd->version);
             upd->dist_tag_ref = FEED_JESSIE;
             upd->dist_ext = vu_feed_ext[FEED_JESSIE];
-        } else if (!strcmp(version, "7") || strcasestr(version, vu_feed_tag[FEED_WHEEZY])) {
-            os_index = CVE_WHEEZY;
-            os_strdup(vu_feed_tag[FEED_WHEEZY], upd->version);
-            upd->dist_tag_ref = FEED_WHEEZY;
-            upd->dist_ext = vu_feed_ext[FEED_WHEEZY];
+        } else if (!strcmp(version, "7") || strcasestr(version, "WHEEZY")) {
+            mwarn("Debian Wheezy is no longer supported.");
+            retval = OS_DEPRECATED;
+            goto end;
         } else {
             merror("Invalid Debian version '%s'.", version);
             retval = OS_INVALID;
@@ -654,6 +652,10 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
 
             if (os_index = wm_vuldet_set_feed_version(pr_name, os_list->version, updates), os_index == OS_INVALID || os_index == OS_SUPP_SIZE) {
                 goto end;
+            } else if (os_index == OS_DEPRECATED) {
+                os_list = os_list->next;
+                wm_vuldet_remove_os_feed(rem, 0);
+                continue;
             }
 
             if (os_list->interval) {
@@ -679,6 +681,10 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
                         updates[os_index]->url ? updates[os_index]->url : "none",
                         updates[os_index]->timeout);
             flags->update = 1;
+
+            if (updates[os_index]->path && updates[os_index]->url) {
+                os_free(updates[os_index]->url);
+            }
 
             os_list = os_list->next;
             wm_vuldet_remove_os_feed(rem, 0);
@@ -724,13 +730,9 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
             updates[os_index]->update_from_year,
             updates[os_index]->timeout);
         flags->update = 1;
-    }
 
-    if (os_index != OS_SUPP_SIZE) {
         if (updates[os_index]->multi_path && updates[os_index]->multi_url) {
             os_free(updates[os_index]->multi_url);
-        } else if (updates[os_index]->path && updates[os_index]->url) {
-            os_free(updates[os_index]->url);
         }
     }
 
