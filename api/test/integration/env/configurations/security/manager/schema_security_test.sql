@@ -6,7 +6,7 @@
  * and/or modify it under the terms of GPLv2.
  */
 
-CREATE TABLE users (id INTEGER NOT NULL, username VARCHAR(32) NOT NULL, password VARCHAR(256), auth_context BOOLEAN DEFAULT FALSE NOT NULL, created_at DATETIME, PRIMARY KEY (username));
+CREATE TABLE users (id INTEGER NOT NULL, username VARCHAR(32), password VARCHAR(256), auth_context BOOLEAN NOT NULL, created_at DATETIME, PRIMARY KEY (id), CONSTRAINT username_restriction UNIQUE (username), CHECK (auth_context IN (0, 1)));
 
 CREATE TABLE roles (id INTEGER NOT NULL, name VARCHAR(20), rule TEXT, created_at DATETIME, PRIMARY KEY (id), CONSTRAINT name_role UNIQUE (name), CONSTRAINT role_definition UNIQUE (rule));
 
