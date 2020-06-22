@@ -470,6 +470,7 @@ char *seechanges_get_diff_path(char *path) {
 
 void seechanges_delete_compressed_file(const char *path){
     char containing_folder[PATH_MAX + 1];
+    char last_entry_file[PATH_MAX + 1];
     float file_size = 0.0;
 
     snprintf(
@@ -480,19 +481,33 @@ void seechanges_delete_compressed_file(const char *path){
         path + PATH_OFFSET
     );
 
+    snprintf(
+        last_entry_file,
+        PATH_MAX,
+        "%s/%s.gz",
+        containing_folder,
+        DIFF_LAST_FILE
+    );
+
 #ifdef WIN32
     char abs_path[PATH_MAX + 1];
 
     abspath(containing_folder, abs_path, sizeof(abs_path));
-
     snprintf(containing_folder, PATH_MAX, "%s", abs_path);
+
+    abspath(last_entry_file, abs_path, sizeof(abs_path));
+    snprintf(last_entry_file, PATH_MAX, "%s", abs_path);
 #endif
 
     if (IsDir(containing_folder) == -1) {
         return;     // The folder does not exist
     }
 
-    file_size = DirSize(containing_folder) / 1024;
+#ifdef WIN32
+     file_size = (float)FileSizeWin(last_entry_file) / 1024;
+#else
+     file_size = (float)FileSize(last_entry_file) / 1024;
+#endif
 
     if (rmdir_ex(containing_folder) < 0) {
         mdebug2(RMDIR_ERROR, containing_folder, errno, strerror(errno));
@@ -500,6 +515,10 @@ void seechanges_delete_compressed_file(const char *path){
     else {
         if (file_size != -1) {
             syscheck.diff_folder_size -= file_size;
+
+            if (syscheck.diff_folder_size < 0) {
+                syscheck.diff_folder_size = 0;
+            }
         }
     }
 }
