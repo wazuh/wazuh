@@ -30,9 +30,10 @@ def get_lists(path=None, offset=0, limit=common.database_limit, select=None, sor
     :param filename: List of filenames to filter by.
     :return: AffectedItemsWazuhResult
     """
-    result = AffectedItemsWazuhResult(none_msg='No list was shown',
-                                      some_msg='Some lists could not be shown',
-                                      all_msg='All specified lists were shown')
+    result = AffectedItemsWazuhResult(all_msg='All specified lists were returned',
+                                      some_msg='Some lists were not returned',
+                                      none_msg='No list was returned')
+
     lists = list()
     for rel_p in path:
         if not any([relative_dirname is not None and os.path.dirname(rel_p) != relative_dirname,
@@ -69,15 +70,15 @@ def get_path_lists(path=None, offset=0, limit=common.database_limit, sort_by=Non
     :param filename: List of filenames to filter by.
     :return: AffectedItemsWazuhResult
     """
-    result = AffectedItemsWazuhResult(none_msg='No path was shown',
-                                      some_msg='Some paths could not be shown',
-                                      all_msg='All specified paths were shown')
+    result = AffectedItemsWazuhResult(all_msg='All specified paths were returned',
+                                      some_msg='Some paths were not returned',
+                                      none_msg='No path was returned')
 
     lists = iterate_lists(only_names=True)
     for item in list(lists):
         if any([relative_dirname is not None and item['relative_dirname'] != relative_dirname,
-               filename is not None and item['filename'] not in filename,
-               os.path.join(item['relative_dirname'], item['filename']) not in path]):
+                filename is not None and item['filename'] not in filename,
+                os.path.join(item['relative_dirname'], item['filename']) not in path]):
             lists.remove(item)
 
     data = process_array(lists, search_text=search_text, search_in_fields=search_in_fields,
