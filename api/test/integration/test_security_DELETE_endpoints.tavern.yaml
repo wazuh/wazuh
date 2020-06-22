@@ -150,7 +150,7 @@ stages:
   - name: Try to delete a existent user-role
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/normal/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/101/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -374,7 +374,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        usernames: nonexistent
+        user_ids: 200
     response:
       status_code: 200
       json:
@@ -386,7 +386,7 @@ stages:
                 message: !anystr
                 remediation: !anystr
               id:
-                - nonexistent
+                - '200'
           total_affected_items: 0
           total_failed_items: 1
         message: !anystr
@@ -399,7 +399,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        usernames: testing
+        user_ids: 99
     response:
       status_code: 200
       json:
@@ -411,7 +411,7 @@ stages:
                 message: !anystr
                 remediation: !anystr
               id:
-                - testing
+                - '99'
           total_affected_items: 0
           total_failed_items: 1
         message: !anystr
@@ -424,7 +424,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        usernames: wazuh-wui
+        user_ids: 2
     response:
       status_code: 200
       json:
@@ -436,7 +436,7 @@ stages:
                 message: !anystr
                 remediation: !anystr
               id:
-                - wazuh-wui
+                - '2'
           total_affected_items: 0
           total_failed_items: 1
         message: !anystr
@@ -449,13 +449,13 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        usernames: normal
+        user_ids: 101
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - username: normal
+            - id: 101
           total_affected_items: 1
         message: Users deleted correctly
 
@@ -467,13 +467,13 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        usernames: rbac
+        user_ids: 104
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - username: rbac
+            - user_id: 104
           total_affected_items: 1
         message: Users deleted correctly
 

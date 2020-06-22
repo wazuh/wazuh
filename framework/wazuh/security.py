@@ -148,7 +148,8 @@ def remove_users(user_ids):
                                       all_msg='Users deleted correctly')
     with AuthenticationManager() as auth:
         for user_id in user_ids:
-            if user_id == common.current_user.get():
+            current_user = auth.get_user(common.current_user.get())
+            if not isinstance(current_user, bool) and user_id == str(current_user['id']):
                 result.add_failed_item(id_=user_id, error=WazuhError(5008))
                 continue
             user = auth.get_user_id(user_id)

@@ -490,7 +490,7 @@ class AuthenticationManager:
         -------
         True if the user has been delete successfully. False otherwise
         """
-        if user_id in admin_user_ids:
+        if int(user_id) in admin_user_ids:
             return SecurityError.ADMIN_RESOURCES
 
         try:
