@@ -5046,7 +5046,7 @@ paths:
                       status: active
                       version: Wazuh v3.10.0
                   total_affected_items: 3
-                message: 'All selected agents information is shown'
+                message: 'All selected agents information was returned'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5186,7 +5186,7 @@ paths:
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
-                message: Specified agent removed from shown groups
+                message: 'Specified agent removed from returned groups'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5225,7 +5225,7 @@ paths:
                   failed_items: []
                   total_affected_items: 1
                   total_failed_items: 0
-                message: Sync info shown for all selected agents
+                message: 'Sync info was returned for all selected agents'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5656,7 +5656,7 @@ paths:
                   total_affected_items: 3
                   failed_items: []
                   total_failed_items: 0
-                message: "Obtained information about all selected groups"
+                message: "All selected groups information was returned"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5960,7 +5960,7 @@ paths:
                   total_affected_items: 10
                   failed_items: []
                   total_failed_items: 0
-                message: All selected groups files are shown
+                message: 'All selected groups files were returned'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6329,6 +6329,7 @@ paths:
                   total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
+                message: 'All selected agents information was returned'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6360,7 +6361,7 @@ paths:
                     data:
                         $ref: '#/components/schemas/AllItemsResponseAgentIDs'
                 example:
-                  message: Restart command sent to all selected agents
+                  message: 'Restart command sent to all agents'
                   data:
                     affected_items:
                       - '002'
@@ -6458,7 +6459,7 @@ paths:
                   total_affected_items: 13
                   total_failed_items: 0
                   failed_items: []
-                message: All selected agents information is shown
+                message: 'All selected agents information was returned'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
