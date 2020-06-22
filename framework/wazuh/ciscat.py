@@ -28,9 +28,9 @@ def get_ciscat_results(agent_list=None, offset=0, limit=common.database_limit, s
     :return: AffectedItemsWazuhResult
     """
     result = AffectedItemsWazuhResult(
-        all_msg='All CISCAT results loaded',
-        some_msg='Some CISCAT results were not loaded',
-        none_msg='No CISCAT results were loaded',
+        all_msg='All CISCAT results were returned',
+        some_msg='Some CISCAT results were not returned',
+        none_msg='No CISCAT results were returned',
         sort_fields=['agent_id'] if sort is None else sort['fields'],
         sort_casting=['str'],
         sort_ascending=[sort['order'] == 'asc' for _ in sort['fields']] if sort is not None else ['True']
