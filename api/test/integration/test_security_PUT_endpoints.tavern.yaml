@@ -56,8 +56,8 @@ stages:
                 - 104
                 - 103
               users:
-                - normal
-                - rbac
+                - "101"
+                - "104"
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []

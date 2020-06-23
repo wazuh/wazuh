@@ -26,6 +26,7 @@ stages:
               name: !anystr
               policies: !anything
               rule: !anything
+              users: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -173,8 +174,6 @@ stages:
       json:
         data:
           affected_items:
-            - <<: *roles
-            - <<: *roles
             - <<: *roles
             - <<: *roles
           total_affected_items: !anyint

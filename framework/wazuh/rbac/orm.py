@@ -241,7 +241,7 @@ class Roles(_Base):
         """
         users = list()
         for user in self.users:
-            users.append(user.get_user()['id'])
+            users.append(str(user.get_user()['id']))
 
         with RolesPoliciesManager() as rpm:
             return {'id': self.id, 'name': self.name, 'rule': json.loads(self.rule),
