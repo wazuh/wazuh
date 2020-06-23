@@ -878,7 +878,7 @@ int handle_file(int i, int j, int do_fseek, int do_log)
     }
 
     /* Only seek the end of the file if set to */
-    if (do_fseek == 1 && S_ISREG(stat_fd.st_mode)) {
+    if (do_fseek == 1 && S_ISREG(stat_fd.st_mode) && lf->fseek ) {
         /* Windows and fseek causes some weird issues */
 #ifndef WIN32
         if (fseek(lf->fp, 0, SEEK_END) < 0) {

@@ -37,6 +37,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_localfile_age = "age";
     const char *xml_localfile_exclude = "exclude";
     const char *xml_localfile_binaries = "ignore_binaries";
+    const char *xml_localfile_fseek = "read-from-end";
 
     logreader *logf;
     logreader_config *log_config;
@@ -81,6 +82,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logf[pl].exists = 1;
     logf[pl].future = 1;
     logf[pl].reconnect_time = DEFAULT_EVENTCHANNEL_REC_TIME;
+    logf[pl].fseek = 1;
 
     /* Search for entries related to files */
     i = 0;
@@ -359,6 +361,14 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 return (OS_INVALID);
             }
 
+        } else if (strcmp(node[i]->element, xml_localfile_fseek) == 0) {
+            if (strcmp(node[i]->content, "yes") == 0) {
+                logf[pl].fseek = 1;
+            } else if (strcmp(node[i]->content, "no") == 0) {
+                logf[pl].fseek = 0;
+            } else {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            }
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

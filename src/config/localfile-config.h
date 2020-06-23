@@ -84,6 +84,7 @@ typedef struct _logreader {
     int exists;
     unsigned int age;
     char *age_str;
+    char fseek;
 
     void *(*read)(struct _logreader *lf, int *rc, int drop_it);
 
