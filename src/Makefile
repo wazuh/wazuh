@@ -968,6 +968,10 @@ os_net/%.o: os_net/%.c
 
 #### Shared ##########
 # Unit tests wrappers
+
+wrappers_client_agent_c := $(wildcard unit_tests/wrappers/client-agent/*.c)
+wrappers_client_agent_o := $(wrappers_client_agent_c:.c=.o)
+
 wrappers_common_c := $(wildcard unit_tests/wrappers/*.c)
 wrappers_common_o := $(wrappers_common_c:.c=.o)
 
@@ -1028,8 +1032,9 @@ wrappers_wazuh_wazuh_modules_o := $(wrappers_wazuh_wazuh_modules_c:.c=.o)
 wrappers_windows_c := $(wildcard unit_tests/wrappers/windows/*.c)
 wrappers_windows_o := $(wrappers_windows_c:.c=.o)
 
-wrappers_client_agent_c := $(wildcard unit_tests/wrappers/client-agent/*.c)
-wrappers_client_agent_o := $(wrappers_client_agent_c:.c=.o)
+wrappers_windows_lib_c := $(wildcard unit_tests/wrappers/windows/libc/*.c)
+wrappers_windows_lib_o := $(wrappers_windows_lib_c:.c=.o)
+
 
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 	OSSEC_CFLAGS+=${CFLAGS_TEST}
@@ -1056,8 +1061,9 @@ UNIT_TEST_WRAPPERS+=${wrappers_wazuh_wazuh_db_o}
 UNIT_TEST_WRAPPERS+=${wrappers_wazuh_wazuh_modules_o}
 
 ifeq (${TARGET},winagent)
-	UNIT_TEST_WRAPPERS+=${wrappers_windows_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_client_agent_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_windows_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_windows_lib_o}
 else
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_audit_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_procpc_o}
@@ -1733,6 +1739,9 @@ unit_tests/wrappers/wazuh/wazuh_modules/%.o: unit_tests/wrappers/wazuh/wazuh_mod
 unit_tests/wrappers/windows/%.o: unit_tests/wrappers/windows/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
+unit_tests/wrappers/windows/libc/%.o: unit_tests/wrappers/windows/libc/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
 .PHONY: test run_valgrind_tests run_tests build_tests test_valgrind test_coverage
 
 test: build_tests
@@ -1824,10 +1833,10 @@ win32_ui_o := $(win32_ui_c:.c=.o)
 win32/ui/%.o: win32/ui/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -UOSSECHIDS -DARGV0=\"ossec-win32ui\" -c $^ -o $@
 
-win32/ossec-agent.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o ${syscheck_o} ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o wazuh_modules/syscollector/syscollector_win_ext.dll ${UNIT_TEST_WRAPPERS}
+win32/ossec-agent.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o ${syscheck_o} ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o wazuh_modules/syscollector/syscollector_win_ext.dll
 	${OSSEC_CCBIN} -DARGV0=\"ossec-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/ossec-agent-eventchannel.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out syscheckd/main-event.o, ${syscheck_eventchannel_o}) ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o wazuh_modules/syscollector/syscollector_win_ext.dll ${UNIT_TEST_WRAPPERS}
+win32/ossec-agent-eventchannel.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out syscheckd/main-event.o, ${syscheck_eventchannel_o}) ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o wazuh_modules/syscollector/syscollector_win_ext.dll
 	${OSSEC_CCBIN} -DARGV0=\"ossec-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 win32/ossec-rootcheck.exe: win32/icon.o win32/win_service_rk.o ${rootcheck_rk_o}

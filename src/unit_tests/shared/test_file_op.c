@@ -72,40 +72,6 @@ int __wrap__mferror(const char * file, int line, const char * func, const char *
     return 0;
 }
 
-
-extern int __real_fprintf (FILE *__stream, const char *__format, ...);
-int __wrap_fprintf (FILE *__stream, const char *__format, ...) {
-    int ret;
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, __format);
-    if (test_mode) {
-        vsnprintf(formatted_msg, OS_MAXSTR, __format, args);
-        check_expected(__stream);
-        check_expected(formatted_msg);
-    } else {
-        ret = __real_fprintf(__stream, __format, args);
-    }
-
-    va_end(args);
-    if(test_mode) {
-        return mock();
-    }
-    return ret;
-}
-
-extern FILE* __real_fopen(const char* path, const char* mode);
-FILE* __wrap_fopen(const char* path, const char* mode) {
-    if(test_mode) {
-        check_expected_ptr(path);
-        check_expected(mode);
-        return mock_ptr_type(FILE*);
-    } else {
-        return __real_fopen(path, mode);
-    }
-}
-
 /* setups/teardowns */
 static int setup_group(void **state) {
     test_mode = 1;
@@ -118,11 +84,13 @@ static int teardown_group(void **state) {
 }
 
 static int CreatePID_teardown(void **state) {
+    test_mode = 0;
     remove("./test_file.tmp");
 
     if(*state) {
         free(*state);
     }
+    test_mode = 1;
     return 0;
 }
 
@@ -130,7 +98,9 @@ void test_CreatePID_success(void **state)
 {
     (void) state;
     int ret;
-    FILE* fp = __real_fopen("./test_file.tmp", "a");
+    test_mode = 0;
+    FILE* fp = fopen("./test_file.tmp", "a");
+    test_mode = 1;
     char* content = NULL;
 
     *state = content;
@@ -154,6 +124,9 @@ void test_CreatePID_success(void **state)
     expect_string(__wrap_chmod, path, "/var/run/test-42.pid");
     will_return(__wrap_chmod, 0);
 
+    expect_value(__wrap_fclose, _File, fp);
+    will_return(__wrap_fclose, 0);
+
     ret = CreatePID("test", 42);
     assert_int_equal(0, ret);
 }
@@ -162,7 +135,9 @@ void test_CreatePID_failure_chmod(void **state)
 {
     (void) state;
     int ret;
-    FILE* fp = __real_fopen("./test_file.tmp", "a");
+    test_mode = 0;
+    FILE* fp = fopen("./test_file.tmp", "a");
+    test_mode = 1;
 
     assert_non_null(fp);
 
@@ -184,6 +159,9 @@ void test_CreatePID_failure_chmod(void **state)
 
     expect_string(__wrap_chmod, path, "/var/run/test-42.pid");
     will_return(__wrap_chmod, -1);
+
+    expect_value(__wrap_fclose, _File, fp);
+    will_return(__wrap_fclose, 0);
 
     ret = CreatePID("test", 42);
     assert_int_equal(-1, ret);

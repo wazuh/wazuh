@@ -18,38 +18,7 @@
 #include "shared.h"
 #include "../headers/bzip2_op.h"
 #include "../wrappers/externals/bzip2/bzlib_wrappers.h"
-
-
-extern FILE* __real_fopen(const char* path, const char* mode);
-FILE* __wrap_fopen(const char* path, const char* mode) {
-    if(test_mode) {
-        check_expected_ptr(path);
-        check_expected(mode);
-        return mock_ptr_type(FILE*);
-    }
-    return __real_fopen(path, mode);
-}
-
-size_t __real_fread(void *ptr, size_t size, size_t n, FILE *stream);
-size_t __wrap_fread(void *ptr, size_t size, size_t n, FILE *stream) {
-    if (test_mode) {
-        strncpy((char *) ptr, mock_type(char *), n);
-        return mock();
-    }
-    return __real_fread(ptr, size, n, stream);
-}
-
-size_t __real_fwrite(const void * ptr, size_t size, size_t count, FILE * stream);
-size_t __wrap_fwrite(const void * ptr, size_t size, size_t count, FILE * stream) {
-    if (test_mode) {
-        return mock();
-    }
-    return __real_fwrite(ptr, size, count, stream);
-}
-
-int __wrap_fclose() {
-    return 0;
-}
+#include "../wrappers/libc/stdio_wrappers.h"
 
 void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
     char formatted_msg[OS_MAXSTR];
@@ -114,6 +83,10 @@ void test_bzip2_compress_secondfopenfail(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg,
                   "(1103): Could not open file 'testfile2' due to [(0)-(Success)].");
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+    
     ret = bzip2_compress(file1, file2);
     assert_int_equal(ret, -1);
 }
@@ -137,6 +110,11 @@ void test_bzip2_compress_bzWriteOpen(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg,
                   "Could not open to write bz2 file (-3)'testfile2': (0)-Success");
 
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+    expect_value(__wrap_fclose, _File, 2);
+    will_return(__wrap_fclose, 1);
+    
     ret = bzip2_compress(file1, file2);
     assert_int_equal(ret, -1);
 }
@@ -167,6 +145,11 @@ void test_bzip2_compress_BZ2_bzWrite(void **state) {
     will_return(__wrap_BZ2_bzWrite, BZ_MEM_ERROR);
     expect_string(__wrap__mdebug2, formatted_msg,
                   "Could not write bz2 file (-3)'testfile2': (0)-Success");
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+    expect_value(__wrap_fclose, _File, 2);
+    will_return(__wrap_fclose, 1);
 
     ret = bzip2_compress(file1, file2);
     assert_int_equal(ret, -1);
@@ -205,6 +188,11 @@ void test_bzip2_compress_bzWriteClose64(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg,
                   "BZ2_bzWriteClose64(-3)'testfile2': (0)-Success");
 
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+    expect_value(__wrap_fclose, _File, 2);
+    will_return(__wrap_fclose, 1);
+
     ret = bzip2_compress(file1, file2);
     assert_int_equal(ret, -1);
 }
@@ -239,6 +227,11 @@ void test_bzip2_compress_success(void **state) {
 
     expect_value(__wrap_BZ2_bzWriteClose64, f, 3);
     will_return(__wrap_BZ2_bzWriteClose64, BZ_OK);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+    expect_value(__wrap_fclose, _File, 2);
+    will_return(__wrap_fclose, 1);
 
     ret = bzip2_compress(file1, file2);
     assert_int_equal(ret, 0);
@@ -288,6 +281,10 @@ void test_bzip2_uncompress_secondfopenfail(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg,
                   "(1103): Could not open file 'testfile2' due to [(0)-(Success)].");
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
     ret = bzip2_uncompress(file1, file2);
     assert_int_equal(ret, -1);
 }
@@ -310,6 +307,11 @@ void test_bzip2_uncompress_bzReadOpen(void **state) {
     will_return(__wrap_BZ2_bzReadOpen, NULL);
     expect_string(__wrap__mdebug2, formatted_msg,
                   "BZ2_bzReadOpen(-3)'testfile': (0)-Success");
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+    expect_value(__wrap_fclose, _File, 2);
+    will_return(__wrap_fclose, 1);
 
     ret = bzip2_uncompress(file1, file2);
     assert_int_equal(ret, -1);
@@ -346,6 +348,11 @@ void test_bzip2_uncompress_bzReadsuccess(void **state) {
 
     will_return(__wrap_fwrite, 0);
 
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+    expect_value(__wrap_fclose, _File, 2);
+    will_return(__wrap_fclose, 1);
+
     ret = bzip2_uncompress(file1, file2);
     assert_int_equal(ret, 0);
 }
@@ -380,6 +387,11 @@ void test_bzip2_uncompress_bzReadfail(void **state) {
     will_return(__wrap_BZ2_bzRead, "");
     expect_string(__wrap__mdebug2, formatted_msg,
                   "BZ2_bzRead(-3)'testfile': (0)-Success");
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+    expect_value(__wrap_fclose, _File, 2);
+    will_return(__wrap_fclose, 1);
 
     ret = bzip2_uncompress(file1, file2);
     assert_int_equal(ret, -1);

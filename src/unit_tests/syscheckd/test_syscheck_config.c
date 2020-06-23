@@ -193,11 +193,11 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     assert_null(syscheck.nodiff_regex);
     assert_null(syscheck.scan_day);
     assert_null(syscheck.scan_time);
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     assert_null(syscheck.dir);
-    #else
+#else
     assert_non_null(syscheck.dir);
-    #endif
+#endif
     assert_null(syscheck.opts);
     assert_int_equal(syscheck.enable_synchronization, 1);
     assert_int_equal(syscheck.restart_audit, 1);
@@ -227,11 +227,11 @@ void test_getSyscheckConfig(void **state)
     assert_int_equal(cJSON_GetArraySize(ret), 1);
 
     cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
-    #if defined(TEST_SERVER) || defined(TEST_AGENT)
+#if defined(TEST_SERVER) || defined(TEST_AGENT)
     assert_int_equal(cJSON_GetArraySize(sys_items), 19);
     #elif defined(TEST_WINAGENT)
     assert_int_equal(cJSON_GetArraySize(sys_items), 22);
-    #endif
+#endif
 
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
     assert_string_equal(cJSON_GetStringValue(disabled), "no");
@@ -256,24 +256,24 @@ void test_getSyscheckConfig(void **state)
     assert_string_equal(cJSON_GetStringValue(scan_on_start), "yes");
 
     cJSON *sys_dir = cJSON_GetObjectItem(sys_items, "directories");
-    #if defined(TEST_SERVER) || defined(TEST_AGENT)
+#if defined(TEST_SERVER) || defined(TEST_AGENT)
     assert_int_equal(cJSON_GetArraySize(sys_dir), 6);
     #elif defined(TEST_WINAGENT)
     assert_int_equal(cJSON_GetArraySize(sys_dir), 10);
-    #endif
+#endif
 
 
     cJSON *sys_nodiff = cJSON_GetObjectItem(sys_items, "nodiff");
     assert_int_equal(cJSON_GetArraySize(sys_nodiff), 1);
 
     cJSON *sys_ignore = cJSON_GetObjectItem(sys_items, "ignore");
-    #if defined(TEST_SERVER) || defined(TEST_AGENT)
+#if defined(TEST_SERVER) || defined(TEST_AGENT)
     assert_int_equal(cJSON_GetArraySize(sys_ignore), 12);
     #elif defined(TEST_WINAGENT)
     assert_int_equal(cJSON_GetArraySize(sys_ignore), 2);
-    #endif
+#endif
 
-    #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
     cJSON *sys_ignore_regex = cJSON_GetObjectItem(sys_items, "ignore_sregex");
     assert_int_equal(cJSON_GetArraySize(sys_ignore_regex), 1);
 
@@ -286,9 +286,9 @@ void test_getSyscheckConfig(void **state)
     assert_int_equal(cJSON_GetArraySize(sys_registry_ignore), 11);
     cJSON *sys_registry_ignore_sregex = cJSON_GetObjectItem(sys_items, "registry_ignore_sregex");
     assert_int_equal(cJSON_GetArraySize(sys_registry_ignore_sregex), 1);
-    #endif
+#endif
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     cJSON *sys_whodata = cJSON_GetObjectItem(sys_items, "whodata");
     cJSON *whodata_restart_audit = cJSON_GetObjectItem(sys_whodata, "restart_audit");
     assert_string_equal(cJSON_GetStringValue(whodata_restart_audit), "yes");
@@ -296,16 +296,16 @@ void test_getSyscheckConfig(void **state)
     assert_int_equal(cJSON_GetArraySize(whodata_audit_key), 2);
     cJSON *whodata_startup_healthcheck = cJSON_GetObjectItem(sys_whodata, "startup_healthcheck");
     assert_string_equal(cJSON_GetStringValue(whodata_startup_healthcheck), "yes");
-    #endif
+#endif
 
     cJSON *allow_remote_prefilter_cmd = cJSON_GetObjectItem(sys_items, "allow_remote_prefilter_cmd");
     assert_string_equal(cJSON_GetStringValue(allow_remote_prefilter_cmd), "yes");
     cJSON *prefilter_cmd = cJSON_GetObjectItem(sys_items, "prefilter_cmd");
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     assert_string_equal(cJSON_GetStringValue(prefilter_cmd), "/bin/ls");
-    #else
+#else
     assert_string_equal(cJSON_GetStringValue(prefilter_cmd), "c:\\windows\\system32\\cmd.exe");
-    #endif
+#endif
 
     cJSON *sys_synchronization = cJSON_GetObjectItem(sys_items, "synchronization");
     cJSON *synchronization_enabled = cJSON_GetObjectItem(sys_synchronization, "enabled");
@@ -342,11 +342,11 @@ void test_getSyscheckConfig_no_audit(void **state)
     assert_int_equal(cJSON_GetArraySize(ret), 1);
 
     cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     assert_int_equal(cJSON_GetArraySize(sys_items), 15);
-    #else
+#else
     assert_int_equal(cJSON_GetArraySize(sys_items), 18);
-    #endif
+#endif
 
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
     assert_string_equal(cJSON_GetStringValue(disabled), "no");
@@ -371,11 +371,11 @@ void test_getSyscheckConfig_no_audit(void **state)
     assert_string_equal(cJSON_GetStringValue(scan_on_start), "no");
 
     cJSON *sys_dir = cJSON_GetObjectItem(sys_items, "directories");
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     assert_int_equal(cJSON_GetArraySize(sys_dir), 8);
-    #else
+#else
     assert_int_equal(cJSON_GetArraySize(sys_dir), 10);
-    #endif
+#endif
 
     cJSON *sys_nodiff = cJSON_GetObjectItem(sys_items, "nodiff");
     assert_null(sys_nodiff);
@@ -383,7 +383,7 @@ void test_getSyscheckConfig_no_audit(void **state)
     cJSON *sys_ignore = cJSON_GetObjectItem(sys_items, "ignore");
     assert_null(sys_ignore);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     cJSON *sys_whodata = cJSON_GetObjectItem(sys_items, "whodata");
     cJSON *whodata_restart_audit = cJSON_GetObjectItem(sys_whodata, "restart_audit");
     assert_string_equal(cJSON_GetStringValue(whodata_restart_audit), "no");
@@ -391,7 +391,7 @@ void test_getSyscheckConfig_no_audit(void **state)
     assert_null(whodata_audit_key);
     cJSON *whodata_startup_healthcheck = cJSON_GetObjectItem(sys_whodata, "startup_healthcheck");
     assert_string_equal(cJSON_GetStringValue(whodata_startup_healthcheck), "no");
-    #else
+#else
     cJSON *windows_audit_interval = cJSON_GetObjectItem(sys_items, "windows_audit_interval");
     assert_int_equal(windows_audit_interval->valueint, 0);
     cJSON *win_registry = cJSON_GetObjectItem(sys_items, "registry");
@@ -400,7 +400,7 @@ void test_getSyscheckConfig_no_audit(void **state)
     assert_int_equal(cJSON_GetArraySize(win_registry_ignore), 11);
     cJSON *win_registry_ignore_regex = cJSON_GetObjectItem(sys_items, "registry_ignore_sregex");
     assert_int_equal(cJSON_GetArraySize(win_registry_ignore_regex), 1);
-    #endif
+#endif
 
     cJSON *allow_remote_prefilter_cmd = cJSON_GetObjectItem(sys_items, "allow_remote_prefilter_cmd");
     assert_string_equal(cJSON_GetStringValue(allow_remote_prefilter_cmd), "no");

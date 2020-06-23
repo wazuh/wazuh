@@ -31,39 +31,3 @@ int __wrap_FOREVER() {
 time_t wrap_time (__attribute__ ((__unused__)) time_t *t) {
     return time_mock_value;
 }
-
-int wrap_fprintf (FILE *__stream, const char *__format, ...) {
-    int ret;
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, __format);
-    if (test_mode) {
-        vsnprintf(formatted_msg, OS_MAXSTR, __format, args);
-        check_expected(__stream);
-        check_expected(formatted_msg);
-    } else {
-        ret = fprintf(__stream, __format, args);
-    }
-
-    va_end(args);
-    if (test_mode) {
-        return mock();
-    }
-    return ret;
-}
-
-char * wrap_fgets (char * __s, int __n, FILE * __stream) {
-    if (test_mode) {
-        char *buffer = mock_type(char*);
-        check_expected(__stream);
-        if(buffer) {
-            strncpy(__s, buffer, __n - 1);
-            return __s;
-        }
-        return NULL;
-    } else {
-        char * ret = fgets(__s, __n, __stream);
-        return ret;
-    }
-}

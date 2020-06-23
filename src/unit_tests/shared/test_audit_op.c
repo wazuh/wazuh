@@ -18,6 +18,8 @@
 #ifndef TEST_WINAGENT
 #include "../wrappers/externals/audit/libaudit_wrappers.h"
 #endif
+#include "../wrappers/libc/stdio_wrappers.h"
+#include "../wrappers/common.h"
 #include "../headers/audit_op.h"
 #include "../headers/defs.h"
 #include "../headers/exec_op.h"
@@ -71,11 +73,6 @@ int __wrap_select() {
     return mock();
 }
 
-int __wrap_fgets(char *s, int size, FILE *stream) {
-    strncpy(s, mock_type(char *), size);
-    return mock();
-}
-
 wfd_t *__wrap_wpopenv() {
     return mock_type(wfd_t *);
 }
@@ -86,9 +83,14 @@ int __wrap_wpclose() {
 
 /* setups/teardowns */
 
-static int group_teardown(void **state) {
-    audit_free_list();
+static int group_setup(void **state) {
+    test_mode = 1;
+    return 0;
+}
 
+static int group_teardown(void **state) {
+    test_mode = 0;
+    audit_free_list();
     return 0;
 }
 
@@ -279,15 +281,17 @@ static void test_audit_clean_path(void **state) {
 
 static void test_audit_restart(void **state) {
     wfd_t * wfd = *state;
+    wfd->file = (FILE*) 1234;
 
     will_return(__wrap_wpopenv, wfd);
 
+    expect_value(__wrap_fgets, __stream, wfd->file);
     will_return(__wrap_fgets, "test");
-    will_return(__wrap_fgets, 1);
+
     expect_string(__wrap__mdebug1, formatted_msg, "auditd: test");
 
-    will_return(__wrap_fgets, "");
-    will_return(__wrap_fgets, 0);
+    expect_value(__wrap_fgets, __stream, wfd->file);
+    will_return(__wrap_fgets, NULL);
 
     will_return(__wrap_wpclose, 0);
 
@@ -308,16 +312,18 @@ static void test_audit_restart_open_error(void **state) {
 
 static void test_audit_restart_close_exec_error(void **state) {
     wfd_t * wfd = *state;
+    wfd->file = (FILE*) 1234;
 
     will_return(__wrap_wpopenv, wfd);
 
+    expect_value(__wrap_fgets, __stream, wfd->file);
     will_return(__wrap_fgets, "test");
-    will_return(__wrap_fgets, 1);
+
     expect_string(__wrap__mdebug1, formatted_msg, "auditd: test");
 
-    will_return(__wrap_fgets, "");
-    will_return(__wrap_fgets, 0);
-
+    expect_value(__wrap_fgets, __stream, wfd->file);
+    will_return(__wrap_fgets, NULL);
+    
     will_return(__wrap_wpclose, 0x7f00);
 
     expect_string(__wrap__merror, formatted_msg, "Could not launch command to restart Auditd.");
@@ -329,16 +335,18 @@ static void test_audit_restart_close_exec_error(void **state) {
 
 static void test_audit_restart_close_error(void **state) {
     wfd_t * wfd = *state;
+    wfd->file = (FILE*) 1234;
 
     will_return(__wrap_wpopenv, wfd);
 
+    expect_value(__wrap_fgets, __stream, wfd->file);
     will_return(__wrap_fgets, "test");
-    will_return(__wrap_fgets, 1);
+    
     expect_string(__wrap__mdebug1, formatted_msg, "auditd: test");
 
-    will_return(__wrap_fgets, "");
-    will_return(__wrap_fgets, 0);
-
+    expect_value(__wrap_fgets, __stream, wfd->file);
+    will_return(__wrap_fgets, NULL);
+    
     will_return(__wrap_wpclose, 0xff00);
 
     expect_string(__wrap__merror, formatted_msg, "Could not restart Auditd service.");
@@ -612,5 +620,5 @@ int main(void) {
         cmocka_unit_test(test_audit_manage_rules_fieldpair_error),
         cmocka_unit_test(test_audit_manage_rules_action_error),
     };
-    return cmocka_run_group_tests(tests, NULL, group_teardown);
+    return cmocka_run_group_tests(tests, group_setup, group_teardown);
 }

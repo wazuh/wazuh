@@ -51,7 +51,7 @@ char *__wrap_OSHash_Get() {
 }
 
 int __wrap_OSHash_Add_ex(OSHash *self, const char *key, void *data) {
-    #if TEST_WINAGENT
+#if TEST_WINAGENT
     if(data) {
         win32rtfim *rtlocald = data;
 
@@ -59,7 +59,7 @@ int __wrap_OSHash_Add_ex(OSHash *self, const char *key, void *data) {
         free(rtlocald->overlap.Pointer);
         free(rtlocald);
     }
-    #endif
+#endif
 
     return mock();
 }
@@ -429,23 +429,23 @@ void test_realtime_start_success(void **state) {
 
     will_return(__wrap_OSHash_Create, hash);
 
-    #if defined(TEST_SERVER) || defined(TEST_AGENT)
+#if defined(TEST_SERVER) || defined(TEST_AGENT)
     will_return(__wrap_inotify_init, 0);
-    #else
+#else
     expect_value(wrap_CreateEvent, lpEventAttributes, NULL);
     expect_value(wrap_CreateEvent, bManualReset, TRUE);
     expect_value(wrap_CreateEvent, bInitialState, FALSE);
     expect_value(wrap_CreateEvent, lpName, NULL);
     will_return(wrap_CreateEvent, (HANDLE)123456);
-    #endif
+#endif
 
     ret = realtime_start();
 
     assert_int_equal(ret, 0);
-    #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
     assert_int_equal(syscheck.realtime->fd, -1);
     assert_ptr_equal(syscheck.realtime->evt, 123456);
-    #endif
+#endif
 }
 
 
@@ -1373,13 +1373,13 @@ void test_RTCallBack_acquired_changes(void **state) {
 #endif
 
 int main(void) {
-    #ifndef WIN_WHODATA
+#ifndef WIN_WHODATA
     const struct CMUnitTest tests[] = {
         /* realtime_start */
         cmocka_unit_test_setup_teardown(test_realtime_start_success, setup_realtime_start, teardown_realtime_start),
         cmocka_unit_test_setup_teardown(test_realtime_start_failure_hash, setup_realtime_start, teardown_realtime_start),
 
-        #if defined(TEST_SERVER) || defined(TEST_AGENT)
+#if defined(TEST_SERVER) || defined(TEST_AGENT)
         cmocka_unit_test_setup_teardown(test_realtime_start_failure_inotify, setup_realtime_start, teardown_realtime_start),
 
         /* realtime_adddir */
@@ -1414,7 +1414,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_delete_subdirectories_watches_not_same_name, setup_hash_node, teardown_hash_node),
         cmocka_unit_test_setup_teardown(test_delete_subdirectories_watches_deletes, setup_hash_node, teardown_hash_node),
 
-        #else
+#else
         // realtime_win32read
         cmocka_unit_test(test_realtime_win32read_success),
         cmocka_unit_test(test_realtime_win32read_unable_to_read_directory),
@@ -1429,14 +1429,14 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_RTCallBack_no_bytes_returned, setup_RTCallBack, teardown_RTCallBack),
         cmocka_unit_test_setup_teardown(test_RTCallBack_acquired_changes_null_dir, setup_RTCallBack, teardown_RTCallBack),
         cmocka_unit_test_setup_teardown(test_RTCallBack_acquired_changes, setup_RTCallBack, teardown_RTCallBack),
-        #endif
+#endif
 
         /* count_watches */
         cmocka_unit_test_setup_teardown(test_count_watches_realtime_null, setup_hash_node, teardown_hash_node),
         cmocka_unit_test_setup_teardown(test_count_watches_hash_node_null, setup_hash_node, teardown_hash_node),
         cmocka_unit_test_setup_teardown(test_count_watches_counting, setup_hash_node, teardown_hash_node),
     };
-    #else
+#else
     const struct CMUnitTest tests[] = {
         // realtime_adddir
         cmocka_unit_test(test_realtime_adddir_whodata_non_existent_file),
@@ -1450,7 +1450,7 @@ int main(void) {
         cmocka_unit_test(test_realtime_adddir_out_of_memory_error),
         cmocka_unit_test(test_realtime_adddir_success),
     };
-    #endif
+#endif
 
     return cmocka_run_group_tests(tests, setup_group, NULL);
 }
