@@ -21,7 +21,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Internal variable rt_delay configuration changes to 5 milliseconds. ([#4760](https://github.com/wazuh/wazuh/pull/4760))
-- Who-data includes new fields: process CWD, parent process id, and CWD of paren process. ([#4782](https://github.com/wazuh/wazuh/pull/4782))
+- Who-data includes new fields: process CWD, parent process id, and CWD of parent process. ([#4782](https://github.com/wazuh/wazuh/pull/4782))
 - FIM opens files with shared deletion permission. ([#5018](https://github.com/wazuh/wazuh/pull/5018))
 - Extended the statics fields comparison in the ruleset options. ([#4416](https://github.com/wazuh/wazuh/pull/4416))
 - The state field was removed from vulnerability alerts. ([#5211](https://github.com/wazuh/wazuh/pull/5211))
