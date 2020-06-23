@@ -163,7 +163,12 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
         self.remove_extra_fields = True
 
     def _format_data_into_dictionary(self):
+        # Add <field>: 'unknown' when filter field is not within the response.
         if not self.real_fields or self.filter_fields == {'fields': set(self.real_fields)}:
+            for result in self._data:
+                for field in self.filter_fields['fields']:
+                    if field not in result.keys():
+                        result[field] = 'unknown'
             return super()._format_data_into_dictionary()
         else:
             fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
@@ -183,15 +188,19 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
                             result['count']) for result in self._data]
 
             # Sum the 'count' value of all the dictionaries that are equal
+            result_list = list()
+            added_dicts = list()
             for i, i_tuple in enumerate(tuples_list):
-                for j, j_tuple in enumerate(tuples_list):
-                    if j_tuple == i_tuple and j > i:
-                        tuples_list[i] = (tuples_list[i][0], tuples_list[i][1] + tuples_list[j][1])
-                        del tuples_list[j]
+                if i not in added_dicts:
+                    for j, j_tuple in enumerate(tuples_list):
+                        if j_tuple[0] == i_tuple[0] and j > i:
+                            tuples_list[i] = (tuples_list[i][0], tuples_list[i][1] + tuples_list[j][1])
+                            added_dicts.append(j)
+                    result_list.append(tuples_list[i])
 
             # Append 'count' value in each dict
             self._data = []
-            for dikt in tuples_list:
+            for dikt in result_list:
                 dikt[0].update({'count': dikt[1]})
                 self._data.append(dikt[0])
 
@@ -1524,7 +1533,7 @@ def format_fields(field_name, value, today, lastKeepAlive=None, version=None):
     elif field_name == 'group':
         return value.split(',')
     elif field_name in ['dateAdd', 'lastKeepAlive']:
-        return datetime.utcfromtimestamp(value)
+        return datetime.utcfromtimestamp(value) if not isinstance(value, str) else value
     else:
         return value
 
@@ -1532,7 +1541,7 @@ def format_fields(field_name, value, today, lastKeepAlive=None, version=None):
 def calculate_status(last_keep_alive, pending, today=datetime.utcnow()):
     """Calculates state based on last keep alive
     """
-    if not last_keep_alive:
+    if not last_keep_alive or last_keep_alive == 'unknown':
         return "never_connected"
     else:
         last_date = datetime.utcfromtimestamp(last_keep_alive)
