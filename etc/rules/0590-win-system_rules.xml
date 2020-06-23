@@ -283,9 +283,6 @@
     <field name="win.system.eventID">^8032$</field>
     <description>The browser service has failed to retrieve the backup list too many times on transport</description>
     <options>no_full_log</options>
-    <mitre>
-      <id>T1489</id>
-    </mitre>
   </rule>
 
   <rule id="61135" level="5">

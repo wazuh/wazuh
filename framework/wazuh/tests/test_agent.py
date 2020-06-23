@@ -245,9 +245,11 @@ def test_get_basic_information(test_data, select, a_id, a_ip, a_status):
 
 
 @pytest.mark.parametrize('fields, expected_items', [
-    ({'fields': ['os.platform']}, [{'count': 2}, {'os': {'platform': 'ubuntu'}, 'count': 4}]),
-    ({'fields': ['version']}, [{'version': 'Wazuh v3.9.0', 'count': 1}, {'version': 'Wazuh v3.6.2', 'count': 1}, {'count': 2}, {'version': 'Wazuh v3.8.2', 'count': 2}]),
-    ({'fields': ['os.platform', 'os.major']}, [{'os': {'major': '16', 'platform': 'ubuntu'}, 'count': 1}, {'count': 2}, {'os': {'major': '18', 'platform': 'ubuntu'}, 'count': 3}])
+    ({'fields': ['os.platform']}, [{'os': {'platform': 'ubuntu'}, 'count': 4}, {'count': 2}]),
+    ({'fields': ['version']}, [{'version': 'Wazuh v3.9.0', 'count': 1}, {'version': 'Wazuh v3.8.2', 'count': 2},
+                               {'version': 'Wazuh v3.6.2', 'count': 1}, {'count': 2}]),
+    ({'fields': ['os.platform', 'os.major']}, [{'os': {'major': '18', 'platform': 'ubuntu'}, 'count': 3},
+                                               {'os': {'major': '16', 'platform': 'ubuntu'}, 'count': 1}, {'count': 2}])
 ])
 @patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
 def test_get_distinct_agents(test_data, fields, expected_items):

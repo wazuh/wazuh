@@ -298,7 +298,7 @@ static int wm_sca_start(wm_sca_t * data) {
 
     do {
         const time_t time_sleep = sched_scan_get_time_until_next_scan(&(data->scan_config), WM_GCP_LOGTAG, data->scan_on_start);
-        
+
         if (time_sleep) {
             const int next_scan_time = sched_get_next_scan_time(data->scan_config);
             timestamp = w_get_timestamp(next_scan_time);

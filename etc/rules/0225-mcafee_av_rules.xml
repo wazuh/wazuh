@@ -102,7 +102,7 @@
     <group>pci_dss_5.1,pci_dss_10.6.1,pci_dss_5.2,gpg13_4.4,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.3,nist_800_53_AU.6,tsc_A1.2,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
-  <rule id="07512" level="7">
+  <rule id="7512" level="7">
     <if_sid>7500</if_sid>
     <match>update failed</match>
     <description>McAfee Windows AV - Virus program or DAT update failed.</description>

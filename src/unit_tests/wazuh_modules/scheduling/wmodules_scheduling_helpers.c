@@ -2,23 +2,9 @@
 #include <time.h> 
 
 static time_t current_time = 0;
-static int FOREVER_LOOP = 1;
 extern time_t __real_time(time_t *_time);
 /**************** Mocked functions *************/
 /**     Mocked functions       **/
-
-//Function that defines the ending of the module main loop
-int __wrap_FOREVER(){
-    return FOREVER_LOOP;
-}
-
-void disable_forever_loop(){
-    FOREVER_LOOP = 0;
-}
-
-void enable_forever_loop(){
-    FOREVER_LOOP = 1;
-}
 
 time_t __wrap_time(time_t *_time){
     if(!current_time){
@@ -117,7 +103,11 @@ void check_day_of_week(const sched_scan_config *scan_config, struct tm *date_arr
         assert_int_equal( scan_config->scan_wday, date_array[i].tm_wday);
         if(i > 0){
             // Assert there is one week difference
-            assert_int_equal((date_array[i-1].tm_yday + 7) % 365, date_array[i].tm_yday);
+            if (is_leap_year(date_array[i-1].tm_year)) {
+                assert_int_equal((date_array[i-1].tm_yday + 7) % 366, date_array[i].tm_yday);
+            } else {
+                assert_int_equal((date_array[i-1].tm_yday + 7) % 365, date_array[i].tm_yday);
+            }
         }
     }
 }
@@ -136,7 +126,11 @@ void check_time_of_day(const sched_scan_config *scan_config, struct tm *date_arr
         assert_int_equal( tm_min, date_array[i].tm_min);
         if(i > 0){
             // Assert that there are following days
-            assert_int_equal((date_array[i-1].tm_yday + 1) % 365, date_array[i].tm_yday);
+            if (is_leap_year(date_array[i-1].tm_year)) {
+                assert_int_equal((date_array[i-1].tm_yday + 1) % 366, date_array[i].tm_yday);
+            } else {
+                assert_int_equal((date_array[i-1].tm_yday + 1) % 365, date_array[i].tm_yday);
+            }
         }
 
         free(parts[0]);
