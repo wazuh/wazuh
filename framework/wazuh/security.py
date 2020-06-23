@@ -130,7 +130,7 @@ def update_user(user_id=None, password=None):
 
 
 @expose_resources(actions=['security:delete'], resources=['user:id:{user_ids}'],
-                  post_proc_kwargs={'exclude_codes': [5001, 5004]})
+                  post_proc_kwargs={'exclude_codes': [5001, 5004, 5008]})
 def remove_users(user_ids):
     """Remove a specified list of users
 
@@ -149,7 +149,7 @@ def remove_users(user_ids):
     with AuthenticationManager() as auth:
         for user_id in user_ids:
             current_user = auth.get_user(common.current_user.get())
-            if not isinstance(current_user, bool) and user_id == str(current_user['id']):
+            if not isinstance(current_user, bool) and int(user_id) == int(current_user['id']):
                 result.add_failed_item(id_=user_id, error=WazuhError(5008))
                 continue
             user = auth.get_user_id(user_id)
