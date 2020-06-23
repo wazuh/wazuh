@@ -255,9 +255,11 @@ def test_DistributedAPI_tmp_file(mock_cluster_status, mock_release_local_clients
     """Test the behaviour when processing temporal files to be send. Master node and unknown node."""
     open('/tmp/dapi_file.txt', 'a').close()
     with patch('wazuh.core.cluster.cluster.get_node', return_value={'type': 'master', 'node': 'unknown'}):
-        dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
-                       'f_kwargs': {'tmp_file': '/tmp/dapi_file.txt'}}
-        raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
+        with patch('wazuh.core.cluster.dapi.dapi.get_node_wrapper',
+                   return_value=AffectedItemsWazuhResult(affected_items=[{'type': 'master', 'node': 'unknown'}])):
+            dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
+                           'f_kwargs': {'tmp_file': '/tmp/dapi_file.txt'}}
+            raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
     open('/tmp/dapi_file.txt', 'a').close()
     with patch('wazuh.core.cluster.cluster.get_node', return_value={'type': 'unk', 'node': 'master'}):
@@ -273,18 +275,20 @@ def test_DistributedAPI_tmp_file_cluster_error(mock_cluster_status, mock_release
     """Test the behaviour when an error raises with temporal files function."""
     open('/tmp/dapi_file.txt', 'a').close()
     with patch('wazuh.core.cluster.cluster.get_node', return_value={'type': 'master', 'node': 'unknown'}):
-        with patch('wazuh.core.cluster.local_client.LocalClient.execute',
-                   new=AsyncMock(side_effect=WazuhClusterError(3022))):
-            dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
-                           'f_kwargs': {'tmp_file': '/tmp/dapi_file.txt'}}
-            raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=3022)
+        with patch('wazuh.core.cluster.dapi.dapi.get_node_wrapper',
+                   return_value=AffectedItemsWazuhResult(affected_items=[{'type': 'master', 'node': 'unknown'}])):
+            with patch('wazuh.core.cluster.local_client.LocalClient.execute',
+                       new=AsyncMock(side_effect=WazuhClusterError(3022))):
+                dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
+                               'f_kwargs': {'tmp_file': '/tmp/dapi_file.txt'}}
+                raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=3022)
 
-        open('/tmp/dapi_file.txt', 'a').close()
-        with patch('wazuh.core.cluster.local_client.LocalClient.execute',
-                   new=AsyncMock(side_effect=WazuhClusterError(1000))):
-            dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
-                           'f_kwargs': {'tmp_file': '/tmp/dapi_file.txt'}}
-            raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1000)
+            open('/tmp/dapi_file.txt', 'a').close()
+            with patch('wazuh.core.cluster.local_client.LocalClient.execute',
+                       new=AsyncMock(side_effect=WazuhClusterError(1000))):
+                dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
+                               'f_kwargs': {'tmp_file': '/tmp/dapi_file.txt'}}
+                raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1000)
 
 
 @patch('wazuh.core.cluster.cluster.check_cluster_status', return_value=False)

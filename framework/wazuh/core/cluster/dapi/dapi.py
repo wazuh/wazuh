@@ -20,8 +20,8 @@ import wazuh.core.cluster.utils
 import wazuh.core.manager
 import wazuh.results as wresults
 from wazuh import exception, agent, common
+from wazuh.cluster import get_node_wrapper
 from wazuh.core.cluster import local_client, common as c_common
-from wazuh.rbac.decorators import expose_resources, async_list_handler
 from wazuh.exception import WazuhException, WazuhClusterError, WazuhError
 
 
@@ -83,7 +83,7 @@ class DistributedAPI:
         self.from_cluster = from_cluster
         self.is_async = is_async
         self.broadcasting = broadcasting
-        self.rbac_permissions = rbac_permissions if rbac_permissions is not None else dict()
+        self.rbac_permissions = rbac_permissions if rbac_permissions is not None else {'rbac_mode': 'black'}
         self.current_user = current_user
         self.nodes = nodes if nodes is not None else list()
         self.cluster_required = cluster_required
@@ -309,33 +309,17 @@ class DistributedAPI:
         dict
             Dict where keys are nodes and values are error information.
         """
-
-        @expose_resources(actions=['cluster:read_config'],
-                          resources=['node:id:{filter_node}'],
-                          post_proc_func=None)
-        def get_node_name(filter_node=None):
-            """Decorated function to get the node name if the user have permissions.
-
-            Parameters
-            ----------
-            filter_node : iterable, optional
-                List of filtered nodes. Default `None`
-
-            Returns
-            -------
-            str
-                Current node name.
-            """
-            return filter_node[0] if isinstance(filter_node, list) else filter_node
-
         try:
             common.rbac.set(self.rbac_permissions)
-            node = get_node_name(filter_node=self.node_info['node'])
+            node_wrapper = get_node_wrapper()
+            node = node_wrapper.affected_items[0]['node']
         except exception.WazuhException as rbac_exception:
             if rbac_exception.code == 4000:
                 node = 'unknown-node'
             else:
                 raise rbac_exception
+        except IndexError:
+            raise list(node_wrapper.failed_items.keys())[0]
 
         error_message = e.message if isinstance(e, exception.WazuhException) else exception.GENERIC_ERROR_MSG
         result = {node: {'error': error_message}
