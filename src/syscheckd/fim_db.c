@@ -11,9 +11,8 @@
 #ifdef UNIT_TESTING
 #ifdef WIN32
 #include "unit_tests/wrappers/windows/synchapi_wrappers.h"
-
+#include "unit_tests/wrappers/windows/libc/stdio_wrappers.h"
 #endif
-
 #define static
 #endif
 

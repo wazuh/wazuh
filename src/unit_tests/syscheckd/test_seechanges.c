@@ -17,6 +17,7 @@
 #include "../wrappers/common.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
+#include "../wrappers/libc/stdio_wrappers.h"
 
 #ifndef TEST_WINAGENT
 #define PATH_OFFSET 1
@@ -135,31 +136,6 @@ FILE *__wrap_wfopen(const char * __filename, const char * __modes) {
     return mock_type(FILE *);
 }
 
-size_t __real_fread(void *ptr, size_t size, size_t n, FILE *stream);
-size_t __wrap_fread(void *ptr, size_t size, size_t n, FILE *stream) {
-    if (test_mode) {
-        strncpy((char *) ptr, mock_type(char *), n);
-        return mock();
-    }
-    return __real_fread(ptr, size, n, stream);
-}
-
-int __real_fclose(FILE *fp);
-int __wrap_fclose(FILE *fp) {
-    if (test_mode) {
-        return mock();
-    }
-    return __real_fclose(fp);
-}
-
-size_t __real_fwrite(const void * ptr, size_t size, size_t count, FILE * stream);
-size_t __wrap_fwrite(const void * ptr, size_t size, size_t count, FILE * stream) {
-    if (test_mode) {
-        return mock();
-    }
-    return __real_fwrite(ptr, size, count, stream);
-}
-
 #ifndef TEST_WINAGENT
 int __wrap_unlink() {
     return 1;
@@ -222,12 +198,6 @@ int __wrap_OS_MD5_File(const char *fname, os_md5 output, int mode) {
 
 int __wrap_File_DateofChange(const char *file) {
     return 1;
-}
-
-int __wrap_rename(const char *__old, const char *__new) {
-    check_expected(__old);
-    check_expected(__new);
-    return mock();
 }
 
 int __wrap_system(const char *__command) {
@@ -559,28 +529,28 @@ void test_adapt_win_fc_output_no_differences(void **state) {
 
 #endif
 void test_gen_diff_alert(void **state) {
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     const char * file_name = "/folder/test.file";
-    #else
+#else
     const char * file_name = "c:\\folder\\test.file";
-    #endif
+#endif
     time_t time = 12345;
 
     expect_string(__wrap_abspath, path, file_name);
     will_return(__wrap_abspath, 1);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_string(__wrap_wfopen, __filename, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
-    #else
+#else
     expect_string(__wrap_wfopen, __filename, "queue/diff/local/c\\folder\\test.file/diff.12345");
-    #endif
+#endif
     expect_string(__wrap_wfopen, __modes, "rb");
     will_return(__wrap_wfopen, 1);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     will_return(__wrap_fread, "test diff");
     will_return(__wrap_fread, 9);
-    #else
+#else
     will_return(__wrap_fread, "Comparing files start.txt and end.txt\r\n"
                               "***** start.txt\r\n"
                               "    1:  First line\r\n"
@@ -589,53 +559,54 @@ void test_gen_diff_alert(void **state) {
                               "    2:  Last line\r\n"
                               "*****\r\n\r\n\r\n");
     will_return(__wrap_fread, 146);
-    #endif
+#endif
 
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_string(__wrap_w_compress_gzfile, filesrc, "/folder/test.file");
     expect_string(__wrap_w_compress_gzfile, filedst, "/var/ossec/queue/diff/local/folder/test.file/last-entry.gz");
-    #else
+#else
     expect_string(__wrap_w_compress_gzfile, filesrc, "c:\\folder\\test.file");
     expect_string(__wrap_w_compress_gzfile, filedst, "queue/diff/local/c\\folder\\test.file/last-entry.gz");
-    #endif
+#endif
     will_return(__wrap_w_compress_gzfile, 0);
 
     char *diff = gen_diff_alert(file_name, time, 1);
 
     *state = diff;
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     assert_string_equal(diff, "test diff");
-    #else
+#else
     assert_string_equal(diff, "< First line\n---\n> First Line 123\n> Last line\n");
-    #endif
+#endif
 }
 
 void test_gen_diff_alert_big_size(void **state) {
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     const char * file_name = "/folder/test.file";
-    #else
+#else
     const char * file_name = "c:\\folder\\test.file";
-    #endif
+#endif
     time_t time = 12345;
 
     expect_string(__wrap_abspath, path, file_name);
     will_return(__wrap_abspath, 1);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_string(__wrap_wfopen, __filename, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
-    #else
+#else
     expect_string(__wrap_wfopen, __filename, "queue/diff/local/c\\folder\\test.file/diff.12345");
-    #endif
+#endif
     expect_string(__wrap_wfopen, __modes, "rb");
     will_return(__wrap_wfopen, 1);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     will_return(__wrap_fread, "this is a really big diff\n");
     will_return(__wrap_fread, OS_MAXSTR - OS_SK_HEADER - 1);
-    #else
+#else
     will_return(__wrap_fread, "Comparing files start.txt and end.txt\r\n"
                               "Resync failed. Files are too different.\r\n"
                               "***** start.txt\r\n"
@@ -645,28 +616,29 @@ void test_gen_diff_alert_big_size(void **state) {
                               "    2:  Last line\r\n"
                               "*****\r\n");
     will_return(__wrap_fread, OS_MAXSTR - OS_SK_HEADER - 1);
-    #endif
+#endif
 
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_string(__wrap_w_compress_gzfile, filesrc, "/folder/test.file");
     expect_string(__wrap_w_compress_gzfile, filedst, "/var/ossec/queue/diff/local/folder/test.file/last-entry.gz");
-    #else
+#else
     expect_string(__wrap_w_compress_gzfile, filesrc, "c:\\folder\\test.file");
     expect_string(__wrap_w_compress_gzfile, filedst, "queue/diff/local/c\\folder\\test.file/last-entry.gz");
-    #endif
+#endif
     will_return(__wrap_w_compress_gzfile, 0);
 
     char *diff = gen_diff_alert(file_name, time, 1);
 
     *state = diff;
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     assert_string_equal(diff, "this is a really big diff\nMore changes...");
-    #else
+#else
     assert_string_equal(diff, "< First line\n---\n> First Line 123\n> Last line\nMore changes...");
-    #endif
+#endif
 }
 
 void test_gen_diff_alert_abspath_error(void **state) {
@@ -686,29 +658,29 @@ void test_gen_diff_alert_abspath_error(void **state) {
 }
 
 void test_gen_diff_alert_fopen_error(void **state) {
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     const char * file_name = "/folder/test.file";
-    #else
+#else
     const char * file_name = "c:\\folder\\test.file";
-    #endif
+#endif
     time_t time = 12345;
 
     expect_string(__wrap_abspath, path, file_name);
     will_return(__wrap_abspath, 1);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_string(__wrap_wfopen, __filename, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
-    #else
+#else
     expect_string(__wrap_wfopen, __filename, "queue/diff/local/c\\folder\\test.file/diff.12345");
-    #endif
+#endif
     expect_string(__wrap_wfopen, __modes, "rb");
     will_return(__wrap_wfopen, 0);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg, "(6665): Unable to generate diff alert (fopen)'/var/ossec/queue/diff/local/folder/test.file/diff.12345'.");
-    #else
+#else
     expect_string(__wrap__merror, formatted_msg, "(6665): Unable to generate diff alert (fopen)'queue/diff/local/c\\folder\\test.file/diff.12345'.");
-    #endif
+#endif
 
     char *diff = gen_diff_alert(file_name, time, 1);
 
@@ -716,27 +688,28 @@ void test_gen_diff_alert_fopen_error(void **state) {
 }
 
 void test_gen_diff_alert_fread_error(void **state) {
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     const char * file_name = "/folder/test.file";
-    #else
+#else
     const char * file_name = "c:\\folder\\test.file";
-    #endif
+#endif
     time_t time = 12345;
 
     expect_string(__wrap_abspath, path, file_name);
     will_return(__wrap_abspath, 1);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_string(__wrap_wfopen, __filename, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
-    #else
+#else
     expect_string(__wrap_wfopen, __filename, "queue/diff/local/c\\folder\\test.file/diff.12345");
-    #endif
+#endif
     expect_string(__wrap_wfopen, __modes, "rb");
     will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, "test diff");
     will_return(__wrap_fread, 0);
 
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
 
     expect_string(__wrap__merror, formatted_msg, "(6666): Unable to generate diff alert (fread).");
@@ -747,28 +720,28 @@ void test_gen_diff_alert_fread_error(void **state) {
 }
 
 void test_gen_diff_alert_compress_error(void **state) {
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     const char * file_name = "/folder/test.file";
-    #else
+#else
     const char * file_name = "c:\\folder\\test.file";
-    #endif
+#endif
     time_t time = 12345;
 
     expect_string(__wrap_abspath, path, file_name);
     will_return(__wrap_abspath, 1);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_string(__wrap_wfopen, __filename, "/var/ossec/queue/diff/local/folder/test.file/diff.12345");
-    #else
+#else
     expect_string(__wrap_wfopen, __filename, "queue/diff/local/c\\folder\\test.file/diff.12345");
-    #endif
+#endif
     expect_string(__wrap_wfopen, __modes, "rb");
     will_return(__wrap_wfopen, 1);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     will_return(__wrap_fread, "test diff");
     will_return(__wrap_fread, 9);
-    #else
+#else
     will_return(__wrap_fread, "Comparing files start.txt and end.txt\r\n"
                               "***** start.txt\r\n"
                               "    1:  First line\r\n"
@@ -777,34 +750,35 @@ void test_gen_diff_alert_compress_error(void **state) {
                               "    2:  Last line\r\n"
                               "*****\r\n\r\n\r\n");
     will_return(__wrap_fread, 146);
-    #endif
+#endif
 
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_string(__wrap_w_compress_gzfile, filesrc, "/folder/test.file");
     expect_string(__wrap_w_compress_gzfile, filedst, "/var/ossec/queue/diff/local/folder/test.file/last-entry.gz");
-    #else
+#else
     expect_string(__wrap_w_compress_gzfile, filesrc, "c:\\folder\\test.file");
     expect_string(__wrap_w_compress_gzfile, filedst, "queue/diff/local/c\\folder\\test.file/last-entry.gz");
-    #endif
+#endif
     will_return(__wrap_w_compress_gzfile, -1);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_string(__wrap__mwarn, formatted_msg, "(6914): Cannot create a snapshot of file '/folder/test.file'");
-    #else
+#else
     expect_string(__wrap__mwarn, formatted_msg, "(6914): Cannot create a snapshot of file 'c:\\folder\\test.file'");
-    #endif
+#endif
 
     char *diff = gen_diff_alert(file_name, time, 1);
 
     *state = diff;
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     assert_string_equal(diff, "test diff");
-    #else
+#else
     assert_string_equal(diff, "< First line\n---\n> First Line 123\n> Last line\n");
-    #endif
+#endif
 }
 
 void test_seechanges_dupfile(void **state) {
@@ -829,7 +803,9 @@ void test_seechanges_dupfile(void **state) {
     will_return(__wrap_fread, "");
     will_return(__wrap_fread, 0);
 
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
 
     int ret = seechanges_dupfile(old_file, new_file);
@@ -866,6 +842,7 @@ void test_seechanges_dupfile_fopen_error2(void **state) {
     expect_string(__wrap_wfopen, __modes, "wb");
     will_return(__wrap_wfopen, 0);
 
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
 
     int ret = seechanges_dupfile(old_file, new_file);
@@ -894,7 +871,9 @@ void test_seechanges_dupfile_fwrite_error(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "(6668): Unable to write data on file '/folder/test.new'");
 
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
 
     int ret = seechanges_dupfile(old_file, new_file);
@@ -936,9 +915,9 @@ void test_seechanges_createpath_mkdir(void **state) {
     will_return(__wrap_IsDir, -1);
 
     expect_string(__wrap_mkdir, __path, "/folder");
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_value(__wrap_mkdir, __mode, 0770);
-    #endif
+#endif
     will_return(__wrap_mkdir, 0);
 
     int ret = seechanges_createpath(file_name);
@@ -957,9 +936,9 @@ void test_seechanges_createpath_mkdir_error(void **state) {
     will_return(__wrap_IsDir, -1);
 
     expect_string(__wrap_mkdir, __path, "/folder");
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_value(__wrap_mkdir, __mode, 0770);
-    #endif
+#endif
     will_return(__wrap_mkdir, -1);
 
     expect_string(__wrap__merror, formatted_msg, "(1107): Could not create directory '/folder' due to [(0)-(Success)].");
@@ -972,11 +951,11 @@ void test_seechanges_createpath_mkdir_error(void **state) {
 void test_seechanges_addfile(void **state) {
     const char * diff_folder = "queue/diff/local";
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     const char * file_name = "/folder/test";
     const char * file_name_abs = file_name;
     const char * default_path = "/var/ossec/";
-    #else
+#else
     const char * file_name = "C:\\folder\\test_";
     const char * file_name_abs = "C\\folder\\test_";
     const char * default_path = "";
@@ -991,7 +970,7 @@ void test_seechanges_addfile(void **state) {
                                        "---\n"
                                        "> First Line 123\n"
                                        "> Last line\n";
-    #endif
+#endif
 
     char last_entry[OS_SIZE_128];
     char last_entry_gz[OS_SIZE_128];
@@ -1036,10 +1015,12 @@ void test_seechanges_addfile(void **state) {
     will_return(__wrap_fwrite, 13);
     will_return(__wrap_fread, "");
     will_return(__wrap_fread, 0);
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     // symlink_to_dir()
     expect_string(__wrap_lstat, filename, file_name);
     will_return(__wrap_lstat, 0120000);
@@ -1047,7 +1028,7 @@ void test_seechanges_addfile(void **state) {
     expect_string(__wrap_stat, __file, file_name);
     will_return(__wrap_stat, 0040000);
     will_return(__wrap_stat, 0);
-    #endif
+#endif
 
     expect_string(__wrap_wfopen, __filename, diff_file);
     expect_string(__wrap_wfopen, __modes, "wb");
@@ -1055,6 +1036,7 @@ void test_seechanges_addfile(void **state) {
 
     will_return(__wrap_fwrite, 1);
 
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
 
     // gen_diff_alert()
@@ -1063,13 +1045,14 @@ void test_seechanges_addfile(void **state) {
     expect_string(__wrap_wfopen, __filename, diff_file);
     expect_string(__wrap_wfopen, __modes, "rb");
     will_return(__wrap_wfopen, 1);
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     will_return(__wrap_fread, "test diff");
     will_return(__wrap_fread, 9);
-    #else
+#else
     will_return(__wrap_fread, diff_string);
     will_return(__wrap_fread, strlen(diff_string));
-    #endif
+#endif
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
     expect_string(__wrap_w_compress_gzfile, filesrc, file_name);
     expect_string(__wrap_w_compress_gzfile, filedst, last_entry_gz);
@@ -1079,21 +1062,21 @@ void test_seechanges_addfile(void **state) {
 
     *state = diff;
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     assert_string_equal(diff, "test diff");
-    #else
+#else
     assert_string_equal(diff, diff_adapted_string);
-    #endif
+#endif
 }
 
 void test_seechanges_addfile_run_diff(void **state) {
     const char * diff_folder = "queue/diff/local";
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     const char * file_name = "/folder/test";
     const char * file_name_abs = file_name;
     const char * default_path = "/var/ossec/";
-    #else
+#else
     const char * file_name = "C:\\folder\\test";
     const char * file_name_abs = "C\\folder\\test";
     const char * default_path = "";
@@ -1108,7 +1091,7 @@ void test_seechanges_addfile_run_diff(void **state) {
                                        "---\n"
                                        "> First Line 123\n"
                                        "> Last line\n";
-    #endif
+#endif
 
     char last_entry[OS_SIZE_128];
     char last_entry_gz[OS_SIZE_128];
@@ -1153,10 +1136,12 @@ void test_seechanges_addfile_run_diff(void **state) {
     will_return(__wrap_fwrite, 13);
     will_return(__wrap_fread, "");
     will_return(__wrap_fread, 0);
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     // symlink_to_dir()
     expect_string(__wrap_lstat, filename, file_name);
     will_return(__wrap_lstat, 0);
@@ -1167,13 +1152,13 @@ void test_seechanges_addfile_run_diff(void **state) {
                                             "\"/var/ossec/queue/diff/local/folder/test/diff.1\" 2> "
                                             "/dev/null");
     will_return(__wrap_system, 256);
-    #else
+#else
     expect_string(__wrap_system, __command, "fc /n \"queue\\diff\\local\\C\\folder\\test\\state.1\" "
                                             "\"queue\\diff\\local\\C\\folder\\test\\last-entry\" > "
                                             "\"queue\\diff\\local\\C\\folder\\test\\diff.1\" 2> "
                                             "nul");
     will_return(__wrap_system, 0);
-    #endif
+#endif
 
     // gen_diff_alert()
     expect_string(__wrap_abspath, path, file_name);
@@ -1181,13 +1166,14 @@ void test_seechanges_addfile_run_diff(void **state) {
     expect_string(__wrap_wfopen, __filename, diff_file);
     expect_string(__wrap_wfopen, __modes, "rb");
     will_return(__wrap_wfopen, 1);
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     will_return(__wrap_fread, "test diff");
     will_return(__wrap_fread, 9);
-    #else
+#else
     will_return(__wrap_fread, diff_string);
     will_return(__wrap_fread, strlen(diff_string));
-    #endif
+#endif
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
     expect_string(__wrap_w_compress_gzfile, filesrc, file_name);
     expect_string(__wrap_w_compress_gzfile, filedst, last_entry_gz);
@@ -1197,17 +1183,17 @@ void test_seechanges_addfile_run_diff(void **state) {
 
     *state = diff;
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     assert_string_equal(diff, "test diff");
-    #else
+#else
     assert_string_equal(diff, diff_adapted_string);
-    #endif
+#endif
 }
 
 void test_seechanges_addfile_create_gz_file(void **state) {
     const char * diff_folder = "queue/diff/local";
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     const char * file_name = "/folder/test";
     const char * file_name_abs = file_name;
     const char * default_path = "/var/ossec/";
@@ -1221,7 +1207,7 @@ void test_seechanges_addfile_create_gz_file(void **state) {
         "/var/ossec/queue/diff/local/folder/test",
         NULL
     };
-    #else
+#else
     const char * file_name = "C:\\folder\\test";
     const char * file_name_abs = "C\\folder\\test";
     const char * default_path = "";
@@ -1234,7 +1220,7 @@ void test_seechanges_addfile_create_gz_file(void **state) {
         "queue/diff/local/C/folder/test",
         NULL
     };
-    #endif
+#endif
 
     int i;
     char last_entry[OS_SIZE_128];
@@ -1277,15 +1263,15 @@ void test_seechanges_addfile_create_gz_file(void **state) {
 void test_seechanges_addfile_same_md5(void **state) {
     const char * diff_folder = "queue/diff/local";
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     const char * file_name = "/folder/test";
     const char * file_name_abs = file_name;
     const char * default_path = "/var/ossec/";
-    #else
+#else
     const char * file_name = "C:\\folder\\test";
     const char * file_name_abs = "C\\folder\\test";
     const char * default_path = "";
-    #endif
+#endif
 
     char last_entry[OS_SIZE_128];
     char last_entry_gz[OS_SIZE_128];
@@ -1320,11 +1306,11 @@ void test_seechanges_addfile_same_md5(void **state) {
 }
 
 void test_seechanges_addfile_abspath_error(void **state) {
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     const char * file_name = "/folder/test";
-    #else
+#else
     const char * file_name = "C:\\folder\\test";
-    #endif
+#endif
 
     char error_msg[OS_SIZE_128];
 
@@ -1344,15 +1330,15 @@ void test_seechanges_addfile_abspath_error(void **state) {
 void test_seechanges_addfile_md5_error1(void **state) {
     const char * diff_folder = "queue/diff/local";
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     const char * file_name = "/folder/test";
     const char * file_name_abs = file_name;
     const char * default_path = "/var/ossec/";
-    #else
+#else
     const char * file_name = "C:\\folder\\test";
     const char * file_name_abs = "C\\folder\\test";
     const char * default_path = "";
-    #endif
+#endif
 
     char last_entry[OS_SIZE_128];
     char last_entry_gz[OS_SIZE_128];
@@ -1380,15 +1366,15 @@ void test_seechanges_addfile_md5_error1(void **state) {
 void test_seechanges_addfile_md5_error2(void **state) {
     const char * diff_folder = "queue/diff/local";
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     const char * file_name = "/folder/test";
     const char * file_name_abs = file_name;
     const char * default_path = "/var/ossec/";
-    #else
+#else
     const char * file_name = "C:\\folder\\test";
     const char * file_name_abs = "C\\folder\\test";
     const char * default_path = "";
-    #endif
+#endif
 
     char last_entry[OS_SIZE_128];
     char last_entry_gz[OS_SIZE_128];
@@ -1421,15 +1407,15 @@ void test_seechanges_addfile_md5_error2(void **state) {
 void test_seechanges_addfile_rename_error(void **state) {
     const char * diff_folder = "queue/diff/local";
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     const char * file_name = "/folder/test";
     const char * file_name_abs = file_name;
     const char * default_path = "/var/ossec/";
-    #else
+#else
     const char * file_name = "C:\\folder\\test";
     const char * file_name_abs = "C\\folder\\test";
     const char * default_path = "";
-    #endif
+#endif
 
     char last_entry[OS_SIZE_128];
     char last_entry_gz[OS_SIZE_128];
@@ -1472,15 +1458,15 @@ void test_seechanges_addfile_rename_error(void **state) {
 void test_seechanges_addfile_dupfile_error(void **state) {
     const char * diff_folder = "queue/diff/local";
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     const char * file_name = "/folder/test";
     const char * file_name_abs = file_name;
     const char * default_path = "/var/ossec/";
-    #else
+#else
     const char * file_name = "C:\\folder\\test";
     const char * file_name_abs = "C\\folder\\test";
     const char * default_path = "";
-    #endif
+#endif
 
     char last_entry[OS_SIZE_128];
     char last_entry_gz[OS_SIZE_128];
@@ -1528,15 +1514,15 @@ void test_seechanges_addfile_dupfile_error(void **state) {
 void test_seechanges_addfile_fopen_error(void **state) {
     const char * diff_folder = "queue/diff/local";
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     const char * file_name = "/folder/test";
     const char * file_name_abs = file_name;
     const char * default_path = "/var/ossec/";
-    #else
+#else
     const char * file_name = "C:\\folder\\test_";
     const char * file_name_abs = "C\\folder\\test_";
     const char * default_path = "";
-    #endif
+#endif
 
     char last_entry[OS_SIZE_128];
     char last_entry_gz[OS_SIZE_128];
@@ -1582,10 +1568,12 @@ void test_seechanges_addfile_fopen_error(void **state) {
     will_return(__wrap_fwrite, 13);
     will_return(__wrap_fread, "");
     will_return(__wrap_fread, 0);
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     // symlink_to_dir()
     expect_string(__wrap_lstat, filename, file_name);
     will_return(__wrap_lstat, 0120000);
@@ -1593,7 +1581,7 @@ void test_seechanges_addfile_fopen_error(void **state) {
     expect_string(__wrap_stat, __file, file_name);
     will_return(__wrap_stat, 0040000);
     will_return(__wrap_stat, 0);
-    #endif
+#endif
 
     expect_string(__wrap_wfopen, __filename, diff_file);
     expect_string(__wrap_wfopen, __modes, "wb");
@@ -1610,11 +1598,11 @@ void test_seechanges_addfile_fopen_error(void **state) {
 void test_seechanges_addfile_fwrite_error(void **state) {
     const char * diff_folder = "queue/diff/local";
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     const char * file_name = "/folder/test";
     const char * file_name_abs = file_name;
     const char * default_path = "/var/ossec/";
-    #else
+#else
     const char * file_name = "C:\\folder\\test_";
     const char * file_name_abs = "C\\folder\\test_";
     const char * default_path = "";
@@ -1629,7 +1617,7 @@ void test_seechanges_addfile_fwrite_error(void **state) {
                                        "---\n"
                                        "> First Line 123\n"
                                        "> Last line\n";
-    #endif
+#endif
 
     char last_entry[OS_SIZE_128];
     char last_entry_gz[OS_SIZE_128];
@@ -1675,10 +1663,12 @@ void test_seechanges_addfile_fwrite_error(void **state) {
     will_return(__wrap_fwrite, 13);
     will_return(__wrap_fread, "");
     will_return(__wrap_fread, 0);
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     // symlink_to_dir()
     expect_string(__wrap_lstat, filename, file_name);
     will_return(__wrap_lstat, 0120000);
@@ -1686,7 +1676,7 @@ void test_seechanges_addfile_fwrite_error(void **state) {
     expect_string(__wrap_stat, __file, file_name);
     will_return(__wrap_stat, 0040000);
     will_return(__wrap_stat, 0);
-    #endif
+#endif
 
     expect_string(__wrap_wfopen, __filename, diff_file);
     expect_string(__wrap_wfopen, __modes, "wb");
@@ -1697,6 +1687,7 @@ void test_seechanges_addfile_fwrite_error(void **state) {
     snprintf(error_msg, OS_SIZE_128, FIM_ERROR_GENDIFF_WRITING_DATA, diff_file);
     expect_string(__wrap__merror, formatted_msg, error_msg);
 
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
 
     // gen_diff_alert()
@@ -1705,13 +1696,14 @@ void test_seechanges_addfile_fwrite_error(void **state) {
     expect_string(__wrap_wfopen, __filename, diff_file);
     expect_string(__wrap_wfopen, __modes, "rb");
     will_return(__wrap_wfopen, 1);
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     will_return(__wrap_fread, "test diff");
     will_return(__wrap_fread, 9);
-    #else
+#else
     will_return(__wrap_fread, diff_string);
     will_return(__wrap_fread, strlen(diff_string));
-    #endif
+#endif
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
     expect_string(__wrap_w_compress_gzfile, filesrc, file_name);
     expect_string(__wrap_w_compress_gzfile, filedst, last_entry_gz);
@@ -1721,17 +1713,17 @@ void test_seechanges_addfile_fwrite_error(void **state) {
 
     *state = diff;
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     assert_string_equal(diff, "test diff");
-    #else
+#else
     assert_string_equal(diff, diff_adapted_string);
-    #endif
+#endif
 }
 
 void test_seechanges_addfile_run_diff_system_error(void **state) {
     const char * diff_folder = "queue/diff/local";
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     const char * file_name = "/folder/test";
     const char * file_name_abs = file_name;
     const char * default_path = "/var/ossec/";
@@ -1739,7 +1731,7 @@ void test_seechanges_addfile_run_diff_system_error(void **state) {
                                      "\"/var/ossec/queue/diff/local/folder/test/last-entry\" > "
                                      "\"/var/ossec/queue/diff/local/folder/test/diff.1\" 2> "
                                      "/dev/null";
-    #else
+#else
     const char * file_name = "C:\\folder\\test";
     const char * file_name_abs = "C\\folder\\test";
     const char * default_path = "";
@@ -1747,7 +1739,7 @@ void test_seechanges_addfile_run_diff_system_error(void **state) {
                                       "\"queue\\diff\\local\\C\\folder\\test\\last-entry\" > "
                                       "\"queue\\diff\\local\\C\\folder\\test\\diff.1\" 2> "
                                       "nul";
-    #endif
+#endif
 
     char last_entry[OS_SIZE_128];
     char last_entry_gz[OS_SIZE_128];
@@ -1791,15 +1783,17 @@ void test_seechanges_addfile_run_diff_system_error(void **state) {
     will_return(__wrap_fwrite, 13);
     will_return(__wrap_fread, "");
     will_return(__wrap_fread, 0);
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     // symlink_to_dir()
     expect_string(__wrap_lstat, filename, file_name);
     will_return(__wrap_lstat, 0);
     will_return(__wrap_lstat, 0);
-    #endif
+#endif
 
     expect_string(__wrap_system, __command, diff_command);
     will_return(__wrap_system, -1);
@@ -1815,14 +1809,14 @@ void test_seechanges_addfile_run_diff_system_error(void **state) {
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
         cmocka_unit_test_teardown(test_filter, teardown_free_string),
         cmocka_unit_test(test_symlink_to_dir),
         cmocka_unit_test(test_symlink_to_dir_no_link),
         cmocka_unit_test(test_symlink_to_dir_no_dir),
         cmocka_unit_test(test_symlink_to_dir_lstat_error),
         cmocka_unit_test(test_symlink_to_dir_stat_error),
-        #endif
+#endif
         cmocka_unit_test_teardown(test_gen_diff_alert, teardown_free_string),
         cmocka_unit_test_teardown(test_gen_diff_alert_big_size, teardown_free_string),
         cmocka_unit_test(test_gen_diff_alert_abspath_error),
@@ -1852,7 +1846,7 @@ int main(void) {
         cmocka_unit_test(test_seechanges_addfile_run_diff_system_error),
 
         /* Windows specific tests */
-        #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
         /* filter */
         cmocka_unit_test_teardown(test_filter_success, teardown_string),
         cmocka_unit_test_teardown(test_filter_unchanged_string, teardown_string),
@@ -1861,7 +1855,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_adapt_win_fc_output_success, setup_adapt_win_fc_output, teardown_adapt_win_fc_output),
         cmocka_unit_test_setup_teardown(test_adapt_win_fc_output_invalid_input, setup_adapt_win_fc_output, teardown_adapt_win_fc_output),
         cmocka_unit_test_setup_teardown(test_adapt_win_fc_output_no_differences, setup_adapt_win_fc_output, teardown_adapt_win_fc_output),
-        #endif
+#endif
 
         cmocka_unit_test(test_is_nodiff_true),
         cmocka_unit_test(test_is_nodiff_false),

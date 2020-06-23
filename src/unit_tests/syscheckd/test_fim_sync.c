@@ -190,9 +190,9 @@ int __wrap_pthread_mutex_unlock(pthread_mutex_t *mutex) {
 
 /* setup/teardown */
 static int setup_group(void **state) {
-    #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
     time_mock_value = 1572521857;
-    #endif
+#endif
 
     return 0;
 }

@@ -459,14 +459,14 @@ int main(void) {
             cmocka_unit_test(test_read_internal),
             cmocka_unit_test(test_read_internal_debug),
         /* Windows specific tests */
-        #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
             cmocka_unit_test(test_Start_win32_Syscheck_no_config_file),
             cmocka_unit_test(test_Start_win32_Syscheck_corrupted_config_file),
             cmocka_unit_test(test_Start_win32_Syscheck_syscheck_disabled_1),
             cmocka_unit_test(test_Start_win32_Syscheck_syscheck_disabled_2),
             cmocka_unit_test(test_Start_win32_Syscheck_dirs_and_registry),
             cmocka_unit_test(test_Start_win32_Syscheck_whodata_active),
-        #endif
+#endif
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

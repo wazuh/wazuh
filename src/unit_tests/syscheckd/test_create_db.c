@@ -536,12 +536,12 @@ static int teardown_fim_scan_realtime(void **state) {
 static void test_fim_json_event(void **state) {
     fim_data_t *fim_data = *state;
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
     will_return(__wrap_fim_db_get_paths_from_inode, NULL);
-    #endif
+#endif
 
     fim_data->json = fim_json_event(
                     "test.file",
@@ -569,13 +569,13 @@ static void test_fim_json_event(void **state) {
     assert_non_null(timestamp);
     assert_int_equal(timestamp->valueint, 1570184221);
     cJSON *tags = cJSON_GetObjectItem(data, "tags");
-    #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
     assert_null(tags);
-    #else
+#else
     assert_string_equal(cJSON_GetStringValue(tags), "tag1,tag2");
     cJSON *hard_links = cJSON_GetObjectItem(data, "hard_links");
     assert_null(hard_links);
-    #endif
+#endif
     cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
     cJSON *changed_attributes = cJSON_GetObjectItem(data, "changed_attributes");
@@ -599,12 +599,12 @@ static void test_fim_json_event_whodata(void **state) {
 
     syscheck.opts[1] |= CHECK_SEECHANGES;
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
     will_return(__wrap_fim_db_get_paths_from_inode, NULL);
-    #endif
+#endif
 
     fim_data->json = fim_json_event(
         "test.file",
@@ -634,20 +634,20 @@ static void test_fim_json_event_whodata(void **state) {
     assert_non_null(timestamp);
     assert_int_equal(timestamp->valueint, 1570184221);
     cJSON *tags = cJSON_GetObjectItem(data, "tags");
-    #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
     assert_null(tags);
-    #else
+#else
     assert_string_equal(cJSON_GetStringValue(tags), "tag1,tag2");
     cJSON *hard_links = cJSON_GetObjectItem(data, "hard_links");
     assert_null(hard_links);
-    #endif
+#endif
     cJSON *audit = cJSON_GetObjectItem(data, "audit");
     assert_non_null(audit);
-    #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
     assert_int_equal(cJSON_GetArraySize(audit), 5);
-    #else
+#else
     assert_int_equal(cJSON_GetArraySize(audit), 15);
-    #endif
+#endif
     cJSON *diff = cJSON_GetObjectItem(data, "content_changes");
     assert_string_equal(cJSON_GetStringValue(diff), "diff");
 }
@@ -678,12 +678,12 @@ static void test_fim_json_event_hardlink_one_path(void **state) {
     paths[0] = strdup("test.file");
     paths[1] = NULL;
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
     will_return(__wrap_fim_db_get_paths_from_inode, paths);
-    #endif
+#endif
 
     fim_data->json = fim_json_event(
                     "test.file",
@@ -711,13 +711,13 @@ static void test_fim_json_event_hardlink_one_path(void **state) {
     assert_non_null(timestamp);
     assert_int_equal(timestamp->valueint, 1570184221);
     cJSON *tags = cJSON_GetObjectItem(data, "tags");
-    #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
     assert_string_equal(cJSON_GetStringValue(tags), "tag1,tag2");
-    #else
+#else
     assert_null(tags);
     cJSON *hard_links = cJSON_GetObjectItem(data, "hard_links");
     assert_null(hard_links);
-    #endif
+#endif
     cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
     cJSON *changed_attributes = cJSON_GetObjectItem(data, "changed_attributes");
@@ -725,11 +725,11 @@ static void test_fim_json_event_hardlink_one_path(void **state) {
     cJSON *old_attributes = cJSON_GetObjectItem(data, "old_attributes");
     assert_non_null(old_attributes);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     assert_int_equal(cJSON_GetArraySize(changed_attributes), 11);
-    #else
+#else
     assert_int_equal(cJSON_GetArraySize(changed_attributes), 10);
-    #endif
+#endif
     assert_int_equal(cJSON_GetArraySize(attributes), 13);
     assert_int_equal(cJSON_GetArraySize(old_attributes), 13);
 }
@@ -743,12 +743,12 @@ static void test_fim_json_event_hardlink_two_paths(void **state) {
     paths[1] = strdup("hard_link.file");
     paths[2] = NULL;
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
     will_return(__wrap_fim_db_get_paths_from_inode, paths);
-    #endif
+#endif
 
     fim_data->json = fim_json_event(
                     "test.file",
@@ -776,13 +776,13 @@ static void test_fim_json_event_hardlink_two_paths(void **state) {
     assert_non_null(timestamp);
     assert_int_equal(timestamp->valueint, 1570184221);
     cJSON *tags = cJSON_GetObjectItem(data, "tags");
-    #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
     assert_string_equal(cJSON_GetStringValue(tags), "tag1,tag2");
-    #else
+#else
     assert_null(tags);
     cJSON *hard_links = cJSON_GetObjectItem(data, "hard_links");
     assert_non_null(hard_links);
-    #endif
+#endif
     cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
     assert_non_null(attributes);
     cJSON *changed_attributes = cJSON_GetObjectItem(data, "changed_attributes");
@@ -790,12 +790,12 @@ static void test_fim_json_event_hardlink_two_paths(void **state) {
     cJSON *old_attributes = cJSON_GetObjectItem(data, "old_attributes");
     assert_non_null(old_attributes);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     assert_int_equal(cJSON_GetArraySize(hard_links), 1);
     assert_int_equal(cJSON_GetArraySize(changed_attributes), 11);
-    #else
+#else
     assert_int_equal(cJSON_GetArraySize(changed_attributes), 10);
-    #endif
+#endif
     assert_int_equal(cJSON_GetArraySize(attributes), 13);
     assert_int_equal(cJSON_GetArraySize(old_attributes), 13);
 }
@@ -897,11 +897,11 @@ static void test_fim_json_compare_attrs(void **state) {
     );
 
     assert_non_null(fim_data->json);
-    #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
     assert_int_equal(cJSON_GetArraySize(fim_data->json), 10);
-    #else
+#else
     assert_int_equal(cJSON_GetArraySize(fim_data->json), 11);
-    #endif
+#endif
 
     cJSON *size = cJSON_GetArrayItem(fim_data->json, i++);
     assert_string_equal(cJSON_GetStringValue(size), "size");
@@ -917,10 +917,10 @@ static void test_fim_json_compare_attrs(void **state) {
     assert_string_equal(cJSON_GetStringValue(group_name), "group_name");
     cJSON *mtime = cJSON_GetArrayItem(fim_data->json, i++);
     assert_string_equal(cJSON_GetStringValue(mtime), "mtime");
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     cJSON *inode = cJSON_GetArrayItem(fim_data->json, i++);
     assert_string_equal(cJSON_GetStringValue(inode), "inode");
-    #endif
+#endif
     cJSON *md5 = cJSON_GetArrayItem(fim_data->json, i++);
     assert_string_equal(cJSON_GetStringValue(md5), "md5");
     cJSON *sha1 = cJSON_GetArrayItem(fim_data->json, i++);
@@ -954,11 +954,11 @@ static void test_fim_audit_json(void **state) {
     fim_data->json = fim_audit_json(fim_data->w_evt);
 
     assert_non_null(fim_data->json);
-    #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
     assert_int_equal(cJSON_GetArraySize(fim_data->json), 5);
-    #else
+#else
     assert_int_equal(cJSON_GetArraySize(fim_data->json), 15);
-    #endif
+#endif
 
     cJSON *path = cJSON_GetObjectItem(fim_data->json, "path");
     assert_string_equal(cJSON_GetStringValue(path), "./test/test.file");
@@ -972,7 +972,7 @@ static void test_fim_audit_json(void **state) {
     assert_non_null(process_id);
     assert_int_equal(process_id->valueint, 1001);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     cJSON *cwd = cJSON_GetObjectItem(fim_data->json, "cwd");
     assert_string_equal(cJSON_GetStringValue(cwd), "process_cwd");
     cJSON *group_id = cJSON_GetObjectItem(fim_data->json, "group_id");
@@ -994,7 +994,7 @@ static void test_fim_audit_json(void **state) {
     assert_string_equal(cJSON_GetStringValue(parent_cwd), "parent_cwd");
     cJSON *parent_name = cJSON_GetObjectItem(fim_data->json, "parent_name");
     assert_string_equal(cJSON_GetStringValue(parent_name), "parent_name");
-    #endif
+#endif
 }
 
 #ifndef TEST_WINAGENT
@@ -1031,11 +1031,11 @@ static void test_fim_check_ignore_strncasecmp(void **state) {
 static void test_fim_check_ignore_regex(void **state) {
    int ret;
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_string(__wrap__mdebug2, formatted_msg, "(6205): Ignoring 'file' '/test/files/test.swp' due to sregex '.log$|.swp$'");
-    #else
+#else
     expect_string(__wrap__mdebug2, formatted_msg, "(6205): Ignoring 'file' '/test/files/test.swp' due to sregex '.log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$'");
-    #endif
+#endif
 
     ret = fim_check_ignore("/test/files/test.swp");
 
@@ -1198,17 +1198,17 @@ static void test_fim_get_checksum_wrong_size(void **state) {
 static void test_fim_check_depth_success(void **state) {
     int ret;
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     // Pos 4 = "/usr/bin"
     char * path = "/usr/bin/folder1/folder2/folder3/file";
-    #else
+#else
     // Pos 4 = "%WINDIR%\\SysNative\\wbem"
     char *aux_path = "%WINDIR%\\SysNative\\wbem\\folder1\\folder2\\folder3\\path.exe";
     char path[OS_MAXSTR];
 
     if(!ExpandEnvironmentStrings(aux_path, path, OS_MAXSTR))
         fail();
-    #endif
+#endif
     ret = fim_check_depth(path, 4);
 
     assert_int_equal(ret, 3);
@@ -1364,24 +1364,24 @@ static void test_fim_file_add(void **state) {
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
-    #else
+#else
     expect_string(__wrap_w_get_file_permissions, file_path, "file");
     will_return(__wrap_w_get_file_permissions, "permissions");
     will_return(__wrap_w_get_file_permissions, 0);
 
     expect_string(__wrap_decode_win_permissions, raw_perm, "permissions");
     will_return(__wrap_decode_win_permissions, "decoded_perms");
-    #endif
+#endif
 
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, "file");
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "/bin/ls");
-    #else
+#else
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "c:\\windows\\system32\\cmd.exe");
-    #endif
+#endif
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
@@ -1452,24 +1452,24 @@ static void test_fim_file_modify(void **state) {
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
-    #else
+#else
     expect_string(__wrap_w_get_file_permissions, file_path, "file");
     will_return(__wrap_w_get_file_permissions, "permissions");
     will_return(__wrap_w_get_file_permissions, 0);
 
     expect_string(__wrap_decode_win_permissions, raw_perm, "permissions");
     will_return(__wrap_decode_win_permissions, "decoded_perms");
-    #endif
+#endif
 
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, "file");
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "/bin/ls");
-    #else
+#else
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "c:\\windows\\system32\\cmd.exe");
-    #endif
+#endif
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
@@ -1481,12 +1481,12 @@ static void test_fim_file_modify(void **state) {
     expect_string(__wrap_fim_db_get_path, file_path, "file");
     will_return(__wrap_fim_db_get_path, fim_data->fentry);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
     will_return(__wrap_fim_db_get_paths_from_inode, NULL);
-    #endif
+#endif
 
     expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_insert, file_path, "file");
@@ -1511,24 +1511,24 @@ static void test_fim_file_no_attributes(void **state) {
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
-    #else
+#else
     expect_string(__wrap_w_get_file_permissions, file_path, "file");
     will_return(__wrap_w_get_file_permissions, "permissions");
     will_return(__wrap_w_get_file_permissions, 0);
 
     expect_string(__wrap_decode_win_permissions, raw_perm, "permissions");
     will_return(__wrap_decode_win_permissions, "decoded_perms");
-    #endif
+#endif
 
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, "file");
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "/bin/ls");
-    #else
+#else
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "c:\\windows\\system32\\cmd.exe");
-    #endif
+#endif
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
@@ -1581,24 +1581,24 @@ static void test_fim_file_error_on_insert(void **state) {
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
-    #else
+#else
     expect_string(__wrap_w_get_file_permissions, file_path, "file");
     will_return(__wrap_w_get_file_permissions, "permissions");
     will_return(__wrap_w_get_file_permissions, 0);
 
     expect_string(__wrap_decode_win_permissions, raw_perm, "permissions");
     will_return(__wrap_decode_win_permissions, "decoded_perms");
-    #endif
+#endif
 
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, "file");
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "/bin/ls");
-    #else
+#else
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "c:\\windows\\system32\\cmd.exe");
-    #endif
+#endif
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
@@ -1610,12 +1610,12 @@ static void test_fim_file_error_on_insert(void **state) {
     expect_string(__wrap_fim_db_get_path, file_path, "file");
     will_return(__wrap_fim_db_get_path, fim_data->fentry);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_paths_from_inode, inode, 606060);
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, 12345678);
     will_return(__wrap_fim_db_get_paths_from_inode, NULL);
-    #endif
+#endif
 
     expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_insert, file_path, "file");
@@ -3261,11 +3261,11 @@ static void test_fim_directory(void **state) {
     will_return(__wrap_readdir, fim_data->entry);
     will_return(__wrap_readdir, NULL);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'test/test'");
-    #else
+#else
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'test\\test'");
-    #endif
+#endif
 
     fim_data->item->index = 1;
 
@@ -3344,24 +3344,24 @@ static void test_fim_get_data(void **state) {
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
-    #else
+#else
     expect_string(__wrap_w_get_file_permissions, file_path, "test");
     will_return(__wrap_w_get_file_permissions, "permissions");
     will_return(__wrap_w_get_file_permissions, 0);
 
     expect_string(__wrap_decode_win_permissions, raw_perm, "permissions");
     will_return(__wrap_decode_win_permissions, "decoded_perms");
-    #endif
+#endif
 
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, "test");
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "/bin/ls");
-    #else
+#else
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "c:\\windows\\system32\\cmd.exe");
-    #endif
+#endif
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
@@ -3371,11 +3371,11 @@ static void test_fim_get_data(void **state) {
 
     fim_data->local_data = fim_get_data("test", fim_data->item);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     assert_string_equal(fim_data->local_data->perm, "r--r--r--");
-    #else
+#else
     assert_string_equal(fim_data->local_data->perm, "decoded_perms");
-    #endif
+#endif
     assert_string_equal(fim_data->local_data->hash_md5, "d41d8cd98f00b204e9800998ecf8427e");
     assert_string_equal(fim_data->local_data->hash_sha1, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     assert_string_equal(fim_data->local_data->hash_sha256, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
@@ -3404,25 +3404,25 @@ static void test_fim_get_data_no_hashes(void **state) {
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
-    #else
+#else
     expect_string(__wrap_w_get_file_permissions, file_path, "test");
     will_return(__wrap_w_get_file_permissions, "permissions");
     will_return(__wrap_w_get_file_permissions, 0);
 
     expect_string(__wrap_decode_win_permissions, raw_perm, "permissions");
     will_return(__wrap_decode_win_permissions, "decoded_perms");
-    #endif
+#endif
 
     fim_data->local_data = fim_get_data("test", fim_data->item);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     assert_string_equal(fim_data->local_data->perm, "r--r--r--");
-    #else
+#else
     assert_string_equal(fim_data->local_data->perm, "decoded_perms");
-    #endif
+#endif
     assert_string_equal(fim_data->local_data->hash_md5, "");
     assert_string_equal(fim_data->local_data->hash_sha1, "");
     assert_string_equal(fim_data->local_data->hash_sha256, "");
@@ -3444,24 +3444,24 @@ static void test_fim_get_data_hash_error(void **state) {
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("user"));
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, "group");
-    #else
+#else
     expect_string(__wrap_w_get_file_permissions, file_path, "test");
     will_return(__wrap_w_get_file_permissions, "permissions");
     will_return(__wrap_w_get_file_permissions, 0);
 
     expect_string(__wrap_decode_win_permissions, raw_perm, "permissions");
     will_return(__wrap_decode_win_permissions, "decoded_perms");
-    #endif
+#endif
 
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, "test");
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "/bin/ls");
-    #else
+#else
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "c:\\windows\\system32\\cmd.exe");
-    #endif
+#endif
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
@@ -3588,11 +3588,11 @@ static void test_fim_realtime_event_file_exists(void **state) {
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     will_return(__wrap_lstat, 0);
-    #else
+#else
     will_return(__wrap_stat, 0);
-    #endif
+#endif
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test'");
 
@@ -3601,11 +3601,11 @@ static void test_fim_realtime_event_file_exists(void **state) {
 
 static void test_fim_realtime_event_file_missing(void **state) {
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     will_return(__wrap_lstat, -1);
-    #else
+#else
     will_return(__wrap_stat, -1);
-    #endif
+#endif
     errno = ENOENT;
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
@@ -3625,11 +3625,11 @@ static void test_fim_whodata_event_file_exists(void **state) {
 
     fim_data_t *fim_data = *state;
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     will_return(__wrap_lstat, 0);
-    #else
+#else
     will_return(__wrap_stat, 0);
-    #endif
+#endif
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'./test/test.file'");
 
@@ -3639,11 +3639,11 @@ static void test_fim_whodata_event_file_exists(void **state) {
 static void test_fim_whodata_event_file_missing(void **state) {
     fim_data_t *fim_data = *state;
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     will_return(__wrap_lstat, -1);
-    #else
+#else
     will_return(__wrap_stat, -1);
-    #endif
+#endif
     errno = ENOENT;
 
     char **paths = calloc(4, sizeof(char *));
@@ -3732,11 +3732,11 @@ static void test_fim_process_missing_entry_failure(void **state) {
     expect_value(__wrap_fim_db_process_missing_entry, mode, FIM_REALTIME);
     will_return(__wrap_fim_db_process_missing_entry, FIMDB_ERR);
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg, "(6708): Failed to delete a range of paths between '/test/' and '/test0'");
-    #else
+#else
     expect_string(__wrap__merror, formatted_msg, "(6708): Failed to delete a range of paths between '/test\\' and '/test]'");
-    #endif
+#endif
 
     fim_process_missing_entry("/test", FIM_REALTIME, NULL);
 
@@ -3924,10 +3924,10 @@ int main(void) {
         cmocka_unit_test(test_fim_configuration_directory_no_path),
         cmocka_unit_test(test_fim_configuration_directory_file),
         cmocka_unit_test(test_fim_configuration_directory_not_found),
-        #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
         cmocka_unit_test(test_fim_configuration_directory_registry_not_found),
         cmocka_unit_test(test_fim_configuration_directory_registry_found),
-        #endif
+#endif
 
         /* init_fim_data_entry */
         cmocka_unit_test_setup_teardown(test_init_fim_data_entry, setup_fim_entry, teardown_fim_entry),
@@ -3940,9 +3940,9 @@ int main(void) {
 
         /* fim_scan */
         cmocka_unit_test(test_fim_scan_db_full_double_scan),
-        #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
         cmocka_unit_test(test_fim_scan_db_full_double_scan_winreg_check),
-        #endif
+#endif
         cmocka_unit_test(test_fim_scan_db_full_not_double_scan),
         cmocka_unit_test(test_fim_scan_db_free),
         cmocka_unit_test_setup_teardown(test_fim_scan_no_limit, setup_file_limit, teardown_file_limit),
@@ -3973,10 +3973,10 @@ int main(void) {
         cmocka_unit_test(test_fim_check_db_state_full_to_90_percentage),
         cmocka_unit_test(test_fim_check_db_state_90_percentage_to_80_percentage),
         cmocka_unit_test(test_fim_check_db_state_80_percentage_to_normal),
-        #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
         cmocka_unit_test_teardown(test_fim_scan_no_realtime, teardown_fim_scan_realtime),
         cmocka_unit_test_teardown(test_fim_scan_realtime_enabled, teardown_fim_scan_realtime),
-        #endif
+#endif
 
         /* fim_checker */
         cmocka_unit_test(test_fim_checker_scheduled_configuration_directory_error),
@@ -3985,9 +3985,9 @@ int main(void) {
         cmocka_unit_test(test_fim_checker_over_max_recursion_level),
         cmocka_unit_test(test_fim_checker_deleted_file),
         cmocka_unit_test_setup(test_fim_checker_deleted_file_enoent, setup_fim_entry),
-        #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
         cmocka_unit_test(test_fim_checker_no_file_system),
-        #endif
+#endif
         cmocka_unit_test(test_fim_checker_fim_regular),
         cmocka_unit_test(test_fim_checker_fim_regular_warning),
         cmocka_unit_test(test_fim_checker_fim_regular_ignore),
@@ -4004,9 +4004,9 @@ int main(void) {
         cmocka_unit_test_teardown(test_fim_get_data, teardown_local_data),
         cmocka_unit_test_teardown(test_fim_get_data_no_hashes, teardown_local_data),
         cmocka_unit_test(test_fim_get_data_hash_error),
-        #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
         cmocka_unit_test(test_fim_get_data_fail_to_get_file_premissions),
-        #endif
+#endif
 
         /* check_deleted_files */
         cmocka_unit_test(test_check_deleted_files),
@@ -4029,7 +4029,7 @@ int main(void) {
         cmocka_unit_test(test_fim_process_missing_entry_failure),
         cmocka_unit_test_setup(test_fim_process_missing_entry_data_exists, setup_fim_entry),
 
-        #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
         /* fim_registry_event */
         cmocka_unit_test(test_fim_registry_event_null_data),
         cmocka_unit_test_setup_teardown(test_fim_registry_event_invalid_add, setup_fim_entry, teardown_fim_entry),
@@ -4037,7 +4037,7 @@ int main(void) {
         cmocka_unit_test_setup(test_fim_registry_event_valid_add, setup_fim_entry),
         cmocka_unit_test_setup(test_fim_registry_event_valid_modification, setup_fim_entry),
         cmocka_unit_test_setup(test_fim_registry_event_already_scanned, setup_fim_entry),
-        #endif
+#endif
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

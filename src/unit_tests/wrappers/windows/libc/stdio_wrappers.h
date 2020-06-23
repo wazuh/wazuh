@@ -9,25 +9,16 @@
  */
 
 
-#ifndef COMMON_H
-#define COMMON_H
+#ifndef STDIO_WRAPPERS_WINDOWS_H
+#define STDIO_WRAPPERS_WINDOWS_H
 
-#include <time.h>
 #include <stdio.h>
 
-extern int test_mode;
+char * wrap_fgets (char * __s, int __n, FILE * __stream);
 
-int FOREVER();
+int wrap_fprintf (FILE *__stream, const char *__format, ...);
 
-int __wrap_FOREVER();
+#define fprintf wrap_fprintf
+#define fgets wrap_fgets
 
-time_t wrap_time (time_t *t);
-
-#ifdef WIN32
-extern time_t time_mock_value;
-
-#define time(x) wrap_time(x)
 #endif
-
-#endif /* COMMON_H */
-

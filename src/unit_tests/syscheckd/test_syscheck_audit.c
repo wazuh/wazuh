@@ -21,6 +21,7 @@
 #include "../wrappers/externals/audit/libaudit_wrappers.h"
 #include "../wrappers/externals/openssl/rehash_wrappers.h"
 #include "../wrappers/externals/procpc/readproc_wrappers.h"
+#include "../wrappers/libc/stdio_wrappers.h"
 #include "external/procps/readproc.h"
 
 extern volatile int audit_health_check_deletion;
@@ -132,42 +133,10 @@ void __wrap__mdebug2(const char * file, int line, const char * func, const char 
     return;
 }
 
-int __wrap_fopen(const char *filename, const char *mode)
-{
-    check_expected(filename);
-    check_expected(mode);
-    return mock();
-}
-
 char * __wrap_realpath(const char * path, char * resolved_path)
 {
     snprintf(resolved_path, OS_SIZE_1024, "%s", mock_ptr_type(char *));
     return resolved_path;
-}
-
-size_t __real_fwrite(const void * ptr, size_t size, size_t count, FILE * stream);
-size_t __wrap_fwrite(const void * ptr, size_t size, size_t count, FILE * stream)
-{
-    if ((void*)stream > (void*)ptr) {
-        return __real_fwrite(ptr, size, count, stream);
-    }
-    return 1;
-}
-
-int __wrap_fprintf()
-{
-    return 1;
-}
-
-int __real_fclose(FILE *fp);
-int __wrap_fclose(FILE *fp)
-{
-    if (test_mode) {
-        return mock();
-    }
-    else {
-        return __real_fclose(fp);
-    }
 }
 
 int __wrap_unlink()
@@ -499,10 +468,16 @@ void test_set_auditd_config_audit_plugin_not_created(void **state)
     expect_string(__wrap_IsLink, file, audit3_socket);
     will_return(__wrap_IsLink, 1);
 
-    expect_string(__wrap_fopen, filename, "/var/ossec/etc/af_wazuh.conf");
+    expect_string(__wrap_fopen, path, "/var/ossec/etc/af_wazuh.conf");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
 
+    expect_any_always(__wrap_fprintf, __stream);
+    expect_any_always(__wrap_fprintf, formatted_msg);
+    will_return_always(__wrap_fprintf, 1);
+    will_return_always(__wrap_fwrite, 1);
+
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
 
     // Create plugin
@@ -535,7 +510,7 @@ void test_set_auditd_config_audit_plugin_not_created_fopen_error(void **state)
     expect_string(__wrap_IsLink, file, audit3_socket);
     will_return(__wrap_IsLink, 1);
 
-    expect_string(__wrap_fopen, filename, "/var/ossec/etc/af_wazuh.conf");
+    expect_string(__wrap_fopen, path, "/var/ossec/etc/af_wazuh.conf");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 0);
 
@@ -562,10 +537,16 @@ void test_set_auditd_config_audit_plugin_not_created_fclose_error(void **state)
     expect_string(__wrap_IsLink, file, audit3_socket);
     will_return(__wrap_IsLink, 1);
 
-    expect_string(__wrap_fopen, filename, "/var/ossec/etc/af_wazuh.conf");
+    expect_string(__wrap_fopen, path, "/var/ossec/etc/af_wazuh.conf");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
 
+    expect_any_always(__wrap_fprintf, __stream);
+    expect_any_always(__wrap_fprintf, formatted_msg);
+    will_return_always(__wrap_fprintf, 1);
+    will_return_always(__wrap_fwrite, 1);
+
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, -1);
 
     expect_string(__wrap__merror, formatted_msg, "(1140): Could not close file '/var/ossec/etc/af_wazuh.conf' due to [(0)-(Success)].");
@@ -591,10 +572,16 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink(void **sta
     expect_string(__wrap_IsLink, file, audit3_socket);
     will_return(__wrap_IsLink, 1);
 
-    expect_string(__wrap_fopen, filename, "/var/ossec/etc/af_wazuh.conf");
+    expect_string(__wrap_fopen, path, "/var/ossec/etc/af_wazuh.conf");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
 
+    expect_any_always(__wrap_fprintf, __stream);
+    expect_any_always(__wrap_fprintf, formatted_msg);
+    will_return_always(__wrap_fprintf, 1);
+    will_return_always(__wrap_fwrite, 1);
+
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
 
     // Create plugin
@@ -636,10 +623,16 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_restart(vo
     expect_string(__wrap_IsLink, file, audit3_socket);
     will_return(__wrap_IsLink, 1);
 
-    expect_string(__wrap_fopen, filename, "/var/ossec/etc/af_wazuh.conf");
+    expect_string(__wrap_fopen, path, "/var/ossec/etc/af_wazuh.conf");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
 
+    expect_any_always(__wrap_fprintf, __stream);
+    expect_any_always(__wrap_fprintf, formatted_msg);
+    will_return_always(__wrap_fprintf, 1);
+    will_return_always(__wrap_fwrite, 1);
+
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
 
     // Create plugin
@@ -680,10 +673,16 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_error(void
     expect_string(__wrap_IsLink, file, audit3_socket);
     will_return(__wrap_IsLink, 1);
 
-    expect_string(__wrap_fopen, filename, "/var/ossec/etc/af_wazuh.conf");
+    expect_string(__wrap_fopen, path, "/var/ossec/etc/af_wazuh.conf");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
 
+    expect_any_always(__wrap_fprintf, __stream);
+    expect_any_always(__wrap_fprintf, formatted_msg);
+    will_return_always(__wrap_fprintf, 1);
+    will_return_always(__wrap_fwrite, 1);
+
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
 
     // Create plugin
@@ -722,10 +721,16 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_unlink_err
     expect_string(__wrap_IsLink, file, audit3_socket);
     will_return(__wrap_IsLink, 1);
 
-    expect_string(__wrap_fopen, filename, "/var/ossec/etc/af_wazuh.conf");
+    expect_string(__wrap_fopen, path, "/var/ossec/etc/af_wazuh.conf");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
 
+    expect_any_always(__wrap_fprintf, __stream);
+    expect_any_always(__wrap_fprintf, formatted_msg);
+    will_return_always(__wrap_fprintf, 1);
+    will_return_always(__wrap_fwrite, 1);
+
+    expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
 
     // Create plugin

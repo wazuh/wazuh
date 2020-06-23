@@ -159,28 +159,28 @@ int __wrap_OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
 #ifdef SOLARIS
 struct passwd **__wrap_getpwuid_r(uid_t uid, struct passwd *pwd,
                                   char *buf, size_t buflen) {
-    #if defined(TEST_SERVER) || defined(TEST_AGENT)
+#if defined(TEST_SERVER) || defined(TEST_AGENT)
         pwd->pw_name = mock_type(char*);
 
         return mock_type(struct passwd*);
-    #else // TEST_WINAGENT
+#else // TEST_WINAGENT
         // Leave empty wrapper since avoiding compile will bring problems with cmocka
         return NULL;
-    #endif
+#endif
 }
 #else
 int __wrap_getpwuid_r(uid_t uid, struct passwd *pwd,
                       char *buf, size_t buflen, struct passwd **result) {
 
-    #if defined(TEST_SERVER) || defined(TEST_AGENT)
+#if defined(TEST_SERVER) || defined(TEST_AGENT)
         pwd->pw_name = mock_type(char*);
         *result = mock_type(struct passwd*);
 
         return mock();
-    #else // TEST_WINAGENT
+#else // TEST_WINAGENT
         // Leave empty wrapper since avoiding compile will bring problems with cmocka
         return 0;
-    #endif
+#endif
 }
 #endif
 
@@ -473,13 +473,13 @@ static void test_normalize_path_null_input(void **state) {
 
 /* remove_empty_folders tests */
 static void test_remove_empty_folders_success(void **state) {
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     char *input = "/var/ossec/queue/diff/local/test-dir/";
     char *first_subdir = "/var/ossec/queue/diff/local/test-dir";
-    #else
+#else
     char *input = "queue/diff\\local\\test-dir\\";
     char *first_subdir = "queue/diff\\local\\test-dir";
-    #endif
+#endif
     int ret = -1;
     char message[OS_SIZE_1024];
 
@@ -498,19 +498,19 @@ static void test_remove_empty_folders_success(void **state) {
 }
 
 static void test_remove_empty_folders_recursive_success(void **state) {
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     char *input = "/var/ossec/queue/diff/local/dir1/dir2/";
     static const char *parent_dirs[] = {
         "/var/ossec/queue/diff/local/dir1/dir2",
         "/var/ossec/queue/diff/local/dir1"
     };
-    #else
+#else
     char *input = "queue/diff\\local\\dir1\\dir2\\";
     static const char *parent_dirs[] = {
         "queue/diff\\local\\dir1\\dir2",
         "queue/diff\\local\\dir1"
     };
-    #endif
+#endif
     char messages[2][OS_SIZE_1024];
     int ret = -1;
 
@@ -546,13 +546,13 @@ static void test_remove_empty_folders_null_input(void **state) {
 
 // TODO: Validate this condition is required to be tested
 static void test_remove_empty_folders_relative_path(void **state) {
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     char *input = "./local/test-dir/";
     const static char *parent_dirs[] = {"./local/test-dir", "./local", "."};
-    #else
+#else
     char *input = ".\\local\\test-dir\\";
     const static char *parent_dirs[] = {".\\local\\test-dir", ".\\local", "."};
-    #endif
+#endif
     char messages[3][OS_SIZE_1024];
     int ret = -1;
 
@@ -582,21 +582,21 @@ static void test_remove_empty_folders_relative_path(void **state) {
 // TODO: Validate this condition is required to be tested
 static void test_remove_empty_folders_absolute_path(void **state) {
     int ret = -1;
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     char *input = "/home/user1/";
     static const char *parent_dirs[] = {
         "/home/user1",
         "/home",
         ""
     };
-    #else
+#else
     char *input = "c:\\home\\user1\\";
     static const char *parent_dirs[] = {
         "c:\\home\\user1",
         "c:\\home",
         "c:"
     };
-    #endif
+#endif
     char messages[3][OS_SIZE_1024];
 
     snprintf(messages[0], OS_SIZE_1024, "Removing empty directory '%s'.", parent_dirs[0]);
@@ -623,13 +623,13 @@ static void test_remove_empty_folders_absolute_path(void **state) {
 }
 
 static void test_remove_empty_folders_non_empty_dir(void **state) {
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     char *input = "/var/ossec/queue/diff/local/test-dir/";
     static const char *parent_dir = "/var/ossec/queue/diff/local/test-dir";
-    #else
+#else
     char *input = "queue/diff\\local\\c\\test-dir\\";
     static const char *parent_dir = "queue/diff\\local\\c\\test-dir";
-    #endif
+#endif
     int ret = -1;
     char **subdir;
 
@@ -648,13 +648,13 @@ static void test_remove_empty_folders_non_empty_dir(void **state) {
 }
 
 static void test_remove_empty_folders_error_removing_dir(void **state) {
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     char *input = "/var/ossec/queue/diff/local/test-dir/";
     static const char *parent_dir = "/var/ossec/queue/diff/local/test-dir";
-    #else
+#else
     char *input = "queue/diff\\local\\test-dir\\";
     static const char *parent_dir = "queue/diff\\local\\test-dir";
-    #endif
+#endif
     int ret = -1;
     char remove_dir_message[OS_SIZE_1024];
     char dir_not_deleted_message[OS_SIZE_1024];
@@ -2139,9 +2139,9 @@ static void test_get_user_success(void **state) {
 
     will_return(__wrap_getpwuid_r, "user_name");
     will_return(__wrap_getpwuid_r, 1);
-    #ifndef SOLARIS
+#ifndef SOLARIS
     will_return(__wrap_getpwuid_r, 0);
-    #endif
+#endif
 
     user = get_user(NULL, 1, NULL);
 
@@ -2157,9 +2157,9 @@ static void test_get_user_uid_not_found(void **state) {
 
     will_return(__wrap_getpwuid_r, "user_name");
     will_return(__wrap_getpwuid_r, NULL);
-    #ifndef SOLARIS
+#ifndef SOLARIS
     will_return(__wrap_getpwuid_r, 0);
-    #endif
+#endif
 
     expect_string(__wrap__mdebug2, formatted_msg, "User with uid '1' not found.\n");
 
@@ -2177,9 +2177,9 @@ static void test_get_user_error(void **state) {
 
     will_return(__wrap_getpwuid_r, "user_name");
     will_return(__wrap_getpwuid_r, NULL);
-    #ifndef SOLARIS
+#ifndef SOLARIS
     will_return(__wrap_getpwuid_r, ENOENT);
-    #endif
+#endif
 
     expect_string(__wrap__mdebug2, formatted_msg, "Failed getting user_name (2): 'No such file or directory'\n");
 
@@ -3593,9 +3593,9 @@ int main(int argc, char *argv[]) {
         /* delete_target_file tests */
         cmocka_unit_test(test_delete_target_file_success),
         cmocka_unit_test(test_delete_target_file_rmdir_ex_error),
-        #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
         cmocka_unit_test(test_delete_target_file_invalid_path),
-        #endif
+#endif
 
         /* escape_syscheck_field tests */
         cmocka_unit_test_teardown(test_escape_syscheck_field_escape_all, teardown_string),
@@ -3615,7 +3615,7 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test(test_remove_empty_folders_non_empty_dir),
         cmocka_unit_test(test_remove_empty_folders_error_removing_dir),
 
-        #if defined(TEST_SERVER)
+#if defined(TEST_SERVER)
         /* sk_decode_sum tests */
         cmocka_unit_test_setup_teardown(test_sk_decode_sum_no_decode, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_decode_sum_deleted_file, setup_sk_decode, teardown_sk_decode),
@@ -3686,8 +3686,8 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_setup_teardown(test_sk_sum_clean_shortest_valid_message, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_sum_clean_invalid_message, setup_sk_decode, teardown_sk_decode),
         cmocka_unit_test_setup_teardown(test_sk_sum_clean_null_sum, setup_sk_decode, teardown_sk_decode),
-        #endif
-        #ifndef TEST_WINAGENT
+#endif
+#ifndef TEST_WINAGENT
         /* unescape_syscheck_field tests */
         cmocka_unit_test_setup_teardown(test_unescape_syscheck_field_escaped_chars, setup_unescape_syscheck_field, teardown_unescape_syscheck_field),
         cmocka_unit_test_setup_teardown(test_unescape_syscheck_field_no_escaped_chars, setup_unescape_syscheck_field, teardown_unescape_syscheck_field),
@@ -3707,10 +3707,10 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test(test_ag_send_syscheck_success),
         cmocka_unit_test(test_ag_send_syscheck_unable_to_connect),
         cmocka_unit_test(test_ag_send_syscheck_error_sending_message),
-        #else
+#else
         cmocka_unit_test(test_get_group),
         cmocka_unit_test(test_ag_send_syscheck),
-        #endif
+#endif
 
         /* decode_win_attributes tests */
         cmocka_unit_test(test_decode_win_attributes_all_attributes),
@@ -3747,7 +3747,7 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_teardown(test_win_perm_to_json_incorrect_permission_format_2, teardown_cjson),
         cmocka_unit_test_teardown(test_win_perm_to_json_error_splitting_permissions, teardown_cjson),
 
-        #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
         cmocka_unit_test_setup_teardown(test_get_user_CreateFile_error_access_denied, setup_string_array, teardown_string_array),
         cmocka_unit_test_setup_teardown(test_get_user_CreateFile_error_sharing_violation, setup_string_array, teardown_string_array),
         cmocka_unit_test_setup_teardown(test_get_user_CreateFile_error_generic, setup_string_array, teardown_string_array),
@@ -3781,7 +3781,7 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test(test_w_directory_exists_error_getting_attrs),
         cmocka_unit_test(test_w_directory_exists_path_is_not_dir),
         cmocka_unit_test(test_w_directory_exists_path_is_dir),
-        #endif
+#endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

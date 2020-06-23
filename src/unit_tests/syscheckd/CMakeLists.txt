@@ -30,6 +30,7 @@ if(${TARGET} STREQUAL "winagent")
        ${SRC_FOLDER}/unit_tests/wrappers/wazuh/wazuh_db/*.o
        ${SRC_FOLDER}/unit_tests/wrappers/wazuh/wazuh_modules/*.o
        ${SRC_FOLDER}/unit_tests/wrappers/windows/*.o
+       ${SRC_FOLDER}/unit_tests/wrappers/windows/libc/*.o
        )
   list(APPEND sysfiles ${test_wrapper_files})
 endif()
@@ -107,17 +108,18 @@ list(APPEND syscheckd_tests_names "test_syscheck_audit")
 if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags " ")
 else()
-  list(APPEND syscheckd_tests_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,IsSocket -Wl,--wrap,IsFile -Wl,--wrap,IsDir -Wl,--wrap,IsLink -Wl,--wrap,IsFile -Wl,--wrap,audit_restart \
-                       -Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,fopen -Wl,--wrap,fwrite -Wl,--wrap,fprintf -Wl,--wrap,fclose -Wl,--wrap,symlink -Wl,--wrap,unlink \
-                       -Wl,--wrap,audit_open -Wl,--wrap,audit_get_rule_list -Wl,--wrap,audit_close -Wl,--wrap,_mdebug1 -Wl,--wrap,_mwarn -Wl,--wrap,W_Vector_length -Wl,--wrap,search_audit_rule \
-                       -Wl,--wrap,audit_add_rule -Wl,--wrap,W_Vector_insert_unique -Wl,--wrap,SendMSG -Wl,--wrap,fim_whodata_event \
-                       -Wl,--wrap,openproc -Wl,--wrap,readproc -Wl,--wrap,freeproc -Wl,--wrap,closeproc -Wl,--wrap,_mdebug2 -Wl,--wrap,get_user -Wl,--wrap,get_group -Wl,--wrap,realpath \
-                       -Wl,--wrap,readlink")
+  list(APPEND syscheckd_tests_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,fprintf -Wl,--wrap,IsSocket -Wl,--wrap,IsFile -Wl,--wrap,IsDir -Wl,--wrap,IsLink \
+                                     -Wl,--wrap,IsFile -Wl,--wrap,audit_restart -Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,symlink -Wl,--wrap,unlink -Wl,--wrap,fwrite \
+                                     -Wl,--wrap,audit_open -Wl,--wrap,audit_get_rule_list -Wl,--wrap,audit_close -Wl,--wrap,_mdebug1 -Wl,--wrap,_mwarn -Wl,--wrap,W_Vector_length -Wl,--wrap,search_audit_rule \
+                                     -Wl,--wrap,audit_add_rule -Wl,--wrap,W_Vector_insert_unique -Wl,--wrap,SendMSG -Wl,--wrap,fim_whodata_event -Wl,--wrap,fflush -Wl,--wrap,fgets \
+                                     -Wl,--wrap,openproc -Wl,--wrap,readproc -Wl,--wrap,freeproc -Wl,--wrap,closeproc -Wl,--wrap,_mdebug2 -Wl,--wrap,get_user -Wl,--wrap,get_group -Wl,--wrap,realpath \
+                                     -Wl,--wrap,readlink -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,remove")
 endif()
 
-set(SEECHANGES_BASE_FLAGS "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,lstat -Wl,--wrap,stat -Wl,--wrap,abspath -Wl,--wrap,wfopen -Wl,--wrap,fread \
-                           -Wl,--wrap,fclose -Wl,--wrap,fwrite -Wl,--wrap,w_compress_gzfile -Wl,--wrap,IsDir -Wl,--wrap,mkdir \
-                           -Wl,--wrap,w_uncompress_gzfile -Wl,--wrap,OS_MD5_File -Wl,--wrap,File_DateofChange -Wl,--wrap,rename -Wl,--wrap,system")
+set(SEECHANGES_BASE_FLAGS "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,lstat -Wl,--wrap,stat -Wl,--wrap,abspath -Wl,--wrap,wfopen -Wl,--wrap,fread -Wl,--wrap,fopen \
+                           -Wl,--wrap,fclose -Wl,--wrap,fwrite -Wl,--wrap,w_compress_gzfile -Wl,--wrap,IsDir -Wl,--wrap,mkdir  -Wl,--wrap,fflush \
+                           -Wl,--wrap,w_uncompress_gzfile -Wl,--wrap,OS_MD5_File -Wl,--wrap,File_DateofChange -Wl,--wrap,rename -Wl,--wrap,system \
+                           -Wl,--wrap,fseek -Wl,--wrap,remove,--wrap=fprintf,--wrap=fgets ")
 
 list(APPEND syscheckd_tests_names "test_seechanges")
 if(${TARGET} STREQUAL "agent")
@@ -214,16 +216,17 @@ set(FIM_DB_BASE_FLAGS "-Wl,--wrap=w_is_file,--wrap=remove,--wrap=sqlite3_open_v2
                        -Wl,--wrap=fim_configuration_directory,--wrap=fim_json_event,--wrap=send_syscheck_msg \
                        -Wl,--wrap=delete_target_file,--wrap=_minfo,--wrap=_mdebug1,--wrap=_mdebug2 \
                        -Wl,--wrap=fseek,--wrap=fclose,--wrap=fopen,--wrap=getpid,--wrap=fflush \
-                       -Wl,--wrap=wstr_escape_json,--wrap=sqlite3_bind_int64,--wrap=sqlite3_column_int64")
+                       -Wl,--wrap=wstr_escape_json,--wrap=sqlite3_bind_int64,--wrap=sqlite3_column_int64 \
+                       -Wl,--wrap=fread,--wrap=fwrite,--wrap=fprintf,--wrap=fgets")
 
 list(APPEND syscheckd_tests_names "test_fim_db")
 if(${TARGET} STREQUAL "agent")
-  list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot,--wrap=fprintf \
-                                     -Wl,--wrap=usleep,--wrap=time,--wrap=fgets")
+  list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot \
+                                     -Wl,--wrap=usleep,--wrap=time")
 elseif(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS}")
 else()
-list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS} -Wl,--wrap=fprintf,--wrap=usleep,--wrap=time,--wrap=fgets")
+list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS} -Wl,--wrap=usleep,--wrap=time")
 endif()
 
 if(${TARGET} STREQUAL "winagent")
@@ -238,7 +241,8 @@ if(${TARGET} STREQUAL "winagent")
                                            -Wl,--wrap=OSHash_Delete_ex,--wrap=_mterror,--wrap=check_path_type,--wrap=_minfo \
                                            -Wl,--wrap=OSHash_Create,--wrap=OSHash_SetFreeDataPointer,--wrap=fim_whodata_event \
                                            -Wl,--wrap=fim_configuration_directory,--wrap=fim_checker,--wrap=OSHash_Get \
-                                           -Wl,--wrap=convert_windows_string,--wrap=OSHash_Get_ex,--wrap=FOREVER")
+                                           -Wl,--wrap=convert_windows_string,--wrap=OSHash_Get_ex,--wrap=FOREVER \
+                                           -Wl,--wrap=fflush,--wrap=fread,--wrap=fseek,--wrap=fwrite,--wrap=fprintf,--wrap=fgets")
 endif()
 
 # Compiling tests

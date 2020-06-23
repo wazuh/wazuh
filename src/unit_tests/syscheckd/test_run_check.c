@@ -219,15 +219,15 @@ static int setup_group(void ** state) {
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file");
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file OK?");
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 0");
-    #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node test_$");
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node test_$ OK?");
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 1");
-    #endif
+#endif
 
-    #if defined(TEST_AGENT) || defined(TEST_WINAGENT)
+#if defined(TEST_AGENT) || defined(TEST_WINAGENT)
     expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck.conf]");
-    #endif
+#endif
 
     if(Read_Syscheck_Config("test_syscheck.conf"))
         fail();
@@ -244,9 +244,9 @@ static int setup_group(void ** state) {
 
     OSHash_Add_ex(syscheck.realtime->dirtb, "key", strdup("data"));
 
-    #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
     time_mock_value = 1;
-    #endif
+#endif
 
     return 0;
 }
@@ -265,7 +265,7 @@ static int setup_tmp_file(void **state) {
 /* teardown */
 
 static int teardown_group(void **state) {
-    #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
     if (syscheck.realtime) {
         if (syscheck.realtime->dirtb) {
             OSHash_Free(syscheck.realtime->dirtb);
@@ -273,7 +273,7 @@ static int teardown_group(void **state) {
         free(syscheck.realtime);
         syscheck.realtime = NULL;
     }
-    #endif
+#endif
 
     Free_Syscheck(&syscheck);
 
@@ -294,15 +294,15 @@ static int teardown_tmp_file(void **state) {
 void test_fim_whodata_initialize(void **state)
 {
     int ret;
-    #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
     int i;
     char *dirs[] = {
         "%WINDIR%\\System32\\WindowsPowerShell\\v1.0",
         NULL
     };
     char expanded_dirs[1][OS_SIZE_1024];
-    #endif
-    #ifdef TEST_WINAGENT
+#endif
+#ifdef TEST_WINAGENT
     will_return(wrap_GetCurrentThread, (HANDLE)123456);
 
     expect_value(wrap_SetThreadPriority, hThread, (HANDLE)123456);
@@ -321,7 +321,7 @@ void test_fim_whodata_initialize(void **state)
         expect_value(__wrap_realtime_adddir, whodata, 10);
         will_return(__wrap_realtime_adddir, 0);
     }
-    #else
+#else
     expect_string(__wrap_realtime_adddir, dir, "/etc");
     expect_value(__wrap_realtime_adddir, whodata, 2);
     will_return(__wrap_realtime_adddir, 0);
@@ -331,7 +331,7 @@ void test_fim_whodata_initialize(void **state)
     expect_string(__wrap_realtime_adddir, dir, "/usr/sbin");
     expect_value(__wrap_realtime_adddir, whodata, 6);
     will_return(__wrap_realtime_adddir, 0);
-    #endif
+#endif
 
     ret = fim_whodata_initialize();
 
@@ -653,11 +653,11 @@ void test_fim_send_sync_msg_10_eps(void ** state) {
         fim_send_sync_msg("");
     }
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_value(__wrap_sleep, seconds, 1);
-    #else
+#else
     expect_value(wrap_Sleep, dwMilliseconds, 1000);
-    #endif
+#endif
 
     // After 10 times, sleep one second
     expect_string(__wrap__mdebug2, msg, FIM_DBSYNC_SEND);
@@ -699,11 +699,11 @@ void test_send_syscheck_msg_10_eps(void ** state) {
         send_syscheck_msg("");
     }
 
-    #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_value(__wrap_sleep, seconds, 1);
-    #else
+#else
     expect_value(wrap_Sleep, dwMilliseconds, 1000);
-    #endif
+#endif
 
     // After 10 times, sleep one second
     expect_string(__wrap__mdebug2, msg, FIM_SEND);
@@ -937,11 +937,11 @@ void test_fim_link_reload_broken_link_reload_broken(void **state) {
 
 
 int main(void) {
-    #ifndef WIN_WHODATA
+#ifndef WIN_WHODATA
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_fim_whodata_initialize),
 
-        #ifdef TEST_WINAGENT
+#ifdef TEST_WINAGENT
         cmocka_unit_test(test_set_priority_windows_thread_highest),
         cmocka_unit_test(test_set_priority_windows_thread_above_normal),
         cmocka_unit_test(test_set_priority_windows_thread_normal),
@@ -949,7 +949,7 @@ int main(void) {
         cmocka_unit_test(test_set_priority_windows_thread_lowest),
         cmocka_unit_test(test_set_priority_windows_thread_idle),
         cmocka_unit_test(test_set_priority_windows_thread_error),
-        #endif
+#endif
 
         cmocka_unit_test(test_log_realtime_status),
         cmocka_unit_test(test_fim_send_msg),
@@ -960,7 +960,7 @@ int main(void) {
         cmocka_unit_test(test_send_syscheck_msg_10_eps),
         cmocka_unit_test(test_send_syscheck_msg_0_eps),
         cmocka_unit_test(test_fim_send_scan_info),
-        #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
         cmocka_unit_test(test_fim_link_update),
         cmocka_unit_test(test_fim_link_update_already_added),
         cmocka_unit_test(test_fim_link_check_delete),
@@ -972,16 +972,16 @@ int main(void) {
         cmocka_unit_test(test_fim_link_silent_scan),
         cmocka_unit_test(test_fim_link_reload_broken_link_already_monitored),
         cmocka_unit_test(test_fim_link_reload_broken_link_reload_broken),
-        #endif
+#endif
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
-    #else  // WIN_WHODATA
+#else  // WIN_WHODATA
     const struct CMUnitTest eventchannel_tests[] = {
         cmocka_unit_test(test_set_whodata_mode_changes),
         cmocka_unit_test(test_fim_whodata_initialize_eventchannel),
         cmocka_unit_test(test_fim_whodata_initialize_fail_set_policies),
     };
     return cmocka_run_group_tests(eventchannel_tests, setup_group, teardown_group);
-    #endif
+#endif
 }

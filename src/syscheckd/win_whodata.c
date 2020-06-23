@@ -32,6 +32,7 @@
 #define WHODATA_DIR_REMOVE_INTERVAL 2
 
 #ifdef UNIT_TESTING
+#ifdef WIN32
 #include "unit_tests/wrappers/windows/aclapi_wrappers.h"
 #include "unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
 #include "unit_tests/wrappers/windows/fileapi_wrappers.h"
@@ -47,7 +48,8 @@
 #include "unit_tests/wrappers/windows/winbase_wrappers.h"
 #include "unit_tests/wrappers/windows/winevt_wrappers.h"
 #include "unit_tests/wrappers/windows/winreg_wrappers.h"
-
+#include "unit_tests/wrappers/windows/libc/stdio_wrappers.h"
+#endif
 // Remove static qualifier when unit testing
 #define STATIC
 #else

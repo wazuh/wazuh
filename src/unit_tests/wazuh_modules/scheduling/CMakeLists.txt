@@ -56,7 +56,8 @@ list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_unti
 list(APPEND use_shared_libs 1)
 
 list(APPEND tests_names "test_docker_scheduling")
-list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=FOREVER,--wrap=wpclose,--wrap=fgets,--wrap=wpopenl")
+list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=FOREVER,--wrap=wpclose,--wrap=fgets \
+                         -Wl,--wrap=wpopenl,--wrap=fclose,--wrap=fflush,--wrap=fprintf,--wrap=fopen,--wrap=fread,--wrap=fseek,--wrap=fwrite,--wrap=remove")
 list(APPEND use_shared_libs 1)
 
 list(APPEND tests_names "test_gcp_scheduling")

@@ -7,7 +7,9 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <time.h> 
+
 #include "shared.h"
+#include "../../wrappers/libc/stdio_wrappers.h"
 #include "wazuh_modules/wmodules.h"
 #include "wazuh_modules/wm_docker.h"
 #include "wmodules_scheduling_helpers.h"
@@ -16,6 +18,7 @@
 
 static wmodule *docker_module;
 static OS_XML *lxml;
+extern int test_mode;
 
 static unsigned test_docker_date_counter = 0;
 static struct tm test_docker_date_storage[TEST_MAX_DATES];
@@ -35,10 +38,6 @@ wfd_t * __wrap_wpopenl(const char * path, int flags, ...) {
     wfd_t * wfd;
     os_calloc(1, sizeof(wfd_t), wfd);
     return wfd;
-}
-
-char *__wrap_fgets (char *__restrict __s, int __n, FILE *__restrict __stream) {
-    return 0;
 }
 
 /******* Helpers **********/
@@ -61,10 +60,12 @@ static int setup_module() {
     XML_NODE nodes = string_to_xml_node(string, lxml);
     int ret = wm_docker_read(nodes, docker_module);
     OS_ClearNode(nodes);
+    test_mode = 1;
     return ret;
 }
 
 static int teardown_module(){
+    test_mode = 0;
     wmodule_cleanup(docker_module);
     OS_ClearXML(lxml);
     return 0;
@@ -111,6 +112,8 @@ void test_interval_execution(void **state) {
     module_data->scan_config.scan_wday = -1;
     module_data->scan_config.interval = 60 * 25; // 25min
     module_data->scan_config.month_interval = false;
+    expect_any_always(__wrap_fgets, __stream);
+    will_return_always(__wrap_fgets, 0);
     will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
     will_return(__wrap_FOREVER, 0);
     docker_module->context->start(module_data);
@@ -126,6 +129,8 @@ void test_day_of_month(void **state) {
     module_data->scan_config.scan_time = strdup("00:00");
     module_data->scan_config.interval = 1; // 1 month
     module_data->scan_config.month_interval = true;
+    expect_any_always(__wrap_fgets, __stream);
+    will_return_always(__wrap_fgets, 0);
     will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
     will_return(__wrap_FOREVER, 0);
     docker_module->context->start(module_data);
@@ -141,6 +146,8 @@ void test_day_of_week(void **state) {
     module_data->scan_config.scan_time = strdup("00:00");
     module_data->scan_config.interval = 604800;  // 1 week
     module_data->scan_config.month_interval = false;
+    expect_any_always(__wrap_fgets, __stream);
+    will_return_always(__wrap_fgets, 0);
     will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
     will_return(__wrap_FOREVER, 0);
     docker_module->context->start(module_data);
@@ -156,6 +163,8 @@ void test_time_of_day(void **state) {
     module_data->scan_config.scan_time = strdup("00:00");
     module_data->scan_config.interval = WM_DEF_INTERVAL;  // 1 day
     module_data->scan_config.month_interval = false;
+    expect_any_always(__wrap_fgets, __stream);
+    will_return_always(__wrap_fgets, 0);
     will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
     will_return(__wrap_FOREVER, 0);
     docker_module->context->start(module_data);
