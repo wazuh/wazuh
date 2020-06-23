@@ -11,7 +11,7 @@ from os import remove
 from os.path import exists, join
 
 from wazuh import Wazuh
-from wazuh import common
+from wazuh.core import common
 from wazuh import configuration
 from wazuh.configuration import get_ossec_conf
 from wazuh.core.cluster.cluster import get_node

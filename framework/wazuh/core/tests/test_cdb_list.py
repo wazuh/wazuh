@@ -13,7 +13,8 @@ from wazuh.core.cdb_list import check_path, get_list_from_file, get_relative_pat
 from wazuh.exception import WazuhError
 
 sys.modules['api'] = MagicMock()
-from wazuh import common
+from wazuh.core import common
+
 del sys.modules['api']
 
 

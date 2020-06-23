@@ -15,7 +15,8 @@ from shutil import rmtree
 from subprocess import check_output
 from time import time
 
-from wazuh import WazuhException, common
+from wazuh import WazuhException
+from wazuh.core import common
 from wazuh.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_cluster_items, read_config
 from wazuh.utils import md5, mkdir_with_mode

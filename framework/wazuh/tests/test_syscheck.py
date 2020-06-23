@@ -25,7 +25,8 @@ with patch('wazuh.common.ossec_uid'):
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh.syscheck import run, clear, last_scan, files
         from wazuh.syscheck import AffectedItemsWazuhResult
-        from wazuh import common, WazuhError, WazuhInternalError
+        from wazuh import WazuhError, WazuhInternalError
+        from wazuh.core import common
 
 callable_list = list()
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')

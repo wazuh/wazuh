@@ -7,7 +7,7 @@ import os
 import sys
 import re
 import sqlite3
-from unittest.mock import ANY, patch, MagicMock, mock_open, call, Mock
+from unittest.mock import ANY, patch, mock_open, call, Mock
 
 import pytest
 from freezegun import freeze_time

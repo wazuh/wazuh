@@ -11,7 +11,8 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from wazuh import exception, common
+from wazuh import exception
+from wazuh.core import common
 from wazuh.tests.util import InitWDBSocketMock
 
 with patch('wazuh.common.ossec_uid'):

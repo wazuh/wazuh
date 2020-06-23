@@ -14,16 +14,16 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
    None,
    OSError(10000, 'Error')
 ])
-@patch('wazuh.pyDaemonModule.sys.exit')
-@patch('wazuh.pyDaemonModule.os.setsid')
-@patch('wazuh.pyDaemonModule.sys.stderr.write')
-@patch('wazuh.pyDaemonModule.sys.stdin.fileno')
-@patch('wazuh.pyDaemonModule.os.dup2')
-@patch('wazuh.pyDaemonModule.os.chdir')
+@patch('wazuh.core.pyDaemonModule.sys.exit')
+@patch('wazuh.core.pyDaemonModule.os.setsid')
+@patch('wazuh.core.pyDaemonModule.sys.stderr.write')
+@patch('wazuh.core.pyDaemonModule.sys.stdin.fileno')
+@patch('wazuh.core.pyDaemonModule.os.dup2')
+@patch('wazuh.core.pyDaemonModule.os.chdir')
 def test_pyDaemon(mock_chdir, mock_dup, mock_fileno, mock_write, mock_setsid, mock_exit, effect):
     """Tests pyDaemon function works"""
 
-    with patch('wazuh.pyDaemonModule.os.fork', return_value=255, side_effect=effect):
+    with patch('wazuh.core.pyDaemonModule.os.fork', return_value=255, side_effect=effect):
         pyDaemon()
 
     if effect == None:
@@ -34,45 +34,45 @@ def test_pyDaemon(mock_chdir, mock_dup, mock_fileno, mock_write, mock_setsid, mo
     mock_chdir.assert_called_once_with('/')
 
 
-@patch('wazuh.pyDaemonModule.common.ossec_path', new='/tmp')
+@patch('wazuh.core.pyDaemonModule.common.ossec_path', new='/tmp')
 def test_create_pid():
     """Tests create_pid function works"""
 
     with TemporaryDirectory() as tmpdirname:
         tmpfile = NamedTemporaryFile(dir=tmpdirname, delete=False, suffix='-255.pid')
-        with patch('wazuh.pyDaemonModule.common.os_pidfile', new=tmpdirname.split('/')[2]):
+        with patch('wazuh.core.pyDaemonModule.common.os_pidfile', new=tmpdirname.split('/')[2]):
             create_pid(tmpfile.name.split('/')[3].split('-')[0],'255')
 
 
-@patch('wazuh.pyDaemonModule.common.ossec_path', new='/tmp')
-@patch('wazuh.pyDaemonModule.os.chmod', side_effect=OSError)
+@patch('wazuh.core.pyDaemonModule.common.ossec_path', new='/tmp')
+@patch('wazuh.core.pyDaemonModule.os.chmod', side_effect=OSError)
 def test_create_pid_ko(mock_chmod):
     """Tests create_pid function exception works"""
 
     with TemporaryDirectory() as tmpdirname:
         tmpfile = NamedTemporaryFile(dir=tmpdirname, delete=False, suffix='-255.pid')
-        with patch('wazuh.pyDaemonModule.common.os_pidfile', new=tmpdirname.split('/')[2]):
+        with patch('wazuh.core.pyDaemonModule.common.os_pidfile', new=tmpdirname.split('/')[2]):
             with pytest.raises(WazuhException, match=".* 3002 .*"):
                 create_pid(tmpfile.name.split('/')[3].split('-')[0],'255')
 
 
-@patch('wazuh.pyDaemonModule.common.ossec_path', new='/tmp')
+@patch('wazuh.core.pyDaemonModule.common.ossec_path', new='/tmp')
 def test_delete_pid():
     """Tests delete_pid function works"""
 
     with TemporaryDirectory() as tmpdirname:
         tmpfile = NamedTemporaryFile(dir=tmpdirname, delete=False, suffix='-255.pid')
-        with patch('wazuh.pyDaemonModule.common.os_pidfile', new=tmpdirname.split('/')[2]):
+        with patch('wazuh.core.pyDaemonModule.common.os_pidfile', new=tmpdirname.split('/')[2]):
             delete_pid(tmpfile.name.split('/')[3].split('-')[0],'255')
 
 
-@patch('wazuh.pyDaemonModule.common.ossec_path', new='/tmp')
-@patch('wazuh.pyDaemonModule.os.path.exists', side_effect=OSError)
+@patch('wazuh.core.pyDaemonModule.common.ossec_path', new='/tmp')
+@patch('wazuh.core.pyDaemonModule.os.path.exists', side_effect=OSError)
 def test_delete_pid_ko(mock_exists):
     """Tests delete_pid function exception works"""
 
     with TemporaryDirectory() as tmpdirname:
         tmpfile = NamedTemporaryFile(dir=tmpdirname, delete=False, suffix='-255.pid')
-        with patch('wazuh.pyDaemonModule.common.os_pidfile', new=tmpdirname.split('/')[2]):
+        with patch('wazuh.core.pyDaemonModule.common.os_pidfile', new=tmpdirname.split('/')[2]):
             with pytest.raises(WazuhException, match=".* 3003 .*"):
                 delete_pid(tmpfile.name.split('/')[3].split('-')[0],'255')

@@ -14,7 +14,8 @@ with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
         sys.modules['api'] = MagicMock()
         from wazuh.core.syscollector import *
-        from wazuh import common
+        from wazuh.core import common
+
         del sys.modules['api']
 
 

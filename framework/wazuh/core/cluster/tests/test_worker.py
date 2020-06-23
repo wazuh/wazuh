@@ -13,8 +13,8 @@ import uvloop
 
 from wazuh.exception import WazuhException
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.core.common.ossec_uid'):
+    with patch('wazuh.core.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
 
@@ -23,7 +23,7 @@ with patch('wazuh.common.ossec_uid'):
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh.core.cluster import client, worker
-        from wazuh import common
+        from wazuh.core import common
 
 old_basic_ck = """001 test1 any 54cfda3bfcc817aadc8f317b3f05d676d174cdf893aa2f9ee2a302ef17ae6794
 002 test2 any 7a9c0990dadeca159c239a06031b04d462d6d28dd59628b41dc7e13cc4d3a344

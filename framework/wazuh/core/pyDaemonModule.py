@@ -6,7 +6,7 @@
 
 import os
 import sys
-from wazuh import common
+from wazuh.core import common
 from wazuh.exception import WazuhInternalError
 
 

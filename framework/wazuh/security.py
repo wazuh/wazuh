@@ -9,7 +9,7 @@ from functools import lru_cache
 from api import configuration
 from api.authentication import change_secret
 from wazuh.core.security import check_relationships, invalid_users_tokens
-from wazuh import common
+from wazuh.core import common
 from wazuh.core.security import load_spec, update_security_conf
 from wazuh.exception import WazuhError
 from wazuh.rbac.decorators import expose_resources

@@ -29,7 +29,7 @@ from time import time
 from json import dumps
 
 # Set framework path
-from wazuh import common
+from wazuh.core import common
 from wazuh.core.cluster import read_config
 
 

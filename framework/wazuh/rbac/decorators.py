@@ -8,7 +8,7 @@ import re
 from collections import defaultdict
 from functools import wraps
 
-from wazuh.common import rbac, broadcast, cluster_nodes
+from wazuh.core.common import rbac, broadcast, cluster_nodes
 from wazuh.configuration import get_ossec_conf
 from wazuh.core.cdb_list import iterate_lists
 from wazuh.core.core_utils import get_agents_info, expand_group, get_groups, get_files

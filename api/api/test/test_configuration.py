@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pytest
 
 from api import configuration, api_exception
-from wazuh import common
+from wazuh.core import common
 
 # Valid configurations
 default_api_configuration = {
@@ -93,7 +93,7 @@ def test_read_configuration(read_config):
         m.return_value = copy.deepcopy(read_config)
         config = configuration.read_api_config()
         for section, subsection in [('logs', 'path'), ('https', 'key'), ('https', 'cert')]:
-            config[section][subsection] = config[section][subsection].replace(common.ossec_path+'/', '')
+            config[section][subsection] = config[section][subsection].replace(common.ossec_path + '/', '')
 
         check_config_values(config, {}, read_config)
 

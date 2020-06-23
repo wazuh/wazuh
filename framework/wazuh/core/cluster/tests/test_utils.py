@@ -5,10 +5,10 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-with patch('wazuh.common.getgrnam'):
-    with patch('wazuh.common.getpwnam'):
-        with patch('wazuh.common.ossec_uid'):
-            with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.core.common.getgrnam'):
+    with patch('wazuh.core.common.getpwnam'):
+        with patch('wazuh.core.common.ossec_uid'):
+            with patch('wazuh.core.common.ossec_gid'):
                 sys.modules['wazuh.rbac.orm'] = MagicMock()
 
                 from wazuh.core.cluster import utils

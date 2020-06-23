@@ -7,7 +7,8 @@ from typing import Tuple
 import uvloop
 
 import wazuh.core.cluster.utils
-from wazuh import common, exception
+from wazuh import exception
+from wazuh.core import common
 from wazuh.core.cluster import client
 
 

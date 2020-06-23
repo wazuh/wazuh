@@ -1,12 +1,9 @@
 from unittest.mock import patch
 import pytest
-from os import path, remove
-import os
-from wazuh.common import find_wazuh_path, ossec_uid, ossec_gid, context_cached, reset_context_cache
+from wazuh.core.common import find_wazuh_path, ossec_uid, ossec_gid, context_cached, reset_context_cache
 from grp import getgrnam
 from pwd import getpwnam
-from sys import modules
-import json
+
 
 @pytest.mark.parametrize('fake_path, expected', [
     ('/var/ossec/framework/python/lib/python3.7/site-packages/wazuh-3.10.0-py3.7.egg/wazuh', '/var/ossec'),

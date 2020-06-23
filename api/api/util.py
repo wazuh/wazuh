@@ -10,7 +10,7 @@ import typing
 import six
 from connexion import ProblemException
 
-from wazuh.common import ossec_path as WAZUH_PATH
+from wazuh.core.common import ossec_path as WAZUH_PATH
 from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
 from api.api_exception import APIException, APIError
 

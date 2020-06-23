@@ -18,7 +18,8 @@ import cryptography.fernet
 
 import wazuh.core.cluster.utils
 import wazuh.results as wresults
-from wazuh import exception, common, Wazuh
+from wazuh import exception, Wazuh
+from wazuh.core import common
 
 
 class Response:

@@ -2,7 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh import common
+from wazuh.core import common
 from wazuh.core.core_utils import get_agents_info
 from wazuh.core.syscollector import WazuhDBQuerySyscollector, get_valid_fields, Type
 from wazuh.exception import WazuhError

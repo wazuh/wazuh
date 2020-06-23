@@ -7,7 +7,7 @@ from typing import Dict
 
 import more_itertools
 
-from wazuh.common import database_limit
+from wazuh.core.common import database_limit
 from wazuh.exception import WazuhException
 from wazuh.rbac.decorators import expose_resources
 from wazuh.results import AffectedItemsWazuhResult

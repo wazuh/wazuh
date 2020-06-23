@@ -16,7 +16,8 @@ from time import time, sleep
 
 import requests
 
-from wazuh import common, configuration
+from wazuh import configuration
+from wazuh.core import common
 from wazuh.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
 from wazuh.database import Connection

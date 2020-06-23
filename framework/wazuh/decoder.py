@@ -5,7 +5,7 @@
 import os
 
 import wazuh.configuration as configuration
-from wazuh import common
+from wazuh.core import common
 from wazuh.core.decoder import load_decoders_from_file, check_status, REQUIRED_FIELDS, SORT_FIELDS
 from wazuh.core.rule import format_rule_decoder_file
 from wazuh.exception import WazuhInternalError, WazuhError

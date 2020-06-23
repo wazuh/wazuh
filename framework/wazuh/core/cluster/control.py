@@ -3,7 +3,8 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import json
 
-from wazuh import common, WazuhInternalError
+from wazuh import WazuhInternalError
+from wazuh.core import common
 from wazuh.core.cluster import local_client
 from wazuh.core.cluster.common import as_wazuh_object, WazuhJSONEncoder
 from wazuh.core.core_agent import Agent

@@ -23,7 +23,7 @@ with patch('wazuh.common.getgrnam'):
             wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
             from wazuh.cdb_list import get_lists, get_path_lists
-            from wazuh import common
+            from wazuh.core import common
             from wazuh.results import AffectedItemsWazuhResult
 
 RELATIVE_PATH = os.path.join("framework", "wazuh", "tests", "data", "test_cdb_list")

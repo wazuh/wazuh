@@ -5,11 +5,9 @@
 from glob import glob
 from os.path import join
 
-from wazuh import common
-from wazuh.common import ossec_path
+from wazuh.core import common
+from wazuh.core.common import ossec_path
 from wazuh.core.core_agent import WazuhDBQueryAgents, WazuhDBQueryMultigroups, WazuhDBQueryGroup
-from wazuh.database import Connection
-from wazuh.exception import WazuhInternalError
 
 
 @common.context_cached('system_agents')

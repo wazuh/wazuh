@@ -17,7 +17,7 @@ from cryptography.x509.oid import NameOID
 
 from api.api_exception import APIException
 from api.constants import SECURITY_CONFIG_PATH
-from wazuh import common
+from wazuh.core import common
 
 default_security_configuration = {
     "auth_token_exp_timeout": 36000,

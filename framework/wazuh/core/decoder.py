@@ -5,8 +5,7 @@
 import os
 from enum import Enum
 
-from wazuh import common
-from wazuh.core.rule import item_format
+from wazuh.core import common
 from wazuh.exception import WazuhError, WazuhInternalError
 from wazuh.utils import load_wazuh_xml
 

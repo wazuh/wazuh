@@ -9,7 +9,7 @@ import re
 from datetime import datetime
 from time import strftime
 
-from wazuh import common
+from wazuh.core import common
 from wazuh.database import Connection
 from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 

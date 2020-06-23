@@ -5,7 +5,7 @@
 import os
 
 import wazuh.configuration as configuration
-from wazuh import common
+from wazuh.core import common
 from wazuh.core.rule import check_status, load_rules_from_file, format_rule_decoder_file, REQUIRED_FIELDS, \
     RULE_REQUIREMENTS, SORT_FIELDS
 from wazuh.exception import WazuhError

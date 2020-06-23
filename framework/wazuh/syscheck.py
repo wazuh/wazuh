@@ -3,7 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 from glob import glob
 
-from wazuh import common
+from wazuh.core import common
 from wazuh.core.core_agent import Agent
 from wazuh.core.core_utils import get_agents_info
 from wazuh.core.syscheck import WazuhDBQuerySyscheck

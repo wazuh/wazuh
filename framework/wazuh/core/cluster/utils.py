@@ -14,7 +14,7 @@ from glob import glob
 from operator import setitem
 from os.path import join, exists
 
-from wazuh import common
+from wazuh.core import common
 from wazuh.configuration import get_ossec_conf
 from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh.results import WazuhResult

@@ -11,7 +11,7 @@ from numbers import Number
 
 import wazuh.exception as wexception
 from wazuh import utils
-from wazuh.common import database_limit
+from wazuh.core.common import database_limit
 
 current_module = sys.modules[__name__]
 

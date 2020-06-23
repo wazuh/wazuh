@@ -11,7 +11,7 @@ import socket
 import struct
 from typing import List
 
-from wazuh import common
+from wazuh.core import common
 from wazuh.exception import WazuhInternalError, WazuhError
 
 DATE_FORMAT = re.compile(r'\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}')

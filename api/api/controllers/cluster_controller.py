@@ -9,7 +9,7 @@ from json.decoder import JSONDecodeError
 from aiohttp import web
 
 import wazuh.cluster as cluster
-import wazuh.common as common
+import wazuh.core.common as common
 import wazuh.manager as manager
 import wazuh.stats as stats
 from api import configuration

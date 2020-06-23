@@ -14,7 +14,7 @@ def test_failed_connection():
     Tests an exception is properly raised when it's not possible to connect to wdb
     """
     # tests the socket path doesn't exists
-    with patch('wazuh.common.wdb_socket_path', '/this/path/doesnt/exist'):
+    with patch('wazuh.core.common.wdb_socket_path', '/this/path/doesnt/exist'):
         with pytest.raises(exception.WazuhException, match=".* 2005 .*"):
             WazuhDBConnection()
     # tests an exception is properly raised when a connection error is raised
@@ -118,18 +118,15 @@ def test_query_lower_private(send_mock, connect_mock):
 
 @patch("socket.socket.connect")
 @patch("socket.socket.send")
-@patch("wazuh.wdb.WazuhDBConnection._send")
+@patch("wazuh.core.wdb.WazuhDBConnection._send")
 def test_execute(send_mock, socket_send_mock, connect_mock):
     mywdb = WazuhDBConnection()
     mywdb.execute('agent 000 sql delete from test', delete=True)
     mywdb.execute("agent 000 sql update test set value = 'test' where key = 'test'", update=True)
-    with patch("wazuh.wdb.WazuhDBConnection._send", return_value=[{'total':5}]):
+    with patch("wazuh.core.wdb.WazuhDBConnection._send", return_value=[{'total':5}]):
         mywdb.execute("agent 000 sql select test from test offset 1 limit 1")
         mywdb.execute("agent 000 sql select test from test offset 1 limit 1", count=True)
         mywdb.execute("agent 000 sql select test from test offset 1 count")
-        #with patch("wazuh.wdb.extend", side_effect=ValueError):
-            #with pytest.raises(exception.WazuhException, match=".* 2007 .*"):
-                #mywdb.execute("agent 000 sql select test from test offset 1")
 
 
 @pytest.mark.parametrize('error_query, error_type, expected_exception, delete, update', [
@@ -146,7 +143,7 @@ def test_failed_execute(send_mock, connect_mock, error_query, error_type, expect
         with pytest.raises(exception.WazuhException, match=f'.* {expected_exception} .*'):
             mywdb.execute(error_query, delete=delete, update=update)
     else:
-        with patch("wazuh.wdb.WazuhDBConnection._send", return_value=[{'total': 5}]):
-            with patch("wazuh.wdb.range", side_effect=error_type):
+        with patch("wazuh.core.wdb.WazuhDBConnection._send", return_value=[{'total': 5}]):
+            with patch("wazuh.core.wdb.range", side_effect=error_type):
                 with pytest.raises(exception.WazuhException, match=f'.* {expected_exception} .*'):
                     mywdb.execute(error_query, delete=delete, update=update)

@@ -19,7 +19,7 @@ from subprocess import CalledProcessError
 from subprocess import check_output
 from xml.etree.ElementTree import fromstring
 
-from wazuh import common
+from wazuh.core import common
 from wazuh.database import Connection
 from wazuh.exception import WazuhError
 from wazuh.exception import WazuhException

@@ -4,7 +4,7 @@
 
 import os
 
-from wazuh import common
+from wazuh.core import common
 from wazuh.core.cdb_list import iterate_lists, get_list_from_file, REQUIRED_FIELDS, SORT_FIELDS
 from wazuh.rbac.decorators import expose_resources
 from wazuh.results import AffectedItemsWazuhResult

@@ -7,7 +7,7 @@
 from itertools import groupby
 from operator import itemgetter
 
-from wazuh import common
+from wazuh.core import common
 from wazuh.core.core_utils import get_agents_info
 from wazuh.core.sca import WazuhDBQuerySCA, fields_translation_sca, fields_translation_sca_check, \
     fields_translation_sca_check_compliance, fields_translation_sca_check_rule, default_query_sca_check

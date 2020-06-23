@@ -15,7 +15,7 @@ from os import remove, path as os_path
 
 from xml.dom.minidom import parseString
 
-from wazuh import common
+from wazuh.core import common
 from wazuh.exception import WazuhInternalError, WazuhError
 from wazuh.ossec_socket import OssecSocket
 from wazuh.results import WazuhResult
