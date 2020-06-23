@@ -278,6 +278,8 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attr
 
             return NULL;
         }
+
+        syscheck.diff_folder_size = tmp_diff_size;
     }
 
     snprintf(path, PATH_MAX, "%s/local/%s/diff.%d",
