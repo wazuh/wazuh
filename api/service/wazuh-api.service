@@ -18,6 +18,7 @@ Environment=
 ExecStart=/usr/bin/env ${APP_PATH} start
 ExecStop=/usr/bin/env ${APP_PATH} stop
 KillMode=none
+RemainAfterExit=yes
 
 [Install]
 WantedBy=multi-user.target

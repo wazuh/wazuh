@@ -1,4 +1,4 @@
-aiohttp-cache==2.0.0
+aiohttp-cache==2.0.2
 aiohttp-cors==0.7.0
 aiohttp-jinja2==1.2.0
 aiohttp-swagger==1.0.14
