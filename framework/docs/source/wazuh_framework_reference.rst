@@ -80,13 +80,6 @@ wazuh.ossec_queue module
     :undoc-members:
     :show-inheritance:
 
-wazuh.rootcheck module
-----------------------
-
-.. automodule:: wazuh.rootcheck
-    :members:
-    :undoc-members:
-    :show-inheritance:
 
 wazuh.rule module
 -----------------

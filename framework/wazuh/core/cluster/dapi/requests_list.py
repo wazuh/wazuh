@@ -13,7 +13,6 @@ import wazuh.configuration as configuration
 import wazuh.sca as sca
 import wazuh.manager as manager
 import wazuh.mitre as mitre
-import wazuh.rootcheck as rootcheck
 import wazuh.stats as stats
 import wazuh.syscheck as syscheck
 import wazuh.syscollector as syscollector
@@ -440,37 +439,6 @@ functions = {
         'is_async': False
     },
 
-    # Rootcheck
-    '/rootcheck/:agent_id': {
-        'function': rootcheck.print_db,
-        'type': 'distributed_master',
-        'is_async': False
-    },
-    '/rootcheck/:agent_id/pci': {
-        'function': rootcheck.get_pci,
-        'type': 'distributed_master',
-        'is_async': False
-    },
-    '/rootcheck/:agent_id/cis': {
-        'function': rootcheck.get_cis,
-        'type': 'distributed_master',
-        'is_async': False
-    },
-    '/rootcheck/:agent_id/last_scan': {
-        'function': rootcheck.last_scan,
-        'type': 'distributed_master',
-        'is_async': False
-    },
-    'PUT/rootcheck': {
-        'function': rootcheck.run,
-        'type': 'distributed_master',
-        'is_async': False
-    },
-    'DELETE/rootcheck': {
-        'function': rootcheck.clear,
-        'type': 'distributed_master',
-        'is_async': False
-    },
 
     # Security configuration assessment
     '/sca/:agent_id': {
