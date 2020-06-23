@@ -17,11 +17,11 @@ import connexion
 import psutil
 import uvloop
 from aiohttp_swagger import setup_swagger
+from aiohttp_cache import setup_cache
 
 from api import alogging, configuration, __path__ as api_path
 # noinspection PyUnresolvedReferences
 from api import validator
-from api.aiohttp_cache import setup_cache
 from api.api_exception import APIException
 from api.configuration import generate_self_signed_certificate, generate_private_key
 from api.constants import CONFIG_FILE_PATH, API_LOG_FILE_PATH

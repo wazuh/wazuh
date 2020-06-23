@@ -20,6 +20,7 @@ import wazuh.core.cluster.utils
 import wazuh.core.manager
 import wazuh.results as wresults
 from wazuh import exception, agent, common
+from wazuh.cluster import get_node_wrapper
 from wazuh.core.cluster import local_client, common as c_common
 from wazuh.exception import WazuhException, WazuhClusterError, WazuhError
 
@@ -76,13 +77,13 @@ class DistributedAPI:
         self.cluster_items = wazuh.core.cluster.utils.get_cluster_items() if node is None else node.cluster_items
         self.debug = debug
         self.node_info = wazuh.core.cluster.cluster.get_node() if node is None else node.get_node()
-        self.request_id = str(random.randint(0, 2**10 - 1))
+        self.request_id = str(random.randint(0, 2 ** 10 - 1))
         self.request_type = request_type
         self.wait_for_complete = wait_for_complete
         self.from_cluster = from_cluster
         self.is_async = is_async
         self.broadcasting = broadcasting
-        self.rbac_permissions = rbac_permissions if rbac_permissions is not None else dict()
+        self.rbac_permissions = rbac_permissions if rbac_permissions is not None else {'rbac_mode': 'black'}
         self.current_user = current_user
         self.nodes = nodes if nodes is not None else list()
         self.cluster_required = cluster_required
@@ -308,8 +309,20 @@ class DistributedAPI:
         dict
             Dict where keys are nodes and values are error information.
         """
+        try:
+            common.rbac.set(self.rbac_permissions)
+            node_wrapper = get_node_wrapper()
+            node = node_wrapper.affected_items[0]['node']
+        except exception.WazuhException as rbac_exception:
+            if rbac_exception.code == 4000:
+                node = 'unknown-node'
+            else:
+                raise rbac_exception
+        except IndexError:
+            raise list(node_wrapper.failed_items.keys())[0]
+
         error_message = e.message if isinstance(e, exception.WazuhException) else exception.GENERIC_ERROR_MSG
-        result = {self.node_info['node']: {'error': error_message}
+        result = {node: {'error': error_message}
                   }
 
         # Give log path only in case of WazuhInternalError
@@ -364,6 +377,7 @@ class DistributedAPI:
         -------
         wresults.AbstractWazuhResult or exception.WazuhException
         """
+
         async def forward(node_name: Tuple) -> [wresults.AbstractWazuhResult, exception.WazuhException]:
             """Forward a request to a node.
 
@@ -488,8 +502,8 @@ class DistributedAPI:
                                    object_hook=c_common.as_wazuh_object)
                 node_name = {item['name']: [] for item in nodes['items']}
             else:
-                # agents, syscheck, rootcheck and syscollector
-                # API calls that affect all agents. For example, PUT/agents/restart, DELETE/rootcheck, etc...
+                # agents, syscheck and syscollector
+                # API calls that affect all agents. For example, PUT/agents/restart, etc...
                 agents = agent.Agent.get_agents_overview(select=select_node, limit=None,
                                                          sort={'fields': ['node_name'], 'order': 'desc'})['items']
                 node_name = {k: [] for k, _ in itertools.groupby(agents, key=operator.itemgetter('node_name'))}

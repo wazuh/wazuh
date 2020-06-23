@@ -176,7 +176,7 @@ class WazuhException(Exception):
                               ' to get more information about the decoders'
                },
 
-        # Syscheck/Rootcheck/AR: 1600 - 1699
+        # Syscheck/AR: 1600 - 1699
         1600: {'message': 'There is no database for selected agent with id',
                'remediation': 'Please, upgrade wazuh to v3.7.0 or newer. Visit '
                               'https://documentation.wazuh.com/current/installation-guide/upgrading/index.html'
@@ -194,7 +194,6 @@ class WazuhException(Exception):
         1651: 'Active response - Agent is not active',
         1652: 'Active response - Unable to run command',
         1653: 'Active response - Agent ID not specified',
-        1654: 'Unable to clear rootcheck database',
         1655: 'Active response - Command not available',
         1656: {'message': 'No parameters provided for request',
                'remediation': 'Please, visit the official documentation '

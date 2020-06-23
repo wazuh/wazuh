@@ -14,7 +14,7 @@ class OssecQueue:
     """
 
     # Messages
-    HC_SK_RESTART = "syscheck restart"  # syscheck and rootcheck restart
+    HC_SK_RESTART = "syscheck restart"  # syscheck restart
     RESTART_AGENTS = "restart-ossec0"  # Agents, not manager (000)
 
     # Types
@@ -120,6 +120,6 @@ class OssecQueue:
 
             # Return message
             if msg == OssecQueue.HC_SK_RESTART:
-                return "Restarting Syscheck/Rootcheck on agent" if agent_id else "Restarting Syscheck/Rootcheck on all agents"
+                return "Restarting Syscheck on agent" if agent_id else "Restarting Syscheck on all agents"
             elif msg == OssecQueue.RESTART_AGENTS:
                 return "Restarting agent" if agent_id else "Restarting all agents"

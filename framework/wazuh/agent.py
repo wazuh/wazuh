@@ -4,7 +4,6 @@
 
 import hashlib
 import operator
-from glob import glob
 from os import chmod, path, listdir
 from shutil import copyfile
 
