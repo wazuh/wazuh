@@ -155,8 +155,6 @@ void start_agent(int is_startup)
             mwarn("Unable to connect to any server.");
         }
     }
-
-    return;
 }
 
 /**
