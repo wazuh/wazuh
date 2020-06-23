@@ -12,6 +12,10 @@
 #include "agentd.h"
 #include "os_net/os_net.h"
 
+#ifdef UNIT_TESTING
+#define static
+#endif
+
 #define ENROLLMENT_RETRY_TIME_MAX   60
 #define ENROLLMENT_RETRY_TIME_DELTA 5
 
@@ -19,11 +23,11 @@ int timeout;    //timeout in seconds waiting for a server reply
 
 static ssize_t receive_message(char *buffer, unsigned int max_lenght);
 static void w_agentd_keys_init (void);
-static int agent_handshake_to_server(void);
+static bool agent_handshake_to_server(void);
 static void send_msg_on_startup(void);
 
 
-int connect_server(int server_id)
+bool connect_server(int server_id)
 {
     timeout = getDefine_Int("agent", "recv_timeout", 1, 600);
 
@@ -100,9 +104,9 @@ int connect_server(int server_id)
             }
         }
         agt->rip_id = server_id;
-        return 1;
+        return true;
     }
-    return 0;
+    return false;
 }
 
 /* Send synchronization message to the server and wait for the ack */
@@ -274,18 +278,18 @@ int try_enroll_to_server(const char * server_rip) {
 /**
  * @brief Holds hanshake logic for a attempt to connect to server
  * @return Integer value indicating the status code.
- * @retval 1 on success
- * @retval 0 when failed
+ * @retval true on success
+ * @retval false when failed
  * */
-static int agent_handshake_to_server(){
+static bool agent_handshake_to_server(){
     size_t msg_length;
     ssize_t recv_b = 0;
+    int ret = false;
 
     char *tmp_msg;
     char msg[OS_MAXSTR + 2] = { '\0' };
     char buffer[OS_MAXSTR + 1] = { '\0' };
     char cleartext[OS_MAXSTR + 1] = { '\0' };
-    char fmsg[OS_MAXSTR + 1] = { '\0' };
 
     snprintf(msg, OS_MAXSTR, "%s%s", CONTROL_HEADER, HC_STARTUP);
 
@@ -300,7 +304,8 @@ static int agent_handshake_to_server(){
             /* Id of zero -- only one key allowed */
             if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip, &tmp_msg) != KS_VALID) {
                 mwarn(MSG_ERROR, agt->server[agt->rip_id].rip);
-            } else {
+            } 
+            else {
                 /* Check for commands */
                 if (IsValidHeader(tmp_msg)) {
                     /* If it is an ack reply */
@@ -310,21 +315,19 @@ static int agent_handshake_to_server(){
                         minfo(AG_CONNECTED, agt->server[agt->rip_id].rip,
                                 agt->server[agt->rip_id].port, agt->server[agt->rip_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
 
-                        return 1;
+                        ret = true;
                     }
                 }
             }
         }
     }
-    return 0;
+    return ret;
 }
 
 static void send_msg_on_startup(void){
 
     char msg[OS_MAXSTR + 2] = { '\0' };
-    char fmsg[OS_MAXSTR + 1] = { '\0' };
-    
-    snprintf(msg, OS_MAXSTR, "%s%s", CONTROL_HEADER, HC_STARTUP);
+    char fmsg[OS_MAXSTR + 1] = { '\0' };    
 
     /* Send log message about start up */
     snprintf(msg, OS_MAXSTR, OS_AG_STARTED,
