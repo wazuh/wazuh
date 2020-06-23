@@ -13,7 +13,13 @@
 #include "os_net/os_net.h"
 
 #ifdef UNIT_TESTING
-#define static
+    #define static
+    #ifdef WIN32 
+            #include "unit_tests/wrappers/client-agent/start_agent.h"
+            #undef CloseSocket
+            #define CloseSocket wrap_closesocket
+            #define recv wrap_recv
+    #endif
 #endif
 
 #define ENROLLMENT_RETRY_TIME_MAX   60

@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include "../wrappers/common.h"
+#include "../wrappers/client-agent/start_agent.h"
 #include "../client-agent/agentd.h"
 
 extern void send_msg_on_startup(void);
@@ -41,10 +42,12 @@ void __wrap_w_rotate_log(int compress, int keep_log_days, int new_day, int rotat
     return;
 }
 
+#ifndef TEST_WINAGENT
 int __wrap_close(int fd) {
     check_expected(fd);
     return 0;
 }
+#endif
 
 int __wrap_OS_ConnectUDP(u_int16_t _port, const char *_ip, int ipv6) {
     return mock();
@@ -76,15 +79,17 @@ int __wrap_send_msg(const char *msg, ssize_t msg_length) {
     return 0;
 }
 
+#ifndef TEST_WINAGENT
 ssize_t __wrap_recv(int __fd, void *__buf, size_t __n, int __flags) {
-    char* rcv = (char*)mock();
+    char* rcv = (char*)mock_ptr_type(char *);
     int len = strlen(rcv);
     snprintf(__buf, len+1, "%s", rcv);
     return len;
 }
+#endif
 
 int __wrap_OS_RecvSecureTCP(int sock, char * ret,uint32_t size) {
-    char* rcv = (char*)mock();
+    char* rcv = (char*)mock_ptr_type(char *);
     int len = strlen(rcv);
     snprintf(ret, len+1, "%s", rcv);
     return len;
@@ -98,6 +103,12 @@ int __wrap_fprintf(FILE *__restrict__ __stream, const char *__restrict__ __forma
 }
 int __wrap_fflush(FILE *__stream) {
     return 0;
+}
+
+int __wrap_ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned int buffer_size, size_t *final_size, const char *srcip, char **output) {
+    check_expected(buffer);
+    *output = (char*)mock_ptr_type(char *);
+    return (int)mock();
 }
   
 /* Aux */
@@ -192,7 +203,11 @@ static void test_connect_server(void **state) {
     /* Connect to second server (TCP), previous connection must be closed*/
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OS_ConnectTCP, 12);
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_close, fd, 11);
+    #else
+    expect_value(wrap_closesocket, fd, 11);
+    #endif
     connected = connect_server(1);  
     assert_int_equal(agt->rip_id, 1);  
     assert_int_equal(agt->sock, 12);
@@ -201,7 +216,11 @@ static void test_connect_server(void **state) {
     /* Connect to third server (UDP), valid host name*/
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OS_ConnectUDP, 13);
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_close, fd, 12);
+    #else
+    expect_value(wrap_closesocket, fd, 12);
+    #endif
     connected = connect_server(2); 
     assert_int_equal(agt->rip_id, 2);  
     assert_int_equal(agt->sock, 13);
@@ -209,7 +228,11 @@ static void test_connect_server(void **state) {
 
     /* Connect to fourth server (UDP), invalid host name*/
     will_return(__wrap_getDefine_Int, 5);
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_close, fd, 13);
+    #else
+    expect_value(wrap_closesocket, fd, 13);
+    #endif
     connected = connect_server(3);     
     assert_false(connected);
 
@@ -229,8 +252,16 @@ static void test_agent_handshake_to_server(void **state) {
     /* Handshake with first server (UDP) */
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OS_ConnectUDP, 21);
+    #ifndef TEST_WINAGENT
     will_return(__wrap_recv, SERVER_ENC_ACK);
+    #else 
+    will_return(wrap_recv, SERVER_ENC_ACK);
+    #endif
     expect_string(__wrap_send_msg, msg, "#!-agent startup ");    
+    expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
+    will_return(__wrap_ReadSecMSG, "#!-agent ack ");
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
     agt->rip_id = 0;
     handshaked = agent_handshake_to_server();
     assert_true(handshaked);
@@ -238,9 +269,17 @@ static void test_agent_handshake_to_server(void **state) {
     /* Handshake with second server (TCP) */
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OS_ConnectTCP, 22);
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_close, fd, 21);
+    #else
+    expect_value(wrap_closesocket, fd, 21);
+    #endif
     will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
-    expect_string(__wrap_send_msg, msg, "#!-agent startup ");    
+    expect_string(__wrap_send_msg, msg, "#!-agent startup ");   
+    expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
+    will_return(__wrap_ReadSecMSG, "#!-agent ack ");
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
     agt->rip_id = 1;
     handshaked = agent_handshake_to_server();
     assert_true(handshaked);
@@ -248,7 +287,11 @@ static void test_agent_handshake_to_server(void **state) {
     /* Handshake with connection error */
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OS_ConnectUDP, -1);
-    expect_value(__wrap_close, fd, 22);     
+    #ifndef TEST_WINAGENT
+    expect_value(__wrap_close, fd, 22);
+    #else
+    expect_value(wrap_closesocket, fd, 22);
+    #endif     
     agt->rip_id = 0;
     handshaked = agent_handshake_to_server();
     assert_false(handshaked);
@@ -256,8 +299,12 @@ static void test_agent_handshake_to_server(void **state) {
     /* Handshake with reception error */
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OS_ConnectUDP, 23);
+    #ifndef TEST_WINAGENT
     will_return(__wrap_recv, SERVER_NULL_ACK);
-    expect_string(__wrap_send_msg, msg, "#!-agent startup ");    
+    #else 
+    will_return(wrap_recv, SERVER_NULL_ACK);
+    #endif
+    expect_string(__wrap_send_msg, msg, "#!-agent startup ");
     agt->rip_id = 0;
     handshaked = agent_handshake_to_server();
     assert_false(handshaked);
@@ -265,9 +312,17 @@ static void test_agent_handshake_to_server(void **state) {
     /* Handshake with decode error */
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OS_ConnectUDP, 23);
+    #ifndef TEST_WINAGENT
     expect_value(__wrap_close, fd, 23);
     will_return(__wrap_recv, SERVER_WRONG_ACK);
-    expect_string(__wrap_send_msg, msg, "#!-agent startup ");    
+    #else
+    expect_value(wrap_closesocket, fd, 23);
+    will_return(wrap_recv, SERVER_WRONG_ACK);
+    #endif
+    expect_string(__wrap_send_msg, msg, "#!-agent startup "); 
+    expect_string(__wrap_ReadSecMSG, buffer, SERVER_WRONG_ACK);
+    will_return(__wrap_ReadSecMSG, SERVER_WRONG_ACK);
+    will_return(__wrap_ReadSecMSG, KS_CORRUPT);    
     agt->rip_id = 0;
     handshaked = agent_handshake_to_server();
     assert_false(handshaked);
