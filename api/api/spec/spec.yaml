@@ -398,7 +398,7 @@ x-rbac-catalog:
         resources: ['agent:id:*']
         effect: "deny"
     'syscheck:run':
-      description: "Run rootcheck and syscheck"
+      description: "Run syscheck"
       resources:
         - $ref: '#/x-rbac-catalog/resources/agent:id'
       example:
@@ -9604,7 +9604,7 @@ paths:
       tags:
       - syscheck
       summary: "Run a syscheck scan in all agents"
-      description: "Run syscheck and rootcheck in all agents (Wazuh launches both processes simultaneously)"
+      description: "Run syscheck in all agents"
       operationId: api.controllers.syscheck_controller.put_syscheck
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/syscheck:run'

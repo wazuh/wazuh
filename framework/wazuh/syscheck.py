@@ -18,9 +18,9 @@ from wazuh.wdb import WazuhDBConnection
 
 @expose_resources(actions=["syscheck:run"], resources=["agent:id:{agent_list}"])
 def run(agent_list=None):
-    """Runs rootcheck and syscheck.
+    """Run syscheck scan.
 
-    :param agent_list: Run rootcheck/syscheck in the agent.
+    :param agent_list: Run syscheck in the agent.
     :return: AffectedItemsWazuhResult.
     """
     result = AffectedItemsWazuhResult(all_msg='Restarting syscheck scan on shown agents',
