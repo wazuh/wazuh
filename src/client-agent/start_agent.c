@@ -106,7 +106,7 @@ bool connect_server(int server_id)
                     break;
                 default:
                     merror("Cannot set network timeout: %s (%d)", strerror(errno), errno);
-                    return EXIT_FAILURE;
+                    return false;
             }
         }
         agt->rip_id = server_id;
