@@ -18,16 +18,30 @@ stages:
       json:
         data:
           affected_items:
-            - username: administrator
-            - username: guest
-            - username: normal
-            - username: python
-          failed_items: []
+            - id: 100
+              username: administrator
+              roles:
+                - 100
+                - 101
+            - id: 101
+              username: normal
+              roles:
+                - 104
+                - 105
+                - 103
+            - id: 103
+              username: python
+              roles:
+                - 101
+            - id: 105
+              username: guest
+              roles: []
           total_affected_items: 4
           total_failed_items: 0
-        message: All specified users were shown
+          failed_items: []
+        message: !anystr
 
-  - name: Get a specified user by its username (Allow)
+  - name: Get a specified user by its id (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
@@ -35,19 +49,24 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        usernames: normal
+        user_ids: 101
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - username: normal
+            - id: 101
+              username: normal
+              roles:
+                - 104
+                - 105
+                - 103
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: All specified users were shown
+        message: !anystr
 
-  - name: Get a specified user by its username (Deny)
+  - name: Get a specified user by its id (Deny)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
@@ -55,7 +74,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        usernames: wazuh
+        user_ids: 1
     response:
       status_code: 400
       json: &permission_denied
@@ -67,7 +86,7 @@ stages:
         title: Wazuh Error
         type: about:blank
 
-  - name: Get a list of users by its username (Allow)
+  - name: Get a list of users by its id (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
@@ -75,21 +94,24 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        usernames: normal,python,guest
+        user_ids: 101,103,105
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - username: guest
-            - username: normal
-            - username: python
+            - id: 101
+              username: normal
+            - id: 103
+              username: python
+            - id: 105
+              username: guest
           failed_items: []
           total_affected_items: 3
           total_failed_items: 0
-        message: All specified users were shown
+        message: !anystr
 
-  - name: Get a list of users by its username (Deny)
+  - name: Get a list of users by its id (Deny)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users"
@@ -97,7 +119,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        usernames: wazuh,ossec
+        user_ids: 1,102
     response:
       status_code: 400
       json:
@@ -111,27 +133,41 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        usernames: normal,python,guest,ossec,wazuh,administrator
+        user_ids: 101,103,105,102,1,100
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - username: administrator
-            - username: guest
-            - username: normal
-            - username: python
+            - id: 100
+              username: administrator
+              roles:
+                - 100
+                - 101
+            - id: 101
+              username: normal
+              roles:
+                - 104
+                - 105
+                - 103
+            - id: 103
+              username: python
+              roles:
+                - 101
+            - id: 105
+              username: guest
+              roles: []
+          total_affected_items: 4
+          total_failed_items: 2
           failed_items:
             - error:
                 code: 4000
-                message: 'Permission denied: Resource type: user:id'
+                message: !anystr
                 remediation: !anystr
               id:
-                - ossec
-                - wazuh
-          total_affected_items: 4
-          total_failed_items: 2
-        message: Some users could not be shown
+                - '1'
+                - '102'
+        message: !anystr
 
 ---
 test_name: GET ROLES RBAC
@@ -176,7 +212,7 @@ stages:
                 - 19
                 - 16
               users:
-                - wazuh
+                - "1"
             - id: 2
               name: readonly
               rule:
@@ -196,7 +232,7 @@ stages:
                 - 17
                 - 19
               users:
-                - wazuh-wui
+                - "2"
             - id: 3
               name: users_admin
               rule:
@@ -281,7 +317,7 @@ stages:
               policies:
                 - 100
               users:
-                - administrator
+                - "100"
             - id: 101
               name: wazuh-wui
               rule:
@@ -291,9 +327,9 @@ stages:
               policies:
                 - 100
               users:
-                - administrator
-                - ossec
-                - python
+                - "100"
+                - "102"
+                - "103"
             - id: 102
               name: technical
               rule:
@@ -305,7 +341,7 @@ stages:
                 - 107
                 - 104
               users:
-                - rbac
+                - "104"
             - id: 103
               name: administrator_test
               rule:
@@ -315,8 +351,8 @@ stages:
                 - 104
                 - 103
               users:
-                - normal
-                - rbac
+                - "101"
+                - "104"
             - id: 104
               name: normalUser
               rule:
@@ -327,9 +363,9 @@ stages:
                 - 102
                 - 109
               users:
-                - normal
-                - ossec
-                - rbac
+                - "101"
+                - "102"
+                - "104"
             - id: 105
               name: ossec
               rule:
@@ -347,11 +383,11 @@ stages:
                 - 102
                 - 103
               users:
-                - normal
+                - "101"
           total_affected_items: 14
           total_failed_items: 0
           failed_items: []
-        message: All specified roles were shown
+        message: !anystr
 
   - name: Get a specified role by its id (Allow)
     request:
@@ -393,11 +429,11 @@ stages:
                 - 19
                 - 16
               users:
-                - wazuh
+                - "1"
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []
-        message: All specified roles were shown
+        message: !anystr
 
   - name: Get a specified role by its id (It doesn't exist but we have all the permissions on the resource roles)
     request:
@@ -464,7 +500,7 @@ stages:
                 - 19
                 - 16
               users:
-                - wazuh
+                - "1"
             - id: 2
               name: readonly
               rule:
@@ -484,17 +520,17 @@ stages:
                 - 17
                 - 19
               users:
-                - wazuh-wui
+                - "2"
           total_affected_items: 2
           total_failed_items: 1
           failed_items:
             - error:
                 code: 4002
-                message: The specified role does not exist
-                remediation: Please, create the specified role with the endpoint POST /security/roles
+                message: !anystr
+                remediation: !anystr
               id:
                 - '999'
-        message: Some roles could not be shown
+        message: !anystr
 
 ---
 test_name: GET POLICIES RBAC
@@ -516,7 +552,7 @@ stages:
           failed_items: []
           total_affected_items: 0
           total_failed_items: 0
-        message: No policy were shown
+        message: !anystr
 
   - name: Get a specified policy by its id (Deny)
     request:
@@ -575,7 +611,7 @@ stages:
   - name: Update one specified user in the system (All denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/guest"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/105"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -589,7 +625,7 @@ stages:
   - name: Update one specified user in the system (All denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/wazuh"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/1"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -637,7 +673,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []
-        message: Role updated correctly
+        message: !anystr
 
   - name: Update one specified role in the system (Deny)
     request:
@@ -712,7 +748,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []
-        message: Policy updated correctly
+        message: !anystr
 
   - name: Update one specified policy in the system (Deny)
     request:
@@ -791,14 +827,14 @@ stages:
           failed_items:
             - error:
                 code: 4000
-                message: 'Permission denied: Resource type: policy:id'
+                message: !anystr
                 remediation: !anystr
               id:
                 - '105'
                 - '106'
             - error:
                 code: 4011
-                message: The specified role-policy link already exist
+                message: !anystr
               id:
                 - '104'
         message: !anystr
@@ -901,17 +937,18 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        usernames: guest
+        user_ids: 105
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - username: guest
+            - id: 105
+              username: guest
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: Users deleted correctly
+        message: !anystr
 
   - name: Delete all allowed user in the system (All)
     request:
@@ -925,11 +962,12 @@ stages:
       json:
         data:
           affected_items:
-            - username: normal
+            - id: 101
+              username: normal
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: Users deleted correctly
+        message: !anystr
 
   - name: Delete all allowed user in the system (All)
     request:
@@ -946,7 +984,7 @@ stages:
           failed_items: []
           total_affected_items: 0
           total_failed_items: 0
-        message: No user was deleted
+        message: !anystr
 
   - name: Delete a list of users in the system (Allow and deny)
     request:
@@ -956,7 +994,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        usernames: wazuh,normal,guest
+        user_ids: 1,101,105
     response:
       status_code: 200
       json:
@@ -965,20 +1003,20 @@ stages:
           failed_items:
             - error:
                 code: 4000
-                message: 'Permission denied: Resource type: user:id'
+                message: !anystr
                 remediation: !anystr
               id:
-                - wazuh
+                - "1"
             - error:
                 code: 5001
-                message: The user does not exist
-                remediation: The user can be created with the endpoint POST /security/users
+                message: !anystr
+                remediation: !anystr
               id:
-                - guest
-                - normal
+                - "101"
+                - "105"
           total_affected_items: 0
           total_failed_items: 3
-        message: No user was deleted
+        message: !anystr
 
 ---
 test_name: DELETE ROLES RBAC
@@ -1000,7 +1038,7 @@ stages:
           failed_items: []
           total_affected_items: 0
           total_failed_items: 0
-        message: No role were deleted
+        message: !anystr
 
   - name: Delete one specified role in the system (Allow)
     request:
