@@ -42,25 +42,12 @@ def get_distinct_agents(agent_list=None, offset=0, limit=common.database_limit, 
                                       none_msg='No agent information is shown'
                                       )
 
-    if fields is not None:
-        if 'status' in fields:
-            if 'lastKeepAlive' not in fields:
-                fields.append('lastKeepAlive')
-            if 'version' not in fields:
-                fields.append('version')
-
     if len(agent_list) != 0:
         db_query = WazuhDBQueryGroupByAgents(filter_fields=fields, offset=offset, limit=limit, sort=sort,
                                              search=search, select=select, query=q, filters={'id': agent_list},
                                              min_select_fields=set(), count=True, get_data=True)
 
         data = db_query.run()
-
-        # Delete dicts which only have 'count' field
-        for i, dikt in enumerate(data['items']):
-            if len(dikt.keys()) == 1:
-                del data['items'][i]
-
         result.affected_items.extend(data['items'])
         result.total_affected_items = data['totalItems']
 

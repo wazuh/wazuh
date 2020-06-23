@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
+import copy
 import fcntl
 import hashlib
 import ipaddress
@@ -87,18 +88,6 @@ class WazuhDBQueryAgents(WazuhDBQuery):
                 else self.search['value']
 
     def _format_data_into_dictionary(self):
-        def format_fields(field_name, value, today, lastKeepAlive=None, version=None):
-            if field_name == 'id':
-                return str(value).zfill(3)
-            elif field_name == 'status':
-                return calculate_status(lastKeepAlive, version is None, today)
-            elif field_name == 'group':
-                return value.split(',')
-            elif field_name in ['dateAdd', 'lastKeepAlive']:
-                return datetime.utcfromtimestamp(value)
-            else:
-                return value
-
         fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
 
         today = datetime.utcnow()
@@ -159,10 +148,56 @@ class WazuhDBQueryDistinctAgents(WazuhDBQueryDistinct, WazuhDBQueryAgents):
 
 class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
     def __init__(self, filter_fields, *args, **kwargs):
+        self.real_fields = copy.deepcopy(filter_fields)
+
+        if filter_fields is not None:
+            if 'status' in filter_fields:
+                if 'lastKeepAlive' not in filter_fields:
+                    filter_fields.append('lastKeepAlive')
+                if 'version' not in filter_fields:
+                    filter_fields.append('version')
+
         WazuhDBQueryAgents.__init__(self, *args, **kwargs)
         WazuhDBQueryGroupBy.__init__(self, *args, table=self.table, fields=self.fields, filter_fields=filter_fields,
                                      default_sort_field=self.default_sort_field, backend=self.backend, **kwargs)
         self.remove_extra_fields = True
+
+    def _format_data_into_dictionary(self):
+        if not self.real_fields or self.filter_fields == {'fields': set(self.real_fields)}:
+            return super()._format_data_into_dictionary()
+        else:
+            fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
+
+            today = datetime.utcnow()
+
+            # compute 'status' field, format id with zero padding and remove non-user-requested fields.
+            # Also remove, extra fields (internal key and registration IP)
+            selected_fields = self.select - self.extra_fields if self.remove_extra_fields else self.select
+            selected_fields |= {'id'}
+            self._data = [{key: format_fields(key, value, today, item.get('lastKeepAlive'), item.get('version'))
+                           for key, value in item.items() if key in selected_fields} for item in self._data]
+
+            # Create tuples like ({values in self.real_fields}, count) in order to keep the 'count' field and discard
+            # the values not requested by the user.
+            tuples_list = [({k: result[k] if k in result.keys() else 'unknown' for k in self.real_fields},
+                            result['count']) for result in self._data]
+
+            # Sum the 'count' value of all the dictionaries that are equal
+            for i, i_tuple in enumerate(tuples_list):
+                for j, j_tuple in enumerate(tuples_list):
+                    if j_tuple == i_tuple and j > i:
+                        tuples_list[i] = (tuples_list[i][0], tuples_list[i][1] + tuples_list[j][1])
+                        del tuples_list[j]
+
+            # Append 'count' value in each dict
+            self._data = []
+            for dikt in tuples_list:
+                dikt[0].update({'count': dikt[1]})
+                self._data.append(dikt[0])
+
+            self._data = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in self._data]
+
+            return WazuhDBQuery._format_data_into_dictionary(self)
 
 
 class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
@@ -1479,6 +1514,19 @@ class Agent:
             raise WazuhInternalError(1735, extra_message="Minimum required version is " + str(required_version))
 
         return configuration.get_active_configuration(self.id, component, config)
+
+
+def format_fields(field_name, value, today, lastKeepAlive=None, version=None):
+    if field_name == 'id':
+        return str(value).zfill(3)
+    elif field_name == 'status':
+        return calculate_status(lastKeepAlive, version is None, today)
+    elif field_name == 'group':
+        return value.split(',')
+    elif field_name in ['dateAdd', 'lastKeepAlive']:
+        return datetime.utcfromtimestamp(value)
+    else:
+        return value
 
 
 def calculate_status(last_keep_alive, pending, today=datetime.utcnow()):
