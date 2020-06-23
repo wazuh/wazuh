@@ -576,7 +576,7 @@ class AuthenticationManager:
         for user in users:
             if user is not None:
                 user_dict = {
-                    'user_id': user.id
+                    'user_id': str(user.id)
                 }
                 user_ids.append(user_dict)
         return user_ids

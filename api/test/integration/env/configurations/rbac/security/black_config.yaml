@@ -2,10 +2,10 @@
 - actions:
   - security:read
   resources:
-  - user:id:administrator
-  - user:id:normal
-  - user:id:python
-  - user:id:guest
+  - user:id:100
+  - user:id:101
+  - user:id:103
+  - user:id:105
   - role:id:*
   effect: deny
 
@@ -42,10 +42,10 @@
 - actions:
   - security:delete
   resources:
-  - user:id:guest
-  - user:id:normal
-  - user:id:wazuh-wui
-  - user:id:testing
+  - user:id:105
+  - user:id:101
+  - user:id:2
+  - user:id:99
   - policy:id:*
   effect: deny
 

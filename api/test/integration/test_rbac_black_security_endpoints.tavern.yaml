@@ -18,15 +18,51 @@ stages:
       json:
         data:
           affected_items:
-            - username: ossec
-            - username: rbac
-            - username: testing
-            - username: wazuh
-            - username: wazuh-wui
-          failed_items: []
-          total_affected_items: 5
+            - id: 1
+              username: wazuh
+              roles:
+                - 1
+            - id: 2
+              username: wazuh-wui
+              roles:
+                - 2
+            - id: 99
+              username: testing
+              roles:
+                - 99
+            - id: 100
+              username: administrator
+              roles:
+                - 100
+                - 101
+            - id: 101
+              username: normal
+              roles:
+                - 104
+                - 105
+                - 103
+            - id: 102
+              username: ossec
+              roles:
+                - 101
+                - 104
+            - id: 103
+              username: python
+              roles:
+                - 101
+            - id: 104
+              username: rbac
+              roles:
+                - 104
+                - 102
+                - 103
+            - id: 105
+              username: guest
+              roles: []
+          total_affected_items: 9
           total_failed_items: 0
-        message: All specified users were shown
+          failed_items: []
+        message: !anystr
 
   - name: Get a specified user by its username (Allow)
     request:
@@ -36,17 +72,21 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        usernames: ossec
+        user_ids: 102
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - username: ossec
+            - id: 102
+              username: ossec
+              roles:
+                - 101
+                - 104
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: All specified users were shown
+        message: !anystr
 
   - name: Get a specified user by its username (Deny)
     request:
@@ -56,7 +96,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        usernames: administrator
+        user_ids: 100
     response:
       status_code: 400
       json: &permission_denied
@@ -76,19 +116,31 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        usernames: wazuh,ossec,rbac
+        user_ids: 1,102,104
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - username: ossec
-            - username: rbac
-            - username: wazuh
-          failed_items: []
+            - id: 1
+              username: wazuh
+              roles:
+                - 1
+            - id: 102
+              username: ossec
+              roles:
+                - 101
+                - 104
+            - id: 104
+              username: rbac
+              roles:
+                - 104
+                - 102
+                - 103
           total_affected_items: 3
           total_failed_items: 0
-        message: All specified users were shown
+          failed_items: []
+        message: !anystr
 
   - name: Get a list of users by its username (Deny)
     request:
@@ -98,7 +150,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        usernames: administrator,normal
+        user_ids: 100,101
     response:
       status_code: 400
       json:
@@ -112,27 +164,34 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        usernames: normal,python,guest,ossec,wazuh,administrator
+        user_ids: 101,103,105,102,1,100
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - username: ossec
-            - username: wazuh
+            - id: 1
+              username: wazuh
+              roles:
+                - 1
+            - id: 102
+              username: ossec
+              roles:
+                - 101
+                - 104
+          total_affected_items: 2
+          total_failed_items: 4
           failed_items:
             - error:
                 code: 4000
-                message: 'Permission denied: Resource type: user:id'
+                message: !anystr
                 remediation: !anystr
               id:
-                - administrator
-                - guest
-                - normal
-                - python
-          total_affected_items: 2
-          total_failed_items: 4
-        message: Some users could not be shown
+                - '100'
+                - '101'
+                - '103'
+                - '105'
+        message: !anystr
 
 ---
 test_name: GET ROLES RBAC
@@ -306,7 +365,7 @@ stages:
   - name: Update one specified user in the system (All allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/guest"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/105"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -317,16 +376,17 @@ stages:
       json:
         data:
           affected_items:
-            - username: guest
+            - id: 105
+              username: guest
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: User modified correctly
+        message: !anystr
 
   - name: Update one specified user in the system (All allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/python"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/103"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -337,7 +397,8 @@ stages:
       json:
         data:
           affected_items:
-            - username: python
+            - id: 103
+              username: python
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -511,7 +572,7 @@ stages:
   - name: Create one specified link between one user and a list of roles (Allow and Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/python/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/103/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -522,7 +583,8 @@ stages:
       json:
         data:
           affected_items:
-            - username: python
+            - id: 103
+              username: python
               roles:
                 - 101
                 - 100
@@ -542,12 +604,12 @@ stages:
                 code: 4017
               id:
                 - '101'
-        message: Some roles could not be linked to user python
+        message: !anystr
 
   - name: Create one specified link between one user and a list of roles (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/ossec/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/102/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
@@ -558,7 +620,8 @@ stages:
       json:
         data:
           affected_items:
-            - roles:
+            - id: 102
+              roles:
                 - 101
                 - 104
                 - 100
@@ -593,7 +656,8 @@ stages:
       json:
         data:
           affected_items:
-            - username: newUser
+            - id: 106
+              username: newUser
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -650,7 +714,7 @@ stages:
   - name: Delete one specified link between one user and a list of roles (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/rbac/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/104/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -661,7 +725,8 @@ stages:
       json:
         data:
           affected_items:
-            - roles: []
+            - id: 104
+              roles: []
               username: rbac
           failed_items:
             - error:
@@ -774,13 +839,14 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
       params:
-        usernames: administrator
+        user_ids: 100
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - username: administrator
+            - id: 100
+              username: administrator
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -798,14 +864,18 @@ stages:
       json:
         data:
           affected_items:
-            - username: newUser
-            - username: ossec
-            - username: python
-            - username: rbac
+            - id: 102
+              username: ossec
+            - id: 103
+              username: python
+            - id: 104
+              username: rbac
+            - id: 106
+              username: newUser
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        message: Users deleted correctly
+        message: !anystr
 
   - name: Delete all allowed user in the system (All)
     request:
