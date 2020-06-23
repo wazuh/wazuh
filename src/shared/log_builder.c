@@ -99,6 +99,8 @@ char * log_builder_build(log_builder_t * builder, const char * pattern, const ch
     size_t z;
     time_t timestamp = time(NULL);
 
+    assert(logmsg != NULL);
+
     if (!pattern) {
         return strdup(logmsg);
     }
