@@ -126,8 +126,8 @@ def test_syscheck_run_exception(ossec_queue_mock, agent_list, status_list, expec
     (['001', '002'], test_result[0], ['001', '002']),
     (['003', '001', '008'], test_result[1], ['003', '008'])
 ])
-@patch('wazuh.wdb.WazuhDBConnection.__init__', return_value=None)
-@patch('wazuh.wdb.WazuhDBConnection.execute', return_value=None)
+@patch('wazuh.core.wdb.WazuhDBConnection.__init__', return_value=None)
+@patch('wazuh.core.wdb.WazuhDBConnection.execute', return_value=None)
 def test_syscheck_clear(wdb_execute_mock, wdb_init_mock, agent_list, expected_result, agent_info_list):
     """Test function `clear` from syscheck module.
 
@@ -155,8 +155,8 @@ def test_syscheck_clear(wdb_execute_mock, wdb_init_mock, agent_list, expected_re
 @pytest.mark.parametrize('agent_list, expected_result, agent_info_list', [
     (['001'], test_result[3], ['001']),
 ])
-@patch('wazuh.wdb.WazuhDBConnection.__init__', return_value=None)
-@patch('wazuh.wdb.WazuhDBConnection.execute', side_effect=WazuhError(1000))
+@patch('wazuh.core.wdb.WazuhDBConnection.__init__', return_value=None)
+@patch('wazuh.core.wdb.WazuhDBConnection.execute', side_effect=WazuhError(1000))
 def test_syscheck_clear_exception(execute_mock, wdb_init_mock, agent_list, expected_result, agent_info_list):
     """Test function `clear` from syscheck module.
 

@@ -11,7 +11,8 @@ import sys
 
 import wazuh.core.cluster.cluster
 import wazuh.core.cluster.utils as cluster_utils
-from wazuh import common, configuration, pyDaemonModule
+from wazuh import common, configuration
+from wazuh.core import pyDaemonModule
 from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licence__, master, local_server, worker
 
 

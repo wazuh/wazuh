@@ -13,7 +13,7 @@ from wazuh.ossec_queue import OssecQueue
 from wazuh.rbac.decorators import expose_resources
 from wazuh.results import AffectedItemsWazuhResult
 from wazuh.utils import WazuhVersion
-from wazuh.wdb import WazuhDBConnection
+from wazuh.core.wdb import WazuhDBConnection
 
 
 @expose_resources(actions=["syscheck:run"], resources=["agent:id:{agent_list}"])

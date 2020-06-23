@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from wazuh import exception
-from wazuh.wdb import WazuhDBConnection
+from wazuh.core.wdb import WazuhDBConnection
 
 
 def test_failed_connection():

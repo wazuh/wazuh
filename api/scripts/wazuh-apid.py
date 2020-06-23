@@ -27,7 +27,8 @@ from api.configuration import generate_self_signed_certificate, generate_private
 from api.constants import CONFIG_FILE_PATH, API_LOG_FILE_PATH
 from api.middlewares import set_user_name, check_experimental
 from api.util import to_relative_path
-from wazuh import pyDaemonModule, common
+from wazuh import common
+from wazuh.core import pyDaemonModule
 from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licence__
 
 

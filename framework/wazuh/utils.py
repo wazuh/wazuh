@@ -23,7 +23,7 @@ from wazuh import common
 from wazuh.database import Connection
 from wazuh.exception import WazuhError
 from wazuh.exception import WazuhException
-from wazuh.wdb import WazuhDBConnection
+from wazuh.core.wdb import WazuhDBConnection
 
 # Python 2/3 compatibility
 if sys.version_info[0] == 3:

@@ -2,10 +2,10 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import pytest
 
-from wazuh.pyDaemonModule import *
+from wazuh.core.pyDaemonModule import *
 from wazuh.exception import WazuhException
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 

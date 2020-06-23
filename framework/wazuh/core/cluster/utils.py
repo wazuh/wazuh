@@ -18,7 +18,7 @@ from wazuh import common
 from wazuh.configuration import get_ossec_conf
 from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh.results import WazuhResult
-from wazuh.wlogging import WazuhLogger
+from wazuh.core.wlogging import WazuhLogger
 
 logger = logging.getLogger('wazuh')
 execq_lockfile = join(common.ossec_path, "var/run/.api_execq_lock")
