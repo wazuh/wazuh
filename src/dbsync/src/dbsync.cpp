@@ -15,66 +15,72 @@
 extern "C" {
 #endif
 
-unsigned long long dbsync_initialize(
+struct CJsonDeleter
+{
+  void operator()(char* json)
+  {
+    cJSON_free(json);
+  }
+};
+
+DBSYNC_HANDLE dbsync_initialize(
     const HostType host_type, 
     const DbEngineType db_type,
     const char* path, 
     const char* sql_statement) {
 
-  auto ret_val{ 0ull };
+  DBSYNC_HANDLE ret_val{ nullptr };
 
   if (nullptr == path ||
     nullptr == sql_statement) {
     std::cout << "Cannot initialize DBSyncImplementation" << std::endl;
   } else {
-      ret_val = DBSyncImplementation::getInstance().Initialize(host_type, db_type, path, sql_statement);
+      ret_val = DBSyncImplementation::getInstance().initialize(host_type, db_type, path, sql_statement);
   }
   return ret_val;
 }
 
 int dbsync_insert_data(
-  const unsigned long long handle,
+  const DBSYNC_HANDLE handle,
   const cJSON* json_raw) {
   auto ret_val { 1l };
   if (nullptr != json_raw) {
-    char* json_raw_bytes = cJSON_Print(json_raw);
-    ret_val = DBSyncImplementation::getInstance().InsertBulkData(handle, json_raw_bytes);
-    cJSON_free(json_raw_bytes);
+    const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(json_raw)};
+    ret_val = DBSyncImplementation::getInstance().insertBulkData(handle, spJsonBytes.get());
   }
   return ret_val;
 }
 
 int dbsync_update_with_snapshot(
-    const unsigned long long handle,
+    const DBSYNC_HANDLE handle,
     const cJSON* json_snapshot,
     cJSON** json_return_modifications)
 {
   auto ret_val { false };
   if (nullptr != json_snapshot) {
     std::string result;
-    char* json_raw_bytes = cJSON_PrintUnformatted(json_snapshot);
-    ret_val = DBSyncImplementation::getInstance().UpdateSnapshotData(handle, json_raw_bytes, result);
-    cJSON_free(json_raw_bytes);
-    
+    const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(json_snapshot)};
+    ret_val = DBSyncImplementation::getInstance().updateSnapshotData(handle, spJsonBytes.get(), result);
     *json_return_modifications = cJSON_Parse(result.c_str());
   }
   return ret_val;
 }
 
 int dbsync_update_with_snapshot_cb(
-    const unsigned long long handle,
+    const DBSYNC_HANDLE handle,
     const cJSON* json_snapshot,
     void* callback)
 {
   auto ret_val { 0l };
   if (nullptr != json_snapshot) {
-    ret_val = DBSyncImplementation::getInstance().UpdateSnapshotData(handle, cJSON_Print(json_snapshot), callback);
+    const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(json_snapshot)};
+    ret_val = DBSyncImplementation::getInstance().updateSnapshotData(handle, spJsonBytes.get(), callback);
   }
   return ret_val;
 }
 
 void dbsync_teardown(void) {
-  if(!DBSyncImplementation::getInstance().Release()) {
+  if(!DBSyncImplementation::getInstance().release()) {
     std::cout << "Error when release DBSyncImplementation" << std::endl;
   }
 }
