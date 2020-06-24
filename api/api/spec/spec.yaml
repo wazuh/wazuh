@@ -1143,11 +1143,9 @@ components:
           description: "Node ID where the agent is reporting to"
         dateAdd:
           type: string
-          format: date-time
           description: "Date when the agent was registered"
         lastKeepAlive:
           type: string
-          format: date-time
           description: "Date when the last keep alive was received from the agent"
 
         os:
