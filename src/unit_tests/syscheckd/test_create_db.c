@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include "../wrappers/common.h"
+#include "../wrappers/posix/dirent_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 #include "../syscheckd/fim_db.h"
@@ -142,18 +143,6 @@ int __wrap_fim_send_scan_info() {
 
 void __wrap_send_syscheck_msg(char *msg) {
     return;
-}
-
-struct dirent * __wrap_readdir() {
-    return mock_type(struct dirent *);
-}
-
-int __wrap_opendir() {
-    return mock();
-}
-
-int __wrap_closedir() {
-    return 1;
 }
 
 int __wrap_realtime_adddir(const char *dir, __attribute__((unused)) int whodata) {
