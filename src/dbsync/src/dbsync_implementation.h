@@ -39,7 +39,7 @@ public:
                              const DbEngineType dbType,
                              const std::string& path,
                              const std::string& sqlStatement);
-    bool release();
+    void release();
 private:
     std::shared_ptr<DbEngineContext> getDbEngineContext(const DBSYNC_HANDLE handle);
     DBSyncImplementation() = default;

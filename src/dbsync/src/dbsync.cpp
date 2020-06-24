@@ -80,9 +80,7 @@ int dbsync_update_with_snapshot_cb(
 }
 
 void dbsync_teardown(void) {
-  if(!DBSyncImplementation::getInstance().release()) {
-    std::cout << "Error when release DBSyncImplementation" << std::endl;
-  }
+  DBSyncImplementation::getInstance().release();
 }
 
 #ifdef __cplusplus

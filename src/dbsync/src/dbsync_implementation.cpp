@@ -36,12 +36,10 @@ DBSYNC_HANDLE DBSyncImplementation::initialize(const HostType hostType,
     return retVal;
 }
 
-bool DBSyncImplementation::release()
+void DBSyncImplementation::release()
 {
-    const auto retVal { true };
     std::lock_guard<std::mutex> lock{m_mutex};
     m_dbSyncContexts.clear();
-    return retVal;
 }
 
 int32_t DBSyncImplementation::insertBulkData(const DBSYNC_HANDLE handle,
@@ -144,9 +142,9 @@ std::shared_ptr<DbEngineContext> DBSyncImplementation::getDbEngineContext(const 
     {
         std::find_if(m_dbSyncContexts.begin(),
                      m_dbSyncContexts.end(),
-                     [handle](const std::shared_ptr<DbEngineContext>& handle_param)
+                     [handle](const std::shared_ptr<DbEngineContext>& context)
                      {
-                        return handle_param.get() == handle;
+                        return context.get() == handle;
                      })
     };
     if (it == m_dbSyncContexts.end())
