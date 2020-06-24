@@ -12707,6 +12707,70 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
 
+  /security/users/me:
+    get:
+      tags:
+        - security
+      summary: "Get current user information"
+      description: "Get the information of the current user"
+      operationId: api.controllers.security_controller.get_user_me
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Information about current user"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseUsers'
+                example:
+                  data:
+                    affected_items:
+                      - id: 1
+                        username: wazuh
+                        roles:
+                          - id: 1
+                            name: administrator
+                            rule:
+                              FIND:
+                                r'^auth[a-zA-Z]+$':
+                                  - full_admin
+                            policies:
+                              - id: 1
+                                name: agents_all_resourceless
+                                policy:
+                                  actions:
+                                    - agent:create
+                                    - group:create
+                                  resources:
+                                    - "*:*:*"
+                                  effect: allow
+                              - id: 2
+                                name: agents_all_agents
+                                policy:
+                                  actions:
+                                    - agent:read
+                                    - agent:delete
+                                    - agent:modify_group
+                                    - agent:restart
+                                    - agent:upgrade
+                                  resources:
+                                    - agent:id:*
+                                    - agent:group:*
+                                  effect: allow
+                    total_affected_items: 1
+                    total_failed_items: 0
+                    failed_items: []
+                  message: Current user information was shown
+        '400':
+          $ref: '#/components/responses/ResponseError'
+
   /security/users:
     get:
       tags:

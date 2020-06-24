@@ -23,6 +23,35 @@ from wazuh.utils import process_array
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[_@$!%*?&-])[A-Za-z\d@$!%*?&-_]{8,}$')
 
 
+def get_user_me():
+    """Get the information of the current user
+
+    Returns
+    -------
+    AffectedItemsWazuhResult with the desired information
+    """
+    result = AffectedItemsWazuhResult(all_msg='Current user information was shown')
+    affected_items = list()
+    with AuthenticationManager() as auth:
+        user = auth.get_user(common.current_user.get())
+        for index, role_id in enumerate(user['roles']):
+            with RolesManager() as rm:
+                role = rm.get_role_id(role_id=role_id)
+                role.pop('users')
+                for index_p, policy_id in enumerate(role['policies']):
+                    with PoliciesManager() as pm:
+                        role['policies'][index_p] = pm.get_policy_id(policy_id=policy_id)
+                        role['policies'][index_p].pop('roles')
+                user['roles'][index] = role
+        affected_items.append(user) if user else result.add_failed_item(id_=user_id, error=WazuhError(5001))
+
+    data = process_array(affected_items)
+    result.affected_items = data['items']
+    result.total_affected_items = data['totalItems']
+
+    return result
+
+
 @expose_resources(actions=['security:read'], resources=['user:id:{user_ids}'],
                   post_proc_kwargs={'exclude_codes': [5001]})
 def get_users(user_ids: list = None, offset: int = 0, limit: int = common.database_limit, sort_by: dict = None,

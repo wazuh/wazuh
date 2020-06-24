@@ -548,6 +548,35 @@ stages:
         message: All specified users were shown
 
 ---
+test_name: GET /security/users/me
+
+stages:
+
+  - name: Get information about the current user
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/me"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - id: 99
+              username: testing
+              roles:
+                - id: 99
+                  name: "testing"
+                  rule: !anything
+                  policies: !anything
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: []
+        message: !anystr
+
+---
 test_name: GET /security/users
 
 stages:

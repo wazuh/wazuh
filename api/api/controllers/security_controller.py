@@ -55,6 +55,34 @@ async def login_user(request, user: str, auth_context=None):
                              status=200, dumps=dumps)
 
 
+async def get_user_me(request, pretty=False, wait_for_complete=False):
+    """Returns information from all system roles.
+
+    Parameters
+    ----------
+    request : connexion.request
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+
+    Returns
+    -------
+    Users information
+    """
+    dapi = DistributedAPI(f=security.get_user_me,
+                          request_type='local_master',
+                          is_async=False,
+                          logger=logger,
+                          wait_for_complete=wait_for_complete,
+                          current_user=request['token_info']['sub'],
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
 async def get_users(request, user_ids: list = None, pretty=False, wait_for_complete=False,
                     offset=0, limit=None, search=None, sort=None):
     """Returns information from all system roles.
@@ -92,6 +120,7 @@ async def get_users(request, user_ids: list = None, pretty=False, wait_for_compl
                           request_type='local_master',
                           is_async=False,
                           logger=logger,
+                          wait_for_complete=wait_for_complete,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
