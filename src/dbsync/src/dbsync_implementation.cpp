@@ -12,116 +12,149 @@
 #include "dbsync_implementation.h"
 #include <iostream>
 
-uint64_t DBSyncImplementation::Initialize(
-  const HostType host_type, 
-  const DbEngineType db_type, 
-  const std::string& path, 
-  const std::string& sql_statement) {
-
-  auto ret_val { 0ull };
-  std::lock_guard<std::mutex> lock(m_mutex);
-  try {
-    auto db = FactoryDbEngine::Create(db_type, path, sql_statement);
-   
-    m_dbsync_list.push_back(std::make_unique<DbEngineContext>(
-      db,
-      host_type,
-      db_type
-    ));
-
-    ret_val = m_dbsync_list.back()->GetHandler();
-    
-  } catch (const std::exception e) {
-    std::cout << e.what() << std::endl;
-  }
-  return ret_val;
-}
-
-bool DBSyncImplementation::Release() {
-  auto ret_val { true };
-  std::lock_guard<std::mutex> lock(m_mutex);
-  m_dbsync_list.clear();
-  return ret_val;
-}
-
-int32_t DBSyncImplementation::InsertBulkData(
-  const uint64_t handle, 
-  const char* json_raw) {
-
-  auto ret_val { -1 };   
-  std::lock_guard<std::mutex> lock(m_mutex); 
-  try {
-    const auto json { nlohmann::json::parse(json_raw)};
-    const auto it = GetDbEngineContext(handle);
-    if (m_dbsync_list.end() != it) {
-      ret_val = true == (*it)->GetDbEngine()->BulkInsert(json[0]["table"], json[0]["data"]) ? 0 : -1;
+DBSYNC_HANDLE DBSyncImplementation::initialize(const HostType hostType,
+                                               const DbEngineType dbType,
+                                               const std::string& path,
+                                               const std::string& sqlStatement)
+{
+    DBSYNC_HANDLE retVal { nullptr };
+    try
+    {
+        auto db{ FactoryDbEngine::Create(dbType, path, sqlStatement) };
+        std::lock_guard<std::mutex> lock{m_mutex};
+        m_dbSyncContexts.push_back(std::make_shared<DbEngineContext>(
+          db,
+          hostType,
+          dbType
+        ));
+        retVal = m_dbSyncContexts.back().get();
     }
-  } catch (const nlohmann::json::exception& e) {
-    std::cout << "message: " << e.what() << std::endl
-              << "exception id: " << e.id << std::endl;
-    ret_val = e.id;
-  } catch (const SQLite::exception& e) {
-    std::cout << "message: " << e.what() << std::endl;
-    ret_val = e.id;
-  }
-  return ret_val;
-}
-
-int32_t DBSyncImplementation::UpdateSnapshotData(
-  const uint64_t handle, 
-  const char* json_snapshot, 
-  std::string& result) {
-
-  auto ret_val { 1 };   
-  std::lock_guard<std::mutex> lock(m_mutex); 
-  try {
-    const auto json { nlohmann::json::parse(json_snapshot)};
-    const auto it = GetDbEngineContext(handle);
-    if (m_dbsync_list.end() != it) {
-      nlohmann::json json_result;
-      ret_val = (*it)->GetDbEngine()->RefreshTablaData(json[0], std::make_tuple(std::ref(json_result), nullptr)) ? 0 : 1;
-      result = std::move(json_result.dump());
+    catch (const std::exception& ex)
+    {
+        std::cout << ex.what() << std::endl;
     }
-  } catch (const nlohmann::json::exception& e) {
-    std::cout << "message: " << e.what() << std::endl
-              << "exception id: " << e.id << std::endl;
-    ret_val = e.id;
-  } catch (const SQLite::exception& e) {
-    std::cout << "message: " << e.what() << std::endl;
-    ret_val = e.id;
-  }
-  return ret_val;
+    return retVal;
 }
 
-int32_t DBSyncImplementation::UpdateSnapshotData(
-  const uint64_t handle, 
-  const char* json_snapshot, 
-  void* callback) {
-    
-  auto ret_val { 1 };   
-  std::lock_guard<std::mutex> lock(m_mutex); 
-  try {
-    const auto json { nlohmann::json::parse(json_snapshot)};
-    const auto it = GetDbEngineContext(handle);
-    if (m_dbsync_list.end() != it) {
-      nlohmann::json fake;
-      ret_val = (*it)->GetDbEngine()->RefreshTablaData(json[0], std::make_tuple(std::ref(fake), callback)) ? 0 : 1;
+bool DBSyncImplementation::release()
+{
+    const auto retVal { true };
+    std::lock_guard<std::mutex> lock{m_mutex};
+    m_dbSyncContexts.clear();
+    return retVal;
+}
+
+int32_t DBSyncImplementation::insertBulkData(const DBSYNC_HANDLE handle,
+                                             const char* jsonRaw)
+{
+    auto retVal { -1 };
+    try
+    {
+        const auto ctx{ getDbEngineContext(handle) };
+        const auto json { nlohmann::json::parse(jsonRaw)};
+        retVal = ctx->GetDbEngine()->BulkInsert(json[0]["table"], json[0]["data"]) ? 0 : -1;
     }
-  } catch (const nlohmann::json::exception& e) {
-    std::cout << "message: " << e.what() << std::endl
-              << "exception id: " << e.id << std::endl;
-    ret_val = e.id;
-  } catch (const SQLite::exception& e) {
-    std::cout << "message: " << e.what() << std::endl;
-    ret_val = e.id;
-  }
-  return ret_val;
+    catch (const nlohmann::json::exception& ex)
+    {
+        std::cout << "message: " << ex.what() << std::endl
+                  << "exception id: " << ex.id << std::endl;
+        retVal = ex.id;
+    }
+    catch (const SQLite::exception& ex)
+    {
+        std::cout << "message: " << ex.what() << std::endl;
+        retVal = ex.id;
+    }
+    catch (const std::runtime_error& ex)
+    {
+        std::cout << "message: " << ex.what() << std::endl;
+        // retVal = ex.id;
+    }
+    return retVal;
 }
 
-std::vector<std::unique_ptr<DbEngineContext>>::iterator DBSyncImplementation::GetDbEngineContext(const uint64_t handler) {
-  return std::find_if(m_dbsync_list.begin(),
-                      m_dbsync_list.end(),
-                      [handler](const std::unique_ptr<DbEngineContext>& handler_param) {
-                        return handler_param->GetHandler() == handler;
-                      });
+int32_t DBSyncImplementation::updateSnapshotData(const DBSYNC_HANDLE handle,
+                                                 const char* jsonSnapshot,
+                                                 std::string& result)
+{
+    auto retVal { 1 };
+    try
+    {
+        const auto ctx{ getDbEngineContext(handle) };
+        const auto json { nlohmann::json::parse(jsonSnapshot)};
+        nlohmann::json jsonResult;
+        retVal = ctx->GetDbEngine()->RefreshTablaData(json[0], std::make_tuple(std::ref(jsonResult), nullptr)) ? 0 : 1;
+        result = std::move(jsonResult.dump());
+    }
+    catch (const nlohmann::json::exception& ex)
+    {
+        std::cout << "message: " << ex.what() << std::endl
+                  << "exception id: " << ex.id << std::endl;
+        retVal = ex.id;
+    }
+    catch (const SQLite::exception& ex)
+    {
+        std::cout << "message: " << ex.what() << std::endl;
+        retVal = ex.id;
+    }
+    catch (const std::runtime_error& ex)
+    {
+        std::cout << "message: " << ex.what() << std::endl;
+        // retVal = ex.id;
+    }
+    return retVal;
+}
+
+int32_t DBSyncImplementation::updateSnapshotData(const DBSYNC_HANDLE handle,
+                                                 const char* jsonSnapshot,
+                                                 void* callback)
+{
+    auto retVal { 1 };
+    try
+    {
+        const auto ctx{ getDbEngineContext(handle) };
+        const auto json { nlohmann::json::parse(jsonSnapshot)};
+        nlohmann::json fake;
+        retVal = ctx->GetDbEngine()->RefreshTablaData(json[0], std::make_tuple(std::ref(fake), callback)) ? 0 : 1;
+    }
+    catch (const nlohmann::json::exception& ex)
+    {
+        std::cout << "message: " << ex.what() << std::endl
+                  << "exception id: " << ex.id << std::endl;
+        retVal = ex.id;
+    }
+    //check whether is correct to know about a db implementation detail like SQLite exception (?)
+    catch (const SQLite::exception& ex)
+    {
+        std::cout << "message: " << ex.what() << std::endl;
+        retVal = ex.id;
+    }
+    catch (const std::runtime_error& ex)
+    {
+        std::cout << "message: " << ex.what() << std::endl;
+        // retVal = ex.id;
+    }
+    return retVal;
+}
+
+std::shared_ptr<DbEngineContext> DBSyncImplementation::getDbEngineContext(const DBSYNC_HANDLE handle)
+{
+    std::lock_guard<std::mutex> lock{m_mutex};
+    const auto it
+    {
+        std::find_if(m_dbSyncContexts.begin(),
+                     m_dbSyncContexts.end(),
+                     [handle](const std::shared_ptr<DbEngineContext>& handle_param)
+                     {
+                        return handle_param.get() == handle;
+                     })
+    };
+    if (it == m_dbSyncContexts.end())
+    {
+        throw std::runtime_error
+        {
+            "Invalid handle value."
+        };
+    }
+    return *it;
 }

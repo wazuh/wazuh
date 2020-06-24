@@ -36,6 +36,7 @@ typedef enum {
     INSERTED = 2
 }ReturnTypeCallback;
 
+typedef void* DBSYNC_HANDLE;
 
 /**
  * \brief Callback function for results
