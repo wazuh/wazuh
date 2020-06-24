@@ -39,7 +39,6 @@ bool connect_server(int server_id)
 
     /* Close socket if available */
     if (agt->sock >= 0) {
-        sleep(1);
         CloseSocket(agt->sock);
         agt->sock = -1;
 
