@@ -137,6 +137,13 @@ installElasticsearch() {
     curl -so /etc/elasticsearch/certs/searchguard/search-guard.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/searchguard/search-guard-aio.yml --max-time 300 > /dev/null 2>&1
     chmod +x searchguard/tools/sgtlstool.sh > /dev/null 2>&1
     ./searchguard/tools/sgtlstool.sh -c ./searchguard/search-guard.yml -ca -crt -t /etc/elasticsearch/certs/ > /dev/null 2>&1
+    if [  "$?" != 0  ]
+    then
+        echo "Error: certificates were no created"
+        exit 1;
+    else
+        logger "Certificates created"
+    fi     
     rm /etc/elasticsearch/certs/client-certificates.readme /etc/elasticsearch/certs/elasticsearch_elasticsearch_config_snippet.yml search-guard-tlstool-1.7.zip -f > /dev/null 2>&1
     
     # Configure JVM options for Elasticsearch
