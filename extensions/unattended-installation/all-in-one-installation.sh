@@ -59,7 +59,7 @@ installPrerequisites() {
 
     if [ $sys_type == "yum" ] 
     then
-        yum install java-11-openjdk-devel unzip wget curl libcap -y -q > /dev/null 2>&1
+        yum install java-1.8.0-openjdk-devel unzip wget curl libcap -y -q > /dev/null 2>&1
     elif [ $sys_type == "apt-get" ] 
     then
         if [ -n "$(command -v add-apt-repository)" ]
@@ -72,7 +72,13 @@ installPrerequisites() {
         apt-get install openjdk-11-jdk apt-transport-https curl unzip wget libcap2-bin -y -q > /dev/null 2>&1
     fi
 
-    logger "Done"
+    if [  "$?" != 0  ]
+    then
+        echo "Error: Prerequisites could not be installed"
+        exit 1;
+    else
+        logger "Done"
+    fi   
 }
 
 ## Add the Wazuh repository
@@ -90,7 +96,13 @@ addWazuhrepo() {
         apt-get update -q > /dev/null 2>&1
     fi    
 
-    logger "Done" 
+    if [  "$?" != 0  ]
+    then
+        echo "Error: Wazuh repository could not be added"
+        exit 1;
+    else
+        logger "Done"
+    fi        
 }
 
 ## Wazuh manager and API
@@ -105,8 +117,13 @@ installWazuh() {
         curl -sL https://deb.nodesource.com/setup_10.x --max-time 300 | bash - > /dev/null 2>&1
     fi 
     $sys_type install wazuh-manager nodejs wazuh-api -y -q > /dev/null 2>&1
-
-    logger "Done"
+    if [  "$?" != 0  ]
+    then
+        echo "Error: Wazuh installation failed"
+        exit 1;
+    else
+        logger "Done"
+    fi     
 }
 
 ## Elasticsearch
@@ -121,53 +138,59 @@ installElasticsearch() {
         apt-get install elasticsearch-oss opendistroforelasticsearch -y -q > /dev/null 2>&1
     fi
 
-    logger "Done"
-
-    logger "Configuring Elasticsearch..."
-
-    curl -so /etc/elasticsearch/elasticsearch.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/7.x/elasticsearch_all_in_one.yml --max-time 300 > /dev/null 2>&1
-    curl -so /usr/share/elasticsearch/plugins/opendistro_security/securityconfig/roles.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/roles/roles.yml --max-time 300 > /dev/null 2>&1
-    curl -so /usr/share/elasticsearch/plugins/opendistro_security/securityconfig/roles_mapping.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/roles/roles_mapping.yml --max-time 300 > /dev/null 2>&1
-    curl -so /usr/share/elasticsearch/plugins/opendistro_security/securityconfig/internal_users.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/roles/internal_users.yml --max-time 300 > /dev/null 2>&1
-    rm /etc/elasticsearch/esnode-key.pem /etc/elasticsearch/esnode.pem /etc/elasticsearch/kirk-key.pem /etc/elasticsearch/kirk.pem /etc/elasticsearch/root-ca.pem -f > /dev/null 2>&1
-    mkdir /etc/elasticsearch/certs > /dev/null 2>&1
-    cd /etc/elasticsearch/certs > /dev/null 2>&1
-    wget -q https://releases.floragunn.com/search-guard-tlstool/1.7/search-guard-tlstool-1.7.zip > /dev/null 2>&1
-    unzip search-guard-tlstool-1.7.zip -d searchguard > /dev/null 2>&1
-    curl -so /etc/elasticsearch/certs/searchguard/search-guard.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/searchguard/search-guard-aio.yml --max-time 300 > /dev/null 2>&1
-    chmod +x searchguard/tools/sgtlstool.sh > /dev/null 2>&1
-    ./searchguard/tools/sgtlstool.sh -c ./searchguard/search-guard.yml -ca -crt -t /etc/elasticsearch/certs/ > /dev/null 2>&1
     if [  "$?" != 0  ]
     then
-        echo "Error: certificates were no created"
+        echo "Error: Elasticsearch installation failed"
         exit 1;
     else
-        logger "Certificates created"
-    fi     
-    rm /etc/elasticsearch/certs/client-certificates.readme /etc/elasticsearch/certs/elasticsearch_elasticsearch_config_snippet.yml search-guard-tlstool-1.7.zip -f > /dev/null 2>&1
-    
-    # Configure JVM options for Elasticsearch
-    ram_gb=$(free -g | awk '/^Mem:/{print $2}')
-    ram=$(( ${ram_gb} / 2 ))
+        logger "Done"
 
-    if [ ${ram} -eq "0" ]; then
-        ram=1;
-    fi    
-    sed -i "s/-Xms1g/-Xms${ram}g/" /etc/elasticsearch/jvm.options > /dev/null 2>&1
-    sed -i "s/-Xmx1g/-Xmx${ram}g/" /etc/elasticsearch/jvm.options > /dev/null 2>&1
+        logger "Configuring Elasticsearch..."
 
-    # Start Elasticsearch
-    startService "elasticsearch"
+        curl -so /etc/elasticsearch/elasticsearch.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/7.x/elasticsearch_all_in_one.yml --max-time 300 > /dev/null 2>&1
+        curl -so /usr/share/elasticsearch/plugins/opendistro_security/securityconfig/roles.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/roles/roles.yml --max-time 300 > /dev/null 2>&1
+        curl -so /usr/share/elasticsearch/plugins/opendistro_security/securityconfig/roles_mapping.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/roles/roles_mapping.yml --max-time 300 > /dev/null 2>&1
+        curl -so /usr/share/elasticsearch/plugins/opendistro_security/securityconfig/internal_users.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/roles/internal_users.yml --max-time 300 > /dev/null 2>&1
+        rm /etc/elasticsearch/esnode-key.pem /etc/elasticsearch/esnode.pem /etc/elasticsearch/kirk-key.pem /etc/elasticsearch/kirk.pem /etc/elasticsearch/root-ca.pem -f > /dev/null 2>&1
+        mkdir /etc/elasticsearch/certs > /dev/null 2>&1
+        cd /etc/elasticsearch/certs > /dev/null 2>&1
+        wget -q https://releases.floragunn.com/search-guard-tlstool/1.7/search-guard-tlstool-1.7.zip > /dev/null 2>&1
+        unzip search-guard-tlstool-1.7.zip -d searchguard > /dev/null 2>&1
+        curl -so /etc/elasticsearch/certs/searchguard/search-guard.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/searchguard/search-guard-aio.yml --max-time 300 > /dev/null 2>&1
+        chmod +x searchguard/tools/sgtlstool.sh > /dev/null 2>&1
+        ./searchguard/tools/sgtlstool.sh -c ./searchguard/search-guard.yml -ca -crt -t /etc/elasticsearch/certs/ > /dev/null 2>&1
+        if [  "$?" != 0  ]
+        then
+            echo "Error: certificates were no created"
+            exit 1;
+        else
+            logger "Certificates created"
+        fi     
+        rm /etc/elasticsearch/certs/client-certificates.readme /etc/elasticsearch/certs/elasticsearch_elasticsearch_config_snippet.yml search-guard-tlstool-1.7.zip -f > /dev/null 2>&1
+        
+        # Configure JVM options for Elasticsearch
+        ram_gb=$(free -g | awk '/^Mem:/{print $2}')
+        ram=$(( ${ram_gb} / 2 ))
 
-    until $(curl -XGET https://localhost:9200/ -uadmin:admin -k --max-time 120 --silent --output /dev/null); do
-        echo "Waiting for Elasticsearch..."
-        sleep 5
-    done    
+        if [ ${ram} -eq "0" ]; then
+            ram=1;
+        fi    
+        sed -i "s/-Xms1g/-Xms${ram}g/" /etc/elasticsearch/jvm.options > /dev/null 2>&1
+        sed -i "s/-Xmx1g/-Xmx${ram}g/" /etc/elasticsearch/jvm.options > /dev/null 2>&1
 
-    cd /usr/share/elasticsearch/plugins/opendistro_security/tools/ > /dev/null 2>&1
-    ./securityadmin.sh -cd ../securityconfig/ -nhnv -cacert /etc/elasticsearch/certs/root-ca.pem -cert /etc/elasticsearch/certs/admin.pem -key /etc/elasticsearch/certs/admin.key > /dev/null 2>&1
+        # Start Elasticsearch
+        startService "elasticsearch"
 
-    logger "Done"
+        until $(curl -XGET https://localhost:9200/ -uadmin:admin -k --max-time 120 --silent --output /dev/null); do
+            echo "Waiting for Elasticsearch..."
+            sleep 5
+        done    
+
+        cd /usr/share/elasticsearch/plugins/opendistro_security/tools/ > /dev/null 2>&1
+        ./securityadmin.sh -cd ../securityconfig/ -nhnv -cacert /etc/elasticsearch/certs/root-ca.pem -cert /etc/elasticsearch/certs/admin.pem -key /etc/elasticsearch/certs/admin.key > /dev/null 2>&1
+
+        logger "Done"
+    fi
 }
 
 ## Filebeat
@@ -176,18 +199,24 @@ installFilebeat() {
     logger "Installing Filebeat..."
 
     $sys_type install filebeat -y -q  > /dev/null 2>&1
-    curl -so /etc/filebeat/filebeat.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/filebeat/7.x/filebeat_all_in_one.yml --max-time 300  > /dev/null 2>&1
-    curl -so /etc/filebeat/wazuh-template.json https://raw.githubusercontent.com/wazuh/wazuh/v3.12.0/extensions/elasticsearch/7.x/wazuh-template.json --max-time 300 > /dev/null 2>&1
-    chmod go+r /etc/filebeat/wazuh-template.json > /dev/null 2>&1
-    curl -s https://packages.wazuh.com/3.x/filebeat/wazuh-filebeat-0.1.tar.gz --max-time 300 | tar -xvz -C /usr/share/filebeat/module > /dev/null 2>&1
-    mkdir /etc/filebeat/certs > /dev/null 2>&1
-    cp /etc/elasticsearch/certs/root-ca.pem /etc/filebeat/certs/ > /dev/null 2>&1
-    mv /etc/elasticsearch/certs/filebeat* /etc/filebeat/certs/ > /dev/null 2>&1
+    if [  "$?" != 0  ]
+    then
+        echo "Error: Filebeat installation failed"
+        exit 1;
+    else
+        curl -so /etc/filebeat/filebeat.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/filebeat/7.x/filebeat_all_in_one.yml --max-time 300  > /dev/null 2>&1
+        curl -so /etc/filebeat/wazuh-template.json https://raw.githubusercontent.com/wazuh/wazuh/v3.12.0/extensions/elasticsearch/7.x/wazuh-template.json --max-time 300 > /dev/null 2>&1
+        chmod go+r /etc/filebeat/wazuh-template.json > /dev/null 2>&1
+        curl -s https://packages.wazuh.com/3.x/filebeat/wazuh-filebeat-0.1.tar.gz --max-time 300 | tar -xvz -C /usr/share/filebeat/module > /dev/null 2>&1
+        mkdir /etc/filebeat/certs > /dev/null 2>&1
+        cp /etc/elasticsearch/certs/root-ca.pem /etc/filebeat/certs/ > /dev/null 2>&1
+        mv /etc/elasticsearch/certs/filebeat* /etc/filebeat/certs/ > /dev/null 2>&1
 
-    # Start Filebeat
-    startService "filebeat"
+        # Start Filebeat
+        startService "filebeat"
 
-    logger "Done"
+        logger "Done"
+    fi
 }
 
 ## Kibana
@@ -196,17 +225,23 @@ installKibana() {
     logger "Installing Open Distro for Kibana..."
 
     $sys_type install opendistroforelasticsearch-kibana -y -q > /dev/null 2>&1
-    curl -so /etc/kibana/kibana.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/kibana/7.x/kibana_all_in_one.yml --max-time 300 > /dev/null 2>&1
-    cd /usr/share/kibana > /dev/null 2>&1
-    sudo -u kibana /usr/share/kibana/bin/kibana-plugin install https://packages-dev.wazuh.com/trash/app/kibana/wazuhapp-3.13.0-tsc-opendistro.zip > /dev/null 2>&1
-    mkdir /etc/kibana/certs > /dev/null 2>&1
-    mv /etc/elasticsearch/certs/kibana* /etc/kibana/certs/ > /dev/null 2>&1
-    setcap 'cap_net_bind_service=+ep' /usr/share/kibana/node/bin/node > /dev/null 2>&1
+    if [  "$?" != 0  ]
+    then
+        echo "Error: Kibana installation failed"
+        exit 1;
+    else   
+        curl -so /etc/kibana/kibana.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/kibana/7.x/kibana_all_in_one.yml --max-time 300 > /dev/null 2>&1
+        cd /usr/share/kibana > /dev/null 2>&1
+        sudo -u kibana /usr/share/kibana/bin/kibana-plugin install https://packages-dev.wazuh.com/trash/app/kibana/wazuhapp-3.13.0-tsc-opendistro.zip > /dev/null 2>&1
+        mkdir /etc/kibana/certs > /dev/null 2>&1
+        mv /etc/elasticsearch/certs/kibana* /etc/kibana/certs/ > /dev/null 2>&1
+        setcap 'cap_net_bind_service=+ep' /usr/share/kibana/node/bin/node > /dev/null 2>&1
 
-    # Start Kibana
-    startService "kibana"
+        # Start Kibana
+        startService "kibana"
 
-    logger "Done"
+        logger "Done"
+    fi
 }
 
 ## Health check
