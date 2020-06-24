@@ -1,22 +1,9 @@
 # coding: utf-8
 
 from __future__ import absolute_import
-from datetime import date, datetime
-
-from typing import List, Dict
 
 from api.models.base_model_ import Model
-from api.models.agent_os import AgentOs  # noqa: F401,E501
-from api.models.agent_status import AgentStatus  # noqa: F401,E501
 from api import util
-
-#from __future__ import absolute_import
-#from datetime import date, datetime  # noqa: F401
-
-#from typing import List, Dict  # noqa: F401
-
-#from api.models.base_model_ import Model
-#from api import util
 
 
 class AgentInserted(Model):
