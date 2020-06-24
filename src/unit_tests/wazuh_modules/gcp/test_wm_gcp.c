@@ -17,6 +17,7 @@
 #include "../../wazuh_modules/wmodules.h"
 #include "../../wazuh_modules/wm_gcp.h"
 #include "../../headers/defs.h"
+#include "../../wrappers/externals/cJSON/cJSON_wrappers.h"
 
 void wm_gcp_run(const wm_gcp *data);
 cJSON *wm_gcp_dump(const wm_gcp *data);
@@ -54,11 +55,6 @@ time_t __wrap_sched_scan_get_time_until_next_scan(sched_scan_config *config, con
     check_expected(run_on_start);
 
     return mock_type(time_t);
-}
-
-extern CJSON_PUBLIC(cJSON *) __real_cJSON_CreateObject(void);
-CJSON_PUBLIC(cJSON *) __wrap_cJSON_CreateObject(void) {
-    return mock_type(cJSON*);
 }
 
 void __wrap__mtdebug2(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
