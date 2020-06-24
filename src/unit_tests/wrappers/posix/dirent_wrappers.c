@@ -13,3 +13,16 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+
+int __wrap_closedir() {
+    return 1;
+}
+
+int __wrap_opendir() {
+    return mock();
+}
+
+struct dirent * __wrap_readdir() {
+    return mock_type(struct dirent *);
+}

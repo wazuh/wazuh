@@ -12,7 +12,10 @@
 #ifndef DIRENT_WRAPPERS_H
 #define DIRENT_WRAPPERS_H
 
+int __wrap_closedir();
 
+int __wrap_opendir();
 
+struct dirent * __wrap_readdir();
 
 #endif
