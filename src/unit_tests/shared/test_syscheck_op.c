@@ -15,6 +15,7 @@
 #include "../headers/syscheck_op.h"
 #include "../analysisd/eventinfo.h"
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
+#include "../wrappers/posix/grp_wrappers.h"
 
 
 /* Auxiliar structs */
@@ -103,10 +104,6 @@ void __wrap__merror(const char * file, int line, const char * func, const char *
     va_end(args);
 
     check_expected(formatted_msg);
-}
-
-struct group *__wrap_getgrgid(gid_t gid) {
-    return mock_ptr_type(struct group*);
 }
 
 extern void __real_wstr_split(char *str, char *delim, char *replace_delim, int occurrences, char ***splitted_str);
