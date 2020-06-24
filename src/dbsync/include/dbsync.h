@@ -85,6 +85,15 @@ extern "C" {
     cJSON** json_return_modifications);
 
 /**
+ * @brief Deallocate cJSON result data.
+ *
+ * @param json_result pointer to pointer of the cJSON result data.
+ *
+ */
+  EXPORTED void dbsync_free_result(
+    cJSON** json_result);
+
+/**
  * @brief Update data table, based on json_raw_snapshot bulk data based on json string.
  *
  * @param handle Handle assigned and returned in the initialize method.

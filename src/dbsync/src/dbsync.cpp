@@ -83,6 +83,14 @@ void dbsync_teardown(void) {
   DBSyncImplementation::getInstance().release();
 }
 
+void dbsync_free_result(
+    cJSON** json_result){
+  
+  if (nullptr != *json_result) {
+    cJSON_Delete(*json_result);
+  }
+}
+
 #ifdef __cplusplus
 }
 #endif
