@@ -12,7 +12,14 @@
 #ifndef GRP_WRAPPERS_H
 #define GRP_WRAPPERS_H
 
+#include <stddef.h>
+#include <sys/types.h>
+#include <grp.h>
+#include <errno.h>
 
 
+struct group *__wrap_getgrgid(gid_t gid);
+
+int __wrap_getgrnam_r(const char *name, struct group *grp, char *buf, size_t buflen, struct group **result);
 
 #endif

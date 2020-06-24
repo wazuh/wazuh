@@ -13,3 +13,23 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include <string.h>
+
+struct group *__wrap_getgrgid(__attribute__((unused)) gid_t gid) {
+    return mock_ptr_type(struct group*);
+}
+
+int __wrap_getgrnam_r(const char *name, struct group *grp,__attribute__((unused)) char *buf, size_t buflen, struct group **result) {
+    *result = NULL;
+
+    if (buflen < 1024) {
+        return ERANGE;
+    }
+
+    if (strcmp(name, "ossec") == 0) {
+        grp->gr_gid = 1000;
+        *result = grp;
+    }
+
+    return 0;
+}

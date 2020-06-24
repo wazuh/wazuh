@@ -15,6 +15,7 @@
 #include <pwd.h>
 #include <grp.h>
 
+#include "../wrappers/posix/grp_wrappers.h"
 #include "../headers/privsep_op.h"
 
 int __wrap_sysconf(int name) {
@@ -31,21 +32,6 @@ int __wrap_getpwnam_r(const char *name, struct passwd *pwd, char *buf, size_t bu
     if (strcmp(name, "ossec") == 0) {
         pwd->pw_uid = 1000;
         *result = pwd;
-    }
-
-    return 0;
-}
-
-int __wrap_getgrnam_r(const char *name, struct group *grp, char *buf, size_t buflen, struct group **result) {
-    *result = NULL;
-
-    if (buflen < 1024) {
-        return ERANGE;
-    }
-
-    if (strcmp(name, "ossec") == 0) {
-        grp->gr_gid = 1000;
-        *result = grp;
     }
 
     return 0;
