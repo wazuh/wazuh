@@ -13,6 +13,6 @@
 #define STRING_WRAPPERS_H
 
 
-
+char *__wrap_strerror (int __errnum);
 
 #endif
