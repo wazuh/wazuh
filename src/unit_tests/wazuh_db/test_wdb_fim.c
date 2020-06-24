@@ -78,21 +78,6 @@ void __wrap__mdebug1(const char * file, int line, const char * func, const char 
     check_expected(formatted_msg);
 }
 
-char* __wrap_cJSON_GetStringValue(cJSON * item)
-{
-    return mock_type(char*);
-}
-
-cJSON_bool __wrap_cJSON_IsNumber(cJSON * item)
-{
-    return mock_type(cJSON_bool);
-}
-
-cJSON_bool __wrap_cJSON_IsObject(cJSON * item)
-{
-    return mock_type(cJSON_bool);
-}
-
 int __wrap_wdb_stmt_cache(wdb_t wdb, int index)
 {
     return mock();

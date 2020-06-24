@@ -14,6 +14,7 @@
 
 #include "../headers/syscheck_op.h"
 #include "../analysisd/eventinfo.h"
+#include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 
 
 /* Auxiliar structs */
@@ -107,28 +108,6 @@ void __wrap__merror(const char * file, int line, const char * func, const char *
 struct group *__wrap_getgrgid(gid_t gid) {
     return mock_ptr_type(struct group*);
 }
-
-#ifndef TEST_WINAGENT
-extern cJSON * __real_cJSON_CreateArray(void);
-CJSON_PUBLIC(cJSON *) __wrap_cJSON_CreateArray(void) {
-    return mock_type(CJSON_PUBLIC(cJSON *));
-}
-extern cJSON * __real_cJSON_CreateObject(void);
-CJSON_PUBLIC(cJSON *) __wrap_cJSON_CreateObject(void) {
-    return mock_type(CJSON_PUBLIC(cJSON *));
-}
-#else
-// CJSON calling convention is __stdcall instead of __cdecl
-cJSON * __stdcall __real_cJSON_CreateArray(void);
-cJSON * __stdcall __wrap_cJSON_CreateArray(void) {
-    return mock_type(cJSON *);
-}
-
-cJSON * __stdcall __real_cJSON_CreateObject(void);
-cJSON * __stdcall __wrap_cJSON_CreateObject(void) {
-    return mock_type(cJSON *);
-}
-#endif
 
 extern void __real_wstr_split(char *str, char *delim, char *replace_delim, int occurrences, char ***splitted_str);
 void __wrap_wstr_split(char *str, char *delim, char *replace_delim, int occurrences, char ***splitted_str) {
