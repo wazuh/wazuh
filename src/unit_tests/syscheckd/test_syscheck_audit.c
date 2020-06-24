@@ -22,6 +22,7 @@
 #include "../wrappers/externals/openssl/rehash_wrappers.h"
 #include "../wrappers/externals/procpc/readproc_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
+#include "../wrappers/libc/stdlib_wrappers.h"
 #include "external/procps/readproc.h"
 
 extern volatile int audit_health_check_deletion;
@@ -131,12 +132,6 @@ void __wrap__mdebug2(const char * file, int line, const char * func, const char 
     va_end(args);
 
     return;
-}
-
-char * __wrap_realpath(const char * path, char * resolved_path)
-{
-    snprintf(resolved_path, OS_SIZE_1024, "%s", mock_ptr_type(char *));
-    return resolved_path;
 }
 
 int __wrap_unlink()
@@ -1354,7 +1349,9 @@ void test_audit_parse(void **state)
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6247): audit_event: uid=root, auid=, euid=root, gid=root, pid=44082, ppid=3211, inode=19, path=/root/test/test, pname=74657374C3B1");
 
+    expect_string(__wrap_realpath, path, "/root/test/test");
     will_return(__wrap_realpath, "/root/test/test");
+    will_return(__wrap_realpath, (char *) 1);
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 44082);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
@@ -1962,7 +1959,9 @@ void test_audit_parse_delete_folder(void **state)
     expect_string(__wrap__mdebug2, msg, "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg, "(6247): audit_event: uid=root, auid=root, euid=root, gid=root, pid=62845, ppid=4340, inode=110, path=/root/test, pname=/usr/bin/rm");
 
+    expect_string(__wrap_realpath, path, "/root/test");
     will_return(__wrap_realpath, "/root/test");
+    will_return(__wrap_realpath, (char *) 1);
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 62845);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
@@ -2011,7 +2010,10 @@ void test_audit_parse_delete_folder_hex(void **state)
     expect_string(__wrap__mdebug2, msg, "(6247): audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s");
     expect_string(__wrap__mdebug2, formatted_msg, "(6247): audit_event: uid=root, auid=root, euid=root, gid=root, pid=62845, ppid=4340, inode=110, path=/root/test, pname=/usr/bin/rm");
 
+    expect_string(__wrap_realpath, path, "/root/test");
     will_return(__wrap_realpath, "/root/test");
+    will_return(__wrap_realpath, (char *) 1);
+
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 62845);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");

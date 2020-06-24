@@ -18,6 +18,7 @@
 #include "../../os_xml/os_xml.h"
 #include "../../wazuh_modules/wmodules.h"
 #include "../../wazuh_modules/wm_gcp.h"
+#include "../../wrappers/libc/stdlib_wrappers.h"
 
 static const char *XML_ENABLED = "enabled";
 static const char *XML_PROJECT_ID = "project_id";
@@ -65,14 +66,6 @@ int __wrap_sched_scan_read(sched_scan_config *scan_config, xml_node **nodes, con
     check_expected(MODULE_NAME);
 
     return mock();
-}
-
-char *__wrap_realpath(const char *path, char *resolved_path) {
-    check_expected(path);
-
-    snprintf(resolved_path, PATH_MAX, "%s", mock_type(char*));
-
-    return mock_type(char*);
 }
 
 int __wrap_IsFile(const char *file) {

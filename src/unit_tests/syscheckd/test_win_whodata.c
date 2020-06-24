@@ -20,6 +20,7 @@
 
 #include "../wrappers/common.h"
 #include "../wrappers/libc/stdio_wrappers.h"
+#include "../wrappers/libc/stdlib_wrappers.h"
 #include "syscheckd/syscheck.h"
 
 
@@ -442,14 +443,6 @@ int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const 
     }
     *exitcode = mock_type(int);
     return mock();
-}
-
-int __cdecl __real_atexit(void (__cdecl *callback)(void));
-int __cdecl __wrap_atexit(void (__cdecl *callback)(void)) {
-    if(test_mode)
-        return 0;
-    else
-        return __real_atexit(callback);
 }
 
 void *__wrap_OSHash_Delete_ex(OSHash *self, const char *key) {

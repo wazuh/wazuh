@@ -18,6 +18,7 @@
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 #include "../wrappers/libc/stdio_wrappers.h"
+#include "../wrappers/libc/stdlib_wrappers.h"
 
 #ifndef TEST_WINAGENT
 #define PATH_OFFSET 1
@@ -198,11 +199,6 @@ int __wrap_OS_MD5_File(const char *fname, os_md5 output, int mode) {
 
 int __wrap_File_DateofChange(const char *file) {
     return 1;
-}
-
-int __wrap_system(const char *__command) {
-    check_expected(__command);
-    return mock();
 }
 
 /* Setup/teardown */

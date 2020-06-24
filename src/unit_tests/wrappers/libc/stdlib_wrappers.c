@@ -13,3 +13,28 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include <stdio.h>
+#include <limits.h>
+
+extern int test_mode;
+
+extern int __real_atexit(void (*callback)(void));
+int __wrap_atexit(void (*callback)(void)) {
+    if(test_mode)
+        return 0;
+    else
+        return __real_atexit(callback);
+}
+
+char *__wrap_realpath(const char *path, char *resolved_path) {
+    check_expected(path);
+
+    snprintf(resolved_path, PATH_MAX, "%s", mock_type(char*));
+
+    return mock_type(char*);
+}
+
+int __wrap_system(const char *__command) {
+    check_expected(__command);
+    return mock();
+}
