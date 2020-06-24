@@ -4,7 +4,8 @@ get_rbac_actions:
       endpoint: GET /agents
     result:
       agent:read:
-        description: Access to one or more agents basic information (id, name, group, last
+        description:
+          Access to one or more agents basic information (id, name, group, last
           keep alive, etc)
         resources:
           - "agent:id"
@@ -282,32 +283,32 @@ get_rbac_actions:
         related_endpoints:
           - GET /cluster/status
       cluster:read_api_config:
-        description: "Check Wazuh's cluster API configuration"
+        description: Check Wazuh's cluster API configuration
         resources:
           - "*:*"
         example:
           actions:
             - cluster:read_api_config
           resources:
-            - "node:id:worker1"
-            - "node:id:worker3"
-          effect: "allow"
+            - node:id:worker1
+            - node:id:worker3
+          effect: allow
         related_endpoints:
-          - 'GET /cluster/api/config'
+          - GET /cluster/api/config
       cluster:update_api_config:
-        description: "Modify Wazuh's cluster API configuration"
+        description: Modify Wazuh's cluster API configuration
         resources:
           - "*:*"
         example:
           actions:
             - cluster:update_api_config
           resources:
-            - "node:id:worker1"
-            - "node:id:worker3"
-          effect: "allow"
+            - node:id:worker1
+            - node:id:worker3
+          effect: allow
         related_endpoints:
-          - 'PUT /cluster/api/config'
-          - 'DELETE /cluster/api/config'
+          - PUT /cluster/api/config
+          - DELETE /cluster/api/config
       cluster:read_file:
         description: Read Wazuh's cluster files
         resources:
@@ -433,9 +434,9 @@ get_rbac_actions:
             - "*:*:*"
           effect: deny
         related_endpoints:
-          - 'PUT /manager/files'
+          - PUT /manager/files
       manager:read_api_config:
-        description: "Read Wazuh manager API configuration"
+        description: Read Wazuh manager API configuration
         resources:
           - "*:*"
         example:
@@ -443,11 +444,11 @@ get_rbac_actions:
             - manager:read_api_config
           resources:
             - "*:*:*"
-          effect: "allow"
+          effect: allow
         related_endpoints:
-          - 'GET /manager/api/config'
+          - GET /manager/api/config
       manager:update_api_config:
-        description: "Modify Wazuh manager API configuration"
+        description: Modify Wazuh manager API configuration
         resources:
           - "*:*"
         example:
@@ -455,10 +456,10 @@ get_rbac_actions:
             - manager:update_api_config
           resources:
             - "*:*:*"
-          effect: "allow"
+          effect: allow
         related_endpoints:
-          - 'PUT /manager/api/config'
-          - 'DELETE /manager/api/config'
+          - PUT /manager/api/config
+          - DELETE /manager/api/config
       manager:restart:
         description: Restart Wazuh manager nodes
         resources:
@@ -474,12 +475,12 @@ get_rbac_actions:
       mitre:read:
         description: Get attacks information from MITRE database.
         resources:
-          - '*:*'
+          - "*:*"
         example:
           actions:
             - mitre:read
           resources:
-            - '*:*:*'
+            - "*:*:*"
           effect: allow
         related_endpoints:
           - GET /mitre
@@ -606,38 +607,13 @@ get_rbac_actions:
             - security:read
           resources:
             - policy:id:*
-            - role:id:administrator
-            - user:id:python
+            - role:id:2
+            - user:id:5
           effect: allow
         related_endpoints:
           - GET /security/roles
           - GET /security/policies
           - GET /security/users
-      security:read_config:
-        description: "Read current security configuration"
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - security:read_config
-          resources:
-            - "*:*:*"
-          effect: "allow"
-        related_endpoints:
-          - GET /security/config
-      security:update_config:
-        description: "Update current security configuration"
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - security:update_config
-          resources:
-            - "*:*:*"
-          effect: "allow"
-        related_endpoints:
-          - PUT /security/config
-          - DELETE /security/config
       security:create:
         description: Create new system security resources
         resources:
@@ -662,8 +638,8 @@ get_rbac_actions:
             - security:update
           resources:
             - policy:id:*
-            - role:id:administrator
-            - user:id:python
+            - role:id:3
+            - user:id:4
           effect: deny
         related_endpoints:
           - DELETE /security/roles
@@ -682,15 +658,15 @@ get_rbac_actions:
             - security:update
           resources:
             - policy:id:*
-            - role:id:administrator
-            - user:id:python
+            - role:id:4
+            - user:id:3
           effect: deny
         related_endpoints:
           - PUT /security/roles/{role_id}
           - PUT /security/policies/{policy_id}
           - POST /security/roles/{role_id}/policies
           - POST /security/users/{username}/roles
-          - PUT /security/users/{username}
+          - PUT /security/users/{user_id}
       security:create_user:
         description: Create new system user
         resources:
@@ -703,6 +679,32 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - POST /security/users
+      security:read_config:
+        description: Read current security configuration
+        resources:
+          - "*:*"
+        example:
+          actions:
+            - security:read_config
+          resources:
+            - "*:*:*"
+          effect: allow
+        related_endpoints:
+          - GET /security/config
+      security:update_config:
+        description: Update current security configuration
+        resources:
+          - "*:*"
+        example:
+          actions:
+            - security:update_config
+          resources:
+            - "*:*:*"
+          effect: allow
+        related_endpoints:
+          - PUT /security/config
+          - DELETE /security/config
+
 
 get_rbac_resources:
   - params:
@@ -729,14 +731,14 @@ get_rbac_resources:
       role:id:
         description: Reference security roles via its id (i.e. role:id:1)
       user:id:
-        description: Reference security users via its username (i.e. user:id:wazuh)
+        description: Reference security users via its id (i.e. user:id:1)
   - params:
-      resource: 'agent:id'
+      resource: "agent:id"
     result:
       agent:id:
         description: Reference agents via agent ID (i.e. agent:id:001)
   - params:
-      resource: '*:*'
+      resource: "*:*"
     result:
       "*:*":
         description: "Resource applied in functions which take part in the creation of a specific resource. We call these functions, resourceless functions. Example: agent:create"

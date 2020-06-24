@@ -190,7 +190,7 @@ async def update_user(request, user_id: str):
     User data
     """
     try:
-        f_kwargs = {'user_id': user_id, **await request.json()}
+        f_kwargs = {**await request.json(), 'user_id': user_id}
     except JSONDecodeError as e:
         raise_if_exc(APIError(code=2005, details=e.msg))
     validate = _check_body_update(f_kwargs)

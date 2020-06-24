@@ -418,9 +418,9 @@ stages:
                 - 102
                 - 109
               users:
-                - normal
-                - ossec
-                - rbac
+                - "101"
+                - "102"
+                - "104"
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []
@@ -753,8 +753,8 @@ stages:
                 - 105
                 - 106
               users:
-                - normal
-                - ossec
+                - "101"
+                - "102"
           total_affected_items: 2
           total_failed_items: 1
           failed_items:
@@ -795,8 +795,8 @@ stages:
                 - 102
                 - 109
               users:
-                - normal
-                - ossec
+                - "101"
+                - "102"
           total_affected_items: 2
           total_failed_items: 1
           failed_items:
@@ -949,7 +949,7 @@ stages:
                 - 104
                 - 103
               users:
-                - normal
+                - "101"
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []

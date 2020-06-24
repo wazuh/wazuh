@@ -307,7 +307,7 @@ stages:
                 - 1007
                 - 1008
               users:
-                - testing
+                - "99"
             - id: 100
               name: wazuh
               rule:
@@ -669,7 +669,7 @@ stages:
                 - 107
                 - 104
               users:
-                - rbac
+                - "104"
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []

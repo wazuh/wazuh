@@ -51,7 +51,7 @@ x-rbac-catalog:
     'role:id':
       description: "Reference security roles via its id (i.e. role:id:1)"
     'user:id':
-      description: "Reference security users via its username (i.e. user:id:wazuh)"
+      description: "Reference security users via its id (i.e. user:id:1)"
   actions:
     'active-response:command':
       description: "Allow to execute active response commands in the agents"
@@ -343,7 +343,7 @@ x-rbac-catalog:
         - $ref: '#/x-rbac-catalog/resources/user:id'
       example:
         actions: ['security:read']
-        resources: ['policy:id:*', 'role:id:administrator', 'user:id:python',]
+        resources: ['policy:id:*', 'role:id:2', 'user:id:5',]
         effect: "allow"
     'security:update':
       description: "Allow update the information of system's security resources"
@@ -353,7 +353,7 @@ x-rbac-catalog:
         - $ref: '#/x-rbac-catalog/resources/user:id'
       example:
         actions: ['security:update']
-        resources: ['policy:id:*', 'role:id:administrator', 'user:id:python',]
+        resources: ['policy:id:*', 'role:id:4', 'user:id:3',]
         effect: "deny"
     'security:delete':
       description: "Delete system's security resources"
@@ -363,7 +363,7 @@ x-rbac-catalog:
         - $ref: '#/x-rbac-catalog/resources/user:id'
       example:
         actions: ['security:update']
-        resources: ['policy:id:*', 'role:id:administrator', 'user:id:python',]
+        resources: ['policy:id:*', 'role:id:3', 'user:id:4',]
         effect: "deny"
     'security:read_config':
       description: "Read current security configuration"
@@ -12050,7 +12050,7 @@ paths:
                 role:id:
                   description: 'Reference security role via its id (i.e. role:id:1)'
                 user:id:
-                  description: 'Reference security user via its username (i.e. user:id:wazuh)'
+                  description: 'Reference security user via its id (i.e. user:id:1)'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
