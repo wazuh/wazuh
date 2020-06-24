@@ -13,3 +13,8 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+
+char *__wrap_strerror (__attribute__((unused)) int __errnum) {
+    return mock_type(char*);
+}
