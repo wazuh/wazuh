@@ -269,7 +269,7 @@ static void test_connect_server_timeout_error_2(void **state) {
     will_return(__wrap_OS_SetRecvTimeout, -1);
     errno = EFAULT;
     connected = connect_server(0);   
-    assert_false(connected);
+    assert_true(connected);
 }
 
 /* agent_handshake_to_server */
