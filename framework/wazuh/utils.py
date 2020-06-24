@@ -103,7 +103,7 @@ def process_array(array, search_text=None, complementary_search=False, search_in
         array = filter_array_by_query(q, array)
 
     if sort_by == [""]:
-        array = sort_array(array)
+        array = sort_array(array, sort_ascending=sort_ascending)
     elif sort_by:
         array = sort_array(array, sort_by=sort_by, sort_ascending=sort_ascending,
                            allowed_sort_fields=allowed_sort_fields)

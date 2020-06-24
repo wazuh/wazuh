@@ -515,7 +515,7 @@ get_rbac_actions:
           - GET /sca/{agent_id}
           - GET /sca/{agent_id}/checks/{policy_id}
       syscheck:run:
-        description: Run rootcheck and syscheck
+        description: Run syscheck
         resources:
           - agent:id
         example:

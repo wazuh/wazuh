@@ -34,6 +34,8 @@ stages:
               gpg13: !anything
               hipaa: !anything
               nist_800_53: !anything
+              tsc: !anything
+              mitre: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: !anyint
@@ -449,12 +451,15 @@ stages:
       <<: *general_rules_request
       params:
         filename: 0015-ossec_rules.xml
-        limit: 2
+        limit: 5
     response:
       status_code: 200
       json:
         data:
           affected_items:
+            - <<: *rules_response
+            - <<: *rules_response
+            - <<: *rules_response
             - <<: *rules_response
             - <<: *rules_response
           failed_items: []
@@ -467,6 +472,8 @@ stages:
           gpg13_value: data.affected_items[1].gpg13[0]
           hipaa_value: data.affected_items[1].hipaa[0]
           nist-800-53_value: data.affected_items[1].nist_800_53[0]
+          tsc_value: data.affected_items[1].tsc[0]
+          mitre_value: data.affected_items[4].mitre[0]
 
   - name: Filter filename without limit
     request:
@@ -631,6 +638,64 @@ stages:
       <<: *general_rules_request
       params:
         nist-800-53: "{nist-800-53_value}"
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: !anyint
+
+  - name: Filter tsc
+    request:
+      verify: False
+      <<: *general_rules_request
+      params:
+        tsc: "{tsc_value}"
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - tsc:
+                - "{tsc_value}"
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
+
+  - name: Filter tsc without limit
+    request:
+      verify: False
+      <<: *general_rules_request
+      params:
+        tsc: "{tsc_value}"
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: !anyint
+
+  - name: Filter mitre
+    request:
+      <<: *general_rules_request
+      params:
+        mitre: "{mitre_value}"
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - mitre:
+              - "{mitre_value}"
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
+
+  - name: Filter mitre without limit
+    request:
+      <<: *general_rules_request
+      params:
+        mitre: "{mitre_value}"
     response:
       status_code: 200
       json:
@@ -1163,6 +1228,184 @@ stages:
         <<: *error_null
 
 ---
+test_name: GET /rules/requirement/tsc
+
+stages:
+
+  - name: Try to show the rules by requirement tsc
+    request: &tsc_rules_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/requirement/tsc"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
+
+  - name: Try to show the rules by requirement tsc, limit and offset
+    request:
+      verify: False
+      <<: *tsc_rules_request
+      params:
+        limit: 1
+        offset: 0
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
+
+  - name: Try to show the rules by requirement tsc, limit = 0
+    request:
+      verify: False
+      <<: *tsc_rules_request
+      params:
+        limit: 0
+    response:
+      status_code: 400
+      json:
+        <<: *error_response
+
+  - name: Filter sort
+    request:
+      verify: False
+      <<: *tsc_rules_request
+      params:
+        sort: "-"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
+
+  - name: Filter search
+    request:
+      verify: False
+      <<: *tsc_rules_request
+      params:
+        search: 10
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
+
+  - name: Invalid filter
+    request:
+      verify: False
+      <<: *tsc_rules_request
+      params:
+        noexist: True
+    response:
+      status_code: 400
+      json:
+        <<: *error_null
+
+---
+test_name: GET /rules/requirement/mitre
+
+stages:
+
+  - name: Try to show the rules by requirement mitre
+    request: &mitre_rules_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/requirement/mitre"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
+
+  - name: Try to show the rules by requirement mitre, limit and offset
+    request:
+      verify: False
+      <<: *mitre_rules_request
+      params:
+        limit: 1
+        offset: 0
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
+
+  - name: Try to show the rules by requirement mitre, limit = 0
+    request:
+      verify: False
+      <<: *mitre_rules_request
+      params:
+        limit: 0
+    response:
+      status_code: 400
+      json:
+        <<: *error_response
+
+  - name: Filter sort
+    request:
+      verify: False
+      <<: *mitre_rules_request
+      params:
+        sort: "-"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
+
+  - name: Filter search
+    request:
+      verify: False
+      <<: *mitre_rules_request
+      params:
+        search: 10
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: !anyint
+
+  - name: Invalid filter
+    request:
+      verify: False
+      <<: *mitre_rules_request
+      params:
+        noexist: True
+    response:
+      status_code: 400
+      json:
+        <<: *error_null
+
+---
 test_name: GET /rules/groups
 
 stages:
@@ -1271,6 +1514,9 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: !anyint
+      save:
+        json:
+          affected_items: data.affected_items
 
   - name: Get the rules files, limit = 1, offset = 0
     request:
@@ -1287,9 +1533,6 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: !anyint
-      save:
-        json:
-          affected_items: data.affected_items
 
   - name: Get the rules files, limit = 0
     request:
@@ -1308,7 +1551,6 @@ stages:
       <<: *files_rules_request
       params:
         sort: "-filename"
-        limit: 1
     response:
       verify_response_with:
         - function: tavern_utils:test_sort_response

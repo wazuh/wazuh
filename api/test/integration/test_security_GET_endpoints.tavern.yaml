@@ -1071,7 +1071,7 @@ stages:
         role:id:
           description: Reference security roles via its id (i.e. role:id:1)
         user:id:
-          description: Reference security users via its username (i.e. user:id:wazuh)
+          description: Reference security users via its id (i.e. user:id:1)
 
   - name: Testing RBAC's actions catalog
     request:

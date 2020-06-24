@@ -375,9 +375,7 @@ This API call expects a full valid XML file with the shared configuration tags/s
 * New endpoint. Returns a dictionary with a full agents overview.
 
 ## Rootcheck
-### GET ​   /rootcheck/{agent_id}
-* Added **select** parameter in query used to select which fields to return.
-* Added **q** parameter in query used to filter.
+* Removed all rootcheck endpoints.
 
 ## Rules
 ### GET     /rules

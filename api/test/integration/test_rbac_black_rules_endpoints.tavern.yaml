@@ -30,7 +30,9 @@ stages:
               hipaa: !anything
               id: !anyint
               level: !anyint
+              mitre: !anything
               nist_800_53: !anything
+              tsc: !anything
               relative_dirname: !anystr
               pci_dss: !anything
               status: !anystr
@@ -260,6 +262,28 @@ stages:
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/requirement/pci_dss"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr
+
+---
+test_name: GET MITRE ATTACK IDS RBAC
+
+stages:
+
+  - name: Try to show the groups of rules in the system
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/rules/requirement/mitre"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET

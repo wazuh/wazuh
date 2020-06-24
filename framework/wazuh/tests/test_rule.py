@@ -54,7 +54,7 @@ rule_contents = '''
     <options>alert_by_email</options>
     <match>Agent started</match>
     <description>New ossec agent connected.</description>
-    <group>pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3</group>
+    <group>pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <list field="user" lookup="match_key">etc/lists/list-user</list>
     <field name="netinfo.iface.name">ens33</field>
     <regex>$(\\d+.\\d+.\\d+.\\d+)</regex>
@@ -141,10 +141,13 @@ def test_failed_get_rules_file(mock_config):
     {'rule_ids': ['31301'], 'filename': '0025-sendmail_rules.xml'},
     {'group': 'user1'},
     {'pci_dss': 'user1'},
-    {'gpg13': '10.0'},
-    {'gdpr': 'IV_35.7.a'},
-    {'hipaa': '164.312.a'},
-    {'nist_800_53': 'AU.1'},
+    {'pci_dss': '11.4'},
+    {'gpg13': '4.13'},
+    {'gdpr': 'IV_35.7.d'},
+    {'hipaa': '164.312.b'},
+    {'nist_800_53': 'AU.14'},
+    {'tsc': 'CC7.4'},
+    {'mitre': 'T1017'},
     {'rule_ids': [510], 'status': 'all'},
     {'rule_ids': [1, 1]},
     {'rule_ids': [510, 1], 'filename': ['noexists.xml']},
@@ -163,8 +166,13 @@ def test_get_rules(mock_config, arg):
     for rule_ in result.to_dict()['affected_items']:
         if list(arg.keys())[0] != 'level':
             key = list(arg.keys())[0] if list(arg.keys())[0] != 'rule_ids' else 'id'
-            for rule_id in arg[list(arg.keys())[0]]:
-                assert rule_id in [rule_[key]]
+
+            if key == 'id':
+                for rule_id in arg[list(arg.keys())[0]]:
+                    assert rule_id in [rule_[key]]
+            else:
+                for rule_id in [arg[list(arg.keys())[0]]]:
+                    assert rule_id in rule_[key]
         else:
             try:
                 found = arg[list(arg.keys())[0]] in str(rule_[list(arg.keys())[0]])
@@ -198,7 +206,7 @@ def test_get_groups(mock_config, arg):
 
 
 @pytest.mark.parametrize('requirement', [
-    'pci_dss', 'gdpr', 'hipaa', 'nist_800_53', 'gpg13'
+    'pci_dss', 'gdpr', 'hipaa', 'nist_800_53', 'gpg13', 'tsc', 'mitre'
 ])
 @patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
 def test_get_requirement(mocked_config, requirement):

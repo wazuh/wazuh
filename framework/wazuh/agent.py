@@ -4,7 +4,6 @@
 
 import hashlib
 import operator
-from glob import glob
 from os import chmod, path, listdir
 from shutil import copyfile
 
@@ -41,10 +40,12 @@ def get_distinct_agents(agent_list=None, offset=0, limit=common.database_limit, 
                                       some_msg='Some agents information is not shown',
                                       none_msg='No agent information is shown'
                                       )
+
     if len(agent_list) != 0:
-        db_query = WazuhDBQueryGroupByAgents(filter_fields=fields, offset=offset, limit=limit, sort=sort, search=search,
-                                             select=select, query=q, filters={'id': agent_list},
+        db_query = WazuhDBQueryGroupByAgents(filter_fields=fields, offset=offset, limit=limit, sort=sort,
+                                             search=search, select=select, query=q, filters={'id': agent_list},
                                              min_select_fields=set(), count=True, get_data=True)
+
         data = db_query.run()
         result.affected_items.extend(data['items'])
         result.total_affected_items = data['totalItems']

@@ -398,7 +398,7 @@ x-rbac-catalog:
         resources: ['agent:id:*']
         effect: "deny"
     'syscheck:run':
-      description: "Run rootcheck and syscheck"
+      description: "Run syscheck"
       resources:
         - $ref: '#/x-rbac-catalog/resources/agent:id'
       example:
@@ -705,19 +705,6 @@ components:
               description: "Items that successfully applied the API call action"
               items:
                 $ref: '#/components/schemas/AgentIdKey'
-
-    AllItemsResponseRootcheck:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: Items that successfully applied the API call action.
-              items:
-                $ref: '#/components/schemas/RootcheckDatabase'
 
     AllItemsResponseRules:
       allOf:
@@ -1156,11 +1143,9 @@ components:
           description: "Node ID where the agent is reporting to"
         dateAdd:
           type: string
-          format: date-time
           description: "Date when the agent was registered"
         lastKeepAlive:
           type: string
-          format: date-time
           description: "Date when the last keep alive was received from the agent"
 
         os:
@@ -1311,18 +1296,6 @@ components:
       minLength: 1
       description: "Group name"
       format: group_names
-
-    GroupFile:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            properties:
-              filename:
-                type: string
-              hash:
-                type: string
 
     AgentConfiguration:
       type: object
@@ -2292,34 +2265,6 @@ components:
           type: boolean
           default: false
 
-    # Rootcheck models
-    RootcheckDatabase:
-      type: object
-      properties:
-        status:
-          type: string
-          description: "Status of the check, with respect to the previous scan"
-          enum:
-          - outstanding
-          - solved
-        readDay:
-          type: string
-          format: date-time
-          description: "Latest scan date"
-        oldDay:
-          type: string
-          format: date-time
-          description: "Previous scan date"
-        pci:
-          type: string
-          description: "PCI DSS requirement level"
-        cis:
-          type: string
-          description: "CIS compliance requirement level"
-        event:
-          type: string
-          description: "Brief description of what is being checked"
-
     LastScan:
       type: object
       properties:
@@ -2384,6 +2329,11 @@ components:
             nist-800-53:
               type: array
               description: "NIST-800-53 checks the rule is checking"
+              items:
+                type: string
+            tsc:
+              type: array
+              description: "TSC checks the rule is checking"
               items:
                 type: string
             pci:
@@ -3619,17 +3569,6 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/GroupID'
-    list_policies:
-      in: query
-      name: list_policies
-      description: "Array of policy IDs"
-      schema:
-        type: array
-        items:
-          type: integer
-          minLength: 1
-          minimum: 2
-          description: "Policy ID"
     list_nodes:
       in: query
       name: list_nodes
@@ -3758,13 +3697,6 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/Policy_id'
-    policy_name:
-      in: query
-      name: policy_name
-      description: "Specify an existent policy name"
-      required: True
-      schema:
-        type: string
     endpoint:
       in: query
       name: endpoint
@@ -3817,7 +3749,7 @@ components:
       required: true
       schema:
         type: string
-        enum: [pci_dss, gdpr, hipaa, nist-800-53, gpg13]
+        enum: [pci_dss, gdpr, hipaa, nist-800-53, gpg13, tsc, mitre]
     result:
       in: query
       name: result
@@ -3863,13 +3795,6 @@ components:
       schema:
         type: integer
         minimum: 0
-    role_name:
-      in: query
-      name: role_name
-      description: "Specify and existent role name"
-      required: True
-      schema:
-        type: string
     rule_ids:
       in: query
       name: rule_ids
@@ -3880,13 +3805,6 @@ components:
           type: integer
           format: int32
           minimum: 1
-    rulesetPath:
-      in: query
-      name: path
-      description: "Filter by path"
-      schema:
-        type: string
-        format: ruleset_path
     score:
       in: query
       name: score
@@ -4229,20 +4147,17 @@ components:
       schema:
         type: string
         format: alphanumeric
-    rootcheck_status:
+    tsc:
       in: query
-      name: status
-      description: "Filter by scan status"
+      name: tsc
+      description: "Filters by TSC requirement."
       schema:
         type: string
-        enum:
-        - all
-        - outstanding
-        - solved
-    cis:
+        format: alphanumeric
+    mitre:
       in: query
-      name: cis
-      description: "Filter by CIS requirement"
+      name: mitre
+      description: Filters by MITRE attack ID.
       schema:
         type: string
         format: alphanumeric
@@ -4531,14 +4446,6 @@ components:
       schema:
         type: string
         format: alphanumeric
-    list_filepath:
-      in: query
-      name: path
-      description: "List file path"
-      required: true
-      schema:
-        type: string
-        format: etc_path
     local.ip:
       in: query
       name: local.ip
@@ -4799,8 +4706,6 @@ tags:
     description: "Attacks information from MITRE database"
   - name: overview
     description: "Overwiew of Wazuh"
-  - name: rootcheck
-    description: "Detection of rootkit, ports and hidden processes and many other scans"
   - name: rules
     description: "Rules management"
   - name: sca
@@ -9296,268 +9201,6 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
 
-  /rootcheck:
-    put:
-      tags:
-      - rootcheck
-      summary: "Run a rootcheck scan in all agents"
-      description: "Run syscheck and rootcheck in all agents (Wazuh launches both processes simultaneously)"
-      operationId: api.controllers.rootcheck_controller.put_rootcheck
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: "Confirmation message"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                message: "Restarting Syscheck/Rootcheck on all agents"
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-
-    delete:
-      tags:
-      - rootcheck
-      summary: "Clear rootcheck scan results in all agents"
-      description: "Clear rootcheck scan results in all agents"
-      operationId: api.controllers.rootcheck_controller.delete_rootcheck
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: "Confirmation message"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                message: "Rootcheck database deleted"
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-
-  /rootcheck/{agent_id}:
-    get:
-      tags:
-      - rootcheck
-      summary: "Get Rootcheck database"
-      description: "Return rootcheck findings and scan results in the specified agent"
-      operationId: api.controllers.rootcheck_controller.get_rootcheck_agent
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/query'
-        - $ref: '#/components/parameters/rootcheck_status'
-        - $ref: '#/components/parameters/pci_dss'
-        - $ref: '#/components/parameters/cis'
-      responses:
-        '200':
-          description: "Latest rootcheck scan result"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseRootcheck'
-              example:
-                data:
-                  affected_items:
-                    - status: outstanding
-                      readDay: '2019-03-08T09:20:05Z'
-                      oldDay: '2019-03-08T09:20:05Z'
-                      event: 'System Audit: SSH Hardening - 3: Root can log in. File: /etc/ssh/sshd_config.
-                      Reference: 3 .'
-                    - status: outstanding
-                      readDay: "2019-03-08T09:20:05Z"
-                      oldDay: "2019-03-08T09:20:05Z"
-                      pci_dss: 2.2.4
-                      event: "System Audit: SSH Hardening - 4: No Public Key authentication {PCI_DSS: 2.2.4}. File: /etc/ssh/sshd_config. Reference: 4 ."
-                  failed_items: []
-                  total_affected_items: 2
-                  total_failed_items: 0
-                message: ToDo
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-
-    put:
-      tags:
-      - rootcheck
-      summary: "Run rootcheck scan in an agent"
-      description: "Run syscheck and rootcheck scans in a specified agent (Wazuh launches both processes at the same time)"
-      operationId: api.controllers.rootcheck_controller.put_rootcheck_agent
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-      responses:
-        '200':
-          description: "Confirmation message"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                message: "Restarting Syscheck/Rootcheck locally"
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-
-    delete:
-      tags:
-      - rootcheck
-      summary: "Clear rootcheck scan results for a specified agent"
-      description: "Clear rootcheck scan results for a specified agent"
-      operationId: api.controllers.rootcheck_controller.delete_rootcheck_agent
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-      responses:
-        '200':
-          description: "Confirmation message"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                message: "Rootcheck database deleted"
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-
-  /rootcheck/{agent_id}/pci:
-    get:
-      tags:
-      - rootcheck
-      summary: "Get PCI requirements in the rootcheck database"
-      description: "Return a list containing PCI requirements that have been detected by rootcheck scans"
-      operationId: api.controllers.rootcheck_controller.get_rootcheck_pci_agent
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-      responses:
-        '200':
-          description: "PCI requirements list"
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/AllItemsResponse'
-              example:
-                data:
-                  affected_items:
-                    - 2.2.4
-                  failed_items: []
-                  total_affected_items: 1
-                  total_failed_items: 0
-                message: ToDo
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-
-  /rootcheck/{agent_id}/cis:
-    get:
-      tags:
-      - rootcheck
-      summary: "Get CIS requirements in the rootcheck database"
-      description: "Return a list containing CIS requirements that have been detected by rootcheck scans"
-      operationId: api.controllers.rootcheck_controller.get_rootcheck_cis_agent
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-      responses:
-        '200':
-          description: "CIS requirements list"
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/AllItemsResponse'
-              example:
-                data:
-                  affected_items:
-                    - 2.3 Debian Linux
-                    - 1.4 Debian Linux
-                  failed_items: []
-                  total_affected_items: 2
-                  total_failed_items: 0
-                message: ToDo
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-
-  /rootcheck/{agent_id}/last_scan:
-    get:
-      tags:
-      - rootcheck
-      summary: "Get last rootcheck scan dates"
-      description: "Return when the last rootcheck scan started and ended. If the scan is still in progress the end date will be unknown"
-      operationId: api.controllers.rootcheck_controller.get_last_scan_agent
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-      responses:
-        '200':
-          description: "Scan dates"
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/LastScan'
-              example:
-                data:
-                  end: "2019-03-08T10:35:21Z"
-                  start: "2019-03-08T10:34:56Z"
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-
   /rules:
     get:
       tags:
@@ -9587,6 +9230,8 @@ paths:
         - $ref: '#/components/parameters/gpg13'
         - $ref: '#/components/parameters/hipaa'
         - $ref: '#/components/parameters/nist-800-53'
+        - $ref: '#/components/parameters/tsc'
+        - $ref: '#/components/parameters/mitre'
       responses:
         '200':
           description: "Rule"
@@ -9615,6 +9260,7 @@ paths:
                       id: 1
                       level: 0
                       nist_800_53: []
+                      tsc: []
                       path: ruleset/rules
                       pci_dss: []
                       status: enabled
@@ -9631,6 +9277,7 @@ paths:
                       id: 5
                       level: 0
                       nist_800_53: []
+                      tsc: []
                       path: ruleset/rules
                       pci_dss: []
                       status: enabled
@@ -9976,7 +9623,7 @@ paths:
       tags:
       - syscheck
       summary: "Run a syscheck scan in all agents"
-      description: "Run syscheck and rootcheck in all agents (Wazuh launches both processes simultaneously)"
+      description: "Run syscheck in all agents"
       operationId: api.controllers.syscheck_controller.put_syscheck
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/syscheck:run'

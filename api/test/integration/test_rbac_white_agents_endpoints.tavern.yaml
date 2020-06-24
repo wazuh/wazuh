@@ -586,7 +586,6 @@ stages:
            - count: 6
              os:
                platform: !anystr
-           - count: !anyint
          failed_items: []
          total_affected_items: !anyint
          total_failed_items: 0
@@ -1723,3 +1722,25 @@ stages:
       status_code: 400
       json:
         <<: *permission_denied
+
+---
+test_name: GET /agents (deny cluster:read_config)
+
+stages:
+
+  - name: Get unknown-node on failed response
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/agents"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: '001'
+    response:
+      status_code: 400
+      json:
+        code: 4000
+        dapi_errors:
+          unknown-node: # No permissions to see node name
+            error: !anystr

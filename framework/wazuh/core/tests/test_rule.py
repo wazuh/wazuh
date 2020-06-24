@@ -143,13 +143,16 @@ def test_format_rule_decoder_file(rule_file, rule_path, rule_status):
 
 @pytest.mark.parametrize('groups, general_groups', [
     (['virus', 'pci_dss_5.1', 'pci_dss_5.2', 'pci_dss_10.6.1', 'pci_dss_11.4', 'gpg13_4.2', 'gdpr_IV_35.7.d',
-      'hipaa_164.312.b', 'nist_800_53_SI.3', 'nist_800_53_AU.6', 'nist_800_53_SI.4'], ['mcafee'])
+      'hipaa_164.312.b', 'nist_800_53_SI.3', 'nist_800_53_AU.6', 'nist_800_53_SI.4', 'tsc_CC7.4', 'mitre_T1017'],
+     ['mcafee'])
 ])
 def test_set_groups(groups, general_groups):
     """Test set_groups rule core function."""
-    empty_rule = {'pci_dss': [], 'gdpr': [], 'hipaa': [], 'nist_800_53': [], 'gpg13': [], 'groups': []}
+    empty_rule = {'pci_dss': [], 'gdpr': [], 'hipaa': [], 'nist_800_53': [], 'gpg13': [], 'tsc': [], 'mitre': [],
+                  'groups': []}
     expected_result = {'pci_dss': ['5.1', '5.2', '10.6.1', '11.4'], 'gdpr': ['IV_35.7.d'], 'hipaa': ['164.312.b'],
-                       'nist_800_53': ['SI.3', 'AU.6', 'SI.4'], 'gpg13': ['4.2'], 'groups': ['virus', 'mcafee']}
+                       'nist_800_53': ['SI.3', 'AU.6', 'SI.4'], 'gpg13': ['4.2'], 'tsc': ['CC7.4'], 'mitre': ['T1017'],
+                       'groups': ['virus', 'mcafee']}
     rule.set_groups(groups, general_groups, empty_rule)
 
     assert empty_rule == expected_result
