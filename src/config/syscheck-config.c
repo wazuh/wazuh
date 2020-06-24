@@ -774,7 +774,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
                     len_str_limit = strlen(value);
 
-                    if (value[len_str_limit - 1] == 'B') {
+                    if (value[len_str_limit - 1] == 'B' || value[len_str_limit - 1] == 'b') {
                         if (isalpha(value[len_str_limit - 2])){
                             switch (value[len_str_limit - 2]) {
                                 case 'M':
