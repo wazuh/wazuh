@@ -113,13 +113,13 @@ else()
                                      -Wl,--wrap,audit_open -Wl,--wrap,audit_get_rule_list -Wl,--wrap,audit_close -Wl,--wrap,_mdebug1 -Wl,--wrap,_mwarn -Wl,--wrap,W_Vector_length -Wl,--wrap,search_audit_rule \
                                      -Wl,--wrap,audit_add_rule -Wl,--wrap,W_Vector_insert_unique -Wl,--wrap,SendMSG -Wl,--wrap,fim_whodata_event -Wl,--wrap,fflush -Wl,--wrap,fgets \
                                      -Wl,--wrap,openproc -Wl,--wrap,readproc -Wl,--wrap,freeproc -Wl,--wrap,closeproc -Wl,--wrap,_mdebug2 -Wl,--wrap,get_user -Wl,--wrap,get_group -Wl,--wrap,realpath \
-                                     -Wl,--wrap,readlink -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,remove")
+                                     -Wl,--wrap,readlink -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,remove -Wl,--wrap,atexit")
 endif()
 
 set(SEECHANGES_BASE_FLAGS "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,lstat -Wl,--wrap,stat -Wl,--wrap,abspath -Wl,--wrap,wfopen -Wl,--wrap,fread -Wl,--wrap,fopen \
                            -Wl,--wrap,fclose -Wl,--wrap,fwrite -Wl,--wrap,w_compress_gzfile -Wl,--wrap,IsDir -Wl,--wrap,mkdir  -Wl,--wrap,fflush \
                            -Wl,--wrap,w_uncompress_gzfile -Wl,--wrap,OS_MD5_File -Wl,--wrap,File_DateofChange -Wl,--wrap,rename -Wl,--wrap,system \
-                           -Wl,--wrap,fseek -Wl,--wrap,remove,--wrap=fprintf,--wrap=fgets ")
+                           -Wl,--wrap,fseek -Wl,--wrap,remove,--wrap=fprintf,--wrap=fgets -Wl,--wrap,atexit")
 
 list(APPEND syscheckd_tests_names "test_seechanges")
 if(${TARGET} STREQUAL "agent")

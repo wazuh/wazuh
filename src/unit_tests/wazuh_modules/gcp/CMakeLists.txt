@@ -41,7 +41,7 @@ list(APPEND tests_flags "-Wl,--wrap,wm_exec,--wrap,_mtdebug1,--wrap,_mtinfo,--wr
                          -Wl,--wrap,FOREVER,--wrap,_mtdebug2")
 
 list(APPEND tests_names "test_wmodules_gcp")
-list(APPEND tests_flags "-Wl,--wrap,sched_scan_read,--wrap,realpath,--wrap,IsFile,--wrap,_mwarn,--wrap,_merror")
+list(APPEND tests_flags "-Wl,--wrap,sched_scan_read,--wrap,realpath,--wrap,IsFile,--wrap,_mwarn,--wrap,_merror,--wrap,atexit")
 
 
 # Generate wazuh modules library

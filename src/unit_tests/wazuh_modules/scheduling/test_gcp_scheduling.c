@@ -11,6 +11,7 @@
 #include "wazuh_modules/wmodules.h"
 #include "wazuh_modules/wm_gcp.h"
 #include "wmodules_scheduling_helpers.h"
+#include "../../wrappers/libc/stdio_wrappers.h"
 
 #define TEST_MAX_DATES 5
 
@@ -21,10 +22,6 @@ static unsigned test_gcp_date_counter = 0;
 static struct tm test_gcp_date_storage[TEST_MAX_DATES];
 
 extern void wm_gcp_run(const wm_gcp *data);
-
-char *__wrap_realpath(const char *path, char *resolved_path) {
-    return (char *)mock();
-}
 
 int __wrap_IsFile(const char* path){
     return mock();
@@ -61,7 +58,11 @@ static int setup_module() {
     ;
     lxml = malloc(sizeof(OS_XML));
     XML_NODE nodes = string_to_xml_node(string, lxml);
-    will_return(__wrap_realpath, "TEST_STRING");
+
+    expect_string(__wrap_realpath, path, "/var/ossec/credentials.json");
+    will_return(__wrap_realpath, "/var/ossec/credentials.json");
+    will_return(__wrap_realpath, (char *) 1);
+
     will_return(__wrap_IsFile, 0); 
     int ret = wm_gcp_read(nodes, gcp_module);
     OS_ClearNode(nodes);
@@ -178,7 +179,11 @@ void test_fake_tag(void **state){
     ;
     test_structure *test = *state;
     test->nodes = string_to_xml_node(string, &(test->xml));
-    will_return(__wrap_realpath, "TEST_STRING");
+
+    expect_string(__wrap_realpath, path, "/var/ossec/credentials.json");
+    will_return(__wrap_realpath, "/var/ossec/credentials.json");
+    will_return(__wrap_realpath, (char *) 1);
+
     will_return(__wrap_IsFile, 0);
     assert_int_equal(wm_gcp_read(test->nodes, test->module),-1);
 }
@@ -196,7 +201,11 @@ void test_read_scheduling_monthday_configuration(void **state) {
     ;
     test_structure *test = *state;
     test->nodes = string_to_xml_node(string, &(test->xml));
-    will_return(__wrap_realpath, "TEST_STRING");
+
+    expect_string(__wrap_realpath, path, "/var/ossec/credentials.json");
+    will_return(__wrap_realpath, "/var/ossec/credentials.json");
+    will_return(__wrap_realpath, (char *) 1);
+
     will_return(__wrap_IsFile, 0);
     assert_int_equal(wm_gcp_read(test->nodes, test->module),0);
     wm_gcp *module_data = (wm_gcp*) test->module->data;
@@ -220,7 +229,11 @@ void test_read_scheduling_weekday_configuration(void **state) {
     ;
     test_structure *test = *state;
     test->nodes = string_to_xml_node(string, &(test->xml));
-    will_return(__wrap_realpath, "TEST_STRING");
+
+    expect_string(__wrap_realpath, path, "/var/ossec/credentials.json");
+    will_return(__wrap_realpath, "/var/ossec/credentials.json");
+    will_return(__wrap_realpath, (char *) 1);
+
     will_return(__wrap_IsFile, 0);
     assert_int_equal(wm_gcp_read(test->nodes, test->module),0);
     wm_gcp *module_data = (wm_gcp*) test->module->data;
@@ -243,7 +256,11 @@ void test_read_scheduling_daytime_configuration(void **state) {
     ;
     test_structure *test = *state;
     test->nodes = string_to_xml_node(string, &(test->xml));
-    will_return(__wrap_realpath, "TEST_STRING");
+    
+    expect_string(__wrap_realpath, path, "/var/ossec/credentials.json");
+    will_return(__wrap_realpath, "/var/ossec/credentials.json");
+    will_return(__wrap_realpath, (char *) 1);
+
     will_return(__wrap_IsFile, 0);
     assert_int_equal(wm_gcp_read(test->nodes, test->module),0);
     wm_gcp *module_data = (wm_gcp*) test->module->data;
@@ -266,7 +283,11 @@ void test_read_scheduling_interval_configuration(void **state) {
     ;
     test_structure *test = *state;
     test->nodes = string_to_xml_node(string, &(test->xml));
-    will_return(__wrap_realpath, "TEST_STRING");
+
+    expect_string(__wrap_realpath, path, "/var/ossec/credentials.json");
+    will_return(__wrap_realpath, "/var/ossec/credentials.json");
+    will_return(__wrap_realpath, (char *) 1);
+
     will_return(__wrap_IsFile, 0);
     assert_int_equal(wm_gcp_read(test->nodes, test->module),0);
     wm_gcp *module_data = (wm_gcp*) test->module->data;
