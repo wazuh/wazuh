@@ -29,9 +29,8 @@ int timeout;    //timeout in seconds waiting for a server reply
 
 static ssize_t receive_message(char *buffer, unsigned int max_lenght);
 static void w_agentd_keys_init (void);
-static bool agent_handshake_to_server(void);
+static bool agent_handshake_to_server(int server_id);
 static void send_msg_on_startup(void);
-
 
 bool connect_server(int server_id)
 {
@@ -42,15 +41,14 @@ bool connect_server(int server_id)
         CloseSocket(agt->sock);
         agt->sock = -1;
 
-        if (agt->server[server_id].rip) {
+        if (agt->server[agt->rip_id].rip) {
             minfo("Closing connection to server (%s:%d/%s).",
-                    agt->server[server_id].rip,
-                    agt->server[server_id].port,
-                    agt->server[server_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
+                    agt->server[agt->rip_id].rip,
+                    agt->server[agt->rip_id].port,
+                    agt->server[agt->rip_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
         }
     }
 
-    
     char *tmp_str;
 
     /* Check if we have a hostname */
@@ -76,7 +74,7 @@ bool connect_server(int server_id)
         int rip_l = strlen(agt->server[server_id].rip);
         mdebug2("Could not resolve hostname '%.*s'", agt->server[server_id].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[server_id].rip);
             
-        return 0;
+        return false;
     }
 
     minfo("Trying to connect to server (%s:%d/%s).",
@@ -125,32 +123,32 @@ void start_agent(int is_startup)
     #ifdef ONEWAY_ENABLED
         return;
     #endif
-
+    int current_server_id = agt->rip_id;
     while (1) {
         int attempts = 0;
-        while (attempts <= agt->server[agt->rip_id].max_retries) {
-            if (agent_handshake_to_server()) {
+        while (attempts <= agt->server[current_server_id].max_retries) {
+            if (agent_handshake_to_server(current_server_id)) {
                 if (is_startup) {
                     send_msg_on_startup();
                 }
                 return;
             }
-            sleep(agt->server[agt->rip_id].retry_interval);
+            sleep(agt->server[current_server_id].retry_interval);
 
-            if (agt->enrollment_cfg && agt->enrollment_cfg->enabled && attempts == (agt->server[agt->rip_id].max_retries -1)) {
-                try_enroll_to_server(agt->server[agt->rip_id].rip);                     
+            if (agt->enrollment_cfg && agt->enrollment_cfg->enabled && attempts == (agt->server[current_server_id].max_retries -1)) {
+                try_enroll_to_server(agt->server[current_server_id].rip);                     
             }
             attempts ++;
         }
         /* Wait for server reply */
-        mwarn(AG_WAIT_SERVER, agt->server[agt->rip_id].rip);
+        mwarn(AG_WAIT_SERVER, agt->server[current_server_id].rip);
 
         /* If there is a next server, try it */
-        if (agt->server[agt->rip_id + 1].rip) {
-            agt->rip_id++;
-            minfo("Trying next server ip in the line: '%s'.", agt->server[agt->rip_id].rip);
+        if (agt->server[current_server_id + 1].rip) {
+            current_server_id++;
+            minfo("Trying next server ip in the line: '%s'.", agt->server[current_server_id].rip);
         } else {
-            agt->rip_id = 0;
+            current_server_id = 0;
             mwarn("Unable to connect to any server.");
         }
     }
@@ -284,7 +282,7 @@ int try_enroll_to_server(const char * server_rip) {
  * @retval true on success
  * @retval false when failed
  * */
-static bool agent_handshake_to_server(){
+static bool agent_handshake_to_server(int server_id){
     size_t msg_length;
     ssize_t recv_b = 0;
     int ret = false;
@@ -296,7 +294,7 @@ static bool agent_handshake_to_server(){
 
     snprintf(msg, OS_MAXSTR, "%s%s", CONTROL_HEADER, HC_STARTUP);
 
-    if (connect_server(agt->rip_id)) {
+    if (connect_server(server_id)) {
         /* Send start up message */
         send_msg(msg, -1);
 
@@ -305,8 +303,8 @@ static bool agent_handshake_to_server(){
         
         if (recv_b > 0) {
             /* Id of zero -- only one key allowed */
-            if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip, &tmp_msg) != KS_VALID) {
-                mwarn(MSG_ERROR, agt->server[agt->rip_id].rip);
+            if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[server_id].rip, &tmp_msg) != KS_VALID) {
+                mwarn(MSG_ERROR, agt->server[server_id].rip);
             } 
             else {
                 /* Check for commands */
@@ -315,8 +313,8 @@ static bool agent_handshake_to_server(){
                     if (strcmp(tmp_msg, HC_ACK) == 0) {
                         available_server = time(0);
 
-                        minfo(AG_CONNECTED, agt->server[agt->rip_id].rip,
-                                agt->server[agt->rip_id].port, agt->server[agt->rip_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
+                        minfo(AG_CONNECTED, agt->server[server_id].rip,
+                                agt->server[server_id].port, agt->server[server_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
 
                         ret = true;
                     }
