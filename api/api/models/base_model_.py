@@ -193,8 +193,9 @@ class Items(Model):
 
 class Body(Model):
     @classmethod
-    def get_kwargs(cls, dikt, additional_kwargs: dict = None):
+    async def get_kwargs(cls, request, additional_kwargs: dict = None):
         try:
+            dikt = request if isinstance(request, dict) else await request.json()
             f_kwargs = util.deserialize_model(dikt, cls).to_dict()
         except JSONDecodeError as e:
             raise_if_exc(APIError(code=2005, details=e.msg))

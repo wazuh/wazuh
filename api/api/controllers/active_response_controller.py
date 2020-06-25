@@ -24,7 +24,7 @@ async def run_command(request, list_agents='*', pretty=False, wait_for_complete=
     :return: message
     """
     # Get body parameters
-    f_kwargs = ActiveResponseModel.get_kwargs(await request.json(), additional_kwargs={'agent_list': list_agents})
+    f_kwargs = await ActiveResponseModel.get_kwargs(request, additional_kwargs={'agent_list': list_agents})
 
     dapi = DistributedAPI(f=active_response.run_command,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

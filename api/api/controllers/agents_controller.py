@@ -3,21 +3,19 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import logging
-from json.decoder import JSONDecodeError
 
 from aiohttp import web
 from connexion.lifecycle import ConnexionResponse
 
 import wazuh.agent as agent
 from api import configuration
-from api.api_exception import APIError
 from api.encoder import dumps, prettify
 from api.models.agent_added import AgentAdded
 from api.models.agent_inserted import AgentInserted
 from api.models.base_model_ import Data, Body
 from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc
-from wazuh.core.common import database_limit
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.common import database_limit
 from wazuh.exception import WazuhError
 
 logger = logging.getLogger('wazuh')
@@ -126,7 +124,7 @@ async def add_agent(request, pretty=False, wait_for_complete=False):
     :return: AgentIdKey
     """
     # Get body parameters
-    f_kwargs = AgentAdded.get_kwargs(await request.json())
+    f_kwargs = await AgentAdded.get_kwargs(request)
 
     # Get IP if not given
     if not f_kwargs['ip']:
@@ -845,7 +843,7 @@ async def insert_agent(request, pretty=False, wait_for_complete=False):
     :return: AgentIdKey
     """
     # Get body parameters
-    f_kwargs = AgentInserted.get_kwargs(await request.json())
+    f_kwargs = await AgentInserted.get_kwargs(request)
 
     # Get IP if not given
     if not f_kwargs['ip']:
