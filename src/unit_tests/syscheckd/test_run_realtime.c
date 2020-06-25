@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../wrappers/posix/pthread_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 
@@ -90,18 +91,6 @@ void *__wrap_OSHash_Next(const OSHash *self, unsigned int *i, OSHashNode *curren
     check_expected_ptr(self);
 
     return mock_type(OSHashNode*);
-}
-
-int __wrap_pthread_mutex_lock(pthread_mutex_t *x) {
-    function_called();
-
-    return 0;
-}
-
-int __wrap_pthread_mutex_unlock(pthread_mutex_t *x) {
-    function_called();
-
-    return 0;
 }
 
 void * __wrap_rbtree_insert() {
