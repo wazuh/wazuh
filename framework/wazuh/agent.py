@@ -4,6 +4,7 @@
 
 import hashlib
 import operator
+from glob import glob
 from os import chmod, path, listdir
 from shutil import copyfile
 
@@ -328,46 +329,32 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort_by=None, sort_a
                                       none_msg='No group information was obtained'
                                       )
 
-    # Group names
-    system_groups = get_groups()
-    for group_id in group_list:
-        try:
-            # Check if group exists
-            if group_id not in system_groups:
-                raise WazuhError(1710)
+    # Connect DB
+    db_global = glob(common.database_path_global)
+    if not db_global:
+        raise WazuhException(1600)
 
-            full_entry = path.join(common.shared_path, group_id)
+    conn = Connection(db_global[0])
+    query = "SELECT COUNT(*) AS count, (SELECT name FROM `group` WHERE id=id_group) AS name FROM `belongs` GROUP BY id_group ORDER BY name ASC LIMIT 500 OFFSET 0;"
+    conn.execute(query)
+    data = conn.fetch_all()
 
-            # Get ID from group
-            db_query = WazuhDBQueryGroup(select=['name'], filters={'name': group_id})
-            query_data = db_query.run()
+    for group in data:
+        full_entry = path.join(common.shared_path, group['name'])
 
-            # Group count
-            db_query = WazuhDBQueryAgents(get_data=False, filters={'group': query_data['items'][0]['name']})
-            query_data = db_query.run()
+        # merged.mg and agent.conf sum
+        merged_sum = get_hash(path.join(full_entry, "merged.mg"), hash_algorithm)
+        conf_sum = get_hash(path.join(full_entry, "agent.conf"), hash_algorithm)
 
-            # merged.mg and agent.conf sum
-            merged_sum = get_hash(path.join(full_entry, "merged.mg"), hash_algorithm)
-            conf_sum = get_hash(path.join(full_entry, "agent.conf"), hash_algorithm)
+        if merged_sum:
+            group['mergedSum'] = merged_sum
 
-            item = {'count': query_data['totalItems'], 'name': group_id}
+        if conf_sum:
+            group['configSum'] = conf_sum
+        affected_groups.append(group)
 
-            if merged_sum:
-                item['mergedSum'] = merged_sum
-
-            if conf_sum:
-                item['configSum'] = conf_sum
-
-            affected_groups.append(item)
-        except WazuhException as e:
-            result.add_failed_item(id_=group_id, error=e)
-
-    data = process_array(affected_groups, search_text=search_text, search_in_fields=search_in_fields,
-                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit)
-
-    result.affected_items = data['items']
-    result.total_affected_items = data['totalItems']
+    result.affected_items = affected_groups
+    result.total_affected_items = len(affected_groups)
 
     return result
 
