@@ -59,7 +59,7 @@ installPrerequisites() {
 
     if [ $sys_type == "yum" ] 
     then
-        yum install java-11-openjdk-devel > /dev/null 2>&1
+        yum install java-11-openjdk-devel -y > /dev/null 2>&1
         if [  "$?" != 0  ]
         then
             yum install java-1.8.0-openjdk-devel unzip wget curl libcap -y -q > /dev/null 2>&1
