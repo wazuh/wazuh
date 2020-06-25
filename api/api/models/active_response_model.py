@@ -1,18 +1,17 @@
 # coding: utf-8
 
 from __future__ import absolute_import
-from datetime import date, datetime  # noqa: F401
 
+from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
-from api.models.base_model_ import Model
-from api import util
+from api.models.base_model_ import Body
 
 
-class ActiveResponse(Model):
+class ActiveResponseModel(Body):
 
     def __init__(self, command: str = None, custom: bool = None, arguments: List[str] = None):
-        """ActiveResponse body model
+        """ActiveResponseModel body model
 
         :param command: Command running in the agent. If this value starts by !, then it refers to a script name instead of a command name
         :type command: str
@@ -36,17 +35,6 @@ class ActiveResponse(Model):
         self._command = command
         self._custom = custom
         self._arguments = arguments
-
-    @classmethod
-    def from_dict(cls, dikt) -> 'ActiveResponse':
-        """Returns the dict as a model
-
-        :param dikt: A dict.
-        :type: dict
-        :return: The Agent of this Agent.
-        :rtype: dict
-        """
-        return util.deserialize_model(dikt, cls)
 
     @property
     def command(self) -> str:
