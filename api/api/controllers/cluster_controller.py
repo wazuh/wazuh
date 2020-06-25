@@ -13,7 +13,7 @@ import wazuh.manager as manager
 import wazuh.stats as stats
 from api import configuration
 from api.encoder import dumps, prettify
-from api.models.base_model_ import Data
+from api.models.base_model_ import Data, Body
 from api.models.configuration_model import APIConfigurationModel
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
 from wazuh.core.cluster.control import get_system_nodes
@@ -496,17 +496,12 @@ async def put_files_node(request, body, node_id, path, overwrite=False, pretty=F
     """
 
     # parse body to utf-8
-    try:
-        body = body.decode('utf-8')
-    except UnicodeDecodeError:
-        raise_if_exc(WazuhError(1911))
-    except AttributeError:
-        raise_if_exc(WazuhError(1912))
+    parsed_body = Body.decode_body(body, unicode_error=1911, attribute_error=1912)
 
     f_kwargs = {'node_id': node_id,
                 'path': path,
                 'overwrite': overwrite,
-                'content': body}
+                'content': parsed_body}
 
     nodes = await get_system_nodes()
     dapi = DistributedAPI(f=manager.upload_file,

@@ -14,7 +14,7 @@ from api.api_exception import APIError
 from api.encoder import dumps, prettify
 from api.models.agent_added import AgentAdded
 from api.models.agent_inserted import AgentInserted
-from api.models.base_model_ import Data
+from api.models.base_model_ import Data, Body
 from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc
 from wazuh.core.common import database_limit
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -702,15 +702,10 @@ async def put_group_config(request, body, group_id, pretty=False, wait_for_compl
     :return: ApiResponse
     """
     # Parse body to utf-8
-    try:
-        body = body.decode('utf-8')
-    except UnicodeDecodeError:
-        raise_if_exc(APIError(code=2006))
-    except AttributeError:
-        raise_if_exc(APIError(code=2007))
+    parsed_body = Body.decode_body(body, unicode_error=2006, attribute_error=2007)
 
     f_kwargs = {'group_list': [group_id],
-                'file_data': body}
+                'file_data': parsed_body}
 
     dapi = DistributedAPI(f=agent.upload_group_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

@@ -219,3 +219,13 @@ class Body(Model):
         :rtype: dict
         """
         return util.deserialize_model(dikt, cls)
+
+    @classmethod
+    def decode_body(cls, dikt, unicode_error=None, attribute_error=None):
+        try:
+            body = dikt.decode('utf-8')
+        except UnicodeDecodeError:
+            raise_if_exc(WazuhError(unicode_error))
+        except AttributeError:
+            raise_if_exc(WazuhError(attribute_error))
+        return body
