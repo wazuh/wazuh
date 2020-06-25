@@ -4,20 +4,20 @@
 
 import logging
 import re
-from json.decoder import JSONDecodeError
 
 from aiohttp import web
 
-from api.api_exception import APIError
 from api.authentication import generate_token
+from api.configuration import default_security_configuration
 from api.encoder import dumps, prettify
+from api.models.security_model import CreateUserModel, UpdateUserModel, RoleModel, PolicyModel, \
+    SecurityConfigurationModel
 from api.models.token_response import TokenResponse
 from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param
 from wazuh import security
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhError
 from wazuh.rbac import preprocessor
-from api.configuration import default_security_configuration
 from wazuh.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh')
@@ -99,29 +99,6 @@ async def get_users(request, usernames: list = None, pretty=False, wait_for_comp
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-def _check_body(f_kwargs, keys: list = None):
-    """Checks that body is correct.
-
-    Parameters
-    ----------
-    f_kwargs : dict
-        Body to be checked
-    keys : list
-        Keys that the body must have only and exclusively
-
-    Returns
-    -------
-    False if invalid key detected else True
-    """
-    if keys is None:
-        keys = ['username', 'password']
-    for key in f_kwargs.keys():
-        if key not in keys:
-            return False
-
-    return True
-
-
 async def create_user(request):
     """Create a new user.
 
@@ -133,14 +110,7 @@ async def create_user(request):
     -------
     User data
     """
-    validate = False
-    try:
-        f_kwargs = {**await request.json()}
-        validate = _check_body(f_kwargs)
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
-    if not validate:
-        raise_if_exc(WazuhError(5005, extra_message='Invalid field found {}'.format(f_kwargs)))
+    f_kwargs = CreateUserModel.get_kwargs(await request.json())
     dapi = DistributedAPI(f=security.create_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -166,13 +136,7 @@ async def update_user(request, username: str):
     -------
     User data
     """
-    try:
-        f_kwargs = {'username': username, **await request.json()}
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
-    validate = _check_body(f_kwargs)
-    if validate is not True:
-        raise WazuhError(5005, extra_message='Invalid field found {}'.format(validate))
+    f_kwargs = UpdateUserModel.get_kwargs(await request.json(), additional_kwargs={'username': username})
     dapi = DistributedAPI(f=security.update_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -275,13 +239,7 @@ async def add_role(request, pretty: bool = False, wait_for_complete: bool = Fals
     Role information
     """
     # get body parameters
-    role_added_model = dict()
-    try:
-        role_added_model = await request.json()
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
-
-    f_kwargs = {'name': role_added_model['name'], 'rule': role_added_model['rule']}
+    f_kwargs = RoleModel.get_kwargs(await request.json())
 
     dapi = DistributedAPI(f=security.add_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -346,14 +304,7 @@ async def update_role(request, role_id: int, pretty: bool = False, wait_for_comp
     Role information updated
     """
     # get body parameters
-    role_added_model = dict()
-    try:
-        role_added_model = await request.json()
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
-
-    f_kwargs = {'role_id': role_id, 'name': role_added_model.get('name', None),
-                'rule': role_added_model.get('rule', None)}
+    f_kwargs = RoleModel.get_kwargs(await request.json(), additional_kwargs={'role_id': role_id})
 
     dapi = DistributedAPI(f=security.update_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -431,13 +382,7 @@ async def add_policy(request, pretty: bool = False, wait_for_complete: bool = Fa
     Policy information
     """
     # get body parameters
-    policy_added_model = dict()
-    try:
-        policy_added_model = await request.json()
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
-
-    f_kwargs = {'name': policy_added_model['name'], 'policy': policy_added_model['policy']}
+    f_kwargs = PolicyModel.get_kwargs(await request.json())
 
     dapi = DistributedAPI(f=security.add_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -502,15 +447,7 @@ async def update_policy(request, policy_id: int, pretty: bool = False, wait_for_
     Policy information updated
     """
     # get body parameters
-    policy_added_model = dict()
-    try:
-        policy_added_model = await request.json()
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
-
-    f_kwargs = {'policy_id': policy_id,
-                'name': policy_added_model.get('name', None),
-                'policy': policy_added_model.get('policy', None)}
+    f_kwargs = PolicyModel.get_kwargs(await request.json(), additional_kwargs={'policy_id': policy_id})
 
     dapi = DistributedAPI(f=security.update_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -681,9 +618,10 @@ async def get_rbac_resources(pretty: bool = False, resource: str = None):
     dict
         RBAC resources
     """
+    f_kwargs = {'resource': resource}
 
     dapi = DistributedAPI(f=security.get_rbac_resources,
-                          f_kwargs=remove_nones_to_dict({'resource': resource}),
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=True,
@@ -709,8 +647,10 @@ async def get_rbac_actions(pretty: bool = False, endpoint: str = None):
     dict
         RBAC actions
     """
+    f_kwargs = {'endpoint': endpoint}
+
     dapi = DistributedAPI(f=security.get_rbac_actions,
-                          f_kwargs=remove_nones_to_dict({'endpoint': endpoint}),
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=True,
@@ -723,7 +663,6 @@ async def get_rbac_actions(pretty: bool = False, endpoint: str = None):
 
 async def revoke_all_tokens(request):
     """Revoke all tokens."""
-
     f_kwargs = {}
 
     dapi = DistributedAPI(f=security.revoke_tokens,
@@ -775,10 +714,7 @@ async def put_security_config(request, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    try:
-        f_kwargs = {"updated_config": await request.json()}
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
+    f_kwargs = {'updated_config': SecurityConfigurationModel.get_kwargs(await request.json())}
 
     dapi = DistributedAPI(f=security.update_security_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -799,10 +735,7 @@ async def delete_security_config(request, pretty=False, wait_for_complete=False)
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    try:
-        f_kwargs = {"updated_config": default_security_configuration}
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
+    f_kwargs = {"updated_config": SecurityConfigurationModel.get_kwargs(default_security_configuration)}
 
     dapi = DistributedAPI(f=security.update_security_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
