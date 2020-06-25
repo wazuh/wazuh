@@ -30,7 +30,7 @@ int main()
       if(0 == dbsync_insert_data(handle, json_insert)) { 
         do {
           auto t_start {std::chrono::high_resolution_clock::now()};
-          //if(update_with_snapshot_cb(handle, json_update, (void *)&callback)) {
+          //dbsync_update_with_snapshot_cb(handle, json_update, (void *)&callback);
           if(0 == dbsync_update_with_snapshot(handle, json_update, &json_result)) {   
             auto t_end {std::chrono::high_resolution_clock::now()};
             std::cout << "duration: "<<std::chrono::duration_cast<std::chrono::microseconds>(t_end-t_start).count()<<std::endl;

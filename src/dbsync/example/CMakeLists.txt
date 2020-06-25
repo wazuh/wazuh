@@ -4,9 +4,12 @@ project(dbsync_example)
 
 include_directories(${CMAKE_SOURCE_DIR}/include/)
 link_directories(${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_BUILD_TYPE RelWithDebInfo)
 
 add_executable(dbsync_example 
     "${CMAKE_SOURCE_DIR}/example/main.cpp" )
 
-target_link_libraries(dbsync_example dbsync pthread dl)
+target_link_libraries(dbsync_example 
+    dbsync 
+    pthread 
+    dl 
+)
