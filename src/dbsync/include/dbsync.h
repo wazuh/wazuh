@@ -50,9 +50,9 @@ extern "C" {
  * @param path Path of local db.
  * @param sql_statement sql sentence to create tables in a SQL engine
  *
- * @return return a instance number to be used in the future.
+ * @return return a handle to be used in the future (cannot be used by more than 1 thread).
  */
-  EXPORTED unsigned long long dbsync_initialize(
+  EXPORTED DBSYNC_HANDLE dbsync_initialize(
     const HostType host_type, 
     const DbEngineType db_type,
     const char* path, 
@@ -67,7 +67,7 @@ extern "C" {
  * @return return 0 if the operations is success, otherwise an error code will vary depending on the operating system.
  */
   EXPORTED int dbsync_insert_data(
-    const unsigned long long handle,
+    const DBSYNC_HANDLE handle,
     const cJSON* json_insert);
 
 /**
@@ -80,7 +80,7 @@ extern "C" {
  * @return return 0 if the operations is success, otherwise an error code will vary depending on the operating system.
  */
   EXPORTED int dbsync_update_with_snapshot(
-    const unsigned long long handle,
+    const DBSYNC_HANDLE handle,
     const cJSON* json_snapshot,
     cJSON** json_return_modifications);
 
@@ -94,7 +94,7 @@ extern "C" {
  * @return return 0 if the operations is success, otherwise an error code will vary depending on the operating system.
  */
   EXPORTED int dbsync_update_with_snapshot_cb(
-    const unsigned long long handle,
+    const DBSYNC_HANDLE handle,
     const cJSON* json_snapshot,
     void* callback);
 
@@ -108,7 +108,7 @@ extern "C" {
  * @return return 0 if the operations is success, otherwise an error code will vary depending on the operating system.
  */
   EXPORTED int dbsync_select_rows(
-    const unsigned long long handle,
+    const DBSYNC_HANDLE handle,
     const cJSON* json_data_input,
     cJSON** json_return_rows);
 
@@ -122,7 +122,7 @@ extern "C" {
  * @return return 0 if the operations is success, otherwise an error code will vary depending on the operating system.
  */
   EXPORTED int dbsync_set_max_rows(
-    const unsigned long long handle,
+    const DBSYNC_HANDLE handle,
     const char* table,
     const unsigned long long max_rows);
 

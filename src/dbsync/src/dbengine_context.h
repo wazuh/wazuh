@@ -15,8 +15,6 @@
 #include "dbengine.h"
 #include "typedef.h"
 
-static std::atomic_ullong g_handler = { 0ull };
-
 class DbEngineContext {
 public:
   DbEngineContext(
@@ -25,16 +23,13 @@ public:
     const DbEngineType db_type) : 
     m_dbengine(std::move(dbengine)),
     m_host_type(host_type),
-    m_dbengine_type(db_type),
-    m_handler(++g_handler) {}
+    m_dbengine_type(db_type) {}
 
-  const std::unique_ptr<DbEngine>& GetDbEngine() { return m_dbengine; }
-  const HostType& GetHostType() { return m_host_type; }
-  const DbEngineType& GetDbEngineType() { return m_dbengine_type; }
-  const uint64_t& GetHandler() { return m_handler; }
+  const std::unique_ptr<DbEngine>& GetDbEngine() const { return m_dbengine; }
+  const HostType& GetHostType() const { return m_host_type; }
+  const DbEngineType& GetDbEngineType() const { return m_dbengine_type; }
 private:
-  std::unique_ptr<DbEngine> m_dbengine;
-  HostType m_host_type;
-  DbEngineType m_dbengine_type;
-  uint64_t m_handler;
+  const std::unique_ptr<DbEngine> m_dbengine;
+  const HostType m_host_type;
+  const DbEngineType m_dbengine_type;
 };
