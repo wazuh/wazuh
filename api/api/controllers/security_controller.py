@@ -10,8 +10,8 @@ from aiohttp import web
 from api.authentication import generate_token
 from api.configuration import default_security_configuration
 from api.encoder import dumps, prettify
-from api.models.security_model import CreateUserModel, UpdateUserModel, RoleModel, PolicyModel, \
-    SecurityConfigurationModel
+from api.models.configuration_model import SecurityConfigurationModel
+from api.models.security_model import CreateUserModel, UpdateUserModel, RoleModel, PolicyModel
 from api.models.token_response import TokenResponse
 from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param
 from wazuh import security

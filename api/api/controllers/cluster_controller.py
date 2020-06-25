@@ -4,7 +4,6 @@
 
 import datetime
 import logging
-from json.decoder import JSONDecodeError
 
 from aiohttp import web
 
@@ -13,9 +12,9 @@ import wazuh.core.common as common
 import wazuh.manager as manager
 import wazuh.stats as stats
 from api import configuration
-from api.api_exception import APIError
 from api.encoder import dumps, prettify
 from api.models.base_model_ import Data
+from api.models.configuration_model import APIConfigurationModel
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -585,10 +584,7 @@ async def put_api_config(request, pretty=False, wait_for_complete=False, list_no
     :param wait_for_complete: Disable timeout response
     :param list_nodes: List of node ids
     """
-    try:
-        f_kwargs = {"updated_config": await request.json(), 'node_list': list_nodes}
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
+    f_kwargs = {'node_list': list_nodes, 'updated_config': APIConfigurationModel.get_kwargs(await request.json())}
 
     nodes = await get_system_nodes()
     dapi = DistributedAPI(f=manager.update_api_config,
