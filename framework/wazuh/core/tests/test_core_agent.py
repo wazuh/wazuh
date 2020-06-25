@@ -96,6 +96,10 @@ test_data = InitAgent()
 def mock_ossec_path():
     with patch('wazuh.common.ossec_path', new=test_data_path):
         yield
+        # Delete db after all tests are run
+        db_path = os.path.join(test_data_path, 'global.db')
+        if os.path.isfile(db_path):
+            os.remove(db_path)
 
 
 def get_manager_version():
@@ -399,12 +403,51 @@ def test_WazuhDBQueryGroup_filters(filters):
 @patch('socket.socket.connect')
 def test_WazuhDBQueryGroupByAgents__init__(mock_socket_conn, mock_isfile, mock_glob, mock_sqli_conn):
     """Tests if method __init__ of WazuhDBQueryGroupByAgents works properly."""
-    query_group = WazuhDBQueryGroupByAgents('field', offset=0, limit=1, sort={'order': 'asc'},
+    query_group = WazuhDBQueryGroupByAgents(filter_fields=['name', 'os.name'], offset=0, limit=1, sort={'order': 'asc'},
                                             search={'value': 'test', 'negation': True},
                                             select={'os.name'}, query=None, count=5, get_data=None)
 
     assert query_group.remove_extra_fields, 'Query returned does not match the expected one'
     mock_sqli_conn.assert_called_once()
+
+
+@patch('wazuh.utils.glob.glob', return_value=True)
+@patch('sqlite3.connect')
+@patch("wazuh.database.isfile", return_value=True)
+@patch('socket.socket.connect')
+def test_WazuhDBQueryGroupByAgents_format_data_into_dictionary(mock_socket_conn, mock_isfile, mock_glob,
+                                                               mock_sqli_conn):
+    """Tests if method _format_data_into_dictionary of WazuhDBQueryGroupByAgents works properly."""
+    query_group = WazuhDBQueryGroupByAgents(filter_fields=['name', 'os.name'], offset=0, limit=1, sort={'order': 'asc'},
+                                            search={'value': 'test', 'negation': True},
+                                            select={'os.name'}, query=None, count=5, get_data=None)
+
+    query_group.filter_fields = {'fields': set(query_group.filter_fields)}
+    query_group._data = [{'count': 1, 'name': 'wazuh-master'},
+                         {'count': 1, 'name': 'wazuh-agent1'}]
+
+    result = query_group._format_data_into_dictionary()
+    assert all(x['os']['name'] == 'unknown' for x in result['items'])
+
+
+@patch('wazuh.utils.glob.glob', return_value=True)
+@patch('sqlite3.connect')
+@patch("wazuh.database.isfile", return_value=True)
+@patch('socket.socket.connect')
+def test_WazuhDBQueryGroupByAgents_format_data_into_dictionary_status(mock_socket_conn, mock_isfile, mock_glob,
+                                                                      mock_sqli_conn):
+    """Tests if method _format_data_into_dictionary of WazuhDBQueryGroupByAgents works properly."""
+    query_group = WazuhDBQueryGroupByAgents(filter_fields=['status', 'os.name'], offset=0, limit=1, sort=None,
+                                            search=None, select=None, query=None, count=5, get_data=None)
+
+    query_group.select = {'os.name', 'count', 'status', 'lastKeepAlive', 'version'}
+    query_group._data = [
+        {'os.name': 'Ubuntu', 'count': 1, 'version': 'Wazuh v4.0.0', 'status': 'updated', 'lastKeepAlive': 253402300799},
+        {'os.name': 'Ubuntu', 'count': 2, 'version': 'Wazuh v3.13.0', 'status': 'empty', 'lastKeepAlive': 1593093968},
+        {'os.name': 'Ubuntu', 'count': 1, 'version': 'Wazuh v3.13.0', 'status': 'empty', 'lastKeepAlive': 1593093976}]
+
+    result = query_group._format_data_into_dictionary()
+    assert result == {'items': [{'os': {'name': 'Ubuntu'}, 'status': 'active', 'count': 4}], 'totalItems': 0}
 
 
 @patch('wazuh.utils.glob.glob', return_value=True)
