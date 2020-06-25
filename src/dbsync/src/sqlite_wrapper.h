@@ -15,94 +15,101 @@
 
 #include <string>
 #include <memory>
-namespace SQLite {
-
-class exception : public std::exception
+namespace SQLite
 {
-  public:
-    __attribute__((__returns_nonnull__))
-    const char* what() const noexcept override
+    class exception : public std::exception
     {
-        return m.what();
-    }
+      public:
+        __attribute__((__returns_nonnull__))
+        const char* what() const noexcept override
+        {
+            return m_error.what();
+        }
 
-    const int id;
+        int id() const noexcept
+        {
+            return m_id;
+        }
 
-    __attribute__((__nonnull__(3)))
-    exception(int id_, const char* what_arg) : id(id_), m(what_arg) {}
+        __attribute__((__nonnull__(3)))
+        exception(const int id,
+                  const char* whatArg)
+        : m_id(id)
+        , m_error(whatArg)
+        {}
 
-  private:
-    /// an exception object as storage for error messages
-    std::runtime_error m;
-};
+      private:
+        /// an exception object as storage for error messages
+        const int m_id;
+        std::runtime_error m_error;
+    };
 
-class Connection : public IConnection
-{
-public:
-    Connection();
-    virtual ~Connection();
-    Connection(const std::string& path);
-    
-    bool Execute(const std::string& query) override;
-    bool Close() override;
-    sqlite3* GetDBInstance() override;
-private:
-    sqlite3* m_db_instance;
-    std::string m_path;
-};
+    class Connection : public IConnection
+    {
+    public:
+        Connection();
+        ~Connection() = default;
+        Connection(const std::string& path);
+
+        bool execute(const std::string& query) override;
+        bool close() override;
+        const std::shared_ptr<sqlite3>& db() const override;
+    private:
+        std::shared_ptr<sqlite3> m_db;
+    };
 
 
-class Transaction : public ITransaction
-{
-public:
-    virtual ~Transaction();
-    Transaction(std::shared_ptr<IConnection>& connection);
-    
-    bool Commit() override;
-    bool Rollback() override;
-private:
-    std::shared_ptr<IConnection> m_connection;
-    bool m_rollbacked;
-    bool m_commited;
-    bool m_started;
-};
+    class Transaction : public ITransaction
+    {
+    public:
+        ~Transaction();
+        Transaction(std::shared_ptr<IConnection>& connection);
 
-class Column : public IColumn {
-public:
-    virtual ~Column() = default;
-    Column(sqlite3_stmt* stmt, const int32_t index);
+        bool commit() override;
+        bool rollback() override;
+    private:
+        std::shared_ptr<IConnection> m_connection;
+        bool m_rolledBack;
+        bool m_commited;
+    };
 
-    bool IsNullValue();
-    int32_t Int();
-    uint64_t UInt64();
-    int64_t Int64();
-    double Double();
-    std::string String();
-private:
-    sqlite3_stmt* m_stmt;
-    int32_t m_index;
-};
+    class Column : public IColumn {
+    public:
+        virtual ~Column() = default;
+        Column(std::shared_ptr<sqlite3_stmt>& stmt, const int32_t index);
 
-class Statement : public IStatement 
-{
-public:
-    virtual ~Statement();
-    Statement(std::shared_ptr<IConnection>& connection, const std::string& query);
+        bool hasValue() const override;
+        int32_t value(const int32_t&) const override;
+        uint64_t value(const uint64_t&) const override;
+        int64_t value(const int64_t&) const override;
+        std::string value(const std::string&) const override;
+        double value(const double&) const override;
+    private:
+        std::shared_ptr<sqlite3_stmt> m_stmt;
+        const int32_t m_index;
+    };
 
-    int32_t Step() override;
-    bool Reset() override;
+    class Statement : public IStatement
+    {
+    public:
+        ~Statement() = default;
+        Statement(std::shared_ptr<IConnection>& connection,
+                  const std::string& query);
 
-    bool Bind(const int32_t index, const int32_t value) override;
-    bool Bind(const int32_t index, const uint64_t value) override;
-    bool Bind(const int32_t index, const int64_t value) override;
-    bool Bind(const int32_t index, const std::string value) override;
-    bool Bind(const int32_t index, const double value) override;
+        int32_t step() override;
+        bool reset() override;
 
-    std::unique_ptr<IColumn> GetColumn(const int32_t index) override;
+        bool bind(const int32_t index, const int32_t value) override;
+        bool bind(const int32_t index, const uint64_t value) override;
+        bool bind(const int32_t index, const int64_t value) override;
+        bool bind(const int32_t index, const std::string& value) override;
+        bool bind(const int32_t index, const double value) override;
 
-private:
-    sqlite3_stmt* m_stmt;
-    std::shared_ptr<IConnection> m_connection;
-};
+        std::unique_ptr<IColumn> column(const int32_t index) override;
+
+    private:
+        std::shared_ptr<IConnection> m_connection;
+        std::shared_ptr<sqlite3_stmt> m_stmt;
+    };
 }
 
