@@ -8,7 +8,7 @@
 ca:
    root:
       # The distinguished name of this CA. You must specify a distinguished name.
-      dn: CN=elasticsearch,OU=Docu,O=Wazuh,L=California,C=ES
+      dn: CN=elasticsearch,OU=Docu,O=Wazuh,L=California,C=US
 
       # The size of the generated key in bits
       keysize: 2048
@@ -87,15 +87,15 @@ defaults:
 #
 nodes:
   - name: node-1
-    dn: CN=node-1,OU=Docu,O=Wazuh,L=California,C=ES
+    dn: CN=node-1,OU=Docu,O=Wazuh,L=California,C=US
     ip: 
       - <elasticsearch_1_IP>
   - name: node-2
-    dn: CN=node-2,OU=Docu,O=Wazuh,L=California,C=ES
+    dn: CN=node-2,OU=Docu,O=Wazuh,L=California,C=US
     ip: 
       - <elasticsearch_2_IP>
   - name: node-3
-    dn: CN=node-3,OU=Docu,O=Wazuh,L=California,C=ES
+    dn: CN=node-3,OU=Docu,O=Wazuh,L=California,C=US
     ip:
       - <elasticsearch_3_IP>
 
@@ -110,10 +110,10 @@ nodes:
 #
 clients:
   - name: admin
-    dn: CN=admin,OU=Docu,O=Wazuh,L=California,C=ES
+    dn: CN=admin,OU=Docu,O=Wazuh,L=California,C=US
     admin: true
   - name: filebeat-1
-    dn: CN=filebeat-1,OU=Docu,O=Wazuh,L=California,C=ES
+    dn: CN=filebeat-1,OU=Docu,O=Wazuh,L=California,C=US
   - name: filebeat-2
-    dn: CN=filebeat-2,OU=Docu,O=Wazuh,L=California,C=ES  
+    dn: CN=filebeat-2,OU=Docu,O=Wazuh,L=California,C=US  
 
