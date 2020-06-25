@@ -102,16 +102,6 @@ bool connect_server(int server_id)
             merror(CONNS_ERROR, tmp_str, strerror(errno));
         #endif
     } else {
-        if (OS_SetRecvTimeout(agt->sock, timeout, 0) < 0) {
-            switch (errno) {
-                case ENOPROTOOPT:
-                    mdebug1("Cannot set network timeout: operation not supported by this OS.");
-                    break;
-                default:
-                    merror("Cannot set network timeout: %s (%d)", strerror(errno), errno);
-                    break;
-            }
-        }
         agt->rip_id = server_id;
         return true;
     }
@@ -234,37 +224,47 @@ static ssize_t receive_message(char *buffer, unsigned int max_lenght) {
     
     ssize_t recv_b = 0;
     /* Read received reply */
-    if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
-        /* Receive response UDP*/
-        recv_b = recv(agt->sock, buffer, max_lenght, 0);
-    } else {
-        /* Receive response TCP*/
-        recv_b = OS_RecvSecureTCP(agt->sock, buffer, max_lenght);
-    }
+    switch (wnet_select(agt->sock, timeout)) {
+        case -1:
+            merror(SELECT_ERROR, errno, strerror(errno));
+            break;
 
-    /* Successful response */
-    if (recv_b > 0) {
-        return recv_b;
-    }
-    /* Error response */
-    else { 
-        switch (recv_b) {
-        case OS_SOCKTERR:
-            merror("Corrupt payload (exceeding size) received.");
+        case 0:
+            // Timeout
             break;
+
         default:
-            if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
-                minfo("Unable to receive start response: Timeout reached");
+            if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
+                /* Receive response UDP*/
+                recv_b = recv(agt->sock, buffer, max_lenght, MSG_DONTWAIT);
             } else {
-                #ifdef WIN32
-                    mdebug1("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
-                #else
-                    mdebug1("Connection socket: %s (%d)", strerror(errno), errno);
-                #endif
+                /* Receive response TCP*/
+                recv_b = OS_RecvSecureTCP(agt->sock, buffer, max_lenght);
             }
-            break;
-        }
-    }
+
+            /* Successful response */
+            if (recv_b > 0) {
+                return recv_b;
+            }
+            /* Error response */
+            else { 
+                switch (recv_b) {
+                case OS_SOCKTERR:
+                    merror("Corrupt payload (exceeding size) received.");
+                    break;
+                default:
+                    if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
+                        minfo("Unable to receive start response: Timeout reached");
+                    } else {
+                        #ifdef WIN32
+                            mdebug1("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
+                        #else
+                            mdebug1("Connection socket: %s (%d)", strerror(errno), errno);
+                        #endif
+                    }
+                }
+            }
+    }       
     return 0;
 }
 
