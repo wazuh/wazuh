@@ -241,7 +241,7 @@ installKibana() {
         sudo -u kibana /usr/share/kibana/bin/kibana-plugin install https://packages-dev.wazuh.com/trash/app/kibana/wazuhapp-3.13.0-tsc-opendistro.zip > /dev/null 2>&1
         if [  "$?" != 0  ]
         then
-            echo "Error: Wazuh Kibana pluggin could not be installed."
+            echo "Error: Wazuh Kibana plugin could not be installed."
             exit 1;
         fi     
         mkdir /etc/kibana/certs > /dev/null 2>&1
