@@ -239,6 +239,11 @@ installKibana() {
         curl -so /etc/kibana/kibana.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/kibana/7.x/kibana_all_in_one.yml --max-time 300 > /dev/null 2>&1
         cd /usr/share/kibana > /dev/null 2>&1
         sudo -u kibana /usr/share/kibana/bin/kibana-plugin install https://packages-dev.wazuh.com/trash/app/kibana/wazuhapp-3.13.0-tsc-opendistro.zip > /dev/null 2>&1
+        if [  "$?" != 0  ]
+        then
+            echo "Error: Wazuh Kibana pluggin could not be installed."
+            exit 1;
+        fi     
         mkdir /etc/kibana/certs > /dev/null 2>&1
         mv /etc/elasticsearch/certs/kibana* /etc/kibana/certs/ > /dev/null 2>&1
         setcap 'cap_net_bind_service=+ep' /usr/share/kibana/node/bin/node > /dev/null 2>&1
@@ -265,8 +270,23 @@ healthCheck() {
 }
 
 checkInstallation() {
-    curl -XGET https://localhost:9200 -uadmin:admin -k --max-time 300 
-    filebeat test output
+    logger "Checking the installation..."
+    curl -XGET https://localhost:9200 -uadmin:admin -k --max-time 300 > /dev/null 2>&1
+    if [  "$?" != 0  ]
+    then
+        echo "Error: Elasticsearch was not successfully installed."
+        exit 1;     
+    else
+        echo "Elasticsearch installation succeeded."
+    fi
+    filebeat test output > /dev/null 2>&1
+    if [  "$?" != 0  ]
+    then
+        echo "Error: Filebeat was not successfully installed."
+        exit 1;     
+    else
+        echo "Filebeat installation succeeded."
+    fi    
     until [[ "$(curl https://localhost/status -I -uadmin:admin -k -s | grep HTTP)" == *"200"* ]]; do
         echo "Waiting for Kibana..."
         sleep 15
