@@ -16,6 +16,7 @@
 #include "../analysisd/eventinfo.h"
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../wrappers/posix/grp_wrappers.h"
+#include "../wrappers/posix/pwd_wrappers.h"
 
 
 /* Auxiliar structs */
@@ -130,35 +131,6 @@ int __wrap_OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
 
     return mock();
 }
-
-// TODO: Test solaris version of this wrapper.
-#ifdef SOLARIS
-struct passwd **__wrap_getpwuid_r(uid_t uid, struct passwd *pwd,
-                                  char *buf, size_t buflen) {
-#if defined(TEST_SERVER) || defined(TEST_AGENT)
-        pwd->pw_name = mock_type(char*);
-
-        return mock_type(struct passwd*);
-#else // TEST_WINAGENT
-        // Leave empty wrapper since avoiding compile will bring problems with cmocka
-        return NULL;
-#endif
-}
-#else
-int __wrap_getpwuid_r(uid_t uid, struct passwd *pwd,
-                      char *buf, size_t buflen, struct passwd **result) {
-
-#if defined(TEST_SERVER) || defined(TEST_AGENT)
-        pwd->pw_name = mock_type(char*);
-        *result = mock_type(struct passwd*);
-
-        return mock();
-#else // TEST_WINAGENT
-        // Leave empty wrapper since avoiding compile will bring problems with cmocka
-        return 0;
-#endif
-}
-#endif
 
 #ifdef TEST_WINAGENT
 size_t __wrap_syscom_dispatch(char * command, char ** output) {
