@@ -126,11 +126,7 @@ async def add_agent(request, pretty=False, wait_for_complete=False):
     :return: AgentIdKey
     """
     # Get body parameters
-    try:
-        agent_added_model = AgentAdded.from_dict(await request.json())
-        f_kwargs = agent_added_model.to_dict()
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
+    f_kwargs = AgentAdded.get_kwargs(await request.json())
 
     # Get IP if not given
     if not f_kwargs['ip']:
@@ -854,11 +850,7 @@ async def insert_agent(request, pretty=False, wait_for_complete=False):
     :return: AgentIdKey
     """
     # Get body parameters
-    try:
-        agent_inserted_model = AgentInserted.from_dict(await request.json())
-        f_kwargs = agent_inserted_model.to_dict()
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
+    f_kwargs = AgentInserted.get_kwargs(await request.json())
 
     # Get IP if not given
     if not f_kwargs['ip']:

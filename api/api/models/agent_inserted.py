@@ -2,11 +2,10 @@
 
 from __future__ import absolute_import
 
-from api.models.base_model_ import Model
-from api import util
+from api.models.base_model_ import Body
 
 
-class AgentInserted(Model):
+class AgentInserted(Body):
 
     def __init__(self, name='', ip=None, agent_id='', key='', force_time=-1):
         """AgentAdded body model
@@ -42,16 +41,6 @@ class AgentInserted(Model):
         self._agent_id = agent_id
         self._key = key
         self._force_time = force_time
-
-    @classmethod
-    def from_dict(cls, dikt) -> 'AgentInserted':
-        """Returns the dict as a model
-        :param dikt: A dict.
-        :type: dict
-        :return: The Agent of this Agent.
-        :rtype: dict
-        """
-        return util.deserialize_model(dikt, cls)
 
     @property
     def name(self) -> str:

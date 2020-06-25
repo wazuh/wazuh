@@ -1,17 +1,16 @@
 # coding: utf-8
 
 from __future__ import absolute_import
-from datetime import date, datetime  # noqa: F401
 
+from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
-from api.models.base_model_ import Model
-from api import util
+from api.models.base_model_ import Body
 
 
-class AgentAdded(Model):
+class AgentAdded(Body):
 
-    def __init__(self, name: str=None, ip: str=None, force_time: int=-1):
+    def __init__(self, name: str = None, ip: str = None, force_time: int = -1):
         """AgentAdded body model
         :param name: Agent name.
         :type name: str
@@ -35,16 +34,6 @@ class AgentAdded(Model):
         self._name = name
         self._ip = ip
         self._force_time = force_time
-
-    @classmethod
-    def from_dict(cls, dikt) -> 'AgentAdded':
-        """Returns the dict as a model
-        :param dikt: A dict.
-        :type: dict
-        :return: The Agent of this Agent.
-        :rtype: dict
-        """
-        return util.deserialize_model(dikt, cls)
 
     @property
     def name(self) -> str:
