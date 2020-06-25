@@ -15,6 +15,7 @@
 #include <cmocka.h>
 #include <string.h>
 
+#ifndef WIN32
 struct group *__wrap_getgrgid(__attribute__((unused)) gid_t gid) {
     return mock_ptr_type(struct group*);
 }
@@ -33,3 +34,4 @@ int __wrap_getgrnam_r(const char *name, struct group *grp,__attribute__((unused)
 
     return 0;
 }
+#endif

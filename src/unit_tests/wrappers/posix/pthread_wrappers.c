@@ -13,3 +13,14 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+
+int __wrap_pthread_mutex_lock(__attribute__((unused)) pthread_mutex_t *x) {
+    function_called();
+    return 0;
+}
+
+int __wrap_pthread_mutex_unlock(__attribute__((unused)) pthread_mutex_t *x) {
+    function_called();
+    return 0;
+}
