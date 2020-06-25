@@ -30,6 +30,7 @@ EXTERNAL_CPYTHON=external/cpython/
 EXTERNAL_MSGPACK=external/msgpack/
 EXTERNAL_BZIP2=external/bzip2/
 EXTERNAL_OSQUERY=external/osquery_lib/
+EXTERNAL_GOOGLE_TEST=external/googletest/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
@@ -48,6 +49,7 @@ SHARED=so
 SELINUX_MODULE=selinux/wazuh.mod
 SELINUX_ENFORCEMENT=selinux/wazuh.te
 SELINUX_POLICY=selinux/wazuh.pp
+DBSYNC=dbsync/
 
 USE_PRELUDE?=no
 USE_ZEROMQ?=no
@@ -687,6 +689,10 @@ endif
 .PHONY: external test_external
 external: test_external $(EXTERNAL_LIBS)
 
+ifneq (,$(filter ${TEST},YES yes y Y 1))
+external: build_gtest
+endif
+
 ifneq (${TARGET},winagent)
 ifneq (${TARGET},agent)
 external: build_python
@@ -925,7 +931,7 @@ ifeq (${EXTERNAL_SOURCES},yes)
 OSQUERY := src_osquery
 endif
 
-EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 $(OSQUERY) nlohmann
+EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 $(OSQUERY) nlohmann googletest
 EXTERNAL_DIR := $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
@@ -1555,6 +1561,15 @@ wazuh-framework: ${shared_o} ${wdblib_o}
 	${MAKE} -C ../framework build PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${USE_FRAMEWORK_LIB}
 endif
 
+### wazuh-gtest-gmock ###
+
+build_gtest: 
+ifneq (,$(filter ${DEBUG},YES yes y Y 1))
+	cd ${EXTERNAL_GOOGLE_TEST} && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Debug && cmake --build . && cp -r lib ..
+else
+	cd ${EXTERNAL_GOOGLE_TEST} && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release && cmake --build . && cp -r lib ..
+endif #DEBUG
+	
 ### wazuh-python ###
 
 WPYTHON_DIR := ${PREFIX}/framework/python
@@ -1623,9 +1638,16 @@ LIBS_TEST=-lcmocka
 # LIBS_TEST = -lcheck -lm -lrt -lsubunit
 
 
-
-unit_tests/wrappers/%.o: unit_tests/wrappers/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+ifneq (,$(filter ${TEST},YES yes y Y 1))
+	OSSEC_CFLAGS+=${CFLAGS_TEST}
+	# OSSEC_CFLAGS+=${CFLAGS_TEST} -Itests
+	OSSEC_LDFLAGS+=${CFLAGS_TEST}
+	OSSEC_LIBS+=${LIBS_TEST}
+ifeq (${TARGET},winagent)
+	WINDOWS_UNIT_TEST_WRAPPERS:=${wrappers_syscheck_o}
+	WINDOWS_UNIT_TEST_WRAPPERS+=${wrappers_shared_o}
+endif
+endif #TEST
 
 unit_tests/wrappers/syscheckd/%.o: unit_tests/wrappers/syscheckd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
@@ -1787,6 +1809,8 @@ ifneq ($(wildcard external/*/*),)
 	-cd ${EXTERNAL_LIBFFI} && ${MAKE} clean
 	rm -f $(msgpack_o) $(EXTERNAL_MSGPACK)libmsgpack.a
 	-${MAKE} -C $(EXTERNAL_BZIP2) clean
+	rm -rf $(EXTERNAL_GOOGLE_TEST)lib
+	rm -rf $(EXTERNAL_GOOGLE_TEST)build
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && ${MAKE} realclean
@@ -1837,7 +1861,7 @@ clean-internals: clean-unit-tests
 clean-unit-tests:
 	rm -f ${wrappers_syscheck_o}
 	rm -f ${wrappers_shared_o}
-	rm -f ${wrappers_common_o}
+	rm -rf $(DBSYNC)build
 
 clean-framework:
 	${MAKE} -C ../framework clean
