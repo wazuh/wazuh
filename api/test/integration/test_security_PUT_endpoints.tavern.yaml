@@ -61,7 +61,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []
-        message: Role updated correctly
+        message: !anystr
 
   # PUT /security/roles/{role_id}
   - name: Modify a role in the system (without change name)

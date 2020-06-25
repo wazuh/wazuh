@@ -277,8 +277,8 @@ stages:
           failed_items:
             - error:
                 code: 4002
-                message: The specified role does not exist
-                remediation: Please, create the specified role with the endpoint POST /security/roles
+                message: !anystr
+                remediation: !anystr
               id:
                 - '999'
           total_affected_items: 1
@@ -457,7 +457,7 @@ stages:
           affected_items:
             - id: 101
           total_affected_items: 1
-        message: Users deleted correctly
+        message: !anystr
 
   - name: Delete an existent user
     request:
@@ -475,7 +475,7 @@ stages:
           affected_items:
             - id: 104
           total_affected_items: 1
-        message: Users deleted correctly
+        message: !anystr
 
   - name: Delete all users in the system
     request:

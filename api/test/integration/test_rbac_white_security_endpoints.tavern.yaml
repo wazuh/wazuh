@@ -452,13 +452,13 @@ stages:
           failed_items:
             - error:
                 code: 4002
-                message: The specified role does not exist
-                remediation: Please, create the specified role with the endpoint POST /security/roles
+                message: !anystr
+                remediation: !anystr
               id:
                 - '999'
           total_affected_items: 0
           total_failed_items: 1
-        message: No role were shown
+        message: !anystr
 
   - name: Get a list of roles by its id (Existent and no existent)
     request:
@@ -1074,7 +1074,7 @@ stages:
           failed_items: []
           total_affected_items: 0
           total_failed_items: 0
-        message: No policies were deleted
+        message: !anystr
 
   - name: Delete one specified policy in the system (Allow)
     request:
@@ -1141,7 +1141,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: Role created correctly
+        message: !anystr
 
   - name: Create one specified policy (Allow)
     request:
@@ -1177,7 +1177,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        message: Policy created correctly
+        message: !anystr
 
 ---
 test_name: REVOKE TOKENS RBAC

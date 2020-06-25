@@ -30,7 +30,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: All specified roles were shown
+        message: !anystr
 
   # GET /security/roles
   - name: Try to show the roles of the system, offset = 0
@@ -545,7 +545,7 @@ stages:
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []
-        message: All specified users were shown
+        message: !anystr
 
 ---
 test_name: GET /security/users/me
@@ -800,7 +800,7 @@ stages:
           total_affected_items: 7
           total_failed_items: 0
           failed_items: []
-        message: All specified users were shown
+        message: !anystr
 
 ---
 test_name: GET /security/users/?sort
@@ -860,7 +860,7 @@ stages:
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []
-        message: All specified users were shown
+        message: !anystr
 
   - name: Testing sort
     request:
@@ -916,7 +916,7 @@ stages:
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []
-        message: All specified users were shown
+        message: !anystr
 
 ---
 test_name: GET /security/users/?limit,offset
@@ -964,7 +964,7 @@ stages:
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []
-        message: All specified users were shown
+        message: !anystr
 
   - name: Testing limit
     request:
@@ -983,7 +983,7 @@ stages:
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []
-        message: All specified users were shown
+        message: !anystr
 
 ---
 test_name: GET /security/actions
@@ -1002,7 +1002,7 @@ stages:
       status_code: 200
       json:
         active-response:command:
-          description: Allow to execute active response commands in the agents
+          description: !anystr
           resources:
             - agent:id
           example:
@@ -1023,7 +1023,7 @@ stages:
       status_code: 200
       json:
         rules:read:
-          description: Read rules files
+          description: !anystr
           resources:
             - rule:file
           example:
