@@ -19,6 +19,7 @@
 #include "../wrappers/externals/audit/libaudit_wrappers.h"
 #endif
 #include "../wrappers/libc/stdio_wrappers.h"
+#include "../wrappers/posix/select_wrappers.h"
 #include "../wrappers/common.h"
 #include "../headers/audit_op.h"
 #include "../headers/defs.h"
@@ -67,10 +68,6 @@ void __wrap__mdebug2(const char * file, int line, const char * func, const char 
     va_end(args);
 
     check_expected(formatted_msg);
-}
-
-int __wrap_select() {
-    return mock();
 }
 
 wfd_t *__wrap_wpopenv() {

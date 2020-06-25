@@ -12,7 +12,6 @@
 #ifndef SELECT_WRAPPERS_H
 #define SELECT_WRAPPERS_H
 
-
-
+int __wrap_select();
 
 #endif
