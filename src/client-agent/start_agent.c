@@ -32,6 +32,12 @@ static void w_agentd_keys_init (void);
 static bool agent_handshake_to_server(int server_id);
 static void send_msg_on_startup(void);
 
+/**
+ * @brief Connects to a specified server
+ * @param server_id index of the specified server from agt servers list
+ * @retval true on success
+ * @retval false when failed
+ * */
 bool connect_server(int server_id)
 {
     timeout = getDefine_Int("agent", "recv_timeout", 1, 600);
@@ -277,8 +283,7 @@ int try_enroll_to_server(const char * server_rip) {
 }
 
 /**
- * @brief Holds hanshake logic for a attempt to connect to server
- * @return Integer value indicating the status code.
+ * @brief Holds handshake logic for an attempt to connect to server
  * @retval true on success
  * @retval false when failed
  * */
@@ -325,6 +330,9 @@ static bool agent_handshake_to_server(int server_id){
     return ret;
 }
 
+/**
+ * @brief Sends log message about start up
+ * */
 static void send_msg_on_startup(void){
 
     char msg[OS_MAXSTR + 2] = { '\0' };
