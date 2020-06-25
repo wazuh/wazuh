@@ -13,7 +13,6 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_BUILD_TYPE RelWithDebInfo)
 
 include_directories(${CMAKE_SOURCE_DIR}/include/)
 include_directories(${EXTERNAL_LIB}/sqlite/)
@@ -27,7 +26,15 @@ file(GLOB DBSYNC_SRC
 
 add_library(dbsync SHARED 
     "${DBSYNC_SRC}" )
-
-target_link_libraries(dbsync sqlite3 cjson)
+    
+if(UNIT_TEST)
+  target_link_libraries(dbsync sqlite3 cjson gcov)
+else()
+  target_link_libraries(dbsync sqlite3 cjson)
+endif(UNIT_TEST)
 
 add_subdirectory(example)
+
+if(UNIT_TEST)
+  add_subdirectory(tests)
+endif(UNIT_TEST)
