@@ -19,7 +19,7 @@ installPrerequisites() {
 
     if [ $sys_type == "yum" ] 
     then
-        yum install java-11-openjdk-devel unzip wget curl libcap -y -q > /dev/null 2>&1
+        yum install curl -y -q > /dev/null 2>&1
     elif [ $sys_type == "apt-get" ] 
     then
         if [ -n "$(command -v add-apt-repository)" ]
@@ -29,7 +29,7 @@ installPrerequisites() {
             echo 'deb http://deb.debian.org/debian stretch-backports main' > /etc/apt/sources.list.d/backports.list
         fi
         apt-get update -q > /dev/null 2>&1
-        apt-get install openjdk-11-jdk apt-transport-https curl unzip wget libcap2-bin -y -q > /dev/null 2>&1
+        apt-get install apt-transport-https curl -y -q > /dev/null 2>&1
     fi
 
     logger "Done"

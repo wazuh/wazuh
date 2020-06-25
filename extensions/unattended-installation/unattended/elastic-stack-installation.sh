@@ -20,7 +20,13 @@ installPrerequisites() {
 
     if [ $sys_type == "yum" ] 
     then
-        yum install java-11-openjdk-devel unzip wget curl libcap -y -q > /dev/null 2>&1
+        yum install java-11-openjdk-devel -y > /dev/null 2>&1
+        if [  "$?" != 0  ]
+        then
+            yum install java-1.8.0-openjdk-devel unzip wget curl libcap -y -q > /dev/null 2>&1
+        else
+            yum install unzip wget curl libcap -y -q > /dev/null 2>&1
+        fi        
     elif [ $sys_type == "apt-get" ] 
     then
         if [ -n "$(command -v add-apt-repository)" ]
@@ -33,7 +39,13 @@ installPrerequisites() {
         apt-get install openjdk-11-jdk apt-transport-https curl unzip wget libcap2-bin -y -q > /dev/null 2>&1
     fi
 
-    logger "Done"
+    if [  "$?" != 0  ]
+    then
+        echo "Error: Prerequisites could not be installed"
+        exit 1;
+    else
+        logger "Done"
+    fi   
 }
 
 ## Add the Wazuh repository
@@ -66,44 +78,35 @@ installElasticsearch() {
         apt-get install elasticsearch-oss opendistroforelasticsearch -y -q > /dev/null 2>&1
     fi
 
-    logger "Done"
-
-    logger "Configuring Elasticsearch..."
-
-    curl -so /etc/elasticsearch/elasticsearch.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/7.x/elasticsearch_all_in_one.yml --max-time 300 > /dev/null 2>&1
-    curl -so /usr/share/elasticsearch/plugins/opendistro_security/securityconfig/roles.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/roles/roles.yml --max-time 300 > /dev/null 2>&1
-    curl -so /usr/share/elasticsearch/plugins/opendistro_security/securityconfig/roles_mapping.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/roles/roles_mapping.yml --max-time 300 > /dev/null 2>&1
-    curl -so /usr/share/elasticsearch/plugins/opendistro_security/securityconfig/internal_users.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/roles/internal_users.yml --max-time 300 > /dev/null 2>&1
-    rm /etc/elasticsearch/esnode-key.pem /etc/elasticsearch/esnode.pem /etc/elasticsearch/kirk-key.pem /etc/elasticsearch/kirk.pem /etc/elasticsearch/root-ca.pem -f > /dev/null 2>&1
-    
-    if [ -n "$master" ] 
+    if [  "$?" != 0  ]
     then
-        logger "Generating certificates..."
-        mkdir /etc/elasticsearch/certs > /dev/null 2>&1
-        cd /etc/elasticsearch/certs > /dev/null 2>&1
-        wget -q https://releases.floragunn.com/search-guard-tlstool/1.7/search-guard-tlstool-1.7.zip > /dev/null 2>&1
-        unzip search-guard-tlstool-1.7.zip -d searchguard > /dev/null 2>&1
-        curl -so /etc/elasticsearch/certs/searchguard/search-guard.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/searchguard/search-guard-aio.yml --max-time 300 > /dev/null 2>&1
-        chmod +x searchguard/tools/sgtlstool.sh > /dev/null 2>&1
-        ./searchguard/tools/sgtlstool.sh -c ./searchguard/search-guard.yml -ca -crt -t /etc/elasticsearch/certs/ > /dev/null 2>&1
-        rm /etc/elasticsearch/certs/client-certificates.readme /etc/elasticsearch/certs/elasticsearch_elasticsearch_config_snippet.yml search-guard-tlstool-1.7.zip -f > /dev/null 2>&1
+        echo "Error: Elasticsearch installation failed"
+        exit 1;
+    else
         logger "Done"
-    fi
+
+        logger "Configuring Elasticsearch..."
+
+        curl -so /etc/elasticsearch/elasticsearch.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/7.x/elasticsearch_all_in_one.yml --max-time 300 > /dev/null 2>&1
+        curl -so /usr/share/elasticsearch/plugins/opendistro_security/securityconfig/roles.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/roles/roles.yml --max-time 300 > /dev/null 2>&1
+        curl -so /usr/share/elasticsearch/plugins/opendistro_security/securityconfig/roles_mapping.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/roles/roles_mapping.yml --max-time 300 > /dev/null 2>&1
+        curl -so /usr/share/elasticsearch/plugins/opendistro_security/securityconfig/internal_users.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/roles/internal_users.yml --max-time 300 > /dev/null 2>&1
+        rm /etc/elasticsearch/esnode-key.pem /etc/elasticsearch/esnode.pem /etc/elasticsearch/kirk-key.pem /etc/elasticsearch/kirk.pem /etc/elasticsearch/root-ca.pem -f > /dev/null 2>&1
     
-    # Configure JVM options for Elasticsearch
-    ram_gb=$(free -g | awk '/^Mem:/{print $2}')
-    ram=$(( ${ram_gb} / 2 ))
+        # Configure JVM options for Elasticsearch
+        ram_gb=$(free -g | awk '/^Mem:/{print $2}')
+        ram=$(( ${ram_gb} / 2 ))
 
-    if [ ${ram} -eq "0" ]; then
-        ram=1;
-    fi    
+        if [ ${ram} -eq "0" ]; then
+            ram=1;
+        fi    
 
-
-    conf="$(awk '{sub(/-Xms1g/,"-Xms'${ram}'g")}1' /etc/elasticsearch/jvm.options)"
-    echo "$conf" > /etc/elasticsearch/jvm.options
-    conf="$(awk '{sub(/-Xmx1g/,"-Xmx'${ram}'g")}1' /etc/elasticsearch/jvm.options)"
-    echo "$conf" > /etc/elasticsearch/jvm.options
-    logger "Done"
+        conf="$(awk '{sub(/-Xms1g/,"-Xms'${ram}'g")}1' /etc/elasticsearch/jvm.options)"
+        echo "$conf" > /etc/elasticsearch/jvm.options
+        conf="$(awk '{sub(/-Xmx1g/,"-Xmx'${ram}'g")}1' /etc/elasticsearch/jvm.options)"
+        echo "$conf" > /etc/elasticsearch/jvm.options
+        logger "Done"        
+    fi
 }
 
 configureElastic() {
@@ -184,10 +187,6 @@ main() {
                     configureKibana $ip
                 fi
                 shift
-                shift
-                ;;
-            "-m"|"--master-node")        
-                master=1
                 shift
                 ;;
             *)
