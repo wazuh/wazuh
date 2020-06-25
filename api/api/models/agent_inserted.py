@@ -7,8 +7,10 @@ from api.models.base_model_ import Body
 
 class AgentInserted(Body):
 
-    def __init__(self, name='', ip=None, agent_id='', key='', force_time=-1):
+    def __init__(self, id=None, name=None, ip=None, agent_id=None, key=None, force_time=None):
         """AgentAdded body model
+        :param id: Agent id.
+        :type id: str
         :param name: Agent name.
         :type name: str
         :param ip: If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option BehindProxyServer to yes at API configuration. Allowed values: IP, IP/NET, ANY
@@ -21,6 +23,7 @@ class AgentInserted(Body):
         :type force_time: int
         """
         self.swagger_types = {
+            'id': str,
             'name': str,
             'ip': str,
             'agent_id': str,
@@ -29,6 +32,7 @@ class AgentInserted(Body):
         }
 
         self.attribute_map = {
+            'id': str,
             'name': 'name',
             'ip': 'ip',
             'agent_id': 'id',
@@ -36,11 +40,27 @@ class AgentInserted(Body):
             'force_time': 'force_time'
         }
 
+        self._id = id
         self._name = name
         self._ip = ip
         self._agent_id = agent_id
         self._key = key
         self._force_time = force_time
+
+    @property
+    def id(self) -> str:
+        """
+        :return: Agent id
+        :rtype: str
+        """
+        return self._id
+
+    @id.setter
+    def id(self, id):
+        """
+        :param id: Agent id
+        """
+        self._id = id
 
     @property
     def name(self) -> str:

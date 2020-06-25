@@ -2,7 +2,201 @@
 
 from __future__ import absolute_import
 
-from api.models.base_model_ import Body
+from api.models.base_model_ import Body, Model
+
+
+class HTTPSModel(Model):
+    def __init__(self, enabled=None, key=None, cert=None, use_ca=None, ca=None):
+        self.swagger_types = {
+            'enabled': bool,
+            'key': str,
+            'cert': str,
+            'use_ca': bool,
+            'ca': str
+        }
+
+        self.attribute_map = {
+            'enabled': 'enabled',
+            'key': 'key',
+            'cert': 'cert',
+            'use_ca': 'use_ca',
+            'ca': 'ca'
+        }
+
+        self._enabled = enabled
+        self._key = key
+        self._cert = cert
+        self._use_ca = use_ca
+        self._ca = ca
+
+    @property
+    def enabled(self):
+        return self._enabled
+
+    @enabled.setter
+    def enabled(self, enabled):
+        self._enabled = enabled
+
+    @property
+    def key(self):
+        return self._key
+
+    @key.setter
+    def key(self, key):
+        self._key = key
+
+    @property
+    def cert(self):
+        return self._cert
+
+    @cert.setter
+    def cert(self, cert):
+        self._cert = cert
+
+    @property
+    def use_ca(self):
+        return self._use_ca
+
+    @use_ca.setter
+    def use_ca(self, use_ca):
+        self._use_ca = use_ca
+
+    @property
+    def ca(self):
+        return self._ca
+
+    @ca.setter
+    def ca(self, ca):
+        self._ca = ca
+
+
+class LogsModel(Model):
+    def __init__(self, level=None, path=None):
+        self.swagger_types = {
+            'level': str,
+            'path': str
+        }
+
+        self.attribute_map = {
+            'level': 'level',
+            'path': 'path'
+        }
+
+        self._level = level
+        self._path = path
+
+    @property
+    def level(self):
+        return self._level
+
+    @level.setter
+    def level(self, level):
+        self._level = level
+
+    @property
+    def path(self):
+        return self._path
+
+    @path.setter
+    def path(self, path):
+        self._path = path
+
+
+class CORSModel(Model):
+    def __init__(self, enabled=None, source_route=None, expose_headers=None, allow_headers=None, allow_credentials=None):
+        self.swagger_types = {
+            'enabled': bool,
+            'source_route': str,
+            'expose_headers': str,
+            'allow_headers': bool,
+            'allow_credentials': str
+        }
+
+        self.attribute_map = {
+            'enabled': 'enabled',
+            'source_route': 'source_route',
+            'expose_headers': 'expose_headers',
+            'allow_headers': 'allow_headers',
+            'allow_credentials': 'allow_credentials'
+        }
+
+        self._enabled = enabled
+        self._source_route = source_route
+        self._expose_headers = expose_headers
+        self._allow_headers = allow_headers
+        self._allow_credentials = allow_credentials
+
+    @property
+    def enabled(self):
+        return self._enabled
+
+    @enabled.setter
+    def enabled(self, enabled):
+        self._enabled = enabled
+
+    @property
+    def source_route(self):
+        return self._source_route
+
+    @source_route.setter
+    def source_route(self, source_route):
+        self._source_route = source_route
+
+    @property
+    def expose_headers(self):
+        return self._expose_headers
+
+    @expose_headers.setter
+    def expose_headers(self, expose_headers):
+        self._expose_headers = expose_headers
+
+    @property
+    def allow_headers(self):
+        return self._allow_headers
+
+    @allow_headers.setter
+    def allow_headers(self, allow_headers):
+        self._allow_headers = allow_headers
+
+    @property
+    def allow_credentials(self):
+        return self._allow_credentials
+
+    @allow_credentials.setter
+    def allow_credentials(self, allow_credentials):
+        self._allow_credentials = allow_credentials
+
+
+class CacheModel(Model):
+    def __init__(self, enabled=None, time=None):
+        self.swagger_types = {
+            'enabled': str,
+            'time': str
+        }
+
+        self.attribute_map = {
+            'enabled': 'enabled',
+            'time': 'time'
+        }
+
+        self._enabled = enabled
+        self._time = time
+
+    @property
+    def enabled(self):
+        return self._enabled
+
+    @enabled.setter
+    def enabled(self, enabled):
+        self._enabled = enabled
+
+    @property
+    def time(self):
+        return self._time
+
+    @time.setter
+    def time(self, time):
+        self._time = time
 
 
 class APIConfigurationModel(Body):
@@ -13,10 +207,10 @@ class APIConfigurationModel(Body):
             'host': str,
             'port': int,
             'behind_proxy_server': bool,
-            'https': dict,
-            'logs': dict,
-            'cors': dict,
-            'cache': dict,
+            'https': HTTPSModel,
+            'logs': LogsModel,
+            'cors': CORSModel,
+            'cache': CacheModel,
             'use_only_authd': bool,
             'drop_privileges': bool,
             'experimental_features': bool

@@ -579,7 +579,8 @@ async def put_api_config(request, pretty=False, wait_for_complete=False, list_no
     :param wait_for_complete: Disable timeout response
     :param list_nodes: List of node ids
     """
-    f_kwargs = {'node_list': list_nodes, 'updated_config': await APIConfigurationModel.get_kwargs(request)}
+    updated_conf = await APIConfigurationModel.get_kwargs(request)
+    f_kwargs = {'node_list': list_nodes, 'updated_config': updated_conf}
 
     nodes = await get_system_nodes()
     dapi = DistributedAPI(f=manager.update_api_config,
