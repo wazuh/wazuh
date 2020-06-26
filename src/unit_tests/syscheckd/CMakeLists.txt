@@ -93,11 +93,11 @@ set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn
                           -Wl,--wrap,fim_db_remove_path -Wl,--wrap,getDefine_Int -Wl,--wrap,isChroot \
                           -Wl,--wrap,fim_db_get_not_scanned -Wl,--wrap,fim_db_set_all_unscanned \
                           -Wl,--wrap,fim_db_get_count_entry_path -Wl,--wrap,fim_db_get_path_range \
-                          -Wl,--wrap,fim_db_process_missing_entry -Wl,--wrap,send_log_msg")
+                          -Wl,--wrap,fim_db_process_missing_entry -Wl,--wrap,send_log_msg -Wl,--wrap,stat")
 
 list(APPEND syscheckd_tests_names "test_create_db")
 if(${TARGET} STREQUAL "winagent")
-  list(APPEND syscheckd_tests_flags "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=stat,--wrap=w_get_file_permissions \
+  list(APPEND syscheckd_tests_flags "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=w_get_file_permissions \
                                      -Wl,--wrap=decode_win_permissions,--wrap=pthread_mutex_lock \
                                      -Wl,--wrap=pthread_mutex_unlock,--wrap=w_get_file_attrs,--wrap=os_winreg_check")
 else()
@@ -192,7 +192,7 @@ endif()
 set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,_merror_exit \
                           -Wl,--wrap,sleep -Wl,--wrap,SendMSG -Wl,--wrap,StartMQ -Wl,--wrap,realtime_adddir -Wl,--wrap,audit_set_db_consistency \
                           -Wl,--wrap,fim_checker -Wl,--wrap,fim_db_get_path_range -Wl,--wrap,fim_db_delete_range -Wl,--wrap,lstat \
-                          -Wl,--wrap,fim_configuration_directory -Wl,--wrap,inotify_rm_watch -Wl,--wrap,os_random")
+                          -Wl,--wrap,fim_configuration_directory -Wl,--wrap,inotify_rm_watch -Wl,--wrap,os_random -Wl,--wrap,stat")
 
 list(APPEND syscheckd_tests_names "test_run_check")
 if(${TARGET} STREQUAL "agent")
@@ -217,7 +217,7 @@ set(FIM_DB_BASE_FLAGS "-Wl,--wrap=w_is_file,--wrap=remove,--wrap=sqlite3_open_v2
                        -Wl,--wrap=delete_target_file,--wrap=_minfo,--wrap=_mdebug1,--wrap=_mdebug2 \
                        -Wl,--wrap=fseek,--wrap=fclose,--wrap=fopen,--wrap=getpid,--wrap=fflush \
                        -Wl,--wrap=wstr_escape_json,--wrap=sqlite3_bind_int64,--wrap=sqlite3_column_int64 \
-                       -Wl,--wrap=fread,--wrap=fwrite,--wrap=fprintf,--wrap=fgets")
+                       -Wl,--wrap=fread,--wrap=fwrite,--wrap=fprintf,--wrap=fgets,--wrap=stat")
 
 list(APPEND syscheckd_tests_names "test_fim_db")
 if(${TARGET} STREQUAL "agent")

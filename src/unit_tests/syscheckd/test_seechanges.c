@@ -19,6 +19,7 @@
 #include "../config/syscheck-config.h"
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/libc/stdlib_wrappers.h"
+#include "../wrappers/posix/stat_wrappers.h"
 
 #ifndef TEST_WINAGENT
 #define PATH_OFFSET 1
@@ -106,22 +107,6 @@ void __wrap__mwarn(const char * file, int line, const char * func, const char *m
     check_expected(formatted_msg);
 }
 
-int __wrap_lstat(const char *filename, struct stat *buf) {
-    check_expected(filename);
-    buf->st_mode = mock();
-    return mock();
-}
-
-int __real_stat(const char * __file, struct stat * __buf);
-int __wrap_stat(const char * __file, struct stat * __buf) {
-    if (test_mode) {
-        check_expected(__file);
-        __buf->st_mode = mock();
-        return mock_type(int);
-    }
-    return __real_stat(__file, __buf);
-}
-
 int __wrap_abspath(const char *path, char *buffer, size_t size) {
     check_expected(path);
 
@@ -163,19 +148,7 @@ int __wrap_IsDir(const char *file) {
     check_expected(file);
     return mock();
 }
-
-#ifndef TEST_WINAGENT
-int __wrap_mkdir(const char *__path, __mode_t __mode) {
-    check_expected(__path);
-    check_expected(__mode);
-    return mock();
-}
-#else
-int __wrap_mkdir(const char *__path) {
-    check_expected(__path);
-    return mock();
-}
-
+#ifdef TEST_WINAGENT
 void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
     char formatted_msg[OS_MAXSTR];
     va_list args;

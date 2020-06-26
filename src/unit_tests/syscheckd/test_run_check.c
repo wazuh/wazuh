@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include "../wrappers/common.h"
+#include "../wrappers/posix/stat_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../syscheckd/fim_db.h"
 
@@ -150,11 +151,6 @@ int __wrap_time() {
     return 1;
 }
 #endif
-
-int __wrap_lstat(const char *filename, struct stat *buf) {
-    check_expected(filename);
-    return mock();
-}
 
 void __wrap_fim_checker(char *path) {
     check_expected(path);
@@ -790,6 +786,7 @@ void test_fim_link_check_delete(void **state) {
 
     expect_string(__wrap_lstat, filename, link_path);
     will_return(__wrap_lstat, 0);
+    will_return(__wrap_lstat, 0);
 
     expect_value(__wrap_fim_db_get_path_range, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_path_range, storage, FIM_DB_DISK);
@@ -810,6 +807,7 @@ void test_fim_link_check_delete_lstat_error(void **state) {
     char *link_path = "/home";
 
     expect_string(__wrap_lstat, filename, link_path);
+    will_return(__wrap_lstat, 0);
     will_return(__wrap_lstat, -1);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6222): Stat() function failed on: '/home' due to [(0)-(Success)]");
@@ -826,6 +824,7 @@ void test_fim_link_check_delete_noentry_error(void **state) {
     char *link_path = "/home";
 
     expect_string(__wrap_lstat, filename, link_path);
+    will_return(__wrap_lstat, 0);
     will_return(__wrap_lstat, -1);
 
     errno = ENOENT;
