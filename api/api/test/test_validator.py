@@ -6,11 +6,13 @@
 import jsonschema as js
 import os
 import pytest
+from unittest.mock import patch
 
-from api.validator import check_cdb_list, check_exp, check_xml, format_etc_path, _alphanumeric_param, \
-    _array_numbers, _array_names, _base64, _boolean, _cdb_list, _dates, _empty_boolean, _hashes,\
-    _ips, _names, _numbers, _wazuh_key, _paths, _query_param, _ranges, _etc_path, _search_param,\
-    _sort_param, _timeframe_type, _type_format, _yes_no_boolean
+from api.validator import check_cdb_list, check_exp, check_xml, _alphanumeric_param, \
+    _array_numbers, _array_names, _boolean, _dates, _empty_boolean, _hashes,\
+    _ips, _names, _numbers, _wazuh_key, _paths, _query_param, _ranges, _search_param,\
+    _sort_param, _timeframe_type, _type_format, _yes_no_boolean, format_etc_file_path, _etc_file_path, \
+    _etc_and_ruleset_file_path, _etc_and_ruleset_path, allowed_fields, is_safe_path
 
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -21,6 +23,7 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
     ('43,21,34', _array_numbers),
     ('20190226', _dates),
     ('54355', _numbers),
+    (100, _alphanumeric_param),
     # names
     ('alphanumeric1_param2', _alphanumeric_param),
     ('file_1,file_2,file-3', _array_names),
@@ -57,11 +60,12 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
     ('/var/ossec/etc/internal_options', _paths),
     ('/var/ossec/etc/rules/local_rules.xml', _paths),
     # relative paths
-    ('etc/ossec.conf', _etc_path),
-    ('etc/rules/new_rules2.xml', _etc_path),
-    ('etc/lists/new_lists3', _etc_path)
+    ('etc/ossec.conf', _etc_file_path),
+    ('etc/rules/new_rules2.xml', _etc_and_ruleset_file_path),
+    ('etc/lists/new_lists3', _etc_and_ruleset_path),
 ])
 def test_validation_check_exp_ok(exp, regex_name):
+    """Verify that check_exp() returns True with correct params"""
     assert check_exp(exp, regex_name)
 
 
@@ -103,13 +107,14 @@ def test_validation_check_exp_ok(exp, regex_name):
     ('/var/ossec/etc/internal_options$', _paths),
     ('/var/ossec/etc/rules/local_rules.xml()', _paths),
     # relative paths
-    ('etc/internal_options', _etc_path),
-    ('../../path', _etc_path),
-    ('/var/ossec/etc/lists/new_lists3', _etc_path),
-    ('../ossec', _etc_path),
-    ('etc/rules/../../../dir', _etc_path)
+    ('etc/internal_options', _etc_and_ruleset_path),
+    ('../../path', _etc_and_ruleset_path),
+    ('/var/ossec/etc/lists/new_lists3', _etc_and_ruleset_path),
+    ('../ossec', _etc_and_ruleset_path),
+    ('etc/rules/../../../dir', _etc_and_ruleset_path)
 ])
 def test_validation_check_exp_ko(exp, regex_name):
+    """Verify that check_exp() returns False with incorrect params"""
     assert not check_exp(exp, regex_name)
 
 
@@ -120,7 +125,8 @@ def test_validation_check_exp_ko(exp, regex_name):
     ('etc/ossec.conf')
 ])
 def test_validation_paths_ok(relative_path):
-    assert format_etc_path(relative_path)
+    """Verify that format_etc_file_path() returns True with correct params"""
+    assert format_etc_file_path(relative_path)
 
 
 @pytest.mark.parametrize('relative_path', [
@@ -130,7 +136,8 @@ def test_validation_paths_ok(relative_path):
     ('etc/internal_options')
 ])
 def test_validation_paths_ko(relative_path):
-    assert not format_etc_path(relative_path)
+    """Verify that format_etc_file_path() returns False with incorrect params"""
+    assert not format_etc_file_path(relative_path)
 
 
 @pytest.mark.parametrize('cdb_list', [
@@ -138,6 +145,7 @@ def test_validation_paths_ko(relative_path):
      'audit-wazuh-x:execute \n audit-wazuh-c:command')
 ])
 def test_validation_cdb_list_ok(cdb_list):
+    """Verify that check_cdb_list() returns True with correct params"""
     assert check_cdb_list(cdb_list)
 
 
@@ -146,6 +154,7 @@ def test_validation_cdb_list_ok(cdb_list):
     ('audit-wazuh:write \n $variable:read \n audit-wazuh-a:attribute')
 ])
 def test_validation_cdb_list_ko(cdb_list):
+    """Verify that check_cdb_list() returns False with incorrect params"""
     assert not check_cdb_list(cdb_list)
 
 
@@ -154,6 +163,7 @@ def test_validation_cdb_list_ko(cdb_list):
     (os.path.join(test_data_path, 'test_xml_2.xml'))
 ])
 def test_validation_xml_ok(xml_file):
+    """Verify that check_xml() returns True with well-formed XML files."""
     with open(xml_file) as f:
         xml_content = f.read()
     assert check_xml(xml_content)
@@ -164,17 +174,32 @@ def test_validation_xml_ok(xml_file):
     (os.path.join(test_data_path, 'test_xml_ko_2.xml'))
 ])
 def test_validation_xml_ko(xml_file):
+    """Verify that check_xml() returns True with malformed XML files."""
     with open(xml_file) as f:
         xml_content = f.read()
     assert not check_xml(xml_content)
 
 
+def test_allowed_fields():
+    """Verify that allowed_fields() returns list with allowed fields from a dict"""
+    result = allowed_fields({'field0': 'value0', 'field1': 'value1'})
+    assert isinstance(result, list)
+
+
+def test_is_safe_path():
+    """Verify that is_safe_path() works as expected"""
+    assert is_safe_path('/api/configuration/api.yaml')
+    assert not is_safe_path('/api/configuration/api.yaml', basedir='non-existent')
+    assert is_safe_path('api/configuration/api.yaml', follow_symlinks=False)
+
+
 @pytest.mark.parametrize('value, format', [
     ("test.33alphanumeric:", "alphanumeric"),
     ("cGVwZQ==", "base64"),
-    ("etc/lists/list.csv", "etc_path"),
-    ("etc/decoders/dec35.xml", "etc_path"),
-    ("etc/decoders/test/dec35.xml", "etc_path"),
+    ("etc/lists/list.csv", "etc_file_path"),
+    ("etc/decoders/dec35.xml", "etc_and_ruleset_file_path"),
+    ("etc/decoders/test/dec35.xml", "etc_and_ruleset_file_path"),
+    ("etc/decoders", "etc_and_ruleset_path"),
     ("AB0264EA00FD9BCDCF1A5B88BC1BDEA4", "hash"),
     ("file_test-33.xml", "names"),
     ("651403650840", "numbers"),
@@ -189,9 +214,17 @@ def test_validation_xml_ko(xml_file):
     ("7d", "timeframe"),
     ("1s", "timeframe"),
     ("7m", "timeframe"),
-    ("asdfASD0101", "wazuh_key")
+    ("asdfASD0101", "wazuh_key"),
+    ("2019-02-26", "date"),
+    ("2020-06-24T17:02:53Z", "date-time"),
+    ("2020-06-24T17:02:53Z", "date-time_or_empty"),
+    ("8743b52063cd84097a65d1633f5c74f5", "hash_or_empty"),
+    ("test_name", "names_or_empty"),
+    ("12345", "numbers_or_empty"),
+    ("group_name.test", "group_names"),
 ])
 def test_validation_json_ok(value, format):
+    """Verify that each value is of the indicated format."""
     assert(js.validate({"key": value},
                        schema={'type': 'object', 'properties': {'key': {'type': 'string', 'format': format}}},
                        format_checker=js.draft4_format_checker) is None)
@@ -200,13 +233,13 @@ def test_validation_json_ok(value, format):
 @pytest.mark.parametrize('value, format', [
     ("~test.33alphanumeric:", "alphanumeric"),
     ("cGVwZQ===", "base64"),
-    ("etc/../lists/list.csv", "etc_path"),
-    ("/etc/decoders/dec35.xml", "etc_path"),
+    ("etc/../lists/list.csv", "etc_and_ruleset_file_path"),
+    ("/etc/decoders/dec35.xml", "etc_and_ruleset_file_path"),
     ("AB0264EA00FD9BCDCF1A5B88BC1BDEA4.", "hash"),
     ("../../file_test-33.xml", "names"),
     ("a651403650840", "numbers"),
     ("!/var/wazuh/test", "path"),
-    #("field=0", "query"),
+    ("1234", "query"),
     ("34-", "range"),
     ("34-36-9", "range"),
     ("test,.&", "search"),
@@ -214,9 +247,17 @@ def test_validation_json_ok(value, format):
     ("-field;+field.subfield", "sort"),
     ("7a", "timeframe"),
     ("s1", "timeframe"),
-    ("asdfASD0101!", "wazuh_key")
+    ("asdfASD0101!", "wazuh_key"),
+    ('2019-02-26-test', "date"),
+    ("2020-06-24 17:02:53.034374", "date-time"),
+    ("2020-06-24 17:02:53.034374", "date-time_or_empty"),
+    ("testtest", "hash_or_empty"),
+    ("test_name test", "names_or_empty"),
+    ("12345abc", "numbers_or_empty"),
+    ("group_name.test ", "group_names"),
 ])
 def test_validation_json_ko(value, format):
+    """Verify that each value is not of the indicated format."""
     with pytest.raises(js.ValidationError):
         js.validate({"key": value},
                     schema={'type': 'object',
