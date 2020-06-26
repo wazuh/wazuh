@@ -26,10 +26,6 @@ int __wrap_os_random() {
     time_t current_time = time(NULL);
     struct tm *date = localtime(&current_time);
     test_ciscat_date_storage[test_ciscat_date_counter++] = *date;
-    if(test_ciscat_date_counter >= TEST_MAX_DATES){
-        // Break infinite loop
-        disable_forever_loop();
-    }
     return 0;
 }
 
@@ -83,7 +79,6 @@ static int teardown_module(){
 }
 
 static int setup_test_executions() {
-    enable_forever_loop();
     test_ciscat_date_counter = 0;
     return 0;
 }
@@ -121,6 +116,8 @@ void test_interval_execution(void **state) {
     module_data->scan_config.scan_wday = -1;
     module_data->scan_config.interval = 120; // 2min
     module_data->scan_config.month_interval = false;
+    will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
+    will_return(__wrap_FOREVER, 0);
     ciscat_module->context->start(module_data);
     check_time_interval( &module_data->scan_config, &test_ciscat_date_storage[0], TEST_MAX_DATES);
 }
@@ -134,6 +131,8 @@ void test_day_of_month(void **state) {
     module_data->scan_config.scan_time = strdup("00:00");
     module_data->scan_config.interval = 1; // 1 month
     module_data->scan_config.month_interval = true;
+    will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
+    will_return(__wrap_FOREVER, 0);
     ciscat_module->context->start(module_data);
     check_day_of_month( &module_data->scan_config, &test_ciscat_date_storage[0], TEST_MAX_DATES);
 }
@@ -147,6 +146,8 @@ void test_day_of_week(void **state) {
     module_data->scan_config.scan_time = strdup("00:00");
     module_data->scan_config.interval = 604800;  // 1 week
     module_data->scan_config.month_interval = false;
+    will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
+    will_return(__wrap_FOREVER, 0);
     ciscat_module->context->start(module_data);
     check_day_of_week( &module_data->scan_config, &test_ciscat_date_storage[0], TEST_MAX_DATES);
 }
@@ -160,6 +161,8 @@ void test_time_of_day(void **state) {
     module_data->scan_config.scan_time = strdup("00:00");
     module_data->scan_config.interval = WM_DEF_INTERVAL;  // 1 day
     module_data->scan_config.month_interval = false;
+    will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
+    will_return(__wrap_FOREVER, 0);
     ciscat_module->context->start(module_data);
     check_time_of_day( &module_data->scan_config, &test_ciscat_date_storage[0], TEST_MAX_DATES);
 }

@@ -15,6 +15,9 @@ list(APPEND shared_tests_flags "")
 list(APPEND shared_tests_names "test_version_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose")
 
+list(APPEND shared_tests_names "test_time_op")
+list(APPEND shared_tests_flags " ")
+
 if(${TARGET} STREQUAL "server")
 list(APPEND shared_tests_names "test_bzip2_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=fopen,--wrap=fread,--wrap=fclose,--wrap=fwrite,--wrap=BZ2_bzWriteOpen,--wrap=BZ2_bzWriteClose64,--wrap=BZ2_bzReadClose,--wrap=BZ2_bzReadOpen,--wrap=BZ2_bzRead,--wrap=BZ2_bzWrite,--wrap=_mdebug2")

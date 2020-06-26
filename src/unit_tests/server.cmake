@@ -12,8 +12,6 @@ add_compile_options(-ggdb -O0 -g -coverage -DTEST_SERVER -DENABLE_AUDIT -DINOTIF
 set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -lcmocka -fprofile-arcs -ftest-coverage)
 
 add_subdirectory(analysisd)
-add_subdirectory(shared)
-add_subdirectory(syscheckd)
 add_subdirectory(wazuh_db)
 add_subdirectory(wazuh_modules)
 add_subdirectory(wazuh_modules/gcp)

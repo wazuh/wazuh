@@ -4602,7 +4602,7 @@ void test_whodata_callback_event_4656_canceled(void **state){
     buffer[5].Type = EvtVarTypeHexInt64;
     buffer[6].Type = EvtVarTypeHexInt32;
     buffer[7].Type = EvtVarTypeNull;
-    const char* win_path = syscheck.dir[0];
+    const char* win_path = syscheck.dir[1];
     buffer[0].Int16Val = 4656;
     buffer[1].XmlVal = L"USERNAME";
     buffer[2].XmlVal = (const short unsigned int *) win_path;
@@ -4621,13 +4621,13 @@ void test_whodata_callback_event_4656_canceled(void **state){
 
     //Whodata path
     {
-        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, syscheck.dir[0]);
+        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, syscheck.dir[1]);
         expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
         will_return(wrap_win_whodata_WideCharToMultiByte, 21);
 
-        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, syscheck.dir[0]);
+        expect_string(wrap_win_whodata_WideCharToMultiByte, lpWideCharStr, syscheck.dir[1]);
         expect_value(wrap_win_whodata_WideCharToMultiByte, cchWideChar, -1);
-        will_return(wrap_win_whodata_WideCharToMultiByte, syscheck.dir[0]);
+        will_return(wrap_win_whodata_WideCharToMultiByte, syscheck.dir[1]);
         will_return(wrap_win_whodata_WideCharToMultiByte, 21);
     }
 
@@ -4645,7 +4645,7 @@ void test_whodata_callback_event_4656_canceled(void **state){
     will_return(__wrap_fim_configuration_directory, 8);
 
     char debug_msg[OS_MAXSTR];
-    snprintf(debug_msg, OS_MAXSTR, "(6240): The monitoring of '%s' in whodata mode has been canceled. Added to the ignore list.", syscheck.dir[0]);
+    snprintf(debug_msg, OS_MAXSTR, "(6240): The monitoring of '%s' in whodata mode has been canceled. Added to the ignore list.", syscheck.dir[1]);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
     int ret = whodata_callback(action, NULL, event);
@@ -4681,7 +4681,7 @@ void test_whodata_callback_event_4656_handler_not_removed(void **state) {
     buffer[6].Type = EvtVarTypeHexInt32;
     buffer[7].Type = EvtVarTypeNull;
     char win_path[OS_MAXSTR] = {0};
-    strcat(win_path, syscheck.dir[1]);
+    strcat(win_path, syscheck.dir[2]);
     strcat(win_path, "\\sasa.exe");
     buffer[0].Int16Val = 4656;
     buffer[1].XmlVal = L"USERNAME";
@@ -5710,6 +5710,8 @@ void test_whodata_callback_event_4663_invalid_param(void **state){
     whodata_evt *w_evt = *state;
     whodata_directory w_dir;
 
+    w_evt->scan_directory = (char)2;
+
     /* EvtRender first call */
     expect_value(wrap_win_whodata_EvtRender, Context, context);
     expect_value(wrap_win_whodata_EvtRender, Fragment, event);
@@ -5769,7 +5771,7 @@ void test_whodata_callback_event_4663_invalid_param(void **state){
 
     expect_value(__wrap_OSHash_Get, self, syscheck.wdata.fd);
     expect_string(__wrap_OSHash_Get, key, "1234567890123456789");
-    will_return(__wrap_OSHash_Get, &w_evt);
+    will_return(__wrap_OSHash_Get, w_evt);
 
     expect_value(__wrap_OSHash_Get_ex, self, syscheck.wdata.directories);
     expect_string(__wrap_OSHash_Get_ex, key, "c:\\another\\path.file");
@@ -5854,7 +5856,7 @@ void test_whodata_callback_event_4663_wrong_event_time_param(void **state){
 
     expect_value(__wrap_OSHash_Get, self, syscheck.wdata.fd);
     expect_string(__wrap_OSHash_Get, key, "1234567890123456789");
-    will_return(__wrap_OSHash_Get, &w_evt);
+    will_return(__wrap_OSHash_Get, w_evt);
 
     expect_value(__wrap_OSHash_Get_ex, self, syscheck.wdata.directories);
     expect_string(__wrap_OSHash_Get_ex, key, "c:\\another\\path.file");
@@ -5962,7 +5964,7 @@ void test_whodata_callback_event_4663_file_time_error(void **state){
 
     expect_value(__wrap_OSHash_Get, self, syscheck.wdata.fd);
     expect_string(__wrap_OSHash_Get, key, "1234567890123456789");
-    will_return(__wrap_OSHash_Get, &w_evt);
+    will_return(__wrap_OSHash_Get, w_evt);
 
     expect_value(__wrap_OSHash_Get_ex, self, syscheck.wdata.directories);
     expect_string(__wrap_OSHash_Get_ex, key, "c:\\another\\path.file");
@@ -6069,7 +6071,7 @@ void test_whodata_callback_event_4663_timestamp_ok(void **state){
 
     expect_value(__wrap_OSHash_Get, self, syscheck.wdata.fd);
     expect_string(__wrap_OSHash_Get, key, "1234567890123456789");
-    will_return(__wrap_OSHash_Get, &w_evt);
+    will_return(__wrap_OSHash_Get, w_evt);
 
     expect_value(__wrap_OSHash_Get_ex, self, syscheck.wdata.directories);
     expect_string(__wrap_OSHash_Get_ex, key, "c:\\another\\path.file");
@@ -6154,7 +6156,7 @@ void test_whodata_callback_event_4663_no_event(void **state){
 
     expect_value(__wrap_OSHash_Get, self, syscheck.wdata.fd);
     expect_string(__wrap_OSHash_Get, key, "1234567890123456789");
-    will_return(__wrap_OSHash_Get, &w_evt);
+    will_return(__wrap_OSHash_Get, w_evt);
 
     expect_value(__wrap_OSHash_Get_ex, self, syscheck.wdata.directories);
     expect_string(__wrap_OSHash_Get_ex, key, "c:\\another\\path.file");
@@ -6180,6 +6182,7 @@ void test_whodata_callback_event_4663_no_dir(void **state){
     EVT_VARIANT buffer[NUM_EVENTS];
     whodata_evt *w_evt = *state;
     whodata_directory w_dir;
+    w_evt->scan_directory = (char)2;
 
     /* EvtRender first call */
     expect_value(wrap_win_whodata_EvtRender, Context, context);
@@ -6242,7 +6245,7 @@ void test_whodata_callback_event_4663_no_dir(void **state){
 
     expect_value(__wrap_OSHash_Get, self, syscheck.wdata.fd);
     expect_string(__wrap_OSHash_Get, key, "1234567890123456789");
-    will_return(__wrap_OSHash_Get, &w_evt);
+    will_return(__wrap_OSHash_Get, w_evt);
 
     expect_value(__wrap_OSHash_Get_ex, self, syscheck.wdata.directories);
     expect_string(__wrap_OSHash_Get_ex, key, "c:\\another\\path.file");
@@ -6276,6 +6279,7 @@ void test_whodata_callback_event_4663_dir(void **state){
     EVT_VARIANT buffer[NUM_EVENTS];
     whodata_evt *w_evt = *state;
     whodata_directory w_dir;
+    w_evt->scan_directory = (char)2;
 
     /* EvtRender first call */
     expect_value(wrap_win_whodata_EvtRender, Context, context);
@@ -6338,7 +6342,7 @@ void test_whodata_callback_event_4663_dir(void **state){
 
     expect_value(__wrap_OSHash_Get, self, syscheck.wdata.fd);
     expect_string(__wrap_OSHash_Get, key, "1234567890123456789");
-    will_return(__wrap_OSHash_Get, &w_evt);
+    will_return(__wrap_OSHash_Get, w_evt);
 
     expect_value(__wrap_OSHash_Get_ex, self, syscheck.wdata.directories);
     expect_string(__wrap_OSHash_Get_ex, key, "c:\\another\\path.file");
@@ -6434,7 +6438,7 @@ void test_whodata_callback_event_4663_dir_removed(void **state){
 
     expect_value(__wrap_OSHash_Get, self, syscheck.wdata.fd);
     expect_string(__wrap_OSHash_Get, key, "1234567890123456789");
-    will_return(__wrap_OSHash_Get, &w_evt);
+    will_return(__wrap_OSHash_Get, w_evt);
 
     int ret = whodata_callback(action, NULL, event);
     assert_int_equal(ret, 0);
@@ -7816,8 +7820,8 @@ void test_state_checker_no_files_to_check(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
 
-    will_return(FOREVER, 1);
-    will_return(FOREVER, 0);
+    will_return(__wrap_FOREVER, 1);
+    will_return(__wrap_FOREVER, 0);
 
     expect_value(wrap_win_whodata_Sleep, dwMilliseconds, WDATA_DEFAULT_INTERVAL_SCAN * 1000);
 
@@ -7841,8 +7845,8 @@ void test_state_checker_file_not_whodata(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
 
-    will_return(FOREVER, 1);
-    will_return(FOREVER, 0);
+    will_return(__wrap_FOREVER, 1);
+    will_return(__wrap_FOREVER, 0);
 
     expect_value(wrap_win_whodata_Sleep, dwMilliseconds, WDATA_DEFAULT_INTERVAL_SCAN * 1000);
 
@@ -7873,8 +7877,8 @@ void test_state_checker_file_does_not_exist(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
 
-    will_return(FOREVER, 1);
-    will_return(FOREVER, 0);
+    will_return(__wrap_FOREVER, 1);
+    will_return(__wrap_FOREVER, 0);
 
     expect_value(wrap_win_whodata_Sleep, dwMilliseconds, WDATA_DEFAULT_INTERVAL_SCAN * 1000);
 
@@ -7916,8 +7920,8 @@ void test_state_checker_file_with_invalid_sacl(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
 
-    will_return(FOREVER, 1);
-    will_return(FOREVER, 0);
+    will_return(__wrap_FOREVER, 1);
+    will_return(__wrap_FOREVER, 0);
 
     expect_value(wrap_win_whodata_Sleep, dwMilliseconds, WDATA_DEFAULT_INTERVAL_SCAN * 1000);
 
@@ -8025,8 +8029,8 @@ void test_state_checker_file_with_valid_sacl(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
 
-    will_return(FOREVER, 1);
-    will_return(FOREVER, 0);
+    will_return(__wrap_FOREVER, 1);
+    will_return(__wrap_FOREVER, 0);
 
     expect_value(wrap_win_whodata_Sleep, dwMilliseconds, WDATA_DEFAULT_INTERVAL_SCAN * 1000);
 
@@ -8130,8 +8134,8 @@ void test_state_checker_dir_readded_error(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
 
-    will_return(FOREVER, 1);
-    will_return(FOREVER, 0);
+    will_return(__wrap_FOREVER, 1);
+    will_return(__wrap_FOREVER, 0);
 
     expect_value(wrap_win_whodata_Sleep, dwMilliseconds, WDATA_DEFAULT_INTERVAL_SCAN * 1000);
 
@@ -8197,8 +8201,8 @@ void test_state_checker_dir_readded_succesful(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
 
-    will_return(FOREVER, 1);
-    will_return(FOREVER, 0);
+    will_return(__wrap_FOREVER, 1);
+    will_return(__wrap_FOREVER, 0);
 
     expect_value(wrap_win_whodata_Sleep, dwMilliseconds, WDATA_DEFAULT_INTERVAL_SCAN * 1000);
 
@@ -8539,8 +8543,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_whodata_callback_event_4658_new_file_added, setup_win_whodata_evt, teardown_win_whodata_evt),
         cmocka_unit_test_setup_teardown(test_whodata_callback_event_4658_no_new_files, setup_win_whodata_evt, teardown_win_whodata_evt),
         cmocka_unit_test_setup_teardown(test_whodata_callback_event_4658_scan_aborted, setup_win_whodata_evt, teardown_win_whodata_evt),
-        cmocka_unit_test_setup_teardown(test_whodata_callback_event_4663_no_dir, setup_whodata_callback, teardown_whodata_callback),
-        cmocka_unit_test(test_whodata_callback_event_4663_invalid_param),
+        cmocka_unit_test_setup_teardown(test_whodata_callback_event_4663_no_dir, setup_event_4663_dir, teardown_event_4663_dir),
+        cmocka_unit_test_setup_teardown(test_whodata_callback_event_4663_invalid_param, setup_event_4663_dir, teardown_event_4663_dir),
         cmocka_unit_test_setup_teardown(test_whodata_callback_event_4663_wrong_event_time_param, setup_win_whodata_evt, teardown_win_whodata_evt),
         cmocka_unit_test_setup_teardown(test_whodata_callback_event_4663_file_time_error, setup_win_whodata_evt, teardown_win_whodata_evt),
         cmocka_unit_test_setup_teardown(test_whodata_callback_event_4663_timestamp_ok, setup_win_whodata_evt, teardown_win_whodata_evt),

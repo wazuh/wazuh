@@ -14,6 +14,8 @@ uname_P := $(shell sh -c 'uname -p 2>/dev/null || echo not')
 uname_R := $(shell sh -c 'uname -r 2>/dev/null || echo not')
 HAS_CHECKMODULE = $(shell command -v checkmodule > /dev/null && echo YES)
 HAS_SEMODULE_PACKAGE = $(shell command -v semodule_package > /dev/null && echo YES)
+CHECK_ARCHLINUX := $(shell sh -c 'grep "Arch Linux" /etc/os-release > /dev/null && echo YES || echo not')
+ARCH_FLAGS =
 
 ROUTE_PATH := $(shell pwd)
 EXTERNAL_JSON=external/cJSON/
@@ -95,6 +97,10 @@ ifeq (${uname_S},Linux)
 		USE_AUDIT=yes
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 		OSSEC_CFLAGS+=-I$(EXTERNAL_AUDIT)lib
+endif
+ifeq (${CHECK_ARCHLINUX},YES)
+		ARCH_FLAGS+=-lnghttp2 -lbrotlidec -lpsl
+		OSSEC_LDFLAGS+=-lnghttp2 -lbrotlidec -lpsl
 endif
 else
 ifeq (${uname_S},AIX)
@@ -963,16 +969,28 @@ os_net/%.o: os_net/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
 #### Shared ##########
+# Unit tests wrappers
+wrappers_common_c := $(wildcard unit_tests/wrappers/*.c)
+wrappers_common_o := $(wrappers_common_c:.c=.o)
 
+wrappers_syscheck_c := $(wildcard unit_tests/wrappers/syscheckd/*.c)
+wrappers_syscheck_o := $(wrappers_syscheck_c:.c=.o)
 
 wrappers_shared_c := $(wildcard unit_tests/wrappers/shared/*.c)
 wrappers_shared_o := $(wrappers_shared_c:.c=.o)
 
 ifneq (,$(filter ${TEST},YES yes y Y 1))
+	OSSEC_CFLAGS+=${CFLAGS_TEST}
+	# OSSEC_CFLAGS+=${CFLAGS_TEST} -Itests
+	OSSEC_LDFLAGS+=${CFLAGS_TEST}
+	OSSEC_LIBS+=${LIBS_TEST}
+
+UNIT_TEST_WRAPPERS:=${wrappers_common_o}
 ifeq (${TARGET},winagent)
-	WINDOWS_SHARED_WRAPPERS:=${wrappers_syscheck_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_shared_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_syscheck_o}
 endif
-endif
+endif #TEST
 
 shared_c := $(wildcard shared/*.c)
 shared_o := $(shared_c:.c=.o)
@@ -1120,7 +1138,7 @@ crypto_o := ${crypto_blowfish_o} \
 
 #### libwazuh #########
 
-libwazuh.a: ${config_o} ${wmodules_dep} ${crypto_o} ${shared_o} ${os_net_o} ${os_regex_o} ${os_xml_o} ${os_zlib_o} ${WINDOWS_SHARED_WRAPPERS}
+libwazuh.a: ${config_o} ${wmodules_dep} ${crypto_o} ${shared_o} ${os_net_o} ${os_regex_o} ${os_xml_o} ${os_zlib_o} ${UNIT_TEST_WRAPPERS}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
 
@@ -1542,7 +1560,7 @@ ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python.exe))
 endif
 else
 ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python))
-	export WPATH_LIB="'\$$\$$ORIGIN/../../../lib'" && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && export LD_LIBRARY_PATH=${ROUTE_PATH} && cd ${EXTERNAL_CPYTHON} && ./configure --prefix="${WPYTHON_DIR}" --libdir="${WPYTHON_DIR}/lib" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH} -lwazuhext -Wl,-rpath,'\$$\$$ORIGIN/../../../lib',--disable-new-dtags" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
+	export WPATH_LIB="'\$$\$$ORIGIN/../../../lib'" && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && export LD_LIBRARY_PATH=${ROUTE_PATH} && cd ${EXTERNAL_CPYTHON} && ./configure --prefix="${WPYTHON_DIR}" --libdir="${WPYTHON_DIR}/lib" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="${ARCH_FLAGS} -L${ROUTE_PATH} -lwazuhext -Wl,-rpath,'\$$\$$ORIGIN/../../../lib',--disable-new-dtags" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
 endif
 endif
 
@@ -1562,7 +1580,7 @@ install_dependencies: install_python
 install_framework: install_python
 	cd ../framework && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR} --wazuh-version=$(shell cat VERSION) --install-type=${TARGET}
 	chown -R root:${OSSEC_GROUP} ${WPYTHON_DIR}
-	chmod -R o=- ${WPYTHON_DIR}/*
+	chmod -R o=- ${WPYTHON_DIR}
 
 install_mitre: install_python
 	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${PREFIX}/var/db/mitre.db
@@ -1576,21 +1594,10 @@ LIBS_TEST=-lcmocka
 
 # LIBS_TEST = -lcheck -lm -lrt -lsubunit
 
-# Unit tests wrappers
-wrappers_syscheck_c := $(wildcard unit_tests/wrappers/syscheckd/*.c)
-wrappers_syscheck_o := $(wrappers_syscheck_c:.c=.o)
 
-ifneq (,$(filter ${TEST},YES yes y Y 1))
-	OSSEC_CFLAGS+=${CFLAGS_TEST}
-	# OSSEC_CFLAGS+=${CFLAGS_TEST} -Itests
-	OSSEC_LDFLAGS+=${CFLAGS_TEST}
-	OSSEC_LIBS+=${LIBS_TEST}
 
-ifeq (${TARGET},winagent)
-	WINDOWS_UNIT_TEST_WRAPPERS:=${wrappers_syscheck_o}
-	WINDOWS_UNIT_TEST_WRAPPERS+=${wrappers_shared_o}
-endif
-endif #TEST
+unit_tests/wrappers/%.o: unit_tests/wrappers/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
 unit_tests/wrappers/syscheckd/%.o: unit_tests/wrappers/syscheckd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
@@ -1689,10 +1696,10 @@ win32_ui_o := $(win32_ui_c:.c=.o)
 win32/ui/%.o: win32/ui/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -UOSSECHIDS -DARGV0=\"ossec-win32ui\" -c $^ -o $@
 
-win32/ossec-agent.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o ${syscheck_o} ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o wazuh_modules/syscollector/syscollector_win_ext.dll ${WINDOWS_UNIT_TEST_WRAPPERS}
+win32/ossec-agent.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o ${syscheck_o} ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o wazuh_modules/syscollector/syscollector_win_ext.dll ${UNIT_TEST_WRAPPERS}
 	${OSSEC_CCBIN} -DARGV0=\"ossec-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/ossec-agent-eventchannel.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out syscheckd/main-event.o, ${syscheck_eventchannel_o}) ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o wazuh_modules/syscollector/syscollector_win_ext.dll ${WINDOWS_UNIT_TEST_WRAPPERS}
+win32/ossec-agent-eventchannel.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out syscheckd/main-event.o, ${syscheck_eventchannel_o}) ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o wazuh_modules/syscollector/syscollector_win_ext.dll ${UNIT_TEST_WRAPPERS}
 	${OSSEC_CCBIN} -DARGV0=\"ossec-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 win32/ossec-rootcheck.exe: win32/icon.o win32/win_service_rk.o ${rootcheck_rk_o}
@@ -1766,7 +1773,7 @@ endif
 clean-deps:
 	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_CPYTHON) $(MSU_JSON_GZ)
 
-clean-internals:
+clean-internals: clean-unit-tests
 	rm -f $(BUILD_SERVER)
 	rm -f $(BUILD_AGENT)
 	rm -f $(BUILD_LIBS)
@@ -1798,8 +1805,11 @@ clean-internals:
 	rm -f ${wdb_o}
 	rm -f ${SELINUX_MODULE}
 	rm -f ${SELINUX_POLICY}
+	
+clean-unit-tests:
 	rm -f ${wrappers_syscheck_o}
 	rm -f ${wrappers_shared_o}
+	rm -f ${wrappers_common_o}
 
 clean-framework:
 	${MAKE} -C ../framework clean

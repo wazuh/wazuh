@@ -27,6 +27,7 @@ typedef struct _win32rtfim {
 
     char *dir;
     TCHAR buffer[65536];
+    unsigned int watch_status;
 } win32rtfim;
 
 int realtime_win32read(win32rtfim *rtlocald);
@@ -1012,7 +1013,7 @@ void test_realtime_win32read_success(void **state) {
 
     ret = realtime_win32read(&rtlocal);
 
-    assert_int_equal(ret, 0);
+    assert_int_equal(ret, 1);
 }
 
 void test_realtime_win32read_unable_to_read_directory(void **state) {
@@ -1022,9 +1023,6 @@ void test_realtime_win32read_unable_to_read_directory(void **state) {
     rtlocal.dir = "C:\\a\\path";
 
     will_return(wrap_run_realtime_ReadDirectoryChangesW, 0);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "(6323): Unable to set 'ReadDirectoryChangesW' for directory: 'C:\\a\\path'");
-    will_return(__wrap__mdebug1, 1);
 
     ret = realtime_win32read(&rtlocal);
 
@@ -1058,9 +1056,6 @@ void test_free_win32rtfim_data_full_data(void **state) {
         free(data);
         fail();
     }
-
-    expect_value(wrap_run_realtime_CloseHandle, hObject, (HANDLE)123456);
-    will_return(wrap_run_realtime_CloseHandle, 1);
 
     free_win32rtfim_data(data);
 }
@@ -1236,13 +1231,15 @@ void test_realtime_adddir_out_of_memory_error(void **state) {
     expect_string(wrap_run_realtime_CreateFile, lpFileName, "C:\\a\\path");
     will_return(wrap_run_realtime_CreateFile, (HANDLE)123456);
 
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    will_return(wrap_run_realtime_ReadDirectoryChangesW, 1);
 
     will_return(__wrap_OSHash_Add_ex, NULL);
-
     expect_string(__wrap__merror_exit, formatted_msg, FIM_CRITICAL_ERROR_OUT_MEM);
 
-    will_return(wrap_run_realtime_ReadDirectoryChangesW, 1);
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "(6227): Directory added for real time monitoring: 'C:\\a\\path'");
+    will_return(__wrap__mdebug1, 1);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     ret = realtime_adddir("C:\\a\\path", 0, 0);
 
@@ -1259,11 +1256,13 @@ void test_realtime_adddir_success(void **state) {
     expect_string(wrap_run_realtime_CreateFile, lpFileName, "C:\\a\\path");
     will_return(wrap_run_realtime_CreateFile, (HANDLE)123456);
 
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
+    will_return(wrap_run_realtime_ReadDirectoryChangesW, 1);
     will_return(__wrap_OSHash_Add_ex, 1);
 
-    will_return(wrap_run_realtime_ReadDirectoryChangesW, 1);
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "(6227): Directory added for real time monitoring: 'C:\\a\\path'");
+    will_return(__wrap__mdebug1, 1);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     ret = realtime_adddir("C:\\a\\path", 0, 0);
 
@@ -1272,8 +1271,6 @@ void test_realtime_adddir_success(void **state) {
 
 void test_RTCallBack_error_on_callback(void **state) {
     OVERLAPPED ov;
-
-    expect_string(__wrap__mwarn, formatted_msg, FIM_WARN_REALTIME_OVERFLOW);
 
     expect_string(__wrap__merror, formatted_msg, "(6613): Real time Windows callback process: 'Path not found.' (3).");
 
@@ -1294,9 +1291,10 @@ void test_RTCallBack_no_bytes_returned(void **state) {
     win32rtfim *rt = *state;
     OVERLAPPED ov;
 
-    expect_string(__wrap__mwarn, formatted_msg, FIM_WARN_REALTIME_OVERFLOW);
-
+    rt->watch_status = 1;
     will_return(__wrap_OSHash_Get, rt);
+
+    expect_string(__wrap__mwarn, formatted_msg, FIM_WARN_REALTIME_OVERFLOW);
 
     // Inside realtime_win32read
     will_return(wrap_run_realtime_ReadDirectoryChangesW, 1);
@@ -1317,6 +1315,7 @@ void test_RTCallBack_acquired_changes_null_dir(void **state) {
 
     // This condition is not taken into account
     rt->dir = NULL;
+    rt->watch_status = 1;
 
     ov.Pointer = "C:\\a\\path";
 
@@ -1350,6 +1349,7 @@ void test_RTCallBack_acquired_changes(void **state) {
 
     // This condition is not taken into account
     rt->dir = strdup("C:\\a\\path");
+    rt->watch_status = 1;
 
     ov.Pointer = "C:\\a\\path\\file.test";
 
