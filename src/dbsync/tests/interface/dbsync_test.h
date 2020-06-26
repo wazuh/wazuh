@@ -1,8 +1,8 @@
 #pragma once
 #include "gtest/gtest.h"
 
-class DBSyncTest : public ::testing::Test {
-
+class DBSyncTest : public ::testing::Test 
+{
 protected:
 
     DBSyncTest() = default;
