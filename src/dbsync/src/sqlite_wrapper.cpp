@@ -155,5 +155,6 @@ double Column::Double(){
   return sqlite3_column_double(m_stmt, m_index);
 }
 std::string Column::String(){
-  return reinterpret_cast<const char *>(sqlite3_column_text(m_stmt, m_index));
+  const auto str { reinterpret_cast<const char *>(sqlite3_column_text(m_stmt, m_index)) };
+  return nullptr != str ? str : "";
 }
