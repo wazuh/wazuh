@@ -73,9 +73,10 @@ namespace SQLite
         bool m_commited;
     };
 
-    class Column : public IColumn {
+    class Column : public IColumn
+    {
     public:
-        virtual ~Column() = default;
+        ~Column() = default;
         Column(std::shared_ptr<sqlite3_stmt>& stmt, const int32_t index);
 
         bool hasValue() const override;
