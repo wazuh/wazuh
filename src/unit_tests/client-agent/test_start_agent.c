@@ -110,6 +110,10 @@ int __wrap_ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, uns
     *output = (char*)mock_ptr_type(char *);
     return (int)mock();
 }
+
+int __wrap_wnet_select(int sock, int timeout) {
+    return (int)mock();
+}
  
 /* Aux */
 /* ACK encrypted with id=001, Name=agent0 and key=6958b43cb096e036f872d65d6a4dc01b3c828f64a204c04 */
@@ -199,7 +203,6 @@ static void test_connect_server(void **state) {
     /* Connect to first server (UDP)*/ 
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OS_ConnectUDP, 11);
-    will_return(__wrap_OS_SetRecvTimeout, 0);
     connected = connect_server(0);
     assert_int_equal(agt->rip_id, 0);
     assert_int_equal(agt->sock, 11);    
@@ -208,7 +211,6 @@ static void test_connect_server(void **state) {
     /* Connect to second server (TCP), previous connection must be closed*/
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OS_ConnectTCP, 12);
-    will_return(__wrap_OS_SetRecvTimeout, 0);
     #ifndef TEST_WINAGENT
     expect_value(__wrap_close, fd, 11);
     #else
@@ -222,7 +224,6 @@ static void test_connect_server(void **state) {
     /* Connect to third server (UDP), valid host name*/
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OS_ConnectUDP, 13);
-    will_return(__wrap_OS_SetRecvTimeout, 0);
     #ifndef TEST_WINAGENT
     expect_value(__wrap_close, fd, 12);
     #else
@@ -252,30 +253,6 @@ static void test_connect_server(void **state) {
     return;
 }
 
-static void test_connect_server_timeout_error(void **state) { 
-    bool connected = false; 
-    /* Connect to first server (UDP)*/ 
-    will_return(__wrap_getDefine_Int, 5);
-    will_return(__wrap_OS_ConnectUDP, 11);
-    will_return(__wrap_OS_SetRecvTimeout, -1);
-    errno = ENOPROTOOPT;
-    connected = connect_server(0);
-    assert_int_equal(agt->rip_id, 0);
-    assert_int_equal(agt->sock, 11);    
-    assert_true(connected);
-}
-
-static void test_connect_server_timeout_error_2(void **state) { 
-    bool connected = false; 
-    /* Connect to first server (UDP)*/ 
-    will_return(__wrap_getDefine_Int, 5);
-    will_return(__wrap_OS_ConnectUDP, 11);
-    will_return(__wrap_OS_SetRecvTimeout, -1);
-    errno = EFAULT;
-    connected = connect_server(0);   
-    assert_true(connected);
-}
-
 /* agent_handshake_to_server */
 static void test_agent_handshake_to_server(void **state) {
     bool handshaked = false;
@@ -283,38 +260,36 @@ static void test_agent_handshake_to_server(void **state) {
     /* Handshake with first server (UDP) */
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OS_ConnectUDP, 21);
-    will_return(__wrap_OS_SetRecvTimeout, 0);
     #ifndef TEST_WINAGENT
     will_return(__wrap_recv, SERVER_ENC_ACK);
     #else 
     will_return(wrap_recv, SERVER_ENC_ACK);
     #endif
+    will_return(__wrap_wnet_select, 1);
     expect_string(__wrap_send_msg, msg, "#!-agent startup ");    
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
-
-    agt->rip_id = 0;
-    handshaked = agent_handshake_to_server();
+    
+    handshaked = agent_handshake_to_server(0);
     assert_true(handshaked);
 
     /* Handshake with second server (TCP) */
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OS_ConnectTCP, 22);
-    will_return(__wrap_OS_SetRecvTimeout, 0);
     #ifndef TEST_WINAGENT
     expect_value(__wrap_close, fd, 21);
     #else
     expect_value(wrap_closesocket, fd, 21);
     #endif
+    will_return(__wrap_wnet_select, 1);
     will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
     expect_string(__wrap_send_msg, msg, "#!-agent startup ");   
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
-    agt->rip_id = 1;
-    handshaked = agent_handshake_to_server();
+    handshaked = agent_handshake_to_server(1);
     assert_true(handshaked);
 
     /* Handshake with connection error */
@@ -325,28 +300,22 @@ static void test_agent_handshake_to_server(void **state) {
     #else
     expect_value(wrap_closesocket, fd, 22);
     #endif     
-    agt->rip_id = 0;
-    handshaked = agent_handshake_to_server();
+    
+    handshaked = agent_handshake_to_server(0);
     assert_false(handshaked);
 
     /* Handshake with reception error */
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OS_ConnectUDP, 23);
-    will_return(__wrap_OS_SetRecvTimeout, 0);
-    #ifndef TEST_WINAGENT
-    will_return(__wrap_recv, SERVER_NULL_ACK);
-    #else 
-    will_return(wrap_recv, SERVER_NULL_ACK);
-    #endif
+    will_return(__wrap_wnet_select, 0);    
     expect_string(__wrap_send_msg, msg, "#!-agent startup ");
-    agt->rip_id = 0;
-    handshaked = agent_handshake_to_server();
+
+    handshaked = agent_handshake_to_server(0);
     assert_false(handshaked);
 
     /* Handshake with decode error */
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OS_ConnectUDP, 23);
-    will_return(__wrap_OS_SetRecvTimeout, 0);
     #ifndef TEST_WINAGENT
     expect_value(__wrap_close, fd, 23);
     will_return(__wrap_recv, SERVER_WRONG_ACK);
@@ -354,12 +323,13 @@ static void test_agent_handshake_to_server(void **state) {
     expect_value(wrap_closesocket, fd, 23);
     will_return(wrap_recv, SERVER_WRONG_ACK);
     #endif
+    will_return(__wrap_wnet_select, 1);
     expect_string(__wrap_send_msg, msg, "#!-agent startup "); 
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_WRONG_ACK);
     will_return(__wrap_ReadSecMSG, SERVER_WRONG_ACK);
     will_return(__wrap_ReadSecMSG, KS_CORRUPT);    
-    agt->rip_id = 0;
-    handshaked = agent_handshake_to_server();
+
+    handshaked = agent_handshake_to_server(0);
     assert_false(handshaked);
 
     return;
@@ -377,8 +347,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_connect_server, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_agent_handshake_to_server, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_send_msg_on_startup, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_connect_server_timeout_error, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_connect_server_timeout_error_2, setup_test, teardown_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
