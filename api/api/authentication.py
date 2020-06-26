@@ -4,6 +4,7 @@
 
 import asyncio
 import concurrent.futures
+import copy
 import logging
 import os
 from secrets import token_urlsafe
@@ -14,7 +15,7 @@ from jose import JWTError, jwt
 from werkzeug.exceptions import Unauthorized
 
 from api.api_exception import APIException
-from api.configuration import read_yaml_config, default_security_configuration, SECURITY_CONFIG_PATH
+from api.configuration import security_conf
 from api.constants import SECURITY_PATH
 from api.util import raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -109,7 +110,7 @@ def change_secret():
 
 
 def get_security_conf():
-    return read_yaml_config(config_file=SECURITY_CONFIG_PATH, default_conf=default_security_configuration)
+    return copy.deepcopy(security_conf)
 
 
 def generate_token(user_id=None, rbac_policies=None):
