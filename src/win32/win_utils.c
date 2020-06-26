@@ -88,7 +88,7 @@ int local_start()
 
     // Resolve hostnames
     rc = 0;
-    while (rc < agt->rip_id) {
+    while (rc < agt->server_count) {
         if (OS_IsValidIP(agt->server[rc].rip, NULL) != 1) {
             mdebug2("Resolving server hostname: %s", agt->server[rc].rip);
             resolveHostname(&agt->server[rc].rip, 5);
