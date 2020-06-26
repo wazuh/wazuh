@@ -14,7 +14,7 @@
 
 #ifdef UNIT_TESTING
     #define static
-    #ifdef WIN32 
+    #ifdef WIN32
             #include "unit_tests/wrappers/client-agent/start_agent.h"
             #undef CloseSocket
             #define CloseSocket wrap_closesocket
@@ -29,7 +29,7 @@ int timeout;    //timeout in seconds waiting for a server reply
 
 static ssize_t receive_message(char *buffer, unsigned int max_lenght);
 static void w_agentd_keys_init (void);
-static bool agent_handshake_to_server(int server_id);
+static bool agent_handshake_to_server(int server_id, bool is_startup);
 static void send_msg_on_startup(void);
 
 /**
@@ -80,7 +80,7 @@ bool connect_server(int server_id)
     if (tmp_str == NULL || *tmp_str == '\0') {
         int rip_l = strlen(agt->server[server_id].rip);
         mdebug2("Could not resolve hostname '%.*s'", agt->server[server_id].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[server_id].rip);
-            
+
         return false;
     }
 
@@ -94,7 +94,7 @@ bool connect_server(int server_id)
     } else {
         agt->sock = OS_ConnectTCP(agt->server[server_id].port, tmp_str, strchr(tmp_str, ':') != NULL);
     }
-    
+
     if (agt->sock < 0) {
         agt->sock = -1;
         #ifdef WIN32
@@ -120,7 +120,7 @@ bool connect_server(int server_id)
 /* Send synchronization message to the server and wait for the ack */
 void start_agent(int is_startup)
 {
-    
+
     if (is_startup) {
         w_agentd_keys_init();
     }
@@ -130,21 +130,22 @@ void start_agent(int is_startup)
     #endif
     int current_server_id = agt->rip_id;
     while (1) {
-        int attempts = 0;
-        while (attempts <= agt->server[current_server_id].max_retries) {
-            if (agent_handshake_to_server(current_server_id)) {
-                if (is_startup) {
-                    send_msg_on_startup();
-                }
+        for (int attempts = 0; attempts < agt->server[current_server_id].max_retries; attempts++) {
+            if (agent_handshake_to_server(current_server_id, is_startup)) {
                 return;
             }
-            sleep(agt->server[current_server_id].retry_interval);
 
-            if (agt->enrollment_cfg && agt->enrollment_cfg->enabled && attempts == (agt->server[current_server_id].max_retries -1)) {
-                try_enroll_to_server(agt->server[current_server_id].rip);                     
-            }
-            attempts ++;
+            sleep(agt->server[current_server_id].retry_interval);
         }
+
+        if (agt->enrollment_cfg && agt->enrollment_cfg->enabled && try_enroll_to_server(agt->server[current_server_id].rip) == 0) {
+            if (agent_handshake_to_server(current_server_id, is_startup)) {
+                return;
+            }
+
+            sleep(agt->server[current_server_id].retry_interval);
+        }
+
         /* Wait for server reply */
         mwarn(AG_WAIT_SERVER, agt->server[current_server_id].rip);
 
@@ -162,23 +163,23 @@ void start_agent(int is_startup)
 /**
  * @brief Initialize keys structure, counter, agent info and crypto method.
  * Keys are read from client.keys. If no valid entry is found:
- *  -If autoenrollment is enabled, a new key is requested to server and execution is blocked until a valid key is received. 
+ *  -If autoenrollment is enabled, a new key is requested to server and execution is blocked until a valid key is received.
  *  -If autoenrollment is disabled, daemon is stoped
  * */
 static void w_agentd_keys_init (void) {
-    
+
     if (keys.keysize == 0) {
         /* Check if we can auto-enroll */
         if (agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
             int registration_status = -1;
             int delay_sleep = 0;
             while (registration_status != 0) {
-                int rc = 0;                
+                int rc = 0;
                 if (agt->enrollment_cfg->target_cfg->manager_name) {
                     /* Configured enrollment server */
                     registration_status = try_enroll_to_server(agt->enrollment_cfg->target_cfg->manager_name);
-                } 
-                
+                }
+
                 /* Try to enroll to server list */
                 while (agt->server[rc].rip && (registration_status != 0)) {
                     registration_status = try_enroll_to_server(agt->server[rc].rip);
@@ -193,7 +194,7 @@ static void w_agentd_keys_init (void) {
                     mdebug1("Sleeping %d seconds before trying to enroll again", delay_sleep);
                     sleep(delay_sleep);
                 }
-            }        
+            }
         }
         /* If autoenrollment is disabled, stop daemon */
         else {
@@ -230,7 +231,7 @@ static void w_agentd_keys_init (void) {
  * @retval 0 when retries failed
  * */
 static ssize_t receive_message(char *buffer, unsigned int max_lenght) {
-    
+
     ssize_t recv_b = 0;
     /* Read received reply */
     switch (wnet_select(agt->sock, timeout)) {
@@ -256,7 +257,7 @@ static ssize_t receive_message(char *buffer, unsigned int max_lenght) {
                 return recv_b;
             }
             /* Error response */
-            else { 
+            else {
                 switch (recv_b) {
                 case OS_SOCKTERR:
                     merror("Corrupt payload (exceeding size) received.");
@@ -273,7 +274,7 @@ static ssize_t receive_message(char *buffer, unsigned int max_lenght) {
                     }
                 }
             }
-    }       
+    }
     return 0;
 }
 
@@ -293,13 +294,15 @@ int try_enroll_to_server(const char * server_rip) {
 
 /**
  * @brief Holds handshake logic for an attempt to connect to server
+ * @param server_id index of the specified server from agt servers list
+ * @param is_startup The agent is starting up.
+ * @post If is_startup is set to true, the startup message is sent on success.
  * @retval true on success
  * @retval false when failed
  * */
-static bool agent_handshake_to_server(int server_id){
+static bool agent_handshake_to_server(int server_id, bool is_startup) {
     size_t msg_length;
     ssize_t recv_b = 0;
-    int ret = false;
 
     char *tmp_msg;
     char msg[OS_MAXSTR + 2] = { '\0' };
@@ -314,12 +317,12 @@ static bool agent_handshake_to_server(int server_id){
 
         /* Read until our reply comes back */
         recv_b = receive_message(buffer, OS_MAXSTR);
-        
+
         if (recv_b > 0) {
             /* Id of zero -- only one key allowed */
             if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[server_id].rip, &tmp_msg) != KS_VALID) {
                 mwarn(MSG_ERROR, agt->server[server_id].rip);
-            } 
+            }
             else {
                 /* Check for commands */
                 if (IsValidHeader(tmp_msg)) {
@@ -330,13 +333,18 @@ static bool agent_handshake_to_server(int server_id){
                         minfo(AG_CONNECTED, agt->server[server_id].rip,
                                 agt->server[server_id].port, agt->server[server_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
 
-                        ret = true;
+                        if (is_startup) {
+                            send_msg_on_startup();
+                        }
+
+                        return true;
                     }
                 }
             }
         }
     }
-    return ret;
+
+    return false;
 }
 
 /**
@@ -345,7 +353,7 @@ static bool agent_handshake_to_server(int server_id){
 static void send_msg_on_startup(void){
 
     char msg[OS_MAXSTR + 2] = { '\0' };
-    char fmsg[OS_MAXSTR + 1] = { '\0' };    
+    char fmsg[OS_MAXSTR + 1] = { '\0' };
 
     /* Send log message about start up */
     snprintf(msg, OS_MAXSTR, OS_AG_STARTED,
