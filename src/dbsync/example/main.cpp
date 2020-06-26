@@ -37,7 +37,7 @@ int main()
             char* result_print = cJSON_Print(json_result);
             std::cout << result_print << std::endl;
             cJSON_free(result_print);
-            cJSON_Delete(json_result);
+            dbsync_free_result(&json_result);
           } 
         }while(getc(stdin) != 'q');
       }
