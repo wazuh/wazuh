@@ -65,6 +65,9 @@ int Read_Syscheck_Config(const char *cfgfile)
         if (info) {
             syscheck.win_build = atoi(info->os_build);
             free_osinfo(info);
+        } else {
+            mdebug2("The Windows version was not retrieved correctly.");
+            syscheck.win_build = 0;
         }
     }
 
