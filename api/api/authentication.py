@@ -139,7 +139,7 @@ def generate_token(user_id=None, rbac_policies=None):
     rbac_policies['rbac_mode'] = rbac_mode
     payload = {
         "iss": JWT_ISSUER,
-        "aud": "/security/user/authenticate",
+        "aud": "Wazuh API REST",
         "nbf": int(timestamp),
         "exp": int(timestamp + token_exp),
         "sub": str(user_id),
@@ -181,7 +181,7 @@ def decode_token(token):
     Dict payload ot the token
     """
     try:
-        payload = jwt.decode(token, generate_secret(), algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(token, generate_secret(), algorithms=[JWT_ALGORITHM], audience='Wazuh API REST')
         dapi = DistributedAPI(f=check_token,
                               f_kwargs={'username': payload['sub'], 'token_nbf_time': payload['nbf']},
                               request_type='local_master',
