@@ -5,7 +5,7 @@ from __future__ import absolute_import
 from flask import json
 from six import BytesIO
 
-from api.models.token_response import TokenResponse  # noqa: E501
+from api.models.token_response import TokenResponseModel  # noqa: E501
 from api.test import BaseTestCase
 
 

@@ -12,9 +12,9 @@ from api.api_exception import APIError
 from api.authentication import generate_token
 from api.configuration import default_security_configuration
 from api.encoder import dumps, prettify
-from api.models.configuration_model import SecurityConfigurationModel
-from api.models.security_model import CreateUserModel, UpdateUserModel
-from api.models.token_response import TokenResponse
+from api.models.configuration import SecurityConfigurationModel
+from api.models.security import CreateUserModel, UpdateUserModel
+from api.models.token_response import TokenResponseModel
 from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param
 from wazuh import security
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -40,7 +40,7 @@ async def login_user(request, user: str, auth_context=None):
 
     Returns
     -------
-    TokenResponse
+    TokenResponseModel
     """
     f_kwargs = {'auth_context': auth_context,
                 'user_id': user}
@@ -53,7 +53,7 @@ async def login_user(request, user: str, auth_context=None):
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=TokenResponse(token=generate_token(user_id=user, rbac_policies=data.dikt)),
+    return web.json_response(data=TokenResponseModel(token=generate_token(user_id=user, rbac_policies=data.dikt)),
                              status=200, dumps=dumps)
 
 

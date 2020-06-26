@@ -5,10 +5,10 @@ from __future__ import absolute_import
 from api.models.base_model_ import Body
 
 
-class AgentInserted(Body):
+class AgentInsertedModel(Body):
 
     def __init__(self, id=None, name=None, ip=None, agent_id=None, key=None, force_time=None):
-        """AgentAdded body model
+        """AgentAddedModel body model
         :param id: Agent id.
         :type id: str
         :param name: Agent name.

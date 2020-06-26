@@ -8,10 +8,10 @@ from typing import List, Dict  # noqa: F401
 from api.models.base_model_ import Body
 
 
-class AgentAdded(Body):
+class AgentAddedModel(Body):
 
     def __init__(self, name: str = None, ip: str = None, force_time: int = -1):
-        """AgentAdded body model
+        """AgentAddedModel body model
         :param name: Agent name.
         :type name: str
         :param ip: If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option BehindProxyServer to yes at API configuration. Allowed values: IP, IP/NET, ANY

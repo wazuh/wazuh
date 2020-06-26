@@ -14,7 +14,7 @@ import wazuh.stats as stats
 from api import configuration
 from api.encoder import dumps, prettify
 from api.models.base_model_ import Data, Body
-from api.models.configuration_model import APIConfigurationModel
+from api.models.configuration import APIConfigurationModel
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI

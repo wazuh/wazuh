@@ -71,19 +71,16 @@ class HTTPSModel(Model):
 
 
 class LogsModel(Model):
-    def __init__(self, level=None, path=None):
+    def __init__(self, level=None):
         self.swagger_types = {
             'level': str,
-            'path': str
         }
 
         self.attribute_map = {
             'level': 'level',
-            'path': 'path'
         }
 
         self._level = level
-        self._path = path
 
     @property
     def level(self):
@@ -92,14 +89,6 @@ class LogsModel(Model):
     @level.setter
     def level(self, level):
         self._level = level
-
-    @property
-    def path(self):
-        return self._path
-
-    @path.setter
-    def path(self, path):
-        self._path = path
 
 
 class CORSModel(Model):
@@ -170,8 +159,8 @@ class CORSModel(Model):
 class CacheModel(Model):
     def __init__(self, enabled=None, time=None):
         self.swagger_types = {
-            'enabled': str,
-            'time': str
+            'enabled': bool,
+            'time': float
         }
 
         self.attribute_map = {
@@ -201,11 +190,9 @@ class CacheModel(Model):
 
 class APIConfigurationModel(Body):
     """API configuration model."""
-    def __init__(self, host=None, port=None, behind_proxy_server=None, https=None, logs=None, cors=None,
+    def __init__(self, behind_proxy_server=None, https=None, logs=None, cors=None,
                  cache=None, use_only_authd=None, drop_privileges=None, experimental_features=None):
         self.swagger_types = {
-            'host': str,
-            'port': int,
             'behind_proxy_server': bool,
             'https': HTTPSModel,
             'logs': LogsModel,
@@ -217,8 +204,6 @@ class APIConfigurationModel(Body):
         }
 
         self.attribute_map = {
-            'host': 'host',
-            'port': 'port',
             'behind_proxy_server': 'behind_proxy_server',
             'https': 'https',
             'logs': 'logs',
@@ -229,8 +214,6 @@ class APIConfigurationModel(Body):
             'experimental_features': 'experimental_features'
         }
 
-        self._host = host
-        self._port = port
         self._behind_proxy_server = behind_proxy_server
         self._https = https
         self._logs = logs
@@ -239,22 +222,6 @@ class APIConfigurationModel(Body):
         self._use_only_authd = use_only_authd
         self._drop_privileges = drop_privileges
         self._experimental_features = experimental_features
-
-    @property
-    def host(self):
-        return self._host
-
-    @host.setter
-    def host(self, host):
-        self._host = host
-
-    @property
-    def port(self):
-        return self._port
-
-    @port.setter
-    def port(self, port):
-        self._port = port
 
     @property
     def behind_proxy_server(self):
