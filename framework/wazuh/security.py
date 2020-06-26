@@ -560,6 +560,14 @@ def remove_role_policy(role_id, policy_ids):
     return result
 
 
+def revoke_current_user_tokens():
+    """Revoke all current user's tokens"""
+    with TokenManager() as tm:
+        tm.add_user_rules(users={common.current_user.get()})
+
+    return WazuhResult({'msg': f'User {common.current_user.get()} logout correctly.'})
+
+
 @expose_resources(actions=['security:revoke'], resources=['*:*:*'],
                   post_proc_kwargs={'default_result_kwargs': {
                       'none_msg': 'Permission denied in all manager nodes: Resource type: *:*'}})

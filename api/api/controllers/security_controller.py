@@ -55,6 +55,25 @@ async def login_user(request, user: str, auth_context=None):
                              status=200, dumps=dumps)
 
 
+async def logout_user(request):
+    """Invalidate all current user's tokens.
+
+    Returns
+    -------
+    Status
+    """
+
+    dapi = DistributedAPI(f=security.revoke_current_user_tokens,
+                          request_type='local_master',
+                          is_async=False,
+                          current_user=request['token_info']['sub'],
+                          logger=logger
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=dumps)
+
+
 async def get_users(request, usernames: list = None, pretty=False, wait_for_complete=False,
                     offset=0, limit=None, search=None, sort=None):
     """Returns information from all system roles.

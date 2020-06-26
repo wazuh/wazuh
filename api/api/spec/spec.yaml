@@ -11583,6 +11583,24 @@ paths:
         '400':
           $ref: '#/components/responses/ResponseError'
 
+    delete:
+      tags:
+        - security
+      summary: "Logout current user"
+      description: "This method should be called to invalidate all the current user's tokens."
+      operationId: api.controllers.security_controller.logout_user
+      responses:
+        '200':
+          description: "Logout successful"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                message: "User wazuh logout correctly."
+        '400':
+          $ref: '#/components/responses/ResponseError'
+
   /security/actions:
     get:
       tags:
