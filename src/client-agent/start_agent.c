@@ -102,6 +102,14 @@ bool connect_server(int server_id)
             merror(CONNS_ERROR, tmp_str, strerror(errno));
         #endif
     } else {
+        #ifdef WIN32
+            if (agt->server[server_id].protocol == IPPROTO_UDP) {
+                int bmode = 1;
+
+                /* Set socket to non-blocking */
+                ioctlsocket(agt->sock, FIONBIO, (u_long FAR *) &bmode);
+            }
+        #endif
         agt->rip_id = server_id;
         return true;
     }
