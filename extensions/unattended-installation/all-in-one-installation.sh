@@ -138,7 +138,7 @@ installElasticsearch() {
 
     if [ $sys_type == "yum" ] 
     then
-        yum install opendistroforelasticsearch-1.6.0 -y -q > /dev/null 2>&1
+        yum install opendistroforelasticsearch -y -q > /dev/null 2>&1
     elif [ $sys_type == "apt-get" ] 
     then
         apt-get install elasticsearch-oss opendistroforelasticsearch -y -q > /dev/null 2>&1
@@ -238,7 +238,7 @@ installKibana() {
     else   
         curl -so /etc/kibana/kibana.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/kibana/7.x/kibana_all_in_one.yml --max-time 300 > /dev/null 2>&1
         cd /usr/share/kibana > /dev/null 2>&1
-        sudo -u kibana /usr/share/kibana/bin/kibana-plugin install https://packages-dev.wazuh.com/trash/app/kibana/wazuhapp-3.13.0-tsc-opendistro.zip > /dev/null 2>&1
+        sudo -u kibana /usr/share/kibana/bin/kibana-plugin install https://packages.wazuh.com/wazuhapp/wazuhapp-3.13.0_7.7.0.zip > /dev/null 2>&1
         if [  "$?" != 0  ]
         then
             echo "Error: Wazuh Kibana plugin could not be installed."
