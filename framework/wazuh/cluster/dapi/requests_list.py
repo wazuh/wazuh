@@ -693,7 +693,7 @@ functions = {
     'send_sync': {
         'function': wazuh_socket.send_sync,
         'type': 'local_any',
-        'is_async': True
+        'is_async': False
     },
 
     # Mitre

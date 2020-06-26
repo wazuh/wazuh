@@ -28,22 +28,22 @@ class OssecSocket:
     def close(self):
         self.s.close()
 
-    def send(self, msg_bytes):
+    def send(self, msg_bytes, header_format="<I"):
         if not isinstance(msg_bytes, bytes):
             raise WazuhException(1105, "Type must be bytes")
 
         try:
-            sent = self.s.send(pack("<I", len(msg_bytes)) + msg_bytes)
+            sent = self.s.send(pack(header_format, len(msg_bytes)) + msg_bytes)
             if sent == 0:
                 raise WazuhException(1014, "Number of sent bytes is 0")
             return sent
         except Exception as e:
             raise WazuhException(1014, str(e))
 
-    def receive(self):
+    def receive(self, header_format="<I", header_size=4):
 
         try:
-            size = unpack("<I", self.s.recv(4, socket.MSG_WAITALL))[0]
+            size = unpack(header_format, self.s.recv(header_size, socket.MSG_WAITALL))[0]
             return self.s.recv(size, socket.MSG_WAITALL)
         except Exception as e:
             raise WazuhException(1014, str(e))
@@ -56,11 +56,11 @@ class OssecSocketJSON(OssecSocket):
     def __init__(self, path):
         OssecSocket.__init__(self, path)
 
-    def send(self, msg):
-        return OssecSocket.send(self, dumps(msg).encode())
+    def send(self, msg, header_format="<I"):
+        return OssecSocket.send(self, msg_bytes=dumps(msg).encode(), header_format=header_format)
 
-    def receive(self):
-        response = loads(OssecSocket.receive(self).decode())
+    def receive(self, header_format="<I", header_size=4):
+        response = loads(OssecSocket.receive(self, header_format=header_format, header_size=header_size).decode())
 
         if 'error' in response.keys():
             if response['error'] != 0:
@@ -75,6 +75,10 @@ class WazuhAsyncProtocol(asyncio.Protocol):
         self.loop = loop
         self.on_data_received = loop.create_future()
         self.data = None
+        self.closed = False
+
+    def connection_lost(self, exc):
+        self.closed = True
 
     def data_received(self, data: bytes) -> None:
         self.data = data
@@ -121,10 +125,14 @@ class WazuhAsyncSocket:
             self.s.close()
             raise WazuhException(1013, str(e))
 
+    def is_connection_lost(self):
+        return self.transport.is_closing() or self.protocol.closed
+
     async def close(self):
         """Close connection with the socket and the Transport objects."""
         self.s.close()
-        self.transport.close()
+        if not self.transport.is_closing():
+            self.transport.close()
 
     async def send(self, msg_bytes, header_format=None):
         """Add a header to the message and sends it to the socket. Returns that message.
@@ -145,16 +153,18 @@ class WazuhAsyncSocket:
         """
         if not isinstance(msg_bytes, bytes):
             raise WazuhException(1105, "Type must be bytes")
-        try:
-            msg_length = len(msg_bytes)
-            data = pack(header_format, msg_length) + msg_bytes if header_format else msg_bytes
-            await self.transport.write(data)
 
-            if msg_length == 0:
-                raise WazuhException(1014, "Number of sent bytes is 0")
-            return data
-        except Exception as e:
-            raise WazuhException(1014, str(e))
+        msg_length = len(msg_bytes)
+        data = pack(header_format, msg_length) + msg_bytes if header_format else msg_bytes
+        self.transport.write(data)
+
+        if self.is_connection_lost():
+            await self.close()
+            raise WazuhException(1014, "Socket connection was closed")
+
+        if msg_length == 0:
+            raise WazuhException(1014, "Number of sent bytes is 0")
+        return data
 
     async def receive(self, header_size=None):
         """Return the content of the socket.
@@ -220,7 +230,7 @@ daemons = {
     "authd": {"protocol": "TCP", "path": common.AUTHD_SOCKET, "header_format": "<I", "size": 4}}
 
 
-async def send_sync(daemon_name, message=None):
+async def wazuh_send_sync(daemon_name, message=None):
     """Send a message to the specified daemon's socket and wait for its response.
 
     Parameters
@@ -235,5 +245,23 @@ async def send_sync(daemon_name, message=None):
     await sock.send(message, daemons[daemon_name]['header_format'])
     data = await sock.receive(daemons[daemon_name]['size'])
     await sock.close()
+
+    return data
+
+
+def send_sync(daemon_name, message=None):
+    """Send a message to the specified daemon's socket and wait for its response.
+
+    Parameters
+    ----------
+    daemon_name : str
+        Name of the daemon to send the message.
+    message : str, optional
+        Message in JSON format to be sent to the daemon's socket.
+    """
+    sock = OssecSocketJSON(daemons[daemon_name]['path'])
+    sock.send(msg=message, header_format=daemons[daemon_name]['header_format'])
+    data = sock.receive(header_format=daemons[daemon_name]['header_format'], header_size=daemons[daemon_name]['size'])
+    sock.close()
 
     return data
