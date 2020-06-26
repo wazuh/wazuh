@@ -442,12 +442,12 @@ def test_WazuhDBQueryGroupByAgents_format_data_into_dictionary_status(mock_socke
 
     query_group.select = {'os.name', 'count', 'status', 'lastKeepAlive', 'version'}
     query_group._data = [
-        {'os.name': 'Ubuntu', 'count': 1, 'version': 'Wazuh v4.0.0', 'status': 'updated', 'lastKeepAlive': 253402300799},
+        {'os.name': 'Ubuntu', 'count': 1, 'version': 'Wazuh v4.0.0', 'status': 'updated', 'lastKeepAlive': 1593093968},
         {'os.name': 'Ubuntu', 'count': 2, 'version': 'Wazuh v3.13.0', 'status': 'empty', 'lastKeepAlive': 1593093968},
         {'os.name': 'Ubuntu', 'count': 1, 'version': 'Wazuh v3.13.0', 'status': 'empty', 'lastKeepAlive': 1593093976}]
 
     result = query_group._format_data_into_dictionary()
-    assert result == {'items': [{'os': {'name': 'Ubuntu'}, 'status': 'active', 'count': 4}], 'totalItems': 0}
+    assert result == {'items': [{'os': {'name': 'Ubuntu'}, 'status': 'disconnected', 'count': 4}], 'totalItems': 0}
 
 
 @patch('wazuh.utils.glob.glob', return_value=True)
