@@ -109,8 +109,8 @@ void test_os_substr_OK(void **state)
     const int position = 7;
     const int length = STR_LEN;
 
-    // If the position to make the substr is greater than lenght the method should return
-    // -1 (INVALID_STR_POSITION).
+    // From "Source String" taking the position 7, dest should hold "string"
+    // word if everything is ok
     const int res = os_substr(dest, string, position, length);
 
     // os_substr should return only "string" (without "Source")
