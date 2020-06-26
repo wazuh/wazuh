@@ -16,6 +16,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <errno.h>
+#include <string.h>
 
 
 int __wrap_getpwnam_r(const char *name,

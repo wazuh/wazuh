@@ -18,6 +18,7 @@
 #include "../wrappers/externals/openssl/digest_wrappers.h"
 #include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
+#include "../wrappers/posix/stat_wrappers.h"
 #include "../syscheckd/fim_db.h"
 #include "../config/syscheck-config.h"
 
@@ -119,10 +120,6 @@ int __wrap__mdebug2() {
     return 1;
 }
 
-int __wrap_chmod(const char *__file, __mode_t __mode) {
-    return mock();
-}
-
 int __wrap_fim_send_sync_msg(char * msg) {
     return 1;
 }
@@ -222,6 +219,11 @@ static void wraps_fim_db_create_file() {
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
     will_return(__wrap_sqlite3_finalize, 0);
     will_return(__wrap_sqlite3_close_v2,0);
+#ifndef TEST_WINAGENT
+    expect_string(__wrap_chmod, path, "/var/ossec/queue/fim/db/fim.db");
+#else
+    expect_string(__wrap_chmod, path, "queue/fim/db/fim.db");
+#endif
     will_return(__wrap_chmod, 0);
 }
 
@@ -596,6 +598,11 @@ void test_fim_db_init_failed_file_creation_chmod(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
     will_return(__wrap_sqlite3_finalize, 0);
     will_return(__wrap_sqlite3_close_v2, 0);
+#ifndef TEST_WINAGENT
+    expect_string(__wrap_chmod, path, "/var/ossec/queue/fim/db/fim.db");
+#else
+    expect_string(__wrap_chmod, path, "queue/fim/db/fim.db");
+#endif
     will_return(__wrap_chmod, -1);
 #ifndef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg, "(1127): Could not chmod object '/var/ossec/queue/fim/db/fim.db' due to [(0)-(Success)].");

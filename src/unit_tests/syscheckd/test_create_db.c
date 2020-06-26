@@ -17,6 +17,7 @@
 #include "../wrappers/common.h"
 #include "../wrappers/posix/dirent_wrappers.h"
 #include "../wrappers/posix/pthread_wrappers.h"
+#include "../wrappers/posix/stat_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 #include "../syscheckd/fim_db.h"
@@ -88,29 +89,7 @@ void __wrap__mdebug2(const char * file, int line, const char * func, const char 
     check_expected(formatted_msg);
 }
 
-#ifndef TEST_WINAGENT
-int __wrap_lstat(const char *path, struct stat *buf) {
-    buf->st_dev = 1;
-    buf->st_ino = 999;
-    buf->st_uid = 0;
-    buf->st_gid = 0;
-    buf->st_mtime = 1433395216;
-    return mock();
-}
-#else
-extern int __real_stat(const char *path, struct stat *buf);
-int __wrap_stat(const char *path, struct stat *buf) {
-    if(test_mode){
-        buf->st_dev = 1;
-        buf->st_ino = 999;
-        buf->st_uid = 0;
-        buf->st_gid = 0;
-        buf->st_mtime = 1433395216;
-        return mock();
-    } else {
-        return __real_stat(path, buf);
-    }
-}
+#ifdef TEST_WINAGENT
 
 int __wrap_w_get_file_permissions(const char *file_path, char *permissions, int perm_size) {
     check_expected(file_path);
@@ -1690,13 +1669,13 @@ static void test_fim_checker_deleted_file(void **state) {
     fim_data_t *fim_data = *state;
 
     char * path = "/media/test.file";
-    struct stat buf;
-    buf.st_mode = S_IFREG;
     fim_data->item->index = 3;
-    fim_data->item->statbuf = buf;
     fim_data->item->mode = FIM_REALTIME;
 
+    expect_string(__wrap_lstat, filename, path);
+    will_return(__wrap_lstat, S_IFREG);
     will_return(__wrap_lstat, -1);
+
     errno = 1;
 
     fim_checker(path, fim_data->item, NULL, 1);
@@ -1711,10 +1690,7 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     fim_data_t *fim_data = *state;
 
     char * path = "/media/test.file";
-    struct stat buf;
-    buf.st_mode = S_IFREG;
     fim_data->item->index = 3;
-    fim_data->item->statbuf = buf;
     syscheck.opts[3] |= CHECK_SEECHANGES;
 
     fim_data->fentry->path = strdup("file");
@@ -1740,7 +1716,10 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
 
+    expect_string(__wrap_lstat, filename, path);
+    will_return(__wrap_lstat, S_IFREG);
     will_return(__wrap_lstat, -1);
+
     errno = ENOENT;
 
     expect_string(__wrap_delete_target_file, path, path);
@@ -1766,10 +1745,10 @@ static void test_fim_checker_no_file_system(void **state) {
     fim_data_t *fim_data = *state;
 
     char * path = "/media/test.file";
-    struct stat buf;
-    buf.st_mode = S_IFREG;
     fim_data->item->index = 3;
-    fim_data->item->statbuf = buf;
+
+    expect_string(__wrap_lstat, filename, path);
+    will_return(__wrap_lstat, S_IFREG);
     will_return(__wrap_lstat, 0);
 
     expect_string(__wrap_HasFilesystem, path, "/media/test.file");
@@ -1784,12 +1763,16 @@ static void test_fim_checker_no_file_system(void **state) {
 static void test_fim_checker_fim_regular(void **state) {
     fim_data_t *fim_data = *state;
 
-    char * path = "/media/test.file";
-    struct stat buf;
-    buf.st_mode = S_IFREG;
-    fim_data->item->index = 3;
-    fim_data->item->statbuf = buf;
+    char * path = "/media/test.file";    fim_data->item->statbuf.st_dev = 1;
+    fim_data->item->statbuf.st_ino = 999;
+    fim_data->item->statbuf.st_uid = 0;
+    fim_data->item->statbuf.st_gid = 0;
+    fim_data->item->statbuf.st_mtime = 1433395216;
     fim_data->item->statbuf.st_size = 1500;
+    fim_data->item->index = 3;
+
+    expect_string(__wrap_lstat, filename, path);
+    will_return(__wrap_lstat, S_IFREG);
     will_return(__wrap_lstat, 0);
 
     expect_string(__wrap_HasFilesystem, path, "/media/test.file");
@@ -1824,12 +1807,18 @@ static void test_fim_checker_fim_regular_warning(void **state) {
     fim_data_t *fim_data = *state;
 
     char * path = "/media/test.file";
-    struct stat buf;
-    buf.st_mode = S_IFREG;
-    fim_data->item->index = 3;
-    fim_data->item->statbuf = buf;
+    fim_data->item->statbuf.st_dev = 1;
+    fim_data->item->statbuf.st_ino = 999;
+    fim_data->item->statbuf.st_uid = 0;
+    fim_data->item->statbuf.st_gid = 0;
+    fim_data->item->statbuf.st_mtime = 1433395216;
     fim_data->item->statbuf.st_size = 1500;
+    fim_data->item->index = 3;
+
+    expect_string(__wrap_lstat, filename, path);
+    will_return(__wrap_lstat, S_IFREG);
     will_return(__wrap_lstat, 0);
+
 
     expect_string(__wrap_HasFilesystem, path, "/media/test.file");
     will_return(__wrap_HasFilesystem, 0);
@@ -1861,12 +1850,11 @@ static void test_fim_checker_fim_regular_ignore(void **state) {
     fim_data_t *fim_data = *state;
 
     char * path = "/etc/mtab";
-    struct stat buf;
-    buf.st_mode = S_IFREG;
     fim_data->item->index = 3;
-    fim_data->item->statbuf = buf;
     fim_data->item->mode = FIM_WHODATA;
 
+    expect_string(__wrap_lstat, filename, path);
+    will_return(__wrap_lstat, S_IFREG);
     will_return(__wrap_lstat, 0);
 
     expect_string(__wrap_HasFilesystem, path, "/etc/mtab");
@@ -1884,12 +1872,11 @@ static void test_fim_checker_fim_regular_restrict(void **state) {
     fim_data_t *fim_data = *state;
 
     char * path = "/media/test";
-    struct stat buf;
-    buf.st_mode = S_IFREG;
     fim_data->item->index = 3;
-    fim_data->item->statbuf = buf;
     fim_data->item->mode = FIM_REALTIME;
 
+    expect_string(__wrap_lstat, filename, path);
+    will_return(__wrap_lstat, S_IFREG);
     will_return(__wrap_lstat, 0);
 
     expect_string(__wrap_HasFilesystem, path, path);
@@ -1907,13 +1894,15 @@ static void test_fim_checker_fim_directory(void **state) {
     fim_data_t *fim_data = *state;
 
     char * path = "/media/";
-    struct stat buf;
-    buf.st_mode = S_IFDIR;
     fim_data->item->index = 3;
-    fim_data->item->statbuf = buf;
     fim_data->item->mode = FIM_REALTIME;
 
-    will_return_always(__wrap_lstat, 0);
+    expect_string(__wrap_lstat, filename, "/media/");
+    expect_string(__wrap_lstat, filename, "/media/test");
+    will_return(__wrap_lstat, S_IFDIR);
+    will_return(__wrap_lstat, 0);
+    will_return(__wrap_lstat, S_IFDIR);
+    will_return(__wrap_lstat, 0);
 
     expect_string(__wrap_HasFilesystem, path, "/media/");
     expect_string(__wrap_HasFilesystem, path, "/media/test");
@@ -1936,6 +1925,8 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // In fim_checker
+    expect_any_count(__wrap_lstat, filename, 7);
+    will_return_count(__wrap_lstat, 0, 7);
     will_return_count(__wrap_lstat, 0, 7);
 
     int it = 0;
@@ -1998,6 +1989,8 @@ static void test_fim_scan_no_realtime(void **state) {
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // In fim_checker
+    expect_any_count(__wrap_lstat, filename, 6);
+    will_return_count(__wrap_lstat, 0, 6);
     will_return_count(__wrap_lstat, 0, 6);
 
     it = 0;
@@ -2040,6 +2033,8 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // In fim_checker
+    expect_any_count(__wrap_lstat, filename, 6);
+    will_return_count(__wrap_lstat, 0, 6);
     will_return_count(__wrap_lstat, 0, 6);
 
     expect_string(__wrap_HasFilesystem, path, "/boot");
@@ -2097,6 +2092,8 @@ static void test_fim_scan_realtime_enabled(void **state) {
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // In fim_checker
+    expect_any_count(__wrap_lstat, filename, 6);
+    will_return_count(__wrap_lstat, 0, 6);
     will_return_count(__wrap_lstat, 0, 6);
 
     it = 0;
@@ -2148,6 +2145,8 @@ static void test_fim_scan_db_free(void **state) {
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // In fim_checker
+    expect_any_count(__wrap_lstat, filename, 6);
+    will_return_count(__wrap_lstat, 0, 6);
     will_return_count(__wrap_lstat, 0, 6);
 
     expect_string(__wrap_HasFilesystem, path, "/boot");
@@ -2174,7 +2173,10 @@ static void test_fim_scan_db_free(void **state) {
     // fim_scan
     will_return(__wrap_fim_db_get_count_entry_path, 1000);
 
+    expect_any_count(__wrap_lstat, filename, 6);
     will_return_count(__wrap_lstat, 0, 6);
+    will_return_count(__wrap_lstat, 0, 6);
+
     expect_string(__wrap_HasFilesystem, path, "/boot");
     expect_string(__wrap_HasFilesystem, path, "/etc");
     expect_string(__wrap_HasFilesystem, path, "/home");
@@ -2209,6 +2211,8 @@ static void test_fim_scan_no_limit(void **state) {
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // In fim_checker
+    expect_any_count(__wrap_lstat, filename, 6);
+    will_return_count(__wrap_lstat, 0, 6);
     will_return_count(__wrap_lstat, 0, 6);
 
     expect_string(__wrap_HasFilesystem, path, "/boot");
@@ -2296,10 +2300,7 @@ static void test_fim_checker_deleted_file(void **state) {
 
     char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
     char expanded_path[OS_MAXSTR];
-    struct stat buf;
-    buf.st_mode = S_IFREG;
     fim_data->item->index = 7;
-    fim_data->item->statbuf = buf;
     fim_data->item->mode = FIM_REALTIME;
 
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
@@ -2307,7 +2308,10 @@ static void test_fim_checker_deleted_file(void **state) {
 
     str_lowercase(expanded_path);
 
+    expect_string(__wrap_stat, __file, expanded_path);
+    will_return(__wrap_stat, S_IFREG);
     will_return(__wrap_stat, -1);
+
     errno = 1;
 
     fim_checker(expanded_path, fim_data->item, NULL, 1);
@@ -2323,10 +2327,7 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
 
     char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
     char expanded_path[OS_MAXSTR];
-    struct stat buf;
-    buf.st_mode = S_IFREG;
     fim_data->item->index = 7;
-    fim_data->item->statbuf = buf;
     syscheck.opts[7] |= CHECK_SEECHANGES;
 
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
@@ -2357,7 +2358,10 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
 
+    expect_string(__wrap_stat, __file, expanded_path);
+    will_return(__wrap_stat, S_IFREG);
     will_return(__wrap_stat, -1);
+
     errno = ENOENT;
 
     expect_string(__wrap_delete_target_file, path, expanded_path);
@@ -2388,12 +2392,11 @@ static void test_fim_checker_fim_regular(void **state) {
 
     char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
     char expanded_path[OS_MAXSTR];
-    struct stat buf;
-    buf.st_mode = S_IFREG;
     fim_data->item->index = 7;
-    fim_data->item->statbuf = buf;
     fim_data->item->statbuf.st_size = 1500;
 
+    expect_string(__wrap_stat, __file, expanded_path);
+    will_return(__wrap_stat, S_IFREG);
     will_return(__wrap_stat, 0);
 
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
@@ -2446,10 +2449,7 @@ static void test_fim_checker_fim_regular_ignore(void **state) {
     char *path = "%WINDIR%\\System32\\drivers\\etc\\ignored.file";
     char expanded_path[OS_MAXSTR];
     char debug_msg[OS_MAXSTR];
-    struct stat buf;
-    buf.st_mode = S_IFREG;
     fim_data->item->index = 7;
-    fim_data->item->statbuf = buf;
     // fim_data->item->mode = FIM_REALTIME;
 
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
@@ -2457,6 +2457,8 @@ static void test_fim_checker_fim_regular_ignore(void **state) {
 
     str_lowercase(expanded_path);
 
+    expect_string(__wrap_stat, __file, expanded_path);
+    will_return(__wrap_stat, S_IFREG);
     will_return(__wrap_stat, 0);
 
     expect_string(__wrap_HasFilesystem, path, expanded_path);
@@ -2477,10 +2479,7 @@ static void test_fim_checker_fim_regular_restrict(void **state) {
     char * path = "%WINDIR%\\System32\\wbem\\restricted.exe";
     char expanded_path[OS_MAXSTR];
     char debug_msg[OS_MAXSTR];
-    struct stat buf;
-    buf.st_mode = S_IFREG;
     fim_data->item->index = 8;
-    fim_data->item->statbuf = buf;
     fim_data->item->mode = FIM_REALTIME;
 
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
@@ -2488,6 +2487,8 @@ static void test_fim_checker_fim_regular_restrict(void **state) {
 
     str_lowercase(expanded_path);
 
+    expect_string(__wrap_stat, __file, expanded_path);
+    will_return(__wrap_stat, S_IFREG);
     will_return(__wrap_stat, 0);
 
     expect_string(__wrap_HasFilesystem, path, expanded_path);
@@ -2507,10 +2508,7 @@ static void test_fim_checker_fim_regular_warning(void **state) {
     char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
     char expanded_path[OS_MAXSTR];
     char debug_msg[OS_MAXSTR];
-    struct stat buf;
-    buf.st_mode = S_IFREG;
     fim_data->item->index = 7;
-    fim_data->item->statbuf = buf;
     fim_data->item->statbuf.st_size = 1500;
 
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
@@ -2518,6 +2516,8 @@ static void test_fim_checker_fim_regular_warning(void **state) {
 
     str_lowercase(expanded_path);
 
+    expect_string(__wrap_stat, __file, expanded_path);
+    will_return(__wrap_stat, S_IFREG);
     will_return(__wrap_stat, 0);
 
     expect_string(__wrap_HasFilesystem, path, expanded_path);
@@ -2564,10 +2564,7 @@ static void test_fim_checker_fim_directory(void **state) {
     char * path = "%WINDIR%\\System32\\drivers\\etc";
     char expanded_path[OS_MAXSTR];
     char expanded_path_test[OS_MAXSTR];
-    struct stat buf;
-    buf.st_mode = S_IFDIR;
     fim_data->item->index = 7;
-    fim_data->item->statbuf = buf;
     fim_data->item->mode = FIM_REALTIME;
 
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
@@ -2577,7 +2574,12 @@ static void test_fim_checker_fim_directory(void **state) {
 
     snprintf(expanded_path_test, OS_MAXSTR, "%s\\test", expanded_path);
 
-    will_return_always(__wrap_stat, 0);
+    expect_string(__wrap_stat, __file, expanded_path);
+    expect_string(__wrap_stat, __file, expanded_path_test);
+    will_return(__wrap_stat, S_IFDIR);
+    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, S_IFDIR);
+    will_return(__wrap_stat, 0);
 
     expect_string(__wrap_HasFilesystem, path, expanded_path);
     expect_string(__wrap_HasFilesystem, path, expanded_path_test);
@@ -2615,7 +2617,8 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // In fim_checker
-    will_return_count(__wrap_stat, 0, 11);
+    expect_any_count(__wrap_stat, __file, 11);
+    will_return_always(__wrap_stat, 0);
 
     for(i = 0; i < 10; i++) {
         if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024))
@@ -2679,7 +2682,8 @@ static void test_fim_scan_db_full_double_scan_winreg_check(void **state) {
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // In fim_checker
-    will_return_count(__wrap_stat, 0, 10);
+    expect_any_count(__wrap_stat, __file, 10);
+    will_return_always(__wrap_stat, 0);
 
     for(i = 0; i < 10; i++) {
         if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024))
@@ -2703,7 +2707,7 @@ static void test_fim_scan_db_full_double_scan_winreg_check(void **state) {
     // fim_scan
     will_return(__wrap_fim_db_get_count_entry_path, 45000);
 
-    will_return_count(__wrap_stat, 0, 10);
+    expect_any_count(__wrap_stat, __file, 10);
 
     for(i = 0; i < 10; i++) {
         expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
@@ -2753,7 +2757,8 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // In fim_checker
-    will_return_count(__wrap_stat, 0, 10);
+    expect_any_count(__wrap_stat, __file, 10);
+    will_return_always(__wrap_stat, 0);
 
     for(i = 0; i < 10; i++) {
         if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024))
@@ -2809,7 +2814,8 @@ static void test_fim_scan_db_free(void **state) {
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // In fim_checker
-    will_return_count(__wrap_stat, 0, 10);
+    expect_any_count(__wrap_stat, __file, 10);
+    will_return_always(__wrap_stat, 0);
 
     for(i = 0; i < 10; i++) {
         if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024))
@@ -2834,7 +2840,7 @@ static void test_fim_scan_db_free(void **state) {
     will_return(__wrap_fim_db_get_count_entry_path, 1000);
 
     // In fim_checker
-    will_return_count(__wrap_stat, 0, 10);
+    expect_any_count(__wrap_stat, __file, 10);
 
     for(i = 0; i < 10; i++) {
         if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024))
@@ -2888,7 +2894,8 @@ static void test_fim_scan_no_limit(void **state) {
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // In fim_checker
-    will_return_count(__wrap_stat, 0, 10);
+    expect_any_count(__wrap_stat, __file, 10);
+    will_return_always(__wrap_stat, 0);
 
     for(i = 0; i < 10; i++) {
         if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024))
@@ -3729,8 +3736,12 @@ static void test_fim_realtime_event_file_exists(void **state) {
     strcpy(fim_data->local_data->checksum, "");
 
 #ifndef TEST_WINAGENT
+    expect_string(__wrap_lstat, filename, "/test");
+    will_return(__wrap_lstat, 0);
     will_return(__wrap_lstat, 0);
 #else
+    expect_string(__wrap_stat, __file, "/test");
+    will_return(__wrap_stat, 0);
     will_return(__wrap_stat, 0);
 #endif
 
@@ -3742,8 +3753,12 @@ static void test_fim_realtime_event_file_exists(void **state) {
 static void test_fim_realtime_event_file_missing(void **state) {
 
 #ifndef TEST_WINAGENT
+    expect_string(__wrap_lstat, filename, "/test");
+    will_return(__wrap_lstat, 0);
     will_return(__wrap_lstat, -1);
 #else
+    expect_string(__wrap_stat, __file, "/test");
+    will_return(__wrap_stat, 0);
     will_return(__wrap_stat, -1);
 #endif
     errno = ENOENT;
@@ -3773,8 +3788,12 @@ static void test_fim_whodata_event_file_exists(void **state) {
     fim_data_t *fim_data = *state;
 
 #ifndef TEST_WINAGENT
+    expect_string(__wrap_lstat, filename, fim_data->w_evt->path);
+    will_return(__wrap_lstat, 0);
     will_return(__wrap_lstat, 0);
 #else
+    expect_string(__wrap_stat, __file, fim_data->w_evt->path);
+    will_return(__wrap_stat, 0);
     will_return(__wrap_stat, 0);
 #endif
 
@@ -3787,8 +3806,12 @@ static void test_fim_whodata_event_file_missing(void **state) {
     fim_data_t *fim_data = *state;
 
 #ifndef TEST_WINAGENT
+    expect_string(__wrap_lstat, filename, fim_data->w_evt->path);
+    will_return(__wrap_lstat, 0);
     will_return(__wrap_lstat, -1);
 #else
+    expect_string(__wrap_stat, __file, fim_data->w_evt->path);
+    will_return(__wrap_stat, 0);
     will_return(__wrap_stat, -1);
 #endif
     errno = ENOENT;
@@ -3797,9 +3820,6 @@ static void test_fim_whodata_event_file_missing(void **state) {
     paths[0] = strdup("./test/test.file");
     paths[1] = strdup("./test/test.file");
     paths[2] = strdup("./test/test.file");
-    // paths[0] = strdup("/testdir/dir1/file1");
-    // paths[1] = strdup("/testdir/dir1/file2");
-    // paths[2] = strdup("/testdir/dir1/file3");
     paths[3] = NULL;
 
 #ifdef TEST_WINAGENT

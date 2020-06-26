@@ -12,7 +12,18 @@
 #ifndef STAT_WRAPPERS_H
 #define STAT_WRAPPERS_H
 
+#include <sys/stat.h>
 
+int __wrap_chmod(const char *path);
 
+int __wrap_lstat(const char *filename, struct stat *buf);
+
+#ifndef WIN32
+int __wrap_mkdir(const char *__path, __mode_t __mode);
+#else
+int __wrap_mkdir(const char *__path);
+#endif
+
+int __wrap_stat(const char * __file, struct stat * __buf);
 
 #endif

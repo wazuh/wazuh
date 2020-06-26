@@ -17,17 +17,12 @@
 #include "headers/defs.h"
 
 #include "../wrappers/common.h"
+#include "../wrappers/posix/stat_wrappers.h"
 #include "../headers/file_op.h"
 
 /* redefinitons/wrapping */
 
 int __wrap_isChroot() {
-    return mock();
-}
-
-int __wrap_chmod(const char *path)
-{
-    check_expected_ptr(path);
     return mock();
 }
 
@@ -39,12 +34,6 @@ int __wrap_getpid()
 int __wrap_File_DateofChange(const char *file)
 {
     return 1;
-}
-
-int __wrap_stat(const char * path, struct stat * buf)
-{
-    memset(buf, 0, sizeof(struct stat));
-    return 0;
 }
 
 int __wrap_unlink(const char *file)
@@ -191,6 +180,10 @@ void test_DeletePID_success(void **state)
     expect_string(__wrap_unlink, file, "/var/run/test-42.pid");
     will_return(__wrap_unlink, 0);
 
+    expect_string(__wrap_stat, __file, "/var/run/test-42.pid");
+    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, 0);
+
     ret = DeletePID("test");
     assert_int_equal(0, ret);
 }
@@ -204,6 +197,10 @@ void test_DeletePID_failure(void **state)
     will_return(__wrap_isChroot, 0);
     expect_string(__wrap_unlink, file, "/var/ossec/var/run/test-42.pid");
     will_return(__wrap_unlink, 1);
+
+    expect_string(__wrap_stat, __file, "/var/ossec/var/run/test-42.pid");
+    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, 0);
 
     ret = DeletePID("test");
     assert_int_equal(-1, ret);
