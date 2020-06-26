@@ -117,7 +117,7 @@ class TokenBlacklist(_Base):
     Table between Usernames and Policies, this table stores the relationship between the both entities
     The information stored from Roles and Policies ais:
         username: Affected username
-        iat_invalid_until: The tokens that has an iat prior to this timestamp will be invalidated
+        nbf_invalid_until: The tokens that has an nbf prior to this timestamp will be invalidated
         is_valid_until: Deadline for the rule's validity. To ensure that we can delete this rule,
         the deadline will be the time of token creation plus the time of token validity.
         This way, when we delete this rule, we ensure the invalid tokens have already expired.
@@ -125,21 +125,21 @@ class TokenBlacklist(_Base):
     __tablename__ = "token_blacklist"
 
     username = Column('username', String(32), primary_key=True)
-    iat_invalid_until = Column('iat_invalid_until', Integer)
+    nbf_invalid_until = Column('nbf_invalid_until', Integer)
     is_valid_until = Column('is_valid_until', Integer)
     __table_args__ = (UniqueConstraint('username', name='user_rule'),)
 
     def __init__(self, username):
         self.username = username
-        self.iat_invalid_until = int(time())
-        self.is_valid_until = self.iat_invalid_until + security_conf['auth_token_exp_timeout']
+        self.nbf_invalid_until = int(time())
+        self.is_valid_until = self.nbf_invalid_until + security_conf['auth_token_exp_timeout']
 
     def to_dict(self):
         """Return the information of the token rule.
 
         :return: Dict with the information
         """
-        return {'username': self.username, 'iat_invalid_until': self.iat_invalid_until,
+        return {'username': self.username, 'nbf_invalid_until': self.nbf_invalid_until,
                 'is_valid_until': self.is_valid_until}
 
 
@@ -299,14 +299,14 @@ class TokenManager:
     all the methods needed for the token blacklist administration.
     """
 
-    def is_token_valid(self, username: str, token_iat_time: int):
+    def is_token_valid(self, username: str, token_nbf_time: int):
         """Check if specified token is valid
 
         Parameters
         ----------
         username : str
             Current token's username
-        token_iat_time : int
+        token_nbf_time : int
             Token's issue timestamp
 
         Returns
@@ -315,12 +315,12 @@ class TokenManager:
         """
         try:
             rule = self.session.query(TokenBlacklist).filter_by(username=username).first()
-            return not rule or (token_iat_time > rule.iat_invalid_until)
+            return not rule or (token_nbf_time > rule.nbf_invalid_until)
         except IntegrityError:
             return True
 
     def get_all_rules(self):
-        """Return a dictionary where keys are usernames and the value of each them is iat_invalid_until
+        """Return a dictionary where keys are usernames and the value of each them is nbf_invalid_until
 
         Returns
         -------
@@ -330,13 +330,13 @@ class TokenManager:
             rules = map(TokenBlacklist.to_dict, self.session.query(TokenBlacklist).all())
             format_rules = dict()
             for rule in list(rules):
-                format_rules[rule['username']] = rule['iat_invalid_until']
+                format_rules[rule['username']] = rule['nbf_invalid_until']
             return format_rules
         except IntegrityError:
             return SecurityError.TOKEN_RULE_NOT_EXIST
 
     def add_user_rules(self, users: set):
-        """Add new rules for users-token. Both, iat_invalid_until and is_valid_until are generated automatically
+        """Add new rules for users-token. Both, nbf_invalid_until and is_valid_until are generated automatically
 
         Parameters
         ----------
