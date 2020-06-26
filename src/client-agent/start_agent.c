@@ -35,6 +35,7 @@ static void send_msg_on_startup(void);
 /**
  * @brief Connects to a specified server
  * @param server_id index of the specified server from agt servers list
+ * @post The remote IP id (rip_id) is set to server_id if and only if this function succeeds.
  * @retval true on success
  * @retval false when failed
  * */
@@ -221,7 +222,7 @@ static void w_agentd_keys_init (void) {
 }
 
 /**
- * @brief Holds the message reception logic for udp and tcp
+ * @brief Holds the message reception logic for UDP and TCP
  * @param buffer pointer to buffer where the information will be stored
  * @param max_length size of buffer
  * @return Integer value indicating the status code.

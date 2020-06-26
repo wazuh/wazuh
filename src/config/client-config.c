@@ -227,7 +227,7 @@ int Read_Client_Server(XML_NODE node, agent * logr)
     int j;
     char f_ip[128];
     char * rip = NULL;
-    // default values
+    /* Default values */
     int port = DEFAULT_SECURE;
     int protocol = IPPROTO_UDP;
     int max_retries = DEFAULT_MAX_RETRIES; 

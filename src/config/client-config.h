@@ -22,8 +22,8 @@ typedef struct agent_server {
     char * rip;
     int port;
     int protocol;
-    int max_retries; ///> Maximum number of connection retries.
-    int retry_interval; ///> Time interval between connection attempts.
+    int max_retries; ///< Maximum number of connection retries.
+    int retry_interval; ///< Time interval between connection attempts.
 } agent_server;
 
 /* Configuration structure */
@@ -33,8 +33,8 @@ typedef struct _agent {
     int sock;
     int execdq;
     int cfgadq;
-    int rip_id; ///> Holds the index of the current connected server
-    int server_count; ///> Holds the total amount of servers
+    int rip_id; ///< Holds the index of the current connected server
+    int server_count; ///< Holds the total amount of servers
     char *lip;
     int notify_time;
     int max_time_reconnect_try;
