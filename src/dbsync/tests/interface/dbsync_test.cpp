@@ -36,7 +36,7 @@ TEST_F(DBSyncTest, InitializationNullptr)
 TEST_F(DBSyncTest, InsertData) 
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
-    const auto insert_sql{ "{\"table\":\"processes\",\"data\":[{\"pid\":4,\"name\":\"System\"}]}"};
+    const auto insert_sql{ R"({"table":"processes","data":[{"pid":4,"name":"System"}]})"};
     
     const auto handle { dbsync_initialize(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
@@ -63,7 +63,7 @@ TEST_F(DBSyncTest, InsertDataNullptr)
 TEST_F(DBSyncTest, InsertDataInvalidHandle) 
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
-    const auto insert_sql{ "{\"table\":\"processes\",\"data\":[{\"pid\":4,\"name\":\"System\"}]}"};
+    const auto insert_sql{ R"({"table":"processes","data":[{"pid":4,"name":"System"}]})"};
     
     const auto handle { dbsync_initialize(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
@@ -78,7 +78,7 @@ TEST_F(DBSyncTest, InsertDataInvalidHandle)
 TEST_F(DBSyncTest, UpdateData) 
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
-    const auto insert_sql{ "{\"table\":\"processes\",\"data\":[{\"pid\":4,\"name\":\"System\"}]}"};
+    const auto insert_sql{ R"({"table":"processes","data":[{"pid":4,"name":"System"}]})"};
     
     const auto handle { dbsync_initialize(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
@@ -111,7 +111,7 @@ TEST_F(DBSyncTest, FreeNullptrResult)
 TEST_F(DBSyncTest, UpdateDataWithLessFields) 
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT,`path` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
-    const auto insert_sql{ "{\"table\":\"processes\",\"data\":[{\"pid\":4,\"name\":\"System\"}]}"};
+    const auto insert_sql{ R"({"table":"processes","data":[{"pid":4,"name":"System"}]})"};
     
     const auto handle { dbsync_initialize(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
