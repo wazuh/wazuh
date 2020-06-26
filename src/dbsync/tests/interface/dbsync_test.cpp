@@ -13,7 +13,10 @@ struct smartDeleterJson
 
 void DBSyncTest::SetUp() {};
 
-void DBSyncTest::TearDown() {};
+void DBSyncTest::TearDown() 
+{
+    EXPECT_NO_THROW(dbsync_teardown());
+};
 
 TEST_F(DBSyncTest, Initialization) 
 {
@@ -22,7 +25,7 @@ TEST_F(DBSyncTest, Initialization)
     const auto handle { dbsync_initialize(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
 
-    EXPECT_NO_THROW(dbsync_teardown());
+    
 }
 
 TEST_F(DBSyncTest, InitializationNullptr) 
@@ -44,8 +47,6 @@ TEST_F(DBSyncTest, InsertData)
     const std::unique_ptr<cJSON, smartDeleterJson> json_insert{ cJSON_Parse(insert_sql) };
 
     EXPECT_EQ(0, dbsync_insert_data(handle, json_insert.get()));
-
-    EXPECT_NO_THROW(dbsync_teardown());
 }
 
 TEST_F(DBSyncTest, InsertDataNullptr) 
@@ -56,8 +57,6 @@ TEST_F(DBSyncTest, InsertDataNullptr)
     ASSERT_NE(nullptr, handle);
 
     EXPECT_NE(0, dbsync_insert_data(handle, nullptr));
-
-    EXPECT_NO_THROW(dbsync_teardown());
 }
 
 TEST_F(DBSyncTest, InsertDataInvalidHandle) 
@@ -71,8 +70,6 @@ TEST_F(DBSyncTest, InsertDataInvalidHandle)
     const std::unique_ptr<cJSON, smartDeleterJson> json_insert{ cJSON_Parse(insert_sql) };
 
     EXPECT_NE(0, dbsync_insert_data(reinterpret_cast<void *>(0xffffffff), json_insert.get()));
-
-    EXPECT_NO_THROW(dbsync_teardown());
 }
 
 TEST_F(DBSyncTest, UpdateData) 
@@ -90,8 +87,6 @@ TEST_F(DBSyncTest, UpdateData)
     EXPECT_EQ(0, dbsync_update_with_snapshot(handle, json_insert.get(), &json_response));
     EXPECT_NE(nullptr, json_response);
     EXPECT_NO_THROW(dbsync_free_result(&json_response));
-
-    EXPECT_NO_THROW(dbsync_teardown());
 }
 
 TEST_F(DBSyncTest, FreeNullptrResult) 
@@ -104,8 +99,6 @@ TEST_F(DBSyncTest, FreeNullptrResult)
     cJSON* json_response { nullptr };
 
     EXPECT_NO_THROW(dbsync_free_result(&json_response));
-
-    EXPECT_NO_THROW(dbsync_teardown());
 }
 
 TEST_F(DBSyncTest, UpdateDataWithLessFields) 
@@ -123,6 +116,4 @@ TEST_F(DBSyncTest, UpdateDataWithLessFields)
     EXPECT_EQ(0, dbsync_update_with_snapshot(handle, json_insert.get(), &json_response));
     EXPECT_NE(nullptr, json_response);
     EXPECT_NO_THROW(dbsync_free_result(&json_response));
-
-    EXPECT_NO_THROW(dbsync_teardown());
 }
