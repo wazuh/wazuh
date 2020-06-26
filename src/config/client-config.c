@@ -279,7 +279,7 @@ int Read_Client_Server(XML_NODE node, agent * logr)
                 return (OS_INVALID);
             }
             max_retries = atoi(node[j]->content);
-            if (max_retries < 0) {
+            if (max_retries <= 0) {
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
                 return (OS_INVALID);
             }
@@ -289,7 +289,7 @@ int Read_Client_Server(XML_NODE node, agent * logr)
                 return (OS_INVALID);
             }
             retry_interval = atoi(node[j]->content);
-            if (retry_interval < 0) {
+            if (retry_interval <= 0) {
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
                 return (OS_INVALID);
             }
