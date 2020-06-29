@@ -42,7 +42,7 @@ Connection::Connection(const std::string& path)
 bool Connection::close()
 {
     m_db.reset();
-    return !!m_db;
+    return !m_db;
 }
 
 const std::shared_ptr<sqlite3>& Connection::db() const
@@ -85,11 +85,13 @@ Transaction::Transaction(std::shared_ptr<IConnection>& connection)
     
 bool Transaction::commit()
 {
+    bool ret{ false };
     if (!m_rolledBack && !m_commited)
     {
-        m_commited = m_connection->execute("COMMIT TRANSACTION");
+        ret = m_connection->execute("COMMIT TRANSACTION");
+        m_commited = ret;
     }
-    return m_commited;
+    return ret;
 }
 
 bool Transaction::rollback()
@@ -99,6 +101,16 @@ bool Transaction::rollback()
         m_connection->execute("ROLLBACK TRANSACTION");
         m_rolledBack = true;
     }
+    return m_rolledBack;
+}
+
+bool Transaction::isCommited() const
+{
+    return m_commited;
+}
+
+bool Transaction::isRolledBack() const
+{
     return m_rolledBack;
 }
 

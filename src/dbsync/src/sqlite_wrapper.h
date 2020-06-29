@@ -67,6 +67,8 @@ namespace SQLite
 
         bool commit() override;
         bool rollback() override;
+        bool isRolledBack() const;
+        bool isCommited() const;
     private:
         std::shared_ptr<IConnection> m_connection;
         bool m_rolledBack;
