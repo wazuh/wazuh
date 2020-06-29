@@ -6,8 +6,8 @@ import re
 from os import listdir
 from os.path import isfile, isdir, join
 
-from wazuh import common
-from wazuh.exception import WazuhError
+from wazuh.core import common
+from wazuh.core.exception import WazuhError
 
 REQUIRED_FIELDS = ['relative_dirname', 'filename']
 SORT_FIELDS = ['relative_dirname', 'filename']

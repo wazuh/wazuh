@@ -18,11 +18,12 @@ from typing import Callable, Dict, Tuple
 import wazuh.core.cluster.cluster
 import wazuh.core.cluster.utils
 import wazuh.core.manager
-import wazuh.results as wresults
-from wazuh import exception, agent, common
+import wazuh.core.results as wresults
+from wazuh import agent
+from wazuh.core import common, exception
 from wazuh.cluster import get_node_wrapper
 from wazuh.core.cluster import local_client, common as c_common
-from wazuh.exception import WazuhException, WazuhClusterError, WazuhError
+from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
 
 
 class DistributedAPI:

@@ -9,7 +9,7 @@ from wazuh.rule import Rule
 from wazuh.decoder import Decoder
 import wazuh.cluster as cluster
 import wazuh.core.cluster.control as cluster_control
-import wazuh.configuration as configuration
+import wazuh.core.configuration as configuration
 import wazuh.sca as sca
 import wazuh.manager as manager
 import wazuh.mitre as mitre

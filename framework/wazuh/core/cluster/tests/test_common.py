@@ -13,9 +13,9 @@ with patch('wazuh.common.getgrnam'):
 
                 from wazuh.core.cluster.cluster import get_node
                 from wazuh.agent import get_agents_summary_status
-                from wazuh.exception import WazuhError, WazuhInternalError
+                from wazuh.core.exception import WazuhError, WazuhInternalError
                 from wazuh.core.manager import status
-                from wazuh.results import WazuhResult, AffectedItemsWazuhResult
+                from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
                 from wazuh.core.cluster.common import WazuhJSONEncoder, as_wazuh_object
 
 affected = AffectedItemsWazuhResult(dikt={'data': ['test']}, affected_items=['001', '002'])

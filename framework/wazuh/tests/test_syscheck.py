@@ -25,7 +25,8 @@ with patch('wazuh.common.ossec_uid'):
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh.syscheck import run, clear, last_scan, files
         from wazuh.syscheck import AffectedItemsWazuhResult
-        from wazuh import common, WazuhError, WazuhInternalError
+        from wazuh import WazuhError, WazuhInternalError
+        from wazuh.core import common
 
 callable_list = list()
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -126,8 +127,8 @@ def test_syscheck_run_exception(ossec_queue_mock, agent_list, status_list, expec
     (['001', '002'], test_result[0], ['001', '002']),
     (['003', '001', '008'], test_result[1], ['003', '008'])
 ])
-@patch('wazuh.wdb.WazuhDBConnection.__init__', return_value=None)
-@patch('wazuh.wdb.WazuhDBConnection.execute', return_value=None)
+@patch('wazuh.core.wdb.WazuhDBConnection.__init__', return_value=None)
+@patch('wazuh.core.wdb.WazuhDBConnection.execute', return_value=None)
 def test_syscheck_clear(wdb_execute_mock, wdb_init_mock, agent_list, expected_result, agent_info_list):
     """Test function `clear` from syscheck module.
 
@@ -155,8 +156,8 @@ def test_syscheck_clear(wdb_execute_mock, wdb_init_mock, agent_list, expected_re
 @pytest.mark.parametrize('agent_list, expected_result, agent_info_list', [
     (['001'], test_result[3], ['001']),
 ])
-@patch('wazuh.wdb.WazuhDBConnection.__init__', return_value=None)
-@patch('wazuh.wdb.WazuhDBConnection.execute', side_effect=WazuhError(1000))
+@patch('wazuh.core.wdb.WazuhDBConnection.__init__', return_value=None)
+@patch('wazuh.core.wdb.WazuhDBConnection.execute', side_effect=WazuhError(1000))
 def test_syscheck_clear_exception(execute_mock, wdb_init_mock, agent_list, expected_result, agent_info_list):
     """Test function `clear` from syscheck module.
 
@@ -189,7 +190,7 @@ def test_syscheck_clear_exception(execute_mock, wdb_init_mock, agent_list, expec
     (['004'], {}),
 ])
 @patch('sqlite3.connect', side_effect=get_fake_syscheck_db('schema_syscheck_test.sql'))
-@patch("wazuh.database.isfile", return_value=True)
+@patch("wazuh.core.database.isfile", return_value=True)
 @patch("wazuh.syscheck.WazuhDBConnection.execute", return_value=[{'end': '', 'start': ''}])
 @patch('socket.socket.connect')
 def test_syscheck_last_scan(socket_mock, wdb_conn_mock, is_file_mock,  db_mock, agent_id, wazuh_version):
@@ -259,7 +260,7 @@ def test_syscheck_files(socket_mock, agent_id, select, filters, distinct):
         True if all response items must be unique
     """
     select_list = ['date', 'mtime', 'file', 'size', 'perm', 'uname', 'gname', 'md5', 'sha1', 'sha256', 'inode', 'gid', 'uid', 'type', 'changes', 'attributes']
-    with patch('wazuh.utils.WazuhDBConnection') as mock_wdb:
+    with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
         mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_syscheck_test.sql')
         result = files(agent_id, select=select, filters=filters)
         assert isinstance(result, AffectedItemsWazuhResult)

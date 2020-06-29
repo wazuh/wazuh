@@ -12,7 +12,7 @@ import pytest
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
         sys.modules['api'] = MagicMock()
-        from wazuh.exception import WazuhError
+        from wazuh.core.exception import WazuhError
         from wazuh.core import active_response
         del sys.modules['api']
 
@@ -125,8 +125,8 @@ def test_send_command(expected_exception, command, agent_id):
     agent_id : int
         ID number to be set on the agent.
     """
-    with patch('wazuh.core.core_agent.Agent.get_basic_information', return_value=agent_info(expected_exception)):
-        with patch('wazuh.core.core_agent.Agent.getconfig', return_value=agent_config(expected_exception)):
+    with patch('wazuh.core.agent.Agent.get_basic_information', return_value=agent_info(expected_exception)):
+        with patch('wazuh.core.agent.Agent.getconfig', return_value=agent_config(expected_exception)):
             if expected_exception:
                 with pytest.raises(WazuhError, match=f'.* {expected_exception} .*'):
                     active_response.send_command(command, MagicMock(), agent_id)

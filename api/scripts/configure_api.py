@@ -12,7 +12,7 @@ import os
 import subprocess
 
 from api.constants import UWSGI_CONFIG_PATH, CONFIG_FILE_PATH, TEMPLATE_API_CONFIG_PATH
-from wazuh.common import ossec_path
+from wazuh.core.common import ossec_path
 from wazuh import security
 
 _ip_host = re.compile(r'( *)(# )?http:(.*):')

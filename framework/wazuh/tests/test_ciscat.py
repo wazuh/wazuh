@@ -22,7 +22,7 @@ with patch('wazuh.common.ossec_uid'):
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
         from wazuh.ciscat import get_ciscat_results
-        from wazuh.results import AffectedItemsWazuhResult
+        from wazuh.core.results import AffectedItemsWazuhResult
 
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -45,7 +45,7 @@ def test_get_ciscat_results(agents_info_mock, socket_mock, agent_id, exception):
     exception : bool
         True if the code will go through an exception. False otherwise.
     """
-    with patch('wazuh.utils.WazuhDBConnection') as mock_wdb:
+    with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
         mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_ciscat_test.sql')
         result = get_ciscat_results(agent_id)
         assert isinstance(result, AffectedItemsWazuhResult)

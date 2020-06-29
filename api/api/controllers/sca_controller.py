@@ -10,7 +10,7 @@ from aiohttp import web
 import wazuh.sca as sca
 from api.encoder import dumps, prettify
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
-from wazuh.common import database_limit
+from wazuh.core.common import database_limit
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
 logger = logging.getLogger('wazuh')

@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pytest
 
 from api import configuration, api_exception
-from wazuh import common
+from wazuh.core import common
 
 custom_api_configuration = {
     "host": "127.0.1.1",

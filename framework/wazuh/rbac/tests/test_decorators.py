@@ -10,7 +10,7 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy import create_engine
 
-from wazuh.exception import WazuhError
+from wazuh.core.exception import WazuhError
 from wazuh.rbac.tests.utils import init_db
 
 test_path = os.path.dirname(os.path.realpath(__file__))

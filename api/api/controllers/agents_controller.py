@@ -3,22 +3,20 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import logging
-from json.decoder import JSONDecodeError
 
 from aiohttp import web
 from connexion.lifecycle import ConnexionResponse
 
 import wazuh.agent as agent
 from api import configuration
-from api.api_exception import APIError
 from api.encoder import dumps, prettify
-from api.models.agent_added import AgentAdded
-from api.models.agent_inserted import AgentInserted
-from api.models.base_model_ import Data
+from api.models.agent_added import AgentAddedModel
+from api.models.agent_inserted import AgentInsertedModel
+from api.models.base_model_ import Data, Body
 from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc
-from wazuh.common import database_limit
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.exception import WazuhError
+from wazuh.core.common import database_limit
+from wazuh.core.exception import WazuhError
 
 logger = logging.getLogger('wazuh')
 
@@ -126,11 +124,7 @@ async def add_agent(request, pretty=False, wait_for_complete=False):
     :return: AgentIdKey
     """
     # Get body parameters
-    try:
-        agent_added_model = AgentAdded.from_dict(await request.json())
-        f_kwargs = agent_added_model.to_dict()
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
+    f_kwargs = await AgentAddedModel.get_kwargs(request)
 
     # Get IP if not given
     if not f_kwargs['ip']:
@@ -706,15 +700,10 @@ async def put_group_config(request, body, group_id, pretty=False, wait_for_compl
     :return: ApiResponse
     """
     # Parse body to utf-8
-    try:
-        body = body.decode('utf-8')
-    except UnicodeDecodeError:
-        raise_if_exc(APIError(code=2006))
-    except AttributeError:
-        raise_if_exc(APIError(code=2007))
+    parsed_body = Body.decode_body(body, unicode_error=2006, attribute_error=2007)
 
     f_kwargs = {'group_list': [group_id],
-                'file_data': body}
+                'file_data': parsed_body}
 
     dapi = DistributedAPI(f=agent.upload_group_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -854,11 +843,7 @@ async def insert_agent(request, pretty=False, wait_for_complete=False):
     :return: AgentIdKey
     """
     # Get body parameters
-    try:
-        agent_inserted_model = AgentInserted.from_dict(await request.json())
-        f_kwargs = agent_inserted_model.to_dict()
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
+    f_kwargs = await AgentInsertedModel.get_kwargs(request)
 
     # Get IP if not given
     if not f_kwargs['ip']:
