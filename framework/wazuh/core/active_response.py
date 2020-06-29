@@ -2,10 +2,10 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh import common
-from wazuh.ossec_queue import OssecQueue
-from wazuh.exception import WazuhError
-from wazuh.core.core_agent import Agent
+from wazuh.core import common
+from wazuh.core.ossec_queue import OssecQueue
+from wazuh.core.exception import WazuhError
+from wazuh.core.agent import Agent
 
 
 def create_message(command, custom, arguments):

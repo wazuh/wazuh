@@ -18,9 +18,9 @@ path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Waz
 # Import framework
 try:
     from wazuh import Wazuh
-    from wazuh.core.core_agent import Agent
-    from wazuh.exception import WazuhException
-    from wazuh import common
+    from wazuh.core.agent import Agent
+    from wazuh.core.exception import WazuhException
+    from wazuh.core import common
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
     exit()
@@ -149,13 +149,15 @@ if __name__ == "__main__":
 
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("-a", "--agent", type=str, help="Agent ID to upgrade.")
-    arg_parser.add_argument("-r", "--repository", type=str, help="Specify a repository URL. [Default: {0}]".format(common.wpk_repo_url))
+    arg_parser.add_argument("-r", "--repository", type=str, help="Specify a repository URL. [Default: {0}]".format(
+        common.wpk_repo_url))
     arg_parser.add_argument("-v", "--version", type=str, help="Version to upgrade. [Default: latest Wazuh version]")
     arg_parser.add_argument("-F", "--force", action="store_true", help="Allows reinstall same version and downgrade version.")
     arg_parser.add_argument("-s", "--silent", action="store_true", help="Do not show output.")
     arg_parser.add_argument("-d", "--debug", action="store_true", help="Debug mode.")
     arg_parser.add_argument("-l", "--list_outdated", action="store_true", help="Generates a list with all outdated agents.")
-    arg_parser.add_argument("-c", "--chunk_size", type=int, help="Chunk size sending WPK file. Allowed values: [1 - 64000]. [Default: {0}]".format(common.wpk_chunk_size))
+    arg_parser.add_argument("-c", "--chunk_size", type=int, help="Chunk size sending WPK file. Allowed values: [1 - 64000]. [Default: {0}]".format(
+        common.wpk_chunk_size))
     arg_parser.add_argument("-t", "--timeout", type=int, help="Timeout until agent restart is unlocked.")
     arg_parser.add_argument("-f", "--file", type=str, help="Custom WPK filename.")
     arg_parser.add_argument("-x", "--execute", type=str, help="Executable filename in the WPK custom file. [Default: upgrade.sh]")

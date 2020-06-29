@@ -2,10 +2,9 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
-import time
 from datetime import datetime
 
-from wazuh.utils import WazuhDBQuery, WazuhDBBackend
+from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend
 
 
 class WazuhDBQuerySyscheck(WazuhDBQuery):

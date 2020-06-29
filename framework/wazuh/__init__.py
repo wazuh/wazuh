@@ -9,9 +9,9 @@ import re
 from datetime import datetime
 from time import strftime
 
-from wazuh import common
-from wazuh.database import Connection
-from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
+from wazuh.core import common
+from wazuh.core.database import Connection
+from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
 
 """
 Wazuh HIDS Python package

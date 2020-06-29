@@ -2,8 +2,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
-from wazuh.utils import WazuhDBQuery, WazuhDBBackend
-from wazuh.core.core_agent import Agent
+from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend
+from wazuh.core.agent import Agent
 from datetime import datetime
 
 # API field -> DB field

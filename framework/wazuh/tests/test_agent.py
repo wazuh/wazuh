@@ -32,10 +32,10 @@ with patch('wazuh.common.ossec_uid'):
             get_distinct_agents, get_file_conf, get_full_overview, get_group_files, get_outdated_agents, \
             get_upgrade_result, remove_agent_from_group, remove_agent_from_groups, remove_agents_from_group, \
             restart_agents, upgrade_agents, upgrade_agents_custom, upload_group_file
-        from wazuh.core.core_agent import Agent
+        from wazuh.core.agent import Agent
         from wazuh import WazuhError, WazuhException, WazuhInternalError
-        from wazuh.results import WazuhResult, AffectedItemsWazuhResult
-        from wazuh.core.tests.test_core_agent import InitAgent
+        from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
+        from wazuh.core.tests.test_agent import InitAgent
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_agent_path = os.path.join(test_data_path, 'agent')
@@ -108,7 +108,7 @@ def test_agent_get_agents_summary_os(sqlite_mock):
     (['001', '500'], ['001'], 1701)
 ])
 @patch('wazuh.common.database_path_global', new=test_global_bd_path)
-@patch('wazuh.core.core_agent.Agent.restart')
+@patch('wazuh.core.agent.Agent.restart')
 @patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
 @patch('sqlite3.connect', return_value=test_data.global_db)
 def test_agent_restart_agents(sqlite_mock, agents_info_mock, restart_mock, agent_list, expected_items, error_code):
@@ -302,14 +302,14 @@ def test_agent_delete_agents_different_status():
     ('a' * 129, '002', 'f304f582f2417a3fddad69d9ae2b4f3b6e6fda788229668af9a6934d454ef44d')
 ])
 @patch('wazuh.common.database_path_global', new=test_global_bd_path)
-@patch('wazuh.core.core_agent.fcntl.lockf')
+@patch('wazuh.core.agent.fcntl.lockf')
 @patch('wazuh.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
-@patch('wazuh.core.core_agent.chown')
-@patch('wazuh.core.core_agent.chmod')
-@patch('wazuh.core.core_agent.copyfile')
-@patch('wazuh.core.core_agent.common.ossec_uid')
-@patch('wazuh.core.core_agent.common.ossec_gid')
-@patch('wazuh.core.core_agent.safe_move')
+@patch('wazuh.core.agent.chown')
+@patch('wazuh.core.agent.chmod')
+@patch('wazuh.core.agent.copyfile')
+@patch('wazuh.core.agent.common.ossec_uid')
+@patch('wazuh.core.agent.common.ossec_gid')
+@patch('wazuh.core.agent.safe_move')
 @patch('builtins.open')
 def test_agent_add_agent(open_mock, safe_move_mock, common_gid_mock, common_uid_mock, copyfile_mock, chmod_mock,
                          chown_mock, fcntl_mock, name, agent_id, key):
@@ -366,7 +366,7 @@ def test_agent_get_agent_groups(sqlite_mock, group_list, expected_result):
     (test_global_bd_path, 'invalid-group', 1710)
 ])
 @patch('wazuh.agent.get_groups')
-@patch('wazuh.agent.Connection.execute', side_effect=WazuhException(1000))
+@patch('wazuh.agent.WazuhDBQueryGroup.run', side_effect=WazuhException(1000))
 def test_agent_get_agent_groups_exceptions(mock_execute, mock_get_groups, db_global, system_groups, error_code):
     """Test `get_agent_groups` function from agent module raises the expected exceptions if an invalid 'global.db' path
     or group is specified.
@@ -416,7 +416,7 @@ def test_agent_get_group_files(group_list):
     (test_shared_path, ['default'], True, WazuhException(1400), WazuhInternalError(1727))
 ])
 @patch('wazuh.agent.process_array')
-@patch('wazuh.core.core_agent.Agent.group_exists')
+@patch('wazuh.core.agent.Agent.group_exists')
 def test_agent_get_group_files_exceptions(mock_group_exists, mock_process_array, shared_path, group_list, group_exists,
                                           side_effect, expected_exception):
     """Test `get_group_files` function from agent module raises the expected exceptions if an invalid 'global.db' path
@@ -676,7 +676,7 @@ def test_agent_assign_agents_to_group_exceptions(mock_add_group, mock_group_exis
     ('group-1', '005')
 ])
 @patch('wazuh.common.database_path_global', new=test_global_bd_path)
-@patch('wazuh.core.core_agent.Agent.unset_single_group_agent')
+@patch('wazuh.core.agent.Agent.unset_single_group_agent')
 @patch('wazuh.agent.get_groups')
 @patch('wazuh.agent.get_agents_info')
 def test_agent_remove_agent_from_group(mock_get_agents, mock_get_groups, mock_unset, group_id, agent_id):
@@ -730,7 +730,7 @@ def test_agent_remove_agent_from_group_exceptions(group_mock, agents_info_mock, 
 @pytest.mark.parametrize('group_list, agent_list', [
     (['group-1'], ['001'])
 ])
-@patch('wazuh.core.core_agent.Agent.unset_single_group_agent')
+@patch('wazuh.core.agent.Agent.unset_single_group_agent')
 @patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
 @patch('wazuh.agent.get_groups', return_value={'group-1'})
 def test_agent_remove_agent_from_groups(mock_get_groups, mock_get_agents, mock_unset, group_list, agent_list):
@@ -761,7 +761,7 @@ def test_agent_remove_agent_from_groups(mock_get_groups, mock_get_agents, mock_u
     (['any-group'], ['000'], WazuhError(1703), True),
     (['any-group'],   ['005'], WazuhError(1710), False),
 ])
-@patch('wazuh.core.core_agent.Agent.unset_single_group_agent')
+@patch('wazuh.core.agent.Agent.unset_single_group_agent')
 @patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
 @patch('wazuh.agent.get_groups', return_value={'group-1'})
 def test_agent_remove_agent_from_groups_exceptions(mock_get_groups, mock_get_agents, mock_unset, group_list, agent_list,
@@ -812,7 +812,7 @@ def test_agent_remove_agent_from_groups_exceptions(mock_get_groups, mock_get_age
 @pytest.mark.parametrize('group_list, agent_list', [
     (['group-1'], ['001'])
 ])
-@patch('wazuh.core.core_agent.Agent.unset_single_group_agent')
+@patch('wazuh.core.agent.Agent.unset_single_group_agent')
 @patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
 @patch('wazuh.agent.get_groups', return_value={'group-1'})
 def test_agent_remove_agents_from_group(mock_get_groups, mock_get_agents, mock_unset, group_list, agent_list):
@@ -917,8 +917,8 @@ def test_agent_get_outdated_agents(sqlite_mock, agent_list, outdated_agents):
 
 
 @pytest.mark.parametrize('agent_list', [['001'], ['002']])
-@patch('wazuh.core.core_agent.OssecSocket')
-@patch('wazuh.core.core_agent.Agent._send_wpk_file')
+@patch('wazuh.core.agent.OssecSocket')
+@patch('wazuh.core.agent.Agent._send_wpk_file')
 @patch('socket.socket.sendto', return_value=1)
 @patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('sqlite3.connect', return_value=test_data.global_db)
@@ -936,8 +936,8 @@ def test_agent_upgrade_agents(sqlite_mock, socket_sendto, _send_wpk_file, ossec_
 
 
 @pytest.mark.parametrize('agent_list', [['001'], ['002']])
-@patch('wazuh.core.core_agent.OssecSocket')
-@patch('wazuh.core.core_agent.Agent._send_wpk_file')
+@patch('wazuh.core.agent.OssecSocket')
+@patch('wazuh.core.agent.Agent._send_wpk_file')
 @patch('socket.socket.sendto', return_value=1)
 @patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('sqlite3.connect', return_value=test_data.global_db)
@@ -955,8 +955,8 @@ def test_agent_get_upgrade_result(sqlite_mock, socket_sendto, _send_wpk_file, os
 
 
 @pytest.mark.parametrize('agent_list', [['001'], ['002']])
-@patch('wazuh.core.core_agent.OssecSocket')
-@patch('wazuh.core.core_agent.Agent._send_custom_wpk_file')
+@patch('wazuh.core.agent.OssecSocket')
+@patch('wazuh.core.agent.Agent._send_custom_wpk_file')
 @patch('socket.socket.sendto', return_value=1)
 @patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('sqlite3.connect', return_value=test_data.global_db)
@@ -1003,7 +1003,7 @@ def test_agent_upgrade_agents_custom_exceptions(sqlite_mock, file_path, installe
 @pytest.mark.parametrize('agent_list, component, configuration', [
     (['001'], 'logcollector', 'internal')
 ])
-@patch('wazuh.configuration.OssecSocket')
+@patch('wazuh.core.configuration.OssecSocket')
 @patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('sqlite3.connect', return_value=test_data.global_db)
 def test_agent_get_agent_config(sqlite_mock, ossec_socket_mock, agent_list, component, configuration):
@@ -1139,7 +1139,7 @@ def test_agent_get_agent_conf(group_list):
     ['default']
 ])
 @patch('wazuh.common.shared_path', new=test_shared_path)
-@patch('wazuh.configuration.upload_group_configuration')
+@patch('wazuh.core.configuration.upload_group_configuration')
 def test_agent_upload_group_file(mock_upload, group_list):
     """Test `upload_group_file` function from agent module.
 

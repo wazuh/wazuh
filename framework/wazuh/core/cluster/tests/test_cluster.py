@@ -9,7 +9,7 @@ from unittest.mock import patch, mock_open, MagicMock
 
 import pytest
 
-from wazuh import common
+from wazuh.core import common
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):

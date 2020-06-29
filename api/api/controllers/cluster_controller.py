@@ -4,22 +4,20 @@
 
 import datetime
 import logging
-from json.decoder import JSONDecodeError
 
 from aiohttp import web
 
 import wazuh.cluster as cluster
-import wazuh.common as common
+import wazuh.core.common as common
 import wazuh.manager as manager
 import wazuh.stats as stats
 from api import configuration
-from api.api_exception import APIError
 from api.encoder import dumps, prettify
-from api.models.base_model_ import Data
+from api.models.base_model_ import Data, Body
+from api.models.configuration import APIConfigurationModel
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.exception import WazuhError
 
 logger = logging.getLogger('wazuh')
 
@@ -497,17 +495,12 @@ async def put_files_node(request, body, node_id, path, overwrite=False, pretty=F
     """
 
     # parse body to utf-8
-    try:
-        body = body.decode('utf-8')
-    except UnicodeDecodeError:
-        raise_if_exc(WazuhError(1911))
-    except AttributeError:
-        raise_if_exc(WazuhError(1912))
+    parsed_body = Body.decode_body(body, unicode_error=1911, attribute_error=1912)
 
     f_kwargs = {'node_id': node_id,
                 'path': path,
                 'overwrite': overwrite,
-                'content': body}
+                'content': parsed_body}
 
     nodes = await get_system_nodes()
     dapi = DistributedAPI(f=manager.upload_file,
@@ -585,10 +578,8 @@ async def put_api_config(request, pretty=False, wait_for_complete=False, list_no
     :param wait_for_complete: Disable timeout response
     :param list_nodes: List of node ids
     """
-    try:
-        f_kwargs = {"updated_config": await request.json(), 'node_list': list_nodes}
-    except JSONDecodeError as e:
-        raise_if_exc(APIError(code=2005, details=e.msg))
+    updated_conf = await APIConfigurationModel.get_kwargs(request)
+    f_kwargs = {'node_list': list_nodes, 'updated_config': updated_conf}
 
     nodes = await get_system_nodes()
     dapi = DistributedAPI(f=manager.update_api_config,

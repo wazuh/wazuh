@@ -8,11 +8,11 @@ from typing import Tuple, Union
 
 import uvloop
 
-from wazuh import common
+from wazuh.core import common
 from wazuh.core.cluster import common as c_common, server, client
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag
-from wazuh.exception import WazuhClusterError
+from wazuh.core.exception import WazuhClusterError
 
 
 class LocalServerHandler(server.AbstractServerHandler):

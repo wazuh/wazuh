@@ -11,17 +11,16 @@ from os import remove
 from os.path import exists, join
 
 from wazuh import Wazuh
-from wazuh import common
-from wazuh import configuration
-from wazuh.configuration import get_ossec_conf
+from wazuh.core import common, configuration
+from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart, read_cluster_config
 from wazuh.core.manager import status, get_ossec_log_fields, upload_xml, upload_list, validate_xml, validate_cdb_list, \
     parse_execd_output, get_api_conf, update_api_conf
-from wazuh.exception import WazuhError, WazuhInternalError
+from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.rbac.decorators import expose_resources
-from wazuh.results import WazuhResult, AffectedItemsWazuhResult
-from wazuh.utils import previous_month, tail, process_array
+from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
+from wazuh.core.utils import previous_month, tail, process_array
 
 allowed_api_fields = {'behind_proxy_server', 'logs', 'cache', 'cors', 'use_only_authd', 'experimental_features'}
 execq_lockfile = join(common.ossec_path, "var", "run", ".api_execq_lock")

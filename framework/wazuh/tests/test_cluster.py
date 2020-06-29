@@ -16,7 +16,7 @@ with patch('wazuh.common.ossec_uid'):
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh import cluster
-        from wazuh.exception import WazuhError
+        from wazuh.core.exception import WazuhError
         from wazuh.core.cluster.local_client import LocalClient
 
 default_config = {'disabled': True, 'node_type': 'master', 'name': 'wazuh', 'node_name': 'node01',

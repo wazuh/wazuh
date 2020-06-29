@@ -14,7 +14,8 @@ with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
         sys.modules['api'] = MagicMock()
         from wazuh.core.syscollector import *
-        from wazuh import common
+        from wazuh.core import common
+
         del sys.modules['api']
 
 
@@ -24,7 +25,7 @@ with patch('wazuh.common.ossec_uid'):
     'Windows',
     'Linux'
 ])
-@patch('wazuh.core.core_agent.Agent.get_basic_information')
+@patch('wazuh.core.agent.Agent.get_basic_information')
 def test_get_valid_fields(mock_info, os_name):
     """Check get_valid_fields returns expected type and content
 
@@ -33,17 +34,17 @@ def test_get_valid_fields(mock_info, os_name):
     os_name : str
         Request information of this OS.
     """
-    with patch('wazuh.core.core_agent.Agent.get_agent_attr', return_value=os_name):
+    with patch('wazuh.core.agent.Agent.get_agent_attr', return_value=os_name):
         response = get_valid_fields(Type.OS, '0')
         assert isinstance(response, tuple) and isinstance(response[1], dict), 'Data type not expected'
         assert 'sys_osinfo' in response[0], f'"sys_osinfo" not contained in {response}'
 
 
-@patch("wazuh.core.core_agent.Agent.get_basic_information", return_value=None)
-@patch('wazuh.core.core_agent.Agent.get_agent_attr', return_value='Linux')
+@patch("wazuh.core.agent.Agent.get_basic_information", return_value=None)
+@patch('wazuh.core.agent.Agent.get_agent_attr', return_value='Linux')
 def test_WazuhDBQuerySyscollector(mock_basic_info, mock_agents_info):
     """Verify that the method connects correctly to the database and returns the correct type."""
-    with patch('wazuh.utils.WazuhDBConnection') as mock_wdb:
+    with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
         mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_syscollector_000.sql')
         db_query = WazuhDBQuerySyscollector(agent_id='000', offset=0, limit=common.database_limit, select=None,
                                             search=None, sort=None, filters=None,

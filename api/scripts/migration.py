@@ -11,7 +11,7 @@ import yaml
 from api.api_exception import APIException
 from api.constants import CONFIG_FILE_PATH
 from api.util import to_relative_path
-from wazuh import common
+from wazuh.core import common
 
 from api import validator
 

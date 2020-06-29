@@ -4,10 +4,10 @@
 
 import re
 
-from wazuh.exception import WazuhError
+from wazuh.core.exception import WazuhError
 from wazuh.rbac.auth_context import RBAChecker
 from wazuh.rbac.orm import AuthenticationManager
-from wazuh.results import WazuhResult
+from wazuh.core.results import WazuhResult
 
 
 class PreProcessor:
