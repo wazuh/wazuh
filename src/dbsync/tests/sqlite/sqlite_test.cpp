@@ -40,6 +40,7 @@ TEST_F(SQLiteTest, ConnectionClose)
     EXPECT_TRUE(connectionDefault.close());
     EXPECT_TRUE(connectionDefault.close());
     EXPECT_EQ(nullptr, connectionDefault.db().get());
+    EXPECT_FALSE(connectionDefault.execute("BEGIN TRANSACTION"));
 }
 
 TEST_F(SQLiteTest, ConnectionExecute)
@@ -148,22 +149,111 @@ TEST_F(SQLiteTest, TransactionCantCommitAfterRollBack)
     EXPECT_FALSE(transaction.isCommited());
 }
 
-TEST_F(SQLiteTest, StatementSuccess)
+TEST_F(SQLiteTest, StatementCtorSuccess)
 {
     std::shared_ptr<IConnection> spConnection{ new Connection };
     Statement stmt{spConnection, "CREATE TABLE test_table (Colum1 INTEGER, Colum2 TEXT);"};
-    EXPECT_NO_THROW(stmt.step());
+}
+
+TEST_F(SQLiteTest, StatementCtorFailure)
+{
+    std::shared_ptr<IConnection> spConnection{ new Connection };
+    EXPECT_THROW(Statement stmt(spConnection, "WRONG STATEMENT"), SQLite::exception);
+}
+
+TEST_F(SQLiteTest, StatementStep)
+{
+    std::shared_ptr<IConnection> spConnection{ new Connection };
+    Statement stmt{spConnection, "CREATE TABLE test_table (Colum1 INTEGER, Colum2 TEXT);"};
+    EXPECT_TRUE(stmt.step());
+    EXPECT_TRUE(stmt.reset());
+    EXPECT_THROW(stmt.step(), SQLite::exception);
 }
 
 TEST_F(SQLiteTest, StatementBindInt)
 {
     std::shared_ptr<IConnection> spConnection{ new Connection };
-    Statement createStmt{spConnection, "CREATE TABLE test_table (Colum1 INTEGER, Colum2 TEXT);"};
+    Statement createStmt
+    {
+        spConnection,
+        "CREATE TABLE test_table (Colum1 INTEGER, Colum2 TEXT, Colum3 BIGINT, Colum4 BIGINT, Colum5 FLOAT);"
+    };
     EXPECT_NO_THROW(createStmt.step());
-    Statement insertStmt{spConnection, R"(INSERT INTO test_table (Colum1) VALUES (?);)"};
-    EXPECT_TRUE(insertStmt.bind(1, 1l));
-    EXPECT_NO_THROW(insertStmt.step());
+    Statement insertStmt
+    {
+        spConnection,
+        R"(INSERT INTO test_table (Colum1, Colum2, Colum3, Colum4, Colum5) VALUES (?,?,?,?,?);)"
+    };
+    EXPECT_TRUE(insertStmt.bind(1, 1));
+    EXPECT_TRUE(insertStmt.bind(2, "1"));
+    EXPECT_TRUE(insertStmt.bind(3, 1l));
+    EXPECT_TRUE(insertStmt.bind(4, 1lu));
+    EXPECT_TRUE(insertStmt.bind(5, 1.0));
+    EXPECT_TRUE(insertStmt.step());
     EXPECT_TRUE(insertStmt.reset());
-    EXPECT_TRUE(insertStmt.bind(1, 2l));
-    EXPECT_NO_THROW(insertStmt.step());
+    EXPECT_TRUE(insertStmt.bind(1, 2));
+    EXPECT_TRUE(insertStmt.bind(2, "2"));
+    EXPECT_TRUE(insertStmt.bind(3, 2l));
+    EXPECT_TRUE(insertStmt.bind(4, 2lu));
+    EXPECT_TRUE(insertStmt.bind(5, 2.0));
+    EXPECT_TRUE(insertStmt.step());
+}
+
+
+TEST_F(SQLiteTest, ColumnCtor)
+{
+    std::shared_ptr<IConnection> spConnection{ new Connection };
+    Statement createStmt
+    {
+        spConnection,
+        "CREATE TABLE test_table (Colum1 INTEGER, Colum2 TEXT, Colum3 BIGINT, Colum4 BIGINT, Colum5 FLOAT);"
+    };
+    EXPECT_TRUE(createStmt.step());
+    Statement insertStmt
+    {
+        spConnection, R"(INSERT INTO test_table (Colum1, Colum2, Colum3, Colum4, Colum5) VALUES (?,?,?,?,?);)"
+    };
+    auto spColumn{ insertStmt.column(1) };
+    EXPECT_FALSE(spColumn->hasValue());
+}
+
+
+TEST_F(SQLiteTest, ColumnValue)
+{
+    std::shared_ptr<IConnection> spConnection{ new Connection };
+    Statement createStmt
+    {
+        spConnection,
+        R"(CREATE TABLE test_table (Colum1 INTEGER, Colum2 TEXT, Colum3 BIGINT, Colum4 BIGINT, Colum5 FLOAT);)"
+    };
+    EXPECT_TRUE(createStmt.step());
+    Statement insertStmt
+    {
+        spConnection, R"(INSERT INTO test_table (Colum1, Colum2, Colum3, Colum4, Colum5)  VALUES (1,"some text",2,3,4.0);)"
+    };
+    EXPECT_TRUE(insertStmt.step());
+    Statement selectStmt
+    {
+        spConnection, R"(SELECT * FROM test_table;)"
+    };
+    EXPECT_TRUE(selectStmt.step());
+    auto spColumn1{ selectStmt.column(0) };
+    EXPECT_TRUE(spColumn1->hasValue());
+    EXPECT_EQ(1, spColumn1->value(int32_t{}));
+
+    auto spColumn2{ selectStmt.column(1) };
+    EXPECT_TRUE(spColumn2->hasValue());
+    EXPECT_EQ("some text", spColumn2->value(std::string{}));
+
+    auto spColumn3{ selectStmt.column(2) };
+    EXPECT_TRUE(spColumn3->hasValue());
+    EXPECT_EQ(2l, spColumn3->value(int64_t{}));
+
+    auto spColumn4{ selectStmt.column(3) };
+    EXPECT_TRUE(spColumn4->hasValue());
+    EXPECT_EQ(3lu, spColumn4->value(uint64_t{}));
+
+    auto spColumn5{ selectStmt.column(4) };
+    EXPECT_TRUE(spColumn5->hasValue());
+    EXPECT_DOUBLE_EQ(4.0, spColumn5->value(double{}));
 }
