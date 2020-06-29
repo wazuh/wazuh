@@ -49,16 +49,17 @@ short_agent_list = ['000', '001', '002', '003', '004', '005']
 
 
 @pytest.mark.parametrize('fields, expected_items', [
-    (['os.platform'], [{'os': {'platform': 'ubuntu'}, 'count': 4}, {'count': 2}]),
+    (['os.platform'], [{'os': {'platform': 'ubuntu'}, 'count': 4}, {'os': {'platform': 'unknown'}, 'count': 2}]),
     (['version'], [{'version': 'Wazuh v3.9.0', 'count': 1}, {'version': 'Wazuh v3.8.2', 'count': 2},
-                   {'version': 'Wazuh v3.6.2', 'count': 1}, {'count': 2}]),
+                   {'version': 'Wazuh v3.6.2', 'count': 1}, {'version': 'unknown', 'count': 2}]),
     (['os.platform', 'os.major'], [{'os': {'major': '18', 'platform': 'ubuntu'}, 'count': 3},
-                                   {'os': {'major': '16', 'platform': 'ubuntu'}, 'count': 1}, {'count': 2}]),
+                                   {'os': {'major': '16', 'platform': 'ubuntu'}, 'count': 1},
+                                   {'os': {'major': 'unknown', 'platform': 'unknown'}, 'count': 2}]),
     (['node_name'], [{'node_name': 'unknown', 'count': 2}, {'node_name': 'node01', 'count': 4}]),
     (['os.name', 'os.platform', 'os.version'], [
         {'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '18.04.1 LTS'}, 'count': 3},
         {'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '16.04.1 LTS'}, 'count': 1},
-        {'count': 2}]),
+        {'os': {'name': 'unknown', 'platform': 'unknown', 'version': 'unknown'}, 'count': 2}]),
 ])
 @patch('wazuh.common.database_path_global', new=test_global_bd_path)
 @patch('sqlite3.connect', return_value=test_data.global_db)
