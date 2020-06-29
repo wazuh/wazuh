@@ -14,13 +14,13 @@
 #include "typedef.h"
 #include <fstream>
 
-bool SQLiteDBEngine::Execute(
+bool SQLiteDBEngine::execute(
     const std::string& query) {
 
     return true;
 }
 
-bool SQLiteDBEngine::Select(
+bool SQLiteDBEngine::select(
     const std::string& query, 
     nlohmann::json& result) {
 
@@ -73,7 +73,7 @@ bool SQLiteDBEngine::CleanDB(const std::string& path) {
   return ret_val;
 }
 
-bool SQLiteDBEngine::BulkInsert(const std::string& table, const nlohmann::json& data) {
+bool SQLiteDBEngine::bulkInsert(const std::string& table, const nlohmann::json& data) {
   auto ret_val{ false };
   if (0 != LoadTableData(table)) {
     const auto sql { BuildInsertBulkDataSqlQuery(table) };
@@ -199,7 +199,7 @@ bool SQLiteDBEngine::BindJsonData(std::unique_ptr<SQLite::IStatement>const& stmt
   return ret_val;
 }
 
-bool SQLiteDBEngine::RefreshTablaData(const nlohmann::json& data, const std::tuple<nlohmann::json&, void *> delta) {
+bool SQLiteDBEngine::refreshTablaData(const nlohmann::json& data, const std::tuple<nlohmann::json&, void *> delta) {
   auto ret_val {false};
   const std::string table { data["table"].is_string() ? data["table"].get_ref<const std::string&>() : "" };
   if (CreateCopyTempTable(table)) {

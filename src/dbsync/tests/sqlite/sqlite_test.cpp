@@ -1,5 +1,6 @@
 #include "sqlite_test.h"
 #include "sqlite_wrapper.h"
+#include "db_exception.h"
 
 constexpr auto TEMP_TEST_DB_PATH{"temp_test.db"};
 constexpr auto TEMP_DB_PATH{"temp.db"};
@@ -14,6 +15,7 @@ void SQLiteTest::TearDown()
 using ::testing::_;
 using ::testing::Return;
 using namespace SQLite;
+using namespace DbSync;
 
 class ConnectionWrapper: public IConnection
 {
@@ -67,7 +69,7 @@ TEST_F(SQLiteTest, TransactionCtorDtorFailure)
     ConnectionWrapper* pConnection{ new ConnectionWrapper };
     std::shared_ptr<IConnection> spConnection{ pConnection };
     EXPECT_CALL(*pConnection, execute("BEGIN TRANSACTION")).WillOnce(Return(false));
-    EXPECT_THROW(Transaction transaction{spConnection}, SQLite::exception);
+    EXPECT_THROW(Transaction transaction{spConnection}, dbsync_error);
 }
 
 TEST_F(SQLiteTest, TransactionCommitSuccess)
@@ -158,7 +160,7 @@ TEST_F(SQLiteTest, StatementCtorSuccess)
 TEST_F(SQLiteTest, StatementCtorFailure)
 {
     std::shared_ptr<IConnection> spConnection{ new Connection };
-    EXPECT_THROW(Statement stmt(spConnection, "WRONG STATEMENT"), SQLite::exception);
+    EXPECT_THROW(Statement stmt(spConnection, "WRONG STATEMENT"), dbsync_error);
 }
 
 TEST_F(SQLiteTest, StatementStep)
@@ -167,7 +169,7 @@ TEST_F(SQLiteTest, StatementStep)
     Statement stmt{spConnection, "CREATE TABLE test_table (Colum1 INTEGER, Colum2 TEXT);"};
     EXPECT_TRUE(stmt.step());
     EXPECT_TRUE(stmt.reset());
-    EXPECT_THROW(stmt.step(), SQLite::exception);
+    EXPECT_THROW(stmt.step(), dbsync_error);
 }
 
 TEST_F(SQLiteTest, StatementBindInt)

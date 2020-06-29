@@ -17,33 +17,6 @@
 #include <memory>
 namespace SQLite
 {
-    class exception : public std::exception
-    {
-      public:
-        __attribute__((__returns_nonnull__))
-        const char* what() const noexcept override
-        {
-            return m_error.what();
-        }
-
-        int id() const noexcept
-        {
-            return m_id;
-        }
-
-        __attribute__((__nonnull__(3)))
-        exception(const int id,
-                  const char* whatArg)
-        : m_id(id)
-        , m_error(whatArg)
-        {}
-
-      private:
-        /// an exception object as storage for error messages
-        const int m_id;
-        std::runtime_error m_error;
-    };
-
     class Connection : public IConnection
     {
     public:
