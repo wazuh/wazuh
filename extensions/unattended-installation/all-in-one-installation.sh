@@ -70,7 +70,7 @@ installPrerequisites() {
     then
         if [ -n "$(command -v add-apt-repository)" ]
         then
-            add-apt-repository ppa:openjdk-r/ppa -y -q > /dev/null 2>&1
+            add-apt-repository ppa:openjdk-r/ppa -y > /dev/null 2>&1
         else
             echo 'deb http://deb.debian.org/debian stretch-backports main' > /etc/apt/sources.list.d/backports.list
         fi
