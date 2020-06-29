@@ -3554,6 +3554,38 @@ stages:
              os:
                platform: !anystr
            - count: !anyint
+               os:
+                 platform: unknown
+         failed_items: []
+         total_affected_items: !anyint
+         total_failed_items: 0
+
+ - name: Get the status and os.name
+   request:
+     verify: False
+     <<: *distinct_request
+     params:
+       fields:
+        - os.name
+        - status
+   response:
+     status_code: 200
+     json:
+       data:
+         affected_items:
+           - count: !anyint
+             status: active
+             os:
+               name: Ubuntu
+           - count: !anyint
+             status: disconnected
+             os:
+               name: Ubuntu
+           - count: !anyint
+             status: never_connected
+             os:
+               name: unknown
+
          failed_items: []
          total_affected_items: !anyint
          total_failed_items: 0
