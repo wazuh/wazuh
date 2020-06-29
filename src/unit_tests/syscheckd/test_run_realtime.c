@@ -16,7 +16,7 @@
 
 #include "../wrappers/posix/pthread_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
-
+#include "../wrappers/linux/inotify_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 
@@ -36,14 +36,6 @@ void free_win32rtfim_data(win32rtfim *data);
 void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap);
 #endif
 /* redefinitons/wrapping */
-
-int __wrap_inotify_init() {
-    return mock();
-}
-
-int __wrap_inotify_add_watch() {
-    return mock();
-}
 
 int __wrap_OSHash_Get_ex() {
     return mock();
