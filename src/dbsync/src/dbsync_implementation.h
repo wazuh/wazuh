@@ -19,33 +19,36 @@
 #include "typedef.h"
 #include "json.hpp"
 
-class DBSyncImplementation
+namespace DbSync
 {
-public:
-    static DBSyncImplementation& getInstance()
+    class DBSyncImplementation
     {
-        static DBSyncImplementation s_instance;
-        return s_instance;
-    }
-    int32_t insertBulkData(const DBSYNC_HANDLE handle,
-                           const char* jsonRaw);
-    int32_t updateSnapshotData(const DBSYNC_HANDLE handle,
-                               const char* jsonSnapshot,
-                               std::string& result);
-    int32_t updateSnapshotData(const DBSYNC_HANDLE handle,
-                               const char* jsonSnapshot,
-                               void* callback);
-    DBSYNC_HANDLE initialize(const HostType hostType,
-                             const DbEngineType dbType,
-                             const std::string& path,
-                             const std::string& sqlStatement);
-    void release();
-private:
-    std::shared_ptr<DbEngineContext> getDbEngineContext(const DBSYNC_HANDLE handle);
-    DBSyncImplementation() = default;
-    ~DBSyncImplementation() = default;
-    DBSyncImplementation(const DBSyncImplementation&) = delete;
-    DBSyncImplementation& operator=(const DBSyncImplementation&) = delete;
-    std::vector<std::shared_ptr<DbEngineContext>> m_dbSyncContexts;
-    std::mutex m_mutex;
-};
+    public:
+        static DBSyncImplementation& instance()
+        {
+            static DBSyncImplementation s_instance;
+            return s_instance;
+        }
+        int32_t insertBulkData(const DBSYNC_HANDLE handle,
+                               const char* jsonRaw);
+        int32_t updateSnapshotData(const DBSYNC_HANDLE handle,
+                                   const char* jsonSnapshot,
+                                   std::string& result);
+        int32_t updateSnapshotData(const DBSYNC_HANDLE handle,
+                                   const char* jsonSnapshot,
+                                   void* callback);
+        DBSYNC_HANDLE initialize(const HostType hostType,
+                                 const DbEngineType dbType,
+                                 const std::string& path,
+                                 const std::string& sqlStatement);
+        void release();
+    private:
+        std::shared_ptr<DbEngineContext> dbEngineContext(const DBSYNC_HANDLE handle);
+        DBSyncImplementation() = default;
+        ~DBSyncImplementation() = default;
+        DBSyncImplementation(const DBSyncImplementation&) = delete;
+        DBSyncImplementation& operator=(const DBSyncImplementation&) = delete;
+        std::vector<std::shared_ptr<DbEngineContext>> m_dbSyncContexts;
+        std::mutex m_mutex;
+    };
+}

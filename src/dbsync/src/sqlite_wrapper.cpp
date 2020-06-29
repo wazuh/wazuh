@@ -10,6 +10,7 @@
  */
 
 #include "sqlite_wrapper.h"
+#include "db_exception.h"
 #include <iostream>
 #include <chrono>
 
@@ -26,7 +27,7 @@ static sqlite3* openSQLiteDb(const std::string& path)
     };
     if (SQLITE_OK != ret)
     {
-        throw SQLite::exception
+        throw DbSync::dbsync_error
         {
             600,
             "Unspecified type during initialization of SQLite."
@@ -75,7 +76,7 @@ Transaction::Transaction(std::shared_ptr<IConnection>& connection)
 {
     if (!m_connection->execute("BEGIN TRANSACTION"))
     {
-        throw SQLite::exception
+        throw DbSync::dbsync_error
         {
             601,
             "cannot begin SQLite Transaction."
@@ -124,7 +125,7 @@ static sqlite3_stmt* prepareSQLiteStatement(std::shared_ptr<IConnection>& connec
     };
     if(SQLITE_OK != ret)
     {
-        throw SQLite::exception
+        throw DbSync::dbsync_error
         {
             602, "cannot instance SQLite stmt."
         };
@@ -143,7 +144,7 @@ int32_t Statement::step()
     const auto ret { sqlite3_step(m_stmt.get()) };
     if (SQLITE_ROW != ret && SQLITE_DONE != ret)
     {
-        throw SQLite::exception
+        throw DbSync::dbsync_error
         {
             603, sqlite3_errmsg(m_connection->db().get())
         };
