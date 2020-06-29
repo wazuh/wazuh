@@ -287,7 +287,7 @@ checkInstallation() {
     else
         echo "Filebeat installation succeeded."
     fi    
-    until [[ "$(curl https://localhost/status -I -uadmin:admin -k -s | grep HTTP)" == *"200"* ]]; do
+    until [[ "$(curl -XGET https://localhost/status -I -uadmin:admin -k -s | grep "200 OK")" ]]; do
         echo "Waiting for Kibana..."
         sleep 15
     done    
