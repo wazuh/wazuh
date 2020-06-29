@@ -1,6 +1,7 @@
 # Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+import wazuh.core.agent
 import wazuh.core.cluster.cluster
 import wazuh.core.cluster.utils
 import wazuh.core.manager
@@ -459,7 +460,7 @@ functions = {
         'is_async': False
     },
     '/rules/groups': {
-        'function': Rule.get_groups,
+        'function': wazuh.core.agent.get_groups,
         'type': 'local_any',
         'is_async': False
     },
