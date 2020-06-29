@@ -4,8 +4,7 @@
 from glob import glob
 
 from wazuh.core import common
-from wazuh.core.agent import Agent
-from wazuh.core.utils import get_agents_info
+from wazuh.core.agent import Agent, get_agents_info
 from wazuh.core.syscheck import WazuhDBQuerySyscheck
 from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhInternalError, WazuhError

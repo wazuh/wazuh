@@ -10,8 +10,7 @@ from shutil import copyfile
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, \
-    WazuhDBQueryMultigroups, Agent, WazuhDBQueryGroup
-from wazuh.core.utils import get_agents_info, get_groups
+    WazuhDBQueryMultigroups, Agent, WazuhDBQueryGroup, get_agents_info, get_groups
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException
 from wazuh.rbac.decorators import expose_resources
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
