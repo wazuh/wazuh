@@ -19,6 +19,7 @@
 #include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/posix/stat_wrappers.h"
+#include "../wrappers/posix/unistd_wrappers.h"
 #include "../syscheckd/fim_db.h"
 #include "../config/syscheck-config.h"
 
@@ -54,14 +55,6 @@ unsigned long __wrap_time() {
 }
 #endif
 
-extern int __real_getpid();
-int __wrap_getpid() {
-    if (test_mode) {
-        return 2345;
-    }
-    return __real_getpid();
-}
-
 char *__wrap_wstr_escape_json() {
     char *ret = mock_type(char *);
     if (ret) {
@@ -69,16 +62,6 @@ char *__wrap_wstr_escape_json() {
     }
     return NULL;
 }
-
-#ifndef TEST_WINAGENT
-
-int __wrap_usleep(useconds_t usec) {
-    function_called();
-
-    return 0;
-}
-
-#endif
 
 void __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...)
 {

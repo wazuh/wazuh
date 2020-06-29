@@ -19,10 +19,6 @@
 #include "../wrappers/posix/pwd_wrappers.h"
 #include "../headers/privsep_op.h"
 
-int __wrap_sysconf(int name) {
-    return mock();
-}
-
 static void test_GetUser_success(void ** state) {
     will_return(__wrap_sysconf, 1024);
     uid_t uid = Privsep_GetUser("ossec");

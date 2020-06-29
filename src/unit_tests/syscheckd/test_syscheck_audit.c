@@ -23,6 +23,7 @@
 #include "../wrappers/externals/procpc/readproc_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/libc/stdlib_wrappers.h"
+#include "../wrappers/posix/unistd_wrappers.h"
 #include "external/procps/readproc.h"
 
 extern volatile int audit_health_check_deletion;
@@ -132,11 +133,6 @@ void __wrap__mdebug2(const char * file, int line, const char * func, const char 
     va_end(args);
 
     return;
-}
-
-int __wrap_unlink()
-{
-    return mock();
 }
 
 int __wrap_audit_get_rule_list()
@@ -585,6 +581,7 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink(void **sta
     will_return(__wrap_symlink, -1);
     errno = EEXIST;
 
+    expect_string(__wrap_unlink, file, "/etc/audit/plugins.d/af_wazuh.conf");
     will_return(__wrap_unlink, 0);
 
     // Delete and create
@@ -636,6 +633,7 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_restart(vo
     will_return(__wrap_symlink, -1);
     errno = EEXIST;
 
+    expect_string(__wrap_unlink, file, "/etc/audit/plugins.d/af_wazuh.conf");
     will_return(__wrap_unlink, 0);
 
     // Delete and create
@@ -686,6 +684,7 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_error(void
     will_return(__wrap_symlink, -1);
     errno = EEXIST;
 
+    expect_string(__wrap_unlink, file, "/etc/audit/plugins.d/af_wazuh.conf");
     will_return(__wrap_unlink, 0);
 
     // Delete and create
@@ -734,6 +733,7 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_unlink_err
     will_return(__wrap_symlink, -1);
     errno = EEXIST;
 
+    expect_string(__wrap_unlink, file, "/etc/audit/plugins.d/af_wazuh.conf");
     will_return(__wrap_unlink, -1);
 
     expect_string(__wrap__merror, formatted_msg, "(1123): Unable to delete file: '/etc/audit/plugins.d/af_wazuh.conf' due to [(17)-(File exists)].");

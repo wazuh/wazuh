@@ -15,6 +15,8 @@
 #include <string.h>
 
 #include "../wrappers/posix/pthread_wrappers.h"
+#include "../wrappers/posix/unistd_wrappers.h"
+
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 
@@ -176,24 +178,6 @@ char **__wrap_rbtree_keys(const rb_tree *tree) {
 
 void __wrap_fim_realtime_event(char *file) {
     check_expected(file);
-}
-
-ssize_t __real_read(int fildes, void *buf, size_t nbyte);
-ssize_t __wrap_read(int fildes, void *buf, size_t nbyte) {
-    //static char event[] = {1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 't', 'e', 's', 't', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    switch(mock_type(int)){
-        case 0:
-        return __real_read(fildes, buf, nbyte);
-
-        case 1:
-        return mock_type(ssize_t);
-
-        case 2:
-        memcpy(buf, mock_type(char *), 32);
-        return mock_type(ssize_t);
-    }
-    // We should never reach this point
-    return __real_read(fildes, buf, nbyte);
 }
 
 int __wrap_W_Vector_insert_unique(W_Vector *v, const char *element) {
@@ -732,7 +716,7 @@ void test_realtime_process(void **state)
 
     syscheck.realtime->fd = 1;
 
-    will_return(__wrap_read, 1); // Use wrap
+    will_return(__wrap_read, NULL);
     will_return(__wrap_read, 0);
 
     realtime_process();
@@ -746,7 +730,6 @@ void test_realtime_process_len(void **state)
 
     syscheck.realtime->fd = 1;
 
-    will_return(__wrap_read, 2); // Use wrap
     will_return(__wrap_read, event);
     will_return(__wrap_read, 16);
     will_return(__wrap_OSHash_Get, "test");
@@ -767,7 +750,6 @@ void test_realtime_process_len_zero(void **state)
 
     syscheck.realtime->fd = 1;
 
-    will_return(__wrap_read, 2); // Use wrap
     will_return(__wrap_read, event);
     will_return(__wrap_read, 16);
     will_return(__wrap_OSHash_Get, "test");
@@ -788,7 +770,6 @@ void test_realtime_process_len_path_separator(void **state)
 
     syscheck.realtime->fd = 1;
 
-    will_return(__wrap_read, 2); // Use wrap
     will_return(__wrap_read, event);
     will_return(__wrap_read, 16);
     will_return(__wrap_OSHash_Get, "test/");
@@ -809,7 +790,6 @@ void test_realtime_process_overflow(void **state)
 
     syscheck.realtime->fd = 1;
 
-    will_return(__wrap_read, 2); // Use wrap
     will_return(__wrap_read, event);
     will_return(__wrap_read, 16);
     expect_string(__wrap__mwarn, formatted_msg, "Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
@@ -830,7 +810,6 @@ void test_realtime_process_delete(void **state)
 
     syscheck.realtime->fd = 1;
 
-    will_return(__wrap_read, 2); // Use wrap
     will_return(__wrap_read, event);
     will_return(__wrap_read, 16);
     will_return(__wrap_OSHash_Get, "test");
@@ -856,7 +835,6 @@ void test_realtime_process_move_self(void **state) {
 
     syscheck.realtime->fd = 1;
 
-    will_return(__wrap_read, 2); // Use wrap
     will_return(__wrap_read, event);
     will_return(__wrap_read, 16);
     will_return(__wrap_OSHash_Get, "test");
@@ -908,7 +886,7 @@ void test_realtime_process_failure(void **state)
 
     syscheck.realtime->fd = 1;
 
-    will_return(__wrap_read, 1); // Use wrap
+    will_return(__wrap_read, NULL);
     will_return(__wrap_read, -1);
 
     expect_string(__wrap__merror, formatted_msg, FIM_ERROR_REALTIME_READ_BUFFER);

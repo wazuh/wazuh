@@ -62,7 +62,8 @@ endif()
 
 set(SYSCHECK_OP_BASE_FLAGS "-Wl,--wrap,rmdir_ex -Wl,--wrap,wreaddir -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 \
                             -Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,getpwuid_r -Wl,--wrap,getgrgid \
-                            -Wl,--wrap,wstr_split -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP,--wrap=sysconf")
+                            -Wl,--wrap,wstr_split -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP \
+                            -Wl,--wrap,sysconf -Wl,--wrap,getpid")
 
 list(APPEND shared_tests_names "test_syscheck_op")
 if(${TARGET} STREQUAL "winagent")
@@ -82,7 +83,7 @@ list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wra
                                 -Wl,--wrap,fprintf -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove")
 
 list(APPEND shared_tests_names "test_privsep_op")
-list(APPEND shared_tests_flags "-Wl,--wrap=sysconf,--wrap=getpwnam_r,--wrap=getgrnam_r")
+list(APPEND shared_tests_flags "-Wl,--wrap=sysconf,--wrap=getpwnam_r,--wrap=getgrnam_r,--wrap=getpid")
 endif()
 
 

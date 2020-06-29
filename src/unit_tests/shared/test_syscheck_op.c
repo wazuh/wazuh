@@ -139,10 +139,6 @@ size_t __wrap_syscom_dispatch(char * command, char ** output) {
     *output = mock_type(char*);
     return mock();
 }
-#else
-int __wrap_sysconf() {
-    return mock();
-}
 #endif
 
 /* setup/teardown */
