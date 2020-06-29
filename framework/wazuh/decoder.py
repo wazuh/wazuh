@@ -11,7 +11,7 @@ from wazuh.core.rule import format_rule_decoder_file
 from wazuh.core.exception import WazuhInternalError, WazuhError
 from wazuh.rbac.decorators import expose_resources
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.utils import process_array
+from wazuh.core.utils import process_array
 
 
 def get_decoders(names=None, status=None, filename=None, relative_dirname=None, parents=False, offset=0,

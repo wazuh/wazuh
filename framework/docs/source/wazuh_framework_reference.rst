@@ -105,10 +105,10 @@ wazuh.syscheck module
     :undoc-members:
     :show-inheritance:
 
-wazuh.utils module
+wazuh.core.utils module
 ------------------
 
-.. automodule:: wazuh.utils
+.. automodule:: wazuh.core.utils
     :members:
     :undoc-members:
     :show-inheritance:

@@ -10,7 +10,7 @@ from copy import deepcopy
 from numbers import Number
 
 import wazuh.core.exception as wexception
-from wazuh import utils
+from wazuh.core import utils
 from wazuh.core.common import database_limit
 
 current_module = sys.modules[__name__]

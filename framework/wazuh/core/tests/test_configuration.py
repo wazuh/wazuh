@@ -271,8 +271,8 @@ def test_upload_group_configuration():
                 configuration.upload_group_configuration('default', "<agent_config>new_config</agent_config>")
         with patch('builtins.open'):
             with patch('wazuh.core.configuration.subprocess.check_output', return_value=True):
-                with patch('wazuh.utils.chown', side_effect=None):
-                    with patch('wazuh.utils.chmod', side_effect=None):
+                with patch('wazuh.core.utils.chown', side_effect=None):
+                    with patch('wazuh.core.utils.chmod', side_effect=None):
                         with patch('wazuh.core.configuration.safe_move'):
                             assert isinstance(configuration.upload_group_configuration('default',
                                               "<agent_config>new_config</agent_config>"), str)
@@ -306,8 +306,8 @@ def test_upload_group_file(mock_safe_move, mock_open):
 
     with patch('wazuh.common.shared_path', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         with patch('wazuh.core.configuration.subprocess.check_output', return_value=True):
-            with patch('wazuh.utils.chown', side_effect=None):
-                with patch('wazuh.utils.chmod', side_effect=None):
+            with patch('wazuh.core.utils.chown', side_effect=None):
+                with patch('wazuh.core.utils.chmod', side_effect=None):
                     assert configuration.upload_group_file('default',
                                                            "<agent_config>new_config</agent_config>", 'agent.conf') == \
                                                            'Agent configuration was updated successfully'

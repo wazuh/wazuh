@@ -4,8 +4,7 @@
 import logging
 import logging.handlers
 import os
-from wazuh import utils
-from wazuh.core import common
+from wazuh.core import common, utils
 import glob
 import gzip
 import shutil

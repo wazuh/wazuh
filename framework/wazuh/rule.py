@@ -11,7 +11,7 @@ from wazuh.core.rule import check_status, load_rules_from_file, format_rule_deco
 from wazuh.core.exception import WazuhError
 from wazuh.rbac.decorators import expose_resources
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.utils import process_array
+from wazuh.core.utils import process_array
 
 
 def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, gdpr=None, hipaa=None, nist_800_53=None,

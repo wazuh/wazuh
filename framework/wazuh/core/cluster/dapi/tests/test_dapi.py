@@ -366,12 +366,3 @@ def test_APIRequestQueue():
     api_request_queue = APIRequestQueue(server=server)
     api_request_queue.add_request(b'testing')
     assert api_request_queue.server == server
-
-
-@pytest.mark.asyncio
-async def test_APIRequestQueue_run():
-    """Test run method of `APIRequestQueue`."""
-    server = DistributedAPI(f=agent.get_agents_summary_status, logger=logger)
-    api_request_queue = APIRequestQueue(server=server)
-    api_request_queue.add_request(b'testing')
-    api_request_queue.run()

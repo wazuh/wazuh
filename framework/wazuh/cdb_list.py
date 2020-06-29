@@ -8,7 +8,7 @@ from wazuh.core import common
 from wazuh.core.cdb_list import iterate_lists, get_list_from_file, REQUIRED_FIELDS, SORT_FIELDS
 from wazuh.rbac.decorators import expose_resources
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.utils import process_array
+from wazuh.core.utils import process_array
 
 
 @expose_resources(actions=['lists:read'], resources=['list:path:{path}'])

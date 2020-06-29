@@ -146,7 +146,7 @@ def test_WazuhDBQueryAgents__init__(mock_socket_conn, mock_isfile, mock_sqli_con
     value : boolean
         Boolean to be returned by the method glob.glob().
     """
-    with patch('wazuh.utils.glob.glob', return_value=value):
+    with patch('wazuh.core.utils.glob.glob', return_value=value):
         if value:
             WazuhDBQueryAgents()
             mock_sqli_conn.assert_called_once()
@@ -161,7 +161,7 @@ def test_WazuhDBQueryAgents__init__(mock_socket_conn, mock_isfile, mock_sqli_con
     ('never_connected', 'last_keepalive IS NULL AND id != 0'),
     ('pending', 'last_keepalive IS NOT NULL AND version IS NULL')
 ])
-@patch('wazuh.utils.glob.glob', return_value=True)
+@patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('sqlite3.connect')
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')
@@ -184,7 +184,7 @@ def test_WazuhDBQueryAgents_filter_status(mock_socket_conn, mock_isfile, mock_sq
 
     mock_sqli_conn.assert_called_once()
 
-@patch('wazuh.utils.glob.glob', return_value=True)
+@patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('sqlite3.connect')
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')
@@ -195,7 +195,7 @@ def test_WazuhDBQueryAgents_filter_status_ko(mock_socket_conn, mock_isfile, mock
         query_agent._filter_status({'value': 'unknown', 'operator': '=='})
 
 
-@patch('wazuh.utils.glob.glob', return_value=True)
+@patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('sqlite3.connect')
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')
@@ -213,7 +213,7 @@ def test_WazuhDBQueryAgents_filter_date(mock_socket_conn, mock_isfile, mock_sqli
     ('os.version', 'CAST(os_major AS INTEGER) asc, CAST(os_minor AS INTEGER) asc'),
     ('id', 'id asc'),
 ])
-@patch('wazuh.utils.glob.glob', return_value=True)
+@patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('sqlite3.connect')
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')
@@ -235,7 +235,7 @@ def test_WazuhDBQueryAgents_sort_query(mock_socket_conn, mock_isfile, mock_sqli_
     mock_sqli_conn.assert_called_once()
 
 
-@patch('wazuh.utils.glob.glob', return_value=True)
+@patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('sqlite3.connect')
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')
@@ -248,7 +248,7 @@ def test_WazuhDBQueryAgents_add_search_to_query(mock_socket_conn, mock_isfile, m
     mock_sqli_conn.assert_called_once()
 
 
-@patch('wazuh.utils.glob.glob', return_value=True)
+@patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('sqlite3.connect')
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')
@@ -275,7 +275,7 @@ def test_WazuhDBQueryAgents_format_data_into_dictionary(mock_socket_conn, mock_i
     assert result['items'][0]['manager'] == 'master'
 
 
-@patch('wazuh.utils.glob.glob', return_value=True)
+@patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('sqlite3.connect')
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')
@@ -294,7 +294,7 @@ def test_WazuhDBQueryAgents_parse_legacy_filters(mock_socket_conn, mock_isfile, 
     ('group', 'test', {'value': '1', 'operator': 'LIKE'}),
     ('os.name', 'field', {'value': '1', 'operator': 'LIKE'}),
 ])
-@patch('wazuh.utils.glob.glob', return_value=True)
+@patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('sqlite3.connect')
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')
@@ -342,7 +342,7 @@ def test_WazuhDBQueryGroup__init__(mock_socket_conn, mock_isfile, mock_sqli_conn
     value : boolean
         Boolean to be returned by the method glob.glob().
     """
-    with patch('wazuh.utils.glob.glob', return_value=value):
+    with patch('wazuh.core.utils.glob.glob', return_value=value):
         if value:
             WazuhDBQueryGroup()
             mock_sqli_conn.assert_called_once()
@@ -397,7 +397,7 @@ def test_WazuhDBQueryGroup_filters(filters):
         assert (item[key] == value for key, value in filters.items())
 
 
-@patch('wazuh.utils.glob.glob', return_value=True)
+@patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('sqlite3.connect')
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')
@@ -411,7 +411,7 @@ def test_WazuhDBQueryGroupByAgents__init__(mock_socket_conn, mock_isfile, mock_g
     mock_sqli_conn.assert_called_once()
 
 
-@patch('wazuh.utils.glob.glob', return_value=True)
+@patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('sqlite3.connect')
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')
@@ -430,7 +430,7 @@ def test_WazuhDBQueryGroupByAgents_format_data_into_dictionary(mock_socket_conn,
     assert all(x['os']['name'] == 'unknown' for x in result['items'])
 
 
-@patch('wazuh.utils.glob.glob', return_value=True)
+@patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('sqlite3.connect')
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')
@@ -450,7 +450,7 @@ def test_WazuhDBQueryGroupByAgents_format_data_into_dictionary_status(mock_socke
     assert result == {'items': [{'os': {'name': 'Ubuntu'}, 'status': 'disconnected', 'count': 4}], 'totalItems': 0}
 
 
-@patch('wazuh.utils.glob.glob', return_value=True)
+@patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('sqlite3.connect')
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')
@@ -466,7 +466,7 @@ def test_WazuhDBQueryMultigroups__init__(mock_socket_conn, mock_isfile, mock_glo
     'null',
     'test'
 ])
-@patch('wazuh.utils.glob.glob', return_value=True)
+@patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('sqlite3.connect')
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')
@@ -490,7 +490,7 @@ def test_WazuhDBQueryMultigroups_default_query(mock_socket_conn, mock_isfile, mo
     mock_sqli_conn.assert_called_once()
 
 
-@patch('wazuh.utils.glob.glob', return_value=True)
+@patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('sqlite3.connect')
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')
@@ -503,7 +503,7 @@ def test_WazuhDBQueryMultigroups_default_count_query(mock_socket_conn, mock_isfi
     mock_sqli_conn.assert_called_once()
 
 
-@patch('wazuh.utils.glob.glob', return_value=True)
+@patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('sqlite3.connect')
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')

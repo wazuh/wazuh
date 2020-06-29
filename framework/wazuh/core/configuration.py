@@ -19,7 +19,7 @@ from wazuh.core import common
 from wazuh.core.exception import WazuhInternalError, WazuhError
 from wazuh.core.ossec_socket import OssecSocket
 from wazuh.core.results import WazuhResult
-from wazuh.utils import cut_array, load_wazuh_xml, safe_move
+from wazuh.core.utils import cut_array, load_wazuh_xml, safe_move
 
 logger = logging.getLogger('wazuh')
 

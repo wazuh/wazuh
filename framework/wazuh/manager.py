@@ -20,7 +20,7 @@ from wazuh.core.manager import status, get_ossec_log_fields, upload_xml, upload_
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.rbac.decorators import expose_resources
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
-from wazuh.utils import previous_month, tail, process_array
+from wazuh.core.utils import previous_month, tail, process_array
 
 allowed_api_fields = {'behind_proxy_server', 'logs', 'cache', 'cors', 'use_only_authd', 'experimental_features'}
 execq_lockfile = join(common.ossec_path, "var", "run", ".api_execq_lock")

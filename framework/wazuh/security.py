@@ -17,7 +17,7 @@ from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager,
     TokenManager, UserRolesManager
 from wazuh.rbac.orm import SecurityError, admin_role_ids, admin_policy_ids
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
-from wazuh.utils import process_array
+from wazuh.core.utils import process_array
 
 # Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[_@$!%*?&-])[A-Za-z\d@$!%*?&-_]{8,}$')

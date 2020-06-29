@@ -4,7 +4,7 @@
 
 from datetime import datetime
 
-from wazuh.utils import WazuhDBQuery, WazuhDBBackend
+from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend
 
 
 class WazuhDBQuerySyscheck(WazuhDBQuery):

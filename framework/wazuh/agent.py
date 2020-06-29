@@ -11,11 +11,11 @@ from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, \
     WazuhDBQueryMultigroups, Agent, WazuhDBQueryGroup
-from wazuh.core.core_utils import get_agents_info, get_groups
+from wazuh.core.utils import get_agents_info, get_groups
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException
 from wazuh.rbac.decorators import expose_resources
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
-from wazuh.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array
+from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)

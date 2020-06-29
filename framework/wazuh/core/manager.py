@@ -22,7 +22,7 @@ from wazuh import WazuhInternalError, WazuhError
 from wazuh.core import common
 from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.results import WazuhResult
-from wazuh.utils import load_wazuh_xml, safe_move
+from wazuh.core.utils import load_wazuh_xml, safe_move
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 

@@ -19,7 +19,7 @@ from wazuh import WazuhException
 from wazuh.core import common
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_cluster_items, read_config
-from wazuh.utils import md5, mkdir_with_mode
+from wazuh.core.utils import md5, mkdir_with_mode
 
 logger = logging.getLogger('wazuh')
 

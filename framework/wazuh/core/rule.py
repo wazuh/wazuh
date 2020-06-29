@@ -8,7 +8,7 @@ from glob import glob
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhError
-from wazuh.utils import load_wazuh_xml
+from wazuh.core.utils import load_wazuh_xml
 
 REQUIRED_FIELDS = ['id']
 RULE_REQUIREMENTS = ['pci_dss', 'gdpr', 'hipaa', 'nist_800_53', 'gpg13', 'tsc', 'mitre']

@@ -11,7 +11,7 @@ from wazuh.core.common import database_limit
 from wazuh.core.exception import WazuhException
 from wazuh.rbac.decorators import expose_resources
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.utils import WazuhDBBackend, WazuhDBQuery, sort_array
+from wazuh.core.utils import WazuhDBBackend, WazuhDBQuery, sort_array
 
 mitre_fields = {'id': 'id', 'json': 'json', 'phase_name': 'phase_name', 'platform_name': 'platform_name'}
 from_fields = "attack LEFT JOIN has_phase ON attack.id = has_phase.attack_id" \

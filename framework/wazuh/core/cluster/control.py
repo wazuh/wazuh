@@ -8,7 +8,7 @@ from wazuh.core import common
 from wazuh.core.cluster import local_client
 from wazuh.core.cluster.common import as_wazuh_object, WazuhJSONEncoder
 from wazuh.core.agent import Agent
-from wazuh.utils import filter_array_by_query
+from wazuh.core.utils import filter_array_by_query
 
 
 async def get_nodes(lc: local_client.LocalClient, filter_node=None, offset=0, limit=common.database_limit,
