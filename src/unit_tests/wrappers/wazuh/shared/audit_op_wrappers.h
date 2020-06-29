@@ -13,6 +13,14 @@
 #define AUDIT_OP_WRAPPERS_H
 
 
+int __wrap_audit_add_rule();
 
+int __wrap_audit_get_rule_list();
+
+int __wrap_audit_restart();
+
+int __wrap_audit_set_db_consistency();
+
+int __wrap_search_audit_rule();
 
 #endif
