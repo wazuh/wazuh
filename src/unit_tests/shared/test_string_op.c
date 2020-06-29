@@ -22,7 +22,6 @@
 #define UNSUPPORTED_LEN_STR  -3
 
 char * w_tolower_str(const char *string);
-int os_substr(char *dest, const char *src, size_t position, ssize_t length);
 
 /* tests */
 
