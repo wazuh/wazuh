@@ -123,12 +123,6 @@ void __wrap__merror_exit(const char * file, int line, const char * func, const c
     check_expected(formatted_msg);
 }
 
-#ifndef TEST_WINAGENT
-unsigned int __wrap_sleep(unsigned int seconds) {
-    check_expected(seconds);
-}
-#endif
-
 int __wrap_SendMSG(int queue, const char *message, const char *locmsg, char loc) {
     check_expected(message);
     check_expected(locmsg);

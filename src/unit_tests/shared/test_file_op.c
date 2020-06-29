@@ -18,6 +18,7 @@
 
 #include "../wrappers/common.h"
 #include "../wrappers/posix/stat_wrappers.h"
+#include "../wrappers/posix/unistd_wrappers.h"
 #include "../headers/file_op.h"
 
 /* redefinitons/wrapping */
@@ -26,20 +27,9 @@ int __wrap_isChroot() {
     return mock();
 }
 
-int __wrap_getpid()
-{
-    return 42;
-}
-
 int __wrap_File_DateofChange(const char *file)
 {
     return 1;
-}
-
-int __wrap_unlink(const char *file)
-{
-    check_expected_ptr(file);
-    return mock();
 }
 
 int __wrap__merror()
@@ -96,27 +86,27 @@ void test_CreatePID_success(void **state)
 
     will_return(__wrap_isChroot, 1);
 
-    expect_string(__wrap_fopen, path, "/var/run/test-42.pid");
+    expect_string(__wrap_fopen, path, "/var/run/test-2345.pid");
     expect_string(__wrap_fopen, mode, "a");
     will_return(__wrap_fopen, fp);
 
 #ifdef WIN32
     expect_value(wrap_fprintf, __stream, fp);
-    expect_string(wrap_fprintf, formatted_msg, "42\n");
+    expect_string(wrap_fprintf, formatted_msg, "2345\n");
     will_return(wrap_fprintf, 0);
 #else
     expect_value(__wrap_fprintf, __stream, fp);
-    expect_string(__wrap_fprintf, formatted_msg, "42\n");
+    expect_string(__wrap_fprintf, formatted_msg, "2345\n");
     will_return(__wrap_fprintf, 0);
 #endif
 
-    expect_string(__wrap_chmod, path, "/var/run/test-42.pid");
+    expect_string(__wrap_chmod, path, "/var/run/test-2345.pid");
     will_return(__wrap_chmod, 0);
 
     expect_value(__wrap_fclose, _File, fp);
     will_return(__wrap_fclose, 0);
 
-    ret = CreatePID("test", 42);
+    ret = CreatePID("test", 2345);
     assert_int_equal(0, ret);
 }
 
@@ -132,27 +122,27 @@ void test_CreatePID_failure_chmod(void **state)
 
     will_return(__wrap_isChroot, 1);
 
-    expect_string(__wrap_fopen, path, "/var/run/test-42.pid");
+    expect_string(__wrap_fopen, path, "/var/run/test-2345.pid");
     expect_string(__wrap_fopen, mode, "a");
     will_return(__wrap_fopen, fp);
 
 #ifdef WIN32
     expect_value(wrap_fprintf, __stream, fp);
-    expect_string(wrap_fprintf, formatted_msg, "42\n");
+    expect_string(wrap_fprintf, formatted_msg, "2345\n");
     will_return(wrap_fprintf, 0);
 #else
     expect_value(__wrap_fprintf, __stream, fp);
-    expect_string(__wrap_fprintf, formatted_msg, "42\n");
+    expect_string(__wrap_fprintf, formatted_msg, "2345\n");
     will_return(__wrap_fprintf, 0);
 #endif
 
-    expect_string(__wrap_chmod, path, "/var/run/test-42.pid");
+    expect_string(__wrap_chmod, path, "/var/run/test-2345.pid");
     will_return(__wrap_chmod, -1);
 
     expect_value(__wrap_fclose, _File, fp);
     will_return(__wrap_fclose, 0);
 
-    ret = CreatePID("test", 42);
+    ret = CreatePID("test", 2345);
     assert_int_equal(-1, ret);
 }
 
@@ -163,11 +153,11 @@ void test_CreatePID_failure_fopen(void **state)
 
     will_return(__wrap_isChroot, 1);
 
-    expect_string(__wrap_fopen, path, "/var/run/test-42.pid");
+    expect_string(__wrap_fopen, path, "/var/run/test-2345.pid");
     expect_string(__wrap_fopen, mode, "a");
     will_return(__wrap_fopen, NULL);
 
-    ret = CreatePID("test", 42);
+    ret = CreatePID("test", 2345);
     assert_int_equal(-1, ret);
 }
 
@@ -177,10 +167,10 @@ void test_DeletePID_success(void **state)
     int ret;
 
     will_return(__wrap_isChroot, 1);
-    expect_string(__wrap_unlink, file, "/var/run/test-42.pid");
+    expect_string(__wrap_unlink, file, "/var/run/test-2345.pid");
     will_return(__wrap_unlink, 0);
 
-    expect_string(__wrap_stat, __file, "/var/run/test-42.pid");
+    expect_string(__wrap_stat, __file, "/var/run/test-2345.pid");
     will_return(__wrap_stat, 0);
     will_return(__wrap_stat, 0);
 
@@ -195,10 +185,10 @@ void test_DeletePID_failure(void **state)
     int ret;
 
     will_return(__wrap_isChroot, 0);
-    expect_string(__wrap_unlink, file, "/var/ossec/var/run/test-42.pid");
+    expect_string(__wrap_unlink, file, "/var/ossec/var/run/test-2345.pid");
     will_return(__wrap_unlink, 1);
 
-    expect_string(__wrap_stat, __file, "/var/ossec/var/run/test-42.pid");
+    expect_string(__wrap_stat, __file, "/var/ossec/var/run/test-2345.pid");
     will_return(__wrap_stat, 0);
     will_return(__wrap_stat, 0);
 
