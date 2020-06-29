@@ -1,6 +1,6 @@
 #!/bin/bash
 ## Check if system is based on yum or apt-get
-
+ips=()
 if [ -n "$(command -v yum)" ] 
 then
     sys_type="yum"
@@ -20,10 +20,10 @@ installPrerequisites() {
 
     if [ $sys_type == "yum" ] 
     then
-        yum install java-11-openjdk-devel -y > /dev/null 2>&1
+        yum install java-11-openjdk-devel -y -q > /dev/null 2>&1 && export JAVA_HOME="/usr/" -y > /dev/null 2>&1
         if [  "$?" != 0  ]
         then
-            yum install java-1.8.0-openjdk-devel unzip wget curl libcap -y -q > /dev/null 2>&1
+            yum install java-1.8.0-openjdk-devel -y -q > /dev/null 2>&1 && export JAVA_HOME="/usr/" && yum install unzip wget curl libcap -y -q > /dev/null 2>&1
         else
             yum install unzip wget curl libcap -y -q > /dev/null 2>&1
         fi        
@@ -36,7 +36,7 @@ installPrerequisites() {
             echo 'deb http://deb.debian.org/debian stretch-backports main' > /etc/apt/sources.list.d/backports.list
         fi
         apt-get update -q > /dev/null 2>&1
-        apt-get install openjdk-11-jdk apt-transport-https curl unzip wget libcap2-bin -y -q > /dev/null 2>&1
+        apt-get install openjdk-11-jdk -y -q > /dev/null 2>&1 && export JAVA_HOME="/usr/" && apt-get install apt-transport-https curl unzip wget libcap2-bin -y -q > /dev/null 2>&1
     fi
 
     if [  "$?" != 0  ]
@@ -177,15 +177,8 @@ main() {
                 shift 1
                 ;;
             "-ip"|"--elasticsearch-ip")        
-                ip="$2"
-                if [ -n "$e" ]
-                then
-                    configureElastic $ip
-                fi
-                if [ -n "$k" ]
-                then
-                    configureKibana $ip
-                fi
+                ips+=($2)
+                ip=1
                 shift
                 shift
                 ;;
@@ -193,6 +186,14 @@ main() {
                 exit 1
             esac
         done
+        if [ -n "$e" ] && [ -n "$ip" ]
+        then
+            configureElastic $ips
+        fi
+        if [ -n "$k" ] && [ -n "$ip" ]
+        then
+            configureKibana $ip
+        fi         
     else
         helpFunction
     fi
