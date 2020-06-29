@@ -215,7 +215,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg
              al_data->level,
              al_data->comment,
              extra_data,
-             logs) >= OS_MAXSTR + OS_SIZE_1024 -1) {
+             logs) >= BODY_SIZE -1) {
         mwarn("The body of the email could not store all data.");
     }
 #endif
