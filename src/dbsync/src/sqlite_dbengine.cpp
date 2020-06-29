@@ -160,40 +160,42 @@ bool SQLiteDBEngine::BindJsonData(std::unique_ptr<SQLite::IStatement>const& stmt
   const auto name = std::get<TableHeader::NAME>(cd);
 
   auto ret_val{ false };
-  const auto& json_data { value_type[name] };
-
-  if (ColumnType::BIGINT_TYPE == type) {
-    int64_t value = json_data.is_number() ? 
-      json_data.get<int64_t>() :
-      json_data.is_string() && json_data.get_ref<const std::string&>().size() ? 
-        std::stoll(json_data.get_ref<const std::string&>()) : 0;
-    ret_val = stmt->bind(cid, value);
-  } else if (ColumnType::UNSIGNED_BIGINT_TYPE == type) {
-    uint64_t value = json_data.is_number_unsigned() ? 
-      json_data.get<uint64_t>() :
-      json_data.is_string() && json_data.get_ref<const std::string&>().size() ? 
-        std::stoull(json_data.get_ref<const std::string&>()) : 0;
-    ret_val = stmt->bind(cid, value);
-  } else if (ColumnType::INTEGER_TYPE == type) {
-    int32_t value = json_data.is_number() ? 
-      json_data.get<int32_t>() : 
-      json_data.is_string() && json_data.get_ref<const std::string&>().size() ? 
-        std::stol(json_data.get_ref<const std::string&>()) : 0;
-    ret_val = stmt->bind(cid, value);
-  } else if (ColumnType::TEXT_TYPE == type) {
-    std::string value = json_data.is_string() ? 
-      json_data.get_ref<const std::string&>() : "";
-    ret_val = stmt->bind(cid, value);
-  } else if (ColumnType::DOUBLE_TYPE == type) {
-    double value = json_data.is_number_float() ? 
-      json_data.get<double>() : 
-      json_data.is_string() && json_data.get_ref<const std::string&>().size() ? 
-        std::stod(json_data.get_ref<const std::string&>()) : .0f;
-    ret_val = stmt->bind(cid, value);
-  } else if (ColumnType::BLOB_TYPE == type) {
-    std::cout << "not implemented "<< __LINE__ << " - " << __FILE__ << std::endl;
+  const auto& it { value_type.find(name) };
+  
+  if (value_type.end() != it) {
+    const auto& json_data { *it };
+    if (ColumnType::BIGINT_TYPE == type) {
+      int64_t value = json_data.is_number() ? 
+        json_data.get<int64_t>() :
+        json_data.is_string() && json_data.get_ref<const std::string&>().size() ? 
+          std::stoll(json_data.get_ref<const std::string&>()) : 0;
+      ret_val = stmt->Bind(cid, value);
+    } else if (ColumnType::UNSIGNED_BIGINT_TYPE == type) {
+      uint64_t value = json_data.is_number_unsigned() ? 
+        json_data.get<uint64_t>() :
+        json_data.is_string() && json_data.get_ref<const std::string&>().size() ? 
+          std::stoull(json_data.get_ref<const std::string&>()) : 0;
+      ret_val = stmt->Bind(cid, value);
+    } else if (ColumnType::INTEGER_TYPE == type) {
+      int32_t value = json_data.is_number() ? 
+        json_data.get<int32_t>() : 
+        json_data.is_string() && json_data.get_ref<const std::string&>().size() ? 
+          std::stol(json_data.get_ref<const std::string&>()) : 0;
+      ret_val = stmt->Bind(cid, value);
+    } else if (ColumnType::TEXT_TYPE == type) {
+      std::string value = json_data.is_string() ? 
+        json_data.get_ref<const std::string&>() : "";
+      ret_val = stmt->Bind(cid, value);
+    } else if (ColumnType::DOUBLE_TYPE == type) {
+      double value = json_data.is_number_float() ? 
+        json_data.get<double>() : 
+        json_data.is_string() && json_data.get_ref<const std::string&>().size() ? 
+          std::stod(json_data.get_ref<const std::string&>()) : .0f;
+      ret_val = stmt->Bind(cid, value);
+    } else if (ColumnType::BLOB_TYPE == type) {
+      std::cout << "not implemented "<< __LINE__ << " - " << __FILE__ << std::endl;
+    }
   }
-
   return ret_val;
 }
 
@@ -373,7 +375,6 @@ bool SQLiteDBEngine::GetPKListLeftOnly(
   auto ret_val { false };
   
   const std::string sql { BuildLeftOnlyQuery(t1, t2, primary_key_list, true) };
-  std::cout << sql << std::endl;
   if (!t1.empty() && !sql.empty()) {
     auto const& stmt { GetStatement(sql) };
     const auto table_fields { m_table_fields[t1] };
