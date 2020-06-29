@@ -13,6 +13,10 @@
 #define INOTIFY_WRAPPERS_H
 
 
+int __wrap_inotify_add_watch();
 
+int __wrap_inotify_init();
+
+int __wrap_inotify_rm_watch();
 
 #endif

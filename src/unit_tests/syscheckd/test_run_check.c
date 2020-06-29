@@ -16,6 +16,7 @@
 
 #include "../wrappers/common.h"
 #include "../wrappers/posix/stat_wrappers.h"
+#include "../wrappers/linux/inotify_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../syscheckd/fim_db.h"
 
@@ -168,10 +169,6 @@ int __wrap_fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mute
 }
 
 int __wrap_fim_configuration_directory() {
-    return mock();
-}
-
-int __wrap_inotify_rm_watch() {
     return mock();
 }
 

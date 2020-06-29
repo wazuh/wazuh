@@ -13,3 +13,16 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+
+int __wrap_inotify_add_watch() {
+    return mock();
+}
+
+int __wrap_inotify_init() {
+    return mock();
+}
+
+int __wrap_inotify_rm_watch() {
+    return mock();
+}
