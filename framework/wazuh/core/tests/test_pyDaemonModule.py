@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from wazuh.core.pyDaemonModule import *
-from wazuh.exception import WazuhException
+from wazuh.core.exception import WazuhException
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 

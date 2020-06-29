@@ -18,9 +18,9 @@ from api.models.token_response import TokenResponseModel
 from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param
 from wazuh import security
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.exception import WazuhError
+from wazuh.core.exception import WazuhError
 from wazuh.rbac import preprocessor
-from wazuh.results import AffectedItemsWazuhResult
+from wazuh.core.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh')
 auth_re = re.compile(r'basic (.*)', re.IGNORECASE)

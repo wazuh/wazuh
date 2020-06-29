@@ -11,12 +11,12 @@ from api.authentication import change_secret
 from wazuh.core.security import check_relationships, invalid_users_tokens
 from wazuh.core import common
 from wazuh.core.security import load_spec, update_security_conf
-from wazuh.exception import WazuhError
+from wazuh.core.exception import WazuhError
 from wazuh.rbac.decorators import expose_resources
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager, \
     TokenManager, UserRolesManager
 from wazuh.rbac.orm import SecurityError, admin_role_ids, admin_policy_ids
-from wazuh.results import AffectedItemsWazuhResult, WazuhResult
+from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.utils import process_array
 
 # Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:

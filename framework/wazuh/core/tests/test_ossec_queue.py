@@ -5,10 +5,10 @@
 from unittest.mock import patch
 import pytest
 
-from wazuh.ossec_queue import OssecQueue
-from wazuh.exception import WazuhException
+from wazuh.core.ossec_queue import OssecQueue
+from wazuh.core.exception import WazuhException
 
-@patch('wazuh.ossec_queue.OssecQueue._connect')
+@patch('wazuh.core.ossec_queue.OssecQueue._connect')
 def test_OssecQueue__init__(mock_conn):
     """Tests OssecQueue.__init__ function works"""
 
@@ -17,21 +17,21 @@ def test_OssecQueue__init__(mock_conn):
     mock_conn.assert_called_once_with()
 
 
-@patch('wazuh.ossec_queue.socket.socket.connect')
-@patch('wazuh.ossec_queue.socket.socket.setsockopt')
+@patch('wazuh.core.ossec_queue.socket.socket.connect')
+@patch('wazuh.core.ossec_queue.socket.socket.setsockopt')
 def test_OssecQueue_protected_connect(mock_set, mock_conn):
     """Tests OssecQueue._connect function works"""
 
     OssecQueue('test_path')
 
-    with patch('wazuh.ossec_queue.socket.socket.getsockopt', return_value=1):
+    with patch('wazuh.core.ossec_queue.socket.socket.getsockopt', return_value=1):
         OssecQueue('test_path')
 
     mock_conn.assert_called_with('test_path')
     mock_set.assert_called_once_with(1, 7, 6400)
 
 
-@patch('wazuh.ossec_queue.socket.socket.connect', side_effect=Exception)
+@patch('wazuh.core.ossec_queue.socket.socket.connect', side_effect=Exception)
 def test_OssecQueue_protected_connect_ko(mock_conn):
     """Tests OssecQueue._connect function exceptions works"""
 
@@ -43,8 +43,8 @@ def test_OssecQueue_protected_connect_ko(mock_conn):
     (1, False),
     (0, True)
 ])
-@patch('wazuh.ossec_queue.socket.socket.connect')
-@patch('wazuh.ossec_queue.OssecQueue.MAX_MSG_SIZE', new=0)
+@patch('wazuh.core.ossec_queue.socket.socket.connect')
+@patch('wazuh.core.ossec_queue.OssecQueue.MAX_MSG_SIZE', new=0)
 def test_OssecQueue_protected_send(mock_conn, send_response, error):
     """Tests OssecQueue._send function works"""
 
@@ -60,8 +60,8 @@ def test_OssecQueue_protected_send(mock_conn, send_response, error):
     mock_conn.assert_called_with('test_path')
 
 
-@patch('wazuh.ossec_queue.socket.socket.connect')
-@patch('wazuh.ossec_queue.OssecQueue.MAX_MSG_SIZE', new=0)
+@patch('wazuh.core.ossec_queue.socket.socket.connect')
+@patch('wazuh.core.ossec_queue.OssecQueue.MAX_MSG_SIZE', new=0)
 @patch('socket.socket.send', side_effect=Exception)
 def test_OssecQueue_protected_send_ko(mock_send, mock_conn):
     """Tests OssecQueue._send function exceptions works"""
@@ -74,8 +74,8 @@ def test_OssecQueue_protected_send_ko(mock_send, mock_conn):
     mock_conn.assert_called_with('test_path')
 
 
-@patch('wazuh.ossec_queue.socket.socket.connect')
-@patch('wazuh.ossec_queue.socket.socket.close')
+@patch('wazuh.core.ossec_queue.socket.socket.connect')
+@patch('wazuh.core.ossec_queue.socket.socket.close')
 def test_OssecQueue_close(mock_close, mock_conn):
     """Tests OssecQueue.close function works"""
 
@@ -96,8 +96,8 @@ def test_OssecQueue_close(mock_close, mock_conn):
     ('syscheck restart', None, None),
     ('restart-ossec0', None, None)
 ])
-@patch('wazuh.ossec_queue.socket.socket.connect')
-@patch('wazuh.ossec_queue.OssecQueue._send')
+@patch('wazuh.core.ossec_queue.socket.socket.connect')
+@patch('wazuh.core.ossec_queue.OssecQueue._send')
 def test_OssecQueue_send_msg_to_agent(mock_send, mock_conn, msg, agent_id, msg_type):
     """Tests OssecQueue.send_msg_to_agent function works"""
 
@@ -116,8 +116,8 @@ def test_OssecQueue_send_msg_to_agent(mock_send, mock_conn, msg, agent_id, msg_t
     ('syscheck restart', None, None, 1601),
     ('restart-ossec0', None, None, 1702)
 ])
-@patch('wazuh.ossec_queue.socket.socket.connect')
-@patch('wazuh.ossec_queue.OssecQueue._send', side_effect=Exception)
+@patch('wazuh.core.ossec_queue.socket.socket.connect')
+@patch('wazuh.core.ossec_queue.OssecQueue._send', side_effect=Exception)
 def test_OssecQueue_send_msg_to_agent_ko(mock_send, mock_conn, msg, agent_id, msg_type, expected_exception):
     """Tests OssecQueue.send_msg_to_agent function exception works"""
 

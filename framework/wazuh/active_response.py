@@ -3,10 +3,10 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh.core import active_response, common
-from wazuh.exception import WazuhException
-from wazuh.ossec_queue import OssecQueue
+from wazuh.core.exception import WazuhException
+from wazuh.core.ossec_queue import OssecQueue
 from wazuh.rbac.decorators import expose_resources
-from wazuh.results import AffectedItemsWazuhResult
+from wazuh.core.results import AffectedItemsWazuhResult
 
 
 @expose_resources(actions=['active-response:command'], resources=['agent:id:{agent_list}'])

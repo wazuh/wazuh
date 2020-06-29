@@ -18,8 +18,8 @@ path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Waz
 # Import framework
 try:
     from wazuh import Wazuh
-    from wazuh.core.core_agent import Agent
-    from wazuh.exception import WazuhException
+    from wazuh.core.agent import Agent
+    from wazuh.core.exception import WazuhException
     from wazuh.core import common
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))

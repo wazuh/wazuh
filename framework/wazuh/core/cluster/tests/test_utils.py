@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import sys
 from unittest.mock import patch, MagicMock
@@ -13,7 +12,7 @@ with patch('wazuh.core.common.getgrnam'):
 
                 from wazuh.core.cluster import utils
                 from wazuh import WazuhError, WazuhException, WazuhInternalError
-                from wazuh.results import WazuhResult
+                from wazuh.core.results import WazuhResult
 
 
 default_cluster_config = {
@@ -141,10 +140,6 @@ def test_get_cluster_items():
                                                         'recursive': True, 'restart': False,
                                                         'remove_subdirs_if_empty': False, 'extra_valid': True,
                                                         'description': 'agents group configuration'},
-                               '/api/configuration/': {'permissions': 432, 'source': 'master', 'files': ['api.yaml'],
-                                                       'recursive': False, 'restart': False,
-                                                       'remove_subdirs_if_empty': False, 'extra_valid': False,
-                                                       'description': 'centralize API configuration'},
                                'excluded_files': ['ar.conf', 'ossec.conf'],
                                'excluded_extensions': ['~', '.tmp', '.lock', '.swp']},
                      'intervals': {'worker': {'sync_integrity': 9, 'sync_files': 10, 'keep_alive': 60,
@@ -168,7 +163,7 @@ def test_ClusterFilter():
 
 def test_ClusterLogger():
     """Verify that ClusterLogger defines the logger used by wazuh-clusterd."""
-    cluster_logger = utils.ClusterLogger(foreground_mode=False, log_path='remove.log', tag='Testing', debug_level=1)
+    cluster_logger = utils.ClusterLogger(foreground_mode=False, log_path='remove.log', tag='{asctime} {levelname}: [{tag}] [{subtag}] {message}', debug_level=1)
     cluster_logger.setup_logger()
 
     assert cluster_logger.logger.level == logging.DEBUG

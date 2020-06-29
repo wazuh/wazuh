@@ -22,7 +22,7 @@ with patch('wazuh.common.ossec_uid'):
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
         from wazuh.ciscat import get_ciscat_results
-        from wazuh.results import AffectedItemsWazuhResult
+        from wazuh.core.results import AffectedItemsWazuhResult
 
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')

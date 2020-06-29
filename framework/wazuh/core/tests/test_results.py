@@ -11,7 +11,7 @@ from wazuh import WazuhException, WazuhError
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
-        from wazuh.results import WazuhResult, AffectedItemsWazuhResult, _goes_before_than, nested_itemgetter, merge
+        from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult, _goes_before_than, nested_itemgetter, merge
 
 param_name = ['affected_items', 'total_affected_items', 'sort_fields', 'sort_casting', 'sort_ascending',
               'all_msg', 'some_msg', 'none_msg']

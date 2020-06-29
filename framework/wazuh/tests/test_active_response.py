@@ -10,7 +10,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 
 from wazuh.core.tests.test_active_response import agent_config, agent_info
-from wazuh.exception import WazuhError
+from wazuh.core.exception import WazuhError
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
@@ -41,9 +41,9 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
     (None, None, [0], 'restart-ossec0', [], False),
     (None, None, [0, 1, 2, 3, 4, 5, 6], 'restart-ossec0', [], False),
 ])
-@patch("wazuh.ossec_queue.OssecQueue._connect")
+@patch("wazuh.core.ossec_queue.OssecQueue._connect")
 @patch("wazuh.syscheck.OssecQueue._send", return_value='1')
-@patch("wazuh.ossec_queue.OssecQueue.close")
+@patch("wazuh.core.ossec_queue.OssecQueue.close")
 @patch('wazuh.common.ossec_path', new=test_data_path)
 def test_run_command(mock_close,  mock_send, mock_conn, message_exception, send_exception, agent_id, command,
                      arguments, custom):
@@ -64,8 +64,8 @@ def test_run_command(mock_close,  mock_send, mock_conn, message_exception, send_
     custom : boolean
         True if command is a script.
     """
-    with patch('wazuh.core.core_agent.Agent.get_basic_information', return_value=agent_info(send_exception)):
-        with patch('wazuh.core.core_agent.Agent.getconfig', return_value=agent_config(send_exception)):
+    with patch('wazuh.core.agent.Agent.get_basic_information', return_value=agent_info(send_exception)):
+        with patch('wazuh.core.agent.Agent.getconfig', return_value=agent_config(send_exception)):
             if message_exception:
                 with pytest.raises(WazuhError, match=f'.* {message_exception} .*'):
                     run_command(agent_list=agent_id, command=command, arguments=arguments, custom=custom)

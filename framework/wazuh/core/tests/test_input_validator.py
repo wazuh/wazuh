@@ -4,7 +4,7 @@
 
 from unittest import TestCase
 
-from wazuh.InputValidator import InputValidator
+from wazuh.core.InputValidator import InputValidator
 import operator
 
 class TestInputValidator(TestCase):

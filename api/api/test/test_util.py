@@ -10,7 +10,7 @@ from connexion import ProblemException
 
 from api import util
 from api.api_exception import APIException, APIError
-from wazuh.exception import WazuhException, WazuhError
+from wazuh.core.exception import WazuhException, WazuhError
 
 
 class TestClass():

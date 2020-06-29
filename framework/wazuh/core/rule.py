@@ -7,7 +7,7 @@ from enum import Enum
 from glob import glob
 
 from wazuh.core import common
-from wazuh.exception import WazuhError
+from wazuh.core.exception import WazuhError
 from wazuh.utils import load_wazuh_xml
 
 REQUIRED_FIELDS = ['id']

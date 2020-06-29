@@ -7,7 +7,7 @@ from wazuh import WazuhInternalError
 from wazuh.core import common
 from wazuh.core.cluster import local_client
 from wazuh.core.cluster.common import as_wazuh_object, WazuhJSONEncoder
-from wazuh.core.core_agent import Agent
+from wazuh.core.agent import Agent
 from wazuh.utils import filter_array_by_query
 
 

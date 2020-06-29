@@ -5,7 +5,7 @@
 from unittest.mock import patch
 import pytest
 
-from wazuh import exception
+from wazuh.core import exception
 from wazuh.core.wdb import WazuhDBConnection
 
 

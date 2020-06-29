@@ -5,10 +5,10 @@
 from unittest.mock import patch, MagicMock
 import pytest
 
-from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
-from wazuh.exception import WazuhException
+from wazuh.core.ossec_socket import OssecSocket, OssecSocketJSON
+from wazuh.core.exception import WazuhException
 
-@patch('wazuh.ossec_socket.OssecSocket._connect')
+@patch('wazuh.core.ossec_socket.OssecSocket._connect')
 def test_OssecSocket__init__(mock_conn):
     """Tests OssecSocket.__init__ function works"""
 
@@ -17,7 +17,7 @@ def test_OssecSocket__init__(mock_conn):
     mock_conn.assert_called_once_with()
 
 
-@patch('wazuh.ossec_socket.socket.socket.connect')
+@patch('wazuh.core.ossec_socket.socket.socket.connect')
 def test_OssecSocket_protected_connect(mock_conn):
     """Tests OssecSocket._connect function works"""
 
@@ -26,7 +26,7 @@ def test_OssecSocket_protected_connect(mock_conn):
     mock_conn.assert_called_with('test_path')
 
 
-@patch('wazuh.ossec_socket.socket.socket.connect', side_effect=Exception)
+@patch('wazuh.core.ossec_socket.socket.socket.connect', side_effect=Exception)
 def test_OssecSocket_protected_connect_ko(mock_conn):
     """Tests OssecSocket._connect function exceptions works"""
 
@@ -34,8 +34,8 @@ def test_OssecSocket_protected_connect_ko(mock_conn):
         OssecSocket('test_path')
 
 
-@patch('wazuh.ossec_socket.socket.socket.connect')
-@patch('wazuh.ossec_socket.socket.socket.close')
+@patch('wazuh.core.ossec_socket.socket.socket.connect')
+@patch('wazuh.core.ossec_socket.socket.socket.close')
 def test_OssecSocket_close(mock_close, mock_conn):
     """Tests OssecSocket.close function works"""
 
@@ -47,8 +47,8 @@ def test_OssecSocket_close(mock_close, mock_conn):
     mock_close.assert_called_once_with()
 
 
-@patch('wazuh.ossec_socket.socket.socket.connect')
-@patch('wazuh.ossec_socket.socket.socket.send')
+@patch('wazuh.core.ossec_socket.socket.socket.connect')
+@patch('wazuh.core.ossec_socket.socket.socket.send')
 def test_OssecSocket_send(mock_send, mock_conn):
     """Tests OssecSocket.send function works"""
 
@@ -65,27 +65,27 @@ def test_OssecSocket_send(mock_send, mock_conn):
     (b"\x00\x01", 'return_value', 0, 1014),
     (b"\x00\x01", 'side_effect', Exception, 1014)
 ])
-@patch('wazuh.ossec_socket.socket.socket.connect')
+@patch('wazuh.core.ossec_socket.socket.socket.connect')
 def test_OssecSocket_send_ko(mock_conn, msg, effect, send_effect, expected_exception):
     """Tests OssecSocket.send function exceptions works"""
 
     queue = OssecSocket('test_path')
 
     if effect == 'return_value':
-        with patch('wazuh.ossec_socket.socket.socket.send', return_value=send_effect):
+        with patch('wazuh.core.ossec_socket.socket.socket.send', return_value=send_effect):
             with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
                 queue.send(msg)
     else:
-        with patch('wazuh.ossec_socket.socket.socket.send', side_effect=send_effect):
+        with patch('wazuh.core.ossec_socket.socket.socket.send', side_effect=send_effect):
             with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
                 queue.send(msg)
 
     mock_conn.assert_called_once_with('test_path')
 
 
-@patch('wazuh.ossec_socket.socket.socket.connect')
-@patch('wazuh.ossec_socket.unpack', return_value='1024')
-@patch('wazuh.ossec_socket.socket.socket.recv')
+@patch('wazuh.core.ossec_socket.socket.socket.connect')
+@patch('wazuh.core.ossec_socket.unpack', return_value='1024')
+@patch('wazuh.core.ossec_socket.socket.socket.recv')
 def test_OssecSocket_receive(mock_recv, mock_unpack, mock_conn):
     """Tests OssecSocket.receive function works"""
 
@@ -97,8 +97,8 @@ def test_OssecSocket_receive(mock_recv, mock_unpack, mock_conn):
     mock_conn.assert_called_once_with('test_path')
 
 
-@patch('wazuh.ossec_socket.socket.socket.connect')
-@patch('wazuh.ossec_socket.socket.socket.recv', side_effect=Exception)
+@patch('wazuh.core.ossec_socket.socket.socket.connect')
+@patch('wazuh.core.ossec_socket.socket.socket.recv', side_effect=Exception)
 def test_OssecSocket_receive_ko(mock_recv, mock_conn):
     """Tests OssecSocket.receive function exception works"""
 
@@ -110,7 +110,7 @@ def test_OssecSocket_receive_ko(mock_recv, mock_conn):
     mock_conn.assert_called_once_with('test_path')
 
 
-@patch('wazuh.ossec_socket.OssecSocket._connect')
+@patch('wazuh.core.ossec_socket.OssecSocket._connect')
 def test_OssecSocketJSON__init__(mock_conn):
     """Tests OssecSocketJSON.__init__ function works"""
 
@@ -119,8 +119,8 @@ def test_OssecSocketJSON__init__(mock_conn):
     mock_conn.assert_called_once_with()
 
 
-@patch('wazuh.ossec_socket.socket.socket.connect')
-@patch('wazuh.ossec_socket.OssecSocket.send')
+@patch('wazuh.core.ossec_socket.socket.socket.connect')
+@patch('wazuh.core.ossec_socket.OssecSocket.send')
 def test_OssecSocketJSON_send(mock_send, mock_conn):
     """Tests OssecSocketJSON.send function works"""
 
@@ -132,9 +132,9 @@ def test_OssecSocketJSON_send(mock_send, mock_conn):
     mock_conn.assert_called_once_with('test_path')
 
 
-@patch('wazuh.ossec_socket.socket.socket.connect')
-@patch('wazuh.ossec_socket.OssecSocket.receive')
-@patch('wazuh.ossec_socket.loads', return_value={'error':0, 'message':None, 'data':'Ok'})
+@patch('wazuh.core.ossec_socket.socket.socket.connect')
+@patch('wazuh.core.ossec_socket.OssecSocket.receive')
+@patch('wazuh.core.ossec_socket.loads', return_value={'error':0, 'message':None, 'data':'Ok'})
 def test_OssecSocketJSON_receive(mock_loads, mock_receive, mock_conn):
     """Tests OssecSocketJSON.receive function works"""
 
@@ -146,9 +146,9 @@ def test_OssecSocketJSON_receive(mock_loads, mock_receive, mock_conn):
     mock_conn.assert_called_once_with('test_path')
 
 
-@patch('wazuh.ossec_socket.socket.socket.connect')
-@patch('wazuh.ossec_socket.OssecSocket.receive')
-@patch('wazuh.ossec_socket.loads', return_value={'error':10000, 'message':'Error', 'data':'KO'})
+@patch('wazuh.core.ossec_socket.socket.socket.connect')
+@patch('wazuh.core.ossec_socket.OssecSocket.receive')
+@patch('wazuh.core.ossec_socket.loads', return_value={'error':10000, 'message':'Error', 'data':'KO'})
 def test_OssecSocketJSON_receive_ko(mock_loads, mock_receive, mock_conn):
     """Tests OssecSocketJSON.receive function works"""
 

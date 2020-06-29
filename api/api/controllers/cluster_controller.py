@@ -18,7 +18,6 @@ from api.models.configuration import APIConfigurationModel
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.exception import WazuhError
 
 logger = logging.getLogger('wazuh')
 

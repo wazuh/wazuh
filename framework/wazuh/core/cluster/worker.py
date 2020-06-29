@@ -14,12 +14,11 @@ from typing import Tuple, Dict, Callable, List, TextIO, KeysView
 
 import wazuh.core.cluster.cluster
 from wazuh.core.cluster import client, common as c_common
-from wazuh import exception
-from wazuh.core import cluster as metadata, common
+from wazuh.core import cluster as metadata, common, exception
 from wazuh import utils
-from wazuh.exception import WazuhException, WazuhClusterError
-from wazuh.core.core_agent import Agent
-from wazuh.database import Connection
+from wazuh.core.exception import WazuhException, WazuhClusterError
+from wazuh.core.agent import Agent
+from wazuh.core.database import Connection
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.wdb import WazuhDBConnection
 from wazuh.utils import safe_move

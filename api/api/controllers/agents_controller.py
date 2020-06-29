@@ -16,7 +16,7 @@ from api.models.base_model_ import Data, Body
 from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import database_limit
-from wazuh.exception import WazuhError
+from wazuh.core.exception import WazuhError
 
 logger = logging.getLogger('wazuh')
 

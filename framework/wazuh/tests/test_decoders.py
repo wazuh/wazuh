@@ -19,8 +19,8 @@ with patch('wazuh.common.getgrnam'):
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-        from wazuh.exception import WazuhInternalError, WazuhError
-        from wazuh.results import AffectedItemsWazuhResult
+        from wazuh.core.exception import WazuhInternalError, WazuhError
+        from wazuh.core.results import AffectedItemsWazuhResult
         from wazuh import decoder
 
 
@@ -47,7 +47,7 @@ decoder_ossec_conf_2 = {
 @pytest.fixture(scope='module', autouse=True)
 def mock_ossec_path():
     with patch('wazuh.common.ossec_path', new=test_data_path):
-        with patch('wazuh.configuration.get_ossec_conf', return_value=decoder_ossec_conf):
+        with patch('wazuh.core.configuration.get_ossec_conf', return_value=decoder_ossec_conf):
             yield
 
 
@@ -88,7 +88,7 @@ def test_get_decoders(names, status, filename, relative_dirname, parents, expect
     ({'ruleset': None}, WazuhInternalError(1500))
 ])
 def test_get_decoders_files(conf, exception):
-    with patch('wazuh.configuration.get_ossec_conf', return_value=conf):
+    with patch('wazuh.core.configuration.get_ossec_conf', return_value=conf):
         try:
             # UUT call
             result = decoder.get_decoders_files()

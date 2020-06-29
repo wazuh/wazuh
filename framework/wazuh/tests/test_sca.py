@@ -11,8 +11,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from wazuh import exception
-from wazuh.core import common
+from wazuh.core import common, exception
 from wazuh.tests.util import InitWDBSocketMock
 
 with patch('wazuh.common.ossec_uid'):
@@ -25,8 +24,8 @@ with patch('wazuh.common.ossec_uid'):
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh.sca import get_sca_list, fields_translation_sca, \
             get_sca_checks, fields_translation_sca_check, fields_translation_sca_check_compliance
-        from wazuh.results import AffectedItemsWazuhResult
-        from wazuh.exception import WazuhError
+        from wazuh.core.results import AffectedItemsWazuhResult
+        from wazuh.core.exception import WazuhError
 
         del sys.modules['wazuh.rbac.orm']
 

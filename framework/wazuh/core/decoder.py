@@ -6,7 +6,7 @@ import os
 from enum import Enum
 
 from wazuh.core import common
-from wazuh.exception import WazuhError, WazuhInternalError
+from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.utils import load_wazuh_xml
 
 REQUIRED_FIELDS = ['filename', 'position']

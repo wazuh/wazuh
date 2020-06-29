@@ -8,9 +8,9 @@ from io import StringIO
 from wazuh.core import common
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
-from wazuh.exception import WazuhError, WazuhInternalError
+from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.rbac.decorators import expose_resources
-from wazuh.results import WazuhResult
+from wazuh.core.results import WazuhResult
 
 try:
     import configparser

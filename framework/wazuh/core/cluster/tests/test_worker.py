@@ -11,7 +11,7 @@ from unittest.mock import patch, mock_open, MagicMock
 import pytest
 import uvloop
 
-from wazuh.exception import WazuhException
+from wazuh.core.exception import WazuhException
 
 with patch('wazuh.core.common.ossec_uid'):
     with patch('wazuh.core.common.ossec_gid'):
@@ -104,7 +104,7 @@ def test_check_removed_agents(remove_agents_patch, old_ck, new_ck, agents_to_rem
 @patch('shutil.rmtree')
 @patch('os.remove')
 @patch('glob.iglob')
-@patch('wazuh.core.core_agent.Agent.get_agents_overview')
+@patch('wazuh.core.agent.Agent.get_agents_overview')
 @patch('wazuh.core.cluster.worker.Connection')
 @patch('os.path.isdir')
 def test_remove_bulk_agents(isdir_mock, connection_mock, agents_mock, glob_mock, remove_mock, rmtree_mock, wdb_mock,

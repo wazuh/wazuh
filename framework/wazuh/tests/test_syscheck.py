@@ -190,7 +190,7 @@ def test_syscheck_clear_exception(execute_mock, wdb_init_mock, agent_list, expec
     (['004'], {}),
 ])
 @patch('sqlite3.connect', side_effect=get_fake_syscheck_db('schema_syscheck_test.sql'))
-@patch("wazuh.database.isfile", return_value=True)
+@patch("wazuh.core.database.isfile", return_value=True)
 @patch("wazuh.syscheck.WazuhDBConnection.execute", return_value=[{'end': '', 'start': ''}])
 @patch('socket.socket.connect')
 def test_syscheck_last_scan(socket_mock, wdb_conn_mock, is_file_mock,  db_mock, agent_id, wazuh_version):

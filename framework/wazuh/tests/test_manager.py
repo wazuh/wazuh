@@ -433,7 +433,7 @@ def test_validation_ko(mosck_exists, mock_lockf, mock_open):
                                 validation()
 
 
-@patch('wazuh.configuration.get_active_configuration')
+@patch('wazuh.core.configuration.get_active_configuration')
 def test_get_config(mock_act_conf):
     """Tests get_config() method works as expected"""
     get_config('component', 'config')

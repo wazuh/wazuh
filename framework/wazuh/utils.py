@@ -20,9 +20,9 @@ from subprocess import check_output
 from xml.etree.ElementTree import fromstring
 
 from wazuh.core import common
-from wazuh.database import Connection
-from wazuh.exception import WazuhError
-from wazuh.exception import WazuhException
+from wazuh.core.database import Connection
+from wazuh.core.exception import WazuhError
+from wazuh.core.exception import WazuhException
 from wazuh.core.wdb import WazuhDBConnection
 
 # Python 2/3 compatibility

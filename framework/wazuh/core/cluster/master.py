@@ -15,12 +15,12 @@ from datetime import datetime
 from typing import Tuple, Dict, Callable
 
 import wazuh.core.cluster.cluster
-from wazuh import utils, exception
-from wazuh.core import cluster as metadata, common
+from wazuh import utils
+from wazuh.core import cluster as metadata, common, exception
 from wazuh.core.cluster import server, common as c_common
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag
-from wazuh.core.core_agent import Agent
+from wazuh.core.agent import Agent
 
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):

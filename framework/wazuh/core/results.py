@@ -9,7 +9,7 @@ import sys
 from copy import deepcopy
 from numbers import Number
 
-import wazuh.exception as wexception
+import wazuh.core.exception as wexception
 from wazuh import utils
 from wazuh.core.common import database_limit
 

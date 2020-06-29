@@ -4,14 +4,14 @@
 from glob import glob
 
 from wazuh.core import common
-from wazuh.core.core_agent import Agent
+from wazuh.core.agent import Agent
 from wazuh.core.core_utils import get_agents_info
 from wazuh.core.syscheck import WazuhDBQuerySyscheck
-from wazuh.database import Connection
-from wazuh.exception import WazuhInternalError, WazuhError
-from wazuh.ossec_queue import OssecQueue
+from wazuh.core.database import Connection
+from wazuh.core.exception import WazuhInternalError, WazuhError
+from wazuh.core.ossec_queue import OssecQueue
 from wazuh.rbac.decorators import expose_resources
-from wazuh.results import AffectedItemsWazuhResult
+from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.utils import WazuhVersion
 from wazuh.core.wdb import WazuhDBConnection
 

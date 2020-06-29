@@ -7,7 +7,7 @@
 import os
 import sys
 from wazuh.core import common
-from wazuh.exception import WazuhInternalError
+from wazuh.core.exception import WazuhInternalError
 
 
 def pyDaemon():

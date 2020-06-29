@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, mock_open, patch
 import pytest
 
 from wazuh.core.cdb_list import check_path, get_list_from_file, get_relative_path, iterate_lists
-from wazuh.exception import WazuhError
+from wazuh.core.exception import WazuhError
 
 sys.modules['api'] = MagicMock()
 from wazuh.core import common

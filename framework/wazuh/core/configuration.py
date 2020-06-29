@@ -16,9 +16,9 @@ from os import remove, path as os_path
 from xml.dom.minidom import parseString
 
 from wazuh.core import common
-from wazuh.exception import WazuhInternalError, WazuhError
-from wazuh.ossec_socket import OssecSocket
-from wazuh.results import WazuhResult
+from wazuh.core.exception import WazuhInternalError, WazuhError
+from wazuh.core.ossec_socket import OssecSocket
+from wazuh.core.results import WazuhResult
 from wazuh.utils import cut_array, load_wazuh_xml, safe_move
 
 logger = logging.getLogger('wazuh')

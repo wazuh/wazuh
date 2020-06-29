@@ -32,18 +32,18 @@ wazuh.common module
     :undoc-members:
     :show-inheritance:
 
-wazuh.configuration module
+wazuh.core.configuration module
 --------------------------
 
-.. automodule:: wazuh.configuration
+.. automodule:: wazuh.core.configuration
     :members:
     :undoc-members:
     :show-inheritance:
 
-wazuh.database module
+wazuh.core.database module
 ---------------------
 
-.. automodule:: wazuh.database
+.. automodule:: wazuh.core.database
     :members:
     :undoc-members:
     :show-inheritance:
@@ -56,10 +56,10 @@ wazuh.decoder module
     :undoc-members:
     :show-inheritance:
 
-wazuh.exception module
+wazuh.core.exception module
 ----------------------
 
-.. automodule:: wazuh.exception
+.. automodule:: wazuh.core.exception
     :members:
     :undoc-members:
     :show-inheritance:
@@ -72,10 +72,10 @@ wazuh.manager module
     :undoc-members:
     :show-inheritance:
 
-wazuh.ossec_queue module
+wazuh.core.ossec_queue module
 ------------------------
 
-.. automodule:: wazuh.ossec_queue
+.. automodule:: wazuh.core.ossec_queue
     :members:
     :undoc-members:
     :show-inheritance:

@@ -22,7 +22,7 @@ def test_accesslogger_log(mock_logger_info):
     assert request.method_calls[0] == call.get('user', 'unknown_user')
 
 
-@patch('wazuh.wlogging.WazuhLogger.__init__')
+@patch('wazuh.core.wlogging.WazuhLogger.__init__')
 def test_apilogger_init(mock_wazuhlogger):
     """Check parameters are as expected when calling __init__ method"""
     alogging.APILogger(log_path='test_path', foreground_mode=False, debug_level='info',

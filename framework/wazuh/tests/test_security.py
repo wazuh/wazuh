@@ -14,7 +14,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
 from yaml import safe_load
 
-from wazuh.exception import WazuhError
+from wazuh.core.exception import WazuhError
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'security/')
 
@@ -58,7 +58,7 @@ def db_setup():
 
                     decorators.expose_resources = RBAC_bypasser
                     from wazuh import security
-                    from wazuh.results import WazuhResult
+                    from wazuh.core.results import WazuhResult
                     from wazuh.core import security as core_security
     try:
         create_memory_db('schema_security_test.sql', orm._Session())

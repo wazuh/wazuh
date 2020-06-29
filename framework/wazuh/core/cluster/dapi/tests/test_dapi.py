@@ -25,9 +25,9 @@ with patch('wazuh.common.ossec_uid'):
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh.core.cluster.dapi.dapi import DistributedAPI, APIRequestQueue
         from wazuh.core.manager import get_manager_status
-        from wazuh.results import WazuhResult, AffectedItemsWazuhResult
+        from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
         from wazuh import agent, cluster, ciscat, manager, WazuhError, WazuhInternalError
-        from wazuh.exception import WazuhClusterError
+        from wazuh.core.exception import WazuhClusterError
         from api.util import raise_if_exc
 
 logger = logging.getLogger('wazuh')

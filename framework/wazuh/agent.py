@@ -7,15 +7,14 @@ import operator
 from os import chmod, path, listdir
 from shutil import copyfile
 
-from wazuh import configuration
-from wazuh.core import common
-from wazuh.InputValidator import InputValidator
-from wazuh.core.core_agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, \
+from wazuh.core import common, configuration
+from wazuh.core.InputValidator import InputValidator
+from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, \
     WazuhDBQueryMultigroups, Agent, WazuhDBQueryGroup
 from wazuh.core.core_utils import get_agents_info, get_groups
-from wazuh.exception import WazuhError, WazuhInternalError, WazuhException
+from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException
 from wazuh.rbac.decorators import expose_resources
-from wazuh.results import WazuhResult, AffectedItemsWazuhResult
+from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array
 
 

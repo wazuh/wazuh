@@ -7,7 +7,7 @@ from os.path import join
 
 from wazuh.core import common
 from wazuh.core.common import ossec_path
-from wazuh.core.core_agent import WazuhDBQueryAgents, WazuhDBQueryMultigroups, WazuhDBQueryGroup
+from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryMultigroups, WazuhDBQueryGroup
 
 
 @common.context_cached('system_agents')
