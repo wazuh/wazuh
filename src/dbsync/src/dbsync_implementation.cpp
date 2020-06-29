@@ -61,7 +61,7 @@ int32_t DBSyncImplementation::insertBulkData(const DBSYNC_HANDLE handle,
     catch (const SQLite::exception& ex)
     {
         std::cout << "message: " << ex.what() << std::endl;
-        retVal = ex.id;
+        retVal = ex.id();
     }
     catch (const std::runtime_error& ex)
     {
@@ -93,7 +93,7 @@ int32_t DBSyncImplementation::updateSnapshotData(const DBSYNC_HANDLE handle,
     catch (const SQLite::exception& ex)
     {
         std::cout << "message: " << ex.what() << std::endl;
-        retVal = ex.id;
+        retVal = ex.id();
     }
     catch (const std::runtime_error& ex)
     {
@@ -125,7 +125,7 @@ int32_t DBSyncImplementation::updateSnapshotData(const DBSYNC_HANDLE handle,
     catch (const SQLite::exception& ex)
     {
         std::cout << "message: " << ex.what() << std::endl;
-        retVal = ex.id;
+        retVal = ex.id();
     }
     catch (const std::runtime_error& ex)
     {
