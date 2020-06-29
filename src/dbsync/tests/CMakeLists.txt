@@ -10,4 +10,5 @@ link_directories(${EXTERNAL_LIB}/googletest/lib/)
 
 
 add_subdirectory(string_helper)
+add_subdirectory(sqlite)
 add_subdirectory(interface)
