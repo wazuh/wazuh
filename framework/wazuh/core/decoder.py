@@ -5,10 +5,9 @@
 import os
 from enum import Enum
 
-from wazuh import common
-from wazuh.core.rule import item_format
-from wazuh.exception import WazuhError, WazuhInternalError
-from wazuh.utils import load_wazuh_xml
+from wazuh.core import common
+from wazuh.core.exception import WazuhError, WazuhInternalError
+from wazuh.core.utils import load_wazuh_xml
 
 REQUIRED_FIELDS = ['filename', 'position']
 SORT_FIELDS = ['filename', 'relative_dirname', 'name', 'position', 'status']

@@ -10,7 +10,7 @@ import uvloop
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
-        from wazuh.exception import WazuhException
+        from wazuh.core.exception import WazuhException
         from wazuh.core.cluster.local_client import LocalClient
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())

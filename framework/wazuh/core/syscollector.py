@@ -4,8 +4,8 @@
 
 from enum import Enum
 
-from wazuh.core.core_agent import Agent
-from wazuh.utils import plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, WazuhDBBackend
+from wazuh.core.agent import Agent
+from wazuh.core.utils import plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, WazuhDBBackend
 
 
 class Type(Enum):

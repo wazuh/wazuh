@@ -14,11 +14,11 @@ from glob import glob
 from operator import setitem
 from os.path import join, exists
 
-from wazuh import common
-from wazuh.configuration import get_ossec_conf
-from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
-from wazuh.results import WazuhResult
-from wazuh.wlogging import WazuhLogger
+from wazuh.core import common
+from wazuh.core.configuration import get_ossec_conf
+from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
+from wazuh.core.results import WazuhResult
+from wazuh.core.wlogging import WazuhLogger
 
 logger = logging.getLogger('wazuh')
 execq_lockfile = join(common.ossec_path, "var/run/.api_execq_lock")

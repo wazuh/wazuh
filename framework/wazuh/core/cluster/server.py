@@ -11,7 +11,7 @@ from typing import Tuple, Dict
 
 import uvloop
 
-from wazuh import common, exception, utils
+from wazuh.core import common, exception, utils
 from wazuh.core.cluster import common as c_common
 from wazuh.core.cluster.utils import ClusterFilter, context_tag, context_subtag
 

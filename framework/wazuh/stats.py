@@ -5,12 +5,12 @@
 import os
 from io import StringIO
 
-from wazuh import common
+from wazuh.core import common
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
-from wazuh.exception import WazuhError, WazuhInternalError
+from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.rbac.decorators import expose_resources
-from wazuh.results import WazuhResult
+from wazuh.core.results import WazuhResult
 
 try:
     import configparser
@@ -37,7 +37,7 @@ def totals(date):
     stat_filename = ""
     try:
         stat_filename = os.path.join(
-            common.stats_path, "totals", str(date.year), MONTHS[date.month-1], f"ossec-totals-{date.strftime('%d')}.log")
+            common.stats_path, "totals", str(date.year), MONTHS[date.month - 1], f"ossec-totals-{date.strftime('%d')}.log")
         stats = open(stat_filename, 'r')
     except IOError:
         raise WazuhError(1308, extra_message=stat_filename)

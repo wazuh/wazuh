@@ -12,7 +12,7 @@ from api.api_exception import APIException
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
-        from wazuh.results import WazuhResult
+        from wazuh.core.results import WazuhResult
 
 import pytest
 

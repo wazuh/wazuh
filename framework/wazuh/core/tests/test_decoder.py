@@ -12,7 +12,7 @@ import pytest
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
         sys.modules['api'] = MagicMock()
-        from wazuh.exception import WazuhError, WazuhInternalError, WazuhException
+        from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException
         from wazuh.core import decoder
         del sys.modules['api']
 
