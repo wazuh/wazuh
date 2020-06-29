@@ -203,7 +203,7 @@ bool SQLiteDBEngine::refreshTablaData(const nlohmann::json& data, const std::tup
   auto ret_val {false};
   const std::string table { data["table"].is_string() ? data["table"].get_ref<const std::string&>() : "" };
   if (CreateCopyTempTable(table)) {
-    if (BulkInsert(table + kTempTableSubFix, data["data"])) {
+    if (bulkInsert(table + kTempTableSubFix, data["data"])) {
       if (0 != LoadTableData(table)) {
         std::vector<std::string> primary_key_list;
         if (GetPrimaryKeysFromTable(table, primary_key_list)) {
@@ -527,7 +527,7 @@ bool SQLiteDBEngine::InsertNewRows(
   auto ret_val { true };
   std::vector<Row> row_values;
   if (GetLeftOnly(table+kTempTableSubFix, table, primary_key_list, row_values)) {
-     if (BulkInsert(table, row_values)) {
+     if (bulkInsert(table, row_values)) {
        for (const auto& row : row_values){
         nlohmann::json object;
         for (const auto& value : row) {
@@ -553,7 +553,7 @@ bool SQLiteDBEngine::InsertNewRows(
   return ret_val;
 }
 
-bool SQLiteDBEngine::BulkInsert(
+bool SQLiteDBEngine::bulkInsert(
   const std::string& table, 
   const std::vector<Row>& data) {
 

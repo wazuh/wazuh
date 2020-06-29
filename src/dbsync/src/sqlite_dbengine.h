@@ -105,7 +105,7 @@ private:
   std::string BuildLeftOnlyQuery(const std::string& t1,const std::string& t2,const std::vector<std::string>& primary_key_list, const bool return_only_pk_fields = false);
   bool GetLeftOnly(const std::string& t1,const std::string& t2, const std::vector<std::string>& primary_key_list, std::vector<Row>& return_rows);
   bool GetPKListLeftOnly(const std::string& t1, const std::string& t2, const std::vector<std::string>& primary_key_list, std::vector<Row>& return_rows);
-  bool BulkInsert(const std::string& table, const std::vector<Row>& data);
+  bool bulkInsert(const std::string& table, const std::vector<Row>& data);
   void DeleteTempTable(const std::string& table);
 
   std::string BuildModifiedRowsQuery(const std::string& t1,const std::string& t2, const std::vector<std::string>& primary_key_list);
