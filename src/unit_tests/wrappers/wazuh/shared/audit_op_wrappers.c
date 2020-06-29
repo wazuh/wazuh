@@ -13,3 +13,28 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+
+int __wrap_audit_add_rule()
+{
+    return mock();
+}
+
+int __wrap_audit_get_rule_list()
+{
+    return mock();
+}
+
+int __wrap_audit_restart()
+{
+    return mock();
+}
+
+int __wrap_audit_set_db_consistency() {
+    return 1;
+}
+
+int __wrap_search_audit_rule()
+{
+    return mock();
+}

@@ -24,6 +24,7 @@
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/libc/stdlib_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
+#include "../wrappers/wazuh/shared/audit_op_wrappers.h"
 #include "external/procps/readproc.h"
 
 extern volatile int audit_health_check_deletion;
@@ -56,11 +57,6 @@ int __wrap_IsFile(const char * file)
 int __wrap_IsSocket(const char * sock)
 {
     check_expected(sock);
-    return mock();
-}
-
-int __wrap_audit_restart()
-{
     return mock();
 }
 
@@ -135,22 +131,7 @@ void __wrap__mdebug2(const char * file, int line, const char * func, const char 
     return;
 }
 
-int __wrap_audit_get_rule_list()
-{
-    return mock();
-}
-
 int __wrap_W_Vector_length()
-{
-    return mock();
-}
-
-int __wrap_search_audit_rule()
-{
-    return mock();
-}
-
-int __wrap_audit_add_rule()
 {
     return mock();
 }
