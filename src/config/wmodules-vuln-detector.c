@@ -334,7 +334,6 @@ int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2) {
     vuldet->flags.patch_scan = 1;
     vuldet->flags.permissive_patch_scan = 0;
     vuldet->flags.enabled = 1;
-    vuldet->flags.report_kernel_os_package = 1;
     vuldet->ignore_time = VU_DEF_IGNORE_TIME;
     vuldet->detection_interval = WM_VULNDETECTOR_DEFAULT_INTERVAL;
     vuldet->agents_software = NULL;
