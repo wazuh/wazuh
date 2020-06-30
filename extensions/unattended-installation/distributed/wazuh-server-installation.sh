@@ -125,7 +125,6 @@ main() {
             case "$1" in
             "-ip"|"--elasticsearch-ip")        
                 ips+=($2)
-                ip=1
                 shift
                 shift
                 ;;
