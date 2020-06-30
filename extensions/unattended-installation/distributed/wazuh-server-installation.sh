@@ -1,6 +1,6 @@
 #!/bin/bash
 ## Check if system is based on yum or apt-get
-
+ips=()
 if [ -n "$(command -v yum)" ] 
 then
     sys_type="yum"
@@ -69,25 +69,29 @@ installWazuh() {
     logger "Done"
 }
 
-configureFilebeat() {
-    
-    conf="$(awk '{sub(/127.0.0.1/,"'$ip'")}1' /etc/filebeat/filebeat.yml)"
-    echo "$conf" > /etc/filebeat/filebeat.yml
-}
-
 ## Filebeat
 installFilebeat() {
     
     logger "Installing Filebeat..."
 
     $sys_type install filebeat -y -q  > /dev/null 2>&1
-    curl -so /etc/filebeat/filebeat.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/filebeat/7.x/filebeat_all_in_one.yml --max-time 300 > /dev/null 2>&1
+    curl -so /etc/filebeat/filebeat.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/unattended-installation/distributed/templates/filebeat.yml --max-time 300 > /dev/null 2>&1
     curl -so /etc/filebeat/wazuh-template.json https://raw.githubusercontent.com/wazuh/wazuh/v3.12.0/extensions/elasticsearch/7.x/wazuh-template.json --max-time 300 > /dev/null 2>&1
     chmod go+r /etc/filebeat/wazuh-template.json > /dev/null 2>&1
-    curl -s https://packages.wazuh.com/3.x/filebeat/wazuh-filebeat-0.1.tar.gz | tar -xvz -C /usr/share/filebeat/module --max-time 300 > /dev/null 2>&1
+    curl -s https://packages.wazuh.com/3.x/filebeat/wazuh-filebeat-0.1.tar.gz --max-time 300 | tar -xvz -C /usr/share/filebeat/module > /dev/null 2>&1
     mkdir /etc/filebeat/certs > /dev/null 2>&1
 
     logger "Done"
+}
+
+configureFilebeat() {
+    
+    #conf="$(awk '{sub(/127.0.0.1/,"'$ip'")}1' /etc/filebeat/filebeat.yml)"
+    #echo "$conf" > /etc/filebeat/filebeat.yml
+    echo "output.elasticsearch.hosts:" >> /etc/filebeat/filebeat.yml
+    for i in "${!ips[@]}"; do
+        echo "  - ${ips[i]}:9200" >> /etc/filebeat/filebeat.yml
+    done
 }
 
 ## Health check
@@ -120,8 +124,8 @@ main() {
         do
             case "$1" in
             "-ip"|"--elasticsearch-ip")        
-                ip="$2"
-                configureFilebeat $ip
+                ips+=($2)
+                ip=1
                 shift
                 shift
                 ;;
@@ -129,6 +133,7 @@ main() {
                 exit 1
             esac
         done
+        configureFilebeat $ips
     fi
 }
 
