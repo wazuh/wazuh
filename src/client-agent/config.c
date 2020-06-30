@@ -98,6 +98,9 @@ cJSON *getClientConfig(void) {
             cJSON *server = cJSON_CreateObject();
             cJSON_AddStringToObject(server,"address",agt->server[i].rip);
             cJSON_AddNumberToObject(server,"port",agt->server[i].port);
+            cJSON_AddNumberToObject(server,"max_retries", agt->server[i].max_retries);
+            cJSON_AddNumberToObject(server,"retry_interval", agt->server[i].retry_interval);
+    
             if (agt->server[i].protocol == IPPROTO_UDP) cJSON_AddStringToObject(server,"protocol","udp"); else cJSON_AddStringToObject(server,"protocol","tcp");
             cJSON_AddItemToArray(servers,server);
         }

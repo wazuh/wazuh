@@ -46,6 +46,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     logr->notify_time = 0;
     logr->max_time_reconnect_try = 0;
     logr->rip_id = 0;
+    logr->server_count = 0;
 
     for (i = 0; node[i]; i++) {
         rip = NULL;
@@ -188,18 +189,21 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
 
         // Add extra server (legacy configuration)
         if (rip) {
-            os_realloc(logr->server, sizeof(agent_server) * (logr->rip_id + 2), logr->server);
-            os_strdup(rip, logr->server[logr->rip_id].rip);
-            logr->server[logr->rip_id].port = 0;
-            logr->server[logr->rip_id].protocol = 0;
-            memset(logr->server + logr->rip_id + 1, 0, sizeof(agent_server));
-            logr->rip_id++;
+            os_realloc(logr->server, sizeof(agent_server) * (logr->server_count + 2), logr->server);
+            os_strdup(rip, logr->server[logr->server_count].rip);
+            logr->server[logr->server_count].port = 0;
+            logr->server[logr->server_count].protocol = 0;
+            // Since these are new options we will only leave a default for legacy configurations
+            logr->server[logr->server_count].max_retries = DEFAULT_MAX_RETRIES;
+            logr->server[logr->server_count].retry_interval = DEFAULT_RETRY_INTERVAL;
+            memset(logr->server + logr->server_count + 1, 0, sizeof(agent_server));
+            logr->server_count++;
         }
     }
 
     // Assign global port and protocol to legacy configurations
 
-    for (i = 0; i < logr->rip_id; ++i) {
+    for (i = 0; i < logr->server_count; ++i) {
         if (!logr->server[i].port) {
             logr->server[i].port = port;
         }
@@ -208,7 +212,6 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             logr->server[i].protocol = protocol;
         }
     }
-
     return (0);
 }
 
@@ -218,12 +221,17 @@ int Read_Client_Server(XML_NODE node, agent * logr)
     const char *xml_client_addr = "address";
     const char *xml_client_port = "port";
     const char *xml_protocol = "protocol";
+    const char *xml_max_retries = "max_retries";
+    const char *xml_retry_interval = "retry_interval";
 
     int j;
     char f_ip[128];
     char * rip = NULL;
+    /* Default values */
     int port = DEFAULT_SECURE;
     int protocol = IPPROTO_UDP;
+    int max_retries = DEFAULT_MAX_RETRIES; 
+    int retry_interval = DEFAULT_RETRY_INTERVAL;
 
     /* Get parameters for each configurated server*/
 
@@ -265,6 +273,26 @@ int Read_Client_Server(XML_NODE node, agent * logr)
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
                 return (OS_INVALID);
             }
+        } else if (strcmp(node[j]->element, xml_max_retries) == 0) { 
+            if (!OS_StrIsNum(node[j]->content)) {
+                merror(XML_VALUEERR, node[j]->element, node[j]->content);
+                return (OS_INVALID);
+            }
+            max_retries = atoi(node[j]->content);
+            if (max_retries <= 0) {
+                merror(XML_VALUEERR, node[j]->element, node[j]->content);
+                return (OS_INVALID);
+            }
+        } else if (strcmp(node[j]->element, xml_retry_interval) == 0) { 
+            if (!OS_StrIsNum(node[j]->content)) {
+                merror(XML_VALUEERR, node[j]->element, node[j]->content);
+                return (OS_INVALID);
+            }
+            retry_interval = atoi(node[j]->content);
+            if (retry_interval <= 0) {
+                merror(XML_VALUEERR, node[j]->element, node[j]->content);
+                return (OS_INVALID);
+            }
         } else {
             merror(XML_INVELEM, node[j]->element);
             return (OS_INVALID);
@@ -276,12 +304,14 @@ int Read_Client_Server(XML_NODE node, agent * logr)
         return (OS_INVALID);
     }
 
-    os_realloc(logr->server, sizeof(agent_server) * (logr->rip_id + 2), logr->server);
-    os_strdup(rip, logr->server[logr->rip_id].rip);
-    logr->server[logr->rip_id].port = port;
-    logr->server[logr->rip_id].protocol = protocol;
-    memset(logr->server + logr->rip_id + 1, 0, sizeof(agent_server));
-    logr->rip_id++;
+    os_realloc(logr->server, sizeof(agent_server) * (logr->server_count + 2), logr->server);
+    os_strdup(rip, logr->server[logr->server_count].rip);
+    logr->server[logr->server_count].port = port;
+    logr->server[logr->server_count].protocol = protocol;
+    logr->server[logr->server_count].max_retries = max_retries;
+    logr->server[logr->server_count].retry_interval = retry_interval;
+    memset(logr->server + logr->server_count + 1, 0, sizeof(agent_server));
+    logr->server_count++;
 
     return (0);
 }

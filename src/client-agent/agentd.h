@@ -90,7 +90,7 @@ char *get_agent_ip();
 void start_agent(int is_startup);
 
 /* Connect to the server */
-int connect_server(int initial_id);
+bool connect_server(int initial_id);
 
 /** 
  * Tries to enroll to a server indicated by server_rip

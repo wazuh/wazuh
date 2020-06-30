@@ -10,3 +10,5 @@ add_compile_options(-ggdb -O0 -g -coverage -DTEST_AGENT -DENABLE_AUDIT -DINOTIFY
 
 # Set tests dependencies
 set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -lcmocka -fprofile-arcs -ftest-coverage)
+
+add_subdirectory(client-agent)

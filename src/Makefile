@@ -979,6 +979,9 @@ wrappers_syscheck_o := $(wrappers_syscheck_c:.c=.o)
 wrappers_shared_c := $(wildcard unit_tests/wrappers/shared/*.c)
 wrappers_shared_o := $(wrappers_shared_c:.c=.o)
 
+wrappers_client_agent_c := $(wildcard unit_tests/wrappers/client-agent/*.c)
+wrappers_client_agent_o := $(wrappers_client_agent_c:.c=.o)
+
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 	OSSEC_CFLAGS+=${CFLAGS_TEST}
 	# OSSEC_CFLAGS+=${CFLAGS_TEST} -Itests
@@ -989,6 +992,7 @@ UNIT_TEST_WRAPPERS:=${wrappers_common_o}
 ifeq (${TARGET},winagent)
 	UNIT_TEST_WRAPPERS+=${wrappers_shared_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_syscheck_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_client_agent_o}
 endif
 endif #TEST
 

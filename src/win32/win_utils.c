@@ -88,7 +88,7 @@ int local_start()
 
     // Resolve hostnames
     rc = 0;
-    while (rc < agt->rip_id) {
+    while (rc < agt->server_count) {
         if (OS_IsValidIP(agt->server[rc].rip, NULL) != 1) {
             mdebug2("Resolving server hostname: %s", agt->server[rc].rip);
             resolveHostname(&agt->server[rc].rip, 5);
@@ -319,8 +319,6 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
 /* StartMQ for Windows */
 int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) short int type)
 {
-    /* Connect to the server */
-    connect_server(0);
     return (0);
 }
 
