@@ -26,7 +26,7 @@ from wazuh.cluster.utils import get_manager_status
 from wazuh.database import Connection
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
-from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
+from wazuh.wazuh_socket import OssecSocket, OssecSocketJSON
 from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, \
     plain_dict_to_nested_dict, get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, \
     mkdir_with_mode, md5, SQLiteBackend, WazuhDBBackend, filter_array_by_query, safe_move

@@ -392,8 +392,8 @@ class Handler(asyncio.Protocol):
         except Exception as e:
             self.logger.error("Error processing request '{}': {}".format(command, e))
             command, payload = b'err', str(e).encode()
-
-        self.push(self.msg_build(command, counter, payload))
+        if command is not None:
+            self.push(self.msg_build(command, counter, payload))
 
     def close(self):
         """

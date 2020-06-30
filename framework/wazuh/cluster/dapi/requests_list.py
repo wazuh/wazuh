@@ -19,7 +19,7 @@ import wazuh.syscollector as syscollector
 import wazuh.ciscat as ciscat
 import wazuh.active_response as active_response
 import wazuh.cdb_list as cdb_list
-
+import wazuh.wazuh_socket as wazuh_socket
 
 # Requests types:
 #   * local_master       -> requests that must be executed in the master node.
@@ -689,11 +689,17 @@ functions = {
         'is_async': False
     },
 
+    # Messaging
+    'send_sync': {
+        'function': wazuh_socket.send_sync,
+        'type': 'local_any',
+        'is_async': False
+    },
+
     # Mitre
     '/mitre': {
         'function': mitre.get_attack,
         'type': 'local_master',
         'is_async': False
-    },
-
+    }
 }

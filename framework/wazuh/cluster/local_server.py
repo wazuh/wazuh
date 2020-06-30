@@ -8,7 +8,7 @@ from typing import Tuple, Union
 
 import uvloop
 from wazuh import common, exception
-from wazuh.cluster import server, common as c_common, client
+from wazuh.cluster import server, common as c_common, client, local_client
 from wazuh.cluster.dapi import dapi
 from wazuh.exception import WazuhException
 from wazuh.cluster.cluster import context_tag, context_subtag
@@ -251,6 +251,8 @@ class LocalServerHandlerWorker(LocalServerHandler):
                 return b'ok', b'Added request to API requests queue'
             else:
                 return self.send_request_to_master(command=b'dapi_cluster', arguments=data)
+        elif command == b'send_sync':
+            return self.send_sync(data)
         else:
             return super().process_request(command, data)
 
@@ -299,6 +301,17 @@ class LocalServerHandlerWorker(LocalServerHandler):
             result = json.dumps(exception.WazuhException(int(code), message).to_dict()).encode()
         asyncio.create_task(self.send_request(command=b'dapi_res' if in_command == b'dapi' else b'control_res',
                                               data=result))
+
+    def send_sync(self, payload):
+        req = asyncio.create_task(local_client.execute(command=b'dapi', data=payload, wait_for_complete=False))
+        req.add_done_callback(functools.partial(self.get_send_sync_response, self.name))
+
+        return None, None
+
+    def get_send_sync_response(self, name, future):
+        result = future.result()
+        msg_counter = self.next_counter()
+        self.server.clients[name].push(self.msg_build(b'send_sync', msg_counter, result.encode()))
 
     def send_file_request(self, path, node_name):
         """
