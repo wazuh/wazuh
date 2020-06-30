@@ -25,7 +25,7 @@ namespace DbSync
                             nlohmann::json& result) = 0;
         virtual bool bulkInsert(const std::string& table,
                                 const nlohmann::json& data) = 0;
-        virtual bool refreshTablaData(const nlohmann::json& data,
+        virtual bool refreshTableData(const nlohmann::json& data,
                                       std::tuple<nlohmann::json&, void *> delta) = 0;
         virtual ~IDbEngine() = default;
     protected:

@@ -15,7 +15,7 @@
 namespace DbSync
 {
     /**
-     *   This class should be useb by concrete types to report errors.
+     *   This class should be used by concrete types to report errors.
     */
     class dbsync_error : public std::exception
     {

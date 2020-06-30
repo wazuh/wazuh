@@ -84,7 +84,7 @@ int32_t DBSyncImplementation::updateSnapshotData(const DBSYNC_HANDLE handle,
         const auto ctx{ dbEngineContext(handle) };
         const auto json { nlohmann::json::parse(jsonSnapshot)};
         nlohmann::json jsonResult;
-        retVal = ctx->dbEngine()->refreshTablaData(json[0], std::make_tuple(std::ref(jsonResult), nullptr)) ? 0 : 1;
+        retVal = ctx->dbEngine()->refreshTableData(json[0], std::make_tuple(std::ref(jsonResult), nullptr)) ? 0 : 1;
         result = std::move(jsonResult.dump());
     }
     catch (const nlohmann::json::exception& ex)
@@ -115,7 +115,7 @@ int32_t DBSyncImplementation::updateSnapshotData(const DBSYNC_HANDLE handle,
         const auto ctx{ dbEngineContext(handle) };
         const auto json { nlohmann::json::parse(jsonSnapshot)};
         nlohmann::json fake;
-        retVal = ctx->dbEngine()->refreshTablaData(json[0], std::make_tuple(std::ref(fake), callback)) ? 0 : 1;
+        retVal = ctx->dbEngine()->refreshTableData(json[0], std::make_tuple(std::ref(fake), callback)) ? 0 : 1;
     }
     catch (const nlohmann::json::exception& ex)
     {
