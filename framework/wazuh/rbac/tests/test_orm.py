@@ -142,9 +142,9 @@ def test_get_user(db_setup):
         users = am.get_users()
         assert users
         for user in users:
-            assert isinstance(user['username'], str)
+            assert isinstance(user['user_id'], str)
 
-        assert users[0]['username'] == 'wazuh'
+        assert users[0]['user_id'] == '1'
 
 
 def test_get_roles(db_setup):
@@ -176,7 +176,7 @@ def test_delete_users(db_setup):
     with db_setup.AuthenticationManager() as am:
         am.add_user(username='toDelete', password='testingA3!')
         len_users = len(am.get_users())
-        am.delete_user(username='toDelete')
+        am.delete_user(user_id='106')
         assert len_users == len(am.get_users()) + 1
 
 
@@ -239,8 +239,8 @@ def test_update_user(db_setup):
     """Check update a user in the database"""
     with db_setup.AuthenticationManager() as am:
         am.add_user(username='toUpdate', password='testingA6!')
-        assert am.update_user(username='toUpdate', password='testingA0!')
-        assert not am.update_user(username='notexist', password='testingA0!')
+        assert am.update_user(user_id='106', password='testingA0!')
+        assert not am.update_user(user_id='999', password='testingA0!')
 
 
 def test_update_role(db_setup):
@@ -322,7 +322,7 @@ def test_add_user_roles(db_setup):
     with db_setup.UserRolesManager() as urm:
         with db_setup.AuthenticationManager() as am:
             for user in am.get_users():
-                assert am.delete_user(username=user['username'])
+                assert am.delete_user(user_id=user['user_id'])
         with db_setup.RolesManager() as rm:
             assert rm.delete_all_roles()
 
@@ -331,9 +331,9 @@ def test_add_user_roles(db_setup):
 
         with db_setup.AuthenticationManager() as am:
             assert am.add_user(username='normalUser', password='testingA1!')
-            user_list.append(am.get_user('normalUser')['username'])
+            user_list.append(am.get_user('normalUser')['id'])
             assert am.add_user(username='normalUser1', password='testingA1!')
-            user_list.append(am.get_user('normalUser1')['username'])
+            user_list.append(am.get_user('normalUser1')['id'])
 
         with db_setup.RolesManager() as rm:
             assert rm.add_role('normal', rule={'Unittest': 'Role'})
@@ -343,11 +343,11 @@ def test_add_user_roles(db_setup):
 
         # New user-role
         for role in roles_ids:
-            assert urm.add_role_to_user(username='normalUser', role_id=role)
-            assert urm.add_user_to_role(username='normalUser1', role_id=role)
+            assert urm.add_role_to_user(user_id='3', role_id=role)
+            assert urm.add_user_to_role(user_id='4', role_id=role)
         for role in roles_ids:
-            assert urm.exist_user_role(username='normalUser', role_id=role)
-            assert urm.exist_role_user(username='normalUser', role_id=role)
+            assert urm.exist_user_role(user_id='3', role_id=role)
+            assert urm.exist_role_user(user_id='4', role_id=role)
 
         return user_list, roles_ids
 
@@ -398,7 +398,7 @@ def test_add_user_role_level(db_setup):
     with db_setup.UserRolesManager() as urm:
         with db_setup.AuthenticationManager() as am:
             for user in am.get_users():
-                assert am.delete_user(username=user['username'])
+                assert am.delete_user(user_id=user['user_id'])
         with db_setup.RolesManager() as rm:
             assert rm.delete_all_roles()
 
@@ -406,7 +406,7 @@ def test_add_user_role_level(db_setup):
 
         with db_setup.AuthenticationManager() as am:
             assert am.add_user(username='normal_level', password='testingA1!')
-            username = am.get_user(username='normal_level')['username']
+            user_id = am.get_user(username='normal_level')['id']
 
         with db_setup.RolesManager() as rm:
             assert rm.add_role('normal', rule={'Unittest': 'Role'})
@@ -416,9 +416,9 @@ def test_add_user_role_level(db_setup):
 
         # New role-policy
         for role in roles_ids:
-            urm.add_role_to_user(username=username, role_id=role)
+            urm.add_role_to_user(user_id=user_id, role_id=role)
         for role in roles_ids:
-            assert urm.exist_user_role(username=username, role_id=role)
+            assert urm.exist_user_role(user_id=user_id, role_id=role)
 
         new_roles_ids = list()
         assert rm.add_role('advanced1', rule={'Unittest2': 'Role'})
@@ -428,11 +428,11 @@ def test_add_user_role_level(db_setup):
 
         position = 1
         for role in new_roles_ids:
-            urm.add_role_to_user(username=username, role_id=role, position=position)
+            urm.add_role_to_user(user_id=user_id, role_id=role, position=position)
             roles_ids.insert(position, role)
             position += 1
 
-        user_roles = [role.id for role in urm.get_all_roles_from_user(username=username)]
+        user_roles = [role.id for role in urm.get_all_roles_from_user(user_id=user_id)]
 
         assert user_roles == roles_ids
 
@@ -493,14 +493,14 @@ def test_add_role_policy_level(db_setup):
 def test_exist_user_role(db_setup):
     """Check user-role relation exist in the database"""
     with db_setup.UserRolesManager() as urm:
-        username_list, roles_ids = test_add_user_roles(db_setup)
+        user_ids, roles_ids = test_add_user_roles(db_setup)
         for role in roles_ids:
-            for username in username_list:
-                assert urm.exist_user_role(username=username, role_id=role)
-                assert urm.exist_role_user(username=username, role_id=role)
+            for user_id in user_ids:
+                assert urm.exist_user_role(user_id=user_id, role_id=role)
+                assert urm.exist_role_user(user_id=user_id, role_id=role)
 
-        assert urm.exist_user_role(username='noexist', role_id=8) == db_setup.SecurityError.USER_NOT_EXIST
-        assert urm.exist_user_role(username=username_list[0], role_id=99) == db_setup.SecurityError.ROLE_NOT_EXIST
+        assert urm.exist_user_role(user_id='999', role_id=8) == db_setup.SecurityError.USER_NOT_EXIST
+        assert urm.exist_user_role(user_id=user_ids[0], role_id=99) == db_setup.SecurityError.ROLE_NOT_EXIST
 
 
 def test_exist_policy_role(db_setup):
@@ -529,9 +529,9 @@ def test_exist_role_policy(db_setup):
 def test_get_all_roles_from_user(db_setup):
     """Check all roles in one user in the database"""
     with db_setup.UserRolesManager() as urm:
-        username_list, roles_ids = test_add_user_roles(db_setup)
-        for user in username_list:
-            roles = urm.get_all_roles_from_user(username=user)
+        user_ids, roles_ids = test_add_user_roles(db_setup)
+        for user_id in user_ids:
+            roles = urm.get_all_roles_from_user(user_id=user_id)
             for role in roles:
                 assert role.id in roles_ids
 
@@ -539,11 +539,11 @@ def test_get_all_roles_from_user(db_setup):
 def test_get_all_users_from_role(db_setup):
     """Check all roles in one user in the database"""
     with db_setup.UserRolesManager() as urm:
-        username_list, roles_ids = test_add_user_roles(db_setup)
+        user_id, roles_ids = test_add_user_roles(db_setup)
         for role in roles_ids:
             users = urm.get_all_users_from_role(role_id=role)
             for user in users:
-                assert user['username'] in username_list
+                assert user['id'] in user_id
 
 
 def test_get_all_policy_from_role(db_setup):
@@ -569,21 +569,21 @@ def test_get_all_role_from_policy(db_setup):
 def test_remove_all_roles_from_user(db_setup):
     """Remove all roles in one user in the database"""
     with db_setup.UserRolesManager() as urm:
-        username_list, roles_ids = test_add_user_roles(db_setup)
-        for user in username_list:
-            urm.remove_all_roles_in_user(username=user)
+        user_ids, roles_ids = test_add_user_roles(db_setup)
+        for user in user_ids:
+            urm.remove_all_roles_in_user(user_id=user)
             for index, role in enumerate(roles_ids):
-                assert not urm.exist_user_role(role_id=role, username=user)
+                assert not urm.exist_user_role(role_id=role, user_id=user)
 
 
 def test_remove_all_users_from_role(db_setup):
     """Remove all roles in one user in the database"""
     with db_setup.UserRolesManager() as urm:
-        username_list, roles_ids = test_add_user_roles(db_setup)
+        user_ids, roles_ids = test_add_user_roles(db_setup)
         for role in roles_ids:
             urm.remove_all_users_in_role(role_id=role)
-            for index, user in enumerate(username_list):
-                assert not urm.exist_user_role(role_id=role, username=user)
+            for index, user in enumerate(user_ids):
+                assert not urm.exist_user_role(role_id=role, user_id=user)
 
 
 def test_remove_all_policies_from_role(db_setup):
@@ -609,10 +609,10 @@ def test_remove_all_roles_from_policy(db_setup):
 def test_remove_role_from_user(db_setup):
     """Remove specified role in user in the database"""
     with db_setup.UserRolesManager() as urm:
-        username_list, roles_ids = test_add_user_roles(db_setup)
+        user_ids, roles_ids = test_add_user_roles(db_setup)
         for role in roles_ids:
-            urm.remove_role_in_user(role_id=role, username=username_list[0])
-            assert not urm.exist_user_role(role_id=role, username=username_list[0])
+            urm.remove_role_in_user(role_id=role, user_id=user_ids[0])
+            assert not urm.exist_user_role(role_id=role, user_id=user_ids[0])
 
 
 def test_remove_policy_from_role(db_setup):
@@ -638,12 +638,12 @@ def test_remove_role_from_policy(db_setup):
 def test_update_role_from_user(db_setup):
     """Replace specified role in user in the database"""
     with db_setup.UserRolesManager() as urm:
-        username_list, roles_ids = test_add_user_roles(db_setup)
+        user_ids, roles_ids = test_add_user_roles(db_setup)
         for role in roles_ids:
-            urm.replace_user_role(username=username_list[0], actual_role_id=role, new_role_id=roles_ids[-1])
+            urm.replace_user_role(user_id=user_ids[0], actual_role_id=role, new_role_id=roles_ids[-1])
 
-        assert not urm.exist_user_role(username=username_list[0], role_id=roles_ids[0])
-        assert urm.exist_user_role(username=username_list[0], role_id=roles_ids[-1])
+        assert not urm.exist_user_role(user_id=user_ids[0], role_id=roles_ids[0])
+        assert urm.exist_user_role(user_id=user_ids[0], role_id=roles_ids[-1])
 
 
 def test_update_policy_from_role(db_setup):

@@ -28,8 +28,8 @@ _engine = create_engine('sqlite:///' + _auth_db_file, echo=False)
 _Base = declarative_base()
 _Session = sessionmaker(bind=_engine)
 
-# Usernames reserved for administrator users, these can not be modified or deleted
-admin_usernames = ['wazuh', 'wazuh-wui']
+# User IDs reserved for administrator users, these can not be modified or deleted
+admin_user_ids = [1, 2]
 
 # IDs reserved for administrator roles and policies, these can not be modified or deleted
 admin_role_ids = [1, 2, 3, 4, 5, 6, 7]
@@ -103,7 +103,7 @@ class UserRoles(_Base):
 
     # Schema, Many-To-Many relationship
     id = Column('id', Integer, primary_key=True)
-    user_id = Column('user_id', String(32), ForeignKey("users.username", ondelete='CASCADE'))
+    user_id = Column('user_id', String(32), ForeignKey("users.id", ondelete='CASCADE'))
     role_id = Column('role_id', Integer, ForeignKey("roles.id", ondelete='CASCADE'))
     level = Column('level', Integer, default=0)
     created_at = Column('created_at', DateTime, default=datetime.utcnow())
@@ -146,10 +146,12 @@ class TokenBlacklist(_Base):
 class User(_Base):
     __tablename__ = 'users'
 
-    username = Column(String(32), primary_key=True)
+    id = Column('id', Integer, primary_key=True)
+    username = Column(String(32))
     password = Column(String(256))
     auth_context = Column(Boolean, default=False, nullable=False)
     created_at = Column('created_at', DateTime, default=datetime.utcnow())
+    __table_args__ = (UniqueConstraint('username', name='username_restriction'),)
 
     # Relations
     roles = relationship("Roles", secondary='user_roles',
@@ -179,7 +181,8 @@ class User(_Base):
 
         :return: Dict with the information of the user
         """
-        return {'username': self.username, 'roles': self._get_roles_id(), 'auth_context': self.auth_context}
+        return {'id': self.id, 'username': self.username,
+                'roles': self._get_roles_id(), 'auth_context': self.auth_context}
 
     def to_dict(self):
         """Return the information of one policy and the roles that have assigned
@@ -187,8 +190,8 @@ class User(_Base):
         :return: Dict with the information
         """
         with UserRolesManager() as urm:
-            return {'username': self.username,
-                    'roles': [role.id for role in urm.get_all_roles_from_user(username=self.username)]}
+            return {'id': self.id, 'username': self.username,
+                    'roles': [role.id for role in urm.get_all_roles_from_user(user_id=str(self.id))]}
 
 
 class Roles(_Base):
@@ -238,7 +241,7 @@ class Roles(_Base):
         """
         users = list()
         for user in self.users:
-            users.append(user.get_user()['username'])
+            users.append(str(user.get_user()['id']))
 
         with RolesPoliciesManager() as rpm:
             return {'id': self.id, 'name': self.name, 'rule': json.loads(self.rule),
@@ -449,15 +452,22 @@ class AuthenticationManager:
             self.session.rollback()
             return False
 
-    def update_user(self, username: str, password: str):
+    def update_user(self, user_id: str, password: str):
         """Update the password an existent user
 
-        :param username: string Unique user name
-        :param password: string Password provided by user. It will be stored hashed
-        :return: True if the user has been modify successfully. False otherwise
+        Parameters
+        ----------
+        user_id : str
+            Unique user id
+        password : str
+            Password provided by user. It will be stored hashed
+
+        Returns
+        -------
+        True if the user has been modify successfully. False otherwise
         """
         try:
-            user = self.session.query(User).filter_by(username=username).first()
+            user = self.session.query(User).filter_by(id=user_id).first()
             if user is not None:
                 user.password = generate_password_hash(password)
                 self.session.commit()
@@ -468,21 +478,27 @@ class AuthenticationManager:
             self.session.rollback()
             return False
 
-    def delete_user(self, username: str):
-        """Update the password an existent user
+    def delete_user(self, user_id: str):
+        """Remove the specified user
 
-        :param username: string Unique user name
-        :return: True if the user has been delete successfully. False otherwise
+        Parameters
+        ----------
+        user_id : str
+            Unique user id
+
+        Returns
+        -------
+        True if the user has been delete successfully. False otherwise
         """
-        if username in admin_usernames:
+        if int(user_id) in admin_user_ids:
             return SecurityError.ADMIN_RESOURCES
 
         try:
-            if self.session.query(User).filter_by(username=username).first():
+            if self.session.query(User).filter_by(id=user_id).first():
                 # If the user has one or more roles associated with it, the associations will be eliminated.
                 with UserRolesManager() as urm:
-                    urm.remove_all_roles_in_user(username=username)
-                self.session.delete(self.session.query(User).filter_by(username=username).first())
+                    urm.remove_all_roles_in_user(user_id=user_id)
+                self.session.delete(self.session.query(User).filter_by(id=user_id).first())
                 self.session.commit()
                 return True
             else:
@@ -513,6 +529,25 @@ class AuthenticationManager:
             self.session.rollback()
             return False
 
+    def get_user_id(self, user_id: str = None):
+        """Get an specified user in the system.
+
+        Parameters
+        ----------
+        user_id : str
+            Unique user id
+
+        Returns
+        -------
+        Information about the specified user
+        """
+        try:
+            if user_id is not None:
+                return self.session.query(User).filter_by(id=user_id).first().to_dict()
+        except (IntegrityError, AttributeError):
+            self.session.rollback()
+            return False
+
     def user_auth_context(self, username: str = None):
         """Get the auth_context's flag of specified user in the system
 
@@ -537,14 +572,14 @@ class AuthenticationManager:
             self.session.rollback()
             return False
 
-        usernames = list()
+        user_ids = list()
         for user in users:
             if user is not None:
                 user_dict = {
-                    'username': user.username
+                    'user_id': str(user.id)
                 }
-                usernames.append(user_dict)
-        return usernames
+                user_ids.append(user_dict)
+        return user_ids
 
     def __enter__(self):
         self.session = _Session()
@@ -905,13 +940,13 @@ class UserRolesManager:
     all the methods needed for the user-roles administration.
     """
 
-    def add_role_to_user(self, username: str, role_id: int, position: int = None, force_admin: bool = False):
+    def add_role_to_user(self, user_id: str, role_id: int, position: int = None, force_admin: bool = False):
         """Add a relation between one specified user and one specified role.
 
         Parameters
         ----------
-        username : str
-            Name of the user
+        user_id : str
+            ID of the user
         role_id : int
             ID of the role
         position : int
@@ -925,20 +960,20 @@ class UserRolesManager:
         """
         try:
             # Create a role-policy relationship if both exist
-            if username not in admin_usernames or force_admin:
-                user = self.session.query(User).filter_by(username=username).first()
+            if user_id not in admin_user_ids or force_admin:
+                user = self.session.query(User).filter_by(id=user_id).first()
                 if user is None:
                     return SecurityError.USER_NOT_EXIST
                 role = self.session.query(Roles).filter_by(id=role_id).first()
                 if role is None:
                     return SecurityError.ROLE_NOT_EXIST
                 if position is not None or \
-                        self.session.query(UserRoles).filter_by(user_id=username, role_id=role_id).first() is None:
+                        self.session.query(UserRoles).filter_by(user_id=user_id, role_id=role_id).first() is None:
                     if position is not None and \
-                            self.session.query(UserRoles).filter_by(user_id=username, level=position).first() and \
-                            self.session.query(UserRoles).filter_by(user_id=username, role_id=role_id).first() is None:
+                            self.session.query(UserRoles).filter_by(user_id=user_id, level=position).first() and \
+                            self.session.query(UserRoles).filter_by(user_id=user_id, role_id=role_id).first() is None:
                         user_roles = [row for row in self.session.query(
-                            UserRoles).filter(UserRoles.user_id == username, UserRoles.level >= position
+                            UserRoles).filter(UserRoles.user_id == user_id, UserRoles.level >= position
                                               ).order_by(UserRoles.level).all()]
                         new_level = position
                         for relation in user_roles:
@@ -946,13 +981,13 @@ class UserRolesManager:
                             new_level += 1
 
                     user.roles.append(role)
-                    user_role = self.session.query(UserRoles).filter_by(user_id=username, role_id=role_id).first()
+                    user_role = self.session.query(UserRoles).filter_by(user_id=user_id, role_id=role_id).first()
                     if position is None:
                         roles = user.get_roles()
                         position = len(roles) - 1
                     else:
                         max_position = max([row.level for row in self.session.query(UserRoles).filter_by(
-                            user_id=username).all()])
+                            user_id=user_id).all()])
                         if max_position == 0 and len(list(user.roles)) - 1 == 0:
                             position = 0
                         elif position > max_position + 1:
@@ -968,13 +1003,13 @@ class UserRolesManager:
             self.session.rollback()
             return SecurityError.INVALID
 
-    def add_user_to_role(self, username: str, role_id: int, position: int = -1):
+    def add_user_to_role(self, user_id: str, role_id: int, position: int = -1):
         """Clone of the previous function.
 
         Parameters
         ----------
-        username : str
-            Name of the user
+        user_id : str
+            ID of the user
         role_id : int
             ID of the role
         position : int
@@ -984,22 +1019,22 @@ class UserRolesManager:
         -------
         True -> Success | False -> Failure | User not found | Role not found | Existing relationship | Invalid level
         """
-        return self.add_role_to_user(username=username, role_id=role_id, position=position)
+        return self.add_role_to_user(user_id=user_id, role_id=role_id, position=position)
 
-    def get_all_roles_from_user(self, username: str):
+    def get_all_roles_from_user(self, user_id: str):
         """Get all the roles related with the specified user.
 
         Parameters
         ----------
-        username : str
-            Name of the user
+        user_id : str
+            ID of the user
 
         Returns
         -------
         List of roles related with the user -> Success | False -> Failure
         """
         try:
-            user_roles = self.session.query(UserRoles).filter_by(user_id=username).order_by(UserRoles.level).all()
+            user_roles = self.session.query(UserRoles).filter_by(user_id=user_id).order_by(UserRoles.level).all()
             roles = list()
             for relation in user_roles:
                 roles.append(self.session.query(Roles).filter_by(id=relation.role_id).first())
@@ -1027,13 +1062,13 @@ class UserRolesManager:
             self.session.rollback()
             return False
 
-    def exist_user_role(self, username: str, role_id: int):
+    def exist_user_role(self, user_id: str, role_id: int):
         """Check if the relationship user-role exist.
 
         Parameters
         ----------
-        username : str
-            Name of the user
+        user_id : str
+            ID of the user
         role_id : int
             ID of th role
 
@@ -1042,7 +1077,7 @@ class UserRolesManager:
         True -> Existent relationship | False -> Failure | User not exist
         """
         try:
-            user = self.session.query(User).filter_by(username=username).first()
+            user = self.session.query(User).filter_by(id=user_id).first()
             if user is None:
                 return SecurityError.USER_NOT_EXIST
             role = self.session.query(Roles).filter_by(id=role_id).first()
@@ -1056,13 +1091,13 @@ class UserRolesManager:
             self.session.rollback()
             return False
 
-    def exist_role_user(self, username: str, role_id: int):
+    def exist_role_user(self, user_id: str, role_id: int):
         """Clone of the previous function.
 
         Parameters
         ----------
-        username : str
-            Name of the user
+        user_id : str
+            ID of the user
         role_id : int
             ID of th role
 
@@ -1070,15 +1105,15 @@ class UserRolesManager:
         -------
         True -> Existent relationship | False -> Failure | User not exist
         """
-        return self.exist_user_role(username=username, role_id=role_id)
+        return self.exist_user_role(user_id=user_id, role_id=role_id)
 
-    def remove_role_in_user(self, username: str, role_id: int):
+    def remove_role_in_user(self, user_id: str, role_id: int):
         """Remove a role-policy relationship if both exist. Does not eliminate role and policy.
 
         Parameters
         ----------
-        username : str
-            Name of the user
+        user_id : str
+            ID of the user
         role_id : int
             ID of the role
 
@@ -1087,15 +1122,15 @@ class UserRolesManager:
         True -> Success | False -> Failure | User not exist | Role not exist | Non-existent relationship
         """
         try:
-            if username not in admin_usernames:  # Administrator
-                user = self.session.query(User).filter_by(username=username).first()
+            if user_id not in admin_user_ids:  # Administrator
+                user = self.session.query(User).filter_by(id=user_id).first()
                 if user is None:
                     return SecurityError.USER_NOT_EXIST
                 role = self.session.query(Roles).filter_by(id=role_id).first()
                 if role is None:
                     return SecurityError.ROLE_NOT_EXIST
-                if self.session.query(UserRoles).filter_by(user_id=username, role_id=role_id).first() is not None:
-                    user = self.session.query(User).get(username)
+                if self.session.query(UserRoles).filter_by(user_id=user_id, role_id=role_id).first() is not None:
+                    user = self.session.query(User).get(user_id)
                     role = self.session.query(Roles).get(role_id)
                     user.roles.remove(role)
                     self.session.commit()
@@ -1107,13 +1142,13 @@ class UserRolesManager:
             self.session.rollback()
             return SecurityError.INVALID
 
-    def remove_user_in_role(self, username: str, role_id: int):
+    def remove_user_in_role(self, user_id: str, role_id: int):
         """Clone of the previous function.
 
         Parameters
         ----------
-        username : str
-            Name of the user
+        user_id : str
+            ID of the user
         role_id : int
             ID of the role
 
@@ -1121,25 +1156,25 @@ class UserRolesManager:
         -------
         True -> Success | False -> Failure | User not exist | Role not exist | Non-existent relationship
         """
-        return self.remove_role_in_user(username=username, role_id=role_id)
+        return self.remove_role_in_user(user_id=user_id, role_id=role_id)
 
-    def remove_all_roles_in_user(self, username: str):
+    def remove_all_roles_in_user(self, user_id: str):
         """Removes all relations with roles. Does not eliminate users and roles.
 
         Parameters
         ----------
-        username : str
-            Name of the user
+        user_id : str
+            ID of the user
 
         Returns
         -------
         True -> Success | False -> Failure
         """
         try:
-            if username not in admin_usernames:
-                roles = self.session.query(User).filter_by(username=username).first().roles
+            if user_id not in admin_user_ids:
+                roles = self.session.query(User).filter_by(id=user_id).first().roles
                 for role in roles:
-                    self.remove_role_in_user(username=username, role_id=role.id)
+                    self.remove_role_in_user(user_id=user_id, role_id=role.id)
                 return True
         except (IntegrityError, TypeError):
             self.session.rollback()
@@ -1148,10 +1183,10 @@ class UserRolesManager:
     def remove_all_users_in_role(self, role_id: int):
         """Clone of the previous function.
 
-        PParameters
+        Parameters
         ----------
-        username : str
-            Name of the user
+        role_id : str
+            ID of the role
 
         Returns
         -------
@@ -1161,20 +1196,20 @@ class UserRolesManager:
             if int(role_id) not in admin_role_ids:
                 users = self.session.query(Roles).filter_by(id=role_id).first().users
                 for user in users:
-                    if user.username not in admin_usernames:
-                        self.remove_user_in_role(username=user.username, role_id=role_id)
+                    if user.id not in admin_user_ids:
+                        self.remove_user_in_role(user_id=user.id, role_id=role_id)
                 return True
         except (IntegrityError, TypeError):
             self.session.rollback()
             return False
 
-    def replace_user_role(self, username: str, actual_role_id: int, new_role_id: int, position: int = -1):
+    def replace_user_role(self, user_id: str, actual_role_id: int, new_role_id: int, position: int = -1):
         """Replace one existing relationship with another one.
 
         Parameters
         ----------
-        username : str
-            Name of the user
+        user_id : str
+            ID of the user
         actual_role_id : int
             ID of the role
         new_role_id : int
@@ -1186,10 +1221,10 @@ class UserRolesManager:
         -------
         True -> Success | False -> Failure
         """
-        if username not in admin_usernames and self.exist_user_role(username=username, role_id=actual_role_id) and \
+        if user_id not in admin_user_ids and self.exist_user_role(user_id=user_id, role_id=actual_role_id) and \
                 self.session.query(Roles).filter_by(id=new_role_id).first() is not None:
-            self.remove_role_in_user(username=username, role_id=actual_role_id)
-            self.add_user_to_role(username=username, role_id=new_role_id, position=position)
+            self.remove_role_in_user(user_id=user_id, role_id=actual_role_id)
+            self.add_user_to_role(user_id=user_id, role_id=new_role_id, position=position)
             return True
 
         return False
@@ -1500,8 +1535,10 @@ with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:
     # User-Roles relationships
     with UserRolesManager() as urm:
         for d_username, payload in default_relationships[next(iter(default_relationships))]['users'].items():
+            with AuthenticationManager() as am:
+                d_user_id = am.get_user(username=d_username)['id']
             for d_role_name in payload['role_ids']:
-                urm.add_role_to_user(username=d_username, role_id=rm.get_role(name=d_role_name)['id'], force_admin=True)
+                urm.add_role_to_user(user_id=d_user_id, role_id=rm.get_role(name=d_role_name)['id'], force_admin=True)
 
     # Role-Policies relationships
     with RolesPoliciesManager() as rpm:

@@ -82,7 +82,9 @@ def test_users_default(db_setup, user_name, auth_context):
 @pytest.mark.parametrize('user_name, role_ids', user_roles)
 def test_user_roles_default(db_setup, user_name, role_ids):
     with db_setup.UserRolesManager() as urm:
-        db_roles = urm.get_all_roles_from_user(username=user_name)
+        with db_setup.AuthenticationManager() as am:
+            user_id = am.get_user(username=user_name)['id']
+        db_roles = urm.get_all_roles_from_user(user_id=user_id)
         orm_role_names = [role.name for role in db_roles]
         assert set(role_ids) == set(orm_role_names)
 
