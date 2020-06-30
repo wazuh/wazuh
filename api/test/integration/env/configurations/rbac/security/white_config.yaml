@@ -2,10 +2,10 @@
 - actions:
   - security:read
   resources:
-  - user:id:100
-  - user:id:101
-  - user:id:103
-  - user:id:105
+  - user:id:100 # administrator
+  - user:id:101 # normal
+  - user:id:103 # python
+  - user:id:105 # guest
   - role:id:*
   effect: allow
 
@@ -42,9 +42,9 @@
 - actions:
   - security:delete
   resources:
-  - user:id:105
-  - user:id:101
-  - user:id:2
+  - user:id:105 # guest
+  - user:id:101 # normal
+  - user:id:2 # wazuh-wui
   - policy:id:*
   effect: allow
 

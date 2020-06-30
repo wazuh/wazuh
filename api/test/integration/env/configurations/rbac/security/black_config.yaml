@@ -2,10 +2,10 @@
 - actions:
   - security:read
   resources:
-  - user:id:100
-  - user:id:101
-  - user:id:103
-  - user:id:105
+  - user:id:100 # administrator
+  - user:id:101 # normal
+  - user:id:103 # python
+  - user:id:105 # guest
   - role:id:*
   effect: deny
 
@@ -44,8 +44,8 @@
   resources:
   - user:id:105
   - user:id:101
-  - user:id:2
-  - user:id:99
+  - user:id:2 # wazuh-wui
+  - user:id:99 # testing
   - policy:id:*
   effect: deny
 

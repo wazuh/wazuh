@@ -166,7 +166,7 @@ async def update_user(request, user_id: str):
     -------
     User data
     """
-    f_kwargs = await UpdateUserModel.get_kwargs(request, additional_kwargs={'username': username})
+    f_kwargs = await UpdateUserModel.get_kwargs(request, additional_kwargs={'user_id': user_id})
     dapi = DistributedAPI(f=security.update_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',

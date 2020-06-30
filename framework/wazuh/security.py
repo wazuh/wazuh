@@ -43,7 +43,8 @@ def get_user_me():
                         role['policies'][index_p] = pm.get_policy_id(policy_id=policy_id)
                         role['policies'][index_p].pop('roles')
                 user['roles'][index] = role
-        affected_items.append(user) if user else result.add_failed_item(id_=user_id, error=WazuhError(5001))
+        affected_items.append(user) if user else result.add_failed_item(id_=common.current_user.get(),
+                                                                        error=WazuhError(5001))
 
     data = process_array(affected_items)
     result.affected_items = data['items']
