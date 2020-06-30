@@ -86,7 +86,13 @@ installElasticsearch() {
 
         logger "Configuring Elasticsearch..."
 
+        if [ -n "$m" ]
+        then
+            curl -so /etc/elasticsearch/elasticsearch.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/unattended-installation/distributed/templates/elasticsearch.yml --max-time 300 > /dev/null 2>&1
+        else
         curl -so /etc/elasticsearch/elasticsearch.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/7.x/elasticsearch_all_in_one.yml --max-time 300 > /dev/null 2>&1
+        fi
+
         curl -so /usr/share/elasticsearch/plugins/opendistro_security/securityconfig/roles.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/roles/roles.yml --max-time 300 > /dev/null 2>&1
         curl -so /usr/share/elasticsearch/plugins/opendistro_security/securityconfig/roles_mapping.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/roles/roles_mapping.yml --max-time 300 > /dev/null 2>&1
         curl -so /usr/share/elasticsearch/plugins/opendistro_security/securityconfig/internal_users.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/roles/internal_users.yml --max-time 300 > /dev/null 2>&1
@@ -110,8 +116,14 @@ installElasticsearch() {
 
 configureElastic() {
 
-    conf="$(awk '{sub(/127.0.0.1/,"'$ip'")}1' /etc/elasticsearch/elasticsearch.yml)"
-    echo "$conf" > /etc/elasticsearch/elasticsearch.yml
+    if [ -n "$m" ]
+    then
+        conf="$(awk '{sub(/127.0.0.1/,"'$ip'")}1' /etc/elasticsearch/elasticsearch.yml)"
+        echo "$conf" > /etc/elasticsearch/elasticsearch.yml
+    else
+        conf="$(awk '{sub(/<elasticsearch_ip>/,"'$ip'")}1' /etc/elasticsearch/elasticsearch.yml)"
+        echo "$conf" > /etc/elasticsearch/elasticsearch.yml
+    fi
 
 }
 
@@ -171,6 +183,10 @@ main() {
                 installElasticsearch
                 shift 1
                 ;;
+            "-m"|"--multi-node") 
+                m=1           
+                shift 1
+                ;;                   
             "-k"|"--install-kibana") 
                 k=1           
                 installKibana
@@ -185,7 +201,7 @@ main() {
                 kip=$2
                 shift
                 shift
-                ;;                
+                ;;                         
             *)
                 exit 1
             esac
