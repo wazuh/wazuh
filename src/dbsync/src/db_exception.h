@@ -31,9 +31,9 @@ namespace DbSync
         }
 
         dbsync_error(const int id,
-                  const std::string& whatArg)
-        : m_id(id)
-        , m_error(whatArg)
+                     const std::string& whatArg)
+        : m_id{ id }
+        , m_error{ whatArg }
         {}
 
       private:
