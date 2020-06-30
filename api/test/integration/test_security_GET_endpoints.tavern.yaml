@@ -26,10 +26,11 @@ stages:
               name: !anystr
               policies: !anything
               rule: !anything
+              users: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        message: All specified roles were shown
+        message: !anystr
 
   # GET /security/roles
   - name: Try to show the roles of the system, offset = 0
@@ -173,8 +174,6 @@ stages:
       json:
         data:
           affected_items:
-            - <<: *roles
-            - <<: *roles
             - <<: *roles
             - <<: *roles
           total_affected_items: !anyint
@@ -516,66 +515,91 @@ stages:
       json:
         data:
           affected_items:
-            - username: administrator
-              roles:
-                - 100
-                - 101
-            - username: guest
+            - id: 1
+              username: wazuh
               roles: []
-            - username: normal
-              roles:
-                - 104
-                - 105
-                - 103
-            - username: ossec
-              roles:
-                - 101
-                - 104
-            - username: python
-              roles:
-                - 101
-            - username: rbac
-              roles:
-                - 104
-                - 102
-                - 103
-            - username: testing
-              roles:
-                - 99
-            - username: wazuh
-              roles:
-                - 1
-            - username: wazuh-wui
-              roles:
-                - 2
+            - id: 2
+              username: wazuh-wui
+              roles: []
+            - id: 99
+              username: testing
+              roles: []
+            - id: 100
+              username: administrator
+              roles: []
+            - id: 101
+              username: normal
+              roles: []
+            - id: 102
+              username: ossec
+              roles: []
+            - id: 103
+              username: python
+              roles: []
+            - id: 104
+              username: rbac
+              roles: []
+            - id: 105
+              username: guest
+              roles: []
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []
-        message: All specified users were shown
+        message: !anystr
+
+---
+test_name: GET /security/users/me
+
+stages:
+
+  - name: Get information about the current user
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/{version:s}/security/users/me"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - id: 99
+              username: testing
+              roles:
+                - id: 99
+                  name: "testing"
+                  rule: !anything
+                  policies: !anything
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: []
+        message: !anystr
 
 ---
 test_name: GET /security/users
 
 stages:
 
-  - name: Get a specified user by its username
+  - name: Get a specified user by its id
     request:
       <<: *all_users_request
       params:
-        usernames: wazuh
+        user_ids: 1
     response:
       status_code: 200
       json:
         data:
           affected_items: &user
-            - username: !anystr
+            - id: !anyint
+              username: !anystr
           total_affected_items: 1
 
-  - name: Get a specified user by its username
+  - name: Get a specified user by its id
     request:
       <<: *all_users_request
       params:
-        usernames: wazuh,wazuh-wui
+        user_ids: 1,2
     response:
       status_code: 200
       json:
@@ -585,11 +609,11 @@ stages:
             - <<: *user
           total_affected_items: 2
 
-  - name: Get an user by its username (invalid username)
+  - name: Get an user by its id (invalid id)
     request:
       <<: *all_users_request
       params:
-        usernames: "!!!"
+        user_ids: "!!!"
     response:
       status_code: 400
       json:
@@ -598,11 +622,11 @@ stages:
         title: !anystr
         type: !anystr
 
-  - name: Get an user by its username (invalid username)
+  - name: Get an user by its id (invalid id)
     request:
       <<: *all_users_request
       params:
-        usernames: "####@@@|#|"
+        user_ids: "####@@@|#|"
     response:
       status_code: 400
       json:
@@ -611,11 +635,11 @@ stages:
         title: !anystr
         type: !anystr
 
-  - name: Get an non-existent user by its username
+  - name: Get an non-existent user by its id
     request:
       <<: *all_users_request
       params:
-        usernames: NotFound
+        user_ids: 10000
     response:
       status_code: 200
       json:
@@ -627,16 +651,16 @@ stages:
                 message: !anystr
                 remediation: !anystr
               id:
-                - NotFound
+                - '10000'
           total_affected_items: 0
           total_failed_items: 1
         message: !anystr
 
-  - name: Get two non-existent users by their usernames
+  - name: Get two non-existent users by their ids
     request:
       <<: *all_users_request
       params:
-        usernames: NotFound,NotFound1
+        user_ids: 10000,10001
     response:
       status_code: 200
       json:
@@ -648,55 +672,58 @@ stages:
                 message: !anystr
                 remediation: !anystr
               id:
-                - NotFound
-                - NotFound1
+                - '10000'
+                - '10001'
           total_affected_items: 0
           total_failed_items: 2
         message: !anystr
 
-  - name: Get two non-existent users and an existing one by their usernames
+  - name: Get two non-existent users and an existing one by their ids
     request:
       <<: *all_users_request
       params:
-        usernames: NotFound,NotFound1,wazuh
+        user_ids: 10000,10001,1
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - username: wazuh
+            - id: 1
+              username: wazuh
           failed_items:
             - error:
                 code: 5001
                 message: !anystr
                 remediation: !anystr
               id:
-                - NotFound
-                - NotFound1
+                - '10000'
+                - '10001'
           total_affected_items: 1
           total_failed_items: 2
         message: !anystr
 
-  - name: Get two non-existent users and two existent by their usernames
+  - name: Get two non-existent users and two existent by their ids
     request:
       <<: *all_users_request
       params:
-        usernames: NotFound,NotFound1,wazuh-wui,wazuh
+        user_ids: 10000,10001,2,1
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - username: wazuh
-            - username: wazuh-wui
+            - id: 1
+              username: wazuh
+            - id: 2
+              username: wazuh-wui
           failed_items:
             - error:
                 code: 5001
                 message: !anystr
                 remediation: !anystr
               id:
-                - NotFound
-                - NotFound1
+                - '10000'
+                - '10001'
           total_affected_items: 2
           total_failed_items: 2
         message: !anystr
@@ -737,36 +764,43 @@ stages:
       json:
         data:
           affected_items:
-            - username: administrator
+            - id: 99
+              username: testing
+              roles:
+                - 99
+            - id: 100
+              username: administrator
               roles:
                 - 100
                 - 101
-            - username: guest
-              roles: []
-            - username: normal
+            - id: 101
+              username: normal
               roles:
                 - 104
                 - 105
                 - 103
-            - username: ossec
+            - id: 102
+              username: ossec
               roles:
                 - 101
                 - 104
-            - username: python
+            - id: 103
+              username: python
               roles:
                 - 101
-            - username: rbac
+            - id: 104
+              username: rbac
               roles:
                 - 104
                 - 102
                 - 103
-            - username: testing
-              roles:
-                - 99
+            - id: 105
+              username: guest
+              roles: []
           total_affected_items: 7
           total_failed_items: 0
           failed_items: []
-        message: All specified users were shown
+        message: !anystr
 
 ---
 test_name: GET /security/users/?sort
@@ -782,42 +816,51 @@ stages:
       json:
         data:
           affected_items:
-            - username: wazuh-wui
+            - id: 2
+              username: wazuh-wui
               roles:
                 - 2
-            - username: wazuh
+            - id: 1
+              username: wazuh
               roles:
                 - 1
-            - username: testing
+            - id: 99
+              username: testing
               roles:
                 - 99
-            - username: rbac
+            - id: 104
+              username: rbac
               roles:
                 - 104
                 - 102
                 - 103
-            - username: python
+            - id: 103
+              username: python
               roles:
                 - 101
-            - username: ossec
+            - id: 102
+              username: ossec
               roles:
                 - 101
                 - 104
-            - username: normal
+            - id: 101
+              username: normal
               roles:
                 - 104
                 - 105
                 - 103
-            - username: guest
+            - id: 105
+              username: guest
               roles: []
-            - username: administrator
+            - id: 100
+              username: administrator
               roles:
                 - 100
                 - 101
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []
-        message: All specified users were shown
+        message: !anystr
 
   - name: Testing sort
     request:
@@ -829,42 +872,51 @@ stages:
       json:
         data:
           affected_items:
-            - username: administrator
+            - id: 100
+              username: administrator
               roles:
                 - 100
                 - 101
-            - username: guest
+            - id: 105
+              username: guest
               roles: []
-            - username: normal
+            - id: 101
+              username: normal
               roles:
                 - 104
                 - 105
                 - 103
-            - username: ossec
+            - id: 102
+              username: ossec
               roles:
                 - 101
                 - 104
-            - username: python
+            - id: 103
+              username: python
               roles:
                 - 101
-            - username: rbac
+            - id: 104
+              username: rbac
               roles:
                 - 104
                 - 102
                 - 103
-            - username: testing
+            - id: 99
+              username: testing
               roles:
                 - 99
-            - username: wazuh
+            - id: 1
+              username: wazuh
               roles:
                 - 1
-            - username: wazuh-wui
+            - id: 2
+              username: wazuh-wui
               roles:
                 - 2
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []
-        message: All specified users were shown
+        message: !anystr
 
 ---
 test_name: GET /security/users/?limit,offset
@@ -880,31 +932,39 @@ stages:
       json:
         data:
           affected_items:
-            - username: ossec
+            - id: 100
+              username: administrator
+              roles:
+                - 100
+                - 101
+            - id: 101
+              username: normal
+              roles:
+                - 104
+                - 105
+                - 103
+            - id: 102
+              username: ossec
               roles:
                 - 101
                 - 104
-            - username: python
+            - id: 103
+              username: python
               roles:
                 - 101
-            - username: rbac
+            - id: 104
+              username: rbac
               roles:
                 - 104
                 - 102
                 - 103
-            - username: testing
-              roles:
-                - 99
-            - username: wazuh
-              roles:
-                - 1
-            - username: wazuh-wui
-              roles:
-                - 2
+            - id: 105
+              username: guest
+              roles: []
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []
-        message: All specified users were shown
+        message: !anystr
 
   - name: Testing limit
     request:
@@ -916,14 +976,14 @@ stages:
       json:
         data:
           affected_items:
-            - username: administrator
+            - id: 1
+              username: wazuh
               roles:
-                - 100
-                - 101
+                - 1
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []
-        message: All specified users were shown
+        message: !anystr
 
 ---
 test_name: GET /security/actions
@@ -942,7 +1002,7 @@ stages:
       status_code: 200
       json:
         active-response:command:
-          description: Allow to execute active response commands in the agents
+          description: !anystr
           resources:
             - agent:id
           example:
@@ -963,7 +1023,7 @@ stages:
       status_code: 200
       json:
         rules:read:
-          description: Read rules files
+          description: !anystr
           resources:
             - rule:file
           example:
@@ -1011,7 +1071,7 @@ stages:
         role:id:
           description: Reference security roles via its id (i.e. role:id:1)
         user:id:
-          description: Reference security users via its username (i.e. user:id:wazuh)
+          description: Reference security users via its id (i.e. user:id:1)
 
   - name: Testing RBAC's actions catalog
     request:

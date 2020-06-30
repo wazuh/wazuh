@@ -57,6 +57,34 @@ async def login_user(request, user: str, auth_context=None):
                              status=200, dumps=dumps)
 
 
+async def get_user_me(request, pretty=False, wait_for_complete=False):
+    """Returns information from all system roles.
+
+    Parameters
+    ----------
+    request : connexion.request
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+
+    Returns
+    -------
+    Users information
+    """
+    dapi = DistributedAPI(f=security.get_user_me,
+                          request_type='local_master',
+                          is_async=False,
+                          logger=logger,
+                          wait_for_complete=wait_for_complete,
+                          current_user=request['token_info']['sub'],
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
 async def logout_user(request):
     """Invalidate all current user's tokens.
 
@@ -76,14 +104,14 @@ async def logout_user(request):
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-async def get_users(request, usernames: list = None, pretty=False, wait_for_complete=False,
+async def get_users(request, user_ids: list = None, pretty=False, wait_for_complete=False,
                     offset=0, limit=None, search=None, sort=None):
     """Returns information from all system roles.
 
     Parameters
     ----------
     request : connexion.request
-    usernames : list, optional
+    user_ids : list, optional
         List of users to be obtained
     pretty : bool, optional
         Show results in human-readable format
@@ -101,24 +129,25 @@ async def get_users(request, usernames: list = None, pretty=False, wait_for_comp
 
     Returns
     -------
-    Roles information
+    Users information
     """
-    f_kwargs = {'username_list': usernames, 'offset': offset, 'limit': limit,
-                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['username'],
+    f_kwargs = {'user_ids': user_ids, 'offset': offset, 'limit': limit,
+                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None}
+
     dapi = DistributedAPI(f=security.get_users,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
                           logger=logger,
+                          wait_for_complete=wait_for_complete,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
-
 
 async def create_user(request):
     """Create a new user.
@@ -144,20 +173,20 @@ async def create_user(request):
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-async def update_user(request, username: str):
+async def update_user(request, user_id: str):
     """Modify an existent user.
 
     Parameters
     ----------
     request : connexion.request
-    username : str
-        Username of the user to be updated
+    user_id : str
+        User ID of the user to be updated
 
     Returns
     -------
     User data
     """
-    f_kwargs = await UpdateUserModel.get_kwargs(request, additional_kwargs={'username': username})
+    f_kwargs = await UpdateUserModel.get_kwargs(request, additional_kwargs={'user_id': user_id})
     dapi = DistributedAPI(f=security.update_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -170,20 +199,20 @@ async def update_user(request, username: str):
     return web.json_response(data=data, status=200, dumps=dumps)
 
 
-async def delete_users(request, usernames: list = None):
+async def delete_users(request, user_ids: list = None):
     """Delete an existent list of users.
 
     Parameters
     ----------
     request : connexion.request
-    usernames : list, optional
-        Names of the users to be removed
+    user_ids : list, optional
+        IDs of the users to be removed
 
     Returns
     -------
     Result of the operation
     """
-    f_kwargs = {'username_list': usernames}
+    f_kwargs = {'user_ids': user_ids}
     dapi = DistributedAPI(f=security.remove_users,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',

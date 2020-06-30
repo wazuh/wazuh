@@ -141,9 +141,9 @@ def test_revoke_tokens(db_setup):
 
 
 @pytest.mark.parametrize('role_list, expected_users', [
-    ([100, 101], {'administrator', 'python', 'ossec'}),
-    ([102], {'rbac'}),
-    ([102, 103, 104], {'normal', 'rbac', 'ossec'})
+    ([100, 101], {'100', '103', '102'}),
+    ([102], {'104'}),
+    ([102, 103, 104], {'101', '104', '102'})
 ])
 def test_check_relationships(db_setup, role_list, expected_users):
     """Check that the relationship between role and user is correct according to
@@ -161,9 +161,9 @@ def test_check_relationships(db_setup, role_list, expected_users):
 
 
 @pytest.mark.parametrize('role_list, user_list, expected_users', [
-    ([104], None, {'normal', 'rbac', 'ossec'}),
-    ([102, 103], ['administrator'], {'normal', 'rbac', 'administrator'}),
-    ([], ['wazuh', 'wazuh-wui'], {'wazuh', 'wazuh-wui'})
+    ([104], None, {'101', '104', '102'}),
+    ([102, 103], ['100'], {'101', '104', '100'}),
+    ([], ['1', '2'], {'1', '2'})
 ])
 def test_invalid_users_tokens(db_setup, role_list, user_list, expected_users):
     """Check that the argument passed to `TokenManager.add_user_rules` formed by `roles` and

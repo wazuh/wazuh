@@ -51,7 +51,7 @@ x-rbac-catalog:
     'role:id':
       description: "Reference security roles via its id (i.e. role:id:1)"
     'user:id':
-      description: "Reference security users via its username (i.e. user:id:wazuh)"
+      description: "Reference security users via its id (i.e. user:id:1)"
   actions:
     'active-response:command':
       description: "Allow to execute active response commands in the agents"
@@ -343,7 +343,7 @@ x-rbac-catalog:
         - $ref: '#/x-rbac-catalog/resources/user:id'
       example:
         actions: ['security:read']
-        resources: ['policy:id:*', 'role:id:administrator', 'user:id:python',]
+        resources: ['policy:id:*', 'role:id:2', 'user:id:5',]
         effect: "allow"
     'security:update':
       description: "Allow update the information of system's security resources"
@@ -353,7 +353,7 @@ x-rbac-catalog:
         - $ref: '#/x-rbac-catalog/resources/user:id'
       example:
         actions: ['security:update']
-        resources: ['policy:id:*', 'role:id:administrator', 'user:id:python',]
+        resources: ['policy:id:*', 'role:id:4', 'user:id:3',]
         effect: "deny"
     'security:delete':
       description: "Delete system's security resources"
@@ -363,7 +363,7 @@ x-rbac-catalog:
         - $ref: '#/x-rbac-catalog/resources/user:id'
       example:
         actions: ['security:update']
-        resources: ['policy:id:*', 'role:id:administrator', 'user:id:python',]
+        resources: ['policy:id:*', 'role:id:3', 'user:id:4',]
         effect: "deny"
     'security:read_config':
       description: "Read current security configuration"
@@ -1480,6 +1480,10 @@ components:
       type: string
       format: numbers
       description: "Policy ID"
+    User_id:
+      type: string
+      format: numbers
+      description: "User ID"
     Username:
       type: string
       description: "Username of the user"
@@ -3894,6 +3898,23 @@ components:
       description: "Type of file"
       schema:
         type: string
+    user_ids:
+      in: query
+      name: 'user_ids'
+      description: "List of user IDs"
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/User_id'
+    user_id_required:
+      in: path
+      name: 'user_id'
+      description: "User ID"
+      required: True
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/User_id'
     unknown:
       in: query
       name: unknown
@@ -11691,7 +11712,7 @@ paths:
                 role:id:
                   description: 'Reference security role via its id (i.e. role:id:1)'
                 user:id:
-                  description: 'Reference security user via its username (i.e. user:id:wazuh)'
+                  description: 'Reference security user via its id (i.e. user:id:1)'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12348,6 +12369,70 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
 
+  /security/users/me:
+    get:
+      tags:
+        - security
+      summary: "Get current user information"
+      description: "Get the information of the current user"
+      operationId: api.controllers.security_controller.get_user_me
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Information about current user"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseUsers'
+                example:
+                  data:
+                    affected_items:
+                      - id: 1
+                        username: wazuh
+                        roles:
+                          - id: 1
+                            name: administrator
+                            rule:
+                              FIND:
+                                r'^auth[a-zA-Z]+$':
+                                  - full_admin
+                            policies:
+                              - id: 1
+                                name: agents_all_resourceless
+                                policy:
+                                  actions:
+                                    - agent:create
+                                    - group:create
+                                  resources:
+                                    - "*:*:*"
+                                  effect: allow
+                              - id: 2
+                                name: agents_all_agents
+                                policy:
+                                  actions:
+                                    - agent:read
+                                    - agent:delete
+                                    - agent:modify_group
+                                    - agent:restart
+                                    - agent:upgrade
+                                  resources:
+                                    - agent:id:*
+                                    - agent:group:*
+                                  effect: allow
+                    total_affected_items: 1
+                    total_failed_items: 0
+                    failed_items: []
+                  message: Current user information was shown
+        '400':
+          $ref: '#/components/responses/ResponseError'
+
   /security/users:
     get:
       tags:
@@ -12358,7 +12443,7 @@ paths:
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:read'
       parameters:
-        - $ref: '#/components/parameters/usernames'
+        - $ref: '#/components/parameters/user_ids'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/pretty'
@@ -12468,12 +12553,12 @@ paths:
       tags:
         - security
       summary: "Delete a user"
-      description: "Delete a user by specifying their name"
+      description: "Delete a user by specifying their ID"
       operationId: api.controllers.security_controller.delete_users
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
       parameters:
-        - $ref: '#/components/parameters/usernames'
+        - $ref: '#/components/parameters/user_ids'
       responses:
         '200':
           description: "User deleted successful"
@@ -12490,17 +12575,17 @@ paths:
                   data:
                     message: 'User deleted correctly'
 
-  /security/users/{username}:
+  /security/users/{user_id}:
     put:
       tags:
         - security
       summary: "Modify a user"
-      description: "Modify a user's password by specifying their name"
+      description: "Modify a user's password by specifying their ID"
       operationId: api.controllers.security_controller.update_user
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:update'
       parameters:
-        - $ref: '#/components/parameters/username'
+        - $ref: '#/components/parameters/user_id_required'
       requestBody:
         content:
           application/json:
