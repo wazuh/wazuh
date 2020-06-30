@@ -730,7 +730,7 @@ static int w_parse_agent_add_response(const char* buffer, char *err_response, ch
         if (json_format) {
             printf("%s", buffer);
         } else {            
-            merror("ERROR %d: %s", error->valueint, message ? message->valuestring : "(undefined)");
+            merror("%d: %s", error->valueint, message ? message->valuestring : "(undefined)");
         }
         if(err_response) { 
             snprintf(err_response, 2048, "ERROR: %s\n\n", message ? message->valuestring : "(undefined)");
@@ -807,7 +807,7 @@ static int w_parse_agent_remove_response(const char* buffer, char *err_response,
         if (json_format) {
             printf("%s", buffer);
         } else {            
-            merror("ERROR %d: %s", error->valueint, message ? message->valuestring : "(undefined)");
+            merror("%d: %s", error->valueint, message ? message->valuestring : "(undefined)");
         }
         if(err_response) { 
             snprintf(err_response, 2048, "ERROR: %s\n\n", message ? message->valuestring : "(undefined)");
@@ -881,7 +881,7 @@ static int w_send_clustered_message(const char* command, const char* payload, ch
             if(response_length = OS_RecvSecureClusterTCP(sock, response, OS_MAXSTR), response_length <= 0) {
                 switch (response_length) {
                 case -1:
-                    merror("At w_send_clustered_message(): OS_RecvSecureClusterTCP(): %s", strerror(errno));  
+                    merror("OS_RecvSecureClusterTCP(): %s", strerror(errno));  
                     break;                 
 
                 case 0:
@@ -903,7 +903,7 @@ static int w_send_clustered_message(const char* command, const char* payload, ch
         close(sock);
     }
     else { 
-        merror("At w_send_clustered_message(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
+        merror("Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
         result = -2;            
     }    
 
