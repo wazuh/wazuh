@@ -128,7 +128,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
 class WazuhDBQueryGroup(WazuhDBQuery):
     def __init__(self, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
-                 get_data=True, query='', filters=None, default_sort_field='name', min_select_fields=None,
+                 get_data=True, query='', filters=None, count=True, default_sort_field='name', min_select_fields=None,
                  remove_extra_fields=True):
         if filters is None:
             filters = {}
@@ -138,7 +138,7 @@ class WazuhDBQueryGroup(WazuhDBQuery):
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='`group`', sort=sort, search=search, select=select,
                               filters=filters, fields={'name': 'name'},
                               default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
-                              backend=backend, min_select_fields=min_select_fields, count=False, get_data=get_data)
+                              backend=backend, min_select_fields=min_select_fields, count=count, get_data=get_data)
         self.remove_extra_fields = remove_extra_fields
 
     def _add_select_to_query(self):
@@ -149,11 +149,14 @@ class WazuhDBQueryGroup(WazuhDBQuery):
         self.query = self.query.replace('WHERE  AND', 'WHERE')
         if 'search' not in self.query:
             self.query = self.query.rstrip('WHERE ')
-        self.query += ') GROUP BY id_group'
+        self.query += ' GROUP BY name'
 
     def _default_query(self):
-        return "SELECT COUNT(*) AS count, (SELECT name FROM `group` WHERE id=id_group) AS name FROM `belongs` WHERE " \
-               "id_group IN (SELECT id FROM `group` WHERE "
+        return "SELECT name, count(id_group) AS count from `group` LEFT JOIN `belongs` on id=id_group WHERE "
+
+    def _get_total_items(self):
+        total_items_query = "SELECT COUNT(*) FROM ({}) AS total_groups".format(self.query)
+        self.total_items = self.backend.execute(total_items_query, self.request, True)
 
     def _execute_data_query(self):
         self._data = self.backend.execute(self.query, self.request)
@@ -1597,8 +1600,8 @@ def get_groups():
 
     :return: List of group names
     """
-    g_query = WazuhDBQueryGroup()
-    query_data = g_query.run()
+    query = WazuhDBQueryGroup()
+    query_data = query.run()
 
     return {group['name'] for group in query_data['items']}
 

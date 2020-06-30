@@ -344,7 +344,7 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort=None, search=No
         affected_groups.append(group)
 
     result.affected_items = affected_groups
-    result.total_affected_items = len(affected_groups)
+    result.total_affected_items = query_data['totalItems']
 
     return result
 
