@@ -62,8 +62,7 @@ class WazuhDBQuerySCA(WazuhDBQuery):
         # Replace characters with special meaning in SQL with wildcards.
         for field in self.special_fields:
             if field in filters:
-                filters[field] = filters[field].replace("'", "_")
-                filters[field] = filters[field].replace('"', "_")
+                filters[field] = filters[field].replace("'", "_").replace('"', "_")
 
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='sca_policy', sort=sort,
                               search=search, select=select, fields=fields, default_sort_field=default_sort_field,
@@ -119,8 +118,6 @@ class WazuhDBQuerySCA(WazuhDBQuery):
             if q_filter['value'] is not None:
                 self.request[field_filter] = q_filter['value'] if field_name != "version" else re.sub(
                     r'([a-zA-Z])([v])', r'\1 \2', q_filter['value'])
-                if q_filter['operator'] == 'LIKE':
-                    self.request[field_filter] = "%{}%".format(self.request[field_filter])
                 self.query += '{} {} :{}'.format(self.fields[field_name].split(' as ')[0], q_filter['operator'],
                                                  field_filter)
                 if not field_filter.isdigit():
