@@ -42,8 +42,8 @@
 - actions:
   - security:delete
   resources:
-  - user:id:105
-  - user:id:101
+  - user:id:105 # guest
+  - user:id:101 # normal
   - user:id:2 # wazuh-wui
   - user:id:99 # testing
   - policy:id:*
