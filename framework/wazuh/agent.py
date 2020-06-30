@@ -4,7 +4,6 @@
 
 import hashlib
 import operator
-from glob import glob
 from os import chmod, path, listdir
 from shutil import copyfile
 
@@ -13,9 +12,9 @@ from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, \
     WazuhDBQueryMultigroups, Agent, WazuhDBQueryGroup, get_agents_info, get_groups
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException
-from wazuh.rbac.decorators import expose_resources
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array
+from wazuh.rbac.decorators import expose_resources
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
@@ -305,18 +304,14 @@ def add_agent(name=None, agent_id=None, key=None, ip='any', force_time=-1, use_o
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"],
                   post_proc_kwargs={'exclude_codes': [1710]})
-def get_agent_groups(group_list=None, offset=0, limit=None, sort_by=None, sort_ascending=True,
-                     search_text=None, complementary_search=False, search_in_fields=None, hash_algorithm='md5'):
+def get_agent_groups(group_list=None, offset=0, limit=None, sort=None, search=None, hash_algorithm='md5'):
     """Gets the existing groups.
 
     :param group_list: List of Group names.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
-    :param sort_by: Fields to sort the items by.
-    :param sort_ascending: Sort in ascending (true) or descending (false) order.
-    :param search_text: Text to search.
-    :param complementary_search: Find items without the text to search.
-    :param search_in_fields: Fields to search in.
+    :param sort: Fields to sort the items by.
+    :param search: Text to search.
     :param hash_algorithm: hash algorithm used to get mergedsum and configsum.
     :return: AffectedItemsWazuhResult.
     """
@@ -327,17 +322,14 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort_by=None, sort_a
                                       none_msg='No group information was obtained'
                                       )
 
-    # Connect DB
-    db_global = glob(common.database_path_global)
-    if not db_global:
-        raise WazuhException(1600)
+    # Add failed items
+    for invalid_group in set(group_list) | get_groups() ^ get_groups():
+        result.add_failed_item(id_=invalid_group, error=WazuhError(1710))
 
-    conn = Connection(db_global[0])
-    query = "SELECT COUNT(*) AS count, (SELECT name FROM `group` WHERE id=id_group) AS name FROM `belongs` GROUP BY id_group ORDER BY name ASC LIMIT 500 OFFSET 0;"
-    conn.execute(query)
-    data = conn.fetch_all()
+    group_query = WazuhDBQueryGroup(filters={'name': group_list}, offset=offset, limit=limit, sort=sort, search=search)
+    query_data = group_query.run()
 
-    for group in data:
+    for group in query_data['items']:
         full_entry = path.join(common.shared_path, group['name'])
 
         # merged.mg and agent.conf sum
