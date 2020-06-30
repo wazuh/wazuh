@@ -24,8 +24,8 @@ namespace SQLite
         ~Connection() = default;
         Connection(const std::string& path);
 
-        bool execute(const std::string& query) override;
-        bool close() override;
+        void execute(const std::string& query) override;
+        void close() override;
         const std::shared_ptr<sqlite3>& db() const override;
     private:
         std::shared_ptr<sqlite3> m_db;
@@ -38,8 +38,8 @@ namespace SQLite
         ~Transaction();
         Transaction(std::shared_ptr<IConnection>& connection);
 
-        bool commit() override;
-        bool rollback() override;
+        void commit() override;
+        void rollback() override;
         bool isRolledBack() const;
         bool isCommited() const;
     private:
@@ -73,13 +73,13 @@ namespace SQLite
                   const std::string& query);
 
         int32_t step() override;
-        bool reset() override;
+        void reset() override;
 
-        bool bind(const int32_t index, const int32_t value) override;
-        bool bind(const int32_t index, const uint64_t value) override;
-        bool bind(const int32_t index, const int64_t value) override;
-        bool bind(const int32_t index, const std::string& value) override;
-        bool bind(const int32_t index, const double value) override;
+        void bind(const int32_t index, const int32_t value) override;
+        void bind(const int32_t index, const uint64_t value) override;
+        void bind(const int32_t index, const int64_t value) override;
+        void bind(const int32_t index, const std::string& value) override;
+        void bind(const int32_t index, const double value) override;
 
         std::unique_ptr<IColumn> column(const int32_t index) override;
 

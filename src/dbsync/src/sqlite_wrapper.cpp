@@ -40,10 +40,9 @@ Connection::Connection(const std::string& path)
 : m_db{ openSQLiteDb(path), [](sqlite3* p){ sqlite3_close_v2(p); } }
 {}
 
-bool Connection::close()
+void Connection::close()
 {
     m_db.reset();
-    return !m_db;
 }
 
 const std::shared_ptr<sqlite3>& Connection::db() const
@@ -55,10 +54,26 @@ Connection::Connection()
 : Connection(DB_DEFAULT_PATH)
 {}
 
-bool Connection::execute(const std::string& query)
+void Connection::execute(const std::string& query)
 {
-    return m_db &&
-           SQLITE_OK == sqlite3_exec(m_db.get(), query.c_str(), 0,0, nullptr);
+    if (!m_db)
+    {
+        throw sqlite_error
+        {
+            1, "no connection available to executions."
+        };
+    }
+    const auto result
+    {
+        sqlite3_exec(m_db.get(), query.c_str(), 0,0, nullptr)
+    };
+    if (SQLITE_OK != result)
+    {
+        throw sqlite_error
+        {
+            result, "Error during execution."
+        };
+    }
 }
 
 Transaction::~Transaction()
@@ -74,35 +89,26 @@ Transaction::Transaction(std::shared_ptr<IConnection>& connection)
 , m_rolledBack{ false }
 , m_commited{ false }
 {
-    if (!m_connection->execute("BEGIN TRANSACTION"))
-    {
-        throw DbSync::dbsync_error
-        {
-            601,
-            "cannot begin SQLite Transaction."
-        };
-    }
+    m_connection->execute("BEGIN TRANSACTION");
 }
     
-bool Transaction::commit()
+void Transaction::commit()
 {
     bool ret{ false };
     if (!m_rolledBack && !m_commited)
     {
-        ret = m_connection->execute("COMMIT TRANSACTION");
+        m_connection->execute("COMMIT TRANSACTION");
         m_commited = ret;
     }
-    return ret;
 }
 
-bool Transaction::rollback()
+void Transaction::rollback()
 {
     if (!m_rolledBack && !m_commited)
     {
         m_connection->execute("ROLLBACK TRANSACTION");
         m_rolledBack = true;
     }
-    return m_rolledBack;
 }
 
 bool Transaction::isCommited() const
@@ -151,34 +157,34 @@ int32_t Statement::step()
     }
     return ret;
 }
-bool Statement::reset()
+void Statement::reset()
 {
-    return SQLITE_OK == sqlite3_reset(m_stmt.get());
+    SQLITE_OK == sqlite3_reset(m_stmt.get());
 }
 
-bool Statement::bind(const int32_t index, const int32_t value)
+void Statement::bind(const int32_t index, const int32_t value)
 {
-    return SQLITE_OK == sqlite3_bind_int(m_stmt.get(), index, value);
+    SQLITE_OK == sqlite3_bind_int(m_stmt.get(), index, value);
 }
-bool Statement::bind(const int32_t index, const uint64_t value)
+void Statement::bind(const int32_t index, const uint64_t value)
 {
-    return SQLITE_OK == sqlite3_bind_int64(m_stmt.get(), index, value);
+    SQLITE_OK == sqlite3_bind_int64(m_stmt.get(), index, value);
 }
-bool Statement::bind(const int32_t index, const int64_t value)
+void Statement::bind(const int32_t index, const int64_t value)
 {
-    return SQLITE_OK == sqlite3_bind_int64(m_stmt.get(), index, value);
+    SQLITE_OK == sqlite3_bind_int64(m_stmt.get(), index, value);
 }
-bool Statement::bind(const int32_t index, const std::string& value)
+void Statement::bind(const int32_t index, const std::string& value)
 {
-    return SQLITE_OK == sqlite3_bind_text(m_stmt.get(),
+    SQLITE_OK == sqlite3_bind_text(m_stmt.get(),
                                           index,
                                           value.c_str(),
                                           value.length(),
                                           SQLITE_TRANSIENT);
 }
-bool Statement::bind(const int32_t index, const double value)
+void Statement::bind(const int32_t index, const double value)
 {
-    return SQLITE_OK == sqlite3_bind_double(m_stmt.get(), index, value);
+    SQLITE_OK == sqlite3_bind_double(m_stmt.get(), index, value);
 }
 
 std::unique_ptr<IColumn> Statement::column(const int32_t index)

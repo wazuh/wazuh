@@ -89,7 +89,7 @@ bool SQLiteDBEngine::bulkInsert(const std::string& table, const nlohmann::json& 
         stmt->step();
         stmt->reset();
       }
-      ret_val = transaction->commit();
+      transaction->commit();
     }
   }
   return ret_val;
@@ -169,29 +169,29 @@ bool SQLiteDBEngine::BindJsonData(std::unique_ptr<SQLite::IStatement>const& stmt
         json_data.get<int64_t>() :
         json_data.is_string() && json_data.get_ref<const std::string&>().size() ? 
           std::stoll(json_data.get_ref<const std::string&>()) : 0;
-      ret_val = stmt->bind(cid, value);
+      stmt->bind(cid, value);
     } else if (ColumnType::UNSIGNED_BIGINT_TYPE == type) {
       uint64_t value = json_data.is_number_unsigned() ? 
         json_data.get<uint64_t>() :
         json_data.is_string() && json_data.get_ref<const std::string&>().size() ? 
           std::stoull(json_data.get_ref<const std::string&>()) : 0;
-      ret_val = stmt->bind(cid, value);
+      stmt->bind(cid, value);
     } else if (ColumnType::INTEGER_TYPE == type) {
       int32_t value = json_data.is_number() ? 
         json_data.get<int32_t>() : 
         json_data.is_string() && json_data.get_ref<const std::string&>().size() ? 
           std::stol(json_data.get_ref<const std::string&>()) : 0;
-      ret_val = stmt->bind(cid, value);
+      stmt->bind(cid, value);
     } else if (ColumnType::TEXT_TYPE == type) {
       std::string value = json_data.is_string() ? 
         json_data.get_ref<const std::string&>() : "";
-      ret_val = stmt->bind(cid, value);
+      stmt->bind(cid, value);
     } else if (ColumnType::DOUBLE_TYPE == type) {
       double value = json_data.is_number_float() ? 
         json_data.get<double>() : 
         json_data.is_string() && json_data.get_ref<const std::string&>().size() ? 
           std::stod(json_data.get_ref<const std::string&>()) : .0f;
-      ret_val = stmt->bind(cid, value);
+      stmt->bind(cid, value);
     } else if (ColumnType::BLOB_TYPE == type) {
       std::cout << "not implemented "<< __LINE__ << " - " << __FILE__ << std::endl;
     }
@@ -451,7 +451,7 @@ bool SQLiteDBEngine::DeleteRows(
       stmt->step();
       stmt->reset();
     }
-    ret_val = transaction->commit();
+    transaction->commit();
   }
   return ret_val;
 }
@@ -468,19 +468,19 @@ int32_t SQLiteDBEngine::BindFieldData(
   
   if (ColumnType::BIGINT_TYPE == type) {
     const auto value { std::get<GenericTupleIndex::GEN_BIGINT>(field_data) };
-    rc = stmt->bind(index, value);
+    stmt->bind(index, value);
   } else if (ColumnType::UNSIGNED_BIGINT_TYPE == type) {
     const auto value { std::get<GenericTupleIndex::GEN_UNSIGNED_BIGINT>(field_data) };
-    rc = stmt->bind(index, value);
+    stmt->bind(index, value);
   } else if (ColumnType::INTEGER_TYPE == type) {
     const auto value { std::get<GenericTupleIndex::GEN_INTEGER>(field_data) };
-    rc = stmt->bind(index, value);
+    stmt->bind(index, value);
   } else if (ColumnType::TEXT_TYPE == type) {
     const auto value { std::get<GenericTupleIndex::GEN_STRING>(field_data) };
-    rc = stmt->bind(index, value);
+    stmt->bind(index, value);
   } else if (ColumnType::DOUBLE_TYPE == type) {
     const auto value { std::get<GenericTupleIndex::GEN_DOUBLE>(field_data) };
-    rc = stmt->bind(index, value);
+    stmt->bind(index, value);
 
   } else if (ColumnType::BLOB_TYPE == type) {
     std::cout << "not implemented "<< __LINE__ << " - " << __FILE__ << std::endl;
@@ -579,7 +579,7 @@ bool SQLiteDBEngine::bulkInsert(
       stmt->step();
       stmt->reset();
     }
-    ret_val = transaction->commit();
+    transaction->commit();
   }
   return ret_val;
 }
@@ -780,13 +780,12 @@ bool SQLiteDBEngine::UpdateRows(
           row,
           field) };
         
-        if (!m_sqlite_connection->execute(sql)) {
-          std::cout << "error" << std::endl;
-        }
+        m_sqlite_connection->execute(sql);
       }
     }
   }
-  return transaction->commit();
+  transaction->commit();
+  return true;
 }
 
 bool SQLiteDBEngine::GetFieldValueFromTuple(
