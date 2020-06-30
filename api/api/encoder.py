@@ -4,7 +4,7 @@ import six
 from connexion.jsonifier import JSONEncoder
 
 from api.models.base_model_ import Model
-from wazuh.results import AbstractWazuhResult
+from wazuh.core.results import AbstractWazuhResult
 
 
 class WazuhJSONEncoder(JSONEncoder):

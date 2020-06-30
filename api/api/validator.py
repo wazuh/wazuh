@@ -9,7 +9,7 @@ from typing import Dict, List
 from defusedxml import ElementTree as ET
 from jsonschema import draft4_format_checker
 
-from wazuh import common
+from wazuh.core import common
 
 _alphanumeric_param = re.compile(r'^[\w,\-\.\+\s\:]+$')
 _array_numbers = re.compile(r'^\d+(,\d+)*$')

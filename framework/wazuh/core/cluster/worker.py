@@ -14,15 +14,13 @@ from typing import Tuple, Dict, Callable, List, TextIO, KeysView
 
 import wazuh.core.cluster.cluster
 from wazuh.core.cluster import client, common as c_common
-from wazuh import exception, cluster
-from wazuh.core import cluster as metadata
-from wazuh import common, utils
-from wazuh.exception import WazuhException, WazuhClusterError
-from wazuh.core.core_agent import Agent
-from wazuh.database import Connection
+from wazuh.core import cluster as metadata, common, exception, utils
+from wazuh.core.exception import WazuhException, WazuhClusterError
+from wazuh.core.agent import Agent
+from wazuh.core.database import Connection
 from wazuh.core.cluster.dapi import dapi
-from wazuh.wdb import WazuhDBConnection
-from wazuh.utils import safe_move
+from wazuh.core.wdb import WazuhDBConnection
+from wazuh.core.utils import safe_move
 
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):

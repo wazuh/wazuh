@@ -4,7 +4,7 @@
 
 import os
 
-from wazuh import common
+from wazuh.core import common
 
 API_PATH = os.path.join(common.ossec_path, 'api')
 CONFIG_PATH = os.path.join(API_PATH, 'configuration')

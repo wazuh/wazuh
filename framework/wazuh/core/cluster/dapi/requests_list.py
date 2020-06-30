@@ -1,6 +1,7 @@
 # Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+import wazuh.core.agent
 import wazuh.core.cluster.cluster
 import wazuh.core.cluster.utils
 import wazuh.core.manager
@@ -9,7 +10,7 @@ from wazuh.rule import Rule
 from wazuh.decoder import Decoder
 import wazuh.cluster as cluster
 import wazuh.core.cluster.control as cluster_control
-import wazuh.configuration as configuration
+import wazuh.core.configuration as configuration
 import wazuh.sca as sca
 import wazuh.manager as manager
 import wazuh.mitre as mitre
@@ -459,7 +460,7 @@ functions = {
         'is_async': False
     },
     '/rules/groups': {
-        'function': Rule.get_groups,
+        'function': wazuh.core.agent.get_groups,
         'type': 'local_any',
         'is_async': False
     },

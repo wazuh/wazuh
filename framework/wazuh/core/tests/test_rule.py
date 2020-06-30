@@ -22,7 +22,7 @@ with patch('wazuh.common.ossec_uid'):
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        from wazuh.exception import WazuhError
+        from wazuh.core.exception import WazuhError
         from wazuh.core import rule
 
 # variables

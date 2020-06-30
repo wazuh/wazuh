@@ -2198,7 +2198,6 @@ components:
 
     APIconfiguration:
       type: object
-      additionalProperties: false
       minProperties: 1
       properties:
         behind_proxy_server:
@@ -2340,7 +2339,6 @@ components:
 
     SecurityConfiguration:
       type: object
-      additionalProperties: false
       minProperties: 1
       properties:
         auth_token_exp_timeout:
@@ -2352,7 +2350,6 @@ components:
         rbac_mode:
           description: "RBAC mode (white/black)"
           type: string
-          additionalProperties: false
           enum: [white, black]
           example: white
 

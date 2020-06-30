@@ -13,7 +13,7 @@ with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
         sys.modules['api'] = MagicMock()
         from wazuh.core.manager import *
-        from wazuh.exception import WazuhException
+        from wazuh.core.exception import WazuhException
         del sys.modules['api']
 
 ossec_cdb_list = "172.16.19.:\n172.16.19.:\n192.168.:"

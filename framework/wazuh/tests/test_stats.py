@@ -7,7 +7,7 @@ from unittest.mock import patch, MagicMock
 from datetime import date
 import pytest
 
-from wazuh.exception import WazuhException
+from wazuh.core.exception import WazuhException
 
 
 with patch('wazuh.common.ossec_uid'):

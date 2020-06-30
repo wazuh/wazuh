@@ -21,7 +21,7 @@ with patch('wazuh.common.ossec_uid'):
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh import syscollector
-        from wazuh.results import AffectedItemsWazuhResult
+        from wazuh.core.results import AffectedItemsWazuhResult
         from wazuh.core.syscollector import Type, get_valid_fields
 
 
@@ -33,8 +33,8 @@ with patch('wazuh.common.ossec_uid'):
     (None, {'negation': False, 'value': 'Centos'}),
 ])
 @patch("wazuh.syscollector.get_agents_info", return_value=['000', '001'])
-@patch("wazuh.core.core_agent.Agent.get_basic_information", return_value=None)
-@patch('wazuh.core.core_agent.Agent.get_agent_attr', return_value='Linux')
+@patch("wazuh.core.agent.Agent.get_basic_information", return_value=None)
+@patch('wazuh.core.agent.Agent.get_agent_attr', return_value='Linux')
 def test_get_item_agent(mock_agent_attr, mock_basic_info, mock_agents_info, select, search):
     """Test get_item_agent method.
 
@@ -48,7 +48,7 @@ def test_get_item_agent(mock_agent_attr, mock_basic_info, mock_agents_info, sele
     search : dict
         Looks for items with the specified string in DB.
     """
-    with patch('wazuh.utils.WazuhDBConnection') as mock_wdb:
+    with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
         mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_syscollector_000.sql')
         results = syscollector.get_item_agent(agent_list=['000'], offset=0, select=select, search=search)
 
@@ -65,8 +65,8 @@ def test_get_item_agent(mock_agent_attr, mock_basic_info, mock_agents_info, sele
     (['010'], 1701),
 ])
 @patch("wazuh.syscollector.get_agents_info", return_value=['000', '001'])
-@patch("wazuh.core.core_agent.Agent.get_basic_information", return_value=None)
-@patch('wazuh.core.core_agent.Agent.get_agent_attr', return_value='Linux')
+@patch("wazuh.core.agent.Agent.get_basic_information", return_value=None)
+@patch('wazuh.core.agent.Agent.get_agent_attr', return_value='Linux')
 def test_failed_get_item_agent(mock_agent_attr, mock_basic_info, mock_agents_info, agent_list, expected_exception):
     """Test if get_item_agent method handle exceptions properly.
 
@@ -77,7 +77,7 @@ def test_failed_get_item_agent(mock_agent_attr, mock_basic_info, mock_agents_inf
     expected_exception : int
         Expected error code when triggering the exception.
     """
-    with patch('wazuh.utils.WazuhDBConnection') as mock_wdb:
+    with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
         mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_syscollector_000.sql')
         results = syscollector.get_item_agent(agent_list=agent_list, offset=0, limit=500, nested=False)
 
@@ -96,8 +96,8 @@ def test_failed_get_item_agent(mock_agent_attr, mock_basic_info, mock_agents_inf
     'hotfixes'
 ])
 @patch("wazuh.syscollector.get_agents_info", return_value=['000', '001'])
-@patch("wazuh.core.core_agent.Agent.get_basic_information", return_value=None)
-@patch('wazuh.core.core_agent.Agent.get_agent_attr', return_value='Linux')
+@patch("wazuh.core.agent.Agent.get_basic_information", return_value=None)
+@patch('wazuh.core.agent.Agent.get_agent_attr', return_value='Linux')
 def test_agent_elements(mock_agent_attr, mock_basic_info, mock_agents_info, element_type):
     """Tests every possible type of agent element
 
@@ -121,7 +121,7 @@ def test_agent_elements(mock_agent_attr, mock_basic_info, mock_agents_info, elem
             else:
                 assert field in rendered_result['data']['affected_items'][0].keys(), f'Key "{field}" not found in result'
 
-    with patch('wazuh.utils.WazuhDBConnection') as mock_wdb:
+    with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
         mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_syscollector_000.sql')
         results = syscollector.get_item_agent(agent_list=['000'], element_type=element_type)
 
