@@ -9,7 +9,7 @@ import more_itertools
 
 from wazuh.common import database_limit
 from wazuh.exception import WazuhException
-from wazuh.utils import WazuhDBBackend, WazuhDBQuery
+from wazuh.utils import WazuhDBBackend, WazuhDBQuery, sort_array
 
 mitre_fields = {'id': 'id', 'json': 'json', 'phase_name': 'phase_name', 'platform_name': 'platform_name'}
 from_fields = "attack LEFT JOIN has_phase ON attack.id = has_phase.attack_id" \
@@ -124,5 +124,8 @@ def get_attack(id: str = None, phase_name: str = None, platform_name: str = None
     # Execute query
     db_query = WazuhDBQueryMitre(offset=offset, limit=limit, query=q, sort=sort, search=search, select=select)
     result = db_query.run()
+
+    if sort and 'json' not in sort['fields']:
+        result['items'] = sort_array(result['items'], sort_by=sort['fields'], order=sort['order'])
 
     return result

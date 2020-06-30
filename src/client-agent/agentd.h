@@ -92,6 +92,13 @@ void start_agent(int is_startup);
 /* Connect to the server */
 int connect_server(int initial_id);
 
+/** 
+ * Tries to enroll to a server indicated by server_rip
+ * @return 0 on success
+ *         -1 on error
+ * */
+int try_enroll_to_server(const char *server_rip);
+
 /* Notify server */
 void run_notify(void);
 

@@ -151,7 +151,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
     do {
         const time_t time_sleep = sched_scan_get_time_until_next_scan(&(ciscat->scan_config), WM_CISCAT_LOGTAG, ciscat->flags.scan_on_start);
-        
+
         if (time_sleep) {
             const int next_scan_time = sched_get_next_scan_time(ciscat->scan_config);
             timestamp = w_get_timestamp(next_scan_time);

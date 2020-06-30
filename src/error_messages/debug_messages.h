@@ -87,6 +87,7 @@
 #define VU_END_SCAN           "(5472): Vulnerability scan finished."
 #define VU_NO_SRC_VERSION     "(5480): Unable to get the source '%s' version for agent '%.3d'"
 #define VU_NO_SRC_NAME        "(5481): Unable to get the source '%s' name for agent '%.3d'"
+#define VU_VULN_SEND_AG_FEED  "(5482): A total of '%d' vulnerabilities have been reported for agent '%.3d' thanks to the '%s' feed."
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
@@ -234,5 +235,6 @@
 #define FIM_FILE_LIMIT_UNLIMITED            "(6343): No limit set to maximum number of files to be monitored"
 #define FIM_INOTIFY_WATCH_DELETED           "(6344): Inotify watch deleted for '%s'"
 #define FIM_NUM_WATCHES                     "(6345): Folders monitored with real-time engine: %u"
+#define FIM_REALTIME_CALLBACK               "(6346): Realtime watch deleted for '%s'"
 
 #endif /* DEBUG_MESSAGES_H */

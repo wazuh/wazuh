@@ -327,7 +327,6 @@
       "data.vulnerability.title",
       "data.vulnerability.assigner",
       "data.vulnerability.cve_version",
-      "data.vulnerability.alert_origin",
       "data.win.eventdata.auditPolicyChanges",
       "data.win.eventdata.auditPolicyChangesId",
       "data.win.eventdata.binary",
@@ -1715,9 +1714,6 @@
                 "type": "keyword"
               },
               "cve_version": {
-                "type": "keyword"
-              },
-              "alert_origin": {
                 "type": "keyword"
               }
             }

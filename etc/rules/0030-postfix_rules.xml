@@ -55,7 +55,6 @@
     <description>Postfix: Improper use of SMTP command pipelining </description>
     <description>(503: Bad sequence of commands).</description>
     <mitre>
-      <id>T1071</id>
       <id>T1114</id>
     </mitre>
     <group>spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
@@ -122,10 +121,9 @@
   <rule id="3335" level="6">
     <if_sid>3320</if_sid>
     <match>^too many </match>
-    <description>Postfix: too many errors after RCPT from unkown</description>
+    <description>Postfix: too many errors after RCPT from unknown</description>
     <group>spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <mitre>
-      <id>T1095</id>
       <id>T1114</id>
     </mitre>
   </rule>
@@ -178,7 +176,6 @@
     <description>Postfix: Multiple misuse of SMTP service </description>
     <description>(bad sequence of commands).</description>
     <mitre>
-      <id>T1071</id>
       <id>T1114</id>
     </mitre>
     <group>multiple_spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>

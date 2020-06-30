@@ -136,7 +136,7 @@ int Rules_OP_ReadRules(const char *rulefile)
     const char *xml_same_data = "same_data";
     const char *xml_same_extra_data = "same_extra_data";
     const char *xml_same_status = "same_status";
-    const char *xml_same_systemname = "same_systemname";
+    const char *xml_same_systemname = "same_system_name";
     const char *xml_same_dstgeoip = "same_dstgeoip";
 
     const char *xml_different_url = "different_url";
@@ -156,7 +156,7 @@ int Rules_OP_ReadRules(const char *rulefile)
     const char *xml_different_data = "different_data";
     const char *xml_different_extra_data = "different_extra_data";
     const char *xml_different_status = "different_status";
-    const char *xml_different_systemname = "different_systemname";
+    const char *xml_different_systemname = "different_system_name";
     const char *xml_different_dstgeoip = "different_dstgeoip";
     const char *xml_different_field = "different_field";
 

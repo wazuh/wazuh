@@ -12,7 +12,14 @@
 #include "agentd.h"
 #include "os_net/os_net.h"
 
+#define ENROLLMENT_RETRY_TIME_MAX   60
+#define ENROLLMENT_RETRY_TIME_DELTA 5
+
 int timeout;    //timeout in seconds waiting for a server reply
+
+static ssize_t receive_message_udp(const char *msg, char *buffer, unsigned int max_lenght);
+static ssize_t receive_message_tcp(const char *msg, char *buffer, unsigned int max_lenght);
+static void w_agentd_keys_init (void);
 
 /* Attempt to connect to all configured servers */
 int connect_server(int initial_id)
@@ -49,12 +56,12 @@ int connect_server(int initial_id)
         /* Check if we have a hostname */
         tmp_str = strchr(agt->server[rc].rip, '/');
         if (tmp_str) {
-            // Resolve hostname
+            /* Resolve hostname */
             if (!isChroot()) {
                 resolveHostname(&agt->server[rc].rip, 5);
 
                 tmp_str = strchr(agt->server[rc].rip, '/');
-                if(tmp_str) {
+                if (tmp_str) {
                     tmp_str++;
                 }
             } else {
@@ -64,7 +71,7 @@ int connect_server(int initial_id)
             tmp_str = agt->server[rc].rip;
         }
 
-        // The hostname was not resolved correctly
+        /* The hostname was not resolved correctly */
         if (tmp_str == NULL || *tmp_str == '\0') {
             int rip_l = strlen(agt->server[rc].rip);
             mdebug2("Could not resolve hostname '%.*s'", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
@@ -150,9 +157,9 @@ int connect_server(int initial_id)
 /* Send synchronization message to the server and wait for the ack */
 void start_agent(int is_startup)
 {
-    ssize_t recv_b = 0;
     size_t msg_length;
-    int attempts = 0, g_attempts = 1;
+    int delay = 1;
+    ssize_t recv_b = 0;
 
     char *tmp_msg;
     char msg[OS_MAXSTR + 2];
@@ -166,126 +173,265 @@ void start_agent(int is_startup)
     memset(fmsg, '\0', OS_MAXSTR + 1);
     snprintf(msg, OS_MAXSTR, "%s%s", CONTROL_HEADER, HC_STARTUP);
 
-#ifdef ONEWAY_ENABLED
-    return;
-#endif
+    if (is_startup) {
+        w_agentd_keys_init();
+    }
+
+    #ifdef ONEWAY_ENABLED
+        return;
+    #endif
 
     while (1) {
-        /* Send start up message */
-        send_msg(msg, -1);
-        attempts = 0;
+        if (connect_server(agt->rip_id)) {
+            /* Send start up message */
+            send_msg(msg, -1);
 
-        /* Read until our reply comes back */
-        while (attempts <= 5) {
-            if (agt->server[agt->rip_id].protocol == IPPROTO_TCP) {
-
-                switch (wnet_select(agt->sock, timeout)) {
-                case -1:
-                    merror(SELECT_ERROR, errno, strerror(errno));
-                    break;
-
-                case 0:
-                    // Timeout
-                    break;
-
-                default:
-                    recv_b = OS_RecvSecureTCP(agt->sock, buffer, OS_MAXSTR);
-                }
+            /* Read until our reply comes back */
+            if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
+                recv_b = receive_message_udp(msg, buffer, OS_MAXSTR);
             } else {
-                recv_b = recv(agt->sock, buffer, OS_MAXSTR, MSG_DONTWAIT);
+                recv_b = receive_message_tcp(msg, buffer, OS_MAXSTR);
             }
+            
+            if (recv_b > 0) {
+                /* Id of zero -- only one key allowed */
+                if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip, &tmp_msg) != KS_VALID) {
+                    mwarn(MSG_ERROR, agt->server[agt->rip_id].rip);
+                } else {
+                    /* Check for commands */
+                    if (IsValidHeader(tmp_msg)) {
+                        /* If it is an ack reply */
+                        if (strcmp(tmp_msg, HC_ACK) == 0) {
+                            available_server = time(0);
 
-            if (recv_b <= 0) {
-                /* Sleep five seconds before trying to get the reply from
-                 * the server again
-                 */
-                attempts++;
+                            minfo(AG_CONNECTED, agt->server[agt->rip_id].rip,
+                                    agt->server[agt->rip_id].port, agt->server[agt->rip_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
 
-                switch (recv_b) {
-                case OS_SOCKTERR:
-                    merror("Corrupt payload (exceeding size) received.");
-                    break;
-                case -1:
-#ifdef WIN32
-                    mdebug1("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
-#else
-                    mdebug1("Connection socket: %s (%d)", strerror(errno), errno);
-#endif
-                }
-
-                sleep(attempts);
-
-                /* Send message again (after three attempts) */
-                if (attempts >= 3 || recv_b == OS_SOCKTERR) {
-                    if (agt->server[agt->rip_id].protocol == IPPROTO_TCP) {
-                        if (!connect_server(agt->rip_id)) {
-                            continue;
+                            if (is_startup) {
+                                /* Send log message about start up */
+                                snprintf(msg, OS_MAXSTR, OS_AG_STARTED,
+                                        keys.keyentries[0]->name,
+                                        keys.keyentries[0]->ip->ip);
+                                snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ,
+                                        "ossec", msg);
+                                send_msg(fmsg, -1);
+                            }
+                            return;
                         }
-                    } else {
-                        send_msg(msg, -1);
                     }
-                }
-
-                if (agt->server[agt->rip_id].protocol == IPPROTO_TCP) {
-                    send_msg(msg, -1);
-                }
-
-                continue;
-            }
-
-            /* Id of zero -- only one key allowed */
-            if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip, &tmp_msg) != KS_VALID) {
-                mwarn(MSG_ERROR, agt->server[agt->rip_id].rip);
-                continue;
-            }
-
-            /* Check for commands */
-            if (IsValidHeader(tmp_msg)) {
-                /* If it is an ack reply */
-                if (strcmp(tmp_msg, HC_ACK) == 0) {
-                    available_server = time(0);
-
-                    minfo(AG_CONNECTED, agt->server[agt->rip_id].rip,
-                            agt->server[agt->rip_id].port, agt->server[agt->rip_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
-
-                    if (is_startup) {
-                        /* Send log message about start up */
-                        snprintf(msg, OS_MAXSTR, OS_AG_STARTED,
-                                 keys.keyentries[0]->name,
-                                 keys.keyentries[0]->ip->ip);
-                        snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ,
-                                 "ossec", msg);
-                        send_msg(fmsg, -1);
-                    }
-                    return;
                 }
             }
         }
-
+        
         /* Wait for server reply */
         mwarn(AG_WAIT_SERVER, agt->server[agt->rip_id].rip);
 
-        /* If we have more than one server, try all */
-        if (agt->server[1].rip) {
-            int curr_rip = agt->rip_id;
-            minfo("Trying next server ip in the line: '%s'.",
-                   agt->server[agt->rip_id + 1].rip != NULL ? agt->server[agt->rip_id + 1].rip : agt->server[0].rip);
-            connect_server(agt->rip_id + 1);
-
-            if (agt->rip_id == curr_rip) {
-                sleep(g_attempts < agt->notify_time ? g_attempts : agt->notify_time);
-                g_attempts += (attempts * 3);
-            } else {
-                g_attempts += 5;
-                sleep(g_attempts < agt->notify_time ? g_attempts : agt->notify_time);
-            }
+        /* If there is a next server, try it */
+        if (agt->server[agt->rip_id + 1].rip) {
+            agt->rip_id++;
+            minfo("Trying next server ip in the line: '%s'.", agt->server[agt->rip_id].rip);
+            delay += 5;
+            sleep(delay < agt->notify_time ? delay : agt->notify_time);
         } else {
-            sleep(g_attempts < agt->notify_time ? g_attempts : agt->notify_time);
-            g_attempts += (attempts * 3);
-
-            connect_server(0);
+            agt->rip_id = 0;
+            delay += (5 * 3);
+            sleep(delay < agt->notify_time ? delay : agt->notify_time);
         }
     }
 
     return;
+}
+
+/**
+ * @brief Initialize keys structure, counter, agent info and crypto method.
+ * Keys are read from client.keys. If no valid entry is found:
+ *  -If autoenrollment is enabled, a new key is requested to server and execution is blocked until a valid key is received. 
+ *  -If autoenrollment is disabled, daemon is stoped
+ * */
+static void w_agentd_keys_init (void) {
+    
+    if (keys.keysize == 0) {
+        /* Check if we can auto-enroll */
+        if (agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
+            int registration_status = -1;
+            int delay_sleep = 0;
+            while (registration_status != 0) {
+                int rc = 0;                
+                if (agt->enrollment_cfg->target_cfg->manager_name) {
+                    /* Configured enrollment server */
+                    registration_status = try_enroll_to_server(agt->enrollment_cfg->target_cfg->manager_name);
+                } 
+                
+                /* Try to enroll to server list */
+                while (agt->server[rc].rip && (registration_status != 0)) {
+                    registration_status = try_enroll_to_server(agt->server[rc].rip);
+                    rc++;
+                }
+
+                /* Sleep between retries */
+                if (registration_status != 0) {
+                    if (delay_sleep < ENROLLMENT_RETRY_TIME_MAX) {
+                        delay_sleep += ENROLLMENT_RETRY_TIME_DELTA;
+                    }
+                    mdebug1("Sleeping %d seconds before trying to enroll again", delay_sleep);
+                    sleep(delay_sleep);
+                }
+            }        
+        }
+        /* If autoenrollment is disabled, stop daemon */
+        else {
+            merror_exit(AG_NOKEYS_EXIT);
+        }
+    }
+
+    OS_StartCounter(&keys);
+
+    os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id,
+                        agt->profile);
+
+    /* Set the crypto method for the agent */
+    os_set_agent_crypto_method(&keys,agt->crypto_method);
+
+    switch (agt->crypto_method) {
+        case W_METH_AES:
+            minfo("Using AES as encryption method.");
+            break;
+        case W_METH_BLOWFISH:
+            minfo("Using Blowfish as encryption method.");
+            break;
+        default:
+            merror("Invalid encryption method.");
+    }
+}
+
+/**
+ * @brief Holds the message reception logic for udp
+ * 
+ * @param msg message to be sent
+ * @param buffer pointer to buffer where the information will be stored
+ * @param max_length size of buffer
+ * @return Integer value indicating the status code.
+ * @retval message_size on success
+ * @retval 0 when all retries failed
+ * */
+static ssize_t receive_message_udp(const char *msg, char *buffer, unsigned int max_lenght) {
+    int attempts = 0;
+    ssize_t recv_b = 0;
+    
+    while (attempts < 6) {  
+        attempts++;
+        sleep(attempts*2);
+
+        /* Receive response */
+        recv_b = recv(agt->sock, buffer, max_lenght, MSG_DONTWAIT);
+
+        /* Successful response */
+        if (recv_b > 0) {                
+            return recv_b;
+        }
+        /* Error response */
+        else { 
+            switch (recv_b) {
+            case OS_SOCKTERR:
+                merror("Corrupt payload (exceeding size) received.");
+                break;
+            default:
+                #ifdef WIN32
+                    mdebug1("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
+                #else
+                    mdebug1("Connection socket: %s (%d)", strerror(errno), errno);
+                #endif
+                break;
+            }
+            /* Try to enroll on fifth attempt */
+            if (attempts == 5 && agt->enrollment_cfg && agt->enrollment_cfg->enabled) {           
+                try_enroll_to_server(agt->server[agt->rip_id].rip);
+            }  
+            /* Start retrying sending message after third attemp or OS_SOCKTERR */
+            if (attempts >= 3 || recv_b == OS_SOCKTERR) {
+                if (connect_server(agt->rip_id)) {
+                    send_msg(msg, -1);  
+                } 
+            }                      
+        }
+    }
+    return 0;
+}
+
+/**
+ * @brief Holds the message reception logic for tcp
+ * 
+ * @param msg message to be sent
+ * @param buffer pointer to buffer where the information will be stored
+ * @param max_length size of buffer
+ * @return Integer value indicating the status code.
+ * @retval message_size on success
+ * @retval 0 when all retries failed
+ * */
+static ssize_t receive_message_tcp(const char *msg, char *buffer, unsigned int max_lenght) {
+    ssize_t recv_b = 0;
+    int attempts = 0;
+    
+    while (attempts < 6) {
+        attempts++;
+        sleep(attempts*2);
+        int sock = wnet_select(agt->sock, timeout);
+        if (sock < 0) {
+            merror(SELECT_ERROR, errno, strerror(errno));
+        } 
+        else if (sock > 0) {
+            /* Receive response */
+            recv_b = OS_RecvSecureTCP(agt->sock, buffer, max_lenght);
+
+            /* Successful response */
+            if (recv_b > 0) {
+                return recv_b;
+            }   
+            
+            /* Error response */
+            switch (recv_b) {
+                case OS_SOCKTERR:
+                    merror("Corrupt payload (exceeding size) received.");
+                    break;
+                case 0:
+                    /* Peer performed orderly shutdown (connection refused by manager)
+                    *  Try to re enroll on fifth attempt
+                    */
+                    if (agt->enrollment_cfg && agt->enrollment_cfg->enabled && attempts == 5) {
+                        try_enroll_to_server(agt->server[agt->rip_id].rip);                     
+                    }
+                    /* Try to re send msg every time due to possible keys update delay on manager */
+                    if (connect_server(agt->rip_id)) {
+                        send_msg(msg, -1);
+                    }
+                    break;
+                case -1:
+                    #ifdef WIN32
+                        mdebug1("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
+                    #else
+                        mdebug1("Connection socket: %s (%d)", strerror(errno), errno);
+                    #endif
+                    /* Connection timeout, try to reconnect */
+                    if (connect_server(agt->rip_id)) {
+                        send_msg(msg, -1);
+                    }
+                    break;
+            }
+        }
+    }
+    return 0;
+}
+
+int try_enroll_to_server(const char * server_rip) {
+    int enroll_result = w_enrollment_request_key(agt->enrollment_cfg, server_rip);
+    if (enroll_result == 0) {
+        /* Wait for key update on agent side */
+        mdebug1("Sleeping %d seconds to allow manager key file updates", agt->enrollment_cfg->delay_after_enrollment);
+        sleep(agt->enrollment_cfg->delay_after_enrollment);
+        /* Successfull enroll, read keys */
+        OS_UpdateKeys(&keys);
+        /* Set the crypto method for the agent */
+        os_set_agent_crypto_method(&keys,agt->crypto_method);
+    }
+    return enroll_result;
 }

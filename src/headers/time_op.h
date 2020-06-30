@@ -83,4 +83,12 @@ long long int get_windows_file_time_epoch(FILETIME ft);
 
 #endif
 
+/**
+ * @brief Function to check if a year is a leap year or not.
+ * 
+ * @param year Year to check.
+ * @return Boolean indicating whether the year is leap.
+ */
+bool is_leap_year(int year);
+
 #endif // TIME_OP_H

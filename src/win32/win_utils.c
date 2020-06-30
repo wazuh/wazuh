@@ -33,7 +33,6 @@ void *skthread()
 /* Locally start (after service/win init) */
 int local_start()
 {
-    int debug_level;
     int rc;
     char *cfg = DEFAULTCPATH;
     WSADATA wsaData;
@@ -41,18 +40,18 @@ int local_start()
     DWORD  threadID2;
     win_debug_level = getDefine_Int("windows", "debug", 0, 2);
 
-    /* Start agent */
-    agt = (agent *)calloc(1, sizeof(agent));
-    if (!agt) {
-        merror_exit(MEM_ERROR, errno, strerror(errno));
-    }
-
     /* Get debug level */
-    debug_level = win_debug_level;
+    int debug_level = win_debug_level;
     while (debug_level != 0) {
         nowDebug();
         debug_level--;
     }
+    
+    /* Initialize logging module*/
+    w_logging_init();
+    
+    /* Start agent */
+    os_calloc(1, sizeof(agent), agt);
 
     /* Configuration file not present */
     if (File_DateofChange(cfg) < 0) {
@@ -108,10 +107,18 @@ int local_start()
         merror_exit(CONFIG_ERROR, cfg);
     }
 
-    /* Check auth keys */
-    if (!OS_CheckKeys()) {
-        merror_exit(AG_NOKEYS_EXIT);
+    if(agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
+        // If autoenrollment is enabled, we will avoid exit if there is no valid key
+        OS_PassEmptyKeyfile();
+    } else {
+        /* Check auth keys */
+        if (!OS_CheckKeys()) {
+            merror_exit(AG_NOKEYS_EXIT);
+        }
     }
+    /* Read keys */
+    minfo(ENC_READ);
+    OS_ReadKeys(&keys, 1, 0, 0);
 
     /* If there is no file to monitor, create a clean entry
      * for the mark messages.
@@ -149,16 +156,6 @@ int local_start()
     /* Initialize sender */
     sender_init();
 
-    /* Read keys */
-    minfo(ENC_READ);
-
-    OS_ReadKeys(&keys, 1, 0, 0);
-    OS_StartCounter(&keys);
-    os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id, agt->profile);
-
-    /*Set the crypto method for the agent */
-    os_set_agent_crypto_method(&keys, agt->crypto_method);
-
     /* Initialize random numbers */
     srandom(time(0));
     os_random();
@@ -176,7 +173,6 @@ int local_start()
 
     /* Socket connection */
     agt->sock = -1;
-    StartMQ("", 0);
 
     /* Start mutex */
     mdebug1("Creating thread mutex.");
@@ -220,7 +216,7 @@ int local_start()
     start_agent(1);
     os_delwait();
     update_status(GA_STATUS_ACTIVE);
-
+    
     req_init();
 
     /* Start receiver thread */
