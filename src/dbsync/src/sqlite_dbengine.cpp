@@ -199,7 +199,7 @@ bool SQLiteDBEngine::BindJsonData(std::unique_ptr<SQLite::IStatement>const& stmt
   return ret_val;
 }
 
-bool SQLiteDBEngine::refreshTablaData(const nlohmann::json& data, const std::tuple<nlohmann::json&, void *> delta) {
+bool SQLiteDBEngine::refreshTableData(const nlohmann::json& data, const std::tuple<nlohmann::json&, void *> delta) {
   auto ret_val {false};
   const std::string table { data["table"].is_string() ? data["table"].get_ref<const std::string&>() : "" };
   if (CreateCopyTempTable(table)) {

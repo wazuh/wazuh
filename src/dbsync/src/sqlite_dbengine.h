@@ -78,7 +78,7 @@ public:
   virtual bool execute(const std::string& query) override;
   virtual bool select(const std::string& query, nlohmann::json& result) override;
   virtual bool bulkInsert(const std::string& table, const nlohmann::json& data) override;
-  virtual bool refreshTablaData(const nlohmann::json& data, const std::tuple<nlohmann::json&, void *> delta) override;
+  virtual bool refreshTableData(const nlohmann::json& data, const std::tuple<nlohmann::json&, void *> delta) override;
 
 private:
   void Initialize(const std::string& path, const std::string& table_statement_creation);
