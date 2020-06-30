@@ -1,6 +1,5 @@
 #!/bin/bash
 ## Check if system is based on yum or apt-get
-ips=()
 if [ -n "$(command -v yum)" ] 
 then
     sys_type="yum"
@@ -118,9 +117,10 @@ configureElastic() {
 
 configureKibana() {
 
-    conf="$(awk '{sub(/0.0.0.0/,"'$ip'")}1' /etc/kibana/kibana.yml)"
+    conf="$(awk '{sub(/localhost/,"'$ip'")}1' /etc/kibana/kibana.yml)"
     echo "$conf" > /etc/kibana/kibana.yml
-
+    conf="$(awk '{sub(/0.0.0.0/,"'$kip'")}1' /etc/kibana/kibana.yml)"
+    echo "$conf" > /etc/kibana/kibana.yml
 }
 
 ## Kibana
@@ -177,20 +177,24 @@ main() {
                 shift 1
                 ;;
             "-ip"|"--elasticsearch-ip")        
-                ips+=($2)
-                ip=1
+                ip=$2
                 shift
                 shift
                 ;;
+            "-kip"|"--kibana-ip")        
+                kip=$2
+                shift
+                shift
+                ;;                
             *)
                 exit 1
             esac
         done
         if [ -n "$e" ] && [ -n "$ip" ]
         then
-            configureElastic $ips
+            configureElastic $ip
         fi
-        if [ -n "$k" ] && [ -n "$ip" ]
+        if [ -n "$k" ] && [ -n "$ip" ] && [ -n "$kip" ]
         then
             configureKibana $ip
         fi         
