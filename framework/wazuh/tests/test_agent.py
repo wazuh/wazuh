@@ -363,7 +363,7 @@ def test_agent_get_agent_groups(sqlite_mock, group_list, expected_result):
 
 @pytest.mark.parametrize('db_global, system_groups, error_code', [
     ('Invalid path', 'valid-group', 1600),
-    (test_global_bd_path, 'valid-group', 1710)
+    (test_global_bd_path, 'invalid_group', 1710)
 ])
 @patch('wazuh.agent.get_groups')
 def test_agent_get_agent_groups_exceptions(mock_get_groups, db_global, system_groups, error_code):

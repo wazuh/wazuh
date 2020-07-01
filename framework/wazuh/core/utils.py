@@ -1243,8 +1243,8 @@ def get_files():
     files = set()
     for folder in folders:
         for extension in '*.yml', '*.yml.disabled', '*.xml', '*.cdb':
-            files.update({f.replace(ossec_path + '/', "") for f in glob.glob(
-                join(ossec_path, folder, extension), recursive=True)})
+            files.update({f.replace(common.ossec_path + '/', "") for f in glob.glob(
+                path.join(common.ossec_path, folder, extension), recursive=True)})
     files.add('etc/ossec.conf')
 
     return files
