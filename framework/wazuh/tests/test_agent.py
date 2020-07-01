@@ -363,12 +363,10 @@ def test_agent_get_agent_groups(sqlite_mock, group_list, expected_result):
 
 @pytest.mark.parametrize('db_global, system_groups, error_code', [
     ('Invalid path', 'valid-group', 1600),
-    (test_global_bd_path, 'valid-group', 1000),
-    (test_global_bd_path, 'invalid-group', 1710)
+    (test_global_bd_path, 'valid-group', 1710)
 ])
 @patch('wazuh.agent.get_groups')
-@patch('wazuh.agent.WazuhDBQueryGroup.run', side_effect=WazuhException(1000))
-def test_agent_get_agent_groups_exceptions(mock_execute, mock_get_groups, db_global, system_groups, error_code):
+def test_agent_get_agent_groups_exceptions(mock_get_groups, db_global, system_groups, error_code):
     """Test `get_agent_groups` function from agent module raises the expected exceptions if an invalid 'global.db' path
     or group is specified.
 
@@ -379,7 +377,7 @@ def test_agent_get_agent_groups_exceptions(mock_execute, mock_get_groups, db_glo
             group_result = get_agent_groups(group_list=[system_groups])
             assert group_result.failed_items
             assert next(iter(group_result.failed_items)).code == error_code
-        except WazuhInternalError as e:
+        except WazuhException as e:
             assert e.code == error_code, 'The exception was raised as expected but "error_code" does not match.'
 
 
