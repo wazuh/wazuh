@@ -208,16 +208,14 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg
              extra_data,
              logs);
 #else
-    if (snprintf(mail->body, BODY_SIZE - 1, MAIL_BODY,
-             al_data->date,
-             al_data->location,
-             al_data->rule,
-             al_data->level,
-             al_data->comment,
-             extra_data,
-             logs) >= BODY_SIZE -1) {
-        mwarn("The body of the email could not store all data.");
-    }
+    os_snprintf(mail->body, BODY_SIZE - 1, MAIL_BODY,
+                al_data->date,
+                al_data->location,
+                al_data->rule,
+                al_data->level,
+                al_data->comment,
+                extra_data,
+                logs);
 #endif
     mdebug2("OS_RecvMailQ: mail->body[%s]", mail->body);
 

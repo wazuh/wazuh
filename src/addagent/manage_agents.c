@@ -340,12 +340,8 @@ int add_agent(int json_output, int no_limit)
                  * Random 5: Final key
                  */
 
-                if (snprintf(str1, STR_SIZE, "%d%s%d", (int)(time3 - time2), name, (int)rand1) >= STR_SIZE) {
-                    mwarn("Add agent: a string used to generate the agent key may be truncated.");
-                }
-                if (snprintf(str2, STR_SIZE, "%d%s%s%d", (int)(time2 - time1), ip, id, (int)rand2) >= STR_SIZE) {
-                    mwarn("Add agent: a string used to generate the agent key may be truncated.");
-                }
+                os_snprintf(str1, STR_SIZE, "%d%s%d", (int)(time3 - time2), name, (int)rand1);
+                os_snprintf(str2, STR_SIZE, "%d%s%s%d", (int)(time2 - time1), ip, id, (int)rand2);
 
                 OS_MD5_Str(str1, -1, md1);
                 OS_MD5_Str(str2, -1, md2);

@@ -117,9 +117,7 @@ char *__generatetmppass()
     OS_MD5_Str(rand3, -1, md3);
     OS_MD5_Str(rand4, -1, md4);
 
-    if (snprintf(str1, STR_SIZE, "%d%d%s%d%s%s",(int)time(0), rand1, getuname(), rand2, md3, md4) >= STR_SIZE) {
-        mwarn("Temporary shared pass may be truncated because it is too long.");
-    }
+    os_snprintf(str1, STR_SIZE, "%d%d%s%d%s%s",(int)time(0), rand1, getuname(), rand2, md3, md4);
     OS_MD5_Str(str1, -1, md1);
     fstring = strdup(md1);
     free(rand3);

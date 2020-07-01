@@ -55,9 +55,7 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
 
     /* Create the checksum file names */
     snprintf(logfile_r, OS_FLSIZE + 1, "%s.%s", logfile, ext);
-    if (snprintf(logfilesum, OS_FLSIZE, "%s.sum", logfile_r) >= OS_FLSIZE) {
-        mwarn("The checksum file name may be truncated because it is too long.");
-    }
+    os_snprintf(logfilesum, OS_FLSIZE, "%s.sum", logfile_r);
     snprintf(logfilesum_old, OS_FLSIZE, "%s.%s.sum", logfile_old, ext);
 
     MD5_Init(&md5_ctx);
