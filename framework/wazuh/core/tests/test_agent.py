@@ -351,35 +351,9 @@ def test_WazuhDBQueryGroup__init__(mock_socket_conn, mock_isfile, mock_sqli_conn
                 WazuhDBQueryGroup()
 
 
-@pytest.mark.parametrize('select', [
-    ['name'],
-    ['id'],
-    ['name', 'id'],
-    None
-])
-@patch("wazuh.common.database_path_global", new=os.path.join(test_data_path,  'global.db'))
-def test_WazuhDBQueryGroup_select(select):
-    """Test if parameter select of WazuhDBQueryGroup works properly.
-
-    Parameters
-    ----------
-    select : list
-        List of selects to apply.
-    """
-    params = get_WazuhDBQuery_params('Group')
-    query_group = WazuhDBQueryGroup(select=select)
-    result = query_group.run()
-    for item in result['items']:
-        if select is not None:
-            assert set(item.keys()) == set(select) | set(params['min_select_fields'])
-        else:
-            assert set(item.keys()) == set(params['fields'].keys())
-
-
 @pytest.mark.parametrize('filters', [
     {'name': 'group-1'},
-    {'id': 2},
-    {'name': 'group-1', 'id': 1}
+    {'name': 'group-2'}
 ])
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path,  'global.db'))
 def test_WazuhDBQueryGroup_filters(filters):

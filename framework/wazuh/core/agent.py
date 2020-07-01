@@ -1600,8 +1600,8 @@ def get_groups():
 
     :return: List of group names
     """
-    query = WazuhDBQueryGroup()
-    query_data = query.run()
+    db_query = WazuhDBQueryGroup()
+    query_data = db_query.run()
 
     return {group['name'] for group in query_data['items']}
 
