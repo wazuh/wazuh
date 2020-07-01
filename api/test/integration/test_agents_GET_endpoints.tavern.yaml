@@ -2005,7 +2005,7 @@ stages:
    response:
      status_code: 400 # /groups now uses WazuhDBQuery and SQLite cannot handle too large integers
      json:
-       detail: "Error in wazuhdb request: Python int too large to convert to SQLite INTEGER"
+       detail: !anystr
        code: 2003
 
  - name: Try show groups with limit 0
