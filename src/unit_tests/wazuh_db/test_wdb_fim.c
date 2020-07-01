@@ -17,6 +17,7 @@
 #include "../wazuh_db/wdb.h"
 #include "../headers/shared.h"
 #include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 static const char* VALID_ENTRY = "{"
     "\"path\": \"/test\",\n"
@@ -53,29 +54,6 @@ static int teardown_wdb_t(void **state) {
 int __wrap_wdb_begin2(wdb_t* aux)
 {
     return mock();
-}
-
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...)
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
 }
 
 int __wrap_wdb_stmt_cache(wdb_t wdb, int index)

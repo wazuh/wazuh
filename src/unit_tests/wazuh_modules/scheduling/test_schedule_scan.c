@@ -10,6 +10,7 @@
 #include <time.h> 
 #include "shared.h"
 #include "wazuh_modules/wmodules.h"
+#include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 static time_t current_time = 0;
 
@@ -30,23 +31,6 @@ int __wrap_OS_StrIsNum(const char *str) {
     check_expected(str);
 
     return retval;
-}
-
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...)
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...)
-{
-    return;
 }
 
 time_t __wrap_time(time_t *_time){
@@ -147,6 +131,7 @@ void test_sched_scan_read_correct_day(void **state) {
     xml_node **nodes = test->nodes;
     nodes[0]->element = strdup("day");
     nodes[0]->content = strdup("15");
+    expect_string(__wrap__mwarn, formatted_msg, "Interval must be a multiple of one month. New interval value: 1M" );
     expect_string(__wrap_OS_StrIsNum, str,  "15");
     will_return(__wrap_OS_StrIsNum, 1);
     int ret = sched_scan_read(test->scan_config, nodes, "TEST_MODULE");
@@ -184,6 +169,7 @@ void test_sched_scan_read_not_number(void **state) {
 
 void test_sched_scan_read_correct_wday(void **state) {
     test_structure *test = ( test_structure *) *state; 
+    expect_string(__wrap__mwarn, formatted_msg, "Interval must be a multiple of one week. New interval value: 1w" );
     sched_scan_init(test->scan_config);
     xml_node **nodes = test->nodes;
     nodes[0]->element = strdup("wday");
@@ -230,6 +216,7 @@ void test_sched_scan_read_wrong_time(void **state) {
 
 void test_sched_scan_read_correct_interval_month(void **state) {
     test_structure *test = ( test_structure *) *state; 
+    expect_string(__wrap__mwarn, formatted_msg, "Interval value is in months. Setting scan day to first day of the month." );
     sched_scan_init(test->scan_config);
     xml_node **nodes = test->nodes;
     nodes[0]->element = strdup("interval");
@@ -322,6 +309,7 @@ void test_sched_scan_validate_incompatible_wday(void **state) {
 
 void test_sched_scan_validate_day_not_month_interval(void **state) {
     sched_scan_config *scan_config = (sched_scan_config *)  *state;
+    expect_string(__wrap__mwarn, formatted_msg, "Interval must be a multiple of one month. New interval value: 1M");
     scan_config->scan_day = 1;
     scan_config->month_interval = false;
     scan_config->scan_time = NULL;
@@ -334,6 +322,7 @@ void test_sched_scan_validate_day_not_month_interval(void **state) {
 
 void test_sched_scan_validate_wday_not_week_interval(void **state) {
     sched_scan_config *scan_config = (sched_scan_config *)  *state;
+    expect_string(__wrap__mwarn, formatted_msg, "Interval must be a multiple of one week. New interval value: 1w");
     scan_config->scan_wday = 2;
     scan_config->interval = 7;
     scan_config->scan_time = NULL;
@@ -346,6 +335,7 @@ void test_sched_scan_validate_wday_not_week_interval(void **state) {
 
 void test_sched_scan_validate_time_not_day_interval(void **state){
     sched_scan_config *scan_config = (sched_scan_config *)  *state;
+    expect_string(__wrap__mwarn, formatted_msg, "Interval must be a multiple of one day. New interval value: 1d");
     scan_config->scan_time = strdup("00:00");
     scan_config->interval = 30;
     int ret = _sched_scan_validate_parameters(scan_config);

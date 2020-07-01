@@ -21,6 +21,7 @@
 #include "../wrappers/common.h"
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/libc/stdlib_wrappers.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "syscheckd/syscheck.h"
 
 
@@ -67,14 +68,7 @@ static int OSHash_Add_ex_check_data = 1;
 int test_group_setup(void **state) {
     int ret;
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6287): Reading configuration file: 'test_syscheck.conf'");
-    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file");
-    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file OK?");
-    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 0");
-    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node test_$");
-    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node test_$ OK?");
-    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 1");
-    expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck.conf]");
+    expect_any_always(__wrap__mdebug1, formatted_msg);
 
     ret = Read_Syscheck_Config("test_syscheck.conf");
 
@@ -254,20 +248,10 @@ static int teardown_state_checker(void **state) {
     // Remove everything that might have been added on the test
     Free_Syscheck(&syscheck);
 
-    // Restore the syscheck struct
-    expect_string(__wrap__mdebug1, formatted_msg, "(6287): Reading configuration file: 'test_syscheck.conf'");
-    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file");
-    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file OK?");
-    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 0");
-    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node test_$");
-    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node test_$ OK?");
-    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 1");
-    expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck.conf]");
+    expect_any_always(__wrap__mdebug1, formatted_msg);
 
     test_mode = 0;
-    test_mode = 0;
     ret = Read_Syscheck_Config("test_syscheck.conf");
-    test_mode = 1;
     test_mode = 1;
 
     return ret;
@@ -331,72 +315,6 @@ static int teardown_event_4663_dir(void **state) {
         return -1;
 
     return 0;
-}
-
-void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mterror(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
 }
 
 char *__wrap_wstr_replace(const char * string, const char * search, const char * replace) {

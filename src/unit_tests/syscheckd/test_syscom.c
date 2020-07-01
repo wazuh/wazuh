@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 
@@ -45,17 +46,6 @@ static int delete_string(void **state)
     char *data = *state;
     free(data);
     return 0;
-}
-
-void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
 }
 
 

@@ -19,6 +19,7 @@
 #include "../../wazuh_modules/wmodules.h"
 #include "../../wazuh_modules/wm_gcp.h"
 #include "../../wrappers/libc/stdlib_wrappers.h"
+#include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 static const char *XML_ENABLED = "enabled";
 static const char *XML_PROJECT_ID = "project_id";
@@ -72,28 +73,6 @@ int __wrap_IsFile(const char *file) {
     check_expected(file);
 
     return mock();
-}
-
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
 }
 
 /* setup/teardown */

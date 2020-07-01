@@ -12,6 +12,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../analysisd/eventinfo.h"
 #include "../analysisd/decoders/decoder.h"
 #include "../headers/wazuhdb_op.h"
@@ -39,16 +40,6 @@ typedef struct __test_dbsync_s{
 }test_dbsync_t;
 
 /* wrappers */
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
 
 int __wrap_OS_ConnectUnixDomain(const char *path, int type, int max_msg_size) {
     check_expected(path);
