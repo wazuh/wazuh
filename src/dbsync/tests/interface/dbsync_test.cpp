@@ -20,38 +20,36 @@ static void logFunction(const char* msg)
     }
 }
 
-void DBSyncTest::SetUp()
-{
-    dbsync_initialize(&logFunction);
+void DBSyncTest::SetUp() {
 };
 
-void DBSyncTest::TearDown() 
+void DBSyncTest::TearDown()
 {
     EXPECT_NO_THROW(dbsync_teardown());
 };
 
-TEST_F(DBSyncTest, Initialization) 
+TEST_F(DBSyncTest, Initialization)
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
     
-    const auto handle { dbsync_open(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    const auto handle { dbsync_initialize(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql, &logFunction) };
     ASSERT_NE(nullptr, handle);
 }
 
-TEST_F(DBSyncTest, InitializationNullptr) 
+TEST_F(DBSyncTest, InitializationNullptr)
 {
-    const auto handle_1 { dbsync_open(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, nullptr) };
+    const auto handle_1 { dbsync_initialize(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, nullptr, nullptr) };
     ASSERT_EQ(nullptr, handle_1);
-    const auto handle_2 { dbsync_open(HostType::AGENT, DbEngineType::SQLITE3, nullptr, "valid") };
+    const auto handle_2 { dbsync_initialize(HostType::AGENT, DbEngineType::SQLITE3, nullptr, "valid", &logFunction) };
     ASSERT_EQ(nullptr, handle_2);
 }
 
-TEST_F(DBSyncTest, InsertData) 
+TEST_F(DBSyncTest, InsertData)
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
     const auto insert_sql{ R"({"table":"processes","data":[{"pid":4,"name":"System"}]})"};
     
-    const auto handle { dbsync_open(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    const auto handle { dbsync_initialize(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql, &logFunction) };
     ASSERT_NE(nullptr, handle);
 
     const std::unique_ptr<cJSON, smartDeleterJson> json_insert{ cJSON_Parse(insert_sql) };
@@ -59,22 +57,22 @@ TEST_F(DBSyncTest, InsertData)
     EXPECT_EQ(0, dbsync_insert_data(handle, json_insert.get()));
 }
 
-TEST_F(DBSyncTest, InsertDataNullptr) 
+TEST_F(DBSyncTest, InsertDataNullptr)
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
    
-    const auto handle { dbsync_open(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    const auto handle { dbsync_initialize(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql, nullptr) };
     ASSERT_NE(nullptr, handle);
 
     EXPECT_NE(0, dbsync_insert_data(handle, nullptr));
 }
 
-TEST_F(DBSyncTest, InsertDataInvalidHandle) 
+TEST_F(DBSyncTest, InsertDataInvalidHandle)
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
     const auto insert_sql{ R"({"table":"processes","data":[{"pid":4,"name":"System"}]})"};
     
-    const auto handle { dbsync_open(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    const auto handle { dbsync_initialize(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql, &logFunction) };
     ASSERT_NE(nullptr, handle);
 
     const std::unique_ptr<cJSON, smartDeleterJson> json_insert{ cJSON_Parse(insert_sql) };
@@ -82,12 +80,12 @@ TEST_F(DBSyncTest, InsertDataInvalidHandle)
     EXPECT_NE(0, dbsync_insert_data(reinterpret_cast<void *>(0xffffffff), json_insert.get()));
 }
 
-TEST_F(DBSyncTest, UpdateData) 
+TEST_F(DBSyncTest, UpdateData)
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
     const auto insert_sql{ R"({"table":"processes","data":[{"pid":4,"name":"System"}]})"};
     
-    const auto handle { dbsync_open(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    const auto handle { dbsync_initialize(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql, &logFunction) };
     ASSERT_NE(nullptr, handle);
 
     const std::unique_ptr<cJSON, smartDeleterJson> json_insert{ cJSON_Parse(insert_sql) };
@@ -99,11 +97,11 @@ TEST_F(DBSyncTest, UpdateData)
     EXPECT_NO_THROW(dbsync_free_result(&json_response));
 }
 
-TEST_F(DBSyncTest, FreeNullptrResult) 
+TEST_F(DBSyncTest, FreeNullptrResult)
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
     
-    const auto handle { dbsync_open(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    const auto handle { dbsync_initialize(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql, &logFunction) };
     ASSERT_NE(nullptr, handle);
 
     cJSON* json_response { nullptr };
@@ -111,12 +109,12 @@ TEST_F(DBSyncTest, FreeNullptrResult)
     EXPECT_NO_THROW(dbsync_free_result(&json_response));
 }
 
-TEST_F(DBSyncTest, UpdateDataWithLessFields) 
+TEST_F(DBSyncTest, UpdateDataWithLessFields)
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT,`path` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
     const auto insert_sql{ R"({"table":"processes","data":[{"pid":4,"name":"System"}]})"};
     
-    const auto handle { dbsync_open(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    const auto handle { dbsync_initialize(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql, &logFunction) };
     ASSERT_NE(nullptr, handle);
 
     const std::unique_ptr<cJSON, smartDeleterJson> json_insert{ cJSON_Parse(insert_sql) };
