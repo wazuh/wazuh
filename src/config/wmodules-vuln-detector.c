@@ -699,6 +699,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
                 return OS_INVALID;
             }
 
+            // As soon as a valid RedHat  O.S. is detected, enable the RedHat JSON feed
             if (!strcmp(pr_name, "redhat") && !updates[CVE_JREDHAT]) {
                 if (os_index = wm_vuldet_set_feed_version("JREDHAT", "", updates), os_index == OS_INVALID || os_index == OS_SUPP_SIZE) {
                     goto end;
