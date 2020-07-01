@@ -1981,12 +1981,12 @@ stages:
      json:
        <<: *error_spec
 
- - name: Try show groups with offset too large 9999999999999999999
+ - name: Try show groups with offset too large 99999999999 (valid)
    request:
      verify: False
      <<: *get_agents_groups
      params:
-       offset: 9999999999999999999
+       offset: 99999999999
    response:
      status_code: 200
      json:
@@ -1995,6 +1995,18 @@ stages:
          failed_items: []
          total_affected_items: 4
          total_failed_items: 0
+
+ - name: Try show groups with offset too large 9999999999999999999 (SQLite error)
+   request:
+     verify: False
+     <<: *get_agents_groups
+     params:
+       offset: 9999999999999999999
+   response:
+     status_code: 400 # /groups now uses WazuhDBQuery and SQLite cannot handle too large integers
+     json:
+       detail: !anystr
+       code: 2003
 
  - name: Try show groups with limit 0
    request:

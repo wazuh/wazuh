@@ -12,9 +12,9 @@ from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, \
     WazuhDBQueryMultigroups, Agent, WazuhDBQueryGroup, get_agents_info, get_groups
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException
-from wazuh.rbac.decorators import expose_resources
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array
+from wazuh.rbac.decorators import expose_resources
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
@@ -304,18 +304,14 @@ def add_agent(name=None, agent_id=None, key=None, ip='any', force_time=-1, use_o
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"],
                   post_proc_kwargs={'exclude_codes': [1710]})
-def get_agent_groups(group_list=None, offset=0, limit=None, sort_by=None, sort_ascending=True,
-                     search_text=None, complementary_search=False, search_in_fields=None, hash_algorithm='md5'):
+def get_agent_groups(group_list=None, offset=0, limit=None, sort=None, search=None, hash_algorithm='md5'):
     """Gets the existing groups.
 
     :param group_list: List of Group names.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
-    :param sort_by: Fields to sort the items by.
-    :param sort_ascending: Sort in ascending (true) or descending (false) order.
-    :param search_text: Text to search.
-    :param complementary_search: Find items without the text to search.
-    :param search_in_fields: Fields to search in.
+    :param sort: Fields to sort the items by.
+    :param search: Text to search.
     :param hash_algorithm: hash algorithm used to get mergedsum and configsum.
     :return: AffectedItemsWazuhResult.
     """
@@ -326,46 +322,29 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort_by=None, sort_a
                                       none_msg='No group information was obtained'
                                       )
 
-    # Group names
-    system_groups = get_groups()
-    for group_id in group_list:
-        try:
-            # Check if group exists
-            if group_id not in system_groups:
-                raise WazuhError(1710)
+    # Add failed items
+    for invalid_group in set(group_list) - get_groups():
+        result.add_failed_item(id_=invalid_group, error=WazuhError(1710))
 
-            full_entry = path.join(common.shared_path, group_id)
+    group_query = WazuhDBQueryGroup(filters={'name': group_list}, offset=offset, limit=limit, sort=sort, search=search)
+    query_data = group_query.run()
 
-            # Get ID from group
-            db_query = WazuhDBQueryGroup(select=['name'], filters={'name': group_id})
-            query_data = db_query.run()
+    for group in query_data['items']:
+        full_entry = path.join(common.shared_path, group['name'])
 
-            # Group count
-            db_query = WazuhDBQueryAgents(get_data=False, filters={'group': query_data['items'][0]['name']})
-            query_data = db_query.run()
+        # merged.mg and agent.conf sum
+        merged_sum = get_hash(path.join(full_entry, "merged.mg"), hash_algorithm)
+        conf_sum = get_hash(path.join(full_entry, "agent.conf"), hash_algorithm)
 
-            # merged.mg and agent.conf sum
-            merged_sum = get_hash(path.join(full_entry, "merged.mg"), hash_algorithm)
-            conf_sum = get_hash(path.join(full_entry, "agent.conf"), hash_algorithm)
+        if merged_sum:
+            group['mergedSum'] = merged_sum
 
-            item = {'count': query_data['totalItems'], 'name': group_id}
+        if conf_sum:
+            group['configSum'] = conf_sum
+        affected_groups.append(group)
 
-            if merged_sum:
-                item['mergedSum'] = merged_sum
-
-            if conf_sum:
-                item['configSum'] = conf_sum
-
-            affected_groups.append(item)
-        except WazuhException as e:
-            result.add_failed_item(id_=group_id, error=e)
-
-    data = process_array(affected_groups, search_text=search_text, search_in_fields=search_in_fields,
-                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit)
-
-    result.affected_items = data['items']
-    result.total_affected_items = data['totalItems']
+    result.affected_items = affected_groups
+    result.total_affected_items = query_data['totalItems']
 
     return result
 
