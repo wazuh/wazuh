@@ -36,64 +36,42 @@ TEST_F(SQLiteTest, ConnectionCtor)
     EXPECT_NE(nullptr, connectionPath.db().get());
 }
 
-/*
 TEST_F(SQLiteTest, ConnectionClose)
 {
     Connection connectionDefault;
-    EXPECT_TRUE(connectionDefault.close());
-    EXPECT_TRUE(connectionDefault.close());
+    connectionDefault.close();
     EXPECT_EQ(nullptr, connectionDefault.db().get());
-    EXPECT_FALSE(connectionDefault.execute("BEGIN TRANSACTION"));
+    EXPECT_THROW(connectionDefault.execute("BEGIN TRANSACTION"), sqlite_error);
 }
 
 TEST_F(SQLiteTest, ConnectionExecute)
 {
     Connection connectionDefault;
-    EXPECT_TRUE(connectionDefault.execute("BEGIN TRANSACTION"));
-    EXPECT_FALSE(connectionDefault.execute("WRONG STATEMENT"));
-    EXPECT_TRUE(connectionDefault.execute("ROLLBACK TRANSACTION"));
+    EXPECT_NO_THROW(connectionDefault.execute("BEGIN TRANSACTION"));
+    EXPECT_THROW(connectionDefault.execute("WRONG STATEMENT"), sqlite_error);
+    EXPECT_NO_THROW(connectionDefault.execute("ROLLBACK TRANSACTION"));
 }
 TEST_F(SQLiteTest, TransactionCtorDtorSuccess)
 {
     ConnectionWrapper* pConnection{ new ConnectionWrapper };
     std::shared_ptr<IConnection> spConnection{ pConnection };
-    EXPECT_CALL(*pConnection, execute("BEGIN TRANSACTION")).WillOnce(Return(true));
+    EXPECT_CALL(*pConnection, execute("BEGIN TRANSACTION"));
     EXPECT_CALL(*pConnection, execute("ROLLBACK TRANSACTION"));
     Transaction transaction{spConnection};
     EXPECT_FALSE(transaction.isCommited());
     EXPECT_FALSE(transaction.isRolledBack());
 }
 
-TEST_F(SQLiteTest, TransactionCtorDtorFailure)
-{
-    ConnectionWrapper* pConnection{ new ConnectionWrapper };
-    std::shared_ptr<IConnection> spConnection{ pConnection };
-    EXPECT_CALL(*pConnection, execute("BEGIN TRANSACTION")).WillOnce(Return(false));
-    EXPECT_THROW(Transaction transaction{spConnection}, dbsync_error);
-}
-
 TEST_F(SQLiteTest, TransactionCommitSuccess)
 {
     ConnectionWrapper* pConnection{ new ConnectionWrapper };
     std::shared_ptr<IConnection> spConnection{ pConnection };
-    EXPECT_CALL(*pConnection, execute("BEGIN TRANSACTION")).WillOnce(Return(true));
-    EXPECT_CALL(*pConnection, execute("COMMIT TRANSACTION")).Times(1).WillOnce(Return(true));
+    EXPECT_CALL(*pConnection, execute("BEGIN TRANSACTION"));
+    EXPECT_CALL(*pConnection, execute("COMMIT TRANSACTION")).Times(1);
     EXPECT_CALL(*pConnection, execute("ROLLBACK TRANSACTION")).Times(0);
     Transaction transaction{spConnection};
-    EXPECT_TRUE(transaction.commit());
+    EXPECT_NO_THROW(transaction.commit());
     EXPECT_TRUE(transaction.isCommited());
-    EXPECT_FALSE(transaction.isRolledBack());
-}
-
-TEST_F(SQLiteTest, TransactionCommitFailure)
-{
-    ConnectionWrapper* pConnection{ new ConnectionWrapper };
-    std::shared_ptr<IConnection> spConnection{ pConnection };
-    EXPECT_CALL(*pConnection, execute("BEGIN TRANSACTION")).WillOnce(Return(true));
-    EXPECT_CALL(*pConnection, execute("COMMIT TRANSACTION")).Times(1).WillOnce(Return(false));
-    EXPECT_CALL(*pConnection, execute("ROLLBACK TRANSACTION"));
-    Transaction transaction{spConnection};
-    EXPECT_FALSE(transaction.commit());
     EXPECT_FALSE(transaction.isRolledBack());
 }
 
@@ -101,27 +79,12 @@ TEST_F(SQLiteTest, TransactionCommitCantRollBack)
 {
     ConnectionWrapper* pConnection{ new ConnectionWrapper };
     std::shared_ptr<IConnection> spConnection{ pConnection };
-    EXPECT_CALL(*pConnection, execute("BEGIN TRANSACTION")).WillOnce(Return(true));
-    EXPECT_CALL(*pConnection, execute("COMMIT TRANSACTION")).Times(1).WillOnce(Return(true));
+    EXPECT_CALL(*pConnection, execute("BEGIN TRANSACTION"));
+    EXPECT_CALL(*pConnection, execute("COMMIT TRANSACTION")).Times(1);
     EXPECT_CALL(*pConnection, execute("ROLLBACK TRANSACTION")).Times(0);
     Transaction transaction{spConnection};
-    EXPECT_TRUE(transaction.commit());
-    EXPECT_FALSE(transaction.rollback());
-    EXPECT_TRUE(transaction.isCommited());
-    EXPECT_FALSE(transaction.isRolledBack());
-}
-
-TEST_F(SQLiteTest, TransactionCanCommitOnce)
-{
-    ConnectionWrapper* pConnection{ new ConnectionWrapper };
-    std::shared_ptr<IConnection> spConnection{ pConnection };
-    EXPECT_CALL(*pConnection, execute("BEGIN TRANSACTION")).WillOnce(Return(true));
-    EXPECT_CALL(*pConnection, execute("COMMIT TRANSACTION")).Times(1).WillOnce(Return(true));
-    EXPECT_CALL(*pConnection, execute("ROLLBACK TRANSACTION")).Times(0);
-    Transaction transaction{spConnection};
-    EXPECT_TRUE(transaction.commit());
-    EXPECT_FALSE(transaction.commit());
-    EXPECT_FALSE(transaction.rollback());
+    EXPECT_NO_THROW(transaction.commit());
+    EXPECT_NO_THROW(transaction.rollback());
     EXPECT_TRUE(transaction.isCommited());
     EXPECT_FALSE(transaction.isRolledBack());
 }
@@ -130,10 +93,10 @@ TEST_F(SQLiteTest, TransactionRollBack)
 {
     ConnectionWrapper* pConnection{ new ConnectionWrapper };
     std::shared_ptr<IConnection> spConnection{ pConnection };
-    EXPECT_CALL(*pConnection, execute("BEGIN TRANSACTION")).WillOnce(Return(true));
+    EXPECT_CALL(*pConnection, execute("BEGIN TRANSACTION"));
     EXPECT_CALL(*pConnection, execute("ROLLBACK TRANSACTION")).Times(1);
     Transaction transaction{spConnection};
-    EXPECT_TRUE(transaction.rollback());
+    EXPECT_NO_THROW(transaction.rollback());
     EXPECT_TRUE(transaction.isRolledBack());
     EXPECT_FALSE(transaction.isCommited());
 }
@@ -142,11 +105,11 @@ TEST_F(SQLiteTest, TransactionCantCommitAfterRollBack)
 {
     ConnectionWrapper* pConnection{ new ConnectionWrapper };
     std::shared_ptr<IConnection> spConnection{ pConnection };
-    EXPECT_CALL(*pConnection, execute("BEGIN TRANSACTION")).WillOnce(Return(true));
+    EXPECT_CALL(*pConnection, execute("BEGIN TRANSACTION"));
     EXPECT_CALL(*pConnection, execute("ROLLBACK TRANSACTION")).Times(1);
     Transaction transaction{spConnection};
-    EXPECT_TRUE(transaction.rollback());
-    EXPECT_FALSE(transaction.commit());
+    EXPECT_NO_THROW(transaction.rollback());
+    EXPECT_NO_THROW(transaction.commit());
     EXPECT_TRUE(transaction.isRolledBack());
     EXPECT_FALSE(transaction.isCommited());
 }
@@ -160,7 +123,7 @@ TEST_F(SQLiteTest, StatementCtorSuccess)
 TEST_F(SQLiteTest, StatementCtorFailure)
 {
     std::shared_ptr<IConnection> spConnection{ new Connection };
-    EXPECT_THROW(Statement stmt(spConnection, "WRONG STATEMENT"), dbsync_error);
+    EXPECT_THROW(Statement stmt(spConnection, "WRONG STATEMENT"), sqlite_error);
 }
 
 TEST_F(SQLiteTest, StatementStep)
@@ -168,8 +131,8 @@ TEST_F(SQLiteTest, StatementStep)
     std::shared_ptr<IConnection> spConnection{ new Connection };
     Statement stmt{spConnection, "CREATE TABLE test_table (Colum1 INTEGER, Colum2 TEXT);"};
     EXPECT_TRUE(stmt.step());
-    EXPECT_TRUE(stmt.reset());
-    EXPECT_THROW(stmt.step(), dbsync_error);
+    stmt.reset();
+    EXPECT_THROW(stmt.step(), sqlite_error);
 }
 
 TEST_F(SQLiteTest, StatementBindInt)
@@ -186,18 +149,18 @@ TEST_F(SQLiteTest, StatementBindInt)
         spConnection,
         R"(INSERT INTO test_table (Colum1, Colum2, Colum3, Colum4, Colum5) VALUES (?,?,?,?,?);)"
     };
-    EXPECT_TRUE(insertStmt.bind(1, 1));
-    EXPECT_TRUE(insertStmt.bind(2, "1"));
-    EXPECT_TRUE(insertStmt.bind(3, 1l));
-    EXPECT_TRUE(insertStmt.bind(4, 1lu));
-    EXPECT_TRUE(insertStmt.bind(5, 1.0));
+    EXPECT_NO_THROW(insertStmt.bind(1, 1));
+    EXPECT_NO_THROW(insertStmt.bind(2, "1"));
+    EXPECT_NO_THROW(insertStmt.bind(3, 1l));
+    EXPECT_NO_THROW(insertStmt.bind(4, 1lu));
+    EXPECT_NO_THROW(insertStmt.bind(5, 1.0));
     EXPECT_TRUE(insertStmt.step());
-    EXPECT_TRUE(insertStmt.reset());
-    EXPECT_TRUE(insertStmt.bind(1, 2));
-    EXPECT_TRUE(insertStmt.bind(2, "2"));
-    EXPECT_TRUE(insertStmt.bind(3, 2l));
-    EXPECT_TRUE(insertStmt.bind(4, 2lu));
-    EXPECT_TRUE(insertStmt.bind(5, 2.0));
+    insertStmt.reset();
+    EXPECT_NO_THROW(insertStmt.bind(1, 2));
+    EXPECT_NO_THROW(insertStmt.bind(2, "2"));
+    EXPECT_NO_THROW(insertStmt.bind(3, 2l));
+    EXPECT_NO_THROW(insertStmt.bind(4, 2lu));
+    EXPECT_NO_THROW(insertStmt.bind(5, 2.0));
     EXPECT_TRUE(insertStmt.step());
 }
 
@@ -259,4 +222,3 @@ TEST_F(SQLiteTest, ColumnValue)
     EXPECT_TRUE(spColumn5->hasValue());
     EXPECT_DOUBLE_EQ(4.0, spColumn5->value(double{}));
 }
-*/
