@@ -1,10 +1,11 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import sqlite3
 import os
 import re
+import sqlite3
+from functools import wraps
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -34,3 +35,14 @@ class InitWDBSocketMock:
         elif count:
             return next(iter(rows[0].values()))
         return rows
+
+
+def RBAC_bypasser(**kwargs_decorator):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            return f(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
