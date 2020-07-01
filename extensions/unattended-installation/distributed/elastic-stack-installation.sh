@@ -17,7 +17,7 @@ logger() {
 getHelp() {
    echo ""
    echo "Usage: $0 arguments"
-   echo -e "\t-e   | --install-elastic Install Elasticsearch"
+   echo -e "\t-e   | --install-elasticsearch Install Elasticsearch"
    echo -e "\t-k   | --install-kibana Install Kibana"
    echo -e "\t-ip  | --elasticsearch-ip Elasticsearch's IP"
    echo -e "\t-kip | --kibana-ip Kibana's IP"
@@ -184,7 +184,7 @@ main() {
         while [ -n "$1" ]
         do
             case "$1" in
-            "-e"|"--install-elastic")        
+            "-e"|"--install-elasticsearch")        
                 e=1
                 healthCheck
                 installPrerequisites
