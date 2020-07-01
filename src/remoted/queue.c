@@ -15,7 +15,6 @@ static w_queue_t * queue;
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t available = PTHREAD_COND_INITIALIZER;
 
-size_t global_counter;
 
 // Init message queue
 void rem_msginit(size_t size) {

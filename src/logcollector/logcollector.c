@@ -43,6 +43,7 @@ int force_reload;
 int reload_interval;
 int reload_delay;
 int free_excluded_files_interval;
+OSHash * msg_queues_table;
 
 static int _cday = 0;
 int N_INPUT_THREADS = N_MIN_INPUT_THREADS;

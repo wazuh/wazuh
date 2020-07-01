@@ -806,7 +806,7 @@ $(EXTERNAL_CURL)Makefile:
 else
 $(EXTERNAL_CURL)Makefile: $(OPENSSL_LIB)
 ifeq (${uname_S},Linux)
-	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure --disable-ldap --without-libidn2
+	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure --disable-ldap --without-libidn2 --without-libpsl --without-brotli
 else
 	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-lpthread" ./configure --disable-ldap --without-libidn2
 endif
@@ -870,9 +870,7 @@ endif
 TAR := tar -xf
 GUNZIP := gunzip
 CURL := curl -so
-space =
-space +=
-VERSION = $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(patsubst v%,%,$(shell cat VERSION)))))
+VERSION = $(subst $() $(),.,$(wordlist 1,2,$(subst ., ,$(patsubst v%,%,$(shell cat VERSION)))))
 RESOURCES_URL := https://packages.wazuh.com/deps/$(VERSION)
 CPYTHON := cpython
 ifeq (${PREFIX},/var/ossec)
@@ -1730,7 +1728,7 @@ win32/ui_resource.o: win32/ui/win32ui.rc
 win32/auth_resource.o: win32/agent-auth.rc
 	${OSSEC_WINDRES} -i $< -o $@
 
-win32/os_win32ui.exe: win32/ui_resource.o win32/win_service_rk.o ${win32_ui_o} addagent/b64.o
+win32/os_win32ui.exe: win32/ui_resource.o win32/win_service_rk.o ${win32_ui_o}
 	${OSSEC_CCBIN} -DARGV0=\"ossec-win32ui\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -mwindows -o $@
 
 win32/agent-auth.exe: win32/auth_resource.o win32/win_service_rk.o os_auth/main-client.o os_auth/ssl.o os_auth/main-client.o os_auth/check_cert.o addagent/validate.o
@@ -1809,7 +1807,7 @@ clean-internals: clean-unit-tests
 	rm -f ${wdb_o}
 	rm -f ${SELINUX_MODULE}
 	rm -f ${SELINUX_POLICY}
-	
+
 clean-unit-tests:
 	rm -f ${wrappers_syscheck_o}
 	rm -f ${wrappers_shared_o}
