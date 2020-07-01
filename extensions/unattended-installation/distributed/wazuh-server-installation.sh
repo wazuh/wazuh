@@ -79,7 +79,6 @@ installFilebeat() {
     curl -so /etc/filebeat/wazuh-template.json https://raw.githubusercontent.com/wazuh/wazuh/v3.12.0/extensions/elasticsearch/7.x/wazuh-template.json --max-time 300 > /dev/null 2>&1
     chmod go+r /etc/filebeat/wazuh-template.json > /dev/null 2>&1
     curl -s https://packages.wazuh.com/3.x/filebeat/wazuh-filebeat-0.1.tar.gz --max-time 300 | tar -xvz -C /usr/share/filebeat/module > /dev/null 2>&1
-    mkdir /etc/filebeat/certs > /dev/null 2>&1
 
     logger "Done"
 }
