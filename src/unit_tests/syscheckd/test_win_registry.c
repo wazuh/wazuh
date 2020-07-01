@@ -19,6 +19,7 @@
 #include <openssl/evp.h>
 
 #include "../wrappers/externals/openssl/digest_wrappers.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "syscheckd/syscheck.h"
 
 extern char *os_winreg_sethkey(char *reg_entry);
@@ -30,47 +31,10 @@ static int test_has_started = 0;
 /*************************WRAPS - GROUP SETUP******************************/
 int test_group_setup(void **state) {
     int ret;
+    expect_any_always(__wrap__mdebug1, formatted_msg);
     ret = Read_Syscheck_Config("test_syscheck.conf");
     test_has_started = 1;
     return ret;
-}
-
-
-void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    if (test_has_started) {
-        check_expected(formatted_msg);
-    }
-}
-
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    if (test_has_started) {
-        check_expected(formatted_msg);
-    }
 }
 
 int __wrap_fim_registry_event(char *key, fim_entry_data *data, int pos) {

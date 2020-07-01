@@ -20,6 +20,7 @@
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../syscheckd/fim_db.h"
 #include "../config/syscheck-config.h"
 
@@ -61,46 +62,6 @@ char *__wrap_wstr_escape_json() {
         return strdup(ret);
     }
     return NULL;
-}
-
-void __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...)
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...)
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-int __wrap__mdebug2() {
-    function_called();
-    return 1;
 }
 
 int __wrap_fim_send_sync_msg(char * msg) {
@@ -167,9 +128,6 @@ int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, i
     return (ret);
 }
 
-int __wrap_isChroot() {
-    return 1;
-}
 #endif
 
 /*-----------------------------------------*/
@@ -310,10 +268,13 @@ static void wraps_fim_db_insert_path_success() {
 /*---------------SETUP/TEARDOWN------------------*/
 static int setup_group(void **state) {
     (void) state;
-    expect_string(__wrap__mdebug1, formatted_msg, "(6287): Reading configuration file: 'test_syscheck2.conf'");
-#if defined(TEST_AGENT) || defined(TEST_WINAGENT)
-    expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck2.conf]");
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+#ifdef TEST_AGENT
+    will_return_always(__wrap_isChroot, 1);
 #endif
+
     Read_Syscheck_Config("test_syscheck2.conf");
     syscheck.database_store = 0;    // disk
     w_mutex_init(&syscheck.fim_entry_mutex, NULL);
@@ -733,12 +694,12 @@ void test_fim_db_clean_file_not_removed(void **state) {
 
 #ifndef TEST_WINAGENT
     for(i = 1; i <= FIMDB_RM_MAX_LOOP; i++) {
-        expect_function_call(__wrap__mdebug2);
+        expect_any(__wrap__mdebug2, formatted_msg);
         expect_function_call(__wrap_usleep);
     }
 #else
     for(i = 1; i <= FIMDB_RM_MAX_LOOP; i++) {
-        expect_function_call(__wrap__mdebug2);
+        expect_any(__wrap__mdebug2, formatted_msg);
         expect_value(wrap_Sleep, dwMilliseconds, FIMDB_RM_DEFAULT_TIME * i);
     }
 #endif
@@ -1310,7 +1271,7 @@ void test_fim_db_remove_path_one_entry_alert_fail(void **state) {
     will_return(__wrap_fim_configuration_directory, 9);
 #endif
     will_return(__wrap_fim_json_event, json);
-    expect_function_call(__wrap__mdebug2);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6220): Sending delete message for file: '/test/path'");
     wraps_fim_db_check_transaction();
     time_t last_commit =  test_data->fim_sql->transaction.last_commit;
     int alert = 1;
@@ -1379,7 +1340,7 @@ void test_fim_db_remove_path_one_entry_alert_success(void **state) {
 #endif
     cJSON * json = cJSON_CreateObject();
     will_return(__wrap_fim_json_event, json);
-    expect_function_call(__wrap__mdebug2);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6220): Sending delete message for file: '/test/path'");
     wraps_fim_db_check_transaction();
     time_t last_commit =  test_data->fim_sql->transaction.last_commit;
     int alert = 1;
@@ -1467,7 +1428,7 @@ void test_fim_db_remove_path_no_configuration_file(void **state) {
     test_fim_db_insert_data *test_data = *state;
 
     will_return(__wrap_fim_configuration_directory, -1);
-    expect_function_call(__wrap__mdebug2);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6339): Delete event from path without configuration: '/test/path'");
 
     fim_db_remove_path(test_data->fim_sql, test_data->entry, &syscheck.fim_entry_mutex, NULL, (void *) FIM_REALTIME, NULL);
 }

@@ -19,15 +19,7 @@
 #include "../headers/bzip2_op.h"
 #include "../wrappers/externals/bzip2/bzlib_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
-
-void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-    check_expected(formatted_msg);
-}
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 /* setups/teardowns */
 static int setup_group(void **state) {

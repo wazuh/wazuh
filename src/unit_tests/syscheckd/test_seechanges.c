@@ -21,6 +21,7 @@
 #include "../wrappers/libc/stdlib_wrappers.h"
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 #ifndef TEST_WINAGENT
 #define PATH_OFFSET 1
@@ -77,36 +78,9 @@ int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, i
     return (ret);
 }
 
-int __wrap_isChroot() {
-    return 1;
-}
 #endif
 
 /* redefinitons/wrapping */
-
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...)
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...)
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
 
 int __wrap_abspath(const char *path, char *buffer, size_t size) {
     check_expected(path);
@@ -139,18 +113,7 @@ int __wrap_IsDir(const char *file) {
     check_expected(file);
     return mock();
 }
-#ifdef TEST_WINAGENT
-void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
 
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-#endif
 int __wrap_OS_MD5_File(const char *fname, os_md5 output, int mode) {
     check_expected(fname);
     check_expected(mode);
@@ -169,6 +132,11 @@ int __wrap_File_DateofChange(const char *file) {
 
 static int setup_group(void **state) {
     (void) state;
+
+#ifdef TEST_AGENT
+    will_return_always(__wrap_isChroot, 1);
+#endif
+    test_mode = 0;
     Read_Syscheck_Config("test_syscheck.conf");
     test_mode = 1;
     return 0;

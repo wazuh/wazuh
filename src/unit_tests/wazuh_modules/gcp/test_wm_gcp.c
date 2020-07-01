@@ -18,6 +18,7 @@
 #include "../../wazuh_modules/wm_gcp.h"
 #include "../../headers/defs.h"
 #include "../../wrappers/externals/cJSON/cJSON_wrappers.h"
+#include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 void wm_gcp_run(const wm_gcp *data);
 cJSON *wm_gcp_dump(const wm_gcp *data);
@@ -55,71 +56,6 @@ time_t __wrap_sched_scan_get_time_until_next_scan(sched_scan_config *config, con
     check_expected(run_on_start);
 
     return mock_type(time_t);
-}
-
-void __wrap__mtdebug2(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mtdebug1(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mtinfo(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mtwarn(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mterror(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    check_expected(tag);
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
 }
 
 /* setup/teardown */

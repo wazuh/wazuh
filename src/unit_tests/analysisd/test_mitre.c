@@ -13,6 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../analysisd/mitre.h"
 
 /* redefinitons/wrapping */
@@ -52,17 +53,6 @@ cJSON* __wrap_wdbc_query_parse_json(int *sock, const char *query, char *response
     }
 
     return mock_ptr_type(cJSON *);
-}
-
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
 }
 
 /* tests */

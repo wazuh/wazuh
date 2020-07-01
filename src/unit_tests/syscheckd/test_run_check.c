@@ -17,6 +17,7 @@
 #include "../wrappers/common.h"
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/linux/inotify_wrappers.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../syscheckd/fim_db.h"
 
@@ -39,34 +40,6 @@ void fim_delete_realtime_watches(int pos);
 #endif
 
 /* redefinitons/wrapping */
-
-int __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...)
-{
-    check_expected(msg);
-    return 1;
-}
-
-void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
 
 #ifdef TEST_AGENT
 char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
@@ -101,28 +74,7 @@ int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, i
     return (ret);
 }
 
-int __wrap_isChroot() {
-    return 1;
-}
 #endif
-
-int __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...)
-{
-    check_expected(msg);
-    return 1;
-}
-
-void __wrap__merror_exit(const char * file, int line, const char * func, const char *msg, ...)
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
 
 int __wrap_SendMSG(int queue, const char *message, const char *locmsg, char loc) {
     check_expected(message);
@@ -198,18 +150,10 @@ int __wrap_audit_restore(void) {
 /* Setup */
 
 static int setup_group(void ** state) {
-    expect_string(__wrap__mdebug1, formatted_msg, "(6287): Reading configuration file: 'test_syscheck.conf'");
-    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file");
-    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file OK?");
-    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 0");
-#ifdef TEST_WINAGENT
-    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node test_$");
-    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node test_$ OK?");
-    expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 1");
-#endif
+    expect_any_always(__wrap__mdebug1, formatted_msg);
 
-#if defined(TEST_AGENT) || defined(TEST_WINAGENT)
-    expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck.conf]");
+#ifdef TEST_AGENT
+    will_return_always(__wrap_isChroot, 1);
 #endif
 
     if(Read_Syscheck_Config("test_syscheck.conf"))
@@ -327,15 +271,15 @@ void test_log_realtime_status(void **state)
 
     log_realtime_status(2);
 
-    expect_string(__wrap__minfo, msg, FIM_REALTIME_STARTED);
+    expect_string(__wrap__minfo, formatted_msg, FIM_REALTIME_STARTED);
     log_realtime_status(1);
     log_realtime_status(1);
 
-    expect_string(__wrap__minfo, msg, FIM_REALTIME_PAUSED);
+    expect_string(__wrap__minfo, formatted_msg, FIM_REALTIME_PAUSED);
     log_realtime_status(2);
     log_realtime_status(2);
 
-    expect_string(__wrap__minfo, msg, FIM_REALTIME_RESUMED);
+    expect_string(__wrap__minfo, formatted_msg, FIM_REALTIME_RESUMED);
     log_realtime_status(1);
 }
 
@@ -627,7 +571,7 @@ void test_fim_send_sync_msg_10_eps(void ** state) {
     // We must not sleep the first 9 times
 
     for (int i = 1; i < syscheck.sync_max_eps; i++) {
-        expect_string(__wrap__mdebug2, msg, FIM_DBSYNC_SEND);
+        expect_string(__wrap__mdebug2, formatted_msg, "(6317): Sending integrity control message: ");
         expect_string(__wrap_SendMSG, message, "");
         expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
         expect_value(__wrap_SendMSG, loc, DBSYNC_MQ);
@@ -643,7 +587,7 @@ void test_fim_send_sync_msg_10_eps(void ** state) {
 #endif
 
     // After 10 times, sleep one second
-    expect_string(__wrap__mdebug2, msg, FIM_DBSYNC_SEND);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6317): Sending integrity control message: ");
     expect_string(__wrap_SendMSG, message, "");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, DBSYNC_MQ);
@@ -657,7 +601,7 @@ void test_fim_send_sync_msg_0_eps(void ** state) {
     syscheck.sync_max_eps = 0;
 
     // We must not sleep
-    expect_string(__wrap__mdebug2, msg, FIM_DBSYNC_SEND);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6317): Sending integrity control message: ");
     expect_string(__wrap_SendMSG, message, "");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, DBSYNC_MQ);
@@ -673,7 +617,7 @@ void test_send_syscheck_msg_10_eps(void ** state) {
     // We must not sleep the first 9 times
 
     for (int i = 1; i < syscheck.max_eps; i++) {
-        expect_string(__wrap__mdebug2, msg, FIM_SEND);
+        expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: ");
         expect_string(__wrap_SendMSG, message, "");
         expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
         expect_value(__wrap_SendMSG, loc, SYSCHECK_MQ);
@@ -689,7 +633,7 @@ void test_send_syscheck_msg_10_eps(void ** state) {
 #endif
 
     // After 10 times, sleep one second
-    expect_string(__wrap__mdebug2, msg, FIM_SEND);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: ");
     expect_string(__wrap_SendMSG, message, "");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, SYSCHECK_MQ);
@@ -703,7 +647,7 @@ void test_send_syscheck_msg_0_eps(void ** state) {
     syscheck.max_eps = 0;
 
     // We must not sleep
-    expect_string(__wrap__mdebug2, msg, FIM_SEND);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: ");
     expect_string(__wrap_SendMSG, message, "");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, SYSCHECK_MQ);
@@ -715,7 +659,7 @@ void test_send_syscheck_msg_0_eps(void ** state) {
 void test_fim_send_scan_info(void **state) {
     (void) state;
 
-    expect_string(__wrap__mdebug2, msg, FIM_SEND);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: {\"type\":\"scan_start\",\"data\":{\"timestamp\":1}}");
     expect_string(__wrap_SendMSG, message, "{\"type\":\"scan_start\",\"data\":{\"timestamp\":1}}");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, SYSCHECK_MQ);

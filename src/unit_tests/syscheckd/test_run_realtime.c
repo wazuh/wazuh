@@ -17,6 +17,7 @@
 #include "../wrappers/posix/pthread_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/linux/inotify_wrappers.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 
@@ -95,71 +96,6 @@ OSHash * __wrap_OSHash_Create() {
     return mock_type(OSHash*);
 }
 
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...)
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...)
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__merror_exit(const char * file, int line, const char * func, const char *msg, ...)
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...)
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    switch(mock()) {
-        case 0:
-            return;
-        default:
-            va_start(args, msg);
-            vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-            va_end(args);
-
-            check_expected(formatted_msg);
-    }
-}
-
-void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...)
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
 int __wrap_send_log_msg() {
     return mock();
 }
@@ -212,9 +148,6 @@ int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, i
     return (ret);
 }
 
-int __wrap_isChroot() {
-    return 1;
-}
 #endif
 
 #ifdef TEST_WINAGENT
@@ -253,7 +186,12 @@ unsigned int __wrap_w_directory_exists(const char *path) {
 
 /* setup/teardown */
 static int setup_group(void **state) {
-    will_return_always(__wrap__mdebug1, 0);
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+#ifdef TEST_AGENT
+    will_return_always(__wrap_isChroot, 1);
+#endif
+
     Read_Syscheck_Config("test_syscheck.conf");
 
     syscheck.realtime = (rtfim *) calloc(1, sizeof(rtfim));
@@ -523,7 +461,6 @@ void test_realtime_adddir_whodata_new_directory(void **state) {
     expect_string(__wrap_W_Vector_insert_unique, element, "/etc/folder");
     will_return(__wrap_W_Vector_insert_unique, 0);
     expect_string(__wrap__mdebug1, formatted_msg, "(6230): Monitoring with Audit: '/etc/folder'");
-    will_return(__wrap__mdebug1, 1);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     ret = realtime_adddir(path, 1, 0);
@@ -593,7 +530,6 @@ void test_realtime_adddir_realtime_watch_generic_failure(void **state)
     syscheck.realtime->fd = 1;
     will_return(__wrap_inotify_add_watch, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "(6272): Unable to add inotify watch to real time monitoring: '/etc/folder'. '-1' '0':'Success'");
-    will_return(__wrap__mdebug1, 1);
 
     ret = realtime_adddir(path, 0, 0);
 
@@ -614,7 +550,6 @@ void test_realtime_adddir_realtime_add(void **state)
     will_return(__wrap_OSHash_Add_ex, 1);
     expect_string(__wrap__mdebug2, formatted_msg, "(6224): Entry '/etc/folder' already exists in the RT hash table.");
     expect_string(__wrap__mdebug1, formatted_msg, "(6227): Directory added for real time monitoring: '/etc/folder'");
-    will_return(__wrap__mdebug1, 1);
 
     ret = realtime_adddir(path, 0, 0);
 
@@ -634,7 +569,7 @@ void test_realtime_adddir_realtime_add_hash_failure(void **state)
     will_return(__wrap_OSHash_Get_ex, 0);
     will_return(__wrap_OSHash_Add_ex, 0);
     expect_string(__wrap__merror_exit, formatted_msg, "(6697): Out of memory. Exiting.");
-    will_return_always(__wrap__mdebug1, 0);
+    expect_string(__wrap__mdebug1, formatted_msg, "(6227): Directory added for real time monitoring: '/etc/folder'");
 
     ret = realtime_adddir(path, 0, 0);
 
@@ -1027,7 +962,6 @@ void test_realtime_adddir_whodata_non_existent_file(void **state) {
     will_return(__wrap_check_path_type, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6907): 'C:\\a\\path' does not exist. Monitoring discarded.");
-    will_return(__wrap__mdebug1, 1);
 
     ret = realtime_adddir("C:\\a\\path", 1, 0);
 
@@ -1195,7 +1129,6 @@ void test_realtime_adddir_out_of_memory_error(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg,
                   "(6227): Directory added for real time monitoring: 'C:\\a\\path'");
-    will_return(__wrap__mdebug1, 1);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     ret = realtime_adddir("C:\\a\\path", 0, 0);
@@ -1218,7 +1151,6 @@ void test_realtime_adddir_success(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg,
                   "(6227): Directory added for real time monitoring: 'C:\\a\\path'");
-    will_return(__wrap__mdebug1, 1);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     ret = realtime_adddir("C:\\a\\path", 0, 0);

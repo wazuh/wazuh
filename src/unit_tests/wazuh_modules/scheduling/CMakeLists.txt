@@ -40,36 +40,50 @@ list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_unti
 list(APPEND use_shared_libs 1)
 
 list(APPEND tests_names "test_aws_scheduling")
-list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=wm_aws_run_s3,--wrap=StartMQ,--wrap=FOREVER")
+list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror \
+                         -Wl,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=wm_aws_run_s3,--wrap=StartMQ,--wrap=FOREVER \
+                         -Wl,--wrap=atexit")
 list(APPEND use_shared_libs 1)
 
 list(APPEND tests_names "test_azure_scheduling")
-list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=wm_exec,--wrap=StartMQ,--wrap=FOREVER,--wrap=SendMSG")
+list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror \
+                         -Wl,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=wm_exec,--wrap=StartMQ,--wrap=FOREVER,--wrap=SendMSG \
+                         -Wl,--wrap=atexit")
 list(APPEND use_shared_libs 1)
 
 list(APPEND tests_names "test_ciscat_scheduling")
-list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=os_random,--wrap=StartMQ,--wrap=FOREVER,--wrap=IsDir")
+list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror \
+                         -Wl,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=os_random,--wrap=StartMQ,--wrap=FOREVER,--wrap=IsDir \
+                         -Wl,--wrap=atexit")
 list(APPEND use_shared_libs 1)
 
 list(APPEND tests_names "test_command_scheduling")
-list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=wm_exec,--wrap=StartMQ,--wrap=FOREVER")
+list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror \
+                         -Wl,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=wm_exec,--wrap=StartMQ,--wrap=FOREVER")
 list(APPEND use_shared_libs 1)
 
 list(APPEND tests_names "test_docker_scheduling")
-list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=FOREVER,--wrap=wpclose,--wrap=fgets \
-                         -Wl,--wrap=wpopenl,--wrap=fclose,--wrap=fflush,--wrap=fprintf,--wrap=fopen,--wrap=fread,--wrap=fseek,--wrap=fwrite,--wrap=remove")
+list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror \
+                         -Wl,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=FOREVER,--wrap=wpclose,--wrap=fgets \
+                         -Wl,--wrap=wpopenl,--wrap=fclose,--wrap=fflush,--wrap=fprintf,--wrap=fopen,--wrap=fread,--wrap=fseek \
+                         -Wl,--wrap=fwrite,--wrap=remove,--wrap=atexit")
 list(APPEND use_shared_libs 1)
 
 list(APPEND tests_names "test_gcp_scheduling")
-list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=FOREVER,--wrap=realpath,--wrap=IsFile,--wrap,atexit")
+list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror \
+                         -Wl,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=FOREVER,--wrap=realpath,--wrap=IsFile,--wrap,atexit")
 list(APPEND use_shared_libs 1)
 
 list(APPEND tests_names "test_oscap_scheduling")
-list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=wm_exec,--wrap=StartMQ,--wrap=FOREVER,--wrap=wm_sendmsg,--wrap=SendMSG")
+list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror \
+                         -Wl,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=wm_exec,--wrap=StartMQ,--wrap=FOREVER \
+                         -Wl,--wrap=wm_sendmsg,--wrap=SendMSG,--wrap=atexit")
 list(APPEND use_shared_libs 1)
 
 list(APPEND tests_names "test_sca_scheduling")
-list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=FOREVER,--wrap=IsFile,--wrap=getDefine_Int,--wrap=StartMQ,--wrap=CreateThread,--wrap=wm_exec,--wrap=wm_sendmsg")
+list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror \
+                         -Wl,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=FOREVER,--wrap=IsFile,--wrap=getDefine_Int \
+                         -Wl,--wrap=StartMQ,--wrap=CreateThread,--wrap=wm_exec,--wrap=wm_sendmsg")
 list(APPEND use_shared_libs 1)
 
 list(APPEND tests_names "test_schedule_scan")

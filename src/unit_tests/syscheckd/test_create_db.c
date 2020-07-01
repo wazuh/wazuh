@@ -18,6 +18,7 @@
 #include "../wrappers/posix/dirent_wrappers.h"
 #include "../wrappers/posix/pthread_wrappers.h"
 #include "../wrappers/posix/stat_wrappers.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 #include "../syscheckd/fim_db.h"
@@ -40,54 +41,6 @@ typedef struct __fim_data_s {
 }fim_data_t;
 
 /* redefinitons/wrapping */
-
-void __wrap__minfo(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-int __wrap__mdebug1() {
-    return 1;
-}
-
-void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
 
 #ifdef TEST_WINAGENT
 
@@ -276,10 +229,6 @@ int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, i
     return (ret);
 }
 
-int __wrap_isChroot() {
-    return 1;
-}
-
 int __wrap_fim_db_get_count_entry_path(fdb_t * fim_sql){
     return mock();
 }
@@ -381,6 +330,12 @@ static int setup_group(void **state) {
     fim_data->json = NULL;
 
     *state = fim_data;
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+#ifdef TEST_AGENT
+    will_return_always(__wrap_isChroot, 1);
+#endif
 
     // Read and setup global values.
     Read_Syscheck_Config("test_syscheck.conf");
@@ -1504,6 +1459,10 @@ static void test_fim_file_no_attributes(void **state) {
     expect_value(__wrap_OS_MD5_SHA1_SHA256_File, mode, OS_BINARY);
     expect_value(__wrap_OS_MD5_SHA1_SHA256_File, max_size, 0x400);
     will_return(__wrap_OS_MD5_SHA1_SHA256_File, -1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6324): Couldn't generate hashes for 'file'");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6331): Couldn't get attributes for file: 'file'");
+
 #ifdef TEST_WINAGENT
     expect_function_call(__wrap_pthread_mutex_unlock);
 #endif
@@ -1671,6 +1630,8 @@ static void test_fim_checker_deleted_file(void **state) {
     char * path = "/media/test.file";
     fim_data->item->index = 3;
     fim_data->item->mode = FIM_REALTIME;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6222): Stat() function failed on: '/media/test.file' due to [(1)-(Operation not permitted)]");
 
     expect_string(__wrap_lstat, filename, path);
     will_return(__wrap_lstat, S_IFREG);
@@ -2302,6 +2263,8 @@ static void test_fim_checker_deleted_file(void **state) {
     char expanded_path[OS_MAXSTR];
     fim_data->item->index = 7;
     fim_data->item->mode = FIM_REALTIME;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6222): Stat() function failed on: 'c:\\windows\\system32\\drivers\\etc\\test.exe' due to [(1)-(Operation not permitted)]");
 
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
@@ -3599,6 +3562,8 @@ static void test_fim_get_data_hash_error(void **state) {
     expect_value(__wrap_OS_MD5_SHA1_SHA256_File, max_size, 0x400);
     will_return(__wrap_OS_MD5_SHA1_SHA256_File, -1);
 
+    expect_string(__wrap__mdebug1, formatted_msg, "(6324): Couldn't generate hashes for 'test'");
+
     fim_data->local_data = fim_get_data("test", fim_data->item);
 
     assert_null(fim_data->local_data);
@@ -3627,6 +3592,8 @@ static void test_fim_get_data_fail_to_get_file_premissions(void **state) {
                                     CHECK_MD5SUM |
                                     CHECK_SHA1SUM |
                                     CHECK_SHA256SUM;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6325): It was not possible to extract the permissions of 'test'. Error: 5");
 
     expect_string(__wrap_w_get_file_permissions, file_path, "test");
     will_return(__wrap_w_get_file_permissions, "");

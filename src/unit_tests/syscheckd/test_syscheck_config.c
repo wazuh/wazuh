@@ -14,15 +14,11 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
 
 /* redefinitons/wrapping */
-
-int __wrap__merror()
-{
-    return 0;
-}
 
 #ifdef TEST_AGENT
 char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
@@ -57,15 +53,7 @@ int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, i
     return (ret);
 }
 
-int __wrap_isChroot() {
-    return 1;
-}
 #endif
-
-int __wrap__mdebug1()
-{
-    return 0;
-}
 
 static int restart_syscheck(void **state)
 {
@@ -85,6 +73,12 @@ void test_Read_Syscheck_Config_success(void **state)
 {
     (void) state;
     int ret;
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+#ifdef TEST_AGENT
+    will_return_always(__wrap_isChroot, 1);
+#endif
 
     ret = Read_Syscheck_Config("test_syscheck.conf");
 
@@ -125,6 +119,8 @@ void test_Read_Syscheck_Config_invalid(void **state)
     (void) state;
     int ret;
 
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_string(__wrap__merror, formatted_msg, "(1226): Error reading XML file 'invalid.conf': XMLERR: File 'invalid.conf' not found. (line 0).");
     ret = Read_Syscheck_Config("invalid.conf");
 
     assert_int_equal(ret, OS_INVALID);
@@ -134,6 +130,11 @@ void test_Read_Syscheck_Config_undefined(void **state)
 {
     (void) state;
     int ret;
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+#ifdef TEST_AGENT
+    will_return_always(__wrap_isChroot, 1);
+#endif
 
     ret = Read_Syscheck_Config("test_syscheck2.conf");
 
@@ -173,6 +174,11 @@ void test_Read_Syscheck_Config_unparsed(void **state)
 {
     (void) state;
     int ret;
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+#ifdef TEST_AGENT
+    will_return_always(__wrap_isChroot, 1);
+#endif
 
     ret = Read_Syscheck_Config("test_empty_config.conf");
 
@@ -217,6 +223,11 @@ void test_getSyscheckConfig(void **state)
 {
     (void) state;
     cJSON * ret;
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+#ifdef TEST_AGENT
+    will_return_always(__wrap_isChroot, 1);
+#endif
 
     Read_Syscheck_Config("test_syscheck.conf");
 
@@ -333,6 +344,11 @@ void test_getSyscheckConfig_no_audit(void **state)
     (void) state;
     cJSON * ret;
 
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+#ifdef TEST_AGENT
+    will_return_always(__wrap_isChroot, 1);
+#endif
+
     Read_Syscheck_Config("test_syscheck2.conf");
 
     ret = getSyscheckConfig();
@@ -429,6 +445,11 @@ void test_getSyscheckConfig_no_directories(void **state)
     (void) state;
     cJSON * ret;
 
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+#ifdef TEST_AGENT
+    will_return_always(__wrap_isChroot, 1);
+#endif
+
     Read_Syscheck_Config("test_empty_config.conf");
 
     ret = getSyscheckConfig();
@@ -440,6 +461,11 @@ void test_getSyscheckConfig_no_directories(void **state)
 {
     (void) state;
     cJSON * ret;
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+#ifdef TEST_AGENT
+    will_return_always(__wrap_isChroot, 1);
+#endif
 
     Read_Syscheck_Config("test_empty_config.conf");
 
@@ -506,6 +532,11 @@ void test_getSyscheckInternalOptions(void **state)
 {
     (void) state;
     cJSON * ret;
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+#ifdef TEST_AGENT
+    will_return_always(__wrap_isChroot, 1);
+#endif
 
     Read_Syscheck_Config("test_syscheck.conf");
 

@@ -13,6 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../headers/wazuhdb_op.h"
 #include "../headers/syscheck_op.h"
 
@@ -42,30 +43,6 @@ int decode_fim_event(_sdb *sdb, Eventinfo *lf);
 void fim_adjust_checksum(sk_sum_t *newsum, char **checksum);
 
 /* wrappers */
-
-void __wrap__merror(const char * file, int line, const char * func, const char *msg, ...)
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...)
-{
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
 
 int __wrap_wdbc_query_ex(int *sock, const char *query, char *response, const int len) {
     check_expected(query);

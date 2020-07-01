@@ -11,11 +11,13 @@
 #include "wazuh_modules/wmodules.h"
 #include "wazuh_modules/wm_command.h"
 #include "wmodules_scheduling_helpers.h"
+#include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 #define TEST_MAX_DATES 5
 
 static wmodule *command_module;
 static OS_XML *lxml;
+extern int test_mode;
 
 static unsigned test_command_date_counter = 0;
 static struct tm test_command_date_storage[TEST_MAX_DATES];
@@ -62,10 +64,12 @@ static int setup_module() {
     
     int ret = wm_command_read(nodes, command_module, 0);
     OS_ClearNode(nodes);
+    test_mode = 1;
     return ret;
 }
 
 static int teardown_module(){
+    test_mode = 0;
     wmodule_cleanup(command_module);
     OS_ClearXML(lxml);
     return 0;
@@ -110,8 +114,14 @@ void test_interval_execution(void **state) {
     module_data->scan_config.scan_wday = -1;
     module_data->scan_config.interval = 60; // 1min
     module_data->scan_config.month_interval = false;
+
     will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
     will_return(__wrap_FOREVER, 0);
+    expect_any_always(__wrap__mtinfo, tag);
+    expect_any_always(__wrap__mtinfo, formatted_msg);
+    expect_any_always(__wrap__mtwarn, tag);
+    expect_any_always(__wrap__mtwarn, formatted_msg);
+
     command_module->context->start(module_data);
     check_time_interval( &module_data->scan_config, &test_command_date_storage[0], TEST_MAX_DATES);     
 }
@@ -125,8 +135,14 @@ void test_day_of_month(void **state) {
     module_data->scan_config.scan_time = strdup("00:00");
     module_data->scan_config.interval = 1; // 1 month
     module_data->scan_config.month_interval = true;
+
     will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
     will_return(__wrap_FOREVER, 0);
+    expect_any_always(__wrap__mtinfo, tag);
+    expect_any_always(__wrap__mtinfo, formatted_msg);
+    expect_any_always(__wrap__mtwarn, tag);
+    expect_any_always(__wrap__mtwarn, formatted_msg);
+
     command_module->context->start(module_data);
     check_day_of_month( &module_data->scan_config, &test_command_date_storage[0], TEST_MAX_DATES);
 }
@@ -140,8 +156,14 @@ void test_day_of_week(void **state) {
     module_data->scan_config.scan_time = strdup("00:00");
     module_data->scan_config.interval = 604800;  // 1 week
     module_data->scan_config.month_interval = false;
+
     will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
     will_return(__wrap_FOREVER, 0);
+    expect_any_always(__wrap__mtinfo, tag);
+    expect_any_always(__wrap__mtinfo, formatted_msg);
+    expect_any_always(__wrap__mtwarn, tag);
+    expect_any_always(__wrap__mtwarn, formatted_msg);
+
     command_module->context->start(module_data);
     check_day_of_week( &module_data->scan_config, &test_command_date_storage[0], TEST_MAX_DATES);
 }
@@ -155,8 +177,14 @@ void test_time_of_day(void **state) {
     module_data->scan_config.scan_time = strdup("05:25");
     module_data->scan_config.interval = WM_DEF_INTERVAL;  // 1 day
     module_data->scan_config.month_interval = false;
+
     will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
     will_return(__wrap_FOREVER, 0);
+    expect_any_always(__wrap__mtinfo, tag);
+    expect_any_always(__wrap__mtinfo, formatted_msg);
+    expect_any_always(__wrap__mtwarn, tag);
+    expect_any_always(__wrap__mtwarn, formatted_msg);
+
     command_module->context->start(module_data);
     check_time_of_day( &module_data->scan_config, &test_command_date_storage[0], TEST_MAX_DATES);
 }
@@ -177,6 +205,7 @@ void test_fake_tag(void **state) {
         "<interval>10m</interval>\n"
         "<skip_verification>yes</skip_verification>";
     test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "No such tag 'fake' at module 'command'.");
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_command_read(test->nodes, test->module, 0),-1);
 }
@@ -197,6 +226,7 @@ void test_read_scheduling_monthday_configuration(void **state) {
         "<skip_verification>yes</skip_verification>"
     ;
     test_structure *test = *state;
+    expect_string(__wrap__mwarn, formatted_msg, "Interval must be a multiple of one month. New interval value: 1M");
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_command_read(test->nodes, test->module, 0),0);
     wm_command_t *module_data = (wm_command_t*)test->module->data;
@@ -223,6 +253,7 @@ void test_read_scheduling_weekday_configuration(void **state) {
         "<skip_verification>yes</skip_verification>"
     ;
     test_structure *test = *state;
+    expect_string(__wrap__mwarn, formatted_msg, "Interval must be a multiple of one week. New interval value: 1w");
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_command_read(test->nodes, test->module, 0),0);
     wm_command_t *module_data = (wm_command_t*)test->module->data;
@@ -248,6 +279,7 @@ void test_read_scheduling_daytime_configuration(void **state) {
         "<skip_verification>yes</skip_verification>"
     ;
     test_structure *test = *state;
+    expect_string(__wrap__mwarn, formatted_msg, "Interval must be a multiple of one day. New interval value: 1d");
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_command_read(test->nodes, test->module, 0),0);
     wm_command_t *module_data = (wm_command_t*)test->module->data;

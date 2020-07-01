@@ -119,13 +119,13 @@ endif()
 set(SEECHANGES_BASE_FLAGS "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,lstat -Wl,--wrap,stat -Wl,--wrap,abspath -Wl,--wrap,wfopen -Wl,--wrap,fread -Wl,--wrap,fopen \
                            -Wl,--wrap,fclose -Wl,--wrap,fwrite -Wl,--wrap,w_compress_gzfile -Wl,--wrap,IsDir -Wl,--wrap,mkdir  -Wl,--wrap,fflush \
                            -Wl,--wrap,w_uncompress_gzfile -Wl,--wrap,OS_MD5_File -Wl,--wrap,File_DateofChange -Wl,--wrap,rename -Wl,--wrap,system \
-                           -Wl,--wrap,fseek -Wl,--wrap,remove,--wrap=fprintf,--wrap=fgets -Wl,--wrap,atexit -Wl,--wrap,getpid")
+                           -Wl,--wrap,fseek -Wl,--wrap,remove,--wrap=fprintf,--wrap=fgets -Wl,--wrap,atexit -Wl,--wrap,getpid,--wrap=_mdebug2")
 
 list(APPEND syscheckd_tests_names "test_seechanges")
 if(${TARGET} STREQUAL "agent")
   list(APPEND syscheckd_tests_flags "${SEECHANGES_BASE_FLAGS} -Wl,--wrap=getDefine_Int,--wrap=isChroot,--wrap=unlink")
 elseif(${TARGET} STREQUAL "winagent")
-  list(APPEND syscheckd_tests_flags "${SEECHANGES_BASE_FLAGS} -Wl,--wrap=_unlink,--wrap=_mdebug2")
+  list(APPEND syscheckd_tests_flags "${SEECHANGES_BASE_FLAGS} -Wl,--wrap=_unlink")
 else()
   list(APPEND syscheckd_tests_flags "${SEECHANGES_BASE_FLAGS} -Wl,--wrap=unlink")
 endif()

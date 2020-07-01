@@ -11,11 +11,14 @@
 #include "wazuh_modules/wmodules.h"
 #include "wazuh_modules/wm_oscap.h"
 #include "wmodules_scheduling_helpers.h"
+#include "../../wrappers/libc/stdlib_wrappers.h"
+#include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 #define TEST_MAX_DATES 5
 
 static wmodule *oscap_module;
 static OS_XML *lxml;
+extern int test_mode;
 
 static unsigned test_oscap_date_counter = 0;
 static struct tm test_oscap_date_storage[TEST_MAX_DATES];
@@ -72,10 +75,12 @@ static int setup_module() {
     XML_NODE nodes = string_to_xml_node(string, lxml);
     int ret = wm_oscap_read(lxml, nodes, oscap_module);
     OS_ClearNode(nodes);
+    test_mode = 1;
     return ret;
 }
 
 static int teardown_module(){
+    test_mode = 0;
     wmodule_cleanup(oscap_module);
     OS_ClearXML(lxml);
     return 0;
@@ -122,8 +127,15 @@ void test_interval_execution(void **state) {
     module_data->scan_config.scan_wday = -1;
     module_data->scan_config.interval = 60; // 1min
     module_data->scan_config.month_interval = false;
+
     will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
     will_return(__wrap_FOREVER, 0);
+    expect_string_count(__wrap__mterror, tag, "wazuh-modulesd:oscap", TEST_MAX_DATES + 1);
+    expect_string_count(__wrap__mterror, formatted_msg, "Couldn't save running state.", TEST_MAX_DATES + 1);
+    expect_any_always(__wrap__mtinfo, tag);
+    expect_any_always(__wrap__mtinfo, formatted_msg);
+
+
     oscap_module->context->start(module_data);
     check_time_interval( &module_data->scan_config, &test_oscap_date_storage[0], TEST_MAX_DATES);
 }
@@ -137,8 +149,15 @@ void test_day_of_month(void **state) {
     module_data->scan_config.scan_time = strdup("00:00");
     module_data->scan_config.interval = 1; // 1 month
     module_data->scan_config.month_interval = true;
+
     will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
     will_return(__wrap_FOREVER, 0);
+    expect_string_count(__wrap__mterror, tag, "wazuh-modulesd:oscap", TEST_MAX_DATES + 1);
+    expect_string_count(__wrap__mterror, formatted_msg, "Couldn't save running state.", TEST_MAX_DATES + 1);
+    expect_any_always(__wrap__mtinfo, tag);
+    expect_any_always(__wrap__mtinfo, formatted_msg);
+
+
     oscap_module->context->start(module_data);
     check_day_of_month( &module_data->scan_config, &test_oscap_date_storage[0], TEST_MAX_DATES);
 }
@@ -152,8 +171,15 @@ void test_day_of_week(void **state) {
     module_data->scan_config.scan_time = strdup("00:00");
     module_data->scan_config.interval = 604800;  // 1 week
     module_data->scan_config.month_interval = false;
+
     will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
     will_return(__wrap_FOREVER, 0);
+    expect_string_count(__wrap__mterror, tag, "wazuh-modulesd:oscap", TEST_MAX_DATES + 1);
+    expect_string_count(__wrap__mterror, formatted_msg, "Couldn't save running state.", TEST_MAX_DATES + 1);
+    expect_any_always(__wrap__mtinfo, tag);
+    expect_any_always(__wrap__mtinfo, formatted_msg);
+
+
     oscap_module->context->start(module_data);
     check_day_of_week( &module_data->scan_config, &test_oscap_date_storage[0], TEST_MAX_DATES);
 }
@@ -167,8 +193,15 @@ void test_time_of_day(void **state) {
     module_data->scan_config.scan_time = strdup("05:25");
     module_data->scan_config.interval = WM_DEF_INTERVAL;  // 1 day
     module_data->scan_config.month_interval = false;
+
     will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
     will_return(__wrap_FOREVER, 0);
+    expect_string_count(__wrap__mterror, tag, "wazuh-modulesd:oscap", TEST_MAX_DATES + 1);
+    expect_string_count(__wrap__mterror, formatted_msg, "Couldn't save running state.", TEST_MAX_DATES + 1);
+    expect_any_always(__wrap__mtinfo, tag);
+    expect_any_always(__wrap__mtinfo, formatted_msg);
+
+
     oscap_module->context->start(module_data);
     check_time_of_day( &module_data->scan_config, &test_oscap_date_storage[0], TEST_MAX_DATES);
 }
@@ -182,6 +215,7 @@ void test_fake_tag(void **state) {
         "<fake_tag>null<fake_tag/>\n";
     test_structure *test = *state;
     test->nodes = string_to_xml_node(string, &(test->xml));
+    expect_string(__wrap__merror, formatted_msg, "No such tag 'fake_tag' at module 'open-scap'.");
     assert_int_equal(wm_oscap_read(&(test->xml), test->nodes, test->module),-1);
 }
 
@@ -194,6 +228,7 @@ void test_read_scheduling_monthday_configuration(void **state) {
         // Only one contect type to avoid repeating wm_exec command
     ;
     test_structure *test = *state;
+    expect_string(__wrap__mwarn, formatted_msg, "Interval must be a multiple of one month. New interval value: 1M");
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_oscap_read(&(test->xml), test->nodes, test->module),0);
     wm_oscap *module_data = (wm_oscap*) test->module->data;
@@ -213,6 +248,7 @@ void test_read_scheduling_weekday_configuration(void **state) {
         // Only one contect type to avoid repeating wm_exec command
     ;
     test_structure *test = *state;
+    expect_string(__wrap__mwarn, formatted_msg, "Interval must be a multiple of one week. New interval value: 1w");
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_oscap_read(&(test->xml), test->nodes, test->module),0);
     wm_oscap *module_data = (wm_oscap*) test->module->data;

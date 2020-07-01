@@ -90,6 +90,9 @@ static void test_day_of_the_month_consecutive(void **state){
         "<day>20</day>\n"
         "<time>0:00</time>"
     ;
+
+    expect_string(__wrap__mwarn, formatted_msg, "Interval must be a multiple of one month. New interval value: 1M");
+
     test->nodes = string_to_xml_node(string, &test->lxml);
     sched_scan_read(&test->scan_config, test->nodes, "");
     // Set to 2 months
@@ -172,6 +175,7 @@ static void test_parse_xml_and_dump(void **state){
     const char *string = 
     "<wday>friday</wday>\n"
     "<time>13:14</time>";
+    expect_string(__wrap__mwarn, formatted_msg, "Interval must be a multiple of one week. New interval value: 1w");
     test->nodes = string_to_xml_node(string, &test->lxml);
     sched_scan_read(&test->scan_config, test->nodes, "");
     cJSON *data = cJSON_CreateObject();

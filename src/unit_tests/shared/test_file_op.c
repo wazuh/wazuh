@@ -19,36 +19,14 @@
 #include "../wrappers/common.h"
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../headers/file_op.h"
 
 /* redefinitons/wrapping */
 
-int __wrap_isChroot() {
-    return mock();
-}
-
 int __wrap_File_DateofChange(const char *file)
 {
     return 1;
-}
-
-int __wrap__merror()
-{
-    return 0;
-}
-
-int __wrap__mwarn()
-{
-    return 0;
-}
-
-int __wrap__minfo()
-{
-    return 0;
-}
-
-int __wrap__mferror(const char * file, int line, const char * func, const char *msg, ...){
-    return 0;
 }
 
 /* setups/teardowns */
@@ -134,6 +112,12 @@ void test_CreatePID_failure_chmod(void **state)
     expect_value(__wrap_fprintf, __stream, fp);
     expect_string(__wrap_fprintf, formatted_msg, "2345\n");
     will_return(__wrap_fprintf, 0);
+#endif
+
+#ifdef WIN32
+    expect_string(__wrap__merror, formatted_msg, "(1127): Could not chmod object '/var/run/test-2345.pid' due to [(13)-(Permission denied)].");
+#else
+    expect_string(__wrap__merror, formatted_msg, "(1127): Could not chmod object '/var/run/test-2345.pid' due to [(0)-(Success)].");
 #endif
 
     expect_string(__wrap_chmod, path, "/var/run/test-2345.pid");

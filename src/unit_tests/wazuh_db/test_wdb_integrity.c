@@ -19,6 +19,7 @@
 #include "../external/sqlite/sqlite3.h"
 #include "../wrappers/externals/openssl/digest_wrappers.h"
 #include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp);
 
@@ -49,50 +50,6 @@ static int teardown_wdb_t(void **state) {
 int __wrap_wdb_stmt_cache(wdb_t * wdb, int index)
 {
     return mock();
-}
-
-void __wrap__mdebug1(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-/*
-  Different implementation is needed with respect to __wrap__mdebug1
-  to avoid the third parameter is checked which causes conflicts
-*/
-void __wrap__mdebug2(const char * file, int line, const char * func, const char *msg, ...) {
-    char *param1;
-    char *param2;
-    va_list args;
-    const char *aux = msg;
-    int i = 0;
-
-    va_start(args, msg);
-
-    while(aux = strchr(aux, '%'), aux) {
-        i++;
-        aux++;
-    }
-
-    if(i) {
-        param1 = va_arg(args, char*);
-        check_expected(param1);
-        i--;
-    }
-    if(i) {
-        param2 = va_arg(args, char*);
-        check_expected(param2);
-    }
-    va_end(args);
-
-    check_expected(msg);
-    return;
 }
 
 /* tests */
@@ -591,9 +548,7 @@ void test_wdbi_query_checksum_diff_hexdigest(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
 
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) has a NULL fim checksum.");
-    expect_string(__wrap__mdebug2, msg, "Agent '%s' %s range checksum: Time: %.3f ms.");
-    expect_string(__wrap__mdebug2, param1, "000");
-    expect_string(__wrap__mdebug2, param2, "fim");
+    expect_any(__wrap__mdebug2, formatted_msg);
 
     ret = wdbi_query_checksum(data, WDB_FIM, "integrity_check_global", payload);
 
@@ -618,9 +573,7 @@ void test_wdbi_query_checksum_equal_hexdigest(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     will_return(__wrap_wdb_stmt_cache, -1);
 
-    expect_string(__wrap__mdebug2, msg, "Agent '%s' %s range checksum: Time: %.3f ms.");
-    expect_string(__wrap__mdebug2, param1, "000");
-    expect_string(__wrap__mdebug2, param2, "fim");
+    expect_any(__wrap__mdebug2, formatted_msg);
 
     ret = wdbi_query_checksum(data, WDB_FIM, "integrity_check_global", payload);
 
@@ -641,9 +594,7 @@ void test_wdbi_query_checksum_bad_command(void **state)
     will_return(__wrap_sqlite3_step, 101);
 
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) has a NULL fim checksum.");
-    expect_string(__wrap__mdebug2, msg, "Agent '%s' %s range checksum: Time: %.3f ms.");
-    expect_string(__wrap__mdebug2, param1, "000");
-    expect_string(__wrap__mdebug2, param2, "fim");
+    expect_any(__wrap__mdebug2, formatted_msg);
 
     ret = wdbi_query_checksum(data, WDB_FIM, "bad_command", payload);
 
@@ -667,9 +618,7 @@ void test_wdbi_query_checksum_check_left_no_tail(void **state)
     will_return(__wrap_sqlite3_step, 101);
     will_return(__wrap_wdb_stmt_cache, -1);
 
-    expect_string(__wrap__mdebug2, msg, "Agent '%s' %s range checksum: Time: %.3f ms.");
-    expect_string(__wrap__mdebug2, param1, "000");
-    expect_string(__wrap__mdebug2, param2, "fim");
+    expect_any(__wrap__mdebug2, formatted_msg);
 
     ret = wdbi_query_checksum(data, WDB_FIM, "integrity_check_left", payload);
 
@@ -693,9 +642,7 @@ void test_wdbi_query_checksum_check_left_ok(void **state)
     will_return(__wrap_sqlite3_step, 101);
     will_return(__wrap_wdb_stmt_cache, -1);
 
-    expect_string(__wrap__mdebug2, msg, "Agent '%s' %s range checksum: Time: %.3f ms.");
-    expect_string(__wrap__mdebug2, param1, "000");
-    expect_string(__wrap__mdebug2, param2, "fim");
+    expect_any(__wrap__mdebug2, formatted_msg);
 
     ret = wdbi_query_checksum(data, WDB_FIM, "integrity_check_left", payload);
 
