@@ -8,8 +8,22 @@ then
     sys_type="apt-get"
 fi
 
+## Prints information
 logger() {
     echo $1
+}
+
+## Show script usage
+getHelp() {
+   echo ""
+   echo "Usage: $0 arguments"
+   echo -e "\t-e   | --install-elastic Install Elasticsearch"
+   echo -e "\t-k   | --install-kibana Install Kibana"
+   echo -e "\t-ip  | --elasticsearch-ip Elasticsearch's IP"
+   echo -e "\t-kip | --kibana-ip Kibana's IP"
+   echo -e "\t-m   | --multi-node Indicates whether it is a multinode installation or not"
+   echo -e "\t-h   | --help Shows help"
+   exit 1 # Exit script after printing help
 }
 
 
@@ -86,12 +100,7 @@ installElasticsearch() {
 
         logger "Configuring Elasticsearch..."
 
-        if [ -n "$m" ]
-        then
-            curl -so /etc/elasticsearch/elasticsearch.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/unattended-installation/distributed/templates/elasticsearch.yml --max-time 300 > /dev/null 2>&1
-        else
         curl -so /etc/elasticsearch/elasticsearch.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/7.x/elasticsearch_all_in_one.yml --max-time 300 > /dev/null 2>&1
-        fi
 
         curl -so /usr/share/elasticsearch/plugins/opendistro_security/securityconfig/roles.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/roles/roles.yml --max-time 300 > /dev/null 2>&1
         curl -so /usr/share/elasticsearch/plugins/opendistro_security/securityconfig/roles_mapping.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/roles/roles_mapping.yml --max-time 300 > /dev/null 2>&1
@@ -118,10 +127,11 @@ configureElastic() {
 
     if [ -n "$m" ]
     then
-        conf="$(awk '{sub(/127.0.0.1/,"'$ip'")}1' /etc/elasticsearch/elasticsearch.yml)"
+        curl -so /etc/elasticsearch/elasticsearch.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/elasticsearch/7.x/elasticsearch_cluster.yml --max-time 300 > /dev/null 2>&1
+        conf="$(awk '{sub(/<elasticsearch_ip>/,"'$ip'")}1' /etc/elasticsearch/elasticsearch.yml)"
         echo "$conf" > /etc/elasticsearch/elasticsearch.yml
     else
-        conf="$(awk '{sub(/<elasticsearch_ip>/,"'$ip'")}1' /etc/elasticsearch/elasticsearch.yml)"
+        conf="$(awk '{sub(/127.0.0.1/,"'$ip'")}1' /etc/elasticsearch/elasticsearch.yml)"
         echo "$conf" > /etc/elasticsearch/elasticsearch.yml
     fi
 
@@ -171,15 +181,14 @@ main() {
 
     if [ -n "$1" ] 
     then
-        healthCheck
-        installPrerequisites
-        addWazuhrepo
-    
         while [ -n "$1" ]
         do
             case "$1" in
             "-e"|"--install-elastic")        
                 e=1
+                healthCheck
+                installPrerequisites
+                addWazuhrepo
                 installElasticsearch
                 shift 1
                 ;;
@@ -188,7 +197,10 @@ main() {
                 shift 1
                 ;;                   
             "-k"|"--install-kibana") 
-                k=1           
+                k=1   
+                healthCheck
+                installPrerequisites
+                addWazuhrepo        
                 installKibana
                 shift 1
                 ;;
@@ -201,21 +213,28 @@ main() {
                 kip=$2
                 shift
                 shift
-                ;;                         
+                ;;  
+            "-h"|"--help")        
+                getHelp
+                ;;                                         
             *)
                 exit 1
             esac
         done
         if [ -n "$e" ] && [ -n "$ip" ]
         then
-            configureElastic $ip
+            configureElastic $ip $m
+        else
+            getHelp
         fi
         if [ -n "$k" ] && [ -n "$ip" ] && [ -n "$kip" ]
         then
-            configureKibana $ip
+            configureKibana $kip $ip
+        else
+            getHelp
         fi         
     else
-        helpFunction
+        getHelp
     fi
 }
 
