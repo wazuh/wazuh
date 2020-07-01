@@ -38,11 +38,11 @@ static void log_message(const std::string& msg)
     }
 }
 
-void dbsync_initialize(log_fnc_t function)
+void dbsync_initialize(log_fnc_t log_function)
 {
     if (!gs_logFunction)
     {
-        gs_logFunction = function;
+        gs_logFunction = log_function;
     }
 }
 
@@ -53,8 +53,7 @@ DBSYNC_HANDLE dbsync_create(const HostType host_type,
 {
     DBSYNC_HANDLE ret_val{ nullptr };
     std::string error_message;
-    if (nullptr == path ||
-        nullptr == sql_statement)
+    if (!path || !sql_statement)
     {
         error_message += "Invalid path or sql_statement.";
     }
@@ -86,8 +85,7 @@ int dbsync_insert_data(const DBSYNC_HANDLE handle,
 {
     auto ret_val { -1 };
     std::string error_message;
-    if (nullptr == handle ||
-        nullptr == json_raw)
+    if (!handle || !json_raw)
     {
         error_message += "Invalid handle or json.";
     }
@@ -125,9 +123,7 @@ int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
 {
     auto ret_val { -1 };
     std::string error_message;
-    if (nullptr == handle ||
-        nullptr == json_snapshot ||
-        nullptr == json_return_modifications)
+    if (!handle || !json_snapshot || !json_return_modifications)
     {
         error_message += "Invalid input parameter.";
     }
@@ -166,9 +162,7 @@ int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
 {
     auto ret_val { -1 };
     std::string error_message;
-    if (nullptr == handle ||
-        nullptr == json_snapshot ||
-        nullptr == callback)
+    if (!handle || !json_snapshot || !callback)
     {
         error_message += "Invalid input parameters.";
     }
@@ -205,7 +199,7 @@ void dbsync_teardown(void) {
 
 void dbsync_free_result(cJSON** json_result)
 {
-    if (nullptr != *json_result)
+    if (*json_result)
     {
         cJSON_Delete(*json_result);
     }

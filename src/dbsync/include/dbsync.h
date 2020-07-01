@@ -41,7 +41,7 @@ extern "C" {
  * @brief Initializes the shared library.
  * @param log_function pointer to log function to be used by the dbsync.
  */
-  EXPORTED void dbsync_initialize(log_fnc_t function);
+  EXPORTED void dbsync_initialize(log_fnc_t log_function);
 
 /**
  * @brief Turn off the services provided by the shared library.
