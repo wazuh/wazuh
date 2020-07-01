@@ -19,8 +19,8 @@ getHelp() {
    echo "Usage: $0 arguments"
    echo -e "\t-e   | --install-elasticsearch Install Elasticsearch"
    echo -e "\t-k   | --install-kibana Install Kibana"
-   echo -e "\t-ip  | --elasticsearch-ip Elasticsearch's IP"
-   echo -e "\t-kip | --kibana-ip Kibana's IP"
+   echo -e "\t-ip  | --elasticsearch-ip <elasticsearch_ip> Elasticsearch's IP"
+   echo -e "\t-kip | --kibana-ip <kibana_ip> Kibana's IP"
    echo -e "\t-m   | --multi-node Indicates whether it is a multinode installation or not"
    echo -e "\t-h   | --help Shows help"
    exit 1 # Exit script after printing help
@@ -33,11 +33,14 @@ installPrerequisites() {
 
     if [ $sys_type == "yum" ] 
     then
-        yum install java-11-openjdk-devel -y -q > /dev/null 2>&1 && export JAVA_HOME="/usr/" -y > /dev/null 2>&1
+        yum install java-11-openjdk-devel -y -q > /dev/null 2>&1
         if [  "$?" != 0  ]
         then
-            yum install java-1.8.0-openjdk-devel -y -q > /dev/null 2>&1 && export JAVA_HOME="/usr/" && yum install unzip wget curl libcap -y -q > /dev/null 2>&1
+            yum install java-1.8.0-openjdk-devel -y -q > /dev/null 2>&1
+            export JAVA_HOME="/"
+            yum install unzip wget curl libcap -y -q > /dev/null 2>&1
         else
+            export JAVA_HOME="/"
             yum install unzip wget curl libcap -y -q > /dev/null 2>&1
         fi        
     elif [ $sys_type == "apt-get" ] 
@@ -49,7 +52,9 @@ installPrerequisites() {
             echo 'deb http://deb.debian.org/debian stretch-backports main' > /etc/apt/sources.list.d/backports.list
         fi
         apt-get update -q > /dev/null 2>&1
-        apt-get install openjdk-11-jdk -y -q > /dev/null 2>&1 && export JAVA_HOME="/usr/" && apt-get install apt-transport-https curl unzip wget libcap2-bin -y -q > /dev/null 2>&1
+        apt-get install openjdk-11-jdk -y -q > /dev/null 2>&1 
+        export JAVA_HOME="/usr/" 
+        apt-get install apt-transport-https curl unzip wget libcap2-bin -y -q > /dev/null 2>&1
     fi
 
     if [  "$?" != 0  ]
@@ -154,8 +159,6 @@ installKibana() {
     curl -so /etc/kibana/kibana.yml https://raw.githubusercontent.com/wazuh/wazuh/new-documentation-templates/extensions/kibana/7.x/kibana_all_in_one.yml --max-time 300 > /dev/null 2>&1
     cd /usr/share/kibana > /dev/null 2>&1
     sudo -u kibana /usr/share/kibana/bin/kibana-plugin install https://packages-dev.wazuh.com/trash/app/kibana/wazuhapp-3.13.0-tsc-opendistro.zip > /dev/null 2>&1
-    mkdir /etc/kibana/certs > /dev/null 2>&1
-    mv /etc/elasticsearch/certs/kibana* /etc/kibana/certs/ > /dev/null 2>&1
     setcap 'cap_net_bind_service=+ep' /usr/share/kibana/node/bin/node > /dev/null 2>&1
 
     logger "Done"
@@ -224,14 +227,10 @@ main() {
         if [ -n "$e" ] && [ -n "$ip" ]
         then
             configureElastic $ip $m
-        else
-            getHelp
         fi
         if [ -n "$k" ] && [ -n "$ip" ] && [ -n "$kip" ]
         then
             configureKibana $kip $ip
-        else
-            getHelp
         fi         
     else
         getHelp
