@@ -41,153 +41,54 @@ EXPORTED void dbsync_initialize(log_fnc_t fnc)
     }
 }
 
-DBSYNC_HANDLE dbsync_open(const HostType host_type,
-                          const DbEngineType db_type,
-                          const char* path,
-                          const char* sql_statement)
-{
-    DBSYNC_HANDLE ret_val{ nullptr };
-    if (nullptr == path ||
-        nullptr == sql_statement)
-    {
-        log_message("Invalid path or sql_statement.");
-    }
-    else
-    {
-        try
-        {
-            ret_val = DBSyncImplementation::instance().initialize(host_type, db_type, path, sql_statement);
-        }
-        catch(const nlohmann::detail::exception& ex)
-        {
-            log_message("json error, id: " + std::to_string(ex.id) + ". " + ex.what());
-        }
-        catch(const DbSync::dbsync_error& ex)
-        {
-            log_message("DB error, id: " + std::to_string(ex.id()) + ". " + ex.what());
-        }
-        catch(...)
-        {
-            log_message("Unrecognized error.");
-        }
-    }
-    return ret_val;
+  if (nullptr == path ||
+    nullptr == sql_statement) {
+    std::cout << "Cannot initialize DBSyncImplementation" << std::endl;
+  } else {
+      ret_val = DBSyncImplementation::instance().initialize(host_type, db_type, path, sql_statement);
+  }
+  return ret_val;
 }
 
-int dbsync_insert_data(const DBSYNC_HANDLE handle,
-                       const cJSON* json_raw)
-{
-    auto ret_val { -1 };
-    if (nullptr == handle ||
-        nullptr == json_raw)
-    {
-        log_message("Invalid handle or json.");
-    }
-    else
-    {
-        try
-        {
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(json_raw)};
-            DBSyncImplementation::instance().insertBulkData(handle, spJsonBytes.get());
-            ret_val = 0;
-        }
-        catch(const nlohmann::detail::exception& ex)
-        {
-            log_message("json error, id: " + std::to_string(ex.id) + ". " + ex.what());
-            ret_val = ex.id;
-        }
-        catch(const DbSync::dbsync_error& ex)
-        {
-            log_message("DB error, id: " + std::to_string(ex.id()) + ". " + ex.what());
-            ret_val = ex.id();
-        }
-        catch(...)
-        {
-            log_message("Unrecognized error.");
-        }
-    }
-    return ret_val;
+int dbsync_insert_data(
+  const DBSYNC_HANDLE handle,
+  const cJSON* json_raw) {
+  auto ret_val { 1l };
+  if (nullptr != json_raw) {
+    const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(json_raw)};
+    ret_val = DBSyncImplementation::instance().insertBulkData(handle, spJsonBytes.get());
+  }
+  return ret_val;
 }
 
 int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
                                 const cJSON* json_snapshot,
                                 cJSON** json_return_modifications)
 {
-    auto ret_val { -1 };
-    if (nullptr == handle ||
-        nullptr == json_snapshot ||
-        nullptr == json_return_modifications)
-    {
-        log_message("Invalid input parameter.");
-    }
-    else
-    {
-        try
-        {
-            std::string result;
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(json_snapshot)};
-            DBSyncImplementation::instance().updateSnapshotData(handle, spJsonBytes.get(), result);
-            *json_return_modifications = cJSON_Parse(result.c_str());
-            ret_val = 0;
-        }
-        catch(const nlohmann::detail::exception& ex)
-        {
-            log_message("json error, id: " + std::to_string(ex.id) + ". " + ex.what());
-            ret_val = ex.id;
-        }
-        catch(const DbSync::dbsync_error& ex)
-        {
-            log_message("DB error, id: " + std::to_string(ex.id()) + ". " + ex.what());
-            ret_val = ex.id();
-        }
-        catch(...)
-        {
-            log_message("Unrecognized error.");
-        }
-    }
-    return ret_val;
+  auto ret_val { false };
+  if (nullptr != json_snapshot) {
+    std::string result;
+    const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(json_snapshot)};
+    ret_val = DBSyncImplementation::instance().updateSnapshotData(handle, spJsonBytes.get(), result);
+    *json_return_modifications = cJSON_Parse(result.c_str());
+  }
+  return ret_val;
 }
 
 int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
                                    const cJSON* json_snapshot,
                                    void* callback)
 {
-    auto ret_val { -1 };
-    if (nullptr == handle ||
-        nullptr == json_snapshot ||
-        nullptr == callback)
-    {
-        log_message("Invalid input parameters.");
-    }
-    else
-    {
-        try
-        {
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(json_snapshot)};
-            DBSyncImplementation::instance().updateSnapshotData(handle, spJsonBytes.get(), callback);
-            ret_val = 0;
-        }
-        catch(const nlohmann::detail::exception& ex)
-        {
-            log_message("json error, id: " + std::to_string(ex.id) + ". " + ex.what());
-            ret_val = ex.id;
-        }
-        catch(const DbSync::dbsync_error& ex)
-        {
-            log_message("DB error, id: " + std::to_string(ex.id()) + ". " + ex.what());
-            ret_val = ex.id();
-        }
-        catch(...)
-        {
-            log_message("Unrecognized error.");
-        }
-    }
-    return ret_val;
+  auto ret_val { 0l };
+  if (nullptr != json_snapshot) {
+    const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(json_snapshot)};
+    ret_val = DBSyncImplementation::instance().updateSnapshotData(handle, spJsonBytes.get(), callback);
+  }
+  return ret_val;
 }
 
-void dbsync_teardown(void)
-{
-    DBSyncImplementation::instance().release();
+void dbsync_teardown(void) {
+  DBSyncImplementation::instance().release();
 }
 
 void dbsync_free_result(cJSON** json_result)

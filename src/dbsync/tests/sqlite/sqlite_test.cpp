@@ -62,6 +62,14 @@ TEST_F(SQLiteTest, TransactionCtorDtorSuccess)
     EXPECT_FALSE(transaction.isRolledBack());
 }
 
+TEST_F(SQLiteTest, TransactionCtorDtorFailure)
+{
+    ConnectionWrapper* pConnection{ new ConnectionWrapper };
+    std::shared_ptr<IConnection> spConnection{ pConnection };
+    EXPECT_CALL(*pConnection, execute("BEGIN TRANSACTION")).WillOnce(Return(false));
+    EXPECT_THROW(Transaction transaction{spConnection}, dbsync_error);
+}
+
 TEST_F(SQLiteTest, TransactionCommitSuccess)
 {
     ConnectionWrapper* pConnection{ new ConnectionWrapper };
@@ -123,7 +131,7 @@ TEST_F(SQLiteTest, StatementCtorSuccess)
 TEST_F(SQLiteTest, StatementCtorFailure)
 {
     std::shared_ptr<IConnection> spConnection{ new Connection };
-    EXPECT_THROW(Statement stmt(spConnection, "WRONG STATEMENT"), sqlite_error);
+    EXPECT_THROW(Statement stmt(spConnection, "WRONG STATEMENT"), dbsync_error);
 }
 
 TEST_F(SQLiteTest, StatementStep)
@@ -131,8 +139,8 @@ TEST_F(SQLiteTest, StatementStep)
     std::shared_ptr<IConnection> spConnection{ new Connection };
     Statement stmt{spConnection, "CREATE TABLE test_table (Colum1 INTEGER, Colum2 TEXT);"};
     EXPECT_TRUE(stmt.step());
-    stmt.reset();
-    EXPECT_THROW(stmt.step(), sqlite_error);
+    EXPECT_TRUE(stmt.reset());
+    EXPECT_THROW(stmt.step(), dbsync_error);
 }
 
 TEST_F(SQLiteTest, StatementBindInt)

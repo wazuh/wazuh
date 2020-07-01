@@ -29,14 +29,14 @@ namespace DbSync
             static DBSyncImplementation s_instance;
             return s_instance;
         }
-        void insertBulkData(const DBSYNC_HANDLE handle,
-                            const char* jsonRaw);
-        void updateSnapshotData(const DBSYNC_HANDLE handle,
-                                const char* jsonSnapshot,
-                                std::string& result);
-        void updateSnapshotData(const DBSYNC_HANDLE handle,
-                                const char* jsonSnapshot,
-                                void* callback);
+        int32_t insertBulkData(const DBSYNC_HANDLE handle,
+                               const char* jsonRaw);
+        int32_t updateSnapshotData(const DBSYNC_HANDLE handle,
+                                   const char* jsonSnapshot,
+                                   std::string& result);
+        int32_t updateSnapshotData(const DBSYNC_HANDLE handle,
+                                   const char* jsonSnapshot,
+                                   void* callback);
         DBSYNC_HANDLE initialize(const HostType hostType,
                                  const DbEngineType dbType,
                                  const std::string& path,
