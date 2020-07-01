@@ -323,7 +323,7 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort=None, search=No
                                       )
 
     # Add failed items
-    for invalid_group in set(group_list) | get_groups() ^ get_groups():
+    for invalid_group in set(group_list) - get_groups():
         result.add_failed_item(id_=invalid_group, error=WazuhError(1710))
 
     group_query = WazuhDBQueryGroup(filters={'name': group_list}, offset=offset, limit=limit, sort=sort, search=search)
