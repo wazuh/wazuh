@@ -25,48 +25,31 @@ struct CJsonDeleter
     }
 };
 
-static std::mutex gs_logFunctionsMutex;
-static std::map<DBSYNC_HANDLE, log_fnc_t> gs_logFunctions;
+static log_fnc_t gs_logFunction{ nullptr };
 
-static void add_log_function(const DBSYNC_HANDLE handle,
-                             log_fnc_t log_function)
-{
-    if (handle && log_function)
-    {
-        std::lock_guard<std::mutex> lock{ gs_logFunctionsMutex };
-        gs_logFunctions[handle] = log_function;
-    }
-}
-
-static log_fnc_t get_log_function(const DBSYNC_HANDLE handle)
-{
-    std::lock_guard<std::mutex> lock{ gs_logFunctionsMutex };
-    const auto it { gs_logFunctions.find(handle) };
-    if (it != gs_logFunctions.end())
-    {
-        return it->second;
-    }
-    return nullptr;
-}
-
-static void log_message(const DBSYNC_HANDLE handle,
-                        const std::string& msg)
+static void log_message(const std::string& msg)
 {
     if (!msg.empty())
     {
-        const auto log_function { get_log_function(handle) };
-        if (log_function)
+        if (gs_logFunction)
         {
-            log_function(msg.c_str());
+            gs_logFunction(msg.c_str());
         }
     }
 }
 
-DBSYNC_HANDLE dbsync_initialize(const HostType host_type,
-                                const DbEngineType db_type,
-                                const char* path,
-                                const char* sql_statement,
-                                log_fnc_t log_function)
+void dbsync_initialize(log_fnc_t function)
+{
+    if (!gs_logFunction)
+    {
+        gs_logFunction = function;
+    }
+}
+
+DBSYNC_HANDLE dbsync_create(const HostType host_type,
+                            const DbEngineType db_type,
+                            const char* path,
+                            const char* sql_statement)
 {
     DBSYNC_HANDLE ret_val{ nullptr };
     std::string error_message;
@@ -80,7 +63,6 @@ DBSYNC_HANDLE dbsync_initialize(const HostType host_type,
         try
         {
             ret_val = DBSyncImplementation::instance().initialize(host_type, db_type, path, sql_statement);
-            add_log_function(ret_val, log_function);
         }
         catch(const nlohmann::detail::exception& ex)
         {
@@ -95,10 +77,7 @@ DBSYNC_HANDLE dbsync_initialize(const HostType host_type,
             error_message += "Unrecognized error.";
         }
     }
-    if (log_function && !error_message.empty())
-    {
-        log_function(error_message.c_str());
-    }
+    log_message(error_message);
     return ret_val;
 }
 
@@ -135,7 +114,7 @@ int dbsync_insert_data(const DBSYNC_HANDLE handle,
             error_message += "Unrecognized error.";
         }
     }
-    log_message(handle, error_message);
+    log_message(error_message);
 
     return ret_val;
 }
@@ -177,7 +156,7 @@ int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
             error_message += "Unrecognized error.";
         }
     }
-    log_message(handle, error_message);
+    log_message(error_message);
     return ret_val;
 }
 
@@ -216,7 +195,7 @@ int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
             error_message += "Unrecognized error.";
         }
     }
-    log_message(handle, error_message);
+    log_message(error_message);
     return ret_val;
 }
 
