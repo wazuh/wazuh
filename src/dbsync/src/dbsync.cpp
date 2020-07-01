@@ -9,6 +9,8 @@
  * Foundation.
  */
 
+#include <map>
+#include <mutex>
 #include "dbsync.h"
 #include "dbsync_implementation.h"
 #ifdef __cplusplus
@@ -23,53 +25,79 @@ struct CJsonDeleter
     }
 };
 
-static log_fnc_t gs_logFunction{ nullptr };
+static std::mutex gs_logFunctionsMutex;
+static std::map<DBSYNC_HANDLE, log_fnc_t> gs_logFunctions;
 
-static void log_message(const std::string& msg)
+static void add_log_function(const DBSYNC_HANDLE handle,
+                             log_fnc_t log_function)
 {
-    if (gs_logFunction)
+    if (handle && log_function)
     {
-        gs_logFunction(msg.c_str());
+        std::lock_guard<std::mutex> lock{ gs_logFunctionsMutex };
+        gs_logFunctions[handle] = log_function;
     }
 }
 
-EXPORTED void dbsync_initialize(log_fnc_t fnc)
+static log_fnc_t get_log_function(const DBSYNC_HANDLE handle)
 {
-    if (!gs_logFunction)
+    std::lock_guard<std::mutex> lock{ gs_logFunctionsMutex };
+    const auto it { gs_logFunctions.find(handle) };
+    if (it != gs_logFunctions.end())
     {
-        gs_logFunction = fnc;
+        return it->second;
+    }
+    return nullptr;
+}
+
+static void log_message(const DBSYNC_HANDLE handle,
+                        const std::string& msg)
+{
+    if (!msg.empty())
+    {
+        const auto log_function { get_log_function(handle) };
+        if (log_function)
+        {
+            log_function(msg.c_str());
+        }
     }
 }
 
-DBSYNC_HANDLE dbsync_open(const HostType host_type,
-                          const DbEngineType db_type,
-                          const char* path,
-                          const char* sql_statement)
+DBSYNC_HANDLE dbsync_initialize(const HostType host_type,
+                                const DbEngineType db_type,
+                                const char* path,
+                                const char* sql_statement,
+                                log_fnc_t log_function)
 {
     DBSYNC_HANDLE ret_val{ nullptr };
+    std::string error_message;
     if (nullptr == path ||
         nullptr == sql_statement)
     {
-        log_message("Invalid path or sql_statement.");
+        error_message += "Invalid path or sql_statement.";
     }
     else
     {
         try
         {
             ret_val = DBSyncImplementation::instance().initialize(host_type, db_type, path, sql_statement);
+            add_log_function(ret_val, log_function);
         }
         catch(const nlohmann::detail::exception& ex)
         {
-            log_message("json error, id: " + std::to_string(ex.id) + ". " + ex.what());
+            error_message += "json error, id: " + std::to_string(ex.id) + ". " + ex.what();
         }
         catch(const DbSync::dbsync_error& ex)
         {
-            log_message("DB error, id: " + std::to_string(ex.id()) + ". " + ex.what());
+            error_message += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
         }
         catch(...)
         {
-            log_message("Unrecognized error.");
+            error_message += "Unrecognized error.";
         }
+    }
+    if (log_function && !error_message.empty())
+    {
+        log_function(error_message.c_str());
     }
     return ret_val;
 }
@@ -78,10 +106,11 @@ int dbsync_insert_data(const DBSYNC_HANDLE handle,
                        const cJSON* json_raw)
 {
     auto ret_val { -1 };
+    std::string error_message;
     if (nullptr == handle ||
         nullptr == json_raw)
     {
-        log_message("Invalid handle or json.");
+        error_message += "Invalid handle or json.";
     }
     else
     {
@@ -93,19 +122,21 @@ int dbsync_insert_data(const DBSYNC_HANDLE handle,
         }
         catch(const nlohmann::detail::exception& ex)
         {
-            log_message("json error, id: " + std::to_string(ex.id) + ". " + ex.what());
+            error_message += "json error, id: " + std::to_string(ex.id) + ". " + ex.what();
             ret_val = ex.id;
         }
         catch(const DbSync::dbsync_error& ex)
         {
-            log_message("DB error, id: " + std::to_string(ex.id()) + ". " + ex.what());
+            error_message += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
             ret_val = ex.id();
         }
         catch(...)
         {
-            log_message("Unrecognized error.");
+            error_message += "Unrecognized error.";
         }
     }
+    log_message(handle, error_message);
+
     return ret_val;
 }
 
@@ -114,11 +145,12 @@ int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
                                 cJSON** json_return_modifications)
 {
     auto ret_val { -1 };
+    std::string error_message;
     if (nullptr == handle ||
         nullptr == json_snapshot ||
         nullptr == json_return_modifications)
     {
-        log_message("Invalid input parameter.");
+        error_message += "Invalid input parameter.";
     }
     else
     {
@@ -132,19 +164,20 @@ int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
         }
         catch(const nlohmann::detail::exception& ex)
         {
-            log_message("json error, id: " + std::to_string(ex.id) + ". " + ex.what());
+            error_message += "json error, id: " + std::to_string(ex.id) + ". " + ex.what();
             ret_val = ex.id;
         }
         catch(const DbSync::dbsync_error& ex)
         {
-            log_message("DB error, id: " + std::to_string(ex.id()) + ". " + ex.what());
+            error_message += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
             ret_val = ex.id();
         }
         catch(...)
         {
-            log_message("Unrecognized error.");
+            error_message += "Unrecognized error.";
         }
     }
+    log_message(handle, error_message);
     return ret_val;
 }
 
@@ -153,11 +186,12 @@ int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
                                    void* callback)
 {
     auto ret_val { -1 };
+    std::string error_message;
     if (nullptr == handle ||
         nullptr == json_snapshot ||
         nullptr == callback)
     {
-        log_message("Invalid input parameters.");
+        error_message += "Invalid input parameters.";
     }
     else
     {
@@ -169,19 +203,20 @@ int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
         }
         catch(const nlohmann::detail::exception& ex)
         {
-            log_message("json error, id: " + std::to_string(ex.id) + ". " + ex.what());
+            error_message += "json error, id: " + std::to_string(ex.id) + ". " + ex.what();
             ret_val = ex.id;
         }
         catch(const DbSync::dbsync_error& ex)
         {
-            log_message("DB error, id: " + std::to_string(ex.id()) + ". " + ex.what());
+            error_message += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
             ret_val = ex.id();
         }
         catch(...)
         {
-            log_message("Unrecognized error.");
+            error_message += "Unrecognized error.";
         }
     }
+    log_message(handle, error_message);
     return ret_val;
 }
 
