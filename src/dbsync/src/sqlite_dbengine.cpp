@@ -14,13 +14,13 @@
 #include "typedef.h"
 #include <fstream>
 
-bool SQLiteDBEngine::Execute(
+bool SQLiteDBEngine::execute(
     const std::string& query) {
 
     return true;
 }
 
-bool SQLiteDBEngine::Select(
+bool SQLiteDBEngine::select(
     const std::string& query, 
     nlohmann::json& result) {
 
@@ -73,7 +73,7 @@ bool SQLiteDBEngine::CleanDB(const std::string& path) {
   return ret_val;
 }
 
-bool SQLiteDBEngine::BulkInsert(const std::string& table, const nlohmann::json& data) {
+bool SQLiteDBEngine::bulkInsert(const std::string& table, const nlohmann::json& data) {
   auto ret_val{ false };
   if (0 != LoadTableData(table)) {
     const auto sql { BuildInsertBulkDataSqlQuery(table) };
@@ -199,11 +199,11 @@ bool SQLiteDBEngine::BindJsonData(std::unique_ptr<SQLite::IStatement>const& stmt
   return ret_val;
 }
 
-bool SQLiteDBEngine::RefreshTablaData(const nlohmann::json& data, const std::tuple<nlohmann::json&, void *> delta) {
+bool SQLiteDBEngine::refreshTableData(const nlohmann::json& data, const std::tuple<nlohmann::json&, void *> delta) {
   auto ret_val {false};
   const std::string table { data["table"].is_string() ? data["table"].get_ref<const std::string&>() : "" };
   if (CreateCopyTempTable(table)) {
-    if (BulkInsert(table + kTempTableSubFix, data["data"])) {
+    if (bulkInsert(table + kTempTableSubFix, data["data"])) {
       if (0 != LoadTableData(table)) {
         std::vector<std::string> primary_key_list;
         if (GetPrimaryKeysFromTable(table, primary_key_list)) {
@@ -527,7 +527,7 @@ bool SQLiteDBEngine::InsertNewRows(
   auto ret_val { true };
   std::vector<Row> row_values;
   if (GetLeftOnly(table+kTempTableSubFix, table, primary_key_list, row_values)) {
-     if (BulkInsert(table, row_values)) {
+     if (bulkInsert(table, row_values)) {
        for (const auto& row : row_values){
         nlohmann::json object;
         for (const auto& value : row) {
@@ -553,7 +553,7 @@ bool SQLiteDBEngine::InsertNewRows(
   return ret_val;
 }
 
-bool SQLiteDBEngine::BulkInsert(
+bool SQLiteDBEngine::bulkInsert(
   const std::string& table, 
   const std::vector<Row>& data) {
 

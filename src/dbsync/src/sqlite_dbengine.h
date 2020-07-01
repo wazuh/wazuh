@@ -70,15 +70,15 @@ enum ResponseType {
   RT_CALLBACK
 }; 
 
-class SQLiteDBEngine : public DbEngine {
+class SQLiteDBEngine : public DbSync::IDbEngine {
 public:
   SQLiteDBEngine(std::shared_ptr<ISQLiteFactory> sqlite_factory,const std::string& path, const std::string& table_statement_creation);
   ~SQLiteDBEngine();
   
-  virtual bool Execute(const std::string& query) override;
-  virtual bool Select(const std::string& query, nlohmann::json& result) override;
-  virtual bool BulkInsert(const std::string& table, const nlohmann::json& data) override; 
-  virtual bool RefreshTablaData(const nlohmann::json& data, const std::tuple<nlohmann::json&, void *> delta) override;
+  virtual bool execute(const std::string& query) override;
+  virtual bool select(const std::string& query, nlohmann::json& result) override;
+  virtual bool bulkInsert(const std::string& table, const nlohmann::json& data) override;
+  virtual bool refreshTableData(const nlohmann::json& data, const std::tuple<nlohmann::json&, void *> delta) override;
 
 private:
   void Initialize(const std::string& path, const std::string& table_statement_creation);
@@ -105,7 +105,7 @@ private:
   std::string BuildLeftOnlyQuery(const std::string& t1,const std::string& t2,const std::vector<std::string>& primary_key_list, const bool return_only_pk_fields = false);
   bool GetLeftOnly(const std::string& t1,const std::string& t2, const std::vector<std::string>& primary_key_list, std::vector<Row>& return_rows);
   bool GetPKListLeftOnly(const std::string& t1, const std::string& t2, const std::vector<std::string>& primary_key_list, std::vector<Row>& return_rows);
-  bool BulkInsert(const std::string& table, const std::vector<Row>& data);
+  bool bulkInsert(const std::string& table, const std::vector<Row>& data);
   void DeleteTempTable(const std::string& table);
 
   std::string BuildModifiedRowsQuery(const std::string& t1,const std::string& t2, const std::vector<std::string>& primary_key_list);

@@ -14,7 +14,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
+using namespace DbSync;
 struct CJsonDeleter
 {
   void operator()(char* json)
@@ -35,7 +35,7 @@ DBSYNC_HANDLE dbsync_initialize(
     nullptr == sql_statement) {
     std::cout << "Cannot initialize DBSyncImplementation" << std::endl;
   } else {
-      ret_val = DBSyncImplementation::getInstance().initialize(host_type, db_type, path, sql_statement);
+      ret_val = DBSyncImplementation::instance().initialize(host_type, db_type, path, sql_statement);
   }
   return ret_val;
 }
@@ -46,7 +46,7 @@ int dbsync_insert_data(
   auto ret_val { 1l };
   if (nullptr != json_raw) {
     const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(json_raw)};
-    ret_val = DBSyncImplementation::getInstance().insertBulkData(handle, spJsonBytes.get());
+    ret_val = DBSyncImplementation::instance().insertBulkData(handle, spJsonBytes.get());
   }
   return ret_val;
 }
@@ -60,7 +60,7 @@ int dbsync_update_with_snapshot(
   if (nullptr != json_snapshot) {
     std::string result;
     const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(json_snapshot)};
-    ret_val = DBSyncImplementation::getInstance().updateSnapshotData(handle, spJsonBytes.get(), result);
+    ret_val = DBSyncImplementation::instance().updateSnapshotData(handle, spJsonBytes.get(), result);
     *json_return_modifications = cJSON_Parse(result.c_str());
   }
   return ret_val;
@@ -74,13 +74,13 @@ int dbsync_update_with_snapshot_cb(
   auto ret_val { 0l };
   if (nullptr != json_snapshot) {
     const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(json_snapshot)};
-    ret_val = DBSyncImplementation::getInstance().updateSnapshotData(handle, spJsonBytes.get(), callback);
+    ret_val = DBSyncImplementation::instance().updateSnapshotData(handle, spJsonBytes.get(), callback);
   }
   return ret_val;
 }
 
 void dbsync_teardown(void) {
-  DBSyncImplementation::getInstance().release();
+  DBSyncImplementation::instance().release();
 }
 
 void dbsync_free_result(
