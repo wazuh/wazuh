@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -18,6 +18,7 @@
 
 #include "os_xml.h"
 #include "os_xml_internal.h"
+#include "file_op.h"
 
 /* Prototypes */
 static int _oscomment(OS_XML *_lxml) __attribute__((nonnull));
@@ -48,7 +49,15 @@ static int _xml_fgetc(FILE *fp, OS_XML *_lxml)
 int _xml_sgetc(OS_XML *_lxml){
     int c;
 
-    c = (_lxml->stash_i > 0) ? _lxml->stash[--_lxml->stash_i] : *(_lxml->string++);
+    if (_lxml->stash_i > 0) {
+        c = _lxml->stash[--_lxml->stash_i];
+    }
+    else if (_lxml->string) {
+        c = *(_lxml->string++);
+    }
+    else {
+        c = -1;
+    }
 
     if (c == '\n') { /* add newline */
         _lxml->line++;
@@ -189,6 +198,7 @@ int OS_ReadXML(const char *file, OS_XML *_lxml)
         xml_error(_lxml, "XMLERR: File '%s' not found.", file);
         return (-2);
     }
+    w_file_cloexec(fp);
     _lxml->fp = fp;
     _lxml->string = NULL;
 

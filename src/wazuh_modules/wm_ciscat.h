@@ -1,9 +1,9 @@
 /*
  * Wazuh Module for CIS-CAT scanner
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * December, 2017.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -24,6 +24,7 @@
 #define WM_CISCAT_PROFILE2      "<xccdf:Profile id="
 #define WM_CISCAT_GROUP_START   "<Group id="
 #define WM_CISCAT_RESULT_START  "<TestResult"
+#define WM_CISCAT_RESULT_START2 "<xccdf:TestResult"
 #define WM_CISCAT_RULE_START    "<Rule id="
 #define WM_CISCAT_RULE_END      "</Rule>"
 #define WM_CISCAT_DESC_START    "<description"
@@ -66,10 +67,7 @@ typedef struct wm_ciscat_state {
 } wm_ciscat_state;
 
 typedef struct wm_ciscat {
-    unsigned int interval;          // Default time interval between cycles
-    int scan_day;                   // Day of month to run the CIS-CAT scan
-    int scan_wday;                  // Day of the week to run the CIS-CAT scan
-    char *scan_time;                // Time of the day to run the CIS-CAT scan
+    sched_scan_config scan_config;
     unsigned int timeout;           // Default execution time limit (seconds)
     char *java_path;                // Path to Java Runtime Environment
     char *ciscat_path;              // Path to CIS-CAT scanner tool

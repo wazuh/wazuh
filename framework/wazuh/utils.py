@@ -1,26 +1,28 @@
-
-
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh.exception import WazuhException
 from wazuh.database import Connection
+from wazuh.wdb import WazuhDBConnection
 from wazuh import common
 from tempfile import mkstemp
 from subprocess import call, CalledProcessError
-from os import remove, chmod, chown, path, listdir, close, mkdir, curdir
+from os import remove, chmod, chown, path, listdir, close, mkdir, curdir, rename, utime
 from datetime import datetime, timedelta
 import hashlib
 import json
 import stat
+import shutil
 import re
 import errno
+import operator
+import typing
 from itertools import groupby, chain
 from xml.etree.ElementTree import fromstring
-from operator import itemgetter
 import glob
 import sys
+
 # Python 2/3 compatibility
 if sys.version_info[0] == 3:
     unicode = str
@@ -53,7 +55,7 @@ def previous_month(n=1):
     :return: First date of the previous n month.
     """
 
-    date = datetime.today().replace(day=1)  # First day of current month
+    date = datetime.utcnow().replace(day=1)  # First day of current month
 
     for i in range(0, int(n)):
         date = (date - timedelta(days=1)).replace(day=1)  # (first_day - 1) = previous month
@@ -130,11 +132,13 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
     :param allowed_sort_fields: Check sort_by with allowed_sort_fields (array).
     :return: sorted array.
     """
+
     def check_sort_fields(allowed_sort_fields, sort_by):
         # Check if every element in sort['fields'] is in allowed_sort_fields
         if not sort_by.issubset(allowed_sort_fields):
             incorrect_fields = ', '.join(sort_by - allowed_sort_fields)
-            raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(', '.join(allowed_sort_fields), incorrect_fields))
+            raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(', '.join(allowed_sort_fields),
+                                                                                      incorrect_fields))
 
     if not array:
         return array
@@ -154,11 +158,14 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
             check_sort_fields(set(array[0].keys()), set(sort_by))
 
             return sorted(array,
-                          key=lambda o: tuple(o.get(a).lower() if type(o.get(a)) in (str,unicode) else o.get(a) for a in sort_by),
+                          key=lambda o: tuple(
+                              o.get(a).lower() if type(o.get(a)) in (str, unicode) else o.get(a) for a in sort_by),
                           reverse=order_desc)
         else:
             return sorted(array,
-                          key=lambda o: tuple(getattr(o, a).lower() if type(getattr(o, a)) in (str,unicode) else getattr(o, a) for a in sort_by),
+                          key=lambda o: tuple(
+                              getattr(o, a).lower() if type(getattr(o, a)) in (str, unicode) else getattr(o, a) for a in
+                              sort_by),
                           reverse=order_desc)
     else:
         if type(array) is set or (type(array[0]) is not dict and 'class \'wazuh' not in str(type(array[0]))):
@@ -346,6 +353,41 @@ def chown_r(filepath, uid, gid):
                 chown_r(itempath, uid, gid)
 
 
+def safe_move(source, target, ownership=(common.ossec_uid(), common.ossec_gid()), time=None, permissions=None):
+    """Moves a file even between filesystems
+
+    This function is useful to move files even when target directory is in a different filesystem from the source.
+    Write permissions are required on target directory.
+
+    :param source: full path to source file
+    :param target: full path to target file
+    :param ownership: tuple in the form (user, group) to be set up after the file is moved
+    :param time: tuple in the form (addition_timestamp, modified_timestamp)
+    :param permissions: string mask in octal notation. I.e.: '0o640'
+    """
+    # Create temp file. Move between
+    tmp_path, tmp_filename = path.split(target)
+    tmp_target = path.join(tmp_path, f".{tmp_filename}.tmp")
+    shutil.move(source, tmp_target, copy_function=shutil.copyfile)
+
+    try:
+        # Overwrite the file atomically.
+        rename(tmp_target, target)
+    except OSError:
+        # This is the last try when target is still in a different filesystem.
+        # For example, when target is a mounted file in a Docker container
+        # However, this is not an atomic operation and could lead to race conditions
+        # if the file is read/written simultaneously with other processes
+        shutil.move(tmp_target, target, copy_function=shutil.copyfile)
+
+    # Set up metadata
+    chown(target, *ownership)
+    if permissions is not None:
+        chmod(target, permissions)
+    if time is not None:
+        utime(target, time)
+
+
 def mkdir_with_mode(name, mode=0o770):
     """
     Creates a directory with specified permissions.
@@ -363,7 +405,7 @@ def mkdir_with_mode(name, mode=0o770):
             # be happy if someone already created the path
             if e.errno != errno.EEXIST:
                 raise
-        if tail == curdir:           # xxx/newdir/. exists if xxx/newdir exists
+        if tail == curdir:  # xxx/newdir/. exists if xxx/newdir exists
             return
     try:
         mkdir(name, mode)
@@ -416,12 +458,13 @@ def get_hash_str(my_str, hash_algorithm='md5'):
 
 
 def get_fields_to_nest(fields, force_fields=[], split_character="_"):
-    nest = {k:set(filter(lambda x: x != k, chain.from_iterable(g)))
-             for k,g in groupby(map(lambda x: x.split(split_character), sorted(fields)),
-             key=lambda x:x[0])}
+    nest = {k: set(filter(lambda x: x != k, chain.from_iterable(g)))
+            for k, g in groupby(map(lambda x: x.split(split_character), sorted(fields)),
+                                key=lambda x: x[0])}
     nested = filter(lambda x: len(x[1]) > 1 or x[0] in force_fields, nest.items())
-    nested = [(field,{(subfield, split_character.join([field,subfield])) for subfield in subfields}) for field, subfields in nested]
-    non_nested = set(filter(lambda x: x.split(split_character)[0] not in map(itemgetter(0), nested), fields))
+    nested = [(field, {(subfield, split_character.join([field, subfield])) for subfield in subfields}) for
+              field, subfields in nested]
+    non_nested = set(filter(lambda x: x.split(split_character)[0] not in map(operator.itemgetter(0), nested), fields))
     return nested, non_nested
 
 
@@ -459,9 +502,9 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     """
     # separate fields and subfields:
     # nested = {'board': ['serial'], 'cpu': ['cores', 'mhz', 'name'], 'ram': ['free', 'total']}
-    nested = {k:list(filter(lambda x: x != k, chain.from_iterable(g)))
-             for k,g in groupby(map(lambda x: x.split(split_character), sorted(data.keys())),
-             key=lambda x:x[0])}
+    nested = {k: list(filter(lambda x: x != k, chain.from_iterable(g)))
+              for k, g in groupby(map(lambda x: x.split(split_character), sorted(data.keys())),
+                                  key=lambda x: x[0])}
 
     # create a nested dictionary with those fields that have subfields
     # (board_serial won't be added because it only has one subfield)
@@ -476,12 +519,12 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     #           'total': '2045956'
     #       }
     #    }
-    nested_dict = {f:{sf:data['{0}{2}{1}'.format(f,sf,split_character)] for sf in sfl} for f,sfl
-                  in nested.items() if len(sfl) > 1 or f in force_fields}
+    nested_dict = {f: {sf: data['{0}{2}{1}'.format(f, sf, split_character)] for sf in sfl} for f, sfl
+                   in nested.items() if len(sfl) > 1 or f in force_fields}
 
     # create a dictionary with the non nested fields
     # non_nested_dict = {'board_serial': 'BSS-0123456789'}
-    non_nested_dict = {f:data[f] for f in data.keys() if f.split(split_character)[0]
+    non_nested_dict = {f: data[f] for f in data.keys() if f.split(split_character)[0]
                        not in nested_dict.keys()}
 
     # append both dictonaries
@@ -497,10 +540,19 @@ def load_wazuh_xml(xml_path):
     # -- characters are not allowed in XML comments
     xml_comment = re.compile(r"(<!--(.*?)-->)", flags=re.MULTILINE | re.DOTALL)
     for comment in xml_comment.finditer(data):
-        good_comment = comment.group(2).replace('--','..')
+        good_comment = comment.group(2).replace('--', '..')
         data = data.replace(comment.group(2), good_comment)
 
     # < characters should be scaped as &lt; unless < is starting a <tag> or a comment
+
+    custom_entities = {
+        'backslash': '\\'
+    }
+
+    # replace every custom entity
+    for character, replacement in custom_entities.items():
+        data = re.sub(replacement.replace('\\', '\\\\'), f'&{character};', data)
+
     data = re.sub(r"<(?!/?\w+.+>|!--)", "&lt;", data)
 
     # replace \< by &lt;
@@ -509,32 +561,39 @@ def load_wazuh_xml(xml_path):
     # replace \> by &gt;
     data = re.sub(r'\\>', '&gt;', data)
 
-    # & characters should be scaped if they don't represent an &entity;
-    data = re.sub(r"&(?!(amp|lt|gt|apos|quot);)", "&amp;", data)
+    # default entities
+    default_entities = ['amp', 'lt', 'gt', 'apos', 'quot']
 
-    return fromstring('<root_tag>' + data + '</root_tag>')
+    # & characters should be scaped if they don't represent an &entity;
+    data = re.sub(f"&(?!({'|'.join(default_entities + list(custom_entities))});)", "&amp;", data)
+
+    entities = '<!DOCTYPE xmlfile [\n' + \
+               '\n'.join([f'<!ENTITY {name} "{value}">' for name, value in custom_entities.items()]) +\
+               '\n]>\n'
+
+    return fromstring(entities + '<root_tag>' + data + '</root_tag>')
 
 
 class WazuhVersion:
 
     def __init__(self, version):
 
-        pattern = r"v?(\d)\.(\d)\.(\d)\-?(alpha|beta|rc)?(\d*)"
+        pattern = r"(?:Wazuh )?v?(\d+)\.(\d+)\.(\d+)\-?(alpha|beta|rc)?(\d*)"
         m = re.match(pattern, version)
 
         if m:
-            self.__mayor = m.group(1)
-            self.__minor = m.group(2)
-            self.__patch = m.group(3)
+            self.__mayor = int(m.group(1))
+            self.__minor = int(m.group(2))
+            self.__patch = int(m.group(3))
             self.__dev = m.group(4)
             self.__dev_ver = m.group(5)
         else:
             raise ValueError("Invalid version format.")
 
     def to_array(self):
-        array = [self.__mayor]
-        array.extend(self.__minor)
-        array.extend(self.__patch)
+        array = [str(self.__mayor)]
+        array.extend(str(self.__minor))
+        array.extend(str(self.__patch))
         if self.__dev:
             array.append(self.__dev)
         if self.__dev_ver:
@@ -569,10 +628,10 @@ class WazuhVersion:
                     if (self.__dev) and not (new_version.__dev):
                         return False
                     elif (self.__dev) and (new_version.__dev):
-                            if ord(self.__dev[0]) < ord(new_version.__dev[0]):
-                                return False
-                            elif ord(self.__dev[0]) == ord(new_version.__dev[0]) and self.__dev_ver < new_version.__dev_ver:
-                                return False
+                        if ord(self.__dev[0]) < ord(new_version.__dev[0]):
+                            return False
+                        elif ord(self.__dev[0]) == ord(new_version.__dev[0]) and self.__dev_ver < new_version.__dev_ver:
+                            return False
 
         return True
 
@@ -598,7 +657,7 @@ def get_timeframe_in_seconds(timeframe):
             raise WazuhException(1411, timeframe)
 
         regex, seconds = re.compile(r'(\d+)(\w)'), 0
-        time_equivalence_seconds = {'d': 86400, 'h': 3600, 'm': 60, 's':1}
+        time_equivalence_seconds = {'d': 86400, 'h': 3600, 'm': 60, 's': 1}
         for time, unit in regex.findall(timeframe):
             # it's not necessarry to check whether the unit is in the dictionary, because it's been validated before.
             seconds += int(time) * time_equivalence_seconds[unit]
@@ -608,12 +667,151 @@ def get_timeframe_in_seconds(timeframe):
     return seconds
 
 
+def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
+    """
+    Filters a list of dictionaries by 'q' parameter, like as a SQL query
+
+    :param input_array: list to be filtered
+    :param q: query for filtering a list
+
+    :return: list with processed query
+    """
+
+    def check_clause(value1: typing.Union[str, int], op: str, value2: str) -> bool:
+        """
+        Checks an operation between value1 and value2. 'value1' could be an
+        integer, it is necessary cast value2 to integer if this happens
+
+        :param value1: first value of the operation
+        :param op: operation to be done
+        :param value2: second value of the operation
+
+        :return: True if operation is satisfied, False otherwise
+        """
+        operators = {'=': operator.eq,
+                     '!=': operator.ne,
+                     '<': operator.lt,
+                     '>': operator.gt}
+        if op == '~':
+            # value1 should be str if operator is '~'
+            value1 = str(value1) if type(value1) == int else value1
+            if value1.startswith(value2, 0):
+                return True
+            else:
+                return False
+        else:
+            # cast value2 to integer if value1 is integer
+            value2 = int(value2) if type(value1) == int else value2
+            return operators[op](value1, value2)
+
+    # compile regular expression only one time when function is called
+    re_get_elements = re.compile(r'([\w\-.]+)(=|!=|<|>|~)([\w\-.]+)')  # regex for getting elements in a clause
+    # get a list with OR clauses
+    or_clauses = q.split(',')
+    output_array = []
+    # process elements of input_array
+    for elem in input_array:
+        # if an element matches an OR clause, it will be added to output
+        for or_clause in or_clauses:
+            # all AND clauses should match for adding an element to output
+            and_clauses = or_clause.split(';')
+            match = True  # flag for checking clauses
+            for and_clause in and_clauses:
+                # get elements in a clause
+                field_name, op, value = re_get_elements.match(and_clause).groups()
+                # check if a clause is satisfied
+                if field_name in elem and check_clause(elem[field_name], op, value):
+                    continue
+                else:
+                    match = False
+                    break
+            # if match = True, add element to output and break the loop
+            if match:
+                output_array.append(elem)
+                break
+    return output_array
+
+
+class AbstractDatabaseBackend:
+    """
+    This class describes an abstract database backend that executes database queries
+    """
+
+    def __init__(self):
+        self.conn = self.connect_to_db()
+
+    def connect_to_db(self):
+        raise NotImplementedError
+
+    def execute(self, query, request, count=False):
+        raise NotImplementedError
+
+
+class SQLiteBackend(AbstractDatabaseBackend):
+    """
+    This class describes a sqlite database backend that executes database queries
+    """
+
+    def __init__(self, db_path):
+        self.db_path = db_path
+        super().__init__()
+
+    def connect_to_db(self):
+        if not glob.glob(self.db_path):
+            raise WazuhException(1600)
+        return Connection(self.db_path)
+
+    def _get_data(self):
+        return [{k: v for k, v in db_tuple.items() if v is not None} for db_tuple in self.conn]
+
+    def execute(self, query, request, count=False):
+        self.conn.execute(query, request)
+        return self._get_data() if not count else self.conn.fetch()
+
+
+class WazuhDBBackend(AbstractDatabaseBackend):
+    """
+    This class describes a wazuh db backend that executes database queries
+    """
+
+    def __init__(self, agent_id=None, query_format='agent'):
+        self.agent_id = agent_id
+        self.query_format = query_format
+        super().__init__()
+
+    def connect_to_db(self):
+        return WazuhDBConnection()
+
+    def _substitute_params(self, query, request):
+        """
+        Substitute request parameters in query. This is only necessary when the backend is wdb. Sqlite substitutes
+        parameters by itself.
+        """
+        for k, v in request.items():
+            query = query.replace(f':{k}', f"{v}" if isinstance(v, int) else f"'{v}'")
+        return query
+
+    def _render_query(self, query):
+        """Render query attending the format."""
+        if self.query_format == 'mitre':
+            return f'mitre sql {query}'
+        else:
+            return f'agent {self.agent_id} sql {query}'
+
+    def execute(self, query, request, count=False):
+        """Execute SQL query through WazuhDB socket."""
+        query = self._substitute_params(query, request)
+        return self.conn.execute(query=self._render_query(query), count=count)
+
+
 class WazuhDBQuery(object):
     """
     This class describes a database query for wazuh
     """
-    def __init__(self, offset, limit, table, sort, search, select, query, fields, default_sort_field, db_path, count,
-                 get_data, default_sort_order='ASC', filters={}, min_select_fields=set(), date_fields=set(), extra_fields=set()):
+
+    def __init__(self, offset, limit, table, sort, search, select, query, fields, default_sort_field, count,
+                 get_data, backend, default_sort_order='ASC', filters={}, min_select_fields=set(), date_fields=set(),
+                 extra_fields=set(), distinct=False):
         """
         Wazuh DB Query constructor
 
@@ -633,6 +831,9 @@ class WazuhDBQuery(object):
         :param count: whether to compute totalItems or not
         :param date_fields: database fields that represent a date
         :param get_data: whether to return data or not
+        :param backend: Database engine to use. Possible options are 'wdb' and 'sqlite3'.
+        :param agent_id: Agent to fetch information about.
+        :param distinct: Look for distinct values
         """
         self.offset = offset
         self.limit = limit
@@ -641,6 +842,7 @@ class WazuhDBQuery(object):
         self.search = search
         self.select = None if not select else select.copy()
         self.fields = fields.copy()
+        self.distinct = distinct
         self.query = self._default_query()
         self.request = {}
         self.default_sort_field = default_sort_field
@@ -650,20 +852,20 @@ class WazuhDBQuery(object):
         self.data = get_data
         self.total_items = 0
         self.min_select_fields = min_select_fields
-        self.query_operators = {"=":"=", "!=":"!=", "<":"<", ">":">", "~":'LIKE'}
-        self.query_separators = {',':'OR',';':'AND','':''}
+        self.query_operators = {"=": "=", "!=": "!=", "<": "<", ">": ">", "~": 'LIKE'}
+        self.query_separators = {',': 'OR', ';': 'AND', '': ''}
         # To correctly turn a query into SQL, a regex is used. This regex will extract all necessary information:
         # For example, the following regex -> (name!=wazuh;id>5),group=webserver <- would return 3 different matches:
         #   (name != wazuh ;
         #    id   > 5      ),
         #    group=webserver
         self.query_regex = re.compile(
-            r'(\()?' +                                                     # A ( character.
-            r'([\w.]+)' +                                                   # Field name: name of the field to look on DB
-            '([' + ''.join(self.query_operators.keys()) + "]{1,2})" +      # Operator: looks for =, !=, <, > or ~.
-            r"([\w _\-\.:/']+)" +                                             # Value: A string.
-            r"(\))?" +                                                      # A ) character
-            "([" + ''.join(self.query_separators.keys())+"])?"             # Separator: looks for ;, , or nothing.
+            r'(\()?' +  # A ( character.
+            r'([\w.]+)' +  # Field name: name of the field to look on DB
+            '([' + ''.join(self.query_operators.keys()) + "]{1,2})" +  # Operator: looks for =, !=, <, > or ~.
+            r"([\[\]\w _\-\.:\\/']+)" +  # Value: A string.
+            r"(\))?" +  # A ) character
+            "([" + ''.join(self.query_separators.keys()) + "])?"  # Separator: looks for ;, , or nothing.
         )
         self.date_regex = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")
         self.date_fields = date_fields
@@ -671,26 +873,20 @@ class WazuhDBQuery(object):
         self.q = query
         self.legacy_filters = filters
         self.inverse_fields = {v: k for k, v in self.fields.items()}
-        if db_path:
-            if not glob.glob(db_path):
-                raise WazuhException(1600)
-            self.conn = Connection(db_path)
-
+        self.backend = backend
 
     def _add_limit_to_query(self):
         if self.limit:
             if self.limit > common.maximum_database_limit:
                 raise WazuhException(1405, str(self.limit))
-            self.query += ' LIMIT :offset,:limit'
+            self.query += ' LIMIT :limit OFFSET :offset'
             self.request['offset'] = self.offset
             self.request['limit'] = self.limit
-        elif self.limit == 0: # 0 is not a valid limit
+        elif self.limit == 0:  # 0 is not a valid limit
             raise WazuhException(1406)
-
 
     def _sort_query(self, field):
         return '{} {}'.format(self.fields[field], self.sort['order'])
-
 
     def _add_sort_to_query(self):
         if self.sort:
@@ -707,22 +903,24 @@ class WazuhDBQuery(object):
         else:
             self.query += ' ORDER BY {0} {1}'.format(self.default_sort_field, self.default_sort_order)
 
-
     def _add_search_to_query(self):
         if self.search:
             self.query += " AND NOT" if bool(self.search['negation']) else ' AND'
-            self.query += " (" + " OR ".join(f'({x.split(" as ")[0]} LIKE :search AND {x.split(" as ")[0]} IS NOT NULL)' for x in self.fields.values()) + ')'
+            self.query += " (" + " OR ".join(
+                f'({x.split(" as ")[0]} LIKE :search AND {x.split(" as ")[0]} IS NOT NULL)' for x in
+                self.fields.values()) + ')'
             self.query = self.query.replace('WHERE  AND', 'WHERE')
             self.request['search'] = "%{0}%".format(self.search['value'])
-
 
     def _parse_select_filter(self, select_fields):
         if select_fields:
             set_select_fields = set(select_fields['fields'])
             set_fields_keys = set(self.fields.keys()) - self.extra_fields
-            if not set_select_fields.issubset(set_fields_keys):
+            # if select is empty, it will be a subset of any set
+            if not set_select_fields or not set_select_fields.issubset(set_fields_keys):
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}". \
-                                     format(', '.join(self.fields.keys()), ', '.join(set_select_fields - set_fields_keys)))
+                                     format(', '.join(self.fields.keys()),
+                                            ', '.join(set_select_fields - set_fields_keys)))
 
             select_fields['fields'] = set_select_fields
         else:
@@ -730,10 +928,8 @@ class WazuhDBQuery(object):
 
         return select_fields
 
-
     def _add_select_to_query(self):
         self.select = self._parse_select_filter(self.select)
-
 
     def _parse_query(self):
         """
@@ -754,7 +950,9 @@ class WazuhDBQuery(object):
             if field not in self.fields.keys():
                 raise WazuhException(1408, "Available fields: {}. Field: {}".format(', '.join(self.fields), field))
             if operator not in self.query_operators:
-                raise WazuhException(1409, "Valid operators: {}. Used operator: {}".format(', '.join(self.query_operators), operator))
+                raise WazuhException(1409,
+                                     "Valid operators: {}. Used operator: {}".format(', '.join(self.query_operators),
+                                                                                     operator))
 
             if open_level:
                 level += 1
@@ -768,14 +966,14 @@ class WazuhDBQuery(object):
                                            'field': '{}${}'.format(field, op_index),
                                            'separator': self.query_separators[separator], 'level': level})
 
-
     def _parse_legacy_filters(self):
         """
         Parses legacy filters.
         """
         # some legacy filters can contain multiple values to filter separated by commas. That must split in a list.
-        legacy_filters_as_list = {name: value.split(',') if isinstance(value, str) else (value if isinstance(value, list) else [value])
-                                  for name, value in self.legacy_filters.items()}
+        legacy_filters_as_list = {
+            name: value.split(',') if isinstance(value, str) else (value if isinstance(value, list) else [value])
+            for name, value in self.legacy_filters.items()}
         # each filter is represented using a dictionary containing the following fields:
         #   * Value     -> Value to filter by
         #   * Field     -> Field to filter by. Since there can be multiple filters over the same field, a numeric ID
@@ -797,7 +995,6 @@ class WazuhDBQuery(object):
             # if only traditional filters have been defined, remove last AND from the query.
             self.query_filters[-1]['separator'] = '' if not self.q else 'AND'
 
-
     def _parse_filters(self):
         if self.legacy_filters:
             self._parse_legacy_filters()
@@ -806,13 +1003,12 @@ class WazuhDBQuery(object):
         if self.search or self.query_filters:
             self.query += " WHERE " if 'WHERE' not in self.query else ' AND '
 
-
     def _process_filter(self, field_name, field_filter, q_filter):
         if field_name == "status":
             self._filter_status(q_filter)
-        elif field_name in self.date_fields and not self.date_regex.match(q_filter['value']):
-            # filter a date, but only if it is in timeframe format.
-            # If it matches the same format as DB (YYYY-MM-DD hh:mm:ss), filter directly by value (next if cond).
+        elif field_name in self.date_fields and re.match(r"^[0-9]+(\.([0-9]+))?$", q_filter['value']) is None:
+            # Filter a date, but only if it is in string (YYYY-MM-DD hh:mm:ss) format.
+            # If it matches the same format as DB (timestamp integer), filter directly by value (next if cond).
             self._filter_date(q_filter, field_name)
         else:
             if q_filter['value'] is not None:
@@ -820,20 +1016,20 @@ class WazuhDBQuery(object):
                     r'([a-zA-Z])([v])', r'\1 \2', q_filter['value'])
                 if q_filter['operator'] == 'LIKE':
                     self.request[field_filter] = "%{}%".format(self.request[field_filter])
-                self.query += '{} {} :{}'.format(self.fields[field_name].split(' as ')[0], q_filter['operator'], field_filter)
+                self.query += '{} {} :{}'.format(self.fields[field_name].split(' as ')[0], q_filter['operator'],
+                                                 field_filter)
                 if not field_filter.isdigit():
                     # filtering without being uppercase/lowercase sensitive
                     self.query += ' COLLATE NOCASE'
             else:
                 self.query += '{} IS null'.format(self.fields[field_name])
 
-
     def _add_filters_to_query(self):
         self._parse_filters()
         curr_level = 0
         for q_filter in self.query_filters:
-            field_name = q_filter['field'].split('$',1)[0]
-            field_filter = q_filter['field'].replace('.','_')
+            field_name = q_filter['field'].split('$', 1)[0]
+            field_filter = q_filter['field'].replace('.', '_')
 
             self.query += '((' if curr_level < q_filter['level'] else '('
 
@@ -841,48 +1037,49 @@ class WazuhDBQuery(object):
 
             self.query += ('))' if curr_level > q_filter['level'] else ')') + ' {} '.format(q_filter['separator'])
             curr_level = q_filter['level']
-
+        if self.distinct:
+            self.query += ' WHERE ' if not self.q and 'WHERE' not in self.query else ' AND '
+            self.query += ' AND '.join(
+                ["{0} IS NOT null AND {0} != ''".format(self.fields[field]) for field in self.select['fields']])
 
     def _get_total_items(self):
-        self.conn.execute(self.query.format(self._default_count_query()), self.request)
-        self.total_items = self.conn.fetch()[0]
+        query_with_select_fields = self.query.format(','.join(map(lambda x: f"{self.fields[x]} as '{x}'",
+                                                                  self.select['fields'] | self.min_select_fields)))
+        self.total_items = self.backend.execute(self._default_count_query().format(query_with_select_fields),
+                                                self.request, True)
 
+    def _execute_data_query(self):
+        query_with_select_fields = self.query.format(','.join(map(lambda x: f"{self.fields[x]} as '{x}'",
+                                                                  self.select['fields'] | self.min_select_fields)))
 
-    def _get_data(self):
-        self.conn.execute(self.query.format(','.join(map(lambda x: f"{self.fields[x]} as '{x}'",
-                                                         self.select['fields'] | self.min_select_fields))), self.request)
-
+        self._data = self.backend.execute(query_with_select_fields, self.request)
 
     def _format_data_into_dictionary(self):
-        return {'items': [{key:value for key,value in zip(self.select['fields'] | self.min_select_fields, db_tuple)
-                           if value is not None} for db_tuple in self.conn], 'totalItems': self.total_items}
-
+        return {'items': self._data, 'totalItems': self.total_items}
 
     def _filter_status(self, status_filter):
         raise NotImplementedError
-
 
     def _filter_date(self, date_filter, filter_db_name):
         # date_filter['value'] can be either a timeframe or a date in format %Y-%m-%d %H:%M:%S
         if date_filter['value'].isdigit() or re.match(r'\d+[dhms]', date_filter['value']):
             query_operator = '>' if date_filter['operator'] == '<' or date_filter['operator'] == '=' else '<'
             self.request[date_filter['field']] = get_timeframe_in_seconds(date_filter['value'])
-            self.query += "({0} IS NOT NULL AND CAST(strftime('%s', {0}) AS INTEGER) {1}" \
-                          " CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :{2}) ".format(self.fields[filter_db_name],
-                                                                                                 query_operator,
-                                                                                                 date_filter['field'])
+            self.query += "({0} IS NOT NULL AND {0} {1}" \
+                          " strftime('%s', 'now') - :{2}) ".format(self.fields[filter_db_name],
+                                                                   query_operator,
+                                                                   date_filter['field'])
         elif re.match(r'\d{4}-\d{2}-\d{2}', date_filter['value']):
-            self.query += "{0} IS NOT NULL AND {0} {1} :{2}".format(self.fields[filter_db_name], date_filter['operator'], date_filter['field'])
+            self.query += "{0} IS NOT NULL AND {0} {1} :{2}".format(self.fields[filter_db_name],
+                                                                    date_filter['operator'], date_filter['field'])
             self.request[date_filter['field']] = date_filter['value']
         else:
             raise WazuhException(1412, date_filter['value'])
-
 
     def run(self):
         """
         Builds the query and runs it on the database
         """
-
         self._add_select_to_query()
         self._add_filters_to_query()
         self._add_search_to_query()
@@ -891,9 +1088,8 @@ class WazuhDBQuery(object):
         self._add_sort_to_query()
         self._add_limit_to_query()
         if self.data:
-            self._get_data()
+            self._execute_data_query()
             return self._format_data_into_dictionary()
-
 
     def reset(self):
         """
@@ -903,17 +1099,14 @@ class WazuhDBQuery(object):
         self.query_filters = []
         self.select['fields'] -= self.extra_fields
 
-
     def _default_query(self):
         """
         :return: The default query
         """
-        return "SELECT {0} FROM " + self.table
-
+        return "SELECT {0} FROM " + self.table if not self.distinct else "SELECT DISTINCT {0} FROM " + self.table
 
     def _default_count_query(self):
-        return "COUNT(*)"
-
+        return "SELECT COUNT(*) FROM ({0})"
 
     @staticmethod
     def _pass_filter(db_filter):
@@ -928,16 +1121,14 @@ class WazuhDBQueryDistinct(WazuhDBQuery):
     def _default_query(self):
         return "SELECT DISTINCT {0} FROM " + self.table
 
-
     def _default_count_query(self):
         return "COUNT (DISTINCT {0})".format(','.join(map(lambda x: self.fields[x], self.select['fields'])))
-
 
     def _add_filters_to_query(self):
         WazuhDBQuery._add_filters_to_query(self)
         self.query += ' WHERE ' if not self.q and 'WHERE' not in self.query else ' AND '
-        self.query += ' AND '.join(["{0} IS NOT null AND {0} != ''".format(self.fields[field]) for field in self.select['fields']])
-
+        self.query += ' AND '.join(
+            ["{0} IS NOT null AND {0} != ''".format(self.fields[field]) for field in self.select['fields']])
 
     def _add_select_to_query(self):
         if len(self.select['fields']) > 1:
@@ -945,9 +1136,9 @@ class WazuhDBQueryDistinct(WazuhDBQuery):
 
         WazuhDBQuery._add_select_to_query(self)
 
-
     def _format_data_into_dictionary(self):
-        return {'totalItems': self.total_items, 'items': [db_tuple[0] for db_tuple in self.conn]}
+        self._data = [next(iter(x.values())) for x in self._data]
+        return WazuhDBQuery._format_data_into_dictionary(self)
 
 
 class WazuhDBQueryGroupBy(WazuhDBQuery):
@@ -955,12 +1146,9 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
     Retrieves unique values for multiple fields using group by
     """
 
-    def __init__(self, filter_fields, offset, limit, table, sort, search, select, query, fields, default_sort_field, db_path, count,
-                 get_data, default_sort_order='ASC', filters={}, min_select_fields=set(), date_fields=set(), extra_fields=set()):
-        WazuhDBQuery.__init__(self, offset, limit, table, sort, search, select, query, fields, default_sort_field,
-                              db_path, count, get_data, default_sort_order, filters, min_select_fields, date_fields, extra_fields)
+    def __init__(self, filter_fields, *args, **kwargs):
+        WazuhDBQuery.__init__(self, *args, **kwargs)
         self.filter_fields = filter_fields
-
 
     def _get_total_items(self):
         # take total items without grouping, and add the group by clause just after getting total items
@@ -969,7 +1157,6 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
         self.inverse_fields['COUNT(*)'] = 'count'
         self.fields['count'] = 'COUNT(*)'
         self.query += ' GROUP BY ' + ','.join(map(lambda x: self.fields[x], self.filter_fields['fields']))
-
 
     def _add_select_to_query(self):
         WazuhDBQuery._add_select_to_query(self)

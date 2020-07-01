@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Database support for Wazuh HIDS.
-# Copyright (C) 2015-2019, Wazuh Inc. <info@wazuh.com>
+# Copyright (C) 2015-2020, Wazuh Inc. <info@wazuh.com>
 # September 28, 2018.
 # This program is a free software, you can redistribute it
 # and/or modify it under the terms of GPLv2.
@@ -69,7 +69,7 @@ def _fim_decode(fline):
     fim = None
     timestamp = None
     path = None
-    readed = fline
+    read = fline
     fline = fline[3:-1].split(b' !')
     if len(fline) == 2:
         fim = fline[0]
@@ -81,11 +81,11 @@ def _fim_decode(fline):
             path = parsed[1]
         else:
             logging.error("Couldn't decode line at syscheck database.")
-            logging.debug("Error parsing line: {0}".format(readed))
+            logging.debug("Error parsing line: {0}".format(read))
             return None
     else:
         logging.error("Couldn't decode line at syscheck database.")
-        logging.debug("Error parsing line: {0}".format(readed))
+        logging.debug("Error parsing line: {0}".format(read))
         return None
 
     return fim, timestamp, path
@@ -187,7 +187,7 @@ def _print_help():
         -d          Debug mode.
         -h          Prints this help.
 
-    Copyright 2018 Wazuh, Inc. <info@wazuh.com>
+    Copyright 2015-2020 Wazuh, Inc. <info@wazuh.com>
     ''')
 
 

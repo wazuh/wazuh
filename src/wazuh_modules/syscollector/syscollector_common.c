@@ -1,9 +1,9 @@
 /*
  * Wazuh Module for System inventory
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * March 9, 2017.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -62,11 +62,11 @@ void* wm_sys_main(wm_sys_t *sys) {
 
         if (sys->state.next_time > time_start) {
             mtinfo(WM_SYS_LOGTAG, "Waiting for turn to evaluate.");
-            wm_delay(1000 * (sys->state.next_time - time_start));
+            w_time_delay(1000 * (sys->state.next_time - time_start));
         }
     } else {
         // Wait for Wazuh DB start
-        wm_delay(1000);
+        w_time_delay(1000);
     }
 
     // Main loop
@@ -129,12 +129,20 @@ void* wm_sys_main(wm_sys_t *sys) {
             #endif
         }
 
+        /* Installed hotfixes inventory */
+        if (sys->flags.hotfixinfo) {
+            #ifdef WIN32
+                sys_hotfixes(WM_SYS_LOCATION);
+            #endif
+        }
         /* Opened ports inventory */
         if (sys->flags.portsinfo){
             #if defined(WIN32)
                 sys_ports_windows(WM_SYS_LOCATION, sys->flags.allports);
             #elif defined(__linux__)
                 sys_ports_linux(queue_fd, WM_SYS_LOCATION, sys->flags.allports);
+            #elif defined(__MACH__)
+                sys_ports_mac(queue_fd, WM_SYS_LOCATION, sys->flags.allports);
             #else
                 sys->flags.portsinfo = 0;
                 mtwarn(WM_SYS_LOGTAG, "Opened ports inventory is not available for this OS version.");
@@ -147,6 +155,8 @@ void* wm_sys_main(wm_sys_t *sys) {
                 sys_proc_linux(queue_fd, WM_SYS_LOCATION);
             #elif defined(WIN32)
                 sys_proc_windows(WM_SYS_LOCATION);
+            #elif defined(__MACH__)
+                sys_proc_mac(queue_fd, WM_SYS_LOCATION);
             #else
                 sys->flags.procinfo = 0;
                 mtwarn(WM_SYS_LOGTAG, "Running processes inventory is not available for this OS version.");
@@ -169,7 +179,7 @@ void* wm_sys_main(wm_sys_t *sys) {
             mterror(WM_SYS_LOGTAG, "Couldn't save running state: %s (%d)", strerror(errno), errno);
 
         // If time_sleep=0, yield CPU
-        wm_delay(1000 * time_sleep);
+        w_time_delay(1000 * time_sleep);
     }
 
     return NULL;
@@ -192,7 +202,7 @@ static void wm_sys_setup(wm_sys_t *_sys) {
     int i;
     // Connect to socket
     for (i = 0; (queue_fd = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
-        wm_delay(1000 * WM_MAX_WAIT);
+        w_time_delay(1000 * WM_MAX_WAIT);
 
     if (i == WM_MAX_ATTEMPTS) {
         mterror(WM_SYS_LOGTAG, "Can't connect to queue.");
@@ -256,7 +266,7 @@ void wm_sys_check() {
 }
 
 
-// Get readed data
+// Get read data
 
 cJSON *wm_sys_dump(const wm_sys_t *sys) {
 
@@ -273,12 +283,42 @@ cJSON *wm_sys_dump(const wm_sys_t *sys) {
     if (sys->flags.portsinfo) cJSON_AddStringToObject(wm_sys,"ports","yes"); else cJSON_AddStringToObject(wm_sys,"ports","no");
     if (sys->flags.allports) cJSON_AddStringToObject(wm_sys,"ports_all","yes"); else cJSON_AddStringToObject(wm_sys,"ports_all","no");
     if (sys->flags.procinfo) cJSON_AddStringToObject(wm_sys,"processes","yes"); else cJSON_AddStringToObject(wm_sys,"processes","no");
+#ifdef WIN32
+    if (sys->flags.hotfixinfo) cJSON_AddStringToObject(wm_sys,"hotfixes","yes"); else cJSON_AddStringToObject(wm_sys,"hotfixes","no");
+#endif
 
     cJSON_AddItemToObject(root,"syscollector",wm_sys);
 
     return root;
 }
 
+// Initialize hw_info structure
+
+void init_hw_info(hw_info *info) {
+    if(info != NULL) {
+        info->cpu_name = NULL;
+        info->cpu_cores = 0;
+        info->cpu_MHz = 0.0;
+        info->ram_total = 0;
+        info->ram_free = 0;
+        info->ram_usage = 0;
+    }
+}
+
 void wm_sys_destroy(wm_sys_t *sys) {
     free(sys);
+}
+
+int wm_sys_get_random_id() {
+    int ID;
+    char random_id[SERIAL_LENGTH];
+
+    snprintf(random_id, SERIAL_LENGTH - 1, "%u%u", os_random(), os_random());
+    ID = atoi(random_id);
+
+    if (ID < 0) {
+        ID = -ID;
+    }
+
+    return ID;
 }

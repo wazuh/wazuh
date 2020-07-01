@@ -1,19 +1,18 @@
 
 
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import json
 import random
 import time
 from os import remove, path as os_path
 import re
-from shutil import move
 from xml.dom.minidom import parseString
 from wazuh.exception import WazuhException
 from wazuh import common
 from wazuh.ossec_socket import OssecSocket
-from wazuh.utils import cut_array, load_wazuh_xml
+from wazuh.utils import cut_array, load_wazuh_xml, safe_move
 import subprocess
 
 # Python 2/3 compability
@@ -178,11 +177,17 @@ def _read_option(section_name, opt):
         for a in opt.attrib:
             json_attribs[a] = opt.attrib[a]
 
-        for path in opt.text.split(','):
-            json_path = {}
-            json_path = json_attribs.copy()
-            json_path['path'] = path.strip()
-            opt_value.append(json_path)
+        if opt.text:
+            for path in opt.text.split(','):
+                json_path = {}
+                json_path = json_attribs.copy()
+                json_path['path'] = path.strip()
+                opt_value.append(json_path)
+    elif section_name == 'syscheck' and opt_name in ('synchronization', 'whodata'):
+        opt_value = {}
+        for child in opt:
+            child_section, child_config = _read_option(child.tag.lower(), child)
+            opt_value[child_section] = child_config.split(',') if child_config.find(',') > 0 else child_config
     elif (section_name == 'cluster' and opt_name == 'nodes') or \
         (section_name == 'sca' and opt_name == 'policies'):
         opt_value = [child.text for child in opt]
@@ -673,9 +678,9 @@ def upload_group_configuration(group_id, file_content):
         # move temporary file to group folder
         try:
             new_conf_path = "{}/{}/agent.conf".format(common.shared_path, group_id)
-            move(tmp_file_path, new_conf_path)
-        except Exception as e:
-            raise WazuhException(1017, str(e))
+            safe_move(tmp_file_path, new_conf_path, permissions=0o660)
+        except Exception:
+            raise WazuhException(1016)
 
         return 'Agent configuration was updated successfully'
     except Exception as e:

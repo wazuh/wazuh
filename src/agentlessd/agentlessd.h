@@ -1,15 +1,15 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef _AGENTLESSD_H
-#define _AGENTLESSD_H
+#ifndef AGENTLESSD_H
+#define AGENTLESSD_H
 
 #include "config/agentlessd-config.h"
 
@@ -31,4 +31,4 @@ void * lessdcom_main(__attribute__((unused)) void * arg);
 /* Global variables */
 extern agentlessd_config lessdc;
 
-#endif
+#endif /* AGENTLESSD_H */

@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -12,48 +12,39 @@
 #include "os_crypto/sha256/sha256_op.h"
 #include "../os_net/os_net.h"
 #include "../addagent/manage_agents.h"
+#include "syscheckd/syscheck.h"
 
-static pthread_mutex_t restart_syscheck = PTHREAD_MUTEX_INITIALIZER;
+/// Pending restart bit field
+static struct {
+    unsigned syscheck:1;
+    unsigned rootcheck:1;
+} os_restart;
 
 /* Check if syscheck is to be executed/restarted
  * Returns 1 on success or 0 on failure (shouldn't be executed now)
  */
 int os_check_restart_syscheck()
 {
-    w_mutex_lock(&restart_syscheck);
-    /* If the restart is not present, return 0 */
-    if (isChroot()) {
-        if (unlink(SYSCHECK_RESTART) == -1) {
-            w_mutex_unlock(&restart_syscheck);
-            return (0);
-        }
-    } else {
-        if (unlink(SYSCHECK_RESTART_PATH) == -1) {
-            w_mutex_unlock(&restart_syscheck);
-            return (0);
-        }
-    }
-    w_mutex_unlock(&restart_syscheck);
-    return (1);
+    int current = os_restart.syscheck;
+    os_restart.syscheck = 0;
+    return current;
 }
 
-/* Set syscheck to be restarted
- * Returns 1 on success or 0 on failure
+/* Check if rootcheck is to be executed/restarted
+ * Returns 1 on success or 0 on failure (shouldn't be executed now)
  */
-int os_set_restart_syscheck()
+int os_check_restart_rootcheck()
 {
-    FILE *fp;
+    int current = os_restart.rootcheck;
+    os_restart.rootcheck = 0;
+    return current;
+}
 
-    fp = fopen(SYSCHECK_RESTART, "w");
-    if (!fp) {
-        merror(FOPEN_ERROR, SYSCHECK_RESTART, errno, strerror(errno));
-        return (0);
-    }
-
-    fprintf(fp, "%s\n", SYSCHECK_RESTART);
-    fclose(fp);
-
-    return (1);
+/* Set syscheck and rootcheck to be restarted */
+void os_set_restart_syscheck()
+{
+    os_restart.syscheck = 1;
+    os_restart.rootcheck = 1;
 }
 
 /* Read the agent name for the current agent
@@ -233,9 +224,9 @@ int os_write_agent_info(const char *agent_name, __attribute__((unused)) const ch
 {
     FILE *fp;
 
-    fp = fopen(AGENT_INFO_FILE, "w");
+    fp = fopen(isChroot() ? AGENT_INFO_FILE : AGENT_INFO_FILEP, "w");
     if (!fp) {
-        merror(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
+        merror(FOPEN_ERROR, isChroot() ? AGENT_INFO_FILE : AGENT_INFO_FILEP, errno, strerror(errno));
         return (0);
     }
 
@@ -343,7 +334,7 @@ int set_agent_multigroup(char * group){
 #ifndef WIN32
             int retval = mkdir(multigroup_path, 0770);
 #else
-            int retval = mkdir(multigroup_path); 
+            int retval = mkdir(multigroup_path);
 #endif
             umask(oldmask);
 
@@ -454,7 +445,7 @@ char* hostname_parse(const char *path) {
         *value = '\0';
         value += 2;
 
-        if (!(end = strchr(value, '\n'))) {
+        if (end = strchr(value, '\n'), !end) {
             continue;
         }
 
@@ -473,6 +464,7 @@ int w_validate_group_name(const char *group){
     int valid_chars_length = strlen(valid_chars);
     char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
     char *multi_group_cpy = NULL;
+    char *save_ptr = NULL;
 
     os_calloc(OS_SIZE_65536,sizeof(char),multi_group_cpy);
     snprintf(multi_group_cpy,OS_SIZE_65536,"%s",group);
@@ -505,7 +497,7 @@ int w_validate_group_name(const char *group){
     if(multigroup){
 
         const char delim[2] = ",";
-        char *individual_group = strtok(multi_group_cpy, delim);
+        char *individual_group = strtok_r(multi_group_cpy, delim, &save_ptr);
 
         while( individual_group != NULL ) {
 
@@ -516,7 +508,7 @@ int w_validate_group_name(const char *group){
                 return -4;
             }
 
-            individual_group = strtok(NULL, delim);
+            individual_group = strtok_r(NULL, delim, &save_ptr);
         }
 
         /* Look for consecutive ',' */
@@ -614,7 +606,7 @@ int auth_add_agent(int sock, char *id, const char *name, const char *ip,const ch
     if(agent_id) {
         cJSON_AddStringToObject(arguments, "id", agent_id);
     }
-        
+
     if (force >= 0) {
         cJSON_AddNumberToObject(arguments, "force", force);
     }
@@ -651,7 +643,8 @@ int auth_add_agent(int sock, char *id, const char *name, const char *ip,const ch
 
         // Decode response
 
-        if (response = cJSON_Parse(buffer), !response) {
+        const char *jsonErrPtr;
+        if (response = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), !response) {
             if(exit_on_error){
                 merror_exit("Parsing JSON response.");
             }
@@ -719,7 +712,7 @@ char * get_agent_id_from_name(const char *agent_name) {
 
     fp = fopen(path,"r");
 
-    if(!fp) { 
+    if(!fp) {
         mdebug1("Couldnt open file '%s'",path);
         os_free(path);
         os_free(buffer);
@@ -771,9 +764,9 @@ char * get_agent_id_from_name(const char *agent_name) {
 }
 
 /* Connect to the control socket if available */
-#if defined (__linux__) || defined (__MACH__)
+#if defined (__linux__) || defined (__MACH__) || defined(sun)
 int control_check_connection() {
-    int sock = OS_ConnectUnixDomain(CONTROL_SOCK, SOCK_STREAM, OS_SIZE_128);
+    int sock = OS_ConnectUnixDomain(CONTROL_SOCK_PATH, SOCK_STREAM, OS_SIZE_128);
 
     if (sock < 0) {
         return -1;

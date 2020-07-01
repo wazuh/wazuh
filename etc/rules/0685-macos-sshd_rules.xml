@@ -1,0 +1,107 @@
+<group name="mac-os-sshd,">
+
+<rule id="64250" level="0">
+  <decoded_as>macos-date-format-sshd</decoded_as>
+  <description>Grouping macos sshd rules.</description>
+</rule>
+
+<rule id="64251" level="5">
+  <if_sid>64250</if_sid>
+  <match>illegal user</match>
+  <description>sshd: Attempt to login using a non-existent user.</description>
+  <group>invalid_login,authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AU.6,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+</rule>
+
+
+<rule id="64252" level="10" frequency="8" timeframe="120" ignore="60">
+  <if_matched_sid>64251</if_matched_sid>
+  <description>sshd: brute force trying to get access to </description>
+  <description>the system.</description>
+  <same_source_ip />
+  <group>authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+</rule>
+
+<rule id="64253" level="5">
+  <if_sid>64250</if_sid>
+  <match>Failed password|Failed keyboard|authentication error</match>
+  <description>sshd: authentication failed.</description>
+  <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+</rule>
+
+<rule id="64254" level="8">
+  <if_sid>64250</if_sid>
+  <match>error: maximum authentication attempts</match>
+  <description>Maximum authentication attempts exceeded.</description>
+  <group>authentication_failed,gpg13_7.1,</group>
+</rule>
+
+<rule id="64255" level="0">
+  <if_sid>64250</if_sid>
+  <match>Connection closed|Disconnected from user</match>
+  <description>sshd: ssh connection closed.</description>
+  <group>pci_dss_10.2.5,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+</rule>
+
+<rule id="64256" level="3">
+  <if_sid>64250</if_sid>
+  <match>Accepted</match>
+  <description>sshd: authentication success</description>
+  <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+</rule>
+
+<rule id="64257" level="6">
+  <if_sid>64250</if_sid>
+  <match>Did not receive identification string from</match>
+  <description>sshd: insecure connection attempt (scan).</description>
+  <group>recon,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+</rule>
+
+<rule id="64258" level="0">
+  <if_sid>64250</if_sid>
+  <match>Broken pipe</match>
+  <description>sshd: Failed write due to one host disappearing.</description>
+</rule>
+
+<rule id="64259" level="4">
+  <if_sid>64250</if_sid>
+  <match>Connection reset</match>
+  <description>sshd: connection reset</description>
+</rule>
+
+<rule id="64260" level="5">
+  <if_sid>64250</if_sid>
+  <match>not listed in AllowUsers|listed in DenyUsers</match>
+  <description>sshd: Attempt to login using a denied user</description>
+  <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+</rule>
+
+<rule id="64261" level="10" frequency="8" timeframe="120" ignore="60">
+  <if_matched_sid>64260</if_matched_sid>
+  <description>sshd: Multiple access attempts using a denied user.</description>
+  <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+</rule>
+
+<rule id="64262" level="5">
+  <if_sid>64250</if_sid>
+  <match>reverse mapping|but this does not map back</match>
+  <description>sshd: Reverse lookup error (bad ISP or attack).</description>
+  <group>pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+</rule>
+
+<rule id="64263" level="10" frequency="6" timeframe="360">
+  <if_matched_sid>64262</if_matched_sid>
+  <same_source_ip />
+  <description>sshd: Possible breakin attempt </description>
+  <description>(high number of reverse lookup errors).</description>
+  <group>pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+</rule>
+
+<rule id="64264" level="8">
+  <if_sid>64250</if_sid>
+  <match>Bad protocol version identification</match>
+  <description>sshd: Possible attack on the ssh server </description>
+  <description>(or version gathering).</description>
+  <group>recon,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+</rule>
+
+</group>

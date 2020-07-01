@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Wazuh Ruleset Update
 
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -265,7 +265,7 @@ def get_new_ruleset(source, url, branch_name=None):
         try:
             f_url = requests.get(url_ruleset)
         except requests.exceptions.RequestException as e:
-            exit(2, "\tDownload Error:{0}.\nExit.".format(e.reason))
+            exit(2, "\tDownload Error:{0}.\nExit.".format(e))
 
         if f_url.ok:
             with open(ruleset_zip, "wb") as f_local:
@@ -476,7 +476,7 @@ def main():
     else:
         # version temporary backup
 
-        copy(ossec_ruleset_version_path, ossec_ruleset_version_path+'-old', 0o750)
+        copy(ossec_ruleset_version_path, ossec_ruleset_version_path+'-old')
         try:
             copy(ossec_update_script, ossec_update_script+'-old', 0o750)
         except:
@@ -487,7 +487,7 @@ def main():
         #Compare major
         old_version = ossec_version.replace('"','')
         if not same_major_minor(old_version, status['new_version']):
-            copy(ossec_ruleset_version_path+'-old', ossec_ruleset_version_path, 0o750)
+            copy(ossec_ruleset_version_path+'-old', ossec_ruleset_version_path)
             copy(ossec_update_script+'-old', ossec_update_script, 0o750)
             os.remove(ossec_update_script+'-old')
             os.remove(ossec_ruleset_version_path+'-old')
@@ -581,7 +581,6 @@ def usage():
 
 
 if __name__ == "__main__":
-    mywazuh = Wazuh(get_init=True)
     cluster_config = read_config()
 
     if cluster_config['node_type'] != 'master' and not cluster_config['disabled']:

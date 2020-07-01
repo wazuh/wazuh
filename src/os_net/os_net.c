@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -16,6 +16,10 @@
 #include "shared.h"
 #include "os_net.h"
 #include "wazuh_modules/wmodules.h"
+
+#ifdef __MACH__
+#define TCP_KEEPIDLE TCP_KEEPALIVE
+#endif
 
 /* Prototypes */
 static int OS_Bindport(u_int16_t _port, unsigned int _proto, const char *_ip, int ipv6);
@@ -415,16 +419,17 @@ char *OS_RecvTCP(int socket, int sizet)
     return (ret);
 }
 
-/* Receive a TCP packet (from an open socket) */
+/* Receive a TCP packet (from an open socket)
+   Returns the number of bytes received,
+   or -1 if an error occurred */
 int OS_RecvTCPBuffer(int socket, char *buffer, int sizet)
 {
     int retsize;
 
     if ((retsize = recv(socket, buffer, sizet - 1, 0)) > 0) {
         buffer[retsize] = '\0';
-        return (0);
     }
-    return (-1);
+    return (retsize);
 }
 
 /* Receive a UDP packet */
@@ -513,7 +518,8 @@ char *OS_GetHost(const char *host, unsigned int attempts)
 
     while (i <= attempts) {
         if ((h = gethostbyname(host)) == NULL) {
-            sleep(i++);
+            sleep(1);
+            i++;
             continue;
         }
 
@@ -522,7 +528,9 @@ char *OS_GetHost(const char *host, unsigned int attempts)
             return (NULL);
         }
 
+#ifndef __clang_analyzer__
         strncpy(ip, inet_ntoa(*((struct in_addr *)h->h_addr)), sz - 1);
+#endif
 
         return (ip);
     }
@@ -545,20 +553,59 @@ int OS_SetKeepalive(int socket)
     return setsockopt(socket, SOL_SOCKET, SO_KEEPALIVE, (void *)&keepalive, sizeof(keepalive));
 }
 
-#ifndef CLIENT
-void OS_SetKeepalive_Options(int socket, int idle, int intvl, int cnt)
+// Set keepalive parameters for a socket
+void OS_SetKeepalive_Options(__attribute__((unused)) int socket, int idle, int intvl, int cnt)
 {
-    if (setsockopt(socket, SOL_TCP, TCP_KEEPCNT, (void *)&cnt, sizeof(cnt)) < 0) {
-        merror("OS_SetKeepalive_Options(TCP_KEEPCNT) failed with error '%s'", strerror(errno));
+    if (cnt > 0) {
+#if !defined(sun) && !defined(WIN32) && !defined(OpenBSD)
+        if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPCNT, (void *)&cnt, sizeof(cnt)) < 0) {
+            merror("OS_SetKeepalive_Options(TCP_KEEPCNT) failed with error '%s'", strerror(errno));
+        }
+#else
+        mwarn("Cannot set up keepalive count parameter: unsupported platform.");
+#endif
     }
-    if (setsockopt(socket, SOL_TCP, TCP_KEEPIDLE, (void *)&idle, sizeof(idle)) < 0) {
-        merror("OS_SetKeepalive_Options(SO_KEEPIDLE) failed with error '%s'", strerror(errno));
+
+    if (idle > 0) {
+#ifdef sun
+#ifdef TCP_KEEPALIVE_THRESHOLD
+        idle *= 1000;
+
+        if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPALIVE_THRESHOLD, (void *)&idle, sizeof(idle)) < 0) {
+            merror("OS_SetKeepalive_Options(TCP_KEEPALIVE_THRESHOLD) failed with error '%s'", strerror(errno));
+        }
+#else
+        mwarn("Cannot set up keepalive idle parameter: unsupported platform.");
+#endif
+#elif !defined(WIN32) && !defined(OpenBSD)
+        if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPIDLE, (void *)&idle, sizeof(idle)) < 0) {
+            merror("OS_SetKeepalive_Options(SO_KEEPIDLE) failed with error '%s'", strerror(errno));
+        }
+#else
+        mwarn("Cannot set up keepalive idle parameter: unsupported platform.");
+#endif
     }
-    if (setsockopt(socket, SOL_TCP, TCP_KEEPINTVL, (void *)&intvl, sizeof(intvl)) < 0) {
-        merror("OS_SetKeepalive_Options(TCP_KEEPINTVL) failed with error '%s'", strerror(errno));
+
+    if (intvl > 0) {
+#ifdef sun
+#ifdef TCP_KEEPALIVE_ABORT_THRESHOLD
+        intvl *= 1000;
+
+        if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPALIVE_ABORT_THRESHOLD, (void *)&intvl, sizeof(intvl)) < 0) {
+            merror("OS_SetKeepalive_Options(TCP_KEEPALIVE_ABORT_THRESHOLD) failed with error '%s'", strerror(errno));
+        }
+#else
+        mwarn("Cannot set up keepalive interval parameter: unsupported platform.");
+#endif
+#elif !defined(WIN32) && !defined(OpenBSD)
+        if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&intvl, sizeof(intvl)) < 0) {
+            merror("OS_SetKeepalive_Options(TCP_KEEPINTVL) failed with error '%s'", strerror(errno));
+        }
+#else
+        mwarn("Cannot set up keepalive interval parameter: unsupported platform.");
+#endif
     }
 }
-#endif
 
 int OS_SetRecvTimeout(int socket, long seconds, long useconds)
 {
@@ -594,6 +641,7 @@ int OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
     os_malloc(bufsz, buffer);
     *(uint32_t *)buffer = wnet_order(size);
     memcpy(buffer + sizeof(uint32_t), msg, size);
+    errno = 0;
     retval = send(sock, buffer, bufsz, 0) == (ssize_t)bufsz ? 0 : OS_SOCKTERR;
     free(buffer);
     return retval;

@@ -1,9 +1,9 @@
 /*
  * Label data operations
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * February 27, 2017.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.

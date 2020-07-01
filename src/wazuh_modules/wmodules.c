@@ -1,9 +1,9 @@
 /*
  * Wazuh Module Manager
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * April 27, 2016.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -19,6 +19,7 @@ int wm_task_nice = 0;       // Nice value for tasks.
 int wm_max_eps;             // Maximum events per second sent by OpenScap and CIS-CAT Wazuh Module
 int wm_kill_timeout;        // Time for a process to quit before killing it
 int wm_debug_level;
+
 
 // Read XML configuration and internal options
 
@@ -38,17 +39,10 @@ int wm_config() {
         return -1;
     }
 
-
-
 #ifdef CLIENT
     // Read configuration: agent.conf
     agent_cfg = 1;
     ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
-#if defined (__linux__) || (__MACH__)
-    wmodule *module;
-    module = wm_control_read();
-    wm_add(module);
-#endif
 #else
     wmodule *module;
     // The database module won't be available on agents
@@ -61,6 +55,12 @@ int wm_config() {
     if ((module = wm_download_read()))
         wm_add(module);
 
+#endif
+
+#if defined (__linux__) || (__MACH__) || defined (sun)
+    wmodule * control_module;
+    control_module = wm_control_read();
+    wm_add(control_module);
 #endif
 
     return 0;
@@ -114,6 +114,7 @@ int wm_check() {
 
     // Get the last module of the same type
 
+#ifndef __clang_analyzer__
     for (i = wmodules->next; i; i = i->next) {
         for (j = prev = wmodules; j != i; j = next) {
             next = j->next;
@@ -134,6 +135,7 @@ int wm_check() {
             }
         }
     }
+#endif
 
     return 0;
 }
@@ -210,6 +212,7 @@ int wm_state_io(const char * tag, int op, void *state, size_t size) {
     if (!(file = fopen(path, op == WM_IO_WRITE ? "wb" : "rb"))) {
         return -1;
     }
+    w_file_cloexec(file);
 
     nmemb = (op == WM_IO_WRITE) ? fwrite(state, size, 1, file) : fread(state, size, 1, file);
     fclose(file);
@@ -257,7 +260,7 @@ void wm_module_free(wmodule * config){
 }
 
 
-// Get readed data
+// Get read data
 cJSON *getModulesConfig(void) {
 
     wmodule *cur_module;
@@ -266,8 +269,13 @@ cJSON *getModulesConfig(void) {
     cJSON *wm_mod = cJSON_CreateArray();
 
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-        if (cur_module->context->dump(cur_module->data))
-            cJSON_AddItemToArray(wm_mod,cur_module->context->dump(cur_module->data));
+        if (cur_module->context->dump) {
+            cJSON * item = cur_module->context->dump(cur_module->data);
+
+            if (item) {
+                cJSON_AddItemToArray(wm_mod, item);
+            }
+        }
     }
 
     cJSON_AddItemToObject(root,"wmodules",wm_mod);
@@ -342,141 +350,6 @@ int wm_relative_path(const char * path) {
 }
 
 
-// Get time in seconds to the specified hour in hh:mm
-int get_time_to_hour(const char * hour) {
-
-    time_t curr_time;
-    time_t target_time;
-    struct tm * time_now;
-    double diff;
-    int i;
-
-    char ** parts = OS_StrBreak(':', hour, 2);
-
-    // Get current time
-    curr_time = time(NULL);
-    time_now = localtime(&curr_time);
-
-    struct tm t_target = *time_now;
-
-    // Look for the particular hour
-    t_target.tm_hour = atoi(parts[0]);
-    t_target.tm_min = atoi(parts[1]);
-    t_target.tm_sec = 0;
-
-    // Calculate difference between hours
-    target_time = mktime(&t_target);
-    diff = difftime(target_time, curr_time);
-
-    if (diff < 0) {
-        diff += (24*60*60);
-    }
-
-    for (i=0; parts[i]; i++)
-        free(parts[i]);
-
-    free(parts);
-
-    return (int)diff;
-}
-
-
-// Get time to reach a particular day of the week and hour
-int get_time_to_day(int wday, const char * hour) {
-
-    time_t curr_time;
-    time_t target_time;
-    struct tm * time_now;
-    double diff;
-    int i, ret;
-
-    // Get exact hour and minute to go to
-    char ** parts = OS_StrBreak(':', hour, 2);
-
-    // Get current time
-    curr_time = time(NULL);
-    time_now = localtime(&curr_time);
-
-    struct tm t_target = *time_now;
-
-    // Look for the particular hour
-    t_target.tm_hour = atoi(parts[0]);
-    t_target.tm_min = atoi(parts[1]);
-    t_target.tm_sec = 0;
-
-    // Calculate difference between hours
-    target_time = mktime(&t_target);
-    diff = difftime(target_time, curr_time);
-
-    if (wday == time_now->tm_wday) {    // We are in the desired day
-
-        if (diff < 0) {
-            diff += (7*24*60*60);   // Seconds of a week
-        }
-
-    } else if (wday > time_now->tm_wday) {  // We are looking for a future day
-
-        while (wday > time_now->tm_wday) {
-            diff += (24*60*60);
-            time_now->tm_wday++;
-        }
-
-    } else if (wday < time_now->tm_wday) { // We have past the desired day
-
-        ret = 7 - (time_now->tm_wday - wday);
-        for (i = 0; i < ret; i++) {
-            diff += (24*60*60);
-        }
-    }
-
-    free(parts);
-
-    return (int)diff;
-
-}
-
-// Function to look for the correct day of the month to run a wodle
-int check_day_to_scan(int day, const char *hour) {
-
-    time_t curr_time;
-    time_t target_time;
-    struct tm * time_now;
-    double diff;
-    int i;
-
-    // Get current time
-    curr_time = time(NULL);
-    time_now = localtime(&curr_time);
-
-    if (day == time_now->tm_mday) {    // Day of the scan
-
-        struct tm t_target = *time_now;
-
-        char ** parts = OS_StrBreak(':', hour, 2);
-
-        // Look for the particular hour
-        t_target.tm_hour = atoi(parts[0]);
-        t_target.tm_min = atoi(parts[1]);
-        t_target.tm_sec = 0;
-
-        // Calculate difference between hours
-        target_time = mktime(&t_target);
-        diff = difftime(target_time, curr_time);
-
-        for (i=0; parts[i]; i++)
-            free(parts[i]);
-
-        free(parts);
-
-        if (diff >= 0) {
-            return 0;
-        }
-    }
-
-    return -1;
-}
-
-
 // Get binary full path
 int wm_get_path(const char *binary, char **validated_comm){
 
@@ -489,6 +362,7 @@ int wm_get_path(const char *binary, char **validated_comm){
     char *full_path;
     char *validated = NULL;
     char *env_path = NULL;
+    char *save_ptr = NULL;
 
 #ifdef WIN32
     if (IsFile(binary) == 0) {
@@ -504,7 +378,7 @@ int wm_get_path(const char *binary, char **validated_comm){
     } else {
 
         env_path = getenv("PATH");
-        path = strtok(env_path, sep);
+        path = strtok_r(env_path, sep, &save_ptr);
 
         while (path != NULL) {
             os_calloc(strlen(path) + strlen(binary) + 2, sizeof(char), full_path);
@@ -519,7 +393,7 @@ int wm_get_path(const char *binary, char **validated_comm){
                 break;
             }
             free(full_path);
-            path = strtok(NULL, sep);
+            path = strtok_r(NULL, sep, &save_ptr);
         }
 
         // Check binary found
@@ -589,11 +463,12 @@ int wm_validate_command(const char *command, const char *digest, crypto_type cty
     return match;
 }
 
-void wm_delay(unsigned int ms) {
-#ifdef WIN32
-    Sleep(ms);
-#else
-    struct timeval timeout = { ms / 1000, (ms % 1000) * 1000};
-    select(0, NULL, NULL, NULL, &timeout);
-#endif
+#ifdef __MACH__
+void freegate(gateway *gate){
+    if(!gate){
+        return;
+    }
+    os_free(gate->addr);
+    os_free(gate);
 }
+#endif

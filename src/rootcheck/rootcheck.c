@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -167,7 +167,8 @@ int rootcheck_init(int test_config)
 
     /* Read configuration  --function specified twice (check makefile) */
     if (Read_Rootcheck_Config(cfg) < 0) {
-        mterror_exit(ARGV0, CONFIG_ERROR, cfg);
+        merror(RCONFIG_ERROR, ARGV0, cfg);
+        return (1);
     }
 
 #ifndef WIN32

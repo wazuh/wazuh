@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -59,22 +59,33 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     }
 
 #ifndef WIN32
-    struct group *os_group;
-    if ((os_group = getgrnam(USER)) == NULL) {
-        merror("Could not get ossec gid.");
+    struct group os_group = { .gr_name = NULL };
+    long int len =  sysconf(_SC_GETGR_R_SIZE_MAX);
+    len = len > 0 ? len : 1024;
+    struct group *result = NULL;
+    char *buffer;
+    os_malloc(len, buffer);
+
+    if (result = w_getgrnam(USER, &os_group, buffer, len), !result) {
+        os_free(buffer);
+        merror("Could not get group name.");
         fclose(fp);
-        return (-1);
+        return OS_INVALID;
     }
 
-    if ((chown(DEFAULTARPATH, (uid_t) - 1, os_group->gr_gid)) == -1) {
-        merror("Could not change the group to ossec: %d", errno);
+    if ((chown(DEFAULTARPATH, (uid_t) - 1, result->gr_gid)) == -1) {
+        os_free(buffer);
+        merror("Could not change the group to ossec: %d.", errno);
         fclose(fp);
-        return (-1);
+        return OS_INVALID;
     }
+
+    os_free(buffer);
+
 #endif
 
     if ((chmod(DEFAULTARPATH, 0640)) == -1) {
-        merror("Could not chmod to 0640: %d", errno);
+        merror("Could not chmod to 0640: '%d'", errno);
         fclose(fp);
         return (-1);
     }
@@ -164,7 +175,10 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     if (ar_flag == -1) {
         /* reset ar_flag, the next ar command may not be disabled */
         ar_flag = 0;
-        mdebug1("active response command '%s' is disabled", tmp_ar->command);
+        if (tmp_ar->command) {
+            mdebug1("active response command '%s' is disabled", tmp_ar->command);
+            free(tmp_ar->command);
+        }
         fclose(fp);
         free(tmp_ar);
         free(tmp_location);

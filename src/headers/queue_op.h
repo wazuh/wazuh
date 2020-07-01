@@ -1,9 +1,9 @@
 /*
  * Queue (abstract data type)
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * October 2, 2017
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -35,5 +35,6 @@ int queue_push_ex_block(w_queue_t * queue, void * data);
 void * queue_pop(w_queue_t * queue);
 void * queue_pop_ex(w_queue_t * queue);
 void * queue_pop_ex_block(w_queue_t * queue);
+void * queue_pop_ex_timedwait(w_queue_t * queue, const struct timespec * abstime);
 
 #endif // QUEUE_OP_H

@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -17,24 +17,12 @@
 #include "config.h"
 #include "rules.h"
 #include "stats.h"
+#include "fts.h"
 
 long int __crt_ftell; /* Global ftell pointer */
 _Config Config;       /* Global Config structure */
-OSList *active_responses;
-OSList *ar_commands;
-OSDecoderNode *osdecodernode_forpname;
-OSDecoderNode *osdecodernode_nopname;
-RuleNode *rulenode;
-// Extern internal options
-int default_timeframe;
-int maxdiff;
-int mindiff;
-int percent_diff;
-unsigned int fts_minsize_for_str;
-int fts_list_size;
 rlim_t nofile;
 int sys_debug_level;
-
 
 int GlobalConf(const char *cfgfile)
 {
@@ -153,7 +141,7 @@ cJSON *getGlobalConfig(void) {
         }
         OSMatch **wl;
         wl = Config.hostname_white_list;
-        while (*wl) {
+        while (wl && *wl) {
             char **tmp_pts = (*wl)->patterns;
             while (*tmp_pts) {
                 cJSON_AddItemToArray(ip_list,cJSON_CreateString(*tmp_pts));
@@ -316,17 +304,21 @@ cJSON *getRulesConfig(void) {
 
 cJSON *getManagerLabelsConfig(void) {
 
-    unsigned int i;
     cJSON *root = cJSON_CreateObject();
-    cJSON *labels = cJSON_CreateObject();
+    cJSON *labels = cJSON_CreateArray();
 
     if (Config.labels) {
-        for (i=0;Config.labels[i].key;i++) {
-            cJSON_AddStringToObject(labels,Config.labels[i].key,Config.labels[i].value);
+        unsigned int i;
+        for (i=0;Config.labels[i].key; i++) {
+            cJSON *label = cJSON_CreateObject();
+            cJSON_AddStringToObject(label, "value", Config.labels[i].value);
+            cJSON_AddStringToObject(label, "key", Config.labels[i].key);
+            cJSON_AddStringToObject(label, "hidden", Config.labels[i].flags.hidden ? "yes" : "no");
+            cJSON_AddItemToObject(labels, "", label);
         }
     }
 
-    cJSON_AddItemToObject(root,"labels",labels);
+    cJSON_AddItemToObject(root, "labels", labels);
 
     return root;
 }

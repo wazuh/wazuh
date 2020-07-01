@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -12,10 +12,9 @@
 #include "agentd.h"
 #include "os_net/os_net.h"
 
-int rotate_log;
 
 /* Start the agent daemon */
-void AgentdStart(const char *dir, int uid, int gid, const char *user, const char *group)
+void AgentdStart(int uid, int gid, const char *user, const char *group)
 {
     int rc = 0;
     int maxfd = 0;
@@ -26,6 +25,21 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
     /* Initial random numbers must happen before chroot */
     srandom_init();
+
+    /* Initialize sender */
+    sender_init();
+
+    // Resolve hostnames
+    rc = 0;
+    while (rc < agt->rip_id) {
+        if (OS_IsValidIP(agt->server[rc].rip, NULL) != 1) {
+            mdebug2("Resolving server hostname: %s", agt->server[rc].rip);
+            resolveHostname(&agt->server[rc].rip, 5);
+            int rip_l = strlen(agt->server[rc].rip);
+            mdebug2("Server hostname resolved: %.*s", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
+        }
+        rc++;
+    }
 
     /* Going Daemon */
     if (!run_foreground) {
@@ -45,12 +59,6 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
-    /* chroot */
-    if (Privsep_Chroot(dir) < 0) {
-        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
-    }
-    nowChroot();
-
     if (Privsep_SetUser(uid) < 0) {
         merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
@@ -59,8 +67,8 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     os_setwait();
 
     /* Create the queue and read from it. Exit if fails. */
-    if ((agt->m_queue = StartMQ(DEFAULTQUEUE, READ)) < 0) {
-        merror_exit(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+    if ((agt->m_queue = StartMQ(DEFAULTQPATH, READ)) < 0) {
+        merror_exit(QUEUE_ERROR, DEFAULTQPATH, strerror(errno));
     }
 
 #ifdef HPUX
@@ -112,8 +120,8 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     /* Launch rotation thread */
 
     rotate_log = getDefine_Int("monitord", "rotate_log", 0, 1);
-    if (rotate_log && CreateThread(w_rotate_log_thread, (void *)NULL) != 0) {
-        merror_exit(THREAD_ERROR);
+    if (rotate_log) {
+        w_create_thread(w_rotate_log_thread, (void *)NULL);
     }
 
     /* Launch dispatch thread */
@@ -121,16 +129,15 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
         buffer_init();
 
-        if (CreateThread(dispatch_buffer, (void *)NULL) != 0) {
-            merror_exit(THREAD_ERROR);
-        }
+        w_create_thread(dispatch_buffer, (void *)NULL);
     }else{
         minfo(DISABLED_BUFFER);
     }
     /* Connect remote */
     rc = 0;
     while (rc < agt->rip_id) {
-        minfo("Server IP Address: %s", agt->server[rc].rip);
+        int rip_l = strlen(agt->server[rc].rip);
+        minfo("Server IP Address: %.*s", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
         rc++;
     }
 
@@ -148,7 +155,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
     /* Connect to the execd queue */
     if (agt->execdq == 0) {
-        if ((agt->execdq = StartMQ(EXECQUEUE, WRITE)) < 0) {
+        if ((agt->execdq = StartMQ(EXECQUEUEPATH, WRITE)) < 0) {
             minfo("Unable to connect to the active response "
                    "queue (disabled).");
             agt->execdq = -1;
@@ -165,10 +172,6 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     memset(&act, 0, sizeof(act));
     act.sa_handler = SIG_IGN;
     sigaction(SIGPIPE, &act, NULL);
-
-    /* Send integrity message for agent configs */
-    intcheck_file(OSSECCONF, dir);
-    intcheck_file(OSSEC_DEFINES, dir);
 
     // Start request module
     req_init();

@@ -1,9 +1,9 @@
 /*
  * URL download support library
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * April 3, 2018.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -16,7 +16,7 @@ struct MemoryStruct {
   size_t size;
 };
 
-int wurl_get(const char * url, const char * dest){
+int wurl_get(const char * url, const char * dest, const char * header, const char *data, const long timeout){
     CURL *curl;
     FILE *fp;
     CURLcode res;
@@ -37,6 +37,19 @@ int wurl_get(const char * url, const char * dest){
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, NULL);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
 
+        if (header) {
+            struct curl_slist *c_header = curl_slist_append(NULL, header);
+            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, c_header);
+        }
+
+        if (data) {
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
+        }
+
+        if (timeout) {
+            curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
+        }
+
         // Enable SSL check if url is HTTPS
         if(!strncmp(url,"https",5)){
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
@@ -47,13 +60,23 @@ int wurl_get(const char * url, const char * dest){
         curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
         res = curl_easy_perform(curl);
 
-        if(res){
-            mwarn("CURL ERROR %s",errbuf);
+        switch(res) {
+        case CURLE_OK:
+            break;
+        case CURLE_OPERATION_TIMEDOUT:
+            mdebug1("CURL ERROR: %s", errbuf);
+            curl_easy_cleanup(curl);
+            fclose(fp);
+            unlink(dest);
+            return OS_TIMEOUT;
+        default:
+            mdebug1("CURL ERROR: %s",errbuf);
             curl_easy_cleanup(curl);
             fclose(fp);
             unlink(dest);
             return OS_CONNERR;
         }
+
         curl_easy_cleanup(curl);
         fclose(fp);
     }
@@ -76,7 +99,7 @@ int w_download_status(int status,const char *url,const char *dest){
 }
 
 // Request download
-int wurl_request(const char * url, const char * dest) {
+int wurl_request(const char * url, const char * dest, const char *header, const char *data, const long timeout) {
     const char * COMMAND = "download";
     char response[64];
     char * _url;
@@ -85,6 +108,9 @@ int wurl_request(const char * url, const char * dest) {
     ssize_t zrecv;
     int sock;
     int retval = -1;
+    char *parsed_dest;
+    char *parsed_header = NULL;
+    char *parsed_data = NULL;
 
     if (!url) {
         return -1;
@@ -94,11 +120,26 @@ int wurl_request(const char * url, const char * dest) {
 
     _url = wstr_replace(url, " ", "%20");
 
+    // Escape delimiter
+
+    parsed_dest = wstr_replace(dest, "|", "\\|");
+    if (header) {
+        parsed_header = wstr_replace(header, "|", "\\|");
+    }
+    if (data) {
+        parsed_data = wstr_replace(data, "|", "\\|");
+    }
+
     // Build request
 
-    zrequest = strlen(_url) + strlen(dest) + strlen(COMMAND) + 3;
+    zrequest = strlen(_url) + strlen(parsed_dest) + strlen(COMMAND) +
+               (parsed_header ? strlen(parsed_header) : 0) +
+               (parsed_data ? strlen(parsed_data) : 0) + sizeof(long) + 7;
     os_malloc(zrequest, srequest);
-    snprintf(srequest, zrequest, "%s %s %s", COMMAND, _url, dest);
+    snprintf(srequest, zrequest, "%s %s|%s|%s|%s|%ld|", COMMAND, _url, parsed_dest, parsed_header ? parsed_header : "", parsed_data ? parsed_data : "", timeout ? timeout : 0);
+    os_free(parsed_dest);
+    os_free(parsed_header);
+    os_free(parsed_data);
 
     // Connect to downlod module
 
@@ -133,11 +174,11 @@ int wurl_request(const char * url, const char * dest) {
         if (!strcmp(response, "ok")) {
             retval = 0;
         } else if (!strcmp(response, "err connecting to url")) {
-            mdebug1(WURL_DOWNLOAD_FILE_ERROR, dest, _url);
             retval = OS_CONNERR;
         } else if (!strcmp(response, "err writing file")) {
-            mdebug1(WURL_WRITE_FILE_ERROR, dest);
             retval = OS_FILERR;
+        } else if (!strcmp(response, "err timeout")) {
+            retval = OS_TIMEOUT;
         } else {
             mdebug1("Couldn't download from '%s': %s", _url, response);
         }
@@ -149,6 +190,30 @@ end:
 
     if (sock >= 0) {
         close(sock);
+    }
+
+    return retval;
+}
+
+// Request a uncompressed download (.gz)
+int wurl_request_gz(const char * url, const char * dest, const char * header, const char * data, const long timeout) {
+    char compressed_file[OS_SIZE_6144 + 1];
+    int retval = OS_INVALID;
+
+    snprintf(compressed_file, OS_SIZE_6144, "tmp/req-%u", os_random());
+
+    if (wurl_request(url, compressed_file, header, data, timeout)) {
+        return retval;
+    } else {
+        if (w_uncompress_gzfile(compressed_file, dest)) {
+            merror("Could not uncompress the file downloaded from '%s'.", url);
+        } else {
+            retval = 0;
+        }
+    }
+
+    if (remove(compressed_file) < 0) {
+        mdebug1("Could not remove '%s'. Error: %d.", compressed_file, errno);
     }
 
     return retval;
@@ -211,7 +276,7 @@ char * wurl_http_get(const char * url) {
         res = curl_easy_perform(curl);
 
         if(res){
-            mwarn("CURL ERROR %s",errbuf);
+            mdebug1("CURL ERROR %s",errbuf);
             curl_easy_cleanup(curl);
             free(chunk.memory);
             return NULL;

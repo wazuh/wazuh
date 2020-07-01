@@ -1,7 +1,7 @@
 #!/bin/sh
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 WPYTHON_BIN="framework/python/bin/python3"
 
@@ -35,4 +35,4 @@ case ${DIR_NAME} in
 esac
 
 
-${WAZUH_PATH}/${WPYTHON_BIN} ${PYTHON_SCRIPT} $@
+${WAZUH_PATH}/${WPYTHON_BIN} ${PYTHON_SCRIPT} "$@"

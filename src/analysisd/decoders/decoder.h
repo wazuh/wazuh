@@ -1,15 +1,15 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
 
-#ifndef __DECODER_H
-#define __DECODER_H
+#ifndef DECODER_H
+#define DECODER_H
 
 #include "shared.h"
 #include "os_regex/os_regex.h"
@@ -19,10 +19,14 @@
 #define AFTER_PREVREGEX 0x004   /* 4   */
 #define AFTER_ERROR     0x010
 
-// JSON decoder null treatment
+// JSON decoder flags
+// null treatment
 #define DISCARD     0
 #define EMPTY       1
 #define SHOW_STRING 2
+// array treatment
+#define CSV_STRING  4
+#define JSON_ARRAY  8
 
 struct _Eventinfo;
 
@@ -61,6 +65,16 @@ typedef struct _OSDecoderNode {
     OSDecoderInfo *osdecoder;
 } OSDecoderNode;
 
+typedef struct dbsync_context_t {
+    // Persistent data (per dispatcher)
+    int db_sock;
+    int ar_sock;
+    // Ephimeral data (per message)
+    char * agent_id;
+    char * component;
+    cJSON * data;
+} dbsync_context_t;
+
 /* Functions to Create the list, add a osdecoder to the
  * list and to get the first osdecoder
  */
@@ -76,8 +90,7 @@ void RootcheckInit(void);
 void SyscollectorInit(void);
 void CiscatInit(void);
 void WinevtInit(void);
-int sc_send_db(char * msg,int *sock);
 void SecurityConfigurationAssessmentInit(void);
 int ReadDecodeXML(const char *file);
 
-#endif
+#endif /* DECODER_H */

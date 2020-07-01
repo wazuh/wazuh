@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -10,8 +10,8 @@
 
 /* Remote Control shared headers */
 
-#ifndef __RC_H
-#define __RC_H
+#ifndef RC_H
+#define RC_H
 
 /* Global headers */
 #define CONTROL_HEADER      "#!-"
@@ -37,5 +37,6 @@
 #define HC_FIM_DB_SS        "fim-db-start-scan"
 #define HC_FIM_DB_ES        "fim-db-end-scan"
 #define CFGA_DB_DUMP        "sca-dump"
+#define HC_SK               "syscheck "
 
-#endif
+#endif /* RC_H */

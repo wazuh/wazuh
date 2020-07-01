@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -14,10 +14,18 @@
 #if defined(__MINGW32__) || defined(__hppa__)
 static int setenv(const char *name, const char *val, __attribute__((unused)) int overwrite)
 {
+    assert(name);
+    assert(val);
+
     int len = strlen(name) + strlen(val) + 2;
-    char *str = (char *)malloc(len);
+    char *str;
+    os_malloc(len, str);
+
     snprintf(str, len, "%s=%s", name, val);
     putenv(str);
+
+    os_free(str);
+
     return 0;
 }
 #endif
@@ -72,7 +80,10 @@ char shost[512];
 int main(int argc, char **argv)
 {
     char *user_msg;
-    int c = 0, cmdlist = 0, json_output = 0, no_limit = 0;
+    int c = 0, cmdlist = 0, json_output = 0;
+#ifndef CLIENT
+    int no_limit = 0;
+#endif
     int force_antiquity;
     char *end;
     const char *cmdexport = NULL;
@@ -172,7 +183,9 @@ int main(int argc, char **argv)
                 setenv("OSSEC_REMOVE_DUPLICATED", optarg, 1);
                 break;
             case 'L':
+#ifndef CLIENT
                 no_limit = 1;
+#endif
                 break;
             default:
                 helpmsg();
@@ -212,7 +225,7 @@ int main(int argc, char **argv)
     /* Get the group name */
     gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, "", group);
+        merror_exit(USER_ERROR, "", group, strerror(errno), errno);
     }
 
     /* Set the group */
@@ -284,9 +297,9 @@ int main(int argc, char **argv)
             case 'a':
 #ifdef CLIENT
                 printf("\n ** Agent adding only available on a master ** \n\n");
-                break;
-#endif
+#else
                 add_agent(json_output, no_limit);
+#endif
                 break;
             case 'e':
             case 'E':

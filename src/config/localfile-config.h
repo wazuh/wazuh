@@ -1,19 +1,20 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef __CLOGREADER_H
-#define __CLOGREADER_H
+#ifndef CLOGREADER_H
+#define CLOGREADER_H
 
 #define EVENTLOG     "eventlog"
 #define EVENTCHANNEL "eventchannel"
 #define DATE_MODIFIED   1
+#define DEFAULT_EVENTCHANNEL_REC_TIME 5
 
 #include <pthread.h>
 
@@ -48,6 +49,7 @@ typedef struct _logtarget {
 typedef struct _logreader {
     off_t size;
     int ign;
+    dev_t dev;
 
 #ifdef WIN32
     HANDLE h;
@@ -67,6 +69,7 @@ typedef struct _logreader {
     char *djb_program_name;
     char *command;
     char *alias;
+    int reconnect_time;
     char future;
     char *query;
     int filter_binary;
@@ -112,4 +115,4 @@ void Free_Logreader(logreader * config);
 /* Removes a specific localfile of an array */
 int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *globf);
 
-#endif /* __CLOGREADER_H */
+#endif /* CLOGREADER_H */

@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -12,9 +12,8 @@
  * APIs for many network operations
  */
 
-
-#ifndef __OS_NET_H
-#define __OS_NET_H
+#ifndef OS_NET_H
+#define OS_NET_H
 
 /* OS_Bindport*
  * Bind a specific port (protocol and a ip).
@@ -86,12 +85,18 @@ int OS_SetRecvTimeout(int socket, long seconds, long useconds);
  */
 int OS_SetKeepalive(int socket);
 
-/*
- * Enable SO_KEEPALIVE options for TCP
+/**
+ * @brief Set keepalive parameters for a socket
+ *
+ * Options with a value 0 will not be changed.
+ *
+ * @param socket Socket descriptor.
+ * @param idle Idle time, in seconds, to start sending probes.
+ * @param intvl Interval between probes, in seconds.
+ * @param cnt Number of probes sent before closing the connection.
  */
-#ifndef CLIENT
-void OS_SetKeepalive_Options(int socket, int idle, int intvl, int cnt);
-#endif
+void OS_SetKeepalive_Options(__attribute__((unused)) int socket, int idle, int intvl, int cnt);
+
 /* Set the delivery timeout for a socket
  * Returns 0 on success, else -1
  */
@@ -137,4 +142,4 @@ ssize_t os_recv_waitall(int sock, void * buf, size_t size);
 // Wrapper for select()
 int wnet_select(int sock, int timeout);
 
-#endif /* __OS_NET_H */
+#endif /* OS_NET_H */

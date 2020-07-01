@@ -1,0 +1,9 @@
+- key: wazuh
+  title: "wazuh"
+  description: >
+    wazuh Module
+  fields:
+    - name: wazuh
+      type: group
+      description: >
+      fields:

@@ -1,6 +1,6 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 from wazuh import Wazuh
 from wazuh import common
 from wazuh.agent import Agent
@@ -11,6 +11,7 @@ import wazuh.cluster.control as cluster_control
 import wazuh.configuration as configuration
 import wazuh.security_configuration_assessment as sca
 import wazuh.manager as manager
+import wazuh.mitre as mitre
 import wazuh.rootcheck as rootcheck
 import wazuh.stats as stats
 import wazuh.syscheck as syscheck
@@ -97,6 +98,11 @@ functions = {
         'is_async': False
     },
     'PUT/agents/restart': {
+        'function': Agent.restart_agents,
+        'type': 'distributed_master',
+        'is_async': False
+    },
+    'PUT/agents/groups/:group_id/restart': {
         'function': Agent.restart_agents,
         'type': 'distributed_master',
         'is_async': False
@@ -228,7 +234,7 @@ functions = {
 
     # Managers
     '/manager/info': {
-        'function': Wazuh(common.ossec_path).get_ossec_init,
+        'function': manager.get_info,
         'type': 'local_any',
         'is_async': False
     },
@@ -305,7 +311,8 @@ functions = {
     'PUT/manager/restart': {
         'function': manager.restart,
         'type': 'local_any',
-        'is_async': False
+        'is_async': False,
+        'basic_services': ['ossec-execd']
     },
 
     # Cluster
@@ -340,7 +347,7 @@ functions = {
         'is_async': True
     },
     '/cluster/:node_id/info': {
-        'function': Wazuh(common.ossec_path).get_ossec_init,
+        'function': manager.get_info,
         'type': 'distributed_master',
         'is_async': False
     },
@@ -407,12 +414,14 @@ functions = {
     'PUT/cluster/restart': {
         'function': cluster.restart_all_nodes,
         'type': 'distributed_master',
-        'is_async': False
+        'is_async': False,
+        'basic_services': ['ossec-execd']
     },
     'PUT/cluster/:node_id/restart': {
         'function': manager.restart,
         'type': 'distributed_master',
-        'is_async': False
+        'is_async': False,
+        'basic_services': ['ossec-execd']
     },
     '/cluster/:node_id/files': {
         'function': manager.get_file,
@@ -490,8 +499,33 @@ functions = {
         'type': 'local_any',
         'is_async': False
     },
+    '/rules/gpg13': {
+        'function': Rule.get_gpg13,
+        'type': 'local_any',
+        'is_async': False
+    },
     '/rules/gdpr': {
         'function': Rule.get_gdpr,
+        'type': 'local_any',
+        'is_async': False
+    },
+    '/rules/hipaa': {
+        'function': Rule.get_hipaa,
+        'type': 'local_any',
+        'is_async': False
+    },
+    '/rules/nist-800-53': {
+        'function': Rule.get_nist_800_53,
+        'type': 'local_any',
+        'is_async': False
+    },
+    '/rules/tsc': {
+        'function': Rule.get_tsc,
+        'type': 'local_any',
+        'is_async': False
+    },
+    '/rules/mitre': {
+        'function': Rule.get_mitre,
         'type': 'local_any',
         'is_async': False
     },
@@ -561,6 +595,11 @@ functions = {
     },
     '/syscollector/:agent_id/netiface': {
         'function': syscollector.get_netiface_agent,
+        'type': 'distributed_master',
+        'is_async': False
+    },
+    '/syscollector/:agent_id/hotfixes': {
+        'function': syscollector.get_hotfixes_agent,
         'type': 'distributed_master',
         'is_async': False
     },
@@ -643,6 +682,18 @@ functions = {
         'is_async': False
     },
 
+    # Summary
+    '/summary/agents': {
+        'function': Agent.get_full_summary,
+        'type': 'local_master',
+        'is_async': False
+    },
+
+    # Mitre
+    '/mitre': {
+        'function': mitre.get_attack,
+        'type': 'local_master',
+        'is_async': False
+    },
 
 }
-

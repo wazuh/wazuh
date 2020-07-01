@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -103,7 +103,9 @@ int os_check_ads(const char *full_path)
             break;
         }
     }
-
+    BackupRead(file_h, (LPBYTE)stream_name,
+                       sid.dwStreamNameSize,
+                       &dwRead, TRUE, FALSE, &context);
     CloseHandle(file_h);
     return (0);
 }

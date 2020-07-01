@@ -1,6 +1,6 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
 import functools
 import itertools
@@ -16,7 +16,7 @@ import logging
 import os
 import time
 import copy
-
+from wazuh.exception import WazuhException
 
 class DistributedAPI:
     """
@@ -93,7 +93,7 @@ class DistributedAPI:
                 raise
             return self.print_json(data=str(e), error=1000)
 
-    def check_wazuh_status(self):
+    def check_wazuh_status(self, basic_services=None):
         """
         There are some services that are required for wazuh to correctly process API requests. If any of those services
         is not running, the API must raise an exception indicating that:
@@ -106,11 +106,20 @@ class DistributedAPI:
         """
         if self.input_json['function'] == '/manager/status' or self.input_json['function'] == '/cluster/:node_id/status':
             return
-        basic_services = ('wazuh-modulesd', 'ossec-remoted', 'ossec-analysisd', 'ossec-execd', 'wazuh-db')
-        status = operator.itemgetter(*basic_services)(manager.status())
-        for status_name, exc_code in [('failed', 1019), ('restarting', 1017), ('stopped', 1018)]:
-            if status_name in status:
-                raise exception.WazuhException(exc_code, status)
+
+        if not basic_services:
+            basic_services = ('wazuh-modulesd', 'ossec-analysisd', 'ossec-execd', 'wazuh-db')
+            if common.install_type != "local":
+                basic_services += ('ossec-remoted', )
+
+        status = manager.status()
+
+        not_ready_daemons = {k: status[k] for k in basic_services if status[k] in ('failed', 'restarting', 'stopped')}
+
+        if not_ready_daemons:
+            extra_info = {'node_name': self.node_info.get('node', 'UNKNOWN NODE'),
+                          'not_ready_daemons': ', '.join([f'{key}->{value}' for key, value in not_ready_daemons.items()])}
+            raise exception.WazuhException(1017, extra_message=extra_info)
 
     def print_json(self, data: Union[Dict, str], error: int = 0) -> str:
         def encode_json(o):
@@ -136,10 +145,12 @@ class DistributedAPI:
         try:
             before = time.time()
 
-            self.check_wazuh_status()
+            self.check_wazuh_status(basic_services=rq.functions[self.input_json['function']].get('basic_services',
+                                                                                                 None)
+                                    )
 
             timeout = None if self.input_json['arguments']['wait_for_complete'] \
-                           else self.cluster_items['intervals']['communication']['timeout_api_exe']
+                else self.cluster_items['intervals']['communication']['timeout_api_exe']
             local_args = copy.deepcopy(self.input_json['arguments'])
             del local_args['wait_for_complete']  # local requests don't use this parameter
 
@@ -264,7 +275,16 @@ class DistributedAPI:
             node_id = self.input_json['arguments']['node_id']
             del self.input_json['arguments']['node_id']
             return {node_id: []}
+        elif 'group_id' in self.input_json['arguments']:
+            agents = agent.Agent.get_agents_overview(
+                select=select_node, filters={'group': self.input_json['arguments']['group_id']})['items']
+            if len(agents) == 0:
+                raise WazuhException(1751)
+            del self.input_json['arguments']['group_id']
+            node_name = {k: list(map(operator.itemgetter('id'), g)) for k, g in
+                         itertools.groupby(agents, key=operator.itemgetter('node_name'))}
 
+            return node_name
         else:
             if 'cluster' in self.input_json['function']:
                 node_name = {'fw_all_nodes': [], self.node_info['node']: []}
@@ -348,11 +368,12 @@ class APIRequestQueue:
     def __init__(self, server):
         self.request_queue = asyncio.Queue()
         self.server = server
-        self.logger = logging.getLogger('wazuh').getChild('dapi')
-        self.logger.addFilter(cluster.ClusterFilter(tag='Cluster', subtag='D API'))
+        self.logger = logging.getLogger('wazuh')
         self.pending_requests = {}
 
     async def run(self):
+        cluster.context_tag.set('Cluster')
+        cluster.context_subtag.set('D API')
         while True:
             # name    -> node name the request must be sent to. None if called from a worker node.
             # id      -> id of the request.

@@ -1,0 +1,689 @@
+<!--
+  -  Panda Advanced Protection Service (PAPS) decoders
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<!--
+LEEF:1.0|Panda Security|paps|02.47.00.0000|registrym|sev=1	devTime=2019-05-09 22:01:23.255825	devTimeFormat=yyyy-MM-dd HH:mm:ss.SSS	usrName=SYSTEM	domain=NT AUTHORITY	src=10.255.44.11	identSrc=10.255.44.11	identHostName=44_CCO_11	HostName=44_CCO_11	MUID=D877F2C4C4000A9BF39F1710CA787291	Op=ModifyExeKey	Hash=F6494E7C35B6514A3AD74E27435F3141	DriveType=Fixed	Path=PROGRAM_FILESX86|\LANDesk\LDClient\hips\LDSecSvc64.EXE	ValidSig=true	Company=LANDESK Software, Inc. and its affiliates.	Broken=true	ImageType=EXE 64	ExeType=Unknown	Prevalence=Low	PrevLastDay=Low	Cat=Goodware	MWName=	TargetPath=3|PROGRAM_FILESX86|\LANDesk\LDClient\LDdrives.exe
+LEEF:1.0|Panda Security|paps|02.47.00.0000|registrym|sev=1	devTime=2019-05-09 22:01:23.255825	devTimeFormat=yyyy-MM-dd HH:mm:ss.SSS	usrName=SYSTEM	domain=NT AUTHORITY	src=10.255.44.11	identSrc=10.255.44.11	identHostName=44_CCO_11	HostName=44_CCO_11	MUID=D877F2C4C4000A9BF39F1710CA787291	Op=ModifyExeKey	Hash=F6494E7C35B6514A3AD74E27435F3141	DriveType=Fixed	Path=PROGRAM_FILESX86|\LANDesk\LDClient\hips\LDSecSvc64.EXE	ValidSig=true	Company=LANDESK Software, Inc. and its affiliates.	Broken=true	ImageType=EXE 64	ExeType=Unknown	Prevalence=Low	PrevLastDay=Low	Cat=Goodware	MWName=	TargetPath=3|PROGRAM_FILESX86|\LANDesk\LDClient\LDdrives.exe
+LEEF:1.0|Panda Security|paps|02.47.00.0000|registrym|sev=1	devTime=2019-05-09 22:03:58.692466	devTimeFormat=yyyy-MM-dd HH:mm:ss.SSS	usrName=SYSTEM	domain=NT AUTHORITY	src=192.168.0.8	identSrc=192.168.0.8	identHostName=13_2595_43	HostName=13_2595_43	MUID=6C6A0D57714FE5B6D72BA0EC0E46D71B	Op=ModifyExeKey	Hash=E60A27AAEB184AABD9C92C513B27F98A	DriveType=Fixed	Path=PROGRAM_FILES_COMMONX86|\Quest\Privilege Manager\Client\CSEHost.exe	ValidSig=true	Company=Quest Software Inc.	Broken=false	ImageType=EXE 32	ExeType=Unknown	Prevalence=Medium	PrevLastDay=Low	Cat=Goodware	MWName= TargetPath=3|PROGRAM_FILES_COMMONX86|\Quest\Privilege Manager\Client\GPEEventMsgFile.dll
+LEEF:1.0|Panda Security|paps|02.47.00.0000|exec|sev=4	devTime=2019-05-09 22:00:57.880187	devTimeFormat=yyyy-MM-dd HH:mm:ss.SSS	usrName=SYSTEM	domain=NT AUTHORITY	src=11.22.33.44	identSrc=11.22.33.44	identHostName=44_CCO_11	HostName=44_CCO_11	MUID=D877F2C4C4000A9BF39F1710CA787291	Op=Exec	ParentHash=48EC9174FEFFDB93AD78D8F201BB5FE0	ParentDriveType=Fixed	ParentPath=PROGRAM_FILESX86|\LANDesk\LDClient\LocalSch.EXE	ParentValidSig=true	ParentCompany=LANDESK Software, Inc. and its affiliates.	ParentBroken=false	ParentImageType=EXE 32	ParentExeType=Unknown	ParentPrevalence=Medium	ParentPrevLastDay=Low	ParentCat=Goodware	ParentMWName=	ChildHash=922D954FC6A872B8C482A384D663E823	ChildDriveType=Fixed	ChildPath=PROGRAM_FILESX86|\LANDesk\LDClient\PWMCfg.exe	ChildValidSig=	ChildCompany=LANDESK Software, Inc. and its affiliates.	ChildBroken=false	ChildImageType=EXE 32	ChildExeType=Unknown	ChildPrevalence=Medium	ChildPrevLastDay=Low	ChildCat=Goodware	ChildMWName=	OCS_Exec=false	OCS_Name=	OCS_Version=	Params="C:\Program Files (x86)\LANDesk\LDClient\PWMCfg.exe" /set	ToastResult=	Action=Allow	ServiceLevel=Hardening	WinningTech=Cloud	DetId=0
+-->
+
+<decoder name="paps">
+  <prematch>^LEEF:\.*\|Panda Security\|paps\|\.*\|\.*\|</prematch>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>^LEEF:(\.*)\|(\.*)\|(\.*)\|(\.*)\|(\.*)\|sev=(\d+)</regex>
+  <order>LEEFversion,Vendor,Product,ProductVersion,EventID,Severity</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>devTime=(\.*)\t|(\.*)$</regex>
+  <order>devTime</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>devTimeFormat=(\.*)\t|(\.*)$</regex>
+  <order>devTimeFormat</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>usrName=(\.*)\t|(\.*)$</regex>
+  <order>usrName</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>domain=(\.*)\t|(\.*)$</regex>
+  <order>domain</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>src=(\.*)\t|(\.*)$</regex>
+  <order>src</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>identSrc=(\.*)\t|(\.*)$</regex>
+  <order>identSrc</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>identHostName=(\.*)\t|(\.*)$</regex>
+  <order>identHostName</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>1NFI=(\.*)\t|(\.*)$</regex>
+  <order>1NFI</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>1NMW=(\.*)\t|(\.*)$</regex>
+  <order>1NMW</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>AVDets=(\.*)\t|(\.*)$</regex>
+  <order>AVDets</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>Action=(\.*)\t|(\.*)$</regex>
+  <order>Action</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>Broken=(\.*)\t|(\.*)$</regex>
+  <order>Broken</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>BytesReceived=(\.*)\t|(\.*)$</regex>
+  <order>BytesReceived</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>BytesSent=(\.*)\t|(\.*)$</regex>
+  <order>BytesSent</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>Cat=(\.*)\t|(\.*)$</regex>
+  <order>Cat</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>CfgSvcLevel=(\.*)\t|(\.*)$</regex>
+  <order>CfgSvcLevel</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>Parent1NFI=(\.*)\t|(\.*)$</regex>
+  <order>Parent1NFI</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>Parent1NMW=(\.*)\t|(\.*)$</regex>
+  <order>Parent1NMW</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ParentAVDets=(\.*)\t|(\.*)$</regex>
+  <order>ParentAVDets</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ParentBroken=(\.*)\t|(\.*)$</regex>
+  <order>ParentBroken</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ParentCat=(\.*)\t|(\.*)$</regex>
+  <order>ParentCat</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ParentClass=(\.*)\t|(\.*)$</regex>
+  <order>ParentClass</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ParentCompany=(\.*)\t|(\.*)$</regex>
+  <order>ParentCompany</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ParentDriveType=(\.*)\t|(\.*)$</regex>
+  <order>ParentDriveType</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ParentExeType=(\.*)\t|(\.*)$</regex>
+  <order>ParentExeType</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ParentFlags=(\.*)\t|(\.*)$</regex>
+  <order>ParentFlags</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ParentHash=(\.*)\t|(\.*)$</regex>
+  <order>ParentHash</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ParentHeurFI=(\.*)\t|(\.*)$</regex>
+  <order>ParentHeurFI</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ParentImageType=(\.*)\t|(\.*)$</regex>
+  <order>ParentImageType</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ParentJIDFI=(\.*)\t|(\.*)$</regex>
+  <order>ParentJIDFI</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ParentJIDMW=(\.*)\t|(\.*)$</regex>
+  <order>ParentJIDMW</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ParentMWName=(\.*)\t|(\.*)$</regex>
+  <order>ParentMWName</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ParentPID=(\.*)\t|(\.*)$</regex>
+  <order>ParentPID</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ParentPath=(\.*)\t|(\.*)$</regex>
+  <order>ParentPath</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ParentPrevLastDay=(\.*)\t|(\.*)$</regex>
+  <order>ParentPrevLastDay</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ParentPrevalence=(\.*)\t|(\.*)$</regex>
+  <order>ParentPrevalence</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ParentSkeptic=(\.*)\t|(\.*)$</regex>
+  <order>ParentSkeptic</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ParentStatus=(\.*)\t|(\.*)$</regex>
+  <order>ParentStatus</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ParentValidSig=(\.*)\t|(\.*)$</regex>
+  <order>ParentValidSig</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>Child1NFI=(\.*)\t|(\.*)$</regex>
+  <order>Child1NFI</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>Child1NMW=(\.*)\t|(\.*)$</regex>
+  <order>Child1NMW</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ChildAVDets=(\.*)\t|(\.*)$</regex>
+  <order>ChildAVDets</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ChildBroken=(\.*)\t|(\.*)$</regex>
+  <order>ChildBroken</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ChildCat=(\.*)\t|(\.*)$</regex>
+  <order>ChildCat</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ChildClass=(\.*)\t|(\.*)$</regex>
+  <order>ChildClass</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ChildCompany=(\.*)\t|(\.*)$</regex>
+  <order>ChildCompany</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ChildDriveType=(\.*)\t|(\.*)$</regex>
+  <order>ChildDriveType</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ChildExeType=(\.*)\t|(\.*)$</regex>
+  <order>ChildExeType</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ChildFlags=(\.*)\t|(\.*)$</regex>
+  <order>ChildFlags</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ChildHash=(\.*)\t|(\.*)$</regex>
+  <order>ChildHash</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ChildHeurFI=(\.*)\t|(\.*)$</regex>
+  <order>ChildHeurFI</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ChildImageType=(\.*)\t|(\.*)$</regex>
+  <order>ChildImageType</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ChildJIDFI=(\.*)\t|(\.*)$</regex>
+  <order>ChildJIDFI</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ChildJIDMW=(\.*)\t|(\.*)$</regex>
+  <order>ChildJIDMW</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ChildMWName=(\.*)\t|(\.*)$</regex>
+  <order>ChildMWName</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ChildPath=(\.*)\t|(\.*)$</regex>
+  <order>ChildPath</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ChildPrevLastDay=(\.*)\t|(\.*)$</regex>
+  <order>ChildPrevLastDay</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ChildPrevalence=(\.*)\t|(\.*)$</regex>
+  <order>ChildPrevalence</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ChildSkeptic=(\.*)\t|(\.*)$</regex>
+  <order>ChildSkeptic</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ChildStatus=(\.*)\t|(\.*)$</regex>
+  <order>ChildStatus</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ChildValidSig=(\.*)\t|(\.*)$</regex>
+  <order>ChildValidSig</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>Class=(\.*)\t|(\.*)$</regex>
+  <order>Class</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ClientCat=(\.*)\t|(\.*)$</regex>
+  <order>ClientCat</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>Company=(\.*)\t|(\.*)$</regex>
+  <order>Company</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>DetId=(\.*)\t|(\.*)$</regex>
+  <order>DetId</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>Direction=(\.*)\t|(\.*)$</regex>
+  <order>Direction</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>DriveType=(\.*)\t|(\.*)$</regex>
+  <order>DriveType</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ExeType=(\.*)\t|(\.*)$</regex>
+  <order>ExeType</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>Hash=(\.*)\t|(\.*)$</regex>
+  <order>Hash</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>HeurFI=(\.*)\t|(\.*)$</regex>
+  <order>HeurFI</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>HostName=(\.*)\t|(\.*)$</regex>
+  <order>HostName</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>IP=(\.*)\t|(\.*)$</regex>
+  <order>IP</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ImageType=(\.*)\t|(\.*)$</regex>
+  <order>ImageType</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>JIDFI=(\.*)\t|(\.*)$</regex>
+  <order>JIDFI</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>JIDMW=(\.*)\t|(\.*)$</regex>
+  <order>JIDMW</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>Key=(\.*)\t|(\.*)$</regex>
+  <order>Key</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>LocalIp=(\.*)\t|(\.*)$</regex>
+  <order>LocalIp</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>LocalPort=(\.*)\t|(\.*)$</regex>
+  <order>LocalPort</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>LoggedUser=(\.*)\t|(\.*)$</regex>
+  <order>LoggedUser</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>MUID=(\.*)\t|(\.*)$</regex>
+  <order>MUID</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>MWName=\t*(\.*)\t|(\.*)$</regex>
+  <order>MWName</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>RegKey=(\.*)\t|(\.*)$</regex>
+  <order>RegKey</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>NumCacheClassifiedElements=(\.*)\t|(\.*)$</regex>
+  <order>NumCacheClassifiedElements</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>OCS_Exec=(\.*)\t|(\.*)$</regex>
+  <order>OCS_Exec</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>OCS_Name=(\.*)\t|(\.*)$</regex>
+  <order>OCS_Name</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>OCS_Version=(\.*)\t|(\.*)$</regex>
+  <order>OCS_Version</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>Op=(\.*)\t|(\.*)$</regex>
+  <order>Op</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>OperationFlags=(\.*)\t|(\.*)$</regex>
+  <order>OperationFlags</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>PECreationSource=(\.*)\t|(\.*)$</regex>
+  <order>PECreationSource</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>PID=(\.*)\t|(\.*)$</regex>
+  <order>PID</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>Params=(\.*)\t|(\.*)$</regex>
+  <order>Params</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>Path=(\.*)\t|(\.*)$</regex>
+  <order>Path</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>Port=(\.*)\t|(\.*)$</regex>
+  <order>Port</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>PrevLastDay=(\.*)\t|(\.*)$</regex>
+  <order>PrevLastDay</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>Prevalence=(\.*)\t|(\.*)$</regex>
+  <order>Prevalence</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>Protocol=(\.*)\t|(\.*)$</regex>
+  <order>Protocol</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>RealSvcLevel=(\.*)\t|(\.*)$</regex>
+  <order>RealSvcLevel</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>RegAction=(\.*)\t|(\.*)$</regex>
+  <order>RegAction</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ResolutionTime=(\.*)\t|(\.*)$</regex>
+  <order>ResolutionTime</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ResponseCat=(\.*)\t|(\.*)$</regex>
+  <order>ResponseCat</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ResponseError=(\.*)\t|(\.*)$</regex>
+  <order>ResponseError</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ServiceLevel=(\.*)\t|(\.*)$</regex>
+  <order>ServiceLevel</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>Skeptic=(\.*)\t|(\.*)$</regex>
+  <order>Skeptic</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>TargetPath=(\.*)\t|(\.*)$</regex>
+  <order>TargetPath</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>Timeout=(\.*)\t|(\.*)$</regex>
+  <order>Timeout</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ToastResult=(\.*)\t|(\.*)$</regex>
+  <order>ToastResult</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>URL=(\.*)\t|(\.*)$</regex>
+  <order>URL</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ValidSig=(\.*)\t|(\.*)$</regex>
+  <order>ValidSig</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>Value=(\.*)\t|(\.*)$</regex>
+  <order>Value</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>ValueData=(\.*)\t|(\.*)$</regex>
+  <order>ValueData</order>
+</decoder>
+
+<decoder name="paps">
+  <parent>paps</parent>
+  <regex>WinningTech=(\.*)\t|(\.*)$</regex>
+  <order>WinningTech</order>
+</decoder>

@@ -1,15 +1,16 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import re
 from glob import glob
 from xml.etree.ElementTree import fromstring
 import wazuh.configuration as configuration
 from wazuh.exception import WazuhException
 from wazuh import common
-from wazuh.utils import cut_array, sort_array, search_array, load_wazuh_xml
+from wazuh.utils import cut_array, sort_array, search_array, load_wazuh_xml, filter_array_by_query
 import os
 from sys import version_info
+
 
 class Rule:
     """
@@ -30,7 +31,12 @@ class Rule:
         self.status = None
         self.groups = []
         self.pci = []
+        self.gpg13 = []
         self.gdpr = []
+        self.hipaa = []
+        self.nist_800_53 = []
+        self.tsc = []
+        self.mitre = []
         self.details = {}
 
     def __str__(self):
@@ -60,10 +66,10 @@ class Rule:
         else:
             raise WazuhException(1204)
 
-
     def to_dict(self):
-        return {'file': self.file, 'path': self.path, 'id': self.id, 'level': self.level, 'description': self.description,
-                'status': self.status, 'groups': self.groups, 'pci': self.pci, 'gdpr': self.gdpr, 'details': self.details}
+        return {'file': self.file, 'path': self.path, 'id': self.id, 'description': self.description,
+                'level': self.level, 'status': self.status, 'groups': self.groups, 'pci': self.pci, 'gdpr': self.gdpr,
+                'hipaa': self.hipaa, 'nist-800-53': self.nist_800_53, 'gpg13': self.gpg13, 'tsc': self.tsc, 'details': self.details, 'mitre': self.mitre}
 
 
     def set_group(self, group):
@@ -74,7 +80,6 @@ class Rule:
 
         Rule.__add_unique_element(self.groups, group)
 
-
     def set_pci(self, pci):
         """
         Adds a pci requirement to the pci list.
@@ -83,6 +88,13 @@ class Rule:
 
         Rule.__add_unique_element(self.pci, pci)
 
+    def set_gpg13(self, gpg13):
+        """
+        Adds a gpg13 requirement to the gpg13 list.
+        :param gpg13: Requirement to add (string or list).
+        """
+
+        Rule.__add_unique_element(self.gpg13, gpg13)
 
     def set_gdpr(self, gdpr):
         """
@@ -91,6 +103,34 @@ class Rule:
         """
         Rule.__add_unique_element(self.gdpr, gdpr)
 
+    def set_hipaa(self, hipaa):
+        """
+        Adds a hipaa requirement to the hipaa list.
+        :param hipaa: Requirement to add (string or list).
+        """
+        Rule.__add_unique_element(self.hipaa, hipaa)
+
+    def set_nist_800_53(self, nist_800_53):
+        """
+        Adds a nist_800_53 requirement to the nist_800_53 list.
+        :param nist_800_53: Requirement to add (string or list).
+        """
+        Rule.__add_unique_element(self.nist_800_53, nist_800_53)
+
+
+    def set_tsc(self, tsc):
+        """
+        Adds a tsc requirement to the tsc list.
+        :param tsc: Requirement to add (string or list).
+        """
+        Rule.__add_unique_element(self.tsc, tsc)
+
+    def set_mitre(self, mitre):
+        """
+        Adds a mitre requirement to the mitre list.
+        :param mitre: Requirement to add (string or list).
+        """
+        Rule.__add_unique_element(self.mitre, mitre)
 
     def add_detail(self, detail, value):
         """
@@ -109,7 +149,6 @@ class Rule:
         else:
             self.details[detail] = value
 
-
     @staticmethod
     def __add_unique_element(src_list, element):
         new_list = []
@@ -125,7 +164,6 @@ class Rule:
                 if i not in src_list:
                     src_list.append(i)
 
-
     @staticmethod
     def __check_status(status):
         if status is None:
@@ -134,7 +172,6 @@ class Rule:
             return status
         else:
             raise WazuhException(1202)
-
 
     @staticmethod
     def get_rules_files(status=None, path=None, file=None, offset=0, limit=common.database_limit, sort=None, search=None):
@@ -221,26 +258,35 @@ class Rule:
 
         return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
 
-
     @staticmethod
-    def get_rules(status=None, group=None, pci=None, gdpr=None, path=None, file=None, id=None, level=None, offset=0, limit=common.database_limit, sort=None, search=None):
+    def get_rules(offset=0, limit=common.database_limit, sort=None, search=None, filters={}, q=''):
         """
         Gets a list of rules.
 
-        :param status: Filters by status: enabled, disabled, all.
-        :param group: Filters by group.
-        :param pci: Filters by pci requirement.
-        :param gdpr: Filter by gdpr requirement.
-        :param file: Filters by file of the rule.
-        :param path: Filters by file of the path.
-        :param id: Filters by rule ID.
-        :param level: Filters by level. It can be an integer or an range (i.e. '2-4' that means levels from 2 to 4).
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param search: Looks for items with the specified string.
+        :param filters: Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}.
+            This filter is used for filtering by 'status', 'group', 'pci', 'gpg13', 'gdpr', 'hipaa', 'nist-800-53', 'tsc', 'mitre', 'file', 'path', 'id' and 'level'.
+        :param q: Defines query to filter.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
+        # set default values to parameters
+        status = filters.get('status', None)
+        group = filters.get('group', None)
+        pci = filters.get('pci', None)
+        gpg13 = filters.get('gpg13', None)
+        gdpr = filters.get('gdpr', None)
+        hipaa = filters.get('hipaa', None)
+        nist_800_53 = filters.get('nist-800-53', None)
+        tsc = filters.get('tsc', None)
+        mitre = filters.get('mitre', None)
+        path = filters.get('path', None)
+        file_ = filters.get('file', None)
+        id_ = filters.get('id', None)
+        level = filters.get('level', None)
+
         all_rules = []
 
         if level:
@@ -259,16 +305,33 @@ class Rule:
             elif pci and pci not in r.pci:
                 rules.remove(r)
                 continue
+            elif gpg13 and gpg13 not in r.gpg13:
+                rules.remove(r)
+                continue
             elif gdpr and gdpr not in r.gdpr:
+                rules.remove(r)
+                continue
+            elif hipaa and hipaa not in r.hipaa:
+                rules.remove(r)
+                continue
+            elif nist_800_53 and nist_800_53 not in r.nist_800_53:
+                rules.remove(r)
+                continue
+            elif tsc and tsc not in r.tsc:
+                rules.remove(r)
+                continue
+            elif mitre and mitre not in r.mitre:
+                rules.remove(r)
+                continue
                 rules.remove(r)
                 continue
             elif path and path != r.path:
                 rules.remove(r)
                 continue
-            elif file and file != r.file:
+            elif file_ and file_ != r.file:
                 rules.remove(r)
                 continue
-            elif id and int(id) != r.id:
+            elif id_ and int(id_) != r.id:
                 rules.remove(r)
                 continue
             elif level:
@@ -277,11 +340,15 @@ class Rule:
                         rules.remove(r)
                         continue
                 elif not (int(levels[0]) <= r.level <= int(levels[1])):
-                        rules.remove(r)
-                        continue
+                    rules.remove(r)
+                    continue
 
         if search:
             rules = search_array(rules, search['value'], search['negation'])
+
+        if q:
+            # rules contains a list of Rule objects, it is necessary to cast it into dictionaries
+            rules = filter_array_by_query(q, [rule.to_dict() for rule in rules])
 
         if sort:
             rules = sort_array(rules, sort['fields'], sort['order'], Rule.SORT_FIELDS)
@@ -289,7 +356,6 @@ class Rule:
             rules = sort_array(rules, ['id'], 'asc')
 
         return {'items': cut_array(rules, offset, limit), 'totalItems': len(rules)}
-
 
     @staticmethod
     def get_groups(offset=0, limit=common.database_limit, sort=None, search=None):
@@ -318,9 +384,8 @@ class Rule:
 
         return {'items': cut_array(groups, offset, limit), 'totalItems': len(groups)}
 
-
     @staticmethod
-    def _get_requirement(offset, limit, sort, search, requirement):
+    def _get_requirement(requirement, offset=0, limit=common.database_limit, sort=None, search=None):
         """
         Get the requirements used in the rules
 
@@ -328,10 +393,12 @@ class Rule:
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param search: Looks for items with the specified string.
-        :param requirement: requirement to get (pci or dgpr)
+        :param requirement: requirement to get (pci, gpg13 or dgpr)
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        if requirement != 'pci' and requirement != 'gdpr':
+        valid_requirements = ['pci', 'gdpr', 'gpg13', 'hipaa', 'nist-800-53', 'tsc', 'mitre']
+
+        if requirement not in valid_requirements:
             raise WazuhException(1205, requirement)
 
         req = list({req for rule in Rule.get_rules(limit=None)['items'] for req in rule.to_dict()[requirement]})
@@ -346,7 +413,6 @@ class Rule:
 
         return {'items': cut_array(req, offset, limit), 'totalItems': len(req)}
 
-
     @staticmethod
     def get_pci(offset=0, limit=common.database_limit, sort=None, search=None):
         """
@@ -358,8 +424,21 @@ class Rule:
         :param search: Looks for items with the specified string.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        return Rule._get_requirement(offset, limit, sort, search, 'pci')
 
+        return Rule._get_requirement('pci', offset=offset, limit=limit, sort=sort, search=search)
+
+    @staticmethod
+    def get_gpg13(offset=0, limit=common.database_limit, sort=None, search=None):
+        """
+        Get all the GPG13 requirements used in the rules.
+
+        :param offset: First item to return.
+        :param limit: Maximum number of items to return.
+        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        :param search: Looks for items with the specified string.
+        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+        """
+        return Rule._get_requirement('gpg13', offset=offset, limit=limit, sort=sort, search=search)
 
     @staticmethod
     def get_gdpr(offset=0, limit=common.database_limit, sort=None, search=None):
@@ -372,7 +451,60 @@ class Rule:
         :param search: Looks for items with the specified string.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        return Rule._get_requirement(offset, limit, sort, search, 'gdpr')
+        return Rule._get_requirement('gdpr', offset=offset, limit=limit, sort=sort, search=search)
+
+    @staticmethod
+    def get_hipaa(offset=0, limit=common.database_limit, sort=None, search=None):
+        """
+        Get all the HIPAA requirements used in the rules.
+
+        :param offset: First item to return.
+        :param limit: Maximum number of items to return.
+        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        :param search: Looks for items with the specified string.
+        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+        """
+        return Rule._get_requirement('hipaa', offset=offset, limit=limit, sort=sort, search=search)
+
+    @staticmethod
+    def get_nist_800_53(offset=0, limit=common.database_limit, sort=None, search=None):
+        """
+        Get all the NIST-800-53 requirements used in the rules.
+
+        :param offset: First item to return.
+        :param limit: Maximum number of items to return.
+        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        :param search: Looks for items with the specified string.
+        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+        """
+        return Rule._get_requirement('nist-800-53', offset=offset, limit=limit, sort=sort, search=search)
+
+    @staticmethod
+    def get_tsc(offset=0, limit=common.database_limit, sort=None, search=None):
+        """
+        Get all the TSC requirements used in the rules.
+
+        :param offset: First item to return.
+        :param limit: Maximum number of items to return.
+        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        :param search: Looks for items with the specified string.
+        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+        """
+        return Rule._get_requirement('tsc', offset=offset, limit=limit, sort=sort, search=search)
+
+
+    @staticmethod
+    def get_mitre(offset=0, limit=common.database_limit, sort=None, search=None):
+        """
+        Get all the Mitre requirements used in the rules.
+
+        :param offset: First item to return.
+        :param limit: Maximum number of items to return.
+        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        :param search: Looks for items with the specified string.
+        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+        """
+        return Rule._get_requirement('mitre', offset=offset, limit=limit, sort=sort, search=search)
 
 
     @staticmethod
@@ -389,6 +521,7 @@ class Rule:
                         # New rule
                         if xml_rule.tag.lower() == "rule":
                             groups = []
+                            mitre = []
                             rule = Rule()
                             rule.file = rule_file
                             rule.path = rule_path
@@ -407,6 +540,9 @@ class Rule:
                                     value = ''
                                 if tag == "group":
                                     groups.extend(value.split(","))
+                                if tag == "mitre":
+                                    for mitre_attack in list(xml_rule_tags):
+                                        mitre.append(mitre_attack.text)
                                 elif tag == "description":
                                     rule.description += value
                                 elif tag == "field":
@@ -423,23 +559,42 @@ class Rule:
                                 else:
                                     rule.add_detail(tag, value)
 
+                            # set mitre
+                            rule.set_mitre(mitre)
+
                             # Set groups
                             groups.extend(general_groups)
 
                             pci_groups = []
+                            gpg13_groups = []
                             gdpr_groups = []
+                            hippa_groups = []
+                            nist_800_53_groups = []
+                            tsc_groups = []
                             ossec_groups = []
                             for g in groups:
                                 if 'pci_dss_' in g:
                                     pci_groups.append(g.strip()[8:])
+                                elif 'gpg13_' in g:
+                                    gpg13_groups.append(g.strip()[6:])
                                 elif 'gdpr_' in g:
                                     gdpr_groups.append(g.strip()[5:])
+                                elif 'hipaa_' in g:
+                                    hippa_groups.append(g.strip()[6:])
+                                elif 'nist_800_53_' in g:
+                                    nist_800_53_groups.append(g.strip()[12:])
+                                elif 'tsc_' in g:
+                                    tsc_groups.append(g.strip()[4:])
                                 else:
                                     ossec_groups.append(g)
 
-                            rule.set_group(ossec_groups)
                             rule.set_pci(pci_groups)
+                            rule.set_gpg13(gpg13_groups)
                             rule.set_gdpr(gdpr_groups)
+                            rule.set_hipaa(hippa_groups)
+                            rule.set_nist_800_53(nist_800_53_groups)
+                            rule.set_tsc(tsc_groups)
+                            rule.set_group(ossec_groups)
 
                             rules.append(rule)
         except Exception as e:

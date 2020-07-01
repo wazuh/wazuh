@@ -1,15 +1,15 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef __LOGREADER_H
-#define __LOGREADER_H
+#ifndef LOGREADER_H
+#define LOGREADER_H
 
 #ifndef ARGV0
 #define ARGV0 "ossec-logcollector"
@@ -29,7 +29,7 @@
 /* Read logcollector config */
 int LogCollectorConfig(const char *cfgfile);
 
-/* Parse readed config into JSON format */
+/* Parse read config into JSON format */
 cJSON *getLocalfileConfig(void);
 cJSON *getSocketConfig(void);
 cJSON *getLogcollectorInternalOptions(void);
@@ -97,7 +97,7 @@ void *read_json(logreader *lf, int *rc, int drop_it);
 void win_startel();
 void win_readel();
 void win_read_vista_sec();
-void win_start_event_channel(char *evt_log, char future, char *query);
+int win_start_event_channel(char *evt_log, char future, char *query, int reconnect_time);
 void win_format_event_string(char *string);
 #endif
 
@@ -138,7 +138,7 @@ typedef struct w_msg_queue_t{
 
 
 /* Hash table of queues */
-OSHash * msg_queues_table;
+extern OSHash * msg_queues_table;
 
 /* Message structure */
 typedef struct w_message_t {
@@ -158,7 +158,7 @@ typedef struct w_input_range_t{
     int end_j;
 } w_input_range_t;
 
-w_input_range_t *w_input_threads_range;
+extern w_input_range_t *w_input_threads_range;
 
 /* Init queue hash table */
 void w_msg_hash_queues_init();
@@ -192,6 +192,10 @@ void w_create_input_threads();
 
 /* Set mutexes for each file */
 void w_set_file_mutexes();
+
+/* Read stop signal from reader threads */
+int can_read();
+
 extern int sample_log_length;
 extern int lc_debug_level;
 extern int accept_remote;
@@ -201,4 +205,4 @@ extern int OUTPUT_QUEUE_SIZE;
 extern rlim_t nofile;
 #endif
 
-#endif /* __LOGREADER_H */
+#endif /* LOGREADER_H */
