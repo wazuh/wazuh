@@ -18,7 +18,7 @@
 #define VU_LOCAL_FETCH        "(5403): Fetching feed from '%s'"
 #define VU_DOWNLOAD_START     "(5404): Trying to download '%s'"
 #define VU_DOWNLOAD_FAIL      "(5405): The download can not be completed. Retrying in '%d' seconds."
-#define VU_UPDATE_DATE        "(5406): The feed '%s' is in its latest version. Update date: '%s'"
+#define VU_UPDATE_DATE        "(5406): The feed '%s' is in its latest version"
 #define VU_DB_TIMESTAMP_FEED  "(5407): The feed '%s%s' is outdated. Fetching the last version."
 #define VU_UPDATE_JSON_FEED   "(5408): Updating from '%s'"
 #define VU_DISCARD_MATCH_N    "(5409): The matching configuration node '%s' from '%s' will be discarded because it is contemplated by '%s' (%s%s%s%s%s%s%s)."
