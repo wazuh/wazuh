@@ -34,16 +34,11 @@ static int is_base64(char c);
 static char encode(unsigned char u);
 static unsigned char decode(char c);
 
-/* Global variables */
-char *decode_base64(const char *src);
-char *encode_base64(int size, char *src);
-
-
 /* Base64 encode and return size data in 'src'. The caller must free the
  * returned string.
  * Returns encoded string otherwise NULL
  */
-char *encode_base64(int size, char *src)
+char *encode_base64(int size, const char *src)
 {
     int i;
     char *out, *p;
@@ -223,4 +218,3 @@ static int is_base64(char c)
     }
     return FALSE;
 }
-
