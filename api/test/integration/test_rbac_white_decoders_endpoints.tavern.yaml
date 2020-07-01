@@ -155,7 +155,7 @@ stages:
       json: &permissions_denied
         code: 4000
         dapi_errors:
-          master-node:
+          unknown-node:
             error: !anystr
         detail: !anystr
         remediation: !anystr
