@@ -199,6 +199,15 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             goto end;
         }
         upd->dist_ref = FEED_DEBIAN;
+    
+    } else if (strcasestr(feed, vu_feed_tag[FEED_JREDHAT])) {
+        // JSON REDHAT
+        os_index = CVE_JREDHAT;
+        upd->dist_tag_ref = FEED_JREDHAT;
+        upd->dist_ext = vu_feed_ext[FEED_JREDHAT];
+        upd->dist_ref = FEED_JREDHAT;
+        upd->update_from_year = RED_HAT_REPO_DEFAULT_MIN_YEAR;
+        upd->json_format = 1;
 
     } else if (strcasestr(feed, vu_feed_tag[FEED_REDHAT])) {
         // RHEL8
@@ -254,6 +263,7 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
         upd_list[CVE_MSU]->dist_ext = vu_feed_ext[FEED_MSU];
         upd_list[CVE_MSU]->dist_ref = FEED_MSU;
         upd_list[CVE_MSU]->json_format = 1;
+
     } else {
         merror("Invalid feed '%s' at module '%s'.", feed, WM_VULNDETECTOR_CONTEXT.name);
         retval = OS_INVALID;
@@ -687,6 +697,12 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
             if (os_list->allow && wm_vuldet_add_allow_os(updates[os_index], os_list->allow, 0)) {
                 wm_vuldet_remove_os_feed(rem, 0);
                 return OS_INVALID;
+            }
+
+            if (!strcmp(pr_name, "redhat") && !updates[CVE_JREDHAT]) {
+                if (os_index = wm_vuldet_set_feed_version("JREDHAT", "", updates), os_index == OS_INVALID || os_index == OS_SUPP_SIZE) {
+                    goto end;
+                }
             }
 
             mdebug1("Added %s (%s) feed. Interval: %lus | Path: '%s' | Url: '%s' | Timeout: %lds",
