@@ -42,6 +42,9 @@ extern "C" {
  */
   EXPORTED void dbsync_teardown(void);
 
+  EXPORTED void dbsync_initialize(log_fnc_t fnc);
+
+
 /**
  * @brief Initialize DBSync.
  *
@@ -52,7 +55,7 @@ extern "C" {
  *
  * @return return a handle to be used in the future (cannot be used by more than 1 thread).
  */
-  EXPORTED DBSYNC_HANDLE dbsync_initialize(
+  EXPORTED DBSYNC_HANDLE dbsync_open(
     const HostType host_type, 
     const DbEngineType db_type,
     const char* path, 

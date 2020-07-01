@@ -4,6 +4,14 @@
 #include <iostream>
 #include <chrono>
 
+static void log_to_cout(const char* msg)
+{
+  if (msg)
+  {
+    std::cout << msg << std::endl;
+  }
+}
+
 void callback(const ReturnTypeCallback value, const cJSON* json) {
   if (ReturnTypeCallback::DELETED == value) {
     std::cout << "deleted event: " << std::endl;
@@ -24,7 +32,8 @@ int main()
     cJSON * json_insert { cJSON_Parse(insert_sql.c_str()) };
     cJSON * json_update { cJSON_Parse(update_sql.c_str()) } ;
     cJSON * json_result { nullptr };
-    auto handle { dbsync_initialize(HostType::AGENT, DbEngineType::SQLITE3, "temp.db", sql.c_str()) };
+    dbsync_initialize(&log_to_cout);
+    auto handle { dbsync_open(HostType::AGENT, DbEngineType::SQLITE3, "temp.db", sql.c_str()) };
     if (0 != handle)
     {
       if(0 == dbsync_insert_data(handle, json_insert)) { 
@@ -38,6 +47,9 @@ int main()
             std::cout << result_print << std::endl;
             cJSON_free(result_print);
             dbsync_free_result(&json_result);
+          }
+          else {
+            std::cout << "Error updating with snapshot." << std::endl;
           } 
         }while(getc(stdin) != 'q');
       }
