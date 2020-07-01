@@ -32,7 +32,8 @@ int main()
     cJSON * json_insert { cJSON_Parse(insert_sql.c_str()) };
     cJSON * json_update { cJSON_Parse(update_sql.c_str()) } ;
     cJSON * json_result { nullptr };
-    auto handle { dbsync_initialize(HostType::AGENT, DbEngineType::SQLITE3, "temp.db", sql.c_str(), &log_to_cout) };
+    dbsync_initialize(&log_to_cout);
+    auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, "temp.db", sql.c_str()) };
     if (0 != handle)
     {
       if(0 == dbsync_insert_data(handle, json_insert)) { 
