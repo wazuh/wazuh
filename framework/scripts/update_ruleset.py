@@ -19,7 +19,7 @@ from glob import glob
 from zipfile import ZipFile
 from getopt import GetoptError, getopt
 from signal import signal, SIGINT
-from datetime import datetime
+from datetime import datetime, date
 from pwd import getpwnam
 from grp import getgrnam
 from shutil import copyfile, copytree, rmtree
@@ -29,8 +29,9 @@ from time import time
 from json import dumps
 
 # Set framework path
-from wazuh.core import common
-from wazuh.core.cluster import read_config
+from wazuh import Wazuh
+from wazuh import common
+from wazuh.cluster.cluster import read_config
 
 
 class RulesetLogger:
