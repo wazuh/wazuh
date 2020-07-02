@@ -90,7 +90,7 @@ installElasticsearch() {
 
     if [ $sys_type == "yum" ] 
     then
-        yum install opendistroforelasticsearch-1.6.0 -y -q > /dev/null 2>&1
+        yum install opendistroforelasticsearch -y -q > /dev/null 2>&1
     elif [ $sys_type == "apt-get" ] 
     then
         apt-get install elasticsearch-oss opendistroforelasticsearch -y -q > /dev/null 2>&1
