@@ -38,21 +38,27 @@
 extern "C" {
 #endif
 /**
+ * @brief Initializes the shared library.
+ * @param log_function pointer to log function to be used by the dbsync.
+ */
+  EXPORTED void dbsync_initialize(log_fnc_t log_function);
+
+/**
  * @brief Turn off the services provided by the shared library.
  */
   EXPORTED void dbsync_teardown(void);
 
 /**
- * @brief Initialize DBSync.
+ * @brief Creates a new DBSync instance.
  *
  * @param host_type Define the dynamic library host type.
  * @param db_type Define the type of database.
  * @param path Path of local db.
- * @param sql_statement sql sentence to create tables in a SQL engine
+ * @param sql_statement sql sentence to create tables in a SQL engine.
  *
  * @return return a handle to be used in the future (cannot be used by more than 1 thread).
  */
-  EXPORTED DBSYNC_HANDLE dbsync_initialize(
+  EXPORTED DBSYNC_HANDLE dbsync_create(
     const HostType host_type, 
     const DbEngineType db_type,
     const char* path, 

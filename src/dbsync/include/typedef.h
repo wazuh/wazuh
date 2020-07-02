@@ -50,3 +50,5 @@ typedef void* DBSYNC_HANDLE;
  * \param result_json Json which describe the change.
  */
 typedef void((*result_callback)(ReturnTypeCallback result_type, cJSON* result_json));
+
+typedef void((*log_fnc_t)(const char* msg));

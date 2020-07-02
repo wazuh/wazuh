@@ -15,21 +15,33 @@
 #include "dbengine.h"
 #include "typedef.h"
 
-class DbEngineContext {
-public:
-  DbEngineContext(
-    std::unique_ptr<DbEngine>& dbengine, 
-    const HostType host_type, 
-    const DbEngineType db_type) : 
-    m_dbengine(std::move(dbengine)),
-    m_host_type(host_type),
-    m_dbengine_type(db_type) {}
-
-  const std::unique_ptr<DbEngine>& GetDbEngine() const { return m_dbengine; }
-  const HostType& GetHostType() const { return m_host_type; }
-  const DbEngineType& GetDbEngineType() const { return m_dbengine_type; }
-private:
-  const std::unique_ptr<DbEngine> m_dbengine;
-  const HostType m_host_type;
-  const DbEngineType m_dbengine_type;
-};
+namespace DbSync
+{
+    class DbEngineContext
+    {
+    public:
+        DbEngineContext(std::unique_ptr<IDbEngine>& dbengine,
+                        const HostType hostType,
+                        const DbEngineType dbType)
+        : m_dbEngine{ std::move(dbengine) }
+        , m_hostType{ hostType }
+        , m_dbEngineType{ dbType }
+        {}
+        const std::unique_ptr<IDbEngine>& dbEngine() const
+        {
+            return m_dbEngine;
+        }
+        const HostType& hostType() const
+        {
+            return m_hostType;
+        }
+        const DbEngineType& dbEngineType() const
+        {
+            return m_dbEngineType;
+        }
+    private:
+        const std::unique_ptr<IDbEngine> m_dbEngine;
+        const HostType m_hostType;
+        const DbEngineType m_dbEngineType;
+    };
+}// namespace DbSync
